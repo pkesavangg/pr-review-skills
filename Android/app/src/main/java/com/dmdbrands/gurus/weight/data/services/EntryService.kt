@@ -207,6 +207,33 @@ class EntryService(
     }
 
     /**
+     * Inserts every baby reading locally, then runs ONE [syncOperationsInternal] for the whole
+     * batch (a single POST /v3/entries + baby-profile refresh + delta GET) — so assigning K
+     * buffered readings is one round-trip, not K. Returns the new local ids in order; empty on
+     * failure. (MOB-598 PR #2130)
+     */
+    override suspend fun addBabyEntries(entries: List<BabyEntry>): List<Long> {
+        val currentAccountId = accountId ?: return emptyList()
+        return try {
+            val ids = entries.map { entry ->
+                val localEntry = entry.updateEntry(
+                    entry.entry.copy(
+                        accountId = currentAccountId,
+                        operationType = OperationType.CREATE.name,
+                        isSynced = false,
+                    ),
+                )
+                entryRepository.insert(localEntry)
+            }
+            syncOperationsInternal(currentAccountId)
+            ids
+        } catch (e: Exception) {
+            AppLog.e(TAG, "Error saving baby entries", e)
+            emptyList()
+        }
+    }
+
+    /**
      * Edits a baby reading in place. The row keeps its local id and is re-stamped
      * operationType=edit (baby-only, §2.16), upserted locally, then pushed to POST /v3/entries/
      * on the same endpoint as create. The server resolves the edit by the deterministic baby

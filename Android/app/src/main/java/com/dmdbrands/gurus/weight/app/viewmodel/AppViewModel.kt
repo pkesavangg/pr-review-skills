@@ -1214,8 +1214,10 @@ constructor(
       // DB-insert exception. Bail before touching the previous baby's entries or claiming success,
       // so a failed write never surfaces as "Reading assigned to X" (and a later Reassign never
       // deletes a bogus -1 id, which would leave a duplicate behind).
-      val savedIds = entry.map { entryService.addBabyEntry(it.toBabyEntry(babyId, accountId, sourceSku)) }
-      if (savedIds.any { it <= 0L }) {
+      // One batched insert + a SINGLE server sync for all buffered readings (not one full sync per
+      // reading) — assigning K readings is one round-trip. (MOB-598 PR #2130)
+      val savedIds = entryService.addBabyEntries(entry.map { it.toBabyEntry(babyId, accountId, sourceSku) })
+      if (savedIds.size != entry.size || savedIds.any { it <= 0L }) {
         AppLog.e(TAG, "Baby entry save failed for $babyId (savedIds=$savedIds)")
         dialogQueueService.showToast(Toast.Simple(message = ReadingToastStrings.SaveFailed))
         return

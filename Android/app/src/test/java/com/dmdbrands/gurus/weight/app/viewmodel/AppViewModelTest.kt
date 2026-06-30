@@ -663,7 +663,7 @@ class AppViewModelTest {
     fun `assignReadingToBaby surfaces an error and skips success when the save fails`() = runTest(mainDispatcherRule.scheduler) {
         viewModel = createViewModel()
         advanceUntilIdle()
-        coEvery { entryService.addBabyEntry(any()) } returns -1L
+        coEvery { entryService.addBabyEntries(any()) } returns listOf(-1L)
 
         viewModel.assignReadingToBaby(
             entry = listOf(TestFixtures.weightEntry),
@@ -686,7 +686,7 @@ class AppViewModelTest {
     fun `assignReadingToBaby deletes previous entries and confirms when the save succeeds`() = runTest(mainDispatcherRule.scheduler) {
         viewModel = createViewModel()
         advanceUntilIdle()
-        coEvery { entryService.addBabyEntry(any()) } returns 5L
+        coEvery { entryService.addBabyEntries(any()) } returns listOf(5L)
 
         viewModel.assignReadingToBaby(
             entry = listOf(TestFixtures.weightEntry),
@@ -712,7 +712,7 @@ class AppViewModelTest {
     fun `assignReadingToBaby with unknown babyId persists but shows no assigned toast`() = runTest {
         viewModel = createViewModel()
         advanceUntilIdle()
-        coEvery { entryService.addBabyEntry(any()) } returns 5L
+        coEvery { entryService.addBabyEntries(any()) } returns listOf(5L)
 
         // babyId is not present in the babies list -> firstOrNull is null -> no assigned toast.
         viewModel.assignReadingToBaby(
@@ -723,7 +723,7 @@ class AppViewModelTest {
         )
         advanceUntilIdle()
 
-        coVerify { entryService.addBabyEntry(any()) }
+        coVerify { entryService.addBabyEntries(any()) }
         verify(exactly = 0) { dialogQueueService.showToast(any()) }
     }
 
@@ -856,6 +856,8 @@ class AppViewModelTest {
         advanceUntilIdle()
         coEvery { deviceService.isSetupInProgress() } returns false
         coEvery { deviceService.getScaleByBroadcastId(any(), any()) } returns null
+        // No paired BPM device to heal either → device stays null → early return. (MOB-598 heal)
+        coEvery { deviceService.healBpmDeviceBroadcastId(any(), any()) } returns null
 
         viewModel.invokePrivate("saveBpmEntry", listOf(aBpmGGEntry()))
         advanceUntilIdle()
@@ -1129,7 +1131,7 @@ class AppViewModelTest {
         coEvery { deviceService.isSetupInProgress() } returns false
         coEvery { deviceService.getScaleByBroadcastId(any(), any()) } returns
             TestFixtures.aDevice(id = "baby-dev").copy(sku = SKU_0220)
-        coEvery { entryService.addBabyEntry(any()) } returns 7L
+        coEvery { entryService.addBabyEntries(any()) } returns listOf(7L)
 
         viewModel.invokePrivate("saveEntry", listOf(aScaleGGEntry()))
         advanceUntilIdle()
@@ -1140,7 +1142,7 @@ class AppViewModelTest {
         // Single baby -> primary action assigns straight to that baby.
         toast.primaryAction()
         advanceUntilIdle()
-        coVerify { entryService.addBabyEntry(any()) }
+        coVerify { entryService.addBabyEntries(any()) }
     }
 
     @Test
@@ -1162,7 +1164,7 @@ class AppViewModelTest {
 
         // Two babies -> disambiguation dialog rather than a direct save.
         verify { dialogQueueService.showDialog(any()) }
-        coVerify(exactly = 0) { entryService.addBabyEntry(any()) }
+        coVerify(exactly = 0) { entryService.addBabyEntries(any()) }
     }
 
     // -------------------------------------------------------------------------
@@ -1285,7 +1287,7 @@ class AppViewModelTest {
     fun `showAssignMeasurementDialog onConfirm assigns the reading to the selected baby`() = runTest {
         viewModel = createViewModel(productSelectionManager = babyProductManager(listOf(aBaby("baby1"))))
         advanceUntilIdle()
-        coEvery { entryService.addBabyEntry(any()) } returns 3L
+        coEvery { entryService.addBabyEntries(any()) } returns listOf(3L)
 
         val dialogSlot = slot<com.dmdbrands.gurus.weight.features.common.model.DialogModel.Custom>()
         every { dialogQueueService.showDialog(capture(dialogSlot)) } returns Unit
@@ -1296,6 +1298,7 @@ class AppViewModelTest {
             listOf(TestFixtures.weightEntry),
             null,
             emptyList<Long>(),
+            null, // sourceSku
         )
         advanceUntilIdle()
 
@@ -1303,7 +1306,7 @@ class AppViewModelTest {
         dialogSlot.captured.onConfirm?.invoke("baby1")
         advanceUntilIdle()
 
-        coVerify { entryService.addBabyEntry(any()) }
+        coVerify { entryService.addBabyEntries(any()) }
     }
 
     @Test
@@ -1320,13 +1323,14 @@ class AppViewModelTest {
             listOf(TestFixtures.weightEntry),
             null,
             emptyList<Long>(),
+            null, // sourceSku
         )
         advanceUntilIdle()
 
         dialogSlot.captured.onConfirm?.invoke(42) // not a String -> early return
         advanceUntilIdle()
 
-        coVerify(exactly = 0) { entryService.addBabyEntry(any()) }
+        coVerify(exactly = 0) { entryService.addBabyEntries(any()) }
     }
 
     // -------------------------------------------------------------------------

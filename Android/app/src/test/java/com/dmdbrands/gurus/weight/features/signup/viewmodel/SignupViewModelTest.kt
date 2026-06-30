@@ -28,6 +28,7 @@ import com.google.common.truth.Truth.assertThat
 import io.mockk.MockKAnnotations
 import io.mockk.coEvery
 import io.mockk.coVerify
+import io.mockk.coVerifyOrder
 import io.mockk.every
 import io.mockk.impl.annotations.MockK
 import io.mockk.mockk
@@ -912,6 +913,40 @@ class SignupViewModelTest {
         coVerify(exactly = 1) { accountService.signup(any()) }
         assertThat(viewModel.state.value.registeredDevices)
             .containsAtLeast(ProductType.MY_WEIGHT, ProductType.BLOOD_PRESSURE)
+    }
+
+    @Test
+    fun `Loop pass PATCHes the profile before adding the product`() = runTest(mainDispatcherRule.scheduler) {
+        coEvery { accountService.signup(any()) } returns TestFixtures.activeAccount
+        coEvery { goalService.createGoalForSignup(any(), any(), any(), any()) } returns TestFixtures.activeAccount
+        coEvery { accountService.getCurrentAccount() } returns TestFixtures.activeAccount
+
+        registerFirstWeightDeviceThenPickBloodPressure()
+        viewModel.handleIntent(SignupIntent.Next)
+        advanceUntilIdle()
+
+        // §2.19 rejects adding weight/blood_pressure before gender/dob exist on the account, so the
+        // profile PATCH must run BEFORE the product add on a second-device loop pass. (MOB-598 #9)
+        coVerifyOrder {
+            accountService.updateProfile(any(), any(), any())
+            accountService.addProduct(ProductType.BLOOD_PRESSURE)
+        }
+    }
+
+    @Test
+    fun `Loop pass routes to device error when addProduct fails`() = runTest(mainDispatcherRule.scheduler) {
+        coEvery { accountService.signup(any()) } returns TestFixtures.activeAccount
+        coEvery { goalService.createGoalForSignup(any(), any(), any(), any()) } returns TestFixtures.activeAccount
+        coEvery { accountService.getCurrentAccount() } returns TestFixtures.activeAccount
+        coEvery { accountService.addProduct(any()) } throws RuntimeException("§2.19 rejected the product")
+
+        registerFirstWeightDeviceThenPickBloodPressure()
+        viewModel.handleIntent(SignupIntent.Next)
+        advanceUntilIdle()
+
+        // addProduct is deliberately OUTSIDE runCatching, so its failure propagates to
+        // runDeviceProfile's catch → ShowDeviceError (the ERROR screen). (MOB-598 #9)
+        assertThat(viewModel.state.value.currentStep).isEqualTo(SignupStep.ERROR)
     }
 
     @Test

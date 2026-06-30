@@ -127,25 +127,39 @@ class HistoryDetailViewModel @AssistedInject constructor(
         viewModelScope.launch {
             try {
                 val original = intent.entry
-                val updated = BabyEntry(
-                    // editBabyEntry re-stamps operationType=edit/isSynced/accountId; we keep the row
-                    // id so it updates in place and apply the new values.
-                    entry = original.entry.copy(entryTimestamp = intent.timestamp),
-                    babyEntry = original.babyEntry.copy(
-                        babyWeightDecigrams = intent.weightDecigrams,
-                        babyLengthMillimeters = intent.lengthMillimeters,
-                        entryNote = intent.note,
-                        entryType = if (intent.weightDecigrams != null) {
-                            BabyEntryType.WEIGHT.value
-                        } else {
-                            BabyEntryType.MEASURE_LENGTH.value
-                        },
-                    ),
+                val updatedBabyEntry = original.babyEntry.copy(
+                    babyWeightDecigrams = intent.weightDecigrams,
+                    babyLengthMillimeters = intent.lengthMillimeters,
+                    entryNote = intent.note,
+                    entryType = if (intent.weightDecigrams != null) {
+                        BabyEntryType.WEIGHT.value
+                    } else {
+                        BabyEntryType.MEASURE_LENGTH.value
+                    },
                 )
-                // Edit in place via operationType=edit (baby-only, §2.16) — same row id, same
-                // POST /v3/entries endpoint. Replaces the old delete + re-create, which collided
-                // on the shared id and resolved to a delete (the entry vanished).
-                entryService.editBabyEntry(updated)
+                if (original.entry.entryTimestamp != intent.timestamp) {
+                    // Date changed → the server entryId (babyId_entryType_timestamp) changes, so an
+                    // in-place edit would leave the OLD reading on the server (orphan/duplicate).
+                    // Delete the original (old entryId) and create a fresh reading at the new
+                    // timestamp with a NEW local id (id=0 → autogen) so the local delete-old and
+                    // create-new don't collide on a shared id. (MOB-598 PR #2130)
+                    entryService.deleteEntry(original)
+                    entryService.addBabyEntry(
+                        BabyEntry(
+                            entry = original.entry.copy(id = 0, entryTimestamp = intent.timestamp),
+                            babyEntry = updatedBabyEntry.copy(id = 0),
+                        ),
+                    )
+                } else {
+                    // Timestamp unchanged → edit in place via operationType=edit (baby-only, §2.16):
+                    // same row id, same entryId, same POST /v3/entries endpoint.
+                    entryService.editBabyEntry(
+                        BabyEntry(
+                            entry = original.entry.copy(entryTimestamp = intent.timestamp),
+                            babyEntry = updatedBabyEntry,
+                        ),
+                    )
+                }
                 handleIntent(HistoryDetailIntent.DismissBabyEditor)
                 loadDetail()
             } catch (e: Exception) {

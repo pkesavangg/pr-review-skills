@@ -37,6 +37,15 @@ interface IEntryService {
   suspend fun addBabyEntry(entry: BabyEntry): Long
 
   /**
+   * Batch variant of [addBabyEntry]: inserts every reading locally first, then runs a SINGLE
+   * server sync for the whole batch (one POST /v3/entries + one baby-profile refresh + one delta
+   * GET) instead of one full sync per reading. Used by the multi-reading assign flow so assigning
+   * K buffered readings is one round-trip, not K. Returns the new local ids in order; empty on
+   * failure. (MOB-598 PR #2130)
+   */
+  suspend fun addBabyEntries(entries: List<BabyEntry>): List<Long>
+
+  /**
    * Edits an existing baby reading in place. The row keeps its local id and is re-stamped
    * operationType=edit, then pushed to POST /v3/entries/ (category=baby — §2.16, the only
    * category that supports `edit`) on the same endpoint as create. Used when editing a reading

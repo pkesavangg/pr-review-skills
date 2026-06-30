@@ -480,6 +480,33 @@ class HistoryDetailViewModelTest {
         assertThat(saved.entryNote).isEqualTo("after feed")
     }
 
+    @Test
+    fun `SaveBabyEdit with changed date deletes original and creates a new reading`() = runTest {
+        viewModel = createViewModel()
+        advanceUntilIdle()
+
+        val original = aBabyEntry(id = 7L, weightDecigrams = 30000, timestamp = "2024-01-01T08:00:00.000Z")
+        viewModel.handleIntent(
+            HistoryDetailIntent.SaveBabyEdit(
+                entry = original,
+                weightDecigrams = 30000,
+                lengthMillimeters = null,
+                note = "moved",
+                timestamp = "2024-02-01T08:00:00.000Z", // different day → server entryId changes
+            ),
+        )
+        advanceUntilIdle()
+
+        // Date changed → delete the old (old entryId) + create a fresh row at the new timestamp,
+        // so the old server reading isn't orphaned. No in-place edit on this path.
+        coVerify { entryService.deleteEntry(original) }
+        val added = slot<BabyEntry>()
+        coVerify { entryService.addBabyEntry(capture(added)) }
+        coVerify(exactly = 0) { entryService.editBabyEntry(any()) }
+        assertThat(added.captured.entry.id).isEqualTo(0L) // new local id (autogen)
+        assertThat(added.captured.entry.entryTimestamp).isEqualTo("2024-02-01T08:00:00.000Z")
+    }
+
     private fun aBabyEntry(
         id: Long = 7L,
         babyId: String = "baby-1",
