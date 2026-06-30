@@ -195,9 +195,16 @@ struct BottomTabBarViewModelTests {
         // showBabyReadingArrivalCard resolves babyService/entryService — so container timing is not
         // deterministic. Direct assignment pins resolution to these mocks regardless of pollution.
         let babyMock = MockBabyService()
-        babyMock.babies = [Baby(accountId: "test-account", name: "Baby A", deviceId: nil,
-                                birthday: nil, biologicalSex: nil, birthLengthInches: nil,
-                                birthWeightLbs: nil, birthWeightOz: nil)]
+        babyMock.babies = [Baby(
+            accountId: "test-account",
+            name: "Baby A",
+            deviceId: nil,
+            birthday: nil,
+            biologicalSex: nil,
+            birthLengthInches: nil,
+            birthWeightLbs: nil,
+            birthWeightOz: nil
+        )]
         sut.babyService = babyMock
         sut.entryService = entry
         // Pin notificationService too: the VM writes the toast here and the test reads it back,

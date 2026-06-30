@@ -1451,8 +1451,10 @@ final class AccountService: AccountServiceProtocol, ObservableObject { // swiftl
     /// Moves tokens from the 5.0.3 SwiftData columns to the Keychain.
     /// Returns `true` if this was the first run of the migration (i.e. we actually moved tokens),
     /// `false` if the migration had already been completed on a previous launch.
+    /// `internal` (not `private`) so tests can assert the migration contract that gates the
+    /// first-launch sync/refresh skip in `init`. Not part of the public service surface.
     @discardableResult
-    private func migrateTokensToKeychainIfNeeded() async throws -> Bool {
+    func migrateTokensToKeychainIfNeeded() async throws -> Bool {
         let key = KvStorageKeys.tokensMigratedToKeychain.rawValue
         if kvStorage.getValue(forKey: key) as? Bool == true {
             return false

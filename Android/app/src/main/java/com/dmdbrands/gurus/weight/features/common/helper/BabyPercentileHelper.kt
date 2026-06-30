@@ -2,6 +2,7 @@ package com.dmdbrands.gurus.weight.features.common.helper
 
 import android.content.Context
 import com.dmdbrands.gurus.weight.R
+import com.dmdbrands.gurus.weight.core.shared.utilities.ConversionTools
 import java.io.BufferedReader
 import java.io.InputStreamReader
 import java.util.Locale
@@ -103,7 +104,7 @@ object BabyPercentileHelper {
       else -> null
     } ?: return null
 
-    return buildPercentileSeries(data, birthDateMillis) { it / 283.495 / 16.0 }
+    return buildPercentileSeries(data, birthDateMillis) { ConversionTools.convertDecigramsToLbExact(it) }
   }
 
   /**

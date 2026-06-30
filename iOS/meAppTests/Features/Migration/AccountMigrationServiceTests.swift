@@ -1,3 +1,4 @@
+// swiftlint:disable file_length
 import Foundation
 import ggInAppMessagingPackage
 @testable import meApp
@@ -7,6 +8,7 @@ import Testing
 
 @Suite(.serialized)
 @MainActor
+// swiftlint:disable:next type_body_length
 struct AccountMigrationServiceTests {
 
     // MARK: - isMigrationNeeded

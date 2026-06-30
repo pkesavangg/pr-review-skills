@@ -360,7 +360,7 @@ struct EntryServiceTests {
         // the remote inline. An integration failure is logged and swallowed so the save still succeeds.
         #expect(repo.entries.count == 1)
         #expect(remote.submitEntriesCalls == 0)
-        #expect(logger.messages.contains(where: { $0.contains("Failed to sync new entry to integrations") }))
+        #expect(logger.messages.contains { $0.contains("Failed to sync new entry to integrations") })
     }
 
     private func makeSUT(

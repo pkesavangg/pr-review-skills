@@ -1,11 +1,12 @@
 package com.dmdbrands.gurus.weight.features.manualEntry.components
 
+import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.semantics.SemanticsProperties
+import androidx.compose.ui.semantics.getOrNull
 import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.assert
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createComposeRule
-import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import com.dmdbrands.gurus.weight.domain.enums.DashboardType
@@ -29,6 +30,13 @@ class ExpandableMetricsCardAccessibilityTest {
 
     @get:Rule
     val composeTestRule = createComposeRule()
+
+    // The expand/collapse label is exposed as the Row's click-action label (role = Button,
+    // onClickLabel) — not as a contentDescription — so match against SemanticsActions.OnClick.
+    private fun hasClickLabel(label: String) =
+        SemanticsMatcher("OnClick action label == '$label'") { node ->
+            node.config.getOrNull(SemanticsActions.OnClick)?.label == label
+        }
 
     private fun emptyGeneralMetrics() =
         GeneralMetricsFormControls(
@@ -71,13 +79,13 @@ class ExpandableMetricsCardAccessibilityTest {
 
         // Collapsed by default -> offers to expand.
         composeTestRule
-            .onNodeWithContentDescription(EntryScreenStrings.accMetricsExpandLabel)
+            .onNode(hasClickLabel(EntryScreenStrings.accMetricsExpandLabel))
             .assertIsDisplayed()
             .performClick()
 
         // After toggling, it offers to collapse.
         composeTestRule
-            .onNodeWithContentDescription(EntryScreenStrings.accMetricsCollapseLabel)
+            .onNode(hasClickLabel(EntryScreenStrings.accMetricsCollapseLabel))
             .assertIsDisplayed()
     }
 }
