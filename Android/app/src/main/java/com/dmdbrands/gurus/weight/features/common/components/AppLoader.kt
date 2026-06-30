@@ -23,8 +23,13 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.liveRegion
+import androidx.compose.ui.semantics.LiveRegionMode
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import com.dmdbrands.gurus.weight.features.common.components.strings.AppLoaderStrings
 import com.dmdbrands.gurus.weight.theme.MeAppTheme
 import com.dmdbrands.gurus.weight.theme.MeTheme
 
@@ -109,8 +114,12 @@ fun AppLoader(
     style: LoaderStyle = LoaderStyle.DASHED,
 ) {
     val config: LoaderConfig = LoaderDefaults.defaultFor(style)
+    // TalkBack: when the spinner has no visible message/label it is otherwise silent, so
+    // announce "Loading". When a message/label IS shown, that text is read instead (no
+    // duplicate announcement).
+    val announceLoading = isLoading && labelComposable == null && message == null
     Row(
-        modifier = modifier,
+        modifier = modifier.loadingAnnouncement(announceLoading),
         horizontalArrangement = Arrangement.Center,
         verticalAlignment = Alignment.CenterVertically,
     ) {
@@ -162,6 +171,20 @@ fun AppLoader(
         }
     }
 }
+
+/**
+ * TalkBack: announce "Loading" via a polite live region when the loader has no visible
+ * message/label (otherwise the spinner is silent). When text is shown, that is read instead.
+ */
+private fun Modifier.loadingAnnouncement(announce: Boolean): Modifier =
+    if (announce) {
+        semantics {
+            contentDescription = AppLoaderStrings.accLoadingLabel
+            liveRegion = LiveRegionMode.Polite
+        }
+    } else {
+        this
+    }
 
 @PreviewTheme
 @Composable

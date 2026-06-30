@@ -1,26 +1,29 @@
+// swiftlint:disable file_length
 import Foundation
-import SwiftUI
-import SwiftData
-import Testing
 @testable import meApp
+import SwiftData
+import SwiftUI
+import Testing
 
 @Suite(.serialized)
 @MainActor
+// swiftlint:disable:next type_body_length
 struct DashboardLifecycleManagerTests {
 
     // MARK: - SUT Factory
 
     // swiftlint:disable:next large_tuple
-    private typealias SUTBundle = (
+    typealias SUTBundle = (
         store: DashboardStore,
         accountService: AccountService,
         entryService: EntryService,
-        cacheManager: MockDashboardCacheManager
+        cacheManager: MockDashboardCacheManager,
+        accountLocalRepo: MockAccountRepository
     )
 
-    private func makeSUT() -> SUTBundle {
+    func makeSUT() -> SUTBundle {
         let cacheManager = MockDashboardCacheManager()
-        let sut = DashboardManagerTestSupport.makeStore(
+        let sut = DashboardManagerTestSupport.makeStoreWithRepo(
             cacheManager: cacheManager,
             formatter: MockDashboardFormatter()
         )
@@ -28,11 +31,12 @@ struct DashboardLifecycleManagerTests {
             store: sut.store,
             accountService: sut.accountService,
             entryService: sut.entryService,
-            cacheManager: cacheManager
+            cacheManager: cacheManager,
+            accountLocalRepo: sut.accountLocalRepo
         )
     }
 
-    private func makeNotification() -> MockNotificationHelperService? {
+    func makeNotification() -> MockNotificationHelperService? {
         DependencyContainer.shared.resolve(MockNotificationHelperService.self)
     }
 
@@ -98,7 +102,14 @@ struct DashboardLifecycleManagerTests {
 
         await store.lifecycleManager.initializeDashboard()
 
+        // The progress-metric / dashboard-config flags are set by a staged background
+        // refresh task that outlives initializeDashboard()'s await; poll for completion.
+        let loaded = await waitUntil {
+            store.state.ui.hasLoadedDashboardConfig && store.state.ui.hasLoadedProgressMetrics
+        }
+
         #expect(store.state.ui.isResettingDashboard == false)
+        #expect(loaded == true)
         #expect(store.state.ui.hasLoadedDashboardConfig == true)
         #expect(store.state.ui.hasLoadedProgressMetrics == true)
         #expect(store.state.metrics.dashboardType == .dashboard12)
@@ -110,7 +121,11 @@ struct DashboardLifecycleManagerTests {
 
     @Test("handleActiveAccountChanged: clears chart caches and resets chart init flag")
     func handleActiveAccountChangedClearsCaches() async {
-        let sut = makeSUT(); let store = sut.store; let accountService = sut.accountService; let entryService = sut.entryService; let cacheManager = sut.cacheManager
+        let sut = makeSUT()
+        let store = sut.store
+        let accountService = sut.accountService
+        let entryService = sut.entryService
+        let cacheManager = sut.cacheManager
         accountService.activeAccount = DashboardStoreTestSupport.makeActiveAccount()
 
         let daily = DashboardTestFixtures.makeSortedDailySummaries()
@@ -205,7 +220,7 @@ struct DashboardLifecycleManagerTests {
     // MARK: - Entry Lifecycle Tests
 
     @Test("onEntryAdded: invalidates continuous operations cache")
-    func onEntryAddedInvalidatesCache() {
+    func onEntryAddedInvalidatesCache() async {
         let sut = makeSUT(); let store = sut.store; let cacheManager = sut.cacheManager
 
         let notification = makeEntryNotification()
@@ -213,11 +228,13 @@ struct DashboardLifecycleManagerTests {
 
         store.lifecycleManager.onEntryAdded(notification)
 
-        #expect(cacheManager.invalidateContinuousOpsCalls > before)
+        // Entry-lifecycle changes are debounced (~250ms); wait for the coalesced invalidation.
+        let invalidated = await waitUntil { cacheManager.invalidateContinuousOpsCalls > before }
+        #expect(invalidated == true)
     }
 
     @Test("onEntryUpdated: invalidates continuous operations cache")
-    func onEntryUpdatedInvalidatesCache() {
+    func onEntryUpdatedInvalidatesCache() async {
         let sut = makeSUT(); let store = sut.store; let cacheManager = sut.cacheManager
 
         let notification = makeEntryNotification()
@@ -225,11 +242,12 @@ struct DashboardLifecycleManagerTests {
 
         store.lifecycleManager.onEntryUpdated(notification)
 
-        #expect(cacheManager.invalidateContinuousOpsCalls > before)
+        let invalidated = await waitUntil { cacheManager.invalidateContinuousOpsCalls > before }
+        #expect(invalidated == true)
     }
 
     @Test("onEntryDeleted: invalidates continuous operations cache")
-    func onEntryDeletedInvalidatesCache() {
+    func onEntryDeletedInvalidatesCache() async {
         let sut = makeSUT(); let store = sut.store; let cacheManager = sut.cacheManager
 
         let notification = makeEntryNotification()
@@ -237,7 +255,8 @@ struct DashboardLifecycleManagerTests {
 
         store.lifecycleManager.onEntryDeleted(notification)
 
-        #expect(cacheManager.invalidateContinuousOpsCalls > before)
+        let invalidated = await waitUntil { cacheManager.invalidateContinuousOpsCalls > before }
+        #expect(invalidated == true)
     }
 
     @Test("onEntryAdded: updates display metrics when chart is initialized")
@@ -499,6 +518,9 @@ struct DashboardLifecycleManagerTests {
     func saveProgressMetricsToAPIPersistsOrder() async throws {
         let sut = makeSUT(); let store = sut.store; let accountService = sut.accountService
         let activeAccount = DashboardStoreTestSupport.makeActiveAccount(id: "lifecycle-progress-save")
+        // The real save path fetches the account from the local repo by id, so it must
+        // exist in storage — not just be set as `activeAccount`.
+        sut.accountLocalRepo.seed([AccountTestFixtures.makeAccountModel(id: activeAccount.accountId, isActive: true)])
         accountService.activeAccount = activeAccount
 
         let streaks = [
@@ -678,7 +700,7 @@ struct DashboardLifecycleManagerTests {
 
     // MARK: - Helper
 
-    private func makeEntryNotification() -> EntryNotification {
+    func makeEntryNotification() -> EntryNotification {
         let dto = BathScaleOperationDTO(
             accountId: "acct-1",
             bmr: nil,
@@ -708,7 +730,7 @@ struct DashboardLifecycleManagerTests {
         return EntryNotification(from: dto)
     }
 
-    private func makeSnapshot(for store: DashboardStore) -> EditSessionSnapshot {
+    func makeSnapshot(for store: DashboardStore) -> EditSessionSnapshot {
         EditSessionSnapshot(
             metrics: store.metricsManager.state.metrics,
             activeMetricsCount: store.metricsManager.state.activeMetricsCount,
@@ -722,7 +744,7 @@ struct DashboardLifecycleManagerTests {
         )
     }
 
-    private func persistEntries(_ entries: [Entry]) throws {
+    func persistEntries(_ entries: [Entry]) throws {
         let context = PersistenceController.shared.context
         for entry in entries {
             context.insert(entry)
@@ -730,7 +752,7 @@ struct DashboardLifecycleManagerTests {
         try context.save()
     }
 
-    private func waitUntil(
+    func waitUntil(
         timeoutNanoseconds: UInt64 = 2_000_000_000,
         pollNanoseconds: UInt64 = 20_000_000,
         condition: @escaping @MainActor () -> Bool

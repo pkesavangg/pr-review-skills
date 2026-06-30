@@ -74,7 +74,7 @@ class ScaleDisplayMetricsViewModelTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `initial state has null scale and empty metrics`() = runTest {
+    fun `initial state has null scale and empty metrics`() = runTest(mainDispatcherRule.scheduler) {
         viewModel = createViewModel()
         advanceUntilIdle()
 
@@ -89,7 +89,7 @@ class ScaleDisplayMetricsViewModelTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `init subscribes to pairedScales and sets scale for matching id`() = runTest {
+    fun `init subscribes to pairedScales and sets scale for matching id`() = runTest(mainDispatcherRule.scheduler) {
         val device = TestFixtures.aDevice(id = TEST_SCALE_ID).copy(
             preferences = Preferences(displayMetrics = listOf("weight", "bodyFat")),
         )
@@ -103,7 +103,7 @@ class ScaleDisplayMetricsViewModelTest {
     }
 
     @Test
-    fun `init ignores devices with non-matching scaleId`() = runTest {
+    fun `init ignores devices with non-matching scaleId`() = runTest(mainDispatcherRule.scheduler) {
         val otherDevice = TestFixtures.aDevice(id = "other-id")
         every { deviceService.pairedScales } returns MutableStateFlow(listOf(otherDevice))
 
@@ -114,7 +114,7 @@ class ScaleDisplayMetricsViewModelTest {
     }
 
     @Test
-    fun `init with scale having null displayMetrics sets empty enabledMetrics`() = runTest {
+    fun `init with scale having null displayMetrics sets empty enabledMetrics`() = runTest(mainDispatcherRule.scheduler) {
         val device = TestFixtures.aDevice(id = TEST_SCALE_ID).copy(
             preferences = Preferences(displayMetrics = null),
         )
@@ -131,7 +131,7 @@ class ScaleDisplayMetricsViewModelTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `SetScale updates scale and enabledMetrics`() = runTest {
+    fun `SetScale updates scale and enabledMetrics`() = runTest(mainDispatcherRule.scheduler) {
         viewModel = createViewModel()
         advanceUntilIdle()
 
@@ -147,7 +147,7 @@ class ScaleDisplayMetricsViewModelTest {
     }
 
     @Test
-    fun `UpdateMetrics updates enabledMetrics and sets hasUpdated when changed`() = runTest {
+    fun `UpdateMetrics updates enabledMetrics and sets hasUpdated when changed`() = runTest(mainDispatcherRule.scheduler) {
         val device = TestFixtures.aDevice(id = TEST_SCALE_ID).copy(
             preferences = Preferences(displayMetrics = listOf("weight")),
         )
@@ -164,7 +164,7 @@ class ScaleDisplayMetricsViewModelTest {
     }
 
     @Test
-    fun `UpdateMetrics with same metrics as original sets hasUpdated false`() = runTest {
+    fun `UpdateMetrics with same metrics as original sets hasUpdated false`() = runTest(mainDispatcherRule.scheduler) {
         val device = TestFixtures.aDevice(id = TEST_SCALE_ID).copy(
             preferences = Preferences(displayMetrics = listOf("weight")),
         )
@@ -184,7 +184,7 @@ class ScaleDisplayMetricsViewModelTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `Back with no updates navigates back directly`() = runTest {
+    fun `Back with no updates navigates back directly`() = runTest(mainDispatcherRule.scheduler) {
         viewModel = createViewModel()
         advanceUntilIdle()
 
@@ -195,7 +195,7 @@ class ScaleDisplayMetricsViewModelTest {
     }
 
     @Test
-    fun `Back with unsaved updates shows confirm dialog`() = runTest {
+    fun `Back with unsaved updates shows confirm dialog`() = runTest(mainDispatcherRule.scheduler) {
         val device = TestFixtures.aDevice(id = TEST_SCALE_ID).copy(
             preferences = Preferences(displayMetrics = listOf("weight")),
         )
@@ -219,7 +219,7 @@ class ScaleDisplayMetricsViewModelTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `Save with null scale shows error toast`() = runTest {
+    fun `Save with null scale shows error toast`() = runTest(mainDispatcherRule.scheduler) {
         viewModel = createViewModel()
         advanceUntilIdle()
 
@@ -230,7 +230,7 @@ class ScaleDisplayMetricsViewModelTest {
     }
 
     @Test
-    fun `Save with valid scale shows loader and calls deviceService`() = runTest {
+    fun `Save with valid scale shows loader and calls deviceService`() = runTest(mainDispatcherRule.scheduler) {
         val device = TestFixtures.aDevice(id = TEST_SCALE_ID).copy(
             preferences = Preferences(displayMetrics = listOf("weight")),
         )
@@ -248,7 +248,7 @@ class ScaleDisplayMetricsViewModelTest {
     }
 
     @Test
-    fun `Save with connected scale calls ggDeviceService updateAccount`() = runTest {
+    fun `Save with connected scale calls ggDeviceService updateAccount`() = runTest(mainDispatcherRule.scheduler) {
         val device = TestFixtures.aDevice(id = TEST_SCALE_ID).copy(
             connectionStatus = BLEStatus.CONNECTED,
             preferences = Preferences(displayMetrics = listOf("weight")),
@@ -266,7 +266,7 @@ class ScaleDisplayMetricsViewModelTest {
     }
 
     @Test
-    fun `Save with disconnected scale skips ggDeviceService updateAccount`() = runTest {
+    fun `Save with disconnected scale skips ggDeviceService updateAccount`() = runTest(mainDispatcherRule.scheduler) {
         val device = TestFixtures.aDevice(id = TEST_SCALE_ID).copy(
             connectionStatus = BLEStatus.DISCONNECTED,
             preferences = Preferences(displayMetrics = listOf("weight")),
@@ -284,7 +284,7 @@ class ScaleDisplayMetricsViewModelTest {
     }
 
     @Test
-    fun `Save with successful API update dismisses loader and shows success toast`() = runTest {
+    fun `Save with successful API update dismisses loader and shows success toast`() = runTest(mainDispatcherRule.scheduler) {
         val device = TestFixtures.aDevice(id = TEST_SCALE_ID).copy(
             connectionStatus = BLEStatus.DISCONNECTED,
             preferences = Preferences(displayMetrics = listOf("weight")),
@@ -303,7 +303,7 @@ class ScaleDisplayMetricsViewModelTest {
     }
 
     @Test
-    fun `Save with failed API update shows error toast`() = runTest {
+    fun `Save with failed API update shows error toast`() = runTest(mainDispatcherRule.scheduler) {
         val device = TestFixtures.aDevice(id = TEST_SCALE_ID).copy(
             connectionStatus = BLEStatus.DISCONNECTED,
             preferences = Preferences(displayMetrics = listOf("weight")),
@@ -326,7 +326,7 @@ class ScaleDisplayMetricsViewModelTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `UpdateScaleMode navigates to ScaleMode route`() = runTest {
+    fun `UpdateScaleMode navigates to ScaleMode route`() = runTest(mainDispatcherRule.scheduler) {
         viewModel = createViewModel()
         advanceUntilIdle()
 

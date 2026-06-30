@@ -111,7 +111,7 @@ class DashboardSnapshotViewModelTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `empty snapshots produces empty chart state and clears loading`() = runTest {
+    fun `empty snapshots produces empty chart state and clears loading`() = runTest(mainDispatcherRule.scheduler) {
         every { entryReadService.snapshots } returns MutableStateFlow(emptyMap())
         every { productSelectionManager.availableProducts } returns MutableStateFlow(emptyList())
 

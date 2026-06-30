@@ -16,6 +16,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.input.ImeAction
 import com.dmdbrands.gurus.weight.features.common.components.AppInput
 import com.dmdbrands.gurus.weight.features.common.components.AppInputDefaults
@@ -73,10 +75,12 @@ fun AddBabyStep(
         cardAlignmentType = LocalCardAlignment.current,
         modifier = modifier,
     ) {
+        // TalkBack: the step title is a heading for by-heading navigation.
         AppText(
             if (isEditing) BabySignupStrings.editBabyTitle else BabySignupStrings.addBabyTitle,
             TextType.Title,
             spacing = MeTheme.spacing.xs,
+            modifier = Modifier.semantics { heading() },
         )
         AppText(BabySignupStrings.addBabySubtitle, TextType.Subtitle, spacing = MeTheme.spacing.lg)
 

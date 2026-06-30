@@ -2,6 +2,7 @@ package com.dmdbrands.gurus.weight.features.integration.viewmodel
 
 import com.dmdbrands.gurus.weight.core.rules.MainDispatcherRule
 import com.dmdbrands.gurus.weight.core.service.IAppNavigationService
+import com.dmdbrands.gurus.weight.core.shared.utilities.browser.ChromeTabState
 import com.dmdbrands.gurus.weight.core.shared.utilities.browser.ICustomTabManager
 import com.dmdbrands.gurus.weight.domain.interfaces.IDialogQueueService
 import com.dmdbrands.gurus.weight.domain.model.api.integration.IntegrationProvider
@@ -484,5 +485,470 @@ class IntegrationViewModelTest {
         advanceScheduler()
 
         verify { dialogQueueService.showLoader(any()) }
+    }
+
+    // -------------------------------------------------------------------------
+    // disconnectAuthIntegration / confirmDisconnect / disconnectIntegration
+    // -------------------------------------------------------------------------
+
+    @Test
+    fun `RemoveIntegration then disconnect confirm disconnects via service`() {
+        val fitbitItem = IntegrationItem.fromProvider(IntegrationProvider.Fitbit).copy(isConnected = true)
+        coEvery { integrationService.disconnectIntegration(IntegrationProvider.Fitbit) } returns Unit
+        every { integrationService.getIntegrationsWithStatus() } returns flowOf(emptyList())
+        advanceScheduler()
+
+        // Select the integration to disconnect, then trigger the confirm dialog
+        viewModel.handleIntent(IntegrationIntent.RemoveIntegration(fitbitItem))
+        advanceScheduler()
+
+        val dialogSlot = io.mockk.slot<DialogModel>()
+        verify { dialogQueueService.enqueue(capture(dialogSlot)) }
+        val dialog = dialogSlot.captured as DialogModel.Confirm
+        dialog.onConfirm?.invoke()
+        advanceScheduler()
+
+        coVerify { integrationService.disconnectIntegration(IntegrationProvider.Fitbit) }
+    }
+
+    @Test
+    fun `disconnect dialog cancel dismisses without disconnecting`() {
+        val fitbitItem = IntegrationItem.fromProvider(IntegrationProvider.Fitbit).copy(isConnected = true)
+        advanceScheduler()
+        viewModel.handleIntent(IntegrationIntent.RemoveIntegration(fitbitItem))
+        advanceScheduler()
+
+        val dialogSlot = io.mockk.slot<DialogModel>()
+        verify { dialogQueueService.enqueue(capture(dialogSlot)) }
+        val dialog = dialogSlot.captured as DialogModel.Confirm
+        dialog.onCancel?.invoke()
+
+        coVerify(exactly = 0) { integrationService.disconnectIntegration(any()) }
+        verify { dialogQueueService.dismissCurrent() }
+    }
+
+    @Test
+    fun `disconnectIntegration surfaces error and dismisses loader on failure`() {
+        val fitbitItem = IntegrationItem.fromProvider(IntegrationProvider.Fitbit).copy(isConnected = true)
+        coEvery { integrationService.disconnectIntegration(any()) } throws RuntimeException("boom")
+        advanceScheduler()
+
+        viewModel.handleIntent(IntegrationIntent.RemoveIntegration(fitbitItem))
+        advanceScheduler()
+        val dialogSlot = io.mockk.slot<DialogModel>()
+        verify { dialogQueueService.enqueue(capture(dialogSlot)) }
+        (dialogSlot.captured as DialogModel.Confirm).onConfirm?.invoke()
+        advanceScheduler()
+
+        verify { dialogQueueService.dismissLoader() }
+    }
+
+    // -------------------------------------------------------------------------
+    // requestNewIntegration
+    // -------------------------------------------------------------------------
+
+    @Test
+    fun `RequestNewIntegration enqueues request modal`() {
+        advanceScheduler()
+        viewModel.handleIntent(IntegrationIntent.RequestNewIntegration)
+        advanceScheduler()
+        verify { dialogQueueService.enqueue(any<DialogModel>()) }
+    }
+
+    // -------------------------------------------------------------------------
+    // addIntegrations — no active account guard
+    // -------------------------------------------------------------------------
+
+    @Test
+    fun `AddIntegration with no active account does not start OAuth flow`() {
+        every { accountService.activeAccountFlow } returns flowOf(null)
+        viewModel = IntegrationViewModel(
+            accountService, integrationService, healthConnectService,
+            healthConnectRepository, integrationRepository,
+        ).initTestDependencies(navigationService, dialogQueueService, customTabManager)
+        advanceScheduler()
+
+        viewModel.handleIntent(IntegrationIntent.AddIntegration(IntegrationProvider.Fitbit))
+        advanceScheduler()
+
+        verify(exactly = 0) { customTabManager.openChromeTab(any()) }
+    }
+
+    // -------------------------------------------------------------------------
+    // OpenIntegration — Health Connect out-of-sync path
+    // -------------------------------------------------------------------------
+
+    @Test
+    fun `OpenIntegration with HC out of sync shows out-of-sync alert`() {
+        val account = createAccount(isHealthConnectOn = true)
+        every { accountService.activeAccountFlow } returns flowOf(account)
+        val hcData = mockk<com.dmdbrands.gurus.weight.data.storage.datastore.HealthConnectData>(relaxed = true) {
+            every { grantedPermissionList } returns emptyList()
+        }
+        coEvery { healthConnectRepository.getAccountByID(any()) } returns hcData
+        viewModel = IntegrationViewModel(
+            accountService, integrationService, healthConnectService,
+            healthConnectRepository, integrationRepository,
+        ).initTestDependencies(navigationService, dialogQueueService, customTabManager)
+        advanceScheduler()
+
+        val hcItem = IntegrationItem.fromProvider(IntegrationProvider.HealthConnect).copy(isConnected = true)
+        viewModel.handleIntent(IntegrationIntent.OpenIntegration(hcItem))
+        advanceScheduler()
+
+        verify { dialogQueueService.enqueue(any<DialogModel.Alert>()) }
+    }
+
+    @Test
+    fun `OpenIntegration with connected HC and granted permissions triggers remove flow`() {
+        val account = createAccount(isHealthConnectOn = true)
+        every { accountService.activeAccountFlow } returns flowOf(account)
+        val hcData = mockk<com.dmdbrands.gurus.weight.data.storage.datastore.HealthConnectData>(relaxed = true) {
+            every { grantedPermissionList } returns listOf("perm")
+        }
+        coEvery { healthConnectRepository.getAccountByID(any()) } returns hcData
+        viewModel = IntegrationViewModel(
+            accountService, integrationService, healthConnectService,
+            healthConnectRepository, integrationRepository,
+        ).initTestDependencies(navigationService, dialogQueueService, customTabManager)
+        advanceScheduler()
+
+        val hcItem = IntegrationItem.fromProvider(IntegrationProvider.HealthConnect).copy(isConnected = true)
+        viewModel.handleIntent(IntegrationIntent.OpenIntegration(hcItem))
+        advanceScheduler()
+
+        // not out of sync + connected -> dispatches RemoveIntegration -> auth disconnect confirm dialog
+        assertThat(viewModel.state.value.selectedIntegrationForDisconnect).isEqualTo(hcItem)
+        verify { dialogQueueService.enqueue(any<DialogModel.Confirm>()) }
+    }
+
+    // -------------------------------------------------------------------------
+    // onHealthConnectIconClicked
+    // -------------------------------------------------------------------------
+
+    @Test
+    fun `onHealthConnectIconClicked out of sync shows out-of-sync alert`() {
+        val account = createAccount(isHealthConnectOn = true)
+        every { accountService.activeAccountFlow } returns flowOf(account)
+        val hcData = mockk<com.dmdbrands.gurus.weight.data.storage.datastore.HealthConnectData>(relaxed = true) {
+            every { grantedPermissionList } returns emptyList()
+        }
+        coEvery { healthConnectRepository.getAccountByID(any()) } returns hcData
+        viewModel = IntegrationViewModel(
+            accountService, integrationService, healthConnectService,
+            healthConnectRepository, integrationRepository,
+        ).initTestDependencies(navigationService, dialogQueueService, customTabManager)
+        advanceScheduler()
+
+        viewModel.onHealthConnectIconClicked()
+        advanceScheduler()
+
+        verify { dialogQueueService.enqueue(any<DialogModel.Alert>()) }
+    }
+
+    @Test
+    fun `onHealthConnectIconClicked not out of sync toggles connected HC to remove`() {
+        every { accountService.activeAccountFlow } returns flowOf(createAccount(isHealthConnectOn = false))
+        coEvery { healthConnectRepository.getAccountByID(any()) } returns null
+        advanceScheduler()
+
+        // Populate state with a connected HC integration
+        val hcItem = IntegrationItem.fromProvider(IntegrationProvider.HealthConnect).copy(isConnected = true)
+        viewModel.handleIntent(IntegrationIntent.SetIntegrations(listOf(hcItem)))
+        viewModel.onHealthConnectIconClicked()
+        advanceScheduler()
+
+        verify { dialogQueueService.showDialog(any<DialogModel.Confirm>()) }
+    }
+
+    @Test
+    fun `onHealthConnectIconClicked not out of sync navigates when HC disconnected`() {
+        every { accountService.activeAccountFlow } returns flowOf(createAccount(isHealthConnectOn = false))
+        coEvery { healthConnectRepository.getAccountByID(any()) } returns null
+        coEvery { healthConnectService.healthConnectStatus() } returns HealthConnectStatus.INSTALLED
+        advanceScheduler()
+
+        val hcItem = IntegrationItem.fromProvider(IntegrationProvider.HealthConnect).copy(isConnected = false)
+        viewModel.handleIntent(IntegrationIntent.SetIntegrations(listOf(hcItem)))
+        viewModel.onHealthConnectIconClicked()
+        advanceScheduler()
+
+        coVerify { navigationService.navigateTo(any()) }
+    }
+
+    // -------------------------------------------------------------------------
+    // OAuth flow completion via Chrome tab hidden
+    // -------------------------------------------------------------------------
+
+    @Test
+    fun `OAuth flow completion success shows success alert`() {
+        val chromeState = MutableStateFlow<ChromeTabState?>(ChromeTabState.Idle)
+        every { accountService.activeAccountFlow } returns flowOf(createAccount())
+        every { integrationService.getOAuthUrl(any(), any()) } returns TEST_OAUTH_URL
+        every { customTabManager.subscribeChromeState() } returns chromeState
+        coEvery { integrationService.getIntegrationStatus(IntegrationProvider.Fitbit) } returns Pair(true, true)
+        every { integrationService.getIntegrationsWithStatus() } returns flowOf(emptyList())
+        viewModel = IntegrationViewModel(
+            accountService, integrationService, healthConnectService,
+            healthConnectRepository, integrationRepository,
+        ).initTestDependencies(navigationService, dialogQueueService, customTabManager)
+        advanceScheduler()
+
+        // Start OAuth to set currentOAuthProvider, then emit tab-hidden to drive completion
+        viewModel.handleIntent(IntegrationIntent.AddIntegration(IntegrationProvider.Fitbit))
+        advanceScheduler()
+        chromeState.value = ChromeTabState.TabHidden
+        advanceScheduler()
+
+        coVerify { integrationService.getIntegrationStatus(IntegrationProvider.Fitbit) }
+        verify { dialogQueueService.enqueue(any<DialogModel.Alert>()) }
+    }
+
+    @Test
+    fun `OAuth flow completion not connected shows error alert`() {
+        val chromeState = MutableStateFlow<ChromeTabState?>(ChromeTabState.Idle)
+        every { accountService.activeAccountFlow } returns flowOf(createAccount())
+        every { integrationService.getOAuthUrl(any(), any()) } returns TEST_OAUTH_URL
+        every { customTabManager.subscribeChromeState() } returns chromeState
+        coEvery { integrationService.getIntegrationStatus(IntegrationProvider.Fitbit) } returns Pair(false, false)
+        viewModel = IntegrationViewModel(
+            accountService, integrationService, healthConnectService,
+            healthConnectRepository, integrationRepository,
+        ).initTestDependencies(navigationService, dialogQueueService, customTabManager)
+        advanceScheduler()
+
+        viewModel.handleIntent(IntegrationIntent.AddIntegration(IntegrationProvider.Fitbit))
+        advanceScheduler()
+        chromeState.value = ChromeTabState.TabHidden
+        advanceScheduler()
+
+        verify { dialogQueueService.enqueue(any<DialogModel.Confirm>()) }
+    }
+
+    // -------------------------------------------------------------------------
+    // showReintegrateAlert / handleDisableInactiveIntegrations
+    // -------------------------------------------------------------------------
+
+    @Test
+    fun `inactive integrations on load show reintegrate alert and can disable them`() {
+        every { accountService.activeAccountFlow } returns flowOf(createAccount())
+        coEvery { integrationService.checkForInactiveIntegrations() } returns
+            listOf(IntegrationProvider.Fitbit, IntegrationProvider.MyFitnessPal)
+        every { integrationService.getInvalidIntegrationNames(any()) } returns "Fitbit, MyFitnessPal"
+        coEvery { integrationService.disconnectIntegration(any()) } returns Unit
+        every { integrationService.getIntegrationsWithStatus() } returns flowOf(emptyList())
+        viewModel = IntegrationViewModel(
+            accountService, integrationService, healthConnectService,
+            healthConnectRepository, integrationRepository,
+        ).initTestDependencies(navigationService, dialogQueueService, customTabManager)
+        advanceScheduler()
+
+        val dialogs = mutableListOf<DialogModel>()
+        verify { dialogQueueService.enqueue(capture(dialogs)) }
+        val reintegrate = dialogs.filterIsInstance<DialogModel.Confirm>().first()
+        reintegrate.onConfirm?.invoke()
+        advanceScheduler()
+
+        coVerify { integrationService.disconnectIntegration(IntegrationProvider.Fitbit) }
+        coVerify { integrationService.disconnectIntegration(IntegrationProvider.MyFitnessPal) }
+    }
+
+    @Test
+    fun `single inactive integration shows reintegrate alert with single-provider copy`() {
+        every { accountService.activeAccountFlow } returns flowOf(createAccount())
+        coEvery { integrationService.checkForInactiveIntegrations() } returns listOf(IntegrationProvider.Fitbit)
+        every { integrationService.getInvalidIntegrationNames(any()) } returns "Fitbit"
+        viewModel = IntegrationViewModel(
+            accountService, integrationService, healthConnectService,
+            healthConnectRepository, integrationRepository,
+        ).initTestDependencies(navigationService, dialogQueueService, customTabManager)
+        advanceScheduler()
+
+        verify { dialogQueueService.enqueue(any<DialogModel.Confirm>()) }
+    }
+
+    @Test
+    fun `disable inactive integrations surfaces failure and marks provider invalid`() {
+        every { accountService.activeAccountFlow } returns flowOf(createAccount())
+        coEvery { integrationService.checkForInactiveIntegrations() } returns listOf(IntegrationProvider.Fitbit)
+        every { integrationService.getInvalidIntegrationNames(any()) } returns "Fitbit"
+        coEvery { integrationService.disconnectIntegration(IntegrationProvider.Fitbit) } throws RuntimeException("fail")
+        viewModel = IntegrationViewModel(
+            accountService, integrationService, healthConnectService,
+            healthConnectRepository, integrationRepository,
+        ).initTestDependencies(navigationService, dialogQueueService, customTabManager)
+        advanceScheduler()
+
+        val dialogs = mutableListOf<DialogModel>()
+        verify { dialogQueueService.enqueue(capture(dialogs)) }
+        dialogs.filterIsInstance<DialogModel.Confirm>().first().onConfirm?.invoke()
+        advanceScheduler()
+
+        coVerify { integrationService.disconnectIntegration(IntegrationProvider.Fitbit) }
+    }
+
+    // -------------------------------------------------------------------------
+    // loadIntegrations — Health Connect mapping path
+    // -------------------------------------------------------------------------
+
+    @Test
+    fun `loadIntegrations maps Health Connect connected status from repository`() {
+        val account = createAccount()
+        every { accountService.activeAccountFlow } returns flowOf(account)
+        val hcData = mockk<com.dmdbrands.gurus.weight.data.storage.datastore.HealthConnectData>(relaxed = true) {
+            every { integrated } returns true
+            every { outOfSync } returns true
+        }
+        coEvery { healthConnectRepository.getAccountByID(any()) } returns hcData
+        every { integrationService.getIntegrationsWithStatus() } returns flowOf(
+            listOf(IntegrationItem.fromProvider(IntegrationProvider.HealthConnect)),
+        )
+        viewModel = IntegrationViewModel(
+            accountService, integrationService, healthConnectService,
+            healthConnectRepository, integrationRepository,
+        ).initTestDependencies(navigationService, dialogQueueService, customTabManager)
+        advanceScheduler()
+
+        val hc = viewModel.state.value.integrations.find { it.provider == IntegrationProvider.HealthConnect }
+        assertThat(hc?.isConnected).isTrue()
+    }
+
+    @Test
+    fun `loadIntegrations handles service exception gracefully`() {
+        every { accountService.activeAccountFlow } returns flowOf(createAccount())
+        every { integrationService.getIntegrationsWithStatus() } throws RuntimeException("load fail")
+        viewModel = IntegrationViewModel(
+            accountService, integrationService, healthConnectService,
+            healthConnectRepository, integrationRepository,
+        ).initTestDependencies(navigationService, dialogQueueService, customTabManager)
+        advanceScheduler()
+
+        // getIntegrationsWithStatus() threw, but InitializeIntegrations had already
+        // populated the base provider list and the collect failure is swallowed — so the
+        // screen degrades to the full provider list with nothing connected (no crash,
+        // no cleared/half-populated state).
+        val state = viewModel.state.value
+        assertThat(state.integrations.map { it.provider })
+            .containsExactlyElementsIn(IntegrationProvider.getAllProviders())
+        assertThat(state.integrations.any { it.isConnected }).isFalse()
+    }
+
+    // -------------------------------------------------------------------------
+    // refreshIntegrationStatus (via successful HC removal)
+    // -------------------------------------------------------------------------
+
+    @Test
+    fun `removeHealthConnect confirm refreshes integration status on success`() {
+        every { integrationService.getIntegrationsWithStatus() } returns flowOf(
+            listOf(IntegrationItem.fromProvider(IntegrationProvider.Fitbit)),
+        )
+        coEvery { healthConnectService.removeHealthConnectIntegration() } returns true
+        advanceScheduler()
+
+        viewModel.handleIntent(IntegrationIntent.RemoveHealthConnectIntegration)
+        advanceScheduler()
+        val dialogSlot = io.mockk.slot<DialogModel>()
+        verify { dialogQueueService.showDialog(capture(dialogSlot)) }
+        (dialogSlot.captured as DialogModel.Confirm).onConfirm?.invoke()
+        advanceScheduler()
+
+        coVerify { healthConnectService.removeHealthConnectIntegration() }
+        verify { dialogQueueService.showToast(any()) }
+    }
+
+    // -------------------------------------------------------------------------
+    // onBack failure / startOAuthFlow failure
+    // -------------------------------------------------------------------------
+
+    @Test
+    fun `OnBack handles navigation failure gracefully`() {
+        val before = viewModel.state.value
+        coEvery { navigationService.navigateBack() } throws RuntimeException("nav fail")
+        advanceScheduler()
+        viewModel.handleIntent(IntegrationIntent.OnBack)
+        advanceScheduler()
+        // Navigation was attempted; the thrown exception is swallowed (no crash)
+        // and the UI state is left untouched.
+        coVerify { navigationService.navigateBack() }
+        assertThat(viewModel.state.value).isEqualTo(before)
+    }
+
+    @Test
+    fun `AddIntegration OAuth flow failure dispatches OAuthFlowFailed`() {
+        every { accountService.activeAccountFlow } returns flowOf(createAccount())
+        every { integrationService.getOAuthUrl(any(), any()) } returns TEST_OAUTH_URL
+        every { customTabManager.openChromeTab(any()) } throws RuntimeException("tab fail")
+        viewModel = IntegrationViewModel(
+            accountService, integrationService, healthConnectService,
+            healthConnectRepository, integrationRepository,
+        ).initTestDependencies(navigationService, dialogQueueService, customTabManager)
+        advanceScheduler()
+
+        val before = viewModel.state.value
+        viewModel.handleIntent(IntegrationIntent.AddIntegration(IntegrationProvider.Fitbit))
+        advanceScheduler()
+
+        // OAuth flow started (loader shown) and attempted to open the tab, which threw.
+        // The failure is caught and re-dispatched as OAuthFlowFailed (a no-op in the reducer),
+        // so the loader is never dismissed and the UI state is left intact rather than corrupted.
+        verify { dialogQueueService.showLoader(any()) }
+        verify { customTabManager.openChromeTab(any()) }
+        verify(exactly = 0) { dialogQueueService.dismissLoader() }
+        assertThat(viewModel.state.value).isEqualTo(before)
+    }
+
+    // -------------------------------------------------------------------------
+    // showErrorAlert callbacks (OAuth not connected)
+    // -------------------------------------------------------------------------
+
+    @Test
+    fun `OAuth error alert retry restarts OAuth flow`() {
+        val chromeState = MutableStateFlow<ChromeTabState?>(ChromeTabState.Idle)
+        every { accountService.activeAccountFlow } returns flowOf(createAccount())
+        every { integrationService.getOAuthUrl(any(), any()) } returns TEST_OAUTH_URL
+        every { customTabManager.subscribeChromeState() } returns chromeState
+        coEvery { integrationService.getIntegrationStatus(IntegrationProvider.Fitbit) } returns Pair(false, false)
+        viewModel = IntegrationViewModel(
+            accountService, integrationService, healthConnectService,
+            healthConnectRepository, integrationRepository,
+        ).initTestDependencies(navigationService, dialogQueueService, customTabManager)
+        advanceScheduler()
+        viewModel.handleIntent(IntegrationIntent.AddIntegration(IntegrationProvider.Fitbit))
+        advanceScheduler()
+        chromeState.value = ChromeTabState.TabHidden
+        advanceScheduler()
+
+        val dialogs = mutableListOf<DialogModel>()
+        verify { dialogQueueService.enqueue(capture(dialogs)) }
+        val errorDialog = dialogs.filterIsInstance<DialogModel.Confirm>().last()
+        errorDialog.onConfirm?.invoke()
+        errorDialog.onCancel?.invoke()
+        errorDialog.onDismiss?.invoke()
+        advanceScheduler()
+
+        verify(atLeast = 1) { dialogQueueService.dismissCurrent() }
+    }
+
+    // -------------------------------------------------------------------------
+    // Chrome tab shown branch (no completion check)
+    // -------------------------------------------------------------------------
+
+    @Test
+    fun `Chrome TabShown event during OAuth does not trigger completion`() {
+        val chromeState = MutableStateFlow<ChromeTabState?>(ChromeTabState.Idle)
+        every { accountService.activeAccountFlow } returns flowOf(createAccount())
+        every { integrationService.getOAuthUrl(any(), any()) } returns TEST_OAUTH_URL
+        every { customTabManager.subscribeChromeState() } returns chromeState
+        viewModel = IntegrationViewModel(
+            accountService, integrationService, healthConnectService,
+            healthConnectRepository, integrationRepository,
+        ).initTestDependencies(navigationService, dialogQueueService, customTabManager)
+        advanceScheduler()
+        viewModel.handleIntent(IntegrationIntent.AddIntegration(IntegrationProvider.Fitbit))
+        advanceScheduler()
+        chromeState.value = ChromeTabState.TabShown
+        advanceScheduler()
+
+        coVerify(exactly = 0) { integrationService.getIntegrationStatus(any()) }
     }
 }

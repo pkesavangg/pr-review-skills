@@ -1,10 +1,14 @@
+// Large test fixture file.
+// swiftlint:disable file_length
 import Foundation
+@testable import meApp
 import SwiftUI
 import Testing
-@testable import meApp
 
 @Suite(.serialized)
 @MainActor
+// Large cohesive test suite.
+// swiftlint:disable:next type_body_length
 struct SignupStoreTests {
     @Test("initial state")
     func initialState() {
@@ -177,8 +181,8 @@ struct SignupStoreTests {
         store.handleSkip()
 
         #expect(store.isGoalSkipped == true)
-        #expect(store.signupForm.currentWeight.value == "")
-        #expect(store.signupForm.goalWeight.value == "")
+        #expect(store.signupForm.currentWeight.value.isEmpty)
+        #expect(store.signupForm.goalWeight.value.isEmpty)
         // With new order, skipping goal advances to password (email is now before pickDevice)
         #expect(store.currentStepIndex == stepIndex(.password, in: store))
     }
@@ -268,7 +272,7 @@ struct SignupStoreTests {
 
         #expect(router.stack.isEmpty == true)
         #expect(store.currentStep == .name)
-        #expect(store.signupForm.firstName.value == "")
+        #expect(store.signupForm.firstName.value.isEmpty)
     }
 
     @Test("dirty exit secondary action keeps current state")
@@ -444,7 +448,7 @@ struct SignupStoreTests {
         store.completeSignup()
 
         #expect(successCalled == true)
-        #expect(store.signupForm.firstName.value == "")
+        #expect(store.signupForm.firstName.value.isEmpty)
     }
 
     @Test("createUser from account switching calls onSignupSuccess immediately via completeSignup")
@@ -636,7 +640,7 @@ struct SignupStoreTests {
         #expect(store.currentStep == .name)
         #expect(store.isGoalSkipped == false)
         #expect(store.showHeightCmPicker == false)
-        #expect(store.signupForm.firstName.value == "")
+        #expect(store.signupForm.firstName.value.isEmpty)
     }
 
     // MARK: - Sequential Multi-Device Loop Tests
@@ -1090,7 +1094,7 @@ struct SignupStoreTests {
 
         let expectedStep: SignupStep = store.steps.contains(.password) ? .password : .profileReady
         #expect(store.currentStep == expectedStep)
-        #expect(store.babyProfileForm.name.value == "")
+        #expect(store.babyProfileForm.name.value.isEmpty)
     }
 
     @Test("handleSkip on addBaby while editing shows edit-skip confirmation alert")
@@ -1127,7 +1131,7 @@ struct SignupStoreTests {
 
         #expect(store.currentStep == .babyList)
         #expect(store.isEditingBabyIndex == nil)
-        #expect(store.babyProfileForm.name.value == "")
+        #expect(store.babyProfileForm.name.value.isEmpty)
     }
 
     @Test("moveToPreviousStep skips babyList back to addBaby when no babies saved")
@@ -1213,7 +1217,7 @@ struct SignupStoreTests {
         store.cancelSignup(router: router)
 
         #expect(router.stack.isEmpty)
-        #expect(store.signupForm.firstName.value == "")
+        #expect(store.signupForm.firstName.value.isEmpty)
     }
 
     @Test("cancelSignup from account switching calls dismissAction and resets form")
@@ -1226,7 +1230,7 @@ struct SignupStoreTests {
         store.cancelSignup()
 
         #expect(dismissed == true)
-        #expect(store.signupForm.firstName.value == "")
+        #expect(store.signupForm.firstName.value.isEmpty)
     }
 
     // MARK: - handleExit extra paths
@@ -1242,7 +1246,7 @@ struct SignupStoreTests {
 
         #expect(notificationService.isAlertVisible == false)
         #expect(accountService.isSignupInProgress == false)
-        #expect(store.signupForm.firstName.value == "")
+        #expect(store.signupForm.firstName.value.isEmpty)
     }
 
     @Test("handleExit from account switching with pristine form calls dismissAction without alert")
@@ -1285,7 +1289,7 @@ struct SignupStoreTests {
         store.completeSignup()
 
         #expect(dismissed == true)
-        #expect(store.signupForm.firstName.value == "")
+        #expect(store.signupForm.firstName.value.isEmpty)
     }
 
     // MARK: - Retry Failed Devices
@@ -1524,7 +1528,7 @@ struct SignupStoreTests {
     // MARK: - Add Baby form pristine logic
 
     @Test("re-entering add baby for a new baby resets the populated form")
-    func reenteringAddBabyForNewBabyResetsForm() {
+    func reenteringAddBabyForNewBabyResetsForm() throws {
         let (store, _, _, _) = makeSUT()
         store.selectDeviceType(.babyScale)
 
@@ -1534,7 +1538,7 @@ struct SignupStoreTests {
 
         let addBabyIndex = store.steps.firstIndex(of: .addBaby)
         #expect(addBabyIndex != nil)
-        store.currentStepIndex = addBabyIndex!
+        store.currentStepIndex = try #require(addBabyIndex)
 
         // New baby (not an edit) must start from a clean form so no phantom
         // "Required." error shows for the blurred-but-empty name field.
@@ -1542,7 +1546,7 @@ struct SignupStoreTests {
     }
 
     @Test("re-entering add baby while editing keeps the populated form")
-    func reenteringAddBabyWhileEditingKeepsForm() {
+    func reenteringAddBabyWhileEditingKeepsForm() throws {
         let (store, _, _, _) = makeSUT()
         store.selectDeviceType(.babyScale)
 
@@ -1551,7 +1555,7 @@ struct SignupStoreTests {
 
         let addBabyIndex = store.steps.firstIndex(of: .addBaby)
         #expect(addBabyIndex != nil)
-        store.currentStepIndex = addBabyIndex!
+        store.currentStepIndex = try #require(addBabyIndex)
 
         // Edits keep their populated values — the reset only fires for new babies.
         #expect(store.babyProfileForm.name.value == "Olivia")
@@ -1628,7 +1632,9 @@ private enum SignupStoreTestText {
     static let maxUsersLogInAndRemoveMessage = "Log in to a saved account, then open Settings and tap Switch Accounts to remove users."
     static let errorCreatingAccountTitle = "Error creating account."
     static let emailInUseMessage = "Email address is already in use"
-    static let serverErrorMessage = "Unable to reach the Greater Goods servers. The issue is probably on our end. Try again later, but if the problem continues, contact customer service."
+    static let serverErrorMessage = "Unable to reach the Greater Goods servers. The issue is probably on our end. " +
+        "Try again later, but if the problem continues, contact customer service."
     static let somethingWentWrongMessage = "Something went wrong. Please try again. If the problem continues, contact customer service."
     static let maxWeightKg = "value should be less than 450 kg"
 }
+// swiftlint:enable file_length

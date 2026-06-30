@@ -1,13 +1,40 @@
 import Foundation
+@testable import meApp
 import SwiftData
 import SwiftUI
 import Testing
 import UIKit
-@testable import meApp
 
 @Suite(.serialized)
 @MainActor
 struct MetricInfoSheetWrapperTests {
+
+    private static let wrapperBodyExpectedDTO = BathScaleOperationDTO(
+        accountId: "acct-1",
+        bmr: nil,
+        bmi: nil,
+        bodyFat: 290,
+        boneMass: nil,
+        entryTimestamp: "2026-03-08T08:00:00Z",
+        entryType: nil,
+        impedance: nil,
+        metabolicAge: nil,
+        muscleMass: nil,
+        operationType: nil,
+        proteinPercent: nil,
+        pulse: nil,
+        serverTimestamp: nil,
+        skeletalMusclePercent: nil,
+        source: nil,
+        subcutaneousFatPercent: nil,
+        systolic: nil,
+        diastolic: nil,
+        meanArterial: nil,
+        unit: nil,
+        visceralFatLevel: nil,
+        water: nil,
+        weight: 1930
+    )
 
     @Test("MetricInfoSheetDTOResolver: prefers a refetched entry when one is available")
     func resolverPrefersRefetchedEntry() {
@@ -126,43 +153,17 @@ struct MetricInfoSheetWrapperTests {
         )
         let store = sut.store
         let entry = EntryTestFixtures.makeEntry(timestamp: "2026-03-08T08:00:00Z", weight: 1930, bodyFat: 290)
-        let expectedDTO = BathScaleOperationDTO(
-            accountId: "acct-1",
-            bmr: nil,
-            bmi: nil,
-            bodyFat: 290,
-            boneMass: nil,
-            entryTimestamp: "2026-03-08T08:00:00Z",
-            entryType: nil,
-            impedance: nil,
-            metabolicAge: nil,
-            muscleMass: nil,
-            operationType: nil,
-            proteinPercent: nil,
-            pulse: nil,
-            serverTimestamp: nil,
-            skeletalMusclePercent: nil,
-            source: nil,
-            subcutaneousFatPercent: nil,
-            systolic: nil,
-            diastolic: nil,
-            meanArterial: nil,
-            unit: nil,
-            visceralFatLevel: nil,
-            water: nil,
-            weight: 1930
-        )
+        let expectedDTO = Self.wrapperBodyExpectedDTO
 
         var loadCalls = 0
         let view = MetricInfoSheetWrapper(
             entry: entry,
             selectedMetric: .bodyFat,
-            dashboardStore: store,
-            dtoLoader: {
+            dashboardStore: store
+        ) {
                 loadCalls += 1
                 return expectedDTO
             }
-        )
 
         let host = UIHostingController(rootView: view)
         let window = UIWindow(frame: UIScreen.main.bounds)
@@ -174,7 +175,9 @@ struct MetricInfoSheetWrapperTests {
             loadCalls >= 1
         }
 
-        store.state.graph.selectedPeriod = .month
+        // Use a period that differs from the GraphState default (.month) so this is a real
+        // change that flips the reload trigger; otherwise the on-change handler is a no-op.
+        store.state.graph.selectedPeriod = .week
         store.forceImmediateUIUpdate()
         await DashboardTestFixtures.waitUntil(timeoutNanoseconds: 1_000_000_000) {
             loadCalls >= 2

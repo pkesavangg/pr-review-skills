@@ -68,6 +68,7 @@ enum BaseGraphViewCacheManager {
         return hasher.finalize()
     }
 
+    // swiftlint:disable:next function_parameter_count
     static func viewHash(
         yAxisTicks: [Double],
         yAxisDomain: ClosedRange<Double>,
@@ -179,6 +180,7 @@ enum BaseGraphViewCacheManager {
         )
     }
 
+    // swiftlint:disable:next function_parameter_count
     static func precomputeLabels(
         yAxisTicks: [Double],
         goalWeight: Double?,

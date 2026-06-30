@@ -25,6 +25,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import androidx.compose.ui.window.DialogWindowProvider
+import com.dmdbrands.gurus.weight.core.shared.utilities.testing.exposeTestTagsAsResourceId
 import com.dmdbrands.gurus.weight.features.common.model.ReadingToast
 import com.dmdbrands.gurus.weight.features.common.model.Toast
 import kotlinx.coroutines.delay
@@ -111,6 +112,9 @@ fun ToastHandler(
                         clearFlags(WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE)
                     }
                     val cardModifier = Modifier
+                        // Toast renders in its own Dialog window; opt its tree into
+                        // resource-id exposure so Appium can select the toast (MOB-1099).
+                        .exposeTestTagsAsResourceId()
                         .offset { IntOffset(-dragState.requireOffset().roundToInt(), 0) }
                         .anchoredDraggable(
                             state = dragState,

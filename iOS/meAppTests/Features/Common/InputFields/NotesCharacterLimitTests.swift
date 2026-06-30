@@ -1,6 +1,6 @@
 import Foundation
-import Testing
 @testable import meApp
+import Testing
 
 /// Unit tests for the 280-character limit enforced by `NotesInputField` and
 /// the `AppInputField` textarea variant (MOB-437).
@@ -119,8 +119,8 @@ struct NotesCharacterLimitTests {
 
     @Test("handles empty string without truncation")
     func emptyString() {
-        #expect(truncate("") == "")
-        #expect(truncate("").count == 0)
+        #expect(truncate("").isEmpty)
+        #expect(truncate("").isEmpty)
     }
 
     @Test("handles single character correctly")

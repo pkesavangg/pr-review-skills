@@ -1,7 +1,7 @@
 import Combine
 import Foundation
-import Testing
 @testable import meApp
+import Testing
 
 @Suite(.serialized)
 @MainActor
@@ -12,8 +12,24 @@ struct MultiDeviceSnapshotViewModelTests {
     private func makeSUT() -> (sut: MultiDeviceSnapshotViewModel, entryService: EntryService) {
         TestDependencyContainer.reset()
         let deps = TestDependencyContainer.registerDashboardConcreteDependencies()
+
+        // Replace the entry service with one backed by an account so the baby/weight/BP
+        // dashboard load paths (which require an active account) can run in tests.
+        let account = MockAccountService()
+        account.activeAccount = AccountTestFixtures.makeAccountSnapshot(
+            id: "acct-1", email: "snapshot@example.com", isActiveAccount: true
+        )
+        let entryService = EntryService(
+            accountService: account,
+            localRepo: MockEntryRepository(),
+            localKVRepo: MockEntrySyncStore(),
+            remoteRepo: MockEntryRepositoryAPI()
+        )
+        DependencyContainer.shared.register(entryService as EntryService)
+        _ = deps
+
         let sut = MultiDeviceSnapshotViewModel()
-        return (sut, deps.entry)
+        return (sut, entryService)
     }
 
     private func makeBabyProfile(
@@ -147,7 +163,7 @@ struct MultiDeviceSnapshotViewModelTests {
         let result = sut.snapshotItems(from: items, selectedItem: .baby(profile: absentBaby))
 
         let babyIds = result.compactMap { item -> String? in
-            if case .baby(let p) = item { return p.id }
+            if case .baby(let profile) = item { return profile.id }
             return nil
         }
         #expect(babyIds == ["b1"])
@@ -255,6 +271,7 @@ struct MultiDeviceSnapshotViewModelTests {
         #expect(entryService.babyDailySummariesByProfile[baby2.id] != nil)
     }
 
+    // swiftlint:disable:next todo
     // TODO: MA-XXXX — Test needs MockEntryService; concrete EntryService lacks call tracking properties.
     // @Test("loadSnapshots skips duplicate work for the same available item signature")
     // func loadSnapshotsSkipsDuplicateSignature() async { ... }

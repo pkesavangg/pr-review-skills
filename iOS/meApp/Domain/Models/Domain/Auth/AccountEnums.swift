@@ -60,8 +60,15 @@ enum MeasurementUnits: String, Codable, Equatable, CaseIterable {
 
 // MARK: - ProductType
 
-/// Product-type identifiers persisted in `account.productTypes`.
-/// Raw values match the persisted vocabulary: "myWeight", "myBloodPressure", "baby".
+/// Product-type identifiers.
+///
+/// `account.productTypes` is persisted using the API vocabulary (`apiValue`:
+/// "weight" / "blood_pressure" / "baby") — see `AccountMigrationService`,
+/// `AccountService.updateProductTypes`, and `BluetoothServiceBpmOperations`.
+/// `ProductTypeStore.normalizeProductTypes` maps those API values to the
+/// app-internal `rawValue` forms ("myWeight" / "myBloodPressure" / "baby")
+/// only at read time. `rawValue` is the legacy app-internal vocabulary and is
+/// also used for `ProductType(rawValue:)` round-tripping of any legacy-stored values.
 enum ProductType: String, Codable, Equatable, CaseIterable {
     case weight = "myWeight"
     case bloodPressure = "myBloodPressure"

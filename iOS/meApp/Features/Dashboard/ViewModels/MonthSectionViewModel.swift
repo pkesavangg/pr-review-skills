@@ -63,7 +63,12 @@ final class MonthSectionViewModel: BaseSectionViewModel {
             return defaultSectionLen
         }()
         let rightSlack = lastSectionLen * 0.5
-        guard date >= first && date <= last.addingTimeInterval(rightSlack) else {
+        // Left bound is the first visible grid tick, not the first data point: grid ticks are
+        // selectable even in the leading section before the first plotted day (e.g. tapping
+        // near the Mar 1 tick when data starts Mar 3 should snap to the tick). Touches before
+        // the first tick (no section at all) are still rejected.
+        let leftBound = min(first, allTicks.first ?? first)
+        guard date >= leftBound && date <= last.addingTimeInterval(rightSlack) else {
             selectedDate = nil
             showCrosshair = false
             return
@@ -71,7 +76,7 @@ final class MonthSectionViewModel: BaseSectionViewModel {
 
         // Clamp selection to visible domain (with right bound at the last X tick)
         let rightBound = allTicks.last ?? last
-        let clampedDate = min(max(date, first), rightBound)
+        let clampedDate = min(max(date, leftBound), rightBound)
 
         // Determine the section [startTick, endTick) using X-axis ticks
         let startCandidates: [Date] = allTicks.count > 1 ? Array(allTicks.dropLast()) : allTicks

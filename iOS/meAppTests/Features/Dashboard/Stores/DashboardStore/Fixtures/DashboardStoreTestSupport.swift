@@ -3,20 +3,40 @@ import Foundation
 
 @MainActor
 enum DashboardStoreTestSupport {
-    typealias SUT = (
-        store: DashboardStore,
-        accountService: AccountService,
-        cacheManager: MockDashboardCacheManager
-    )
+    struct SUT {
+        let store: DashboardStore
+        let accountService: AccountService
+        let cacheManager: MockDashboardCacheManager
+    }
 
     static func makeSUT(
         lightweight: Bool = true,
-        performInitialAccountLoad: Bool = false
+        performInitialAccountLoad: Bool = false,
+        initialAccount: AccountSnapshot? = nil
     ) -> SUT {
         TestDependencyContainer.reset()
         let deps = TestDependencyContainer.registerDashboardConcreteDependencies(
             performInitialAccountLoad: performInitialAccountLoad
         )
+
+        // The store's managers resolve the account through DIFFERENT @Injector keys:
+        // DashboardStore/DashboardMetricsManager use the concrete `AccountService`, while
+        // DashboardLifecycleManager uses the `AccountServiceProtocol`. registerDashboardConcreteDependencies
+        // only registers the real account under the concrete key, so the lifecycle manager resolves
+        // reset()'s throwaway MockAccountService (nil account) — its handleDashboardTypeChange then
+        // computes .dashboard12 from a nil account and races the metrics manager (which reads the real
+        // account). Register the real account under the protocol key too so every manager sees the same
+        // instance the test mutates, making the dashboard-type subscription deterministic.
+        DependencyContainer.shared.register(deps.account as AccountServiceProtocol)
+
+        // Seed a non-nil active account BEFORE the store initializes so the async init pipeline
+        // (initializeDashboard → loadDashboardConfigurationFromAPI → loadMetricsFromAPI) never takes
+        // the `noActiveAccount` catch path that resets dashboardType to the default .dashboard12.
+        // refreshAccount() can't clobber it: the mock local repo has no matching record, so it throws
+        // accountNotFound which the pipeline swallows, leaving the seeded account intact.
+        if let initialAccount {
+            deps.account.activeAccount = initialAccount
+        }
 
         let formatter = MockDashboardFormatter()
         let cacheManager = MockDashboardCacheManager()
@@ -27,7 +47,7 @@ enum DashboardStoreTestSupport {
             cacheManager: cacheManager
         )
 
-        return (store, deps.account, cacheManager)
+        return SUT(store: store, accountService: deps.account, cacheManager: cacheManager)
     }
 
     static func makeActiveAccount(

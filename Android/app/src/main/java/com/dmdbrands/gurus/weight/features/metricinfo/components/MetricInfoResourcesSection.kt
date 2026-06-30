@@ -6,6 +6,8 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.semantics
 import com.dmdbrands.gurus.weight.domain.enums.MetricKey
 import com.dmdbrands.gurus.weight.features.common.components.PreviewTheme
 import com.dmdbrands.gurus.weight.features.common.components.debounceClick
@@ -26,6 +28,8 @@ fun MetricInfoResourcesSection(metricKey: MetricKey, handleIntent: (MetricInfoIn
       text = MetricInfoStrings.ResourcesTitle,
       style = MeTheme.typography.heading4,
       color = MeTheme.colorScheme.textBody,
+      // TalkBack: section header — lets users jump between sections by heading.
+      modifier = Modifier.semantics { heading() },
     )
     Spacer(modifier = Modifier.height(MeTheme.spacing.sm))
     resources.forEach { resource ->

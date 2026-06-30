@@ -11,9 +11,13 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.RectangleShape
+import androidx.compose.ui.semantics.CustomAccessibilityAction
+import androidx.compose.ui.semantics.customActions
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import com.dmdbrands.gurus.weight.domain.model.common.WeightUnit
 import com.dmdbrands.gurus.weight.domain.model.storage.Account.Account
+import com.dmdbrands.gurus.weight.features.common.strings.AppListStrings
 import com.dmdbrands.gurus.weight.resources.AppIcons
 import com.dmdbrands.gurus.weight.theme.MeAppTheme
 import com.dmdbrands.gurus.weight.theme.MeTheme
@@ -72,7 +76,7 @@ fun AppUserList(
             ) {
                 AppSwipeableActionItem(
                     iconId = AppIcons.Default.Delete,
-                    contentDescription = "Delete item",
+                    contentDescription = AppListStrings.accDeleteItemLabel,
                     backgroundColor = MeTheme.colorScheme.danger,
                 ) {
                     onDeleteRequest(item)
@@ -108,9 +112,24 @@ fun AppUserList(
                 .clip(shape)
                 .background(MeTheme.colorScheme.primaryBackground, shape),
             ) {
+              // TalkBack: swipe-to-delete is a gesture a screen-reader user can't perform,
+              // so expose the same delete as a custom action. It is attached to AppUser's
+              // own (clickable, merged) row so the action shares the row's focusable node.
+              val deleteActionModifier = if (canRemoveAccount) {
+                Modifier.semantics {
+                  customActions = listOf(
+                    CustomAccessibilityAction(AppListStrings.accDeleteItemLabel) {
+                      onDeleteRequest(item)
+                      true
+                    },
+                  )
+                }
+              } else {
+                Modifier
+              }
               AppUser(
                 account = item,
-                modifier = Modifier.clip(shape),
+                modifier = Modifier.clip(shape).then(deleteActionModifier),
                 onAccountSelect = { onAccountSelect(item) },
                 onLoginRequest = { onLoginRequest(item) },
                 avatarAlpha = 1f - progress,

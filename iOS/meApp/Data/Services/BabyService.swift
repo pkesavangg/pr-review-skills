@@ -12,8 +12,7 @@ import SwiftData
 /// Backs the local SwiftData `Baby` table with the remote Baby Profile API (MOB-386):
 /// mutations write to the server first, then mirror locally; `loadBabies(for:)` pulls the
 /// server list and merges it into the local store. ProductTypes are kept in sync — `"baby"`
-/// is appended on first create and never removed, so the baby selection remains visible
-/// even after all profiles are deleted.
+/// is appended on first create and stripped again once the last baby profile is deleted.
 @MainActor
 final class BabyService: ObservableObject, BabyServiceProtocol {
     static let shared = BabyService()
@@ -32,7 +31,6 @@ final class BabyService: ObservableObject, BabyServiceProtocol {
     init(remoteRepo: BabyRepositoryAPIProtocol? = nil) {
         self.remoteRepo = remoteRepo ?? BabyRepositoryAPI()
     }
-
 
     // swiftlint:disable:next function_parameter_count
     func saveBaby(
@@ -127,6 +125,7 @@ final class BabyService: ObservableObject, BabyServiceProtocol {
         context.delete(baby)
         try context.save()
         try reloadLocalBabies(for: accountId)
+        try await removeBabyProductTypeIfLast()
     }
 
     func loadBabies(for accountId: String) async throws {
@@ -205,6 +204,22 @@ final class BabyService: ObservableObject, BabyServiceProtocol {
             level: .info,
             tag: tag,
             message: "Appended baby to productTypes for accountId=\(snapshot.accountId)"
+        )
+    }
+
+    /// Removes "baby" from the active account's productTypes once no baby profiles remain.
+    private func removeBabyProductTypeIfLast() async throws {
+        guard babies.isEmpty,
+              let snapshot = accountService.activeAccount,
+              snapshot.productTypes.contains("baby") else { return }
+        // Use the dedicated reducing path: updateProductTypes(_:) never reduces (it unions
+        // with the existing local value), so filtering "baby" out and sending it there would
+        // be a no-op that re-adds "baby". removeProductType authoritatively drops it.
+        try await accountService.removeProductType("baby")
+        LoggerService.shared.log(
+            level: .info,
+            tag: tag,
+            message: "Removed baby from productTypes for accountId=\(snapshot.accountId)"
         )
     }
 

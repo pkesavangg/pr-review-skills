@@ -11,14 +11,18 @@ import com.dmdbrands.gurus.weight.features.ScaleUsers.reducer.ScaleUserListInten
 import com.dmdbrands.gurus.weight.features.common.model.DialogModel
 import com.dmdbrands.gurus.weight.testutil.TestFixtures
 import com.dmdbrands.gurus.weight.testutil.initTestDependencies
+import com.dmdbrands.library.ggbluetooth.enums.GGUserActionResponseType
 import com.dmdbrands.library.ggbluetooth.model.GGBTUser
+import com.dmdbrands.library.ggbluetooth.model.GGScaleUserResponse
 import com.google.common.truth.Truth.assertThat
 import com.greatergoods.blewrapper.GGDeviceService
 import io.mockk.MockKAnnotations
+import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.every
 import io.mockk.impl.annotations.MockK
 import io.mockk.mockk
+import io.mockk.slot
 import io.mockk.verify
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -75,7 +79,7 @@ class ScaleUserListViewModelTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `initial state has null scale and empty user list`() = runTest {
+    fun `initial state has null scale and empty user list`() = runTest(mainDispatcherRule.scheduler) {
         viewModel = createViewModel()
         advanceUntilIdle()
 
@@ -91,7 +95,7 @@ class ScaleUserListViewModelTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `init subscribes to pairedScales and updates scale when matching id`() = runTest {
+    fun `init subscribes to pairedScales and updates scale when matching id`() = runTest(mainDispatcherRule.scheduler) {
         val device = TestFixtures.aDevice(id = TEST_SCALE_ID).copy(
             preferences = Preferences(displayName = TEST_DISPLAY_NAME),
         )
@@ -105,7 +109,7 @@ class ScaleUserListViewModelTest {
     }
 
     @Test
-    fun `init ignores devices with non-matching scaleId`() = runTest {
+    fun `init ignores devices with non-matching scaleId`() = runTest(mainDispatcherRule.scheduler) {
         val otherDevice = TestFixtures.aDevice(id = "other-id")
         every { deviceService.pairedScales } returns MutableStateFlow(listOf(otherDevice))
 
@@ -116,7 +120,7 @@ class ScaleUserListViewModelTest {
     }
 
     @Test
-    fun `init resets username form with scale display name`() = runTest {
+    fun `init resets username form with scale display name`() = runTest(mainDispatcherRule.scheduler) {
         val device = TestFixtures.aDevice(id = TEST_SCALE_ID).copy(
             preferences = Preferences(displayName = TEST_DISPLAY_NAME),
         )
@@ -133,7 +137,7 @@ class ScaleUserListViewModelTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `SetScale updates scale in state`() = runTest {
+    fun `SetScale updates scale in state`() = runTest(mainDispatcherRule.scheduler) {
         viewModel = createViewModel()
         advanceUntilIdle()
 
@@ -145,7 +149,7 @@ class ScaleUserListViewModelTest {
     }
 
     @Test
-    fun `SetScale with hasSetUsername updates flag`() = runTest {
+    fun `SetScale with hasSetUsername updates flag`() = runTest(mainDispatcherRule.scheduler) {
         viewModel = createViewModel()
         advanceUntilIdle()
 
@@ -157,7 +161,7 @@ class ScaleUserListViewModelTest {
     }
 
     @Test
-    fun `SetUserList updates user list and clears loading`() = runTest {
+    fun `SetUserList updates user list and clears loading`() = runTest(mainDispatcherRule.scheduler) {
         viewModel = createViewModel()
         advanceUntilIdle()
 
@@ -170,7 +174,7 @@ class ScaleUserListViewModelTest {
     }
 
     @Test
-    fun `Save sets isLoading to true`() = runTest {
+    fun `Save sets isLoading to true`() = runTest(mainDispatcherRule.scheduler) {
         viewModel = createViewModel()
         advanceUntilIdle()
 
@@ -185,7 +189,7 @@ class ScaleUserListViewModelTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `Back with no changes navigates back directly`() = runTest {
+    fun `Back with no changes navigates back directly`() = runTest(mainDispatcherRule.scheduler) {
         viewModel = createViewModel()
         advanceUntilIdle()
 
@@ -196,7 +200,7 @@ class ScaleUserListViewModelTest {
     }
 
     @Test
-    fun `Back with unsaved username changes shows confirm dialog`() = runTest {
+    fun `Back with unsaved username changes shows confirm dialog`() = runTest(mainDispatcherRule.scheduler) {
         val device = TestFixtures.aDevice(id = TEST_SCALE_ID).copy(
             preferences = Preferences(displayName = "OriginalName"),
         )
@@ -219,7 +223,7 @@ class ScaleUserListViewModelTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `DeleteUser shows confirmation dialog`() = runTest {
+    fun `DeleteUser shows confirmation dialog`() = runTest(mainDispatcherRule.scheduler) {
         viewModel = createViewModel()
         advanceUntilIdle()
 
@@ -237,7 +241,7 @@ class ScaleUserListViewModelTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `Save with null scale shows error toast`() = runTest {
+    fun `Save with null scale shows error toast`() = runTest(mainDispatcherRule.scheduler) {
         viewModel = createViewModel()
         advanceUntilIdle()
 
@@ -248,7 +252,7 @@ class ScaleUserListViewModelTest {
     }
 
     @Test
-    fun `Save with valid scale and username shows loader`() = runTest {
+    fun `Save with valid scale and username shows loader`() = runTest(mainDispatcherRule.scheduler) {
         val device = TestFixtures.aDevice(id = TEST_SCALE_ID).copy(
             preferences = Preferences(displayName = TEST_DISPLAY_NAME),
         )
@@ -268,7 +272,7 @@ class ScaleUserListViewModelTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `RefreshUserList with no scale shows error toast`() = runTest {
+    fun `RefreshUserList with no scale shows error toast`() = runTest(mainDispatcherRule.scheduler) {
         viewModel = createViewModel()
         advanceUntilIdle()
 
@@ -279,7 +283,7 @@ class ScaleUserListViewModelTest {
     }
 
     @Test
-    fun `RefreshUserList with scale calls ggDeviceService getUsers`() = runTest {
+    fun `RefreshUserList with scale calls ggDeviceService getUsers`() = runTest(mainDispatcherRule.scheduler) {
         val device = TestFixtures.aDevice(id = TEST_SCALE_ID).copy(
             preferences = Preferences(displayName = TEST_DISPLAY_NAME),
         )
@@ -292,5 +296,188 @@ class ScaleUserListViewModelTest {
         advanceUntilIdle()
 
         verify { ggDeviceService.getUsers(any(), any()) }
+    }
+
+    // -------------------------------------------------------------------------
+    // loadScaleUsers — getUsers callback
+    // -------------------------------------------------------------------------
+
+    private fun pairedDevice(displayName: String? = TEST_DISPLAY_NAME) =
+        TestFixtures.aDevice(id = TEST_SCALE_ID).copy(
+            preferences = Preferences(displayName = displayName),
+        )
+
+    private fun stubGetUsersCallback(users: List<GGBTUser>) {
+        val cb = slot<(GGScaleUserResponse) -> Unit>()
+        every { ggDeviceService.getUsers(any(), capture(cb)) } answers {
+            cb.captured.invoke(mockk(relaxed = true) { every { user } returns users })
+        }
+    }
+
+    @Test
+    fun `loadScaleUsers filters out current user by display name`() = runTest {
+        every { deviceService.pairedScales } returns MutableStateFlow(listOf(pairedDevice()))
+        val currentUser = mockk<GGBTUser>(relaxed = true) { every { name } returns TEST_DISPLAY_NAME }
+        val otherUser = mockk<GGBTUser>(relaxed = true) { every { name } returns "Someone Else" }
+        stubGetUsersCallback(listOf(currentUser, otherUser))
+
+        viewModel = createViewModel()
+        advanceUntilIdle()
+
+        // Current display-name user is filtered out, leaving only the other user.
+        assertThat(viewModel.state.value.scaleUserList).containsExactly(otherUser)
+    }
+
+    @Test
+    fun `loadScaleUsers keeps all users when display name is null`() = runTest {
+        every { deviceService.pairedScales } returns MutableStateFlow(listOf(pairedDevice(displayName = null)))
+        val users = listOf(
+            mockk<GGBTUser>(relaxed = true) { every { name } returns "A" },
+            mockk<GGBTUser>(relaxed = true) { every { name } returns "B" },
+        )
+        stubGetUsersCallback(users)
+
+        viewModel = createViewModel()
+        advanceUntilIdle()
+
+        assertThat(viewModel.state.value.scaleUserList).hasSize(2)
+    }
+
+    @Test
+    fun `loadScaleUsers handles getUsers exception by clearing list and showing toast`() = runTest {
+        every { deviceService.pairedScales } returns MutableStateFlow(listOf(pairedDevice()))
+        every { ggDeviceService.getUsers(any(), any()) } throws RuntimeException("ble error")
+
+        viewModel = createViewModel()
+        advanceUntilIdle()
+
+        assertThat(viewModel.state.value.scaleUserList).isEmpty()
+        verify { dialogQueueService.showToast(any()) }
+    }
+
+    // -------------------------------------------------------------------------
+    // updateScaleUsername — updateAccount callback
+    // -------------------------------------------------------------------------
+
+    private fun stubUpdateAccountCallback(response: GGUserActionResponseType) {
+        val cb = slot<(GGUserActionResponseType) -> Unit>()
+        every { ggDeviceService.updateAccount(any(), capture(cb)) } answers {
+            cb.captured.invoke(response)
+        }
+    }
+
+    @Test
+    fun `Save success updates preferences syncs devices and navigates back`() = runTest {
+        every { deviceService.pairedScales } returns MutableStateFlow(listOf(pairedDevice()))
+        stubGetUsersCallback(emptyList())
+        stubUpdateAccountCallback(GGUserActionResponseType.UPDATE_COMPLETED)
+        coEvery { deviceService.updateScalePreferences(any(), any()) } returns true
+
+        viewModel = createViewModel()
+        advanceUntilIdle()
+
+        viewModel.handleIntent(ScaleUserListIntent.Save)
+        advanceUntilIdle()
+
+        coVerify { deviceService.updateScalePreferences(TEST_SCALE_ID, any()) }
+        coVerify { deviceService.syncDevices(any()) }
+        coVerify { navigationService.navigateBack() }
+    }
+
+    @Test
+    fun `Save failure on updateScalePreferences shows error toast`() = runTest {
+        every { deviceService.pairedScales } returns MutableStateFlow(listOf(pairedDevice()))
+        stubGetUsersCallback(emptyList())
+        stubUpdateAccountCallback(GGUserActionResponseType.CREATION_COMPLETED)
+        coEvery { deviceService.updateScalePreferences(any(), any()) } returns false
+
+        viewModel = createViewModel()
+        advanceUntilIdle()
+
+        viewModel.handleIntent(ScaleUserListIntent.Save)
+        advanceUntilIdle()
+
+        verify { dialogQueueService.showToast(any()) }
+        verify { dialogQueueService.dismissLoader() }
+    }
+
+    @Test
+    fun `Save with unexpected BLE response shows error toast`() = runTest {
+        every { deviceService.pairedScales } returns MutableStateFlow(listOf(pairedDevice()))
+        stubGetUsersCallback(emptyList())
+        stubUpdateAccountCallback(GGUserActionResponseType.EXCEPTION_ENCOUNTERED)
+
+        viewModel = createViewModel()
+        advanceUntilIdle()
+
+        viewModel.handleIntent(ScaleUserListIntent.Save)
+        advanceUntilIdle()
+
+        verify { dialogQueueService.showToast(any()) }
+        verify { dialogQueueService.dismissLoader() }
+    }
+
+    // -------------------------------------------------------------------------
+    // performDeleteUser — DeleteUser confirm -> deleteAccount callback
+    // -------------------------------------------------------------------------
+
+    private fun confirmDeleteFor(user: GGBTUser) {
+        val dialogSlot = slot<DialogModel>()
+        viewModel.handleIntent(ScaleUserListIntent.DeleteUser(user))
+        verify { dialogQueueService.enqueue(capture(dialogSlot)) }
+        (dialogSlot.captured as DialogModel.Confirm).onConfirm?.invoke()
+    }
+
+    @Test
+    fun `performDeleteUser deletes account dismisses loader and reloads users`() = runTest {
+        every { deviceService.pairedScales } returns MutableStateFlow(listOf(pairedDevice()))
+        stubGetUsersCallback(emptyList())
+        val cb = slot<(GGUserActionResponseType) -> Unit>()
+        every { ggDeviceService.deleteAccount(any(), any(), capture(cb)) } answers {
+            cb.captured.invoke(GGUserActionResponseType.UPDATE_COMPLETED)
+        }
+
+        viewModel = createViewModel()
+        advanceUntilIdle()
+
+        val user = mockk<GGBTUser>(relaxed = true) { every { name } returns "ToDelete" }
+        confirmDeleteFor(user)
+        advanceUntilIdle()
+
+        verify { ggDeviceService.deleteAccount(any(), any(), any()) }
+        verify { dialogQueueService.dismissLoader() }
+    }
+
+    @Test
+    fun `performDeleteUser with null scale shows error toast`() = runTest {
+        // No matching paired scale -> state.scale stays null
+        every { deviceService.pairedScales } returns MutableStateFlow(emptyList())
+
+        viewModel = createViewModel()
+        advanceUntilIdle()
+
+        val user = mockk<GGBTUser>(relaxed = true) { every { name } returns "ToDelete" }
+        confirmDeleteFor(user)
+        advanceUntilIdle()
+
+        verify { dialogQueueService.showToast(any()) }
+        verify(exactly = 0) { ggDeviceService.deleteAccount(any(), any(), any()) }
+    }
+
+    @Test
+    fun `performDeleteUser handles deleteAccount exception with error toast`() = runTest {
+        every { deviceService.pairedScales } returns MutableStateFlow(listOf(pairedDevice()))
+        stubGetUsersCallback(emptyList())
+        every { ggDeviceService.deleteAccount(any(), any(), any()) } throws RuntimeException("delete error")
+
+        viewModel = createViewModel()
+        advanceUntilIdle()
+
+        val user = mockk<GGBTUser>(relaxed = true) { every { name } returns "ToDelete" }
+        confirmDeleteFor(user)
+        advanceUntilIdle()
+
+        verify { dialogQueueService.dismissLoader() }
+        verify { dialogQueueService.showToast(any()) }
     }
 }

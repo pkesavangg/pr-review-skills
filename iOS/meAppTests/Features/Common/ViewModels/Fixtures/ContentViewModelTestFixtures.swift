@@ -22,6 +22,17 @@ enum ContentViewModelTestFixtures {
         }
     }
 
+    /// Snapshot equivalents of `makeEntries`. `ContentViewModel` loads entries via
+    /// `fetchAllEntrySnapshots()` (snapshot boundary rule), so tests should seed snapshots.
+    static func makeEntrySnapshots(accountId: String = "content-account", count: Int = 2) -> [EntrySnapshot] {
+        (0..<count).map { index in
+            EntryTestFixtures.makeEntrySnapshot(
+                accountId: accountId,
+                entryTimestamp: "2026-03-03T10:0\(index):00.000Z"
+            )
+        }
+    }
+
     static func makeEntryNotification(accountId: String = "content-account") -> EntryNotification {
         let dto = BathScaleOperationDTO(
             accountId: accountId,

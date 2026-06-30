@@ -139,6 +139,7 @@ class HealthConnect(
             }
 
         } catch (e: Exception) {
+            Log.e(TAG, "Failed to request authorization", e)
             callback(HealthConnectRequestStatus.CANCELLED)
         }
     }
@@ -271,6 +272,7 @@ class HealthConnect(
                 else -> HealthConnectPermissionStatus.NONE
             }
         } catch (e: Exception) {
+            Log.e(TAG, "Failed to get permission status", e)
             HealthConnectPermissionStatus.NONE
         }
 
@@ -326,6 +328,7 @@ class HealthConnect(
             activity.packageManager.getPackageInfo(packageName, 0)
             true
         } catch (e: Exception) {
+            Log.e(TAG, "Failed to check if package is installed: $packageName", e)
             false
         }
 
@@ -436,160 +439,171 @@ class HealthConnect(
     private fun mapToRecord(data: HealthConnectData): Record? =
         try {
             when (data.type) {
-                DataType.BasalMetabolicRate ->
-                    data.value?.let {
-                        val time = data.timeStamp
-                        BasalMetabolicRateRecord(
-                            time = time,
-                            zoneOffset = null,
-                            basalMetabolicRate =
-                                Power.Companion
-                                    .kilocaloriesPerDay(it),
-                            metadata =
-                                Metadata.Companion.autoRecorded(
-                                    device = Device(type = Device.Companion.TYPE_SCALE),
-                                      clientRecordId = time.epochSecond.toString()
-                                ),
-                        ) as Record
-                    }
-
-                DataType.BloodPressure ->
-                    data.bloodPressure?.let {
-                        val time = data.timeStamp
-                        BloodPressureRecord(
-                            systolic =
-                                Pressure.Companion
-                                    .millimetersOfMercury(it.systolic),
-                            diastolic =
-                                Pressure.Companion
-                                    .millimetersOfMercury(it.diastolic),
-                            time = time,
-                            zoneOffset = null,
-                            metadata =
-                                Metadata.Companion.autoRecorded(
-                                    device = Device(type = Device.Companion.TYPE_UNKNOWN),
-                                    clientRecordId = time.epochSecond.toString()
-                                ),
-                        ) as Record
-                    }
-
-                DataType.RestingHeartRate ->
-                    data.value?.let {
-                        val time = data.timeStamp
-                        RestingHeartRateRecord(
-                            time = time,
-                            zoneOffset = null,
-                            beatsPerMinute = it.toLong(),
-                            metadata =
-                                Metadata.Companion.autoRecorded(
-                                    device = Device(type = Device.Companion.TYPE_UNKNOWN),
-                                    clientRecordId = time.epochSecond.toString(),
-                                ),
-                        ) as Record
-                    }
-
-                DataType.BodyFat ->
-                    data.value?.let {
-                        val time = data.timeStamp
-                        BodyFatRecord(
-                            time = time,
-                            zoneOffset = null,
-                            percentage =
-                                Percentage(it),
-                            metadata =
-                                Metadata.Companion.autoRecorded(
-                                    device = Device(type = Device.Companion.TYPE_SCALE),
-                                    clientRecordId = time.epochSecond.toString(),
-                                ),
-                        ) as Record
-                    }
-
-                DataType.BodyWaterMass ->
-                    data.value?.let {
-                        val time = data.timeStamp
-                        BodyWaterMassRecord(
-                            time = time,
-                            zoneOffset = null,
-                            mass =
-                                Mass
-                                    .pounds(it),
-                            metadata =
-                                Metadata.Companion.autoRecorded(
-                                    device = Device(type = Device.Companion.TYPE_SCALE),
-                                    clientRecordId = time.epochSecond.toString(),
-                                ),
-                        ) as Record
-                    }
-
-                DataType.BoneMass ->
-                    data.value?.let {
-                        val time = data.timeStamp
-                        BoneMassRecord(
-                            time = time,
-                            zoneOffset = null,
-                            mass =
-                                Mass
-                                    .pounds(it),
-                            metadata =
-                                Metadata.Companion.autoRecorded(
-                                    device = Device(type = Device.Companion.TYPE_SCALE),
-                                    clientRecordId = time.epochSecond.toString(),
-                                ),
-                        ) as Record
-                    }
-
-                DataType.Height ->
-                    data.value?.let {
-                        val time = data.timeStamp
-                        HeightRecord(
-                            time = time,
-                            zoneOffset = null,
-                            height =
-                                Length
-                                    .feet(it),
-                            metadata =
-                                Metadata.Companion.autoRecorded(
-                                    device = Device(type = Device.Companion.TYPE_SCALE),
-                                    clientRecordId = time.epochSecond.toString(),
-                                ),
-                        ) as Record
-                    }
-
-                DataType.LeanBodyMass ->
-                    data.value?.let {
-                        val time = data.timeStamp
-                        LeanBodyMassRecord(
-                            time = time,
-                            zoneOffset = null,
-                            mass =
-                                Mass
-                                    .pounds(it),
-                            metadata =
-                                Metadata.Companion.autoRecorded(
-                                    device = Device(type = Device.Companion.TYPE_SCALE),
-                                    clientRecordId = time.epochSecond.toString(),
-                                ),
-                        ) as Record
-                    }
-
-                DataType.Weight ->
-                    data.value?.let {
-                        val time = data.timeStamp
-                        WeightRecord(
-                            time = time,
-                            zoneOffset = null,
-                            weight =
-                                Mass
-                                    .pounds(it),
-                            metadata =
-                                Metadata.Companion.autoRecorded(
-                                    device = Device(type = Device.Companion.TYPE_SCALE),
-                                    clientRecordId = time.epochSecond.toString(),
-                                ),
-                        ) as Record
-                    }
+                DataType.BasalMetabolicRate -> mapBasalMetabolicRate(data)
+                DataType.BloodPressure -> mapBloodPressure(data)
+                DataType.RestingHeartRate -> mapRestingHeartRate(data)
+                DataType.BodyFat -> mapBodyFat(data)
+                DataType.BodyWaterMass -> mapBodyWaterMass(data)
+                DataType.BoneMass -> mapBoneMass(data)
+                DataType.Height -> mapHeight(data)
+                DataType.LeanBodyMass -> mapLeanBodyMass(data)
+                DataType.Weight -> mapWeight(data)
             }
         } catch (e: Exception) {
+            Log.e(TAG, "Failed to map HealthConnectData to Record for type ${data.type}", e)
             null
+        }
+
+    private fun mapBasalMetabolicRate(data: HealthConnectData): Record? =
+        data.value?.let {
+            val time = data.timeStamp
+            BasalMetabolicRateRecord(
+                time = time,
+                zoneOffset = null,
+                basalMetabolicRate =
+                    Power.Companion
+                        .kilocaloriesPerDay(it),
+                metadata =
+                    Metadata.Companion.autoRecorded(
+                        device = Device(type = Device.Companion.TYPE_SCALE),
+                          clientRecordId = time.epochSecond.toString()
+                    ),
+            ) as Record
+        }
+
+    private fun mapBloodPressure(data: HealthConnectData): Record? =
+        data.bloodPressure?.let {
+            val time = data.timeStamp
+            BloodPressureRecord(
+                systolic =
+                    Pressure.Companion
+                        .millimetersOfMercury(it.systolic),
+                diastolic =
+                    Pressure.Companion
+                        .millimetersOfMercury(it.diastolic),
+                time = time,
+                zoneOffset = null,
+                metadata =
+                    Metadata.Companion.autoRecorded(
+                        device = Device(type = Device.Companion.TYPE_UNKNOWN),
+                        clientRecordId = time.epochSecond.toString()
+                    ),
+            ) as Record
+        }
+
+    private fun mapRestingHeartRate(data: HealthConnectData): Record? =
+        data.value?.let {
+            val time = data.timeStamp
+            RestingHeartRateRecord(
+                time = time,
+                zoneOffset = null,
+                beatsPerMinute = it.toLong(),
+                metadata =
+                    Metadata.Companion.autoRecorded(
+                        device = Device(type = Device.Companion.TYPE_UNKNOWN),
+                        clientRecordId = time.epochSecond.toString(),
+                    ),
+            ) as Record
+        }
+
+    private fun mapBodyFat(data: HealthConnectData): Record? =
+        data.value?.let {
+            val time = data.timeStamp
+            BodyFatRecord(
+                time = time,
+                zoneOffset = null,
+                percentage =
+                    Percentage(it),
+                metadata =
+                    Metadata.Companion.autoRecorded(
+                        device = Device(type = Device.Companion.TYPE_SCALE),
+                        clientRecordId = time.epochSecond.toString(),
+                    ),
+            ) as Record
+        }
+
+    private fun mapBodyWaterMass(data: HealthConnectData): Record? =
+        data.value?.let {
+            val time = data.timeStamp
+            BodyWaterMassRecord(
+                time = time,
+                zoneOffset = null,
+                mass =
+                    Mass
+                        .pounds(it),
+                metadata =
+                    Metadata.Companion.autoRecorded(
+                        device = Device(type = Device.Companion.TYPE_SCALE),
+                        clientRecordId = time.epochSecond.toString(),
+                    ),
+            ) as Record
+        }
+
+    private fun mapBoneMass(data: HealthConnectData): Record? =
+        data.value?.let {
+            val time = data.timeStamp
+            BoneMassRecord(
+                time = time,
+                zoneOffset = null,
+                mass =
+                    Mass
+                        .pounds(it),
+                metadata =
+                    Metadata.Companion.autoRecorded(
+                        device = Device(type = Device.Companion.TYPE_SCALE),
+                        clientRecordId = time.epochSecond.toString(),
+                    ),
+            ) as Record
+        }
+
+    private fun mapHeight(data: HealthConnectData): Record? =
+        data.value?.let {
+            val time = data.timeStamp
+            HeightRecord(
+                time = time,
+                zoneOffset = null,
+                height =
+                    Length
+                        .feet(it),
+                metadata =
+                    Metadata.Companion.autoRecorded(
+                        device = Device(type = Device.Companion.TYPE_SCALE),
+                        clientRecordId = time.epochSecond.toString(),
+                    ),
+            ) as Record
+        }
+
+    private fun mapLeanBodyMass(data: HealthConnectData): Record? =
+        data.value?.let {
+            val time = data.timeStamp
+            LeanBodyMassRecord(
+                time = time,
+                zoneOffset = null,
+                mass =
+                    Mass
+                        .pounds(it),
+                metadata =
+                    Metadata.Companion.autoRecorded(
+                        device = Device(type = Device.Companion.TYPE_SCALE),
+                        clientRecordId = time.epochSecond.toString(),
+                    ),
+            ) as Record
+        }
+
+    private fun mapWeight(data: HealthConnectData): Record? =
+        data.value?.let {
+            val time = data.timeStamp
+            WeightRecord(
+                time = time,
+                zoneOffset = null,
+                weight =
+                    Mass
+                        .pounds(it),
+                metadata =
+                    Metadata.Companion.autoRecorded(
+                        device = Device(type = Device.Companion.TYPE_SCALE),
+                        clientRecordId = time.epochSecond.toString(),
+                    ),
+            ) as Record
         }
 }

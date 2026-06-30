@@ -11,6 +11,14 @@ object MetricInfoStrings {
   const val MeasurementNotTaken = "no measurement available"
 
   const val ResourcesTitle = "Resources"
+
+  // region Accessibility (TalkBack)
+  /** Content description for the close (X) icon button in the app bar. */
+  const val accCloseButton = "Close"
+
+  /** Leading word for the "Why <metric>?" info heading; the metric title is appended at the call site. */
+  const val accWhyPrefix = "Why"
+  // endregion
 }
 
 data class MetricInfoResource(

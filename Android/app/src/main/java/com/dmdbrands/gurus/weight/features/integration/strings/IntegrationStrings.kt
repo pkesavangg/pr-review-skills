@@ -63,4 +63,16 @@ object IntegrationStrings {
     fun removeIntegration(name: String) = "Remove $name"
     fun reintegrateAlertMessage(plurality: String, names: String) =
         "Unable to connect to $names! You may need to\n" + "re-enable ${plurality} integration by re-authorizing your account."
+
+    // region Accessibility (TalkBack)
+    // State words spoken in addition to the integration name so the connected/disconnected
+    // status is announced (not conveyed by colour/checkmark alone). Dynamic values (the
+    // provider name) are composed at the call site; only the state word is a const here.
+    const val accConnectedState = "Connected"
+    const val accNotConnectedState = "Not connected"
+
+    fun accConnectAction(name: String) = "Connect to $name"
+    fun accDisconnectAction(name: String) = "Disconnect from $name"
+    fun accProviderLogo(name: String) = "$name logo"
+    // endregion
 }

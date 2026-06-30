@@ -22,6 +22,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.tooling.preview.Preview
 import com.dmdbrands.gurus.weight.domain.enums.DashboardType
 import com.dmdbrands.gurus.weight.features.common.helper.form.FormControl
@@ -65,12 +68,29 @@ fun ExpandableMetricsCard(
                     .fillMaxWidth()
                     .clickable(
                       interactionSource = remember { MutableInteractionSource() },
-                      indication = null
+                      indication = null,
+                      // TalkBack: this Row is the actual toggle control — announce it as a button
+                      // and source the expand/collapse action label from strings. The chevron icon
+                      // below is decorative (contentDescription = null) so the action isn't read twice.
+                      role = Role.Button,
+                      onClickLabel =
+                          if (expanded) {
+                              EntryScreenStrings.accMetricsCollapseLabel
+                          } else {
+                              EntryScreenStrings.accMetricsExpandLabel
+                          },
                     ) { expanded = !expanded},
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Column(Modifier.weight(1f)) {
-                Text(title, style = MeTheme.typography.heading4, color = MeTheme.colorScheme.textHeading)
+                Text(
+                    title,
+                    style = MeTheme.typography.heading4,
+                    color = MeTheme.colorScheme.textHeading,
+                    // TalkBack: mark the metrics section title as a heading so users
+                    // can navigate to it by heading. The Text's own text is the spoken name.
+                    modifier = Modifier.semantics { heading() },
+                )
                 if (subheading != null) {
                     Text(
                         subheading,
@@ -81,7 +101,9 @@ fun ExpandableMetricsCard(
             }
             Icon(
                 painter = painterResource(AppIcons.Default.ChevronDown),
-                contentDescription = if (expanded) "Collapse" else "Expand",
+                // Decorative: the expand/collapse action is announced on the clickable Row above
+                // (role = Button + onClickLabel), so the chevron must not repeat it.
+                contentDescription = null,
                 modifier = Modifier.rotate(rotation),
                 tint = MeTheme.colorScheme.iconPrimary,
             )

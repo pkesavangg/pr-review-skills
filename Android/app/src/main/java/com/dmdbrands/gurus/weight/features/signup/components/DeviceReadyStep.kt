@@ -13,6 +13,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.dmdbrands.gurus.weight.domain.enums.ProductType
@@ -73,7 +75,10 @@ fun DeviceReadyStep(
                 text = DeviceReadyStrings.deviceTitle(displayName),
                 textType = TextType.Title,
                 textAlign = TextAlign.Center,
-                modifier = Modifier.fillMaxWidth(),
+                // TalkBack: the success title is a heading for by-heading navigation.
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .semantics { heading() },
             )
         }
 

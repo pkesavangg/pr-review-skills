@@ -1,6 +1,6 @@
 import Foundation
-import Testing
 @testable import meApp
+import Testing
 
 extension SettingsStoreTests {
     @Suite("Core State")
@@ -14,9 +14,22 @@ extension SettingsStoreTests {
             let entryService = MockEntryService()
             entryService.getMonthsAllResult = .success([
                 HistoryMonth(
-                    id: "2026-03", weight: 150, entryTimestamp: "2026-03", count: 3,
-                    weights: nil, change: nil, bodyFat: nil, muscleMass: nil, water: nil,
-                    bmi: nil, date: nil, time: nil, month: "03", year: "2026", min: nil, max: nil
+                    id: "2026-03",
+                    weight: 150,
+                    entryTimestamp: "2026-03",
+                    count: 3,
+                    weights: nil,
+                    change: nil,
+                    bodyFat: nil,
+                    muscleMass: nil,
+                    water: nil,
+                    bmi: nil,
+                    date: nil,
+                    time: nil,
+                    month: "03",
+                    year: "2026",
+                    min: nil,
+                    max: nil
                 )
             ])
             let (store, _, _, _, _) = SettingsStoreTestFixtures.makeSUT(accountService: accountService, entryService: entryService)
@@ -55,13 +68,13 @@ extension SettingsStoreTests {
             accountService.seedAccounts([], active: nil)
             let (store, _, _, _, _) = SettingsStoreTestFixtures.makeSUT(accountService: accountService, seedDefaultAccount: false)
 
-            #expect(store.profileInitial == "")
-            #expect(store.profileName == "")
-            #expect(store.profileEmail == "")
-            #expect(store.biologicalSexText == "")
-            #expect(store.activityLevelText == "")
-            #expect(store.heightText == "")
-            #expect(store.unitTypeText == "")
+            #expect(store.profileInitial.isEmpty)
+            #expect(store.profileName.isEmpty)
+            #expect(store.profileEmail.isEmpty)
+            #expect(store.biologicalSexText.isEmpty)
+            #expect(store.activityLevelText.isEmpty)
+            #expect(store.heightText.isEmpty)
+            #expect(store.unitTypeText.isEmpty)
             #expect(store.notificationsOnText == CommonStrings.off)
             #expect(store.notificationPreference == .disable)
         }
@@ -73,7 +86,8 @@ extension SettingsStoreTests {
             accountService.seedAccounts([account], active: account)
             let (store, _, _, _, _) = SettingsStoreTestFixtures.makeSUT(accountService: accountService)
             let display = ConversionTools.convertStoredToKg(1550)
-            let expected = "\(CommonStrings.on) - \(String(format: "%.1f", display)) \(WeightValueConvertor.unitForDisplay(value: display, unit: .kg))"
+            let expected = "\(CommonStrings.on) - \(String(format: "%.1f", display)) "
+                + "\(WeightValueConvertor.unitForDisplay(value: display, unit: .kg))"
 
             #expect(store.weightlessText == expected)
         }
@@ -235,13 +249,30 @@ extension SettingsStoreTests {
             accountService.seedAccounts([account], active: account)
             let entryService = MockEntryService()
             entryService.getMonthsAllResult = .success([])
-            let (store, _, _, _, _) = SettingsStoreTestFixtures.makeSUT(accountService: accountService, entryService: entryService, seedDefaultAccount: false)
+            let (store, _, _, _, _) = SettingsStoreTestFixtures.makeSUT(
+                accountService: accountService,
+                entryService: entryService,
+                seedDefaultAccount: false
+            )
             await SettingsStoreTestFixtures.waitUntil { store.hasEntries == false }
             entryService.getMonthsAllResult = .success([
                 HistoryMonth(
-                    id: "2026-03", weight: 150, entryTimestamp: "2026-03", count: 3,
-                    weights: nil, change: nil, bodyFat: nil, muscleMass: nil, water: nil,
-                    bmi: nil, date: nil, time: nil, month: "03", year: "2026", min: nil, max: nil
+                    id: "2026-03",
+                    weight: 150,
+                    entryTimestamp: "2026-03",
+                    count: 3,
+                    weights: nil,
+                    change: nil,
+                    bodyFat: nil,
+                    muscleMass: nil,
+                    water: nil,
+                    bmi: nil,
+                    date: nil,
+                    time: nil,
+                    month: "03",
+                    year: "2026",
+                    min: nil,
+                    max: nil
                 )
             ])
 
@@ -405,7 +436,11 @@ extension SettingsStoreTests {
             let account = SettingsStoreTestFixtures.makeAccount()
             let accountService = MockAccountService()
             accountService.seedAccounts([account, SettingsStoreTestFixtures.makeAccount(id: "acct-2", email: "two@example.com", firstName: "Two")], active: account)
-            let (store, _, _, _, _) = SettingsStoreTestFixtures.makeSUT(notification: notification, accountService: accountService, seedDefaultAccount: false)
+            let (store, _, _, _, _) = SettingsStoreTestFixtures.makeSUT(
+                notification: notification,
+                accountService: accountService,
+                seedDefaultAccount: false
+            )
             let router = Router<SettingsRoute>()
 
             store.presentAddAccountModalIfNeeded(router: router)
@@ -422,7 +457,11 @@ extension SettingsStoreTests {
             let account = SettingsStoreTestFixtures.makeAccount()
             let accountService = MockAccountService()
             accountService.seedAccounts([account], active: account)
-            let (store, _, _, _, _) = SettingsStoreTestFixtures.makeSUT(notification: notification, accountService: accountService, seedDefaultAccount: false)
+            let (store, _, _, _, _) = SettingsStoreTestFixtures.makeSUT(
+                notification: notification,
+                accountService: accountService,
+                seedDefaultAccount: false
+            )
             let router = Router<SettingsRoute>()
 
             store.presentAddAccountModalIfNeeded(router: router)
@@ -439,7 +478,11 @@ extension SettingsStoreTests {
             let account = SettingsStoreTestFixtures.makeAccount()
             let accountService = MockAccountService()
             accountService.seedAccounts([account], active: account)
-            let (store, _, _, _, _) = SettingsStoreTestFixtures.makeSUT(notification: notification, accountService: accountService, seedDefaultAccount: false)
+            let (store, _, _, _, _) = SettingsStoreTestFixtures.makeSUT(
+                notification: notification,
+                accountService: accountService,
+                seedDefaultAccount: false
+            )
             let router = Router<SettingsRoute>()
 
             store.presentAddAccountModalIfNeeded(router: router)
@@ -457,12 +500,29 @@ extension SettingsStoreTests {
             let entryService = MockEntryService()
             entryService.getMonthsAllResult = .success([
                 HistoryMonth(
-                    id: "2026-03", weight: 150, entryTimestamp: "2026-03", count: 3,
-                    weights: nil, change: nil, bodyFat: nil, muscleMass: nil, water: nil,
-                    bmi: nil, date: nil, time: nil, month: "03", year: "2026", min: nil, max: nil
+                    id: "2026-03",
+                    weight: 150,
+                    entryTimestamp: "2026-03",
+                    count: 3,
+                    weights: nil,
+                    change: nil,
+                    bodyFat: nil,
+                    muscleMass: nil,
+                    water: nil,
+                    bmi: nil,
+                    date: nil,
+                    time: nil,
+                    month: "03",
+                    year: "2026",
+                    min: nil,
+                    max: nil
                 )
             ])
-            let (store, _, _, _, _) = SettingsStoreTestFixtures.makeSUT(accountService: accountService, entryService: entryService, seedDefaultAccount: false)
+            let (store, _, _, _, _) = SettingsStoreTestFixtures.makeSUT(
+                accountService: accountService,
+                entryService: entryService,
+                seedDefaultAccount: false
+            )
             await SettingsStoreTestFixtures.waitUntil { store.hasEntries == true }
             entryService.getMonthsAllResult = .failure(AccountTestError.apiFailed)
 

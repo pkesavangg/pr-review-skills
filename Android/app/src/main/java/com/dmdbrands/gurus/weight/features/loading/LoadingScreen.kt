@@ -28,6 +28,10 @@ import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.semantics.LiveRegionMode
+import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.semantics.liveRegion
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -62,7 +66,8 @@ fun LoadingScreen(
     ) {
       Image(
         painter = painterResource(id = AppIcons.Default.Banner),
-        contentDescription = LoadingString.LOADING,
+        // TalkBack: brand logo on the splash screen.
+        contentDescription = LoadingString.accLogoLabel,
         colorFilter = ColorFilter.tint(MeTheme.colorScheme.inverseAction),
       )
       Spacer(modifier = Modifier.height(MeTheme.spacing.x3l))
@@ -101,7 +106,12 @@ fun LoadingTextWithDots(
 ) {
   Row(
     verticalAlignment = Alignment.Bottom,
-    modifier = modifier,
+    // TalkBack: announce the splash loading state once, politely, and merge the
+    // child nodes so the row reads as a single "loading" item (the animated dots
+    // are cleared below so they are not spelled out as three periods).
+    modifier = modifier.semantics(mergeDescendants = true) {
+      liveRegion = LiveRegionMode.Polite
+    },
   ) {
     Text(
       text = baseText,
@@ -112,7 +122,8 @@ fun LoadingTextWithDots(
     Box(
       modifier =
         Modifier
-          .align(Alignment.Bottom),
+          .align(Alignment.Bottom)
+          .clearAndSetSemantics {},
     ) {
       AnimatedTextDots(dotCount = dotCount, dotColor = dotColor)
     }

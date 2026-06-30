@@ -47,4 +47,9 @@ object GoalStrings {
   const val UnsavedChangesMessage = "Are you sure you want to leave?"
   const val SaveButton = "Exit"
   const val DiscardButton = "Return"
+
+  // region Accessibility (TalkBack)
+  /** Spoken label for the icon-only close button in the app bar. */
+  const val accCloseLabel = "Close"
+  // endregion
 }

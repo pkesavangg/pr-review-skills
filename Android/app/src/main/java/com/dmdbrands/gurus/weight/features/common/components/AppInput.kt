@@ -36,6 +36,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.semantics.error
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
@@ -290,6 +292,11 @@ fun <T> InputFieldBase(
     var passwordVisible by rememberSaveable { mutableStateOf(false) }
 
     val isError = formControl?.error?.type != null && (formControl.dirty || formControl.touched)
+    // Hoisted so the error message can be attached to the field's accessibility node
+    // (TalkBack) as well as rendered visually below (MOB-850). Material3's isError only
+    // exposes the error *state*, not the message text, because the message is drawn in a
+    // separate Row rather than passed to the TextField's supportingText slot.
+    val errorMessage = formControl?.error?.message.orEmpty()
     val focusManager = LocalFocusManager.current
     val keyboardController = LocalSoftwareKeyboardController.current
     // Phones / folded displays keep pixel-parity fixed height; tablets use
@@ -347,7 +354,7 @@ fun <T> InputFieldBase(
                     val iconResId =
                         if (passwordVisible) AppIcons.Default.EyeClosed else AppIcons.Default.EyeOpened
                     val contentDescription =
-                        if (passwordVisible) "Hide password" else "Show password"
+                        if (passwordVisible) AppInputStrings.accHidePasswordLabel else AppInputStrings.accShowPasswordLabel
                     AppIcon(
                         id = iconResId,
                         contentDescription = contentDescription,
@@ -372,7 +379,7 @@ fun <T> InputFieldBase(
                 @Composable {
                     AppIcon(
                         trailingIconId,
-                        contentDescription = "Clear",
+                        contentDescription = AppInputStrings.accClearLabel,
                         type = clearIconColor, // Use error color for clear icon when in error state
                         onClick = { onTrailingAction?.invoke() ?: clearValueAndNotify() },
                     )
@@ -419,6 +426,16 @@ fun <T> InputFieldBase(
                             color = if (isError) colorScheme.textError else colorScheme.utility,
                             shape = RoundedCornerShape(size = borderRadius.sm),
                         )
+                    } else {
+                        Modifier
+                    },
+                )
+                // TalkBack: surface the specific error message on the field node. The
+                // message is otherwise only drawn in a separate Row, so a screen reader
+                // would announce "invalid" without saying what is wrong.
+                .then(
+                    if (isError && errorMessage.isNotEmpty()) {
+                        Modifier.semantics { error(errorMessage) }
                     } else {
                         Modifier
                     },

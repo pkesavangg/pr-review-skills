@@ -463,7 +463,7 @@ extension BluetoothService {
     }
 
     func getScaleUserList(broadcastId: String, skipConnectionCheck: Bool = false) async -> Result<[DeviceUser], BluetoothServiceError> {
-        let isConnected = bluetoothScales.first(where: { $0.broadcastIdString == broadcastId })?.isConnected ?? false
+        let isConnected = bluetoothScales.first { $0.broadcastIdString == broadcastId }?.isConnected ?? false
         guard skipConnectionCheck || isConnected else {
             logger.log(level: .error, tag: tag, message: "Cannot get user list - device is not connected: \(broadcastId)")
             return .failure(.deviceNotConnected)

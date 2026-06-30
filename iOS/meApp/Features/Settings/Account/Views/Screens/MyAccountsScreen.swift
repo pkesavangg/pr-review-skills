@@ -46,23 +46,21 @@ struct MyAccountsScreen: View {
         .sheet(isPresented: $accountsStore.canShowLoginScreen) {
             LoginScreen(
                 prefilledEmail: accountsStore.emailForLogin,
-                isFromAccountSwitching: true,
-                onAccountSwitchingLoginSuccess: {
-                    accountsStore.canShowLoginScreen = false
-                    tabViewModel.selectedTab = .dash
-                    router.navigateBack()
-                }
-            )
+                isFromAccountSwitching: true
+            ) {
+                accountsStore.canShowLoginScreen = false
+                tabViewModel.selectedTab = .dash
+                router.navigateBack()
+            }
                 .interactiveDismissDisabled()
         }
         .sheet(isPresented: $accountsStore.canShowAccountSignupScreen) {
             SignupScreen(
-                isFromAccountSwitching: true,
-                onAccountSwitchingSignupSuccess: {
-                    accountsStore.canShowAccountSignupScreen = false
-                    tabViewModel.selectedTab = .dash
-                }
-            )
+                isFromAccountSwitching: true
+            ) {
+                accountsStore.canShowAccountSignupScreen = false
+                tabViewModel.selectedTab = .dash
+            }
                 .interactiveDismissDisabled()
         }
         .navigationBarBackButtonHidden(true)

@@ -1,6 +1,6 @@
 import Foundation
-import Testing
 @testable import meApp
+import Testing
 
 @Suite(.serialized)
 @MainActor
@@ -166,7 +166,7 @@ struct DisplayMetricsViewModelTests {
 
         viewModel.handleBodyMetricToggle(key: "heartRate", isEnabled: true)
 
-        #expect(viewModel.metrics.first(where: { $0.key == "heartRate" })?.isEnabled == false)
+        #expect(viewModel.metrics.first { $0.key == "heartRate" }?.isEnabled == false)
         #expect(logger.messages.contains { $0.contains("Heart rate cannot be enabled") })
     }
 

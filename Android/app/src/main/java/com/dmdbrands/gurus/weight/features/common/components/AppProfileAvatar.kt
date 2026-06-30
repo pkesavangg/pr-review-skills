@@ -19,8 +19,11 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import com.dmdbrands.gurus.weight.features.common.components.strings.AppProfileAvatarStrings
 import com.dmdbrands.gurus.weight.resources.AppIcons
 import com.dmdbrands.gurus.weight.theme.MeAppTheme
 import com.dmdbrands.gurus.weight.theme.MeTheme
@@ -54,6 +57,7 @@ fun AppProfileAvatar(
     isInfoIcon: Boolean = false,
     isActive: Boolean = true,
     enabled: Boolean = true,
+    contentDescription: String? = null,
     onLongPress: (() -> Unit)? = null,
 ) {
     val backgroundColor = when {
@@ -109,6 +113,12 @@ fun AppProfileAvatar(
                 text = avatarText.uppercase(),
                 style = MeTheme.typography.heading6,
                 color = textColor,
+                // TalkBack: the single initial is meaningless on its own (usually the
+                // full name is shown next to the avatar). Hide it by default; announce
+                // a caller-provided label only when the avatar stands alone.
+                modifier = Modifier.clearAndSetSemantics {
+                    contentDescription?.let { this.contentDescription = it }
+                },
             )
         }
     } else {
@@ -135,7 +145,7 @@ fun AppProfileAvatar(
             ) {
                 AppIcon(
                     id = AppIcons.Filled.Profile,
-                    contentDescription = "Profile",
+                    contentDescription = AppProfileAvatarStrings.accProfileLabel,
                     type = AppIconType.Primary,
                     modifier = Modifier
                         // Optical nudge compensates for the SVG path's geometric asymmetry so the
@@ -165,6 +175,10 @@ fun AppProfileAvatar(
                     text = text.firstOrNull()?.uppercase() ?: "",
                     style = MeTheme.typography.heading4,
                     color = textColor,
+                    // Decorative initial (see non-info variant note).
+                    modifier = Modifier.clearAndSetSemantics {
+                        contentDescription?.let { this.contentDescription = it }
+                    },
                 )
             }
         }

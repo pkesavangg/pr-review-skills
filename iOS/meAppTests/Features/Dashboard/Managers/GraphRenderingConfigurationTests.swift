@@ -1,16 +1,16 @@
 import Foundation
-import Testing
 @testable import meApp
+import Testing
 
 @Suite(.serialized)
 @MainActor
 struct GraphRenderingConfigurationTests {
     private func makeSUT(now: Date? = nil) -> GraphRenderingConfiguration {
         var calendar = Calendar(identifier: .gregorian)
-        calendar.timeZone = TimeZone(secondsFromGMT: 0)!
+        calendar.timeZone = TimeZone(secondsFromGMT: 0) ?? .gmt
         calendar.locale = Locale(identifier: "en_US_POSIX")
         let resolvedNow = now ?? DateTimeTools.getDateFromDateString("2026-03-15", format: "yyyy-MM-dd")
-        return GraphRenderingConfiguration(calendar: calendar, now: { resolvedNow })
+        return GraphRenderingConfiguration(calendar: calendar) { resolvedNow }
     }
 
     @Test("visible domain length and sample dates: match the selected period")
@@ -222,6 +222,10 @@ struct GraphRenderingConfigurationTests {
     private func isoDate(_ value: String) -> Date {
         let formatter = ISO8601DateFormatter()
         formatter.formatOptions = [.withInternetDateTime]
-        return formatter.date(from: value)!
+        guard let date = formatter.date(from: value) else {
+            Issue.record("unexpected nil")
+            return Date()
+        }
+        return date
     }
 }

@@ -3,6 +3,7 @@ package com.greatergoods.ggInAppMessaging.core.service
 import com.greatergoods.ggInAppMessaging.domain.models.FeedItem
 import com.greatergoods.ggInAppMessaging.domain.models.FeedSetting
 import com.greatergoods.ggInAppMessaging.domain.services.IInAppMessagingService
+import com.greatergoods.ggInAppMessaging.core.utilities.IAMLogger
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -85,6 +86,7 @@ class GGInAppMessagingService @Inject constructor(
       val unreadFeeds = currentFeedItems.filter { feed -> feed.isUnread }
       unreadFeeds.size
     } catch (e: Exception) {
+      IAMLogger.e(tag, "getUnreadFeedCount failed", e.message)
       0
     }
   }
@@ -111,6 +113,7 @@ class GGInAppMessagingService @Inject constructor(
       feedStorageService.updateFeedSettings(feedSetting, accountId)
       _feedNotificationChangedSubject.tryEmit(Unit)
     } catch (e: Exception) {
+      IAMLogger.e(tag, "storeFeedNotificationSetting failed", e.message)
     }
   }
 
@@ -121,6 +124,7 @@ class GGInAppMessagingService @Inject constructor(
     return try {
       feedStorageService.getFeedSettings(accountId)
     } catch (e: Exception) {
+      IAMLogger.e(tag, "getStoredFeedNotificationSetting failed", e.message)
       null
     }
   }
@@ -133,6 +137,7 @@ class GGInAppMessagingService @Inject constructor(
       feedStorageService.updatePopupMessageSetting(showPopupMessage, accountId)
       _feedNotificationChangedSubject.tryEmit(Unit)
     } catch (e: Exception) {
+      IAMLogger.e(tag, "updatePopupMessageSetting failed", e.message)
     }
   }
 
@@ -144,6 +149,7 @@ class GGInAppMessagingService @Inject constructor(
       feedStorageService.updateNotificationBadgeSetting(showNotificationBadge, accountId)
       _feedNotificationChangedSubject.tryEmit(Unit)
     } catch (e: Exception) {
+      IAMLogger.e(tag, "updateNotificationBadgeSetting failed", e.message)
     }
   }
 
@@ -154,6 +160,7 @@ class GGInAppMessagingService @Inject constructor(
     return try {
       feedStorageService.getPopupMessageSetting(accountId)
     } catch (e: Exception) {
+      IAMLogger.e(tag, "getPopupMessageSetting failed", e.message)
       true // Default to true
     }
   }
@@ -165,6 +172,7 @@ class GGInAppMessagingService @Inject constructor(
     return try {
       feedStorageService.getNotificationBadgeSetting(accountId)
     } catch (e: Exception) {
+      IAMLogger.e(tag, "getNotificationBadgeSetting failed", e.message)
       true // Default to true
     }
   }
@@ -197,6 +205,7 @@ class GGInAppMessagingService @Inject constructor(
         false
       }
     } catch (e: Exception) {
+      IAMLogger.e(tag, "checkFeedModalTrigger failed", e.message)
       false
     }
   }
@@ -220,6 +229,7 @@ class GGInAppMessagingService @Inject constructor(
         handleFeedModal(feedItem, currentTime)
       }
     } catch (e: Exception) {
+      IAMLogger.e(tag, "showFeedModal failed", e.message)
       false
     }
   }
@@ -234,6 +244,7 @@ class GGInAppMessagingService @Inject constructor(
       showFeedModalPopup(feedItem, currentTime)
       true
     } catch (e: Exception) {
+      IAMLogger.e(tag, "handleFeedModal failed", e.message)
       false
     }
   }
@@ -262,6 +273,7 @@ class GGInAppMessagingService @Inject constructor(
             imageLoader.execute(request)
           } catch (e: Exception) {
             // If image fails to load, don't show modal
+            IAMLogger.e(tag, "showFeedModalPopup image preload failed", e.message)
             return
           }
       }
@@ -288,6 +300,7 @@ class GGInAppMessagingService @Inject constructor(
     return try {
       feedStorageService.getFeedLastTriggeredAt(accountId)
     } catch (e: Exception) {
+      IAMLogger.e(tag, "getFeedLastTriggeredAt failed", e.message)
       null
     }
   }
@@ -300,6 +313,7 @@ class GGInAppMessagingService @Inject constructor(
     try {
       feedStorageService.storeFeedLastTriggeredAt(timestamp, accountId)
     } catch (e: Exception) {
+      IAMLogger.e(tag, "storeFeedLastTriggeredAt failed", e.message)
     }
   }
 
@@ -312,6 +326,7 @@ class GGInAppMessagingService @Inject constructor(
       _storedFeedItems = emptyList()
       _feedItems.tryEmit(emptyList())
     } catch (e: Exception) {
+      IAMLogger.e(tag, "clearFeedData failed", e.message)
     }
   }
 
@@ -329,6 +344,7 @@ class GGInAppMessagingService @Inject constructor(
         emitFeedUpdate(feedItem, actionType)
       }
     } catch (e: Exception) {
+      IAMLogger.e(tag, "markFeedAsRead failed", e.message)
     }
   }
 
@@ -345,6 +361,7 @@ class GGInAppMessagingService @Inject constructor(
       )
       _sendUpdateFeed.emit(updateEvent)
     } catch (e: Exception) {
+      IAMLogger.e(tag, "emitFeedUpdate failed", e.message)
     }
   }
 
@@ -359,6 +376,7 @@ class GGInAppMessagingService @Inject constructor(
       )
     } catch (e: Exception) {
       // Log error but don't throw to avoid breaking the copy flow
+      IAMLogger.e(tag, "emitPromoCodeCopied failed", e.message)
     }
   }
 }

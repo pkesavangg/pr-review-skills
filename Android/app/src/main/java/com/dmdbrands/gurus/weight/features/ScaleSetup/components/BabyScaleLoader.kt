@@ -10,9 +10,12 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.dmdbrands.gurus.weight.R
+import com.dmdbrands.gurus.weight.features.ScaleSetup.strings.BabyScaleSetupStrings
 import com.dmdbrands.gurus.weight.features.common.components.AppGifImage
 import com.dmdbrands.gurus.weight.features.common.components.AppText
 import com.dmdbrands.gurus.weight.features.common.components.PreviewTheme
@@ -42,7 +45,10 @@ fun BabyScaleLoader(
       text = title,
       textType = TextType.Title,
       textAlign = TextAlign.Center,
-      modifier = Modifier.fillMaxWidth(),
+      // TalkBack: loader title is the heading.
+      modifier = Modifier
+        .fillMaxWidth()
+        .semantics { heading() },
     )
 
     Spacer(modifier = Modifier.height(MeTheme.spacing.xs))
@@ -59,7 +65,7 @@ fun BabyScaleLoader(
     AppGifImage(
       id = R.raw.baby_app_loader,
       modifier = Modifier.size(LoaderSize),
-      contentDescription = "Searching for scale",
+      contentDescription = BabyScaleSetupStrings.accSearchingLoader,
     )
 
   }

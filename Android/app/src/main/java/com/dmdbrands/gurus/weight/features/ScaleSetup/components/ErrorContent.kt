@@ -9,6 +9,8 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.semantics
 import com.dmdbrands.gurus.weight.features.ScaleSetup.strings.WifiScaleSetupStrings
 import com.dmdbrands.gurus.weight.features.common.components.AppNote
 import com.dmdbrands.gurus.weight.features.common.components.AppText
@@ -41,6 +43,8 @@ fun ErrorContent(
     AppText(
       text = "${WifiScaleSetupStrings.ErrorDetail.Troubleshooting} - $errorCode",
       textType = TextType.Title,
+      // TalkBack: error/troubleshooting title is the heading.
+      modifier = Modifier.semantics { heading() },
     )
 
     // Error message if available (similar to TypeScript ion-card-subtitle)

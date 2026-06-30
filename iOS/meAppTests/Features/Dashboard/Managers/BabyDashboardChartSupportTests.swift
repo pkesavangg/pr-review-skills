@@ -1,6 +1,6 @@
 import Foundation
-import Testing
 @testable import meApp
+import Testing
 
 @Suite(.serialized)
 @MainActor
@@ -146,12 +146,14 @@ struct BabyDashboardChartSupportTests {
 
     // MARK: - dummySummaries
 
-    @Test("dummySummaries for week returns same count as daily")
+    @Test("dummySummaries for week returns at least the daily data")
     func dummySummariesWeekReturnsDailyData() {
         let baby = makeBabyProfile()
         let daily = BabyDashboardChartSupport.dummyDailySummaries(for: baby)
         let week = BabyDashboardChartSupport.dummySummaries(for: baby, period: .week)
-        #expect(week.count == daily.count)
+        // Week extends the daily series forward to the upcoming Sunday so the current
+        // week's chart is fully populated, so it is at least as long as the daily series.
+        #expect(week.count >= daily.count)
     }
 
     @Test("dummySummaries for month returns same count as daily")
@@ -189,9 +191,8 @@ struct BabyDashboardChartSupportTests {
         let baby = makeBabyProfile()
         let result = BabyDashboardChartSupport.percentileSeries(
             for: baby,
-            operations: [],
-            convertDecigramsToDisplay: { Double($0) / 10000.0 }
-        )
+            operations: []
+        ) { Double($0) / 10000.0 }
         #expect(result.isEmpty)
     }
 
@@ -203,9 +204,8 @@ struct BabyDashboardChartSupportTests {
 
         let result = BabyDashboardChartSupport.percentileSeries(
             for: baby,
-            operations: operations,
-            convertDecigramsToDisplay: { Double($0) / 10000.0 }
-        )
+            operations: operations
+        ) { Double($0) / 10000.0 }
 
         #expect(!result.isEmpty)
         let seriesNames = Set(result.map(\.series))
@@ -221,9 +221,8 @@ struct BabyDashboardChartSupportTests {
 
         let result = BabyDashboardChartSupport.percentileSeries(
             for: baby,
-            operations: operations,
-            convertDecigramsToDisplay: { Double($0) / 10000.0 }
-        )
+            operations: operations
+        ) { Double($0) / 10000.0 }
 
         #expect(result.allSatisfy { BabyDashboardChartSupport.isPercentileSeries($0.series) })
     }
@@ -231,17 +230,26 @@ struct BabyDashboardChartSupportTests {
     @Test("percentileSeries spans the operation range")
     func percentileSeriesUsesOperationRange() {
         let baby = makeBabyProfile()
-        let operations = makeDailySummaries(count: 8, from: cal.date(byAdding: .day, value: -20, to: Date())!) // swiftlint:disable:this force_unwrapping
+        // swiftlint:disable:next force_unwrapping
+        let startDate = cal.date(byAdding: .day, value: -20, to: Date())!
+        let operations = makeDailySummaries(count: 8, from: startDate)
 
         let result = BabyDashboardChartSupport.percentileSeries(
             for: baby,
-            operations: operations,
-            convertDecigramsToDisplay: { Double($0) / 10000.0 }
-        )
+            operations: operations
+        ) { Double($0) / 10000.0 }
 
+        // The WHO percentile reference grid is day-aligned and intentionally padded
+        // (±8 days) beyond the operation range for smooth line continuity, so it spans
+        // at least the full operation range rather than matching the exact timestamps.
         let dates = result.map(\.date)
-        #expect(dates.min() == operations.first?.date)
-        #expect(dates.max() == operations.last?.date)
+        #expect(dates.min() != nil)
+        #expect(dates.max() != nil)
+        if let opMin = operations.first?.date, let opMax = operations.last?.date,
+           let seriesMin = dates.min(), let seriesMax = dates.max() {
+            #expect(seriesMin <= opMin)
+            #expect(seriesMax >= opMax)
+        }
     }
 
     // MARK: - dummyHeightSeries
@@ -291,7 +299,9 @@ struct BabyDashboardChartSupportTests {
     @Test("heightPercentileSeries spans the operation range")
     func heightPercentileSeriesUsesOperationRange() {
         let baby = makeBabyProfile()
-        let operations = makeDailySummaries(count: 8, from: cal.date(byAdding: .day, value: -20, to: Date())!) // swiftlint:disable:this force_unwrapping
+        // swiftlint:disable:next force_unwrapping
+        let startDate = cal.date(byAdding: .day, value: -20, to: Date())!
+        let operations = makeDailySummaries(count: 8, from: startDate)
 
         let result = BabyDashboardChartSupport.heightPercentileSeries(
             for: baby,

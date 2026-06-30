@@ -24,6 +24,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -63,7 +66,7 @@ fun MyKidsScreen(viewModel: MyKidsViewModel = hiltViewModel()) {
     AppScaffold(
         title = MyKidsStrings.Title,
         navigationIcon = {
-            AppIconButton(AppIcons.Default.Close) {
+            AppIconButton(AppIcons.Default.Close, contentDescription = MyKidsStrings.accCloseLabel) {
                 coroutineScope.launch { backStack.removeLast() }
             }
         },
@@ -101,7 +104,7 @@ private fun MyKidsList(
         AppText(
             text = MyKidsStrings.BabyAddedTitle,
             textType = TextType.Title,
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier.fillMaxWidth().semantics { heading() }, // TalkBack: heading
         )
         Spacer(modifier = Modifier.height(MeTheme.spacing.lg))
 

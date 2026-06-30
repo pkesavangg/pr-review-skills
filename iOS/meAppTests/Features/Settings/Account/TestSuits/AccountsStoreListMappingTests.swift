@@ -1,12 +1,12 @@
 import Foundation
-import Testing
 @testable import meApp
+import Testing
 
 extension AccountsStoreTests {
     @Suite("List Mapping And Ordering")
     @MainActor
     struct ListMappingAndOrdering {
-        @Test("maps and orders logged-in accounts by most recent activity and excludes logged-out")
+        @Test("maps and orders accounts by most recent activity with logged-out accounts last")
         func mapsAndOrdersAccountsAndExcludesLoggedOut() async {
             let recent = AccountsStoreTestFixtures.makeAccount(
                 id: "recent",
@@ -43,12 +43,14 @@ extension AccountsStoreTests {
             )
             let store = harness.store
             await AccountsStoreTestFixtures.waitUntil {
-                store.accounts.count == 3 && store.userItems.count == 3
+                store.accounts.count == 4 && store.userItems.count == 4
             }
 
-            #expect(store.accounts.map(\.accountId) == ["recent", "older", "invalid-date"])
-            #expect(store.userItems.map(\.accountID) == ["recent", "older", "invalid-date"])
-            #expect(store.accounts.contains { $0.accountId == "logged-out" } == false)
+            // MA-3283: the store shows every saved account. Logged-in accounts come first
+            // (sorted by last-active desc), followed by logged-out / expired accounts.
+            #expect(store.accounts.map(\.accountId) == ["recent", "older", "invalid-date", "logged-out"])
+            #expect(store.userItems.map(\.accountID) == ["recent", "older", "invalid-date", "logged-out"])
+            #expect(store.accounts.contains { $0.accountId == "logged-out" } == true)
         }
 
         @Test("maps user item fields with name fallback, selected state, and expired login CTA state")
@@ -83,24 +85,24 @@ extension AccountsStoreTests {
 
         @Test("active account publisher updates store active account")
         func activeAccountPublisherUpdatesStore() async {
-            let a = AccountsStoreTestFixtures.makeAccount(
+            let accountA = AccountsStoreTestFixtures.makeAccount(
                 id: "acct-a",
                 email: "a@example.com",
                 firstName: "A",
                 isLoggedIn: true,
                 isActive: true
             )
-            let b = AccountsStoreTestFixtures.makeAccount(
+            let accountB = AccountsStoreTestFixtures.makeAccount(
                 id: "acct-b",
                 email: "b@example.com",
                 firstName: "B",
                 isLoggedIn: true
             )
 
-            let harness = AccountsStoreTestFixtures.makeSUT(accounts: [a, b], activeAccount: a)
+            let harness = AccountsStoreTestFixtures.makeSUT(accounts: [accountA, accountB], activeAccount: accountA)
             let store = harness.store
 
-            harness.accountService.activeAccount = b
+            harness.accountService.activeAccount = accountB
             await AccountsStoreTestFixtures.waitUntil {
                 store.activeAccount?.accountId == "acct-b"
             }

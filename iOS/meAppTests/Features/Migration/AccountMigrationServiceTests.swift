@@ -1,12 +1,14 @@
-import Testing
+// swiftlint:disable file_length
 import Foundation
 import ggInAppMessagingPackage
 @testable import meApp
+import Testing
 
 // MARK: - AccountMigrationServiceTests
 
 @Suite(.serialized)
 @MainActor
+// swiftlint:disable:next type_body_length
 struct AccountMigrationServiceTests {
 
     // MARK: - isMigrationNeeded
@@ -87,6 +89,7 @@ struct AccountMigrationServiceTests {
     func migrateAccountData_withTokens_storesInKeychain() async throws {
         let (sut, kv, _, _, _) = makeSUT()
         kv.seed(
+            // swiftlint:disable:next no_hardcoded_credentials
             makeIonicAccountJSON(accessToken: "tok-access", refreshToken: "tok-refresh", expiresAt: "2025-12-31"),
             forKey: MigrationKey.activeAccount.rawValue
         )
@@ -917,7 +920,9 @@ struct AccountMigrationServiceTests {
 
         sut.migrateProductTypesIfNeeded(for: account, devices: [device])
 
-        #expect(account.productTypes == ["myWeight"])
+        // Persisted vocabulary is the API value ("weight"); ProductTypeStore
+        // normalizes to "myWeight" only at read time. See MOB-581 (3c0517896).
+        #expect(account.productTypes == ["weight"])
     }
 
     @Test("migrateProductTypesIfNeeded sets [myBloodPressure] for BPM only")
@@ -928,7 +933,8 @@ struct AccountMigrationServiceTests {
 
         sut.migrateProductTypesIfNeeded(for: account, devices: [device])
 
-        #expect(account.productTypes == ["myBloodPressure"])
+        // Persisted vocabulary is the API value ("blood_pressure"). See MOB-581 (3c0517896).
+        #expect(account.productTypes == ["blood_pressure"])
     }
 
     @Test("migrateProductTypesIfNeeded sets [baby] for baby scale only")
@@ -953,7 +959,7 @@ struct AccountMigrationServiceTests {
 
         sut.migrateProductTypesIfNeeded(for: account, devices: devices)
 
-        #expect(account.productTypes.sorted() == ["myBloodPressure", "myWeight"])
+        #expect(account.productTypes.sorted() == ["blood_pressure", "weight"])
     }
 
     @Test("migrateProductTypesIfNeeded sets [myWeight, baby] for weight + baby scale")
@@ -967,7 +973,7 @@ struct AccountMigrationServiceTests {
 
         sut.migrateProductTypesIfNeeded(for: account, devices: devices)
 
-        #expect(account.productTypes.sorted() == ["baby", "myWeight"])
+        #expect(account.productTypes.sorted() == ["baby", "weight"])
     }
 
     @Test("migrateProductTypesIfNeeded sets all three types for weight + BPM + baby scale")
@@ -982,17 +988,19 @@ struct AccountMigrationServiceTests {
 
         sut.migrateProductTypesIfNeeded(for: account, devices: devices)
 
-        #expect(account.productTypes.sorted() == ["baby", "myBloodPressure", "myWeight"])
+        #expect(account.productTypes.sorted() == ["baby", "blood_pressure", "weight"])
     }
 
     // MARK: - makeSUT
 
     @MainActor
-    private func makeSUT(
+    func makeSUT(
         kvStorage: MockMigrationKvStorageService? = nil,
         accountRepo: MockMigrationAccountRepository? = nil,
         scaleMigrationService: MockMigrationScaleMigrationService? = nil,
         integrationStore: MockMigrationIntegrationStore? = nil
+        // Test factory return; labeled tuple is clearer than a one-off SUT struct.
+        // swiftlint:disable:next large_tuple
     ) -> (
         sut: AccountMigrationService,
         kv: MockMigrationKvStorageService,
@@ -1017,7 +1025,7 @@ struct AccountMigrationServiceTests {
 
     // MARK: - Helpers
 
-    private func assertAppearanceMigration(ionicValue: String, expectedNativeValue: String) {
+    func assertAppearanceMigration(ionicValue: String, expectedNativeValue: String) {
         let (sut, kv, _, _, _) = makeSUT()
         let accountId = "acc-app"
         kv.seed(ionicValue, forKey: MigrationKey.appearanceKey(for: accountId))
@@ -1028,7 +1036,7 @@ struct AccountMigrationServiceTests {
         #expect(written == expectedNativeValue, "ionic '\(ionicValue)' should map to '\(expectedNativeValue)', got '\(written ?? "nil")'")
     }
 
-    private func makeIonicAccountJSON(
+    func makeIonicAccountJSON(
         id: String = "account-abc",
         email: String = "test@example.com",
         accessToken: String = "access-token",
@@ -1056,7 +1064,7 @@ struct AccountMigrationServiceTests {
         """
     }
 
-    private func makeDevice(id: String, deviceType: String = DeviceType.scale.rawValue) -> Device {
+    func makeDevice(id: String, deviceType: String = DeviceType.scale.rawValue) -> Device {
         let device = ScaleTestFixtures.makeDevice(id: id)
         device.deviceType = deviceType
         return device
@@ -1065,7 +1073,7 @@ struct AccountMigrationServiceTests {
 
 // MARK: - Test Error
 
-private enum MigrationTestError: Error, Equatable {
+enum MigrationTestError: Error, Equatable {
     case saveFailed
     case scaleFailed
     case integrationFailed

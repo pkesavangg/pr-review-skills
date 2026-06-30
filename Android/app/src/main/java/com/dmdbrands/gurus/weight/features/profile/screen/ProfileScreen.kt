@@ -87,7 +87,7 @@ private fun ProfileContent(state: ProfileState, handleIntent: (ProfileIntent) ->
     AppScaffold(
         title = ProfileStrings.ScreenTitle,
         navigationIcon = {
-            AppIconButton(AppIcons.Default.Close) { onBack() }
+            AppIconButton(AppIcons.Default.Close, contentDescription = ProfileStrings.accCloseLabel) { onBack() }
         },
         actions = {
             AppButton(ProfileStrings.SaveButton, enabled = state.form.isValid && state.form.isDirty, type = ButtonType.InlineTextPrimary, size = ButtonSize.Small) {

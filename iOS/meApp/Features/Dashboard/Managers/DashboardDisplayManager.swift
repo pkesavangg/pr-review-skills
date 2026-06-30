@@ -9,7 +9,10 @@
 import Foundation
 import SwiftUI
 
+// swiftlint:disable file_length
+
 @MainActor
+// swiftlint:disable:next type_body_length
 final class DashboardDisplayManager: DashboardDisplayManaging {
     private struct MetricsUpdateSignature: Equatable {
         enum Mode: Equatable {
@@ -563,6 +566,7 @@ final class DashboardDisplayManager: DashboardDisplayManaging {
     // MARK: - Metrics Updates
 
     @MainActor
+    // swiftlint:disable:next cyclomatic_complexity
     func updateMetricsForCurrentView() {
         guard let stateProvider else { return }
 
@@ -659,3 +663,4 @@ final class DashboardDisplayManager: DashboardDisplayManaging {
         ]
     }
 }
+// swiftlint:enable file_length

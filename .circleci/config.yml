@@ -3,30 +3,76 @@ version: 2.1
 orbs:
   macos: circleci/macos@2.0.0
 
+commands:
+  restore_google_services:
+    description: Decode the google-services.json secret into the Android app module.
+    steps:
+      - run:
+          name: Restore google-services.json
+          command: |
+            if [ -z "$GOOGLE_SERVICES_JSON_BASE64" ]; then
+              echo "Error: GOOGLE_SERVICES_JSON_BASE64 is not set. Add it as a CircleCI project/context secret."
+              exit 1
+            fi
+            echo "$GOOGLE_SERVICES_JSON_BASE64" | base64 --decode > Android/app/google-services.json
+            echo "google-services.json restored."
+
+  setup_github_packages_auth:
+    description: >
+      Map GITHUB_PACKAGES_TOKEN into GITHUB_TOKEN so Gradle can resolve the private
+      com.dmdbrands.lib:* artifacts on maven.pkg.github.com (settings.gradle.kts
+      reads GITHUB_USERNAME / GITHUB_TOKEN).
+    steps:
+      - run:
+          name: Configure GitHub Packages credentials
+          command: |
+            if [ -z "$GITHUB_USERNAME" ] || [ -z "$GITHUB_PACKAGES_TOKEN" ]; then
+              echo "Error: GITHUB_USERNAME and/or GITHUB_PACKAGES_TOKEN is not set. Add them as CircleCI project/context env vars."
+              exit 1
+            fi
+            echo "export GITHUB_TOKEN=\"$GITHUB_PACKAGES_TOKEN\"" >> "$BASH_ENV"
+            echo "GitHub Packages credentials configured for Gradle."
+      - run:
+          name: Probe GitHub Packages access (diagnostic)
+          command: |
+            # Non-fatal probe so opaque 401s self-explain. Gradle remains the gate.
+            URL="https://maven.pkg.github.com/gg-engineering/ggBluetoothNativeLibrary/com/dmdbrands/lib/gg-bluetooth-android/1.6.10/gg-bluetooth-android-1.6.10.pom"
+            CODE=$(curl -s -o /dev/null -w "%{http_code}" -u "$GITHUB_USERNAME:$GITHUB_PACKAGES_TOKEN" "$URL" || echo "000")
+            echo "GitHub Packages probe -> HTTP $CODE"
+            case "$CODE" in
+              200|302) echo "OK: token can read GitHub Packages." ;;
+              401) echo "401: token is missing the 'read:packages' scope ('repo' alone is not enough)." ;;
+              403) echo "403: token is not SSO-authorized for the gg-engineering org." ;;
+              404) echo "404: authenticated OK but artifact/path not found." ;;
+              *)   echo "Unexpected status $CODE (network/proxy?)." ;;
+            esac
+
 jobs:
-  # ===========================================================
-  # Job 1: Gitleaks Secrets Scan
-  # ===========================================================
+  # gitleaks — secrets scan, runs on every branch
   gitleaks:
-    macos:
-      xcode: "16.2.0"
-    resource_class: macos.m2.medium.gen2
+    docker:
+      - image: cimg/base:current
+    resource_class: small
     steps:
       - checkout
       - run:
           name: Install Gitleaks
-          command: brew install gitleaks
+          command: |
+            GITLEAKS_VERSION=8.21.2
+            curl -sSL "https://github.com/gitleaks/gitleaks/releases/download/v${GITLEAKS_VERSION}/gitleaks_${GITLEAKS_VERSION}_linux_x64.tar.gz" \
+              | tar -xz -C /tmp gitleaks
+            sudo mv /tmp/gitleaks /usr/local/bin/gitleaks
+            gitleaks version
       - run:
           name: Secrets scan (Gitleaks)
-          command: gitleaks detect --no-banner
+          # Scan the working tree (what ships), not full history — fast, and gates current code.
+          command: gitleaks dir . --no-banner
 
-  # ===========================================================
-  # Job 2: SwiftLint Static Analysis
-  # ===========================================================
-  swiftlint:
+  # ios-swiftlint — Swift static analysis, run independently of the build (see docs/circleci.md)
+  ios-swiftlint:
     macos:
-      xcode: "16.2.0"
-    resource_class: macos.m2.medium.gen2
+      xcode: "16.4.0"
+    resource_class: m4pro.medium
     steps:
       - checkout
       - run:
@@ -39,19 +85,24 @@ jobs:
             fi
       - run:
           name: Install SwiftLint
-          command: brew install swiftlint
+          # `brew install` does NOT upgrade an already-installed formula, so the SwiftLint
+          # pre-baked into the Xcode image (older) would run instead of the version the
+          # codebase is converged against. That version skew makes `--strict` flag/clear
+          # different rules in CI vs. locally. Force the latest so lint is deterministic.
+          command: |
+            brew update
+            brew upgrade swiftlint || brew install swiftlint
+            swiftlint version
       - run:
           name: Run SwiftLint
           working_directory: iOS
           command: swiftlint --strict --reporter emoji
 
-  # ===========================================================
-  # Job 3: iOS Build
-  # ===========================================================
-  build:
+  # ios-build — compile the app for a generic iOS device
+  ios-build:
     macos:
-      xcode: "16.2.0"
-    resource_class: macos.m2.medium.gen2
+      xcode: "16.4.0"
+    resource_class: m4pro.medium
     steps:
       - checkout
       - run:
@@ -70,11 +121,11 @@ jobs:
               exit 1
             fi
             if ! echo "$GOOGLESERVICE_INFO_BASE64" | base64 -D > iOS/meApp/Resources/GoogleService-Info.plist; then
-              echo "Error: Failed to decode GOOGLESERVICE_INFO_BASE64. Ensure it is valid base64-encoded GoogleService-Info.plist."
+              echo "Error: Failed to decode GOOGLESERVICE_INFO_BASE64."
               exit 1
             fi
             if ! plutil -lint iOS/meApp/Resources/GoogleService-Info.plist >/dev/null 2>&1; then
-              echo "Error: Decoded GoogleService-Info.plist is not valid XML/plist. Check the GOOGLESERVICE_INFO_BASE64 secret."
+              echo "Error: Decoded GoogleService-Info.plist is not valid XML/plist."
               exit 1
             fi
             echo "GoogleService-Info.plist restored and validated."
@@ -82,35 +133,73 @@ jobs:
           name: Show Xcode version
           command: xcodebuild -version
       - run:
+          name: Authenticate to private gg-engineering Swift packages
+          command: |
+            # CI has no GitHub credentials by default; inject a read-only token for HTTPS clones.
+            if [ -z "$GITHUB_PACKAGES_TOKEN" ]; then
+              echo "Error: GITHUB_PACKAGES_TOKEN is not set. Add it as a CircleCI project/context secret."
+              exit 1
+            fi
+            git config --global url."https://x-access-token:${GITHUB_PACKAGES_TOKEN}@github.com/".insteadOf "https://github.com/"
+            echo "Configured git to authenticate github.com HTTPS clones."
+      # Reuse cloned/resolved packages; keyed on the committed Package.resolved with a partial fallback.
+      - restore_cache:
+          name: Restore SPM cache
+          keys:
+            - spm-v2-{{ checksum "iOS/meApp.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved" }}
+            - spm-v2-
+      - run:
           name: Resolve Swift Package Dependencies
           working_directory: iOS
+          no_output_timeout: 20m
+          # Package.resolved is committed; resolve only its pinned versions (skip the solver).
           command: |
             xcodebuild -resolvePackageDependencies \
-              -project meApp.xcodeproj
+              -project meApp.xcodeproj \
+              -onlyUsePackageVersionsFromResolvedFile \
+              -clonedSourcePackagesDirPath SourcePackages
+      - save_cache:
+          name: Save SPM cache
+          key: spm-v2-{{ checksum "iOS/meApp.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved" }}
+          paths:
+            - iOS/SourcePackages
+            - ~/Library/Caches/org.swift.swiftpm
+      - restore_cache:
+          name: Restore DerivedData
+          keys:
+            - dd-v2-{{ .Branch }}-
+            - dd-v2-
       - run:
           name: Build project
           working_directory: iOS
+          no_output_timeout: 30m
+          # "Dev" is the debug configuration — the project has no "Debug" config.
           command: |
             xcodebuild build \
               -project meApp.xcodeproj \
               -scheme meApp \
               -destination 'generic/platform=iOS' \
-              -configuration Debug \
+              -configuration Dev \
+              -onlyUsePackageVersionsFromResolvedFile \
+              -disableAutomaticPackageResolution \
+              -clonedSourcePackagesDirPath SourcePackages \
+              -derivedDataPath DerivedData \
               CODE_SIGN_IDENTITY="" \
               CODE_SIGNING_REQUIRED=NO \
               CODE_SIGNING_ALLOWED=NO \
               ENABLE_USER_SCRIPT_SANDBOXING=NO
+      - save_cache:
+          name: Save DerivedData
+          key: dd-v2-{{ .Branch }}-{{ .Revision }}
+          paths:
+            - iOS/DerivedData
 
-  # ===========================================================
-  # Job 4: Unit Tests with Code Coverage
-  # NOTE: Commented out — simulator not supported due to library
-  # compatibility issue (requires physical device). Uncomment
-  # when simulator support is restored.
-  # ===========================================================
-  # unit-tests:
+  # ios-unit-tests — DISABLED: requires a physical device (a dependency is unsupported on
+  # the simulator). Re-enable here and in the workflow when simulator support is restored.
+  # ios-unit-tests:
   #   macos:
-  #     xcode: "16.2.0"
-  #   resource_class: macos.m2.medium.gen2
+  #     xcode: "16.4.0"
+  #   resource_class: m4pro.medium
   #   steps:
   #     - checkout
   #     - run:
@@ -127,10 +216,6 @@ jobs:
   #         command: |
   #           xcodebuild -resolvePackageDependencies \
   #             -project meApp.xcodeproj
-  #     - run:
-  #         name: Boot Simulator
-  #         command: |
-  #           xcrun simctl boot "iPhone 16" || true
   #     - run:
   #         name: Run Unit Tests with Coverage
   #         working_directory: iOS
@@ -163,13 +248,11 @@ jobs:
   #         path: iOS/TestResults.xcresult
   #         destination: test-results
 
-  # ===========================================================
-  # Job 5: Dependency Audit
-  # ===========================================================
-  dependency-audit:
+  # ios-dependency-audit — verify every SPM pin is reproducible (a version or an exact commit)
+  ios-dependency-audit:
     macos:
-      xcode: "16.2.0"
-    resource_class: macos.m2.medium.gen2
+      xcode: "16.4.0"
+    resource_class: m4pro.medium
     steps:
       - checkout
       - run:
@@ -199,22 +282,34 @@ jobs:
                 resolved = json.load(f)
             pins = resolved.get('pins', resolved.get('object', {}).get('pins', []))
             unpinned = []
+            branch_tracked = []
             for pin in pins:
                 pkg = pin.get('identity', pin.get('package', 'unknown'))
                 state = pin.get('state', {})
-                version = state.get('version') or state.get('revision', 'unpinned')
-                if not state.get('version'):
+                version = state.get('version')
+                revision = state.get('revision')
+                branch = state.get('branch')
+                # A pin is reproducible if it has a semver tag OR an exact commit.
+                if version:
+                    display = version
+                elif revision:
+                    display = revision[:12]
+                    if branch:
+                        display = display + ' (branch: ' + branch + ')'
+                        branch_tracked.append(pkg)
+                else:
+                    display = 'UNPINNED'
                     unpinned.append(pkg)
-                print(f'  {pkg}: {version}')
+                print('  ' + pkg + ': ' + display)
+            if branch_tracked:
+                print('\nNOTE: branch-tracked (pinned to a commit, but the branch can advance on re-resolve): ' + ', '.join(branch_tracked))
             if unpinned:
-                print(f'\nWARNING: Unpinned dependencies: {', '.join(unpinned)}')
+                print('\nERROR: truly unpinned dependencies (no version and no revision): ' + ', '.join(unpinned))
                 sys.exit(1)
-            print('\nAll dependencies are pinned.')
+            print('\nAll dependencies are pinned to a version or an exact commit.')
             "
 
-  # ===========================================================
-  # Job 6: Android Build
-  # ===========================================================
+  # android-build — assemble the debug APK
   android-build:
     docker:
       - image: cimg/android:2024.11.1
@@ -234,15 +329,8 @@ jobs:
             - gradle-v1-{{ checksum "Android/gradle/libs.versions.toml" }}-{{ checksum "Android/app/build.gradle.kts" }}
             - gradle-v1-{{ checksum "Android/gradle/libs.versions.toml" }}-
             - gradle-v1-
-      - run:
-          name: Restore google-services.json
-          command: |
-            if [ -z "$GOOGLE_SERVICES_JSON_BASE64" ]; then
-              echo "Error: GOOGLE_SERVICES_JSON_BASE64 is not set. Add it as a CircleCI project/context secret."
-              exit 1
-            fi
-            echo "$GOOGLE_SERVICES_JSON_BASE64" | base64 --decode > Android/app/google-services.json
-            echo "google-services.json restored."
+      - restore_google_services
+      - setup_github_packages_auth
       - run:
           name: Build Android debug APK
           working_directory: Android
@@ -254,9 +342,7 @@ jobs:
             - ~/.gradle/wrapper
             - ~/.gradle/build-cache
 
-  # ===========================================================
-  # Job 7: Android Lint
-  # ===========================================================
+  # android-lint — Android lint + Detekt static analysis
   android-lint:
     docker:
       - image: cimg/android:2024.11.1
@@ -276,15 +362,8 @@ jobs:
             - gradle-v1-{{ checksum "Android/gradle/libs.versions.toml" }}-{{ checksum "Android/app/build.gradle.kts" }}
             - gradle-v1-{{ checksum "Android/gradle/libs.versions.toml" }}-
             - gradle-v1-
-      - run:
-          name: Restore google-services.json
-          command: |
-            if [ -z "$GOOGLE_SERVICES_JSON_BASE64" ]; then
-              echo "Error: GOOGLE_SERVICES_JSON_BASE64 is not set. Add it as a CircleCI project/context secret."
-              exit 1
-            fi
-            echo "$GOOGLE_SERVICES_JSON_BASE64" | base64 --decode > Android/app/google-services.json
-            echo "google-services.json restored."
+      - restore_google_services
+      - setup_github_packages_auth
       - run:
           name: Run Android lint
           working_directory: Android
@@ -300,9 +379,7 @@ jobs:
           path: Android/app/build/reports/detekt
           destination: detekt-reports
 
-  # ===========================================================
-  # Job 8: Android Unit Tests
-  # ===========================================================
+  # android-test — unit tests + JaCoCo 80% line-coverage gate
   android-test:
     docker:
       - image: cimg/android:2024.11.1
@@ -322,15 +399,8 @@ jobs:
             - gradle-v1-{{ checksum "Android/gradle/libs.versions.toml" }}-{{ checksum "Android/app/build.gradle.kts" }}
             - gradle-v1-{{ checksum "Android/gradle/libs.versions.toml" }}-
             - gradle-v1-
-      - run:
-          name: Restore google-services.json
-          command: |
-            if [ -z "$GOOGLE_SERVICES_JSON_BASE64" ]; then
-              echo "Error: GOOGLE_SERVICES_JSON_BASE64 is not set. Add it as a CircleCI project/context secret."
-              exit 1
-            fi
-            echo "$GOOGLE_SERVICES_JSON_BASE64" | base64 --decode > Android/app/google-services.json
-            echo "google-services.json restored."
+      - restore_google_services
+      - setup_github_packages_auth
       - run:
           name: Run Android unit tests with coverage verification
           working_directory: Android
@@ -341,25 +411,15 @@ jobs:
           path: Android/app/build/reports/jacoco/jacocoTestReport/html
           destination: coverage-report
 
-  # ===========================================================
-  # Job 9: OWASP Dependency Vulnerability Scan (Android)
-  # Runs weekly via scheduled-security workflow.
-  # ===========================================================
+  # android-owasp-scan — weekly OWASP dependency vulnerability scan
   android-owasp-scan:
     docker:
       - image: cimg/android:2024.11.1
     resource_class: large
     steps:
       - checkout
-      - run:
-          name: Restore google-services.json
-          command: |
-            if [ -z "$GOOGLE_SERVICES_JSON_BASE64" ]; then
-              echo "Error: GOOGLE_SERVICES_JSON_BASE64 is not set. Add it as a CircleCI project/context secret."
-              exit 1
-            fi
-            echo "$GOOGLE_SERVICES_JSON_BASE64" | base64 --decode > Android/app/google-services.json
-            echo "google-services.json restored."
+      - restore_google_services
+      - setup_github_packages_auth
       - run:
           name: Run OWASP Dependency Check
           working_directory: Android
@@ -373,56 +433,61 @@ workflows:
   version: 2
   build-and-test:
     jobs:
-      # --- Platform-agnostic ---
       - gitleaks
-      # --- iOS jobs ---
-      - swiftlint:
+      # iOS — filtered to develop, main, MA-*, MOB-*
+      - ios-swiftlint:
           filters:
             branches:
               only:
-                - dev
+                - develop
                 - main
                 - /^MA-.*$/
-      - build:
+                - /^MOB-.*$/
+      - ios-build:
           filters:
             branches:
               only:
-                - dev
+                - develop
                 - main
                 - /^MA-.*$/
-      # Uncomment when simulator support is restored:
-      # - unit-tests:
+                - /^MOB-.*$/
+      # Re-enable when simulator support is restored:
+      # - ios-unit-tests:
       #     requires:
-      #       - build
-      - dependency-audit:
+      #       - ios-build
+      - ios-dependency-audit:
           filters:
             branches:
               only:
-                - dev
+                - develop
                 - main
                 - /^MA-.*$/
-      # --- Android jobs ---
+                - /^MOB-.*$/
+      # Android — same branch filters
       - android-build:
           filters:
             branches:
               only:
-                - dev
+                - develop
                 - main
                 - /^MA-.*$/
+                - /^MOB-.*$/
       - android-lint:
           filters:
             branches:
               only:
-                - dev
+                - develop
                 - main
                 - /^MA-.*$/
+                - /^MOB-.*$/
       - android-test:
           filters:
             branches:
               only:
-                - dev
+                - develop
                 - main
                 - /^MA-.*$/
+                - /^MOB-.*$/
 
   scheduled-security:
     triggers:

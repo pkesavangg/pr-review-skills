@@ -11,6 +11,8 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import com.dmdbrands.gurus.weight.domain.model.api.integration.IntegrationCategory
 import com.dmdbrands.gurus.weight.domain.model.api.integration.IntegrationProvider
@@ -82,6 +84,8 @@ private fun IntegrationSectionOrNull(
       text = title,
       style = typography.heading6,
       color = colorScheme.textHeading,
+      // TalkBack: expose the section title as a navigable heading.
+      modifier = Modifier.semantics { heading() },
     )
     Column(
       modifier = Modifier

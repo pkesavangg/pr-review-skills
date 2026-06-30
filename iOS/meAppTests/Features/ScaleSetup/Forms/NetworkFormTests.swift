@@ -3,8 +3,8 @@
 //  meAppTests
 //
 
-import Testing
 @testable import meApp
+import Testing
 
 @Suite("NetworkForm", .serialized)
 @MainActor
@@ -15,13 +15,13 @@ struct NetworkFormTests {
     @Test("initial ssid value is empty")
     func initialSSIDEmpty() {
         let form = NetworkForm()
-        #expect(form.ssid.value == "")
+        #expect(form.ssid.value.isEmpty)
     }
 
     @Test("initial password value is empty")
     func initialPasswordEmpty() {
         let form = NetworkForm()
-        #expect(form.password.value == "")
+        #expect(form.password.value.isEmpty)
     }
 
     @Test("initial networkHasNoPassword is false")
@@ -79,7 +79,7 @@ struct NetworkFormTests {
         let form = NetworkForm()
         form.setPassword("secret")
         form.networkHasNoPassword = true
-        #expect(form.password.value == "")
+        #expect(form.password.value.isEmpty)
     }
 
     @Test("setting networkHasNoPassword back to false restores required validator")
@@ -117,7 +117,7 @@ struct NetworkFormTests {
         form.setSSID("OldNetwork")
         form.ssid.markAsDirty()
         form.clearSSIDAndMarkPristine()
-        #expect(form.ssid.value == "")
+        #expect(form.ssid.value.isEmpty)
         #expect(form.ssid.isPristine == true)
     }
 
@@ -126,7 +126,7 @@ struct NetworkFormTests {
     @Test("isValidApModeSSID returns true for AP mode SSID prefix")
     func apModeSSIDValid() {
         let form = NetworkForm()
-        form.setSSID("gg_SmartScaleSetup_abc123")
+        form.setSSID("gg_SmartDeviceSetup_abc123")
         #expect(form.isValidApModeSSID() == true)
     }
 
@@ -173,8 +173,8 @@ struct NetworkFormTests {
         form.setSSID("Net")
         form.setPassword("pass")
         form.reset()
-        #expect(form.ssid.value == "")
-        #expect(form.password.value == "")
+        #expect(form.ssid.value.isEmpty)
+        #expect(form.password.value.isEmpty)
         #expect(form.networkHasNoPassword == false)
     }
 

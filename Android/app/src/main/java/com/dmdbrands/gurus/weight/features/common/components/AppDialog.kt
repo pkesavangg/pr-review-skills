@@ -11,6 +11,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
+import com.dmdbrands.gurus.weight.core.shared.utilities.testing.exposeTestTagsAsResourceId
 import com.dmdbrands.gurus.weight.features.common.model.ActionButton
 import com.dmdbrands.gurus.weight.theme.MeTheme
 
@@ -37,7 +38,8 @@ fun AppDialog(
     ),
   ) {
     Box(
-      modifier = Modifier.fillMaxSize()
+      // Dialog is a separate window; opt its tree into resource-id exposure (MOB-1099).
+      modifier = Modifier.fillMaxSize().exposeTestTagsAsResourceId()
     ) {
       // Background overlay - only clickable on areas not covered by modal
       Box(

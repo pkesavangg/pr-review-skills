@@ -190,6 +190,10 @@ final class MockTokenManagerAccountService: AccountServiceProtocol {
         throw UnexpectedCallError.methodCalled("updateProductTypes")
     }
 
+    func removeProductType(_ productType: String) async throws {
+        throw UnexpectedCallError.methodCalled("removeProductType")
+    }
+
     func updateMeasurementUnits(_ measurementUnits: MeasurementUnits) async throws {
         throw UnexpectedCallError.methodCalled("updateMeasurementUnits")
     }

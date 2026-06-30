@@ -113,12 +113,17 @@ struct HistoryEntryItem: View {
             .padding(.vertical, .spacingSM)
             .padding(.horizontal, .spacingSM)
             .contentShape(Rectangle())
-            .background(isExpanded ? theme.actionSecondary : Color.clear)
+            // Expanded row is a dark highlight: its values use inverse (light) text, so the
+            // background must be the dark actionPrimary. actionSecondary is the same light
+            // token as textInverse, which made the values invisible.
+            .background(isExpanded ? theme.actionPrimary : Color.clear)
             .accessibilityIdentifier(AccessibilityID.historyEntryRow)
             .accessibilityElement(children: .ignore)
             .accessibilityLabel(combinedAccessibilityLabel)
             .accessibilityAddTraits(entry.metricItems.isEmpty ? [] : .isButton)
-            .accessibilityHint(entry.metricItems.isEmpty ? "" : (isExpanded ? HistoryListStrings.accEntryCollapseHint : HistoryListStrings.accEntryExpandHint))
+            .accessibilityHint(entry.metricItems.isEmpty
+                ? ""
+                : (isExpanded ? HistoryListStrings.accEntryCollapseHint : HistoryListStrings.accEntryExpandHint))
             // Swipeable delete action
             .swipeableActions(
                 buttons: [

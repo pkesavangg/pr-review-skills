@@ -11,8 +11,11 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.semantics
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.dmdbrands.gurus.weight.core.shared.utilities.logging.AppLog
 import com.dmdbrands.gurus.weight.features.ScaleSetup.components.ScaleInfo
@@ -189,6 +192,8 @@ fun AppsyncScaleSetupScreenContent(
                 AppText(
                   text = AppsyncSetupStrings.AddInfo.UserNumber,
                   textType = TextType.ListTitle1,
+                  // TalkBack: section header.
+                  modifier = Modifier.semantics { heading() },
                 )
                 AppText(
                   text = AppsyncSetupStrings.AddInfo.UserNumberMessage,
@@ -200,6 +205,8 @@ fun AppsyncScaleSetupScreenContent(
                 AppText(
                   text = AppsyncSetupStrings.AddInfo.BodyComp,
                   textType = TextType.ListTitle1,
+                  // TalkBack: section header.
+                  modifier = Modifier.semantics { heading() },
                 )
                 AppText(
                   text = AppsyncSetupStrings.AddInfo.BodyCompMessage,
@@ -211,6 +218,8 @@ fun AppsyncScaleSetupScreenContent(
                 AppText(
                   text = AppsyncSetupStrings.AddInfo.HeightAge,
                   textType = TextType.ListTitle1,
+                  // TalkBack: section header.
+                  modifier = Modifier.semantics { heading() },
                 )
               }
             }

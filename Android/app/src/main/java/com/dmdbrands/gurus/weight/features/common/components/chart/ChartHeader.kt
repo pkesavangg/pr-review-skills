@@ -6,6 +6,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.semantics.semantics
 import com.dmdbrands.gurus.weight.theme.MeTheme
 
 /**
@@ -19,9 +20,10 @@ fun ChartHeader(
   valueContent: @Composable () -> Unit,
 ) {
   Column(
-    modifier = Modifier.padding(
-      horizontal = MeTheme.spacing.sm,
-    ),
+    // TalkBack: read the value + range as one chart-summary announcement.
+    modifier = Modifier
+      .padding(horizontal = MeTheme.spacing.sm)
+      .semantics(mergeDescendants = true) {},
   ) {
     valueContent()
     Text(

@@ -1,6 +1,6 @@
 import Foundation
-import Testing
 @testable import meApp
+import Testing
 
 @Suite(.serialized)
 @MainActor
@@ -68,7 +68,8 @@ struct DashboardErrorTests {
         #expect(DashboardError.noEntriesFound.recoverySuggestion == "Try selecting a different time period or add some entries.")
         #expect(DashboardError.apiSyncFailed(wrappedError("offline")).recoverySuggestion == "Check your internet connection and try again.")
         #expect(DashboardError.configurationLoadFailed(wrappedError("bad")).recoverySuggestion == "Try refreshing the dashboard or restart the app.")
-        #expect(DashboardError.scaleDetectionFailed(wrappedError("unknown")).recoverySuggestion == "Ensure your scale is properly connected and try again.")
+        #expect(DashboardError.scaleDetectionFailed(wrappedError("unknown")).recoverySuggestion
+            == "Ensure your scale is properly connected and try again.")
         #expect(DashboardError.invalidMetricData("bmi").recoverySuggestion == "The metric data may be corrupted. Try refreshing the dashboard.")
         #expect(DashboardError.goalCalculationFailed("bad goal").recoverySuggestion == "Check your goal settings and try again.")
         #expect(DashboardError.unitConversionFailed("bad unit").recoverySuggestion == "Please try again or contact support if the problem persists.")
@@ -79,8 +80,10 @@ struct DashboardErrorTests {
         #expect(DashboardError.dataLoadingFailed(wrappedError("db")).failureReason == "The dashboard data could not be loaded from the database.")
         #expect(DashboardError.apiSyncFailed(wrappedError("api")).failureReason == "The server request failed or timed out.")
         #expect(DashboardError.invalidMetricData("bmi").failureReason == "The metric data format is incorrect or missing required fields.")
-        #expect(DashboardError.scaleDetectionFailed(wrappedError("scale")).failureReason == "The scale type could not be determined from the device information.")
-        #expect(DashboardError.chartDataGenerationFailed("empty").failureReason == "The chart data could not be generated from the available entries.")
+        #expect(DashboardError.scaleDetectionFailed(wrappedError("scale")).failureReason
+            == "The scale type could not be determined from the device information.")
+        #expect(DashboardError.chartDataGenerationFailed("empty").failureReason
+            == "The chart data could not be generated from the available entries.")
         #expect(DashboardError.goalCalculationFailed("bad").failureReason == "The goal progress calculation failed due to invalid input data.")
         #expect(DashboardError.noActiveAccount.failureReason == nil)
         #expect(DashboardError.unitConversionFailed("bad").failureReason == nil)
@@ -113,7 +116,7 @@ struct DashboardErrorTests {
     }
 
     @Test("log: noActiveAccount logs at info severity with default tag")
-    func logNoActiveAccountUsesInfoSeverity() {
+    func logNoActiveAccountUsesInfoSeverity() throws {
         let logger = MockLoggerService()
 
         DashboardError.noActiveAccount.log(with: logger)
@@ -121,11 +124,11 @@ struct DashboardErrorTests {
         #expect(logger.entries.count == 1)
         #expect(logger.entries[0].level == .info)
         #expect(logger.entries[0].tag == "DashboardError")
-        #expect(logger.entries[0].message == DashboardError.noActiveAccount.errorDescription!)
+        #expect(logger.entries[0].message == (try #require(DashboardError.noActiveAccount.errorDescription)))
     }
 
     @Test("log: invalidMetricData logs at error severity with custom tag")
-    func logInvalidMetricDataUsesErrorSeverity() {
+    func logInvalidMetricDataUsesErrorSeverity() throws {
         let logger = MockLoggerService()
         let error = DashboardError.invalidMetricData("bmi")
 
@@ -134,7 +137,7 @@ struct DashboardErrorTests {
         #expect(logger.entries.count == 1)
         #expect(logger.entries[0].level == .error)
         #expect(logger.entries[0].tag == "DashboardTests")
-        #expect(logger.entries[0].message == error.errorDescription!)
+        #expect(logger.entries[0].message == (try #require(error.errorDescription)))
     }
 
     @Test("log: dataLoadingFailed logs mapped dashboard description at error severity")
@@ -151,7 +154,7 @@ struct DashboardErrorTests {
     }
 
     @Test("result logError: failure logs and success does not")
-    func resultLogErrorBehavior() {
+    func resultLogErrorBehavior() throws {
         let logger = MockLoggerService()
 
         let failure: Result<Void, DashboardError> = .failure(.goalCalculationFailed("bad goal"))
@@ -162,6 +165,6 @@ struct DashboardErrorTests {
 
         #expect(logger.entries.count == 1)
         #expect(logger.entries[0].tag == "DashboardResultTests")
-        #expect(logger.entries[0].message == DashboardError.goalCalculationFailed("bad goal").errorDescription!)
+        #expect(logger.entries[0].message == (try #require(DashboardError.goalCalculationFailed("bad goal").errorDescription)))
     }
 }

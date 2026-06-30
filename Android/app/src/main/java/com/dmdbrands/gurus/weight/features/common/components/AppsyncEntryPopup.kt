@@ -9,8 +9,14 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.LiveRegionMode
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.liveRegion
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextAlign
 import com.dmdbrands.gurus.weight.core.shared.utilities.ConversionTools
+import com.dmdbrands.gurus.weight.features.appSync.strings.AppSyncStrings
 import com.dmdbrands.gurus.weight.data.storage.db.entity.entry.BodyScaleEntryEntity
 import com.dmdbrands.gurus.weight.data.storage.db.entity.entry.EntryEntity
 import com.dmdbrands.gurus.weight.domain.model.common.WeightUnit
@@ -36,79 +42,88 @@ fun AppsyncEntryPopup(
 
   val scaleEntry = entry.scale.scaleEntry
 
-        BaseModal {
-          Column(
-            modifier = Modifier
-              .fillMaxWidth()
-              .padding(vertical = spacing.md, horizontal = spacing.sm),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(spacing.xs),
-          ) {
-            AppText(
-              text = AppPopupStrings.AppsyncEntryPopup.Title,
-              textType = TextType.Title,
-              textAlign = TextAlign.Center,
-              modifier = Modifier.padding(bottom = spacing.md),
-            )
-            val isMetric = entry.entry.unit.value.lowercase() == "kg"
-            val conversionWeight = ConversionTools.convertStoredToDisplay(scaleEntry.weight, isMetric)
-            val displayBmi = scaleEntry.bmi?.let {
-              String.format("%.1f", it).toFloatOrNull()
-            }
-            val displayBodyFat = scaleEntry.bodyFat?.toFloat().let {
-              String.format("%.1f", it).toFloatOrNull()
-            }
-            val displayWater = scaleEntry.water?.toFloat().let {
-              String.format("%.1f", it).toFloatOrNull()
-            }
-            val displayMuscleMass = scaleEntry.muscleMass?.toFloat().let {
-              String.format("%.1f", it).toFloatOrNull()
-            }
-
-            AppText(
-              text = AppPopupStrings.AppsyncEntryPopup.Weight(conversionWeight.toFloat().let {
-                String.format("%.1f", it).toFloatOrNull()
-              }, entry.entry.unit.value),
-              textType = TextType.Body,
-            )
-
-            AppText(
-              text = AppPopupStrings.AppsyncEntryPopup.Bodyfat(bodyfat = displayBodyFat),
-              textType = TextType.Body,
-            )
-
-            AppText(
-              text = AppPopupStrings.AppsyncEntryPopup.MuscleMass(muscleMass = displayMuscleMass),
-              textType = TextType.Body,
-            )
-
-            AppText(
-              text = AppPopupStrings.AppsyncEntryPopup.WaterWeight(waterWeight = displayWater),
-              textType = TextType.Body,
-            )
-
-            // Display BMI if available
-            AppText(
-              text = AppPopupStrings.AppsyncEntryPopup.Bmi(displayBmi),
-              textType = TextType.Body,
-            )
-
-            Spacer(modifier = Modifier.height(spacing.md))
-            AppButton(
-              label = AppPopupStrings.AppsyncEntryPopup.SaveButton,
-              type = ButtonType.PrimaryFilled,
-              onClick = onSave,
-              modifier = Modifier.fillMaxWidth(),
-            )
-            AppButton(
-              label = AppPopupStrings.AppsyncEntryPopup.EditButton,
-              type = ButtonType.InlineTextPrimary,
-              onClick = onEdit,
-              modifier = Modifier.fillMaxWidth(),
-            )
-          }
-        }
+  BaseModal {
+    Column(
+      modifier = Modifier
+        .fillMaxWidth()
+        .padding(vertical = spacing.md, horizontal = spacing.sm),
+      horizontalAlignment = Alignment.CenterHorizontally,
+      verticalArrangement = Arrangement.spacedBy(spacing.xs),
+    ) {
+      AppText(
+        text = AppPopupStrings.AppsyncEntryPopup.Title,
+        textType = TextType.Title,
+        textAlign = TextAlign.Center,
+        modifier = Modifier
+          .padding(bottom = spacing.md)
+          // TalkBack: the success message is the popup's heading, and is announced
+          // politely as a live region when the scan-result popup appears.
+          .semantics {
+            heading()
+            liveRegion = LiveRegionMode.Polite
+            contentDescription = "${AppSyncStrings.accScanResultLabel}: " +
+              AppPopupStrings.AppsyncEntryPopup.Title
+          },
+      )
+      val isMetric = entry.entry.unit.value.lowercase() == "kg"
+      val conversionWeight = ConversionTools.convertStoredToDisplay(scaleEntry.weight, isMetric)
+      val displayBmi = scaleEntry.bmi?.let {
+        String.format("%.1f", it).toFloatOrNull()
       }
+      val displayBodyFat = scaleEntry.bodyFat?.toFloat().let {
+        String.format("%.1f", it).toFloatOrNull()
+      }
+      val displayWater = scaleEntry.water?.toFloat().let {
+        String.format("%.1f", it).toFloatOrNull()
+      }
+      val displayMuscleMass = scaleEntry.muscleMass?.toFloat().let {
+        String.format("%.1f", it).toFloatOrNull()
+      }
+
+      AppText(
+        text = AppPopupStrings.AppsyncEntryPopup.Weight(conversionWeight.toFloat().let {
+          String.format("%.1f", it).toFloatOrNull()
+        }, entry.entry.unit.value),
+        textType = TextType.Body,
+      )
+
+      AppText(
+        text = AppPopupStrings.AppsyncEntryPopup.Bodyfat(bodyfat = displayBodyFat),
+        textType = TextType.Body,
+      )
+
+      AppText(
+        text = AppPopupStrings.AppsyncEntryPopup.MuscleMass(muscleMass = displayMuscleMass),
+        textType = TextType.Body,
+      )
+
+      AppText(
+        text = AppPopupStrings.AppsyncEntryPopup.WaterWeight(waterWeight = displayWater),
+        textType = TextType.Body,
+      )
+
+      // Display BMI if available
+      AppText(
+        text = AppPopupStrings.AppsyncEntryPopup.Bmi(displayBmi),
+        textType = TextType.Body,
+      )
+
+      Spacer(modifier = Modifier.height(spacing.md))
+      AppButton(
+        label = AppPopupStrings.AppsyncEntryPopup.SaveButton,
+        type = ButtonType.PrimaryFilled,
+        onClick = onSave,
+        modifier = Modifier.fillMaxWidth(),
+      )
+      AppButton(
+        label = AppPopupStrings.AppsyncEntryPopup.EditButton,
+        type = ButtonType.InlineTextPrimary,
+        onClick = onEdit,
+        modifier = Modifier.fillMaxWidth(),
+      )
+    }
+  }
+}
 
 @PreviewTheme
 @Composable

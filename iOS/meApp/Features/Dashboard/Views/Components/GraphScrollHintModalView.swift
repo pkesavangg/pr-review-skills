@@ -324,7 +324,7 @@ private struct MiniChartDemoView: View {
 // MARK: - Preview
 
 #Preview {
-    GraphScrollHintModalView(onClose: {})
+    GraphScrollHintModalView {}
         .environmentObject(Theme.shared)
         .padding()
         .background(Color.gray.opacity(0.3))

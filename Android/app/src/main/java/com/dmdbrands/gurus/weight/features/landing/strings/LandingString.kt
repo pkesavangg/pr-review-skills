@@ -11,4 +11,9 @@ object LandingString {
     const val LogIntoExistingAccount = "Log Into Existing Account"
     const val CreateNewAccount = "Create New Account"
   }
+
+  // region Accessibility (TalkBack)
+  /** Brand logo description spoken by TalkBack on the landing banner. */
+  const val accLogoLabel = "me.health by greater goods"
+  // endregion
 }

@@ -8,6 +8,11 @@ object AddScaleScreenStrings {
   const val MyDevices = "My Devices"
   const val Submit = "SUBMIT"
   const val CantFindModelNumber = "CAN'T FIND YOUR MODEL NUMBER?"
+
+  // region Accessibility (TalkBack)
+  /** Spoken label for the icon-only close button in the Add Scale app bar. */
+  const val accCloseButton = "Close"
+  // endregion
 }
 
 object ChooseScaleStrings {

@@ -7,6 +7,8 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.semantics
 import com.dmdbrands.gurus.weight.domain.model.permission.PermissionState
 import com.dmdbrands.gurus.weight.features.ScaleSetup.strings.ScaleSetupStrings
 import com.dmdbrands.gurus.weight.features.appPermissions.helper.AppPermissionsHelper
@@ -38,7 +40,10 @@ fun ScalePermissions(
         AppText(
             text = ScaleSetupStrings.ScalePermissions.Title,
             textType = TextType.Title,
-            modifier = Modifier.padding(bottom = spacing.xs),
+            // TalkBack: permissions title is the step heading.
+            modifier = Modifier
+                .padding(bottom = spacing.xs)
+                .semantics { heading() },
         )
         AppText(
             text = ScaleSetupStrings.ScalePermissions.Subtitle(setupType = scaleSetupType),

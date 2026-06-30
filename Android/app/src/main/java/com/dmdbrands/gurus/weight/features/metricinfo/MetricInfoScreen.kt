@@ -186,7 +186,10 @@ fun MetricInfoScreenContent(
     containerColor = MeTheme.colorScheme.secondaryBackground,
     appBarColor = MeTheme.colorScheme.primaryBackground,
     navigationIcon = {
-      AppIconButton(AppIcons.Default.Close) {
+      AppIconButton(
+        AppIcons.Default.Close,
+        contentDescription = MetricInfoStrings.accCloseButton,
+      ) {
         scope.launch {
           backStack.removeLast()
         }

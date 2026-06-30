@@ -8,6 +8,8 @@
 
 import Foundation
 
+// swiftlint:disable file_length
+
 /// Multi-unit baby weight display value. Primary is always populated; secondary (oz) is non-nil only for the lbs+oz format.
 struct BabyWeightDisplay {
     let primary: String        // "7" / "7.7" / "3.520"
@@ -16,6 +18,7 @@ struct BabyWeightDisplay {
     let secondaryUnit: String? // "oz" for lbs+oz, nil otherwise
 }
 
+// swiftlint:disable:next type_body_length
 enum BabyDashboardChartSupport {
     private static let percentileSeriesPrefix = "baby_percentile_"
     private static let heightSeriesName = "baby_height"
@@ -483,13 +486,15 @@ enum BabyDashboardChartSupport {
             return BabyWeightDisplay(
                 primary: String(format: "%.3f", displayWeight),
                 primaryUnit: BabyDashboardStrings.kg,
-                secondary: nil, secondaryUnit: nil
+                secondary: nil,
+                secondaryUnit: nil
             )
         case .imperialLbDecimal:
             return BabyWeightDisplay(
                 primary: String(format: "%.1f", displayWeight),
                 primaryUnit: BabyDashboardStrings.lb,
-                secondary: nil, secondaryUnit: nil
+                secondary: nil,
+                secondaryUnit: nil
             )
         case .imperialLbOz:
             var wholeLbs = Int(displayWeight)
@@ -524,7 +529,7 @@ enum BabyDashboardChartSupport {
         case .imperialLbDecimal:
             return BabyWeightDisplay(primary: "--", primaryUnit: BabyDashboardStrings.lb, secondary: nil, secondaryUnit: nil)
         case .imperialLbOz:
-            return BabyWeightDisplay(primary: "00", primaryUnit: BabyDashboardStrings.lbs, secondary: "00", secondaryUnit: BabyDashboardStrings.oz)
+            return BabyWeightDisplay(primary: "00", primaryUnit: BabyDashboardStrings.lbs, secondary: "0.0", secondaryUnit: BabyDashboardStrings.oz)
         }
     }
 
@@ -638,3 +643,4 @@ enum BabyDashboardChartSupport {
         }
     }
 }
+// swiftlint:enable file_length

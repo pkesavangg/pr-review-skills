@@ -57,4 +57,9 @@ object ScaleModeStrings {
     const val Title = "A user has Weight Only Mode on"
     const val Message = "You can temporarily enable All Body Metrics and/or review users from scale settings."
   }
+
+  // region Accessibility (TalkBack)
+  /** Spoken label for the icon-only close button in the app bar. */
+  const val accCloseLabel = "Close"
+  // endregion
 }

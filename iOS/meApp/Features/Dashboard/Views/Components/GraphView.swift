@@ -27,7 +27,7 @@ struct GraphView: View {
 
     /// Latest entry date in the active period — used to drive first-appear / initial-load auto-select.
     private var latestEntryDate: Date? {
-        dashboardStore.continuousOperations.max(by: { $0.date < $1.date })?.date
+        dashboardStore.continuousOperations.max { $0.date < $1.date }?.date
     }
 
     // Whether the selection callout is currently visible for the active period

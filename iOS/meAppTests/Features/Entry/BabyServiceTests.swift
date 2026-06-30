@@ -7,8 +7,8 @@
 //
 
 import Foundation
-import Testing
 @testable import meApp
+import Testing
 
 @Suite(.serialized)
 @MainActor
@@ -19,6 +19,8 @@ struct BabyServiceTests {
 
     private func makeSUT(
         productTypes: [String] = ["myWeight"]
+        // Test factory return; labeled tuple is clearer than a one-off SUT struct.
+        // swiftlint:disable:next large_tuple
     ) -> (BabyService, MockBabyRepositoryAPI, MockAccountService, String) {
         let accountId = "test-account-\(UUID().uuidString)"
         let repo = MockBabyRepositoryAPI()
@@ -48,14 +50,23 @@ struct BabyServiceTests {
     func saveBabyCreatesRemotelyAndLocally() async throws {
         let (sut, repo, _, accountId) = makeSUT()
         repo.createResult = BabyResponse(
-            id: "srv-1", name: "Lily", birthdate: nil, sex: nil,
-            birthWeightDecigrams: nil, birthLengthMillimeters: nil
+            id: "srv-1",
+            name: "Lily",
+            birthdate: nil,
+            sex: nil,
+            birthWeightDecigrams: nil,
+            birthLengthMillimeters: nil
         )
 
         let baby = try await sut.saveBaby(
-            name: "Lily", accountId: accountId, deviceId: "dev-1",
-            birthday: nil, biologicalSex: nil,
-            birthLengthInches: nil, birthWeightLbs: nil, birthWeightOz: nil
+            name: "Lily",
+            accountId: accountId,
+            deviceId: "dev-1",
+            birthday: nil,
+            biologicalSex: nil,
+            birthLengthInches: nil,
+            birthWeightLbs: nil,
+            birthWeightOz: nil
         )
 
         #expect(repo.createCalls == 1)
@@ -73,9 +84,14 @@ struct BabyServiceTests {
         let birthday = Date(timeIntervalSince1970: 1_700_000_000)
 
         _ = try await sut.saveBaby(
-            name: "Max", accountId: accountId, deviceId: nil,
-            birthday: birthday, biologicalSex: "male",
-            birthLengthInches: 20.0, birthWeightLbs: 7.0, birthWeightOz: 8.0
+            name: "Max",
+            accountId: accountId,
+            deviceId: nil,
+            birthday: birthday,
+            biologicalSex: "male",
+            birthLengthInches: 20.0,
+            birthWeightLbs: 7.0,
+            birthWeightOz: 8.0
         )
 
         let request = try #require(repo.lastCreateRequest)
@@ -92,9 +108,14 @@ struct BabyServiceTests {
         let (sut, _, account, accountId) = makeSUT(productTypes: ["myWeight"])
 
         _ = try await sut.saveBaby(
-            name: "Lily", accountId: accountId, deviceId: nil,
-            birthday: nil, biologicalSex: nil,
-            birthLengthInches: nil, birthWeightLbs: nil, birthWeightOz: nil
+            name: "Lily",
+            accountId: accountId,
+            deviceId: nil,
+            birthday: nil,
+            biologicalSex: nil,
+            birthLengthInches: nil,
+            birthWeightLbs: nil,
+            birthWeightOz: nil
         )
 
         #expect(account.updateProductTypesCalls == 1)
@@ -110,9 +131,14 @@ struct BabyServiceTests {
 
         await #expect(throws: HTTPError.serverError) {
             _ = try await sut.saveBaby(
-                name: "Lily", accountId: accountId, deviceId: nil,
-                birthday: nil, biologicalSex: nil,
-                birthLengthInches: nil, birthWeightLbs: nil, birthWeightOz: nil
+                name: "Lily",
+                accountId: accountId,
+                deviceId: nil,
+                birthday: nil,
+                biologicalSex: nil,
+                birthLengthInches: nil,
+                birthWeightLbs: nil,
+                birthWeightOz: nil
             )
         }
         #expect(sut.currentBabies.isEmpty)
@@ -124,15 +150,25 @@ struct BabyServiceTests {
     func updateBabyProfileUpdatesRemoteAndLocal() async throws {
         let (sut, repo, _, accountId) = makeSUT()
         let baby = try await sut.saveBaby(
-            name: "Emma", accountId: accountId, deviceId: nil,
-            birthday: nil, biologicalSex: nil,
-            birthLengthInches: nil, birthWeightLbs: nil, birthWeightOz: nil
+            name: "Emma",
+            accountId: accountId,
+            deviceId: nil,
+            birthday: nil,
+            biologicalSex: nil,
+            birthLengthInches: nil,
+            birthWeightLbs: nil,
+            birthWeightOz: nil
         )
         let newBirthday = Date(timeIntervalSince1970: 1_600_000_000)
 
         try await sut.updateBabyProfile(
-            baby, name: "Emma Updated", birthday: newBirthday, biologicalSex: "female",
-            birthLengthInches: 19.0, birthWeightLbs: 6.0, birthWeightOz: 12.0
+            baby,
+            name: "Emma Updated",
+            birthday: newBirthday,
+            biologicalSex: "female",
+            birthLengthInches: 19.0,
+            birthWeightLbs: 6.0,
+            birthWeightOz: 12.0
         )
 
         #expect(repo.updateCalls == 1)
@@ -150,9 +186,14 @@ struct BabyServiceTests {
     func deleteBabyRemovesAndDropsProductType() async throws {
         let (sut, repo, account, accountId) = makeSUT(productTypes: ["myWeight", "baby"])
         let baby = try await sut.saveBaby(
-            name: "ToDelete", accountId: accountId, deviceId: nil,
-            birthday: nil, biologicalSex: nil,
-            birthLengthInches: nil, birthWeightLbs: nil, birthWeightOz: nil
+            name: "ToDelete",
+            accountId: accountId,
+            deviceId: nil,
+            birthday: nil,
+            biologicalSex: nil,
+            birthLengthInches: nil,
+            birthWeightLbs: nil,
+            birthWeightOz: nil
         )
         let babyId = baby.id
 
@@ -161,8 +202,11 @@ struct BabyServiceTests {
         #expect(repo.deleteCalls == 1)
         #expect(repo.lastDeletedId == babyId)
         #expect(!sut.currentBabies.contains { $0.id == babyId })
-        // Last baby removed → "baby" stripped from productTypes.
-        #expect(account.lastUpdatedProductTypes?.contains("baby") == false)
+        // Last baby removed → "baby" stripped via the dedicated reducing path
+        // (removeProductType), not updateProductTypes which never reduces.
+        #expect(account.removeProductTypeCalls == 1)
+        #expect(account.lastRemovedProductType == "baby")
+        #expect(account.updateProductTypesCalls == 0)
     }
 
     // MARK: - loadBabies
@@ -171,8 +215,14 @@ struct BabyServiceTests {
     func loadBabiesMergesRemote() async throws {
         let (sut, repo, _, accountId) = makeSUT()
         repo.listResult = [
-            BabyResponse(id: "remote-1", name: "Remote Baby", birthdate: "2026-03-15",
-                         sex: "female", birthWeightDecigrams: 32500, birthLengthMillimeters: 510)
+            BabyResponse(
+                id: "remote-1",
+                name: "Remote Baby",
+                birthdate: "2026-03-15",
+                sex: "female",
+                birthWeightDecigrams: 32500,
+                birthLengthMillimeters: 510
+            )
         ]
 
         try await sut.loadBabies(for: accountId)
@@ -190,9 +240,14 @@ struct BabyServiceTests {
     func loadBabiesRemoteFailureFallsBack() async throws {
         let (sut, repo, _, accountId) = makeSUT()
         let baby = try await sut.saveBaby(
-            name: "Cached", accountId: accountId, deviceId: nil,
-            birthday: nil, biologicalSex: nil,
-            birthLengthInches: nil, birthWeightLbs: nil, birthWeightOz: nil
+            name: "Cached",
+            accountId: accountId,
+            deviceId: nil,
+            birthday: nil,
+            biologicalSex: nil,
+            birthLengthInches: nil,
+            birthWeightLbs: nil,
+            birthWeightOz: nil
         )
         repo.listError = HTTPError.noInternet
 

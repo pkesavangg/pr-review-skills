@@ -26,4 +26,15 @@ object DashboardSnapshotStrings {
     const val OpenBabyDashboard = "Open baby dashboard"
     const val AppLogoDescription = "Me App"
     const val AhaRangeInfo = "AHA Range information"
+
+    // region Accessibility (TalkBack)
+    /**
+     * Leading word for a snapshot line-chart summary. The metric value and time range
+     * are composed onto this at the call site, e.g. "Chart showing 180 lb week average".
+     */
+    const val accChartSummaryPrefix = "Chart showing"
+
+    /** Spoken descriptor for an empty snapshot chart (no entries yet). */
+    const val accEmptyChartDescription = "Chart with no entries yet"
+    // endregion
 }

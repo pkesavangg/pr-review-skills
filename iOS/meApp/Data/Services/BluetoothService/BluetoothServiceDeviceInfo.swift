@@ -12,7 +12,7 @@ import SwiftData
 extension BluetoothService {
     // MARK: - Device Info
     func getDeviceInfo(broadcastId: String, skipConnectionCheck: Bool = false) async -> Result<DeviceInfo, BluetoothServiceError> {
-        let isConnected = bluetoothScales.first(where: { $0.broadcastIdString == broadcastId })?.isConnected ?? false
+        let isConnected = bluetoothScales.first { $0.broadcastIdString == broadcastId }?.isConnected ?? false
         guard skipConnectionCheck || isConnected else {
             logger.log(level: .error, tag: tag, message: "Cannot get device info - device is not connected: \(broadcastId)")
             return .failure(.deviceNotConnected)
@@ -118,7 +118,16 @@ extension BluetoothService {
                 broadcastId: broadcastId,
                 isWeightOnlyModeEnabledByOthers: false
             )
-            let deleteResult = await deleteDevice(broadcastId: broadcastId, disconnect: false)
+            // Use the token captured up-front in `connectedR4Scales`. `deleteDevice(broadcastId:)`
+            // re-resolves the scale + token from the live `bluetoothScales` array, which a
+            // `scalesPublisher` emission can clear mid-loop — silently dropping every delete after
+            // the first. The captured token is stable across the loop.
+            let deleteResult: Result<UserDeletionResponse, BluetoothServiceError>
+            if let token = scale.token, !token.isEmpty {
+                deleteResult = await deleteUserByToken(broadcastId: broadcastId, token: token, disconnect: false)
+            } else {
+                deleteResult = await deleteDevice(broadcastId: broadcastId, disconnect: false)
+            }
             switch deleteResult {
             case .success(let result):
                 logger.log(level: .info, tag: tag, message: "Successfully deleted R4 scale: \(scale.deviceName ?? "Unknown")", data: result)

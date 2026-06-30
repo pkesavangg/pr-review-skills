@@ -36,6 +36,7 @@ import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.times
 import androidx.compose.ui.zIndex
+import com.dmdbrands.gurus.weight.features.common.components.strings.AppFabStrings
 import com.dmdbrands.gurus.weight.resources.AppIcons
 import com.dmdbrands.gurus.weight.theme.MeTheme
 import kotlinx.coroutines.launch
@@ -157,7 +158,7 @@ fun AppFab(
     ) {
         Icon(
             painter = painterResource(id = AppIcons.Default.WeightOnlyMode),
-            contentDescription = if (showWeightOnlyModeAlert) "Enable Body Metrics" else "Weight Only Mode",
+            contentDescription = if (showWeightOnlyModeAlert) AppFabStrings.accEnableBodyMetricsLabel else AppFabStrings.accWeightOnlyModeLabel,
             modifier = Modifier
                 .size(32.dp)
                 .background(color = Color.Transparent),

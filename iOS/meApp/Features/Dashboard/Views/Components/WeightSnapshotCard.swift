@@ -88,6 +88,7 @@ struct WeightSnapshotCard: View {
     }
 
     @MainActor
+    // swiftlint:disable:next function_body_length
     private func recomputeCache() async {
         // Capture inputs on the main actor, then compute off-thread.
         let inputSummaries = summaries
@@ -326,11 +327,11 @@ struct WeightSnapshotCard: View {
         return "\(startFmt.string(from: start)) - \(endDay), \(sy)".lowercased()
     }
 
-    private static func convertStoredWeightToDisplay(_ storedWeight: Int, unit: WeightUnit) -> Double {
+    private nonisolated static func convertStoredWeightToDisplay(_ storedWeight: Int, unit: WeightUnit) -> Double {
         Self.convertStoredWeightToDisplay(Double(storedWeight), unit: unit)
     }
 
-    private static func convertStoredWeightToDisplay(_ storedWeight: Double, unit: WeightUnit) -> Double {
+    private nonisolated static func convertStoredWeightToDisplay(_ storedWeight: Double, unit: WeightUnit) -> Double {
         unit == .kg
             ? ConversionTools.convertStoredToKg(storedWeight)
             : ConversionTools.convertStoredToLbs(storedWeight)

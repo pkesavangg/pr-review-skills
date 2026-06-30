@@ -5,6 +5,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.input.ImeAction
 import com.dmdbrands.gurus.weight.features.common.components.AppInput
 import com.dmdbrands.gurus.weight.features.common.components.AppInputType
@@ -35,7 +37,13 @@ fun NameStep(
     AppStyledCard(
         cardAlignmentType = LocalCardAlignment.current,
     ) {
-        AppText(SignupStrings.nameStepTitle, TextType.Title, spacing = MeTheme.spacing.xs)
+        // TalkBack: the step title is a heading for by-heading navigation.
+        AppText(
+            SignupStrings.nameStepTitle,
+            TextType.Title,
+            spacing = MeTheme.spacing.xs,
+            modifier = Modifier.semantics { heading() },
+        )
         AppText(SignupStrings.nameStepSubtitle, TextType.Subtitle, spacing = MeTheme.spacing.lg)
         AppInput(
             formControl = firstNameControl,

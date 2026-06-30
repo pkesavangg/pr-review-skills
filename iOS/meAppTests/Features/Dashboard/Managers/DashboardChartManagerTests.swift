@@ -1,11 +1,13 @@
 import Foundation
-import Testing
 @testable import meApp
+import Testing
 
 @Suite(.serialized)
 @MainActor
 struct DashboardChartManagerTests {
 
+    // Test factory return; labeled tuple is clearer than a one-off SUT struct.
+    // swiftlint:disable:next large_tuple
     private func makeSUT() -> (
         store: DashboardStore,
         accountService: AccountService,
@@ -15,6 +17,8 @@ struct DashboardChartManagerTests {
         makeSUT(cacheManager: MockDashboardCacheManager())
     }
 
+    // Test factory return; labeled tuple is clearer than a one-off SUT struct.
+    // swiftlint:disable:next large_tuple
     private func makeSUT(cacheManager: MockDashboardCacheManager) -> (
         store: DashboardStore,
         accountService: AccountService,
@@ -378,6 +382,9 @@ struct DashboardChartManagerTests {
     @Test("handleScrollPositionChange and handleScrollStart: buffer the position and enter scrolling mode")
     func handleScrollPositionChangeAndStartTrackScrollState() async {
         let (store, _, _, _) = makeSUT()
+        // Use .week so the committed position is the raw buffered value; .month (the default)
+        // snaps the commit to the month boundary, which this test is not exercising.
+        store.graphManager.state.selectedPeriod = .week
         let position = DateTimeTools.getDateFromDateString("2026-03-10", format: "yyyy-MM-dd")
 
         store.chartManager.handleScrollStart()

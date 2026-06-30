@@ -99,6 +99,7 @@ struct BpmSnapshotCard: View {
     }
 
     @MainActor
+    // swiftlint:disable:next function_body_length
     private func recomputeCache() async {
         let inputSummaries = summaries
         let currentTheme = theme

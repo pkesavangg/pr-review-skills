@@ -71,7 +71,7 @@ class AddScaleViewModelTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `initial state has empty form and no saved scales`() = runTest {
+    fun `initial state has empty form and no saved scales`() = runTest(mainDispatcherRule.scheduler) {
         viewModel = createViewModel()
         advanceUntilIdle()
 
@@ -88,7 +88,7 @@ class AddScaleViewModelTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `init subscribes to pairedScales and updates savedScales`() = runTest {
+    fun `init subscribes to pairedScales and updates savedScales`() = runTest(mainDispatcherRule.scheduler) {
         val devices = listOf(
             TestFixtures.aDevice(id = "device-1", deviceType = "bluetooth"),
         )
@@ -101,7 +101,7 @@ class AddScaleViewModelTest {
     }
 
     @Test
-    fun `init with empty paired scales keeps savedScales empty`() = runTest {
+    fun `init with empty paired scales keeps savedScales empty`() = runTest(mainDispatcherRule.scheduler) {
         every { deviceService.pairedScales } returns MutableStateFlow(emptyList<Device>())
 
         viewModel = createViewModel()
@@ -115,7 +115,7 @@ class AddScaleViewModelTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `SetSavedScales updates savedScales in state`() = runTest {
+    fun `SetSavedScales updates savedScales in state`() = runTest(mainDispatcherRule.scheduler) {
         viewModel = createViewModel()
         advanceUntilIdle()
 
@@ -127,7 +127,7 @@ class AddScaleViewModelTest {
     }
 
     @Test
-    fun `OpenSelectedScaleSetup updates selectedSku`() = runTest {
+    fun `OpenSelectedScaleSetup updates selectedSku`() = runTest(mainDispatcherRule.scheduler) {
         viewModel = createViewModel()
         advanceUntilIdle()
 
@@ -138,7 +138,7 @@ class AddScaleViewModelTest {
     }
 
     @Test
-    fun `OpenScaleSettings updates scaleId`() = runTest {
+    fun `OpenScaleSettings updates scaleId`() = runTest(mainDispatcherRule.scheduler) {
         viewModel = createViewModel()
         advanceUntilIdle()
 
@@ -149,7 +149,7 @@ class AddScaleViewModelTest {
     }
 
     @Test
-    fun `Submit sets isSubmitting to true`() = runTest {
+    fun `Submit sets isSubmitting to true`() = runTest(mainDispatcherRule.scheduler) {
         viewModel = createViewModel()
         advanceUntilIdle()
 
@@ -164,7 +164,7 @@ class AddScaleViewModelTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `OpenScaleChooser navigates to ChooseScale route`() = runTest {
+    fun `OpenScaleChooser navigates to ChooseScale route`() = runTest(mainDispatcherRule.scheduler) {
         viewModel = createViewModel()
         advanceUntilIdle()
 
@@ -175,7 +175,7 @@ class AddScaleViewModelTest {
     }
 
     @Test
-    fun `OpenScaleSettings navigates to ScaleDetails route`() = runTest {
+    fun `OpenScaleSettings navigates to ScaleDetails route`() = runTest(mainDispatcherRule.scheduler) {
         viewModel = createViewModel()
         advanceUntilIdle()
 
@@ -190,7 +190,7 @@ class AddScaleViewModelTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `ShowHelp calls dialogUtility showModelNumberHelpDialog`() = runTest {
+    fun `ShowHelp calls dialogUtility showModelNumberHelpDialog`() = runTest(mainDispatcherRule.scheduler) {
         viewModel = createViewModel()
         advanceUntilIdle()
 
@@ -205,7 +205,7 @@ class AddScaleViewModelTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `Submit with empty model number does not navigate`() = runTest {
+    fun `Submit with empty model number does not navigate`() = runTest(mainDispatcherRule.scheduler) {
         viewModel = createViewModel()
         advanceUntilIdle()
 
@@ -216,7 +216,7 @@ class AddScaleViewModelTest {
     }
 
     @Test
-    fun `Submit with valid model number navigates to scale setup`() = runTest {
+    fun `Submit with valid model number navigates to scale setup`() = runTest(mainDispatcherRule.scheduler) {
         viewModel = createViewModel()
         advanceUntilIdle()
 
@@ -234,7 +234,7 @@ class AddScaleViewModelTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `ResetForm resets model number form value`() = runTest {
+    fun `ResetForm resets model number form value`() = runTest(mainDispatcherRule.scheduler) {
         viewModel = createViewModel()
         advanceUntilIdle()
 
@@ -252,7 +252,7 @@ class AddScaleViewModelTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `OpenSelectedScaleSetup with unknown SKU does not navigate`() = runTest {
+    fun `OpenSelectedScaleSetup with unknown SKU does not navigate`() = runTest(mainDispatcherRule.scheduler) {
         viewModel = createViewModel()
         advanceUntilIdle()
 

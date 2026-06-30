@@ -120,6 +120,7 @@ final class MultiDeviceSnapshotViewModel: ObservableObject {
         var babyItems: [ProductSelection] = []
         var pendingBabyItem: ProductSelection?
 
+        var hasBpmItem = false
         for item in availableItems {
             if case .baby(let profile) = item {
                 if profile.isPendingSelection {
@@ -129,7 +130,15 @@ final class MultiDeviceSnapshotViewModel: ObservableObject {
                 }
             } else {
                 nonBabyItems.append(item)
+                if case .myBloodPressure = item {
+                    hasBpmItem = true
+                }
             }
+        }
+
+        // Surface a BPM snapshot when BPM data exists but BPM isn't already in the list.
+        if !hasBpmItem && shouldShowBpmSnapshot {
+            nonBabyItems.append(.myBloodPressure)
         }
 
         // Prefer the currently selected baby; fall back to the first baby in the list.
@@ -148,6 +157,10 @@ final class MultiDeviceSnapshotViewModel: ObservableObject {
             return nonBabyItems + [pending]
         }
         return nonBabyItems
+    }
+
+    private var shouldShowBpmSnapshot: Bool {
+        !bpmDailySummaries.isEmpty
     }
 
     func babySummaries(for babyProfile: BabyProfile) -> [BathScaleWeightSummary] {

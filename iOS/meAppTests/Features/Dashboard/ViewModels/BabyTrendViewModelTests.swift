@@ -1,6 +1,6 @@
 import Foundation
-import Testing
 @testable import meApp
+import Testing
 
 @Suite(.serialized)
 @MainActor
@@ -14,6 +14,17 @@ struct BabyTrendViewModelTests {
         TestDependencyContainer.reset()
         TestDependencyContainer.registerDashboardConcreteDependencies()
         return DashboardStore(lightweight: true, formatter: MockDashboardFormatter(), cacheManager: MockDashboardCacheManager())
+    }
+
+    @discardableResult
+    private func makeStoreWithBabyEntries(_ baby: BabyProfile) -> DashboardStore {
+        TestDependencyContainer.reset()
+        let deps = TestDependencyContainer.registerDashboardConcreteDependencies()
+        let store = DashboardStore(lightweight: true, formatter: MockDashboardFormatter(), cacheManager: MockDashboardCacheManager())
+        // Seed real baby summaries so `hasBabyEntries` is true, then select the baby.
+        deps.entry.babyDailySummariesByProfile[baby.id] = BabyDashboardChartSupport.dummyDailySummaries(for: baby)
+        store.selectProductItem(.baby(profile: baby))
+        return store
     }
 
     private func makeBabyProfile(
@@ -62,8 +73,8 @@ struct BabyTrendViewModelTests {
     @Test("displayState headlineLabel shows period average when no point selected")
     func headlineLabelShowsPeriodAverage() {
         let sut = makeSUT()
-        let store = makeStore()
         let baby = makeBabyProfile()
+        let store = makeStoreWithBabyEntries(baby)
 
         store.state.graph.selectedXValue = nil
         store.state.graph.selectedPoint = nil

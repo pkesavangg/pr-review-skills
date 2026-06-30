@@ -6,8 +6,11 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.semantics
 import com.dmdbrands.gurus.weight.features.common.components.PreviewTheme
 import com.dmdbrands.gurus.weight.features.metricinfo.strings.MetricInfoDescriptions
+import com.dmdbrands.gurus.weight.features.metricinfo.strings.MetricInfoStrings
 import com.dmdbrands.gurus.weight.domain.enums.MetricKey
 import com.dmdbrands.gurus.weight.theme.MeAppTheme
 import com.dmdbrands.gurus.weight.theme.MeTheme
@@ -23,9 +26,11 @@ fun MetricInfoInfoSection(metricKey: MetricKey) {
   }
   Column {
     Text(
-      text = "Why ${info.title}?",
+      text = "${MetricInfoStrings.accWhyPrefix} ${info.title}?",
       style = MeTheme.typography.heading4,
       color = MeTheme.colorScheme.textHeading,
+      // TalkBack: section header — lets users jump between sections by heading.
+      modifier = Modifier.semantics { heading() },
     )
     Spacer(modifier = Modifier.height(MeTheme.spacing.xs))
     Text(

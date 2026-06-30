@@ -15,6 +15,9 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.text.SpanStyle
@@ -25,6 +28,7 @@ import com.dmdbrands.gurus.weight.core.shared.utilities.ConversionTools
 import com.dmdbrands.gurus.weight.domain.model.storage.entry.BabyEntry
 import com.dmdbrands.gurus.weight.features.common.components.AppIcon
 import com.dmdbrands.gurus.weight.features.history.strings.HistoryItemStrings
+import com.dmdbrands.gurus.weight.features.historyDetail.strings.HistoryDetailScreenStrings
 import com.dmdbrands.gurus.weight.features.manualEntry.helper.EntryHelper.getTime
 import com.dmdbrands.gurus.weight.resources.AppIcons
 import com.dmdbrands.gurus.weight.theme.MeTheme
@@ -97,11 +101,29 @@ fun BabyDayHistoryItem(
         withStyle(boldStyle) { append("--") }
     }
 
+    // TalkBack: read the baby entry as one announcement with an expand/collapse state, e.g.
+    // "6:30 AM, weight 8 lbs 14.9 oz, length 12 in, percentile --".
+    val rowDescription = buildString {
+        append(item.getTime())
+        append(", ${HistoryItemStrings.accWeightLabel} ${weightText.text}")
+        append(", ${HistoryItemStrings.accLengthLabel} ${lengthText.text}")
+        append(", ${HistoryItemStrings.accPercentileLabel} ${percentText.text}")
+    }
+    val expandState = if (isExpanded) {
+        HistoryDetailScreenStrings.accExpandedState
+    } else {
+        HistoryDetailScreenStrings.accCollapsedState
+    }
+
     Column(modifier = Modifier.testTag("entry_row")) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
                 .clickable { onToggleExpand() }
+                .semantics(mergeDescendants = true) {
+                    contentDescription = rowDescription
+                    stateDescription = expandState
+                }
                 .padding(horizontal = MeTheme.spacing.sm, vertical = MeTheme.spacing.sm),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(MeTheme.spacing.lg),

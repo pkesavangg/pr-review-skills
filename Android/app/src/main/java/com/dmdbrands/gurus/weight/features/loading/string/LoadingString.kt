@@ -16,4 +16,9 @@ object LoadingString {
 
     /** Base loading text. */
     const val LOADING = "loading"
+
+    // region Accessibility (TalkBack)
+    /** Brand logo description spoken by TalkBack on the splash banner. */
+    const val accLogoLabel = "me.health by greater goods"
+    // endregion
 }

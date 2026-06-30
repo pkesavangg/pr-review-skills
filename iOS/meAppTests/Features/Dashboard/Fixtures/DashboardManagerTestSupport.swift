@@ -1,9 +1,11 @@
 import Foundation
-import SwiftData
 @testable import meApp
+import SwiftData
 
 @MainActor
 enum DashboardManagerTestSupport {
+    // Test SUT alias; labeled tuple is clearer than a one-off struct.
+    // swiftlint:disable:next large_tuple
     typealias StoreSUT = (
         store: DashboardStore,
         accountService: AccountService,
@@ -14,6 +16,24 @@ enum DashboardManagerTestSupport {
         cacheManager: DashboardCacheManagerProtocol,
         formatter: DashboardFormatterProtocol
     ) -> StoreSUT {
+        let sut = makeStoreWithRepo(cacheManager: cacheManager, formatter: formatter)
+        return (sut.store, sut.accountService, sut.entryService)
+    }
+
+    // swiftlint:disable:next large_tuple
+    typealias StoreSUTWithRepo = (
+        store: DashboardStore,
+        accountService: AccountService,
+        entryService: EntryService,
+        accountLocalRepo: MockAccountRepository
+    )
+
+    /// Same as `makeStore` but also surfaces the account's local repo so tests that
+    /// exercise the real save path can seed the active account into storage.
+    static func makeStoreWithRepo(
+        cacheManager: DashboardCacheManagerProtocol,
+        formatter: DashboardFormatterProtocol
+    ) -> StoreSUTWithRepo {
         TestDependencyContainer.reset()
         let deps = TestDependencyContainer.registerDashboardConcreteDependencies()
         let store = DashboardStore(lightweight: true, formatter: formatter, cacheManager: cacheManager)
@@ -30,7 +50,7 @@ enum DashboardManagerTestSupport {
         store.lifecycleManager.accountService = deps.account
         store.lifecycleManager.logger = deps.logger
 
-        return (store, deps.account, deps.entry)
+        return (store, deps.account, deps.entry, deps.accountLocalRepo)
     }
 
     static func syncStoreGraphState(_ store: DashboardStore) {
@@ -63,10 +83,16 @@ enum DashboardManagerTestSupport {
 
     static func makeEntryContext() -> ModelContext {
         let config = ModelConfiguration(isStoredInMemoryOnly: true)
-        let container = try! ModelContainer(
-            for: Entry.self, BathScaleEntry.self, BathScaleMetric.self,
-            configurations: config
-        )
-        return ModelContext(container)
+        do {
+            let container = try ModelContainer(
+                for: Entry.self,
+                BathScaleEntry.self,
+                BathScaleMetric.self,
+                configurations: config
+            )
+            return ModelContext(container)
+        } catch {
+            fatalError("Failed to create in-memory ModelContainer: \(error)")
+        }
     }
 }

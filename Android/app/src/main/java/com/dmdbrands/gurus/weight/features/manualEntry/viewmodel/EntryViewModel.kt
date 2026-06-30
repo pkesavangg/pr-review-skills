@@ -318,23 +318,6 @@ constructor(
    * reading and a single VIEW action that opens this entry's History detail — replaces the plain
    * "Entry added" toast.
    */
-  /** Saved-to-log card for a baby manual entry; falls back to the plain toast if no weight row. */
-  private fun showBabySavedToLogToast(builtEntries: List<BabyEntry>) {
-    val weightDecigrams = builtEntries.firstNotNullOfOrNull { it.babyWeightDecigrams }
-    val entryTimestamp = builtEntries.firstOrNull()?.entry?.entryTimestamp
-    if (weightDecigrams != null && entryTimestamp != null) {
-      showSavedToLogToast(
-        reading = ConversionTools.convertBabyWeightToDisplay(weightDecigrams, source = null, isMetric = false),
-        type = ProductType.BABY,
-        entryTimestamp = entryTimestamp,
-      )
-    } else {
-      dialogQueueService.showToast(
-        Toast.Simple(title = EntryScreenStrings.EntryAddedTitle, message = EntryScreenStrings.EntryAdded),
-      )
-    }
-  }
-
   private fun showSavedToLogToast(reading: String, type: ProductType, entryTimestamp: String) {
     // VIEW opens this entry's History detail, whose query matches the bucketed key the History list
     // passes (a "Mon YYYY" month label for weight/BP, a "yyyy-MM-dd" day key for baby) — not the raw
@@ -508,11 +491,24 @@ constructor(
       }
       try {
         // addEntry persists locally (isSynced=false) and syncs to POST /v3/entries/
-        // (category=baby) — the same path manual BP uses.
-        val builtEntries = buildBabyEntries(babyForm.forms.baby.controls, accountId, babyId)
-        builtEntries.forEach { entryService.addEntry(it) }
+        // (category=baby) — the same path manual BP uses. One combined local row carries BOTH
+        // measures: the local UNIQUE(accountId, entryTimestamp) index allows only one row per
+        // timestamp, and the POST split into distinct §2.16 weight/length requests happens later
+        // in the mapper. Null when no measure was entered.
+        buildBabyEntry(babyForm.forms.baby.controls, accountId, babyId)
+          ?.let { entryService.addEntry(it) }
         analyticsService.logEvent(IAnalyticsService.Events.MANUAL_ENTRY_CREATED)
-        showBabySavedToLogToast(builtEntries)
+        dialogQueueService.showToast(
+          Toast.Simple(
+            title = EntryScreenStrings.EntryAddedTitle,
+            message = EntryScreenStrings.EntryAdded,
+          ),
+        )
+        handleIntent(
+          EntryIntent.UpdateActiveForm(
+            ActiveEntryForm.Baby(form = MultiFormGroup.create(forms = BabyEntryForm.create())),
+          ),
+        )
         // Match the weight/BP save flow: just deactivate + pop back to where the
         // entry screen was opened from. (Rebuilding the form here re-activated the
         // screen and prevented the back navigation — the form is recreated by
@@ -550,54 +546,45 @@ constructor(
    * Reads the baby form and builds one [BabyEntry] per provided measure. Weight and length
    * are distinct entryTypes (§2.16), so an entry with both yields two entries.
    */
-  private fun buildBabyEntries(
+  /**
+   * Builds the single combined baby [BabyEntry] for manual entry, carrying BOTH measures
+   * (weight + length) on one local row. The local UNIQUE(accountId, entryTimestamp) index
+   * allows only one row per timestamp; the POST split into distinct §2.16 weight/length
+   * requests happens later in the mapper. Returns null when neither measure was entered.
+   */
+  private fun buildBabyEntry(
     controls: BabyEntryFormControls,
     accountId: String,
     babyId: String,
-  ): List<BabyEntry> {
+  ): BabyEntry? {
     val timestamp = DateTimeConverter.timestampToIso(controls.dateTime.value.getTimestamp())
     val note = controls.notes.value.ifBlank { null }
     val lbs = controls.pounds.value.toIntOrNull() ?: 0
     val oz = controls.ounces.value.toDoubleOrNull() ?: 0.0
     val inches = controls.inches.value.toDoubleOrNull()
-
     val weightDecigrams = if (lbs > 0 || oz > 0) ConversionTools.convertLbOzToDecigrams(lbs, oz) else null
     val lengthMm = if (inches != null && inches > 0) ConversionTools.convertInchesToMm(inches) else null
-    if (weightDecigrams == null && lengthMm == null) return emptyList()
-
-    // ONE local row carries both measures — the unique (accountId, entryTimestamp) index
-    // allows only one row per timestamp, and the history/detail UI shows weight + length on
-    // one line. The row fans out to the two §2.16 requests (distinct entryId) only at POST.
-    return listOf(buildBabyEntry(accountId, babyId, timestamp, note, weightDecigrams, lengthMm))
+    if (weightDecigrams == null && lengthMm == null) return null
+    return BabyEntry(
+      entry = EntryEntity(
+        accountId = accountId,
+        entryTimestamp = timestamp,
+        operationType = "create",
+        deviceType = "manual",
+        deviceId = "",
+      ),
+      babyEntry = BabyEntryEntity(
+        id = 0L,
+        babyId = babyId,
+        babyWeightDecigrams = weightDecigrams,
+        babyLengthMillimeters = lengthMm,
+        entryNote = note,
+        // Primary type for the local row; POST splits per present measure regardless.
+        entryType = if (weightDecigrams != null) BabyEntryType.WEIGHT.value else BabyEntryType.MEASURE_LENGTH.value,
+        source = EntrySource.MANUAL.value,
+      ),
+    )
   }
-
-  /** Builds the combined baby [BabyEntry] (weight and/or length) for manual entry. */
-  private fun buildBabyEntry(
-    accountId: String,
-    babyId: String,
-    timestamp: String,
-    note: String?,
-    weightDecigrams: Int?,
-    lengthMm: Int?,
-  ): BabyEntry = BabyEntry(
-    entry = EntryEntity(
-      accountId = accountId,
-      entryTimestamp = timestamp,
-      operationType = "create",
-      deviceType = "manual",
-      deviceId = "",
-    ),
-    babyEntry = BabyEntryEntity(
-      id = 0L,
-      babyId = babyId,
-      babyWeightDecigrams = weightDecigrams,
-      babyLengthMillimeters = lengthMm,
-      entryNote = note,
-      // Primary type for the local row; POST splits per present measure regardless.
-      entryType = if (weightDecigrams != null) BabyEntryType.WEIGHT.value else BabyEntryType.MEASURE_LENGTH.value,
-      source = EntrySource.MANUAL.value,
-    ),
-  )
 
   /**
    * Loads AppSync data into the form for editing, following ProfileViewModel pattern.

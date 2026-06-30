@@ -121,4 +121,18 @@ object ScaleSetupStrings {
     const val Dismiss = "Dismiss"
     const val Cancel = "Cancel"
   }
+
+  // region Accessibility (TalkBack)
+  /** Spoken label for the icon-only close button in the scale-setup app bar. */
+  const val accCloseButton = "Close setup"
+
+  /** Spoken label for the icon-only help button in the scale-setup app bar. */
+  const val accHelpButton = "Help"
+
+  /** Spoken description for the green check shown when a setup step is complete. */
+  const val accSetupCompleteImage = "Setup complete"
+
+  /** Spoken label for the Wi-Fi signal icon shown beside a network name. */
+  const val accWifiNetworkIcon = "Wi-Fi network"
+  // endregion
 }

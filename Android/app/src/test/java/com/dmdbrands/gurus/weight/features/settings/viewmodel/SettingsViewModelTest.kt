@@ -247,7 +247,7 @@ class SettingsViewModelTest {
     }
 
     @Test
-    fun `observes deviceService hasWeightScale and reflects it in state`() = runTest {
+    fun `observes deviceService hasWeightScale and reflects it in state`() = runTest(mainDispatcherRule.scheduler) {
         every { deviceService.hasWeightScale } returns MutableStateFlow(true)
         val vm = SettingsViewModel(
             profileSettingsManager = profileSettingsManager,
@@ -308,28 +308,28 @@ class SettingsViewModelTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `OpenAddScales navigates to MyDevices`() = runTest {
+    fun `OpenAddScales navigates to MyDevices`() = runTest(mainDispatcherRule.scheduler) {
       viewModel.handleIntent(SettingsIntent.OpenMyDevices)
         advanceUntilIdle()
       coVerify { navigationService.navigateTo(AppRoute.AccountSettings.MyDevices) }
     }
 
     @Test
-    fun `OpenHelp navigates to HelpScreen`() = runTest {
+    fun `OpenHelp navigates to HelpScreen`() = runTest(mainDispatcherRule.scheduler) {
         viewModel.handleIntent(SettingsIntent.OpenHelp)
         advanceUntilIdle()
         coVerify { navigationService.navigateTo(AppRoute.AccountSettings.HelpScreen) }
     }
 
     @Test
-    fun `SwitchAccount navigates to MyAccounts`() = runTest {
+    fun `SwitchAccount navigates to MyAccounts`() = runTest(mainDispatcherRule.scheduler) {
         viewModel.handleIntent(SettingsIntent.SwitchAccount)
         advanceUntilIdle()
         coVerify { navigationService.navigateTo(AppRoute.AccountSettings.MyAccounts) }
     }
 
     @Test
-    fun `onSwitchAccountClick navigates to MyAccounts`() = runTest {
+    fun `onSwitchAccountClick navigates to MyAccounts`() = runTest(mainDispatcherRule.scheduler) {
         viewModel.onSwitchAccountClick()
         advanceUntilIdle()
         coVerify { navigationService.navigateTo(AppRoute.AccountSettings.MyAccounts) }

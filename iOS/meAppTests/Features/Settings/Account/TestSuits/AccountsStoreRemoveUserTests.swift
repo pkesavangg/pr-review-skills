@@ -1,6 +1,6 @@
 import Foundation
-import Testing
 @testable import meApp
+import Testing
 
 extension AccountsStoreTests {
     @Suite("Remove User And Errors")
@@ -49,7 +49,7 @@ extension AccountsStoreTests {
             store.userRemoveHandler(user: unknownUser)
             harness.notification.alertData?.buttons.first?.action(nil)
 
-            #expect(harness.accountService.logOutCalls == 0)
+            #expect(harness.accountService.removeAccountFromDeviceCalls == 0)
             #expect(harness.notification.showLoaderCalls == 0)
             #expect(harness.logger.messages.contains { $0.contains("does not exist") })
         }
@@ -78,7 +78,7 @@ extension AccountsStoreTests {
             store.userRemoveHandler(user: user)
             harness.notification.alertData?.buttons.first?.action(nil)
 
-            #expect(harness.accountService.logOutCalls == 0)
+            #expect(harness.accountService.removeAccountFromDeviceCalls == 0)
             #expect(harness.notification.showLoaderCalls == 0)
             #expect(harness.notification.toastData?.message == ToastStrings.unableToConnect)
         }
@@ -97,7 +97,7 @@ extension AccountsStoreTests {
                 activeAccount: account,
                 networkConnected: true
             )
-            harness.accountService.logOutResult = .success(())
+            harness.accountService.removeAccountFromDeviceResult = .success(())
             let store = harness.store
             let user = AccountsStoreTestFixtures.makeUserItem(
                 accountId: "acct-1",
@@ -108,12 +108,13 @@ extension AccountsStoreTests {
             store.userRemoveHandler(user: user)
             harness.notification.alertData?.buttons.first?.action(nil)
             await AccountsStoreTestFixtures.waitUntil {
-                harness.accountService.logOutCalls == 1 &&
+                harness.accountService.removeAccountFromDeviceCalls == 1 &&
                 harness.notification.dismissLoaderCalls == 1
             }
 
             #expect(harness.notification.showLoaderCalls == 1)
-            #expect(harness.accountService.lastLoggedOutAccountId == "acct-1")
+            // The store removes the account from the device (MA-3283), not a plain logout.
+            #expect(harness.accountService.lastRemovedFromDeviceAccountId == "acct-1")
         }
 
         @Test("remove user cancel action does not call logout")
@@ -137,7 +138,7 @@ extension AccountsStoreTests {
             harness.notification.alertData?.buttons.last?.action(nil)
             await Task.yield()
 
-            #expect(harness.accountService.logOutCalls == 0)
+            #expect(harness.accountService.removeAccountFromDeviceCalls == 0)
         }
 
         @Test("remove user no-internet service error shows unable-to-connect toast")
@@ -150,7 +151,7 @@ extension AccountsStoreTests {
                 isActive: true
             )
             let harness = AccountsStoreTestFixtures.makeSUT(accounts: [account], activeAccount: account)
-            harness.accountService.logOutResult = .failure(HTTPError.noInternet)
+            harness.accountService.removeAccountFromDeviceResult = .failure(HTTPError.noInternet)
             let store = harness.store
             let user = AccountsStoreTestFixtures.makeUserItem(
                 accountId: "acct-1",
@@ -161,7 +162,7 @@ extension AccountsStoreTests {
             store.userRemoveHandler(user: user)
             harness.notification.alertData?.buttons.first?.action(nil)
             await AccountsStoreTestFixtures.waitUntil {
-                harness.accountService.logOutCalls == 1 &&
+                harness.accountService.removeAccountFromDeviceCalls == 1 &&
                 harness.notification.dismissLoaderCalls == 1
             }
 
@@ -178,7 +179,7 @@ extension AccountsStoreTests {
                 isActive: true
             )
             let harness = AccountsStoreTestFixtures.makeSUT(accounts: [account], activeAccount: account)
-            harness.accountService.logOutResult = .failure(AccountTestError.apiFailed)
+            harness.accountService.removeAccountFromDeviceResult = .failure(AccountTestError.apiFailed)
             let store = harness.store
             let user = AccountsStoreTestFixtures.makeUserItem(
                 accountId: "acct-1",
@@ -189,7 +190,7 @@ extension AccountsStoreTests {
             store.userRemoveHandler(user: user)
             harness.notification.alertData?.buttons.first?.action(nil)
             await AccountsStoreTestFixtures.waitUntil {
-                harness.accountService.logOutCalls == 1 &&
+                harness.accountService.removeAccountFromDeviceCalls == 1 &&
                 harness.notification.dismissLoaderCalls == 1
             }
 

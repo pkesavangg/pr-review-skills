@@ -10,6 +10,8 @@ Current, maintained documentation for the meApp monorepo. Stale working docs (ol
 | [account-switching-flow.md](account-switching-flow.md) | Multi-account management and the account-switching flow. |
 | [product-types-current-state.md](product-types-current-state.md) | Current state of product types across the app. |
 | [dashboard-hybrid-latest-vs-average.md](dashboard-hybrid-latest-vs-average.md) | Dashboard weight display: latest-vs-average hybrid behavior. |
+| [automation.md](automation.md) | All automation in the repo: Claude Code AI tooling, git hooks (Lefthook), CI (CircleCI), and scripts. |
+| [circleci.md](circleci.md) | CircleCI pipeline: how it's configured, the checks per platform, why SwiftLint and the iOS build run separately, and required secrets. |
 
 ## Related
 

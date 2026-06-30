@@ -7,6 +7,12 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.RectangleShape
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.unit.dp
 import com.dmdbrands.gurus.weight.features.common.components.AppButton
 import com.dmdbrands.gurus.weight.features.common.components.AppStyledCard
 import com.dmdbrands.gurus.weight.features.common.components.AppText
@@ -38,7 +44,13 @@ fun BabyAddedStep(
         cardAlignmentType = LocalCardAlignment.current,
         modifier = modifier,
     ) {
-        AppText(BabySignupStrings.babyAddedTitle, TextType.Title, spacing = MeTheme.spacing.lg)
+        // TalkBack: the step title is a heading for by-heading navigation.
+        AppText(
+            BabySignupStrings.babyAddedTitle,
+            TextType.Title,
+            spacing = MeTheme.spacing.lg,
+            modifier = Modifier.semantics { heading() },
+        )
 
         KidsList(
             kids = babies.map { KidListItem(id = it.id, name = it.name) },

@@ -60,4 +60,12 @@ object BabyScaleSetupStrings {
     const val Finish = "FINISH"
     const val Save = "SAVE"
   }
+
+  // region Accessibility (TalkBack)
+  /** Spoken description for the green check shown when the baby scale is paired. */
+  const val accPairedImage = "Baby scale paired"
+
+  /** Spoken description for the animated loader shown while searching for the scale. */
+  const val accSearchingLoader = "Searching for scale"
+  // endregion
 }

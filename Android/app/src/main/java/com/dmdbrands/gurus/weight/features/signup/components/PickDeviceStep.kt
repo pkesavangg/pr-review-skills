@@ -22,6 +22,11 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.selected
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import com.dmdbrands.gurus.weight.domain.enums.ProductType
 import com.dmdbrands.gurus.weight.features.common.components.AppStyledCard
@@ -88,7 +93,13 @@ fun PickDeviceStep(
         cardAlignmentType = LocalCardAlignment.current,
         modifier = modifier,
     ) {
-        AppText(PickDeviceStrings.title, TextType.Title, spacing = MeTheme.spacing.xs)
+        // TalkBack: the step title is a heading for by-heading navigation.
+        AppText(
+            PickDeviceStrings.title,
+            TextType.Title,
+            spacing = MeTheme.spacing.xs,
+            modifier = Modifier.semantics { heading() },
+        )
         AppText(
             text = PickDeviceStrings.addLaterNote,
             textType = TextType.SubHeading,
@@ -127,12 +138,20 @@ private fun DeviceCard(
             .clip(RoundedCornerShape(MeTheme.borderRadius.sm))
             .background(MeTheme.colorScheme.primaryBackground)
             .clickable(enabled = !isRegistered, onClick = onClick)
+            // TalkBack: read the whole card (title + subtitle) as one selectable radio item and
+            // expose its selected state, instead of three separate nodes plus a bare radio. The
+            // RadioButton below is visual-only (onClick = null) so it is not a second focus stop.
+            .semantics(mergeDescendants = true) {
+                selected = isSelected
+                role = Role.RadioButton
+            }
             .padding(horizontal = MeTheme.spacing.md, vertical = MeTheme.spacing.md),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Image(
             painter = painterResource(device.iconResId),
-            contentDescription = device.title,
+            // Decorative: the device name is already spoken as the title text below.
+            contentDescription = null,
             modifier = Modifier.size(56.dp),
         )
 
@@ -156,7 +175,9 @@ private fun DeviceCard(
 
         RadioButton(
             selected = isSelected,
-            onClick = onClick,
+            // Visual only: the parent Row is the single clickable/selectable target, so the radio
+            // must not be its own focusable/clickable node (avoids a duplicate TalkBack stop).
+            onClick = null,
             enabled = !isRegistered,
             colors = RadioButtonDefaults.colors(
                 selectedColor = MeTheme.colorScheme.primaryAction,

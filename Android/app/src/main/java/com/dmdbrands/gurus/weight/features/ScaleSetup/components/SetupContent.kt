@@ -15,11 +15,16 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.semantics.LiveRegionMode
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.liveRegion
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
 import com.dmdbrands.gurus.weight.features.ScaleSetup.modal.ConnectionState
 import com.dmdbrands.gurus.weight.features.ScaleSetup.strings.AppsyncSetupStrings
+import com.dmdbrands.gurus.weight.features.ScaleSetup.strings.ScaleSetupStrings
 import com.dmdbrands.gurus.weight.features.common.components.AnnotationPosition
 import com.dmdbrands.gurus.weight.features.common.components.AppButton
 import com.dmdbrands.gurus.weight.features.common.components.AppGifImage
@@ -65,7 +70,10 @@ fun SetupContent(
       AppText(
         text = title,
         textType = TextType.Title,
-        modifier = Modifier.fillMaxWidth(),
+        // TalkBack: expose the step title as a heading for by-heading navigation.
+        modifier = Modifier
+          .fillMaxWidth()
+          .semantics { heading() },
       )
       subtitle?.let {
         val isClickable = annotatedSubtitle != null && onAnnotationClick != null
@@ -91,7 +99,7 @@ fun SetupContent(
     if (setupFinished) {
       Image(
         painter = painterResource(id = AppIcons.Setup.SetupCompleteCheck),
-        contentDescription = "Setup Completed",
+        contentDescription = ScaleSetupStrings.accSetupCompleteImage,
         modifier = Modifier
           .align(Alignment.CenterHorizontally)
           .size(ScaleImageDefaults.size(ScaleImageSize.Large)),
@@ -128,6 +136,8 @@ fun SetupContent(
           AppText(
             text = loaderText,
             textType = TextType.Subtitle,
+            // TalkBack: announce the connection result when it appears.
+            modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite },
           )
         }
         else if(connectionState is ConnectionState.Failed && loaderText != null) {

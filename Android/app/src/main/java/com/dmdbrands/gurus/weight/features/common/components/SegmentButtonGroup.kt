@@ -34,6 +34,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.TextStyle
@@ -42,7 +43,6 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.dmdbrands.gurus.weight.theme.MeAppTheme
 import com.dmdbrands.gurus.weight.theme.MeTheme
-import java.util.Locale
 
 /**
  * Represents the different sizes available for segment buttons.
@@ -297,7 +297,7 @@ private fun <T> SegmentButtonItem(
         ),
     ) {
       Text(
-        text = if (uppercaseLabels) key(item).uppercase(Locale.getDefault()) else key(item),
+        text = if (uppercaseLabels) key(item).uppercase(LocalConfiguration.current.locales[0]) else key(item),
         style = textStyle,
         color = if (isSelected) colors.activeContentColor else colors.inactiveContentColor,
         maxLines = maxLines,

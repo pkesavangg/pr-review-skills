@@ -1,6 +1,6 @@
 import Foundation
-import Testing
 @testable import meApp
+import Testing
 
 @Suite(.serialized)
 @MainActor
@@ -18,9 +18,9 @@ struct WeightOnlyModeAlertStoreTests {
     func loadWeightOnlyScalesFiltersEnabledByOthers() async {
         let scaleService = MockScaleService()
         scaleService.scales = [
-            makeScale(id: "enabled", isConnected: true, isWeightOnlyEnabledByOthers: true).toSnapshot(),
-            makeScale(id: "disabled", isConnected: true, isWeightOnlyEnabledByOthers: false).toSnapshot(),
-            makeScale(id: "unknown", isConnected: true, isWeightOnlyEnabledByOthers: nil).toSnapshot()
+            makeScaleSnapshot(id: "enabled", isConnected: true, isWeightOnlyEnabledByOthers: true),
+            makeScaleSnapshot(id: "disabled", isConnected: true, isWeightOnlyEnabledByOthers: false),
+            makeScaleSnapshot(id: "unknown", isConnected: true, isWeightOnlyEnabledByOthers: nil)
         ]
         let (store, _, _, _) = makeSUT(scaleService: scaleService)
 
@@ -36,10 +36,10 @@ struct WeightOnlyModeAlertStoreTests {
     @Test("loadWeightOnlyScales failure clears scales and stops loading")
     func loadWeightOnlyScalesFailureClearsState() async {
         let scaleService = MockScaleService()
-        scaleService.scales = [makeScale(id: "cached", isConnected: true, isWeightOnlyEnabledByOthers: true).toSnapshot()]
+        scaleService.scales = [makeScaleSnapshot(id: "cached", isConnected: true, isWeightOnlyEnabledByOthers: true)]
         scaleService.getDevicesError = WeightOnlyModeAlertStoreTestError.loadFailed
         let (store, _, _, _) = makeSUT(scaleService: scaleService)
-        store.weightOnlyScales = [makeScale(id: "stale", isConnected: true, isWeightOnlyEnabledByOthers: true).toSnapshot()]
+        store.weightOnlyScales = [makeScaleSnapshot(id: "stale", isConnected: true, isWeightOnlyEnabledByOthers: true)]
 
         store.loadWeightOnlyScales()
         let loaded = await waitUntil { store.isLoading == false }
@@ -57,13 +57,13 @@ struct WeightOnlyModeAlertStoreTests {
             scale: makeScale(id: "discovered", isConnected: true, isWeightOnlyEnabledByOthers: true)
         )
 
-        scaleService.scales = [makeScale(id: "first", isConnected: true, isWeightOnlyEnabledByOthers: true).toSnapshot()]
+        scaleService.scales = [makeScaleSnapshot(id: "first", isConnected: true, isWeightOnlyEnabledByOthers: true)]
         bluetooth.deviceDiscoveredSubject.send(event)
         let firstLoaded = await waitUntil { store.weightOnlyScales.map(\.id) == ["first"] && store.isLoading == false }
 
         scaleService.scales = [
-            makeScale(id: "second", isConnected: true, isWeightOnlyEnabledByOthers: true).toSnapshot(),
-            makeScale(id: "filtered-out", isConnected: true, isWeightOnlyEnabledByOthers: false).toSnapshot()
+            makeScaleSnapshot(id: "second", isConnected: true, isWeightOnlyEnabledByOthers: true),
+            makeScaleSnapshot(id: "filtered-out", isConnected: true, isWeightOnlyEnabledByOthers: false)
         ]
         bluetooth.deviceDiscoveredSubject.send(event)
         let secondLoaded = await waitUntil { store.weightOnlyScales.map(\.id) == ["second"] && store.isLoading == false }
@@ -109,7 +109,7 @@ struct WeightOnlyModeAlertStoreTests {
         let bluetooth = MockBluetoothService()
         bluetooth.updateWeightOnlyModeResult = .success(())
         let (store, _, _, notification) = makeSUT(bluetooth: bluetooth)
-        store.weightOnlyScales = [makeScale(id: "connected", isConnected: true, isWeightOnlyEnabledByOthers: true).toSnapshot()]
+        store.weightOnlyScales = [makeScaleSnapshot(id: "connected", isConnected: true, isWeightOnlyEnabledByOthers: true)]
 
         store.enableBodyMetricsForScale()
         notification.alertData?.buttons.first?.action(nil)
@@ -144,7 +144,7 @@ struct WeightOnlyModeAlertStoreTests {
     func handleEnableBodyMetricsNoConnectedScalesDoesNothing() async {
         let (store, _, bluetooth, notification) = makeSUT()
         store.weightOnlyScales = [
-            makeScale(id: "disconnected", isConnected: false, isWeightOnlyEnabledByOthers: true).toSnapshot()
+            makeScaleSnapshot(id: "disconnected", isConnected: false, isWeightOnlyEnabledByOthers: true)
         ]
 
         store.handleEnableBodyMetrics()
@@ -162,7 +162,7 @@ struct WeightOnlyModeAlertStoreTests {
         let bluetooth = MockBluetoothService()
         bluetooth.updateWeightOnlyModeResult = .failure(.notImplemented)
         let (store, _, _, notification) = makeSUT(bluetooth: bluetooth)
-        store.weightOnlyScales = [makeScale(id: "connected", isConnected: true, isWeightOnlyEnabledByOthers: true).toSnapshot()]
+        store.weightOnlyScales = [makeScaleSnapshot(id: "connected", isConnected: true, isWeightOnlyEnabledByOthers: true)]
 
         store.handleEnableBodyMetrics()
         let completed = await waitUntil {
@@ -246,6 +246,21 @@ struct WeightOnlyModeAlertStoreTests {
         scale.isConnected = isConnected
         scale.isWeighOnlyModeEnabledByOthers = isWeightOnlyEnabledByOthers
         return scale
+    }
+
+    /// Builds the snapshot the store actually consumes. `isConnected` and
+    /// `isWeighOnlyModeEnabledByOthers` are ephemeral fields that `Device.toSnapshot()`
+    /// does not derive from the model, so they must be passed explicitly here.
+    private func makeScaleSnapshot(
+        id: String,
+        isConnected: Bool,
+        isWeightOnlyEnabledByOthers: Bool?
+    ) -> DeviceSnapshot {
+        makeScale(id: id, isConnected: isConnected, isWeightOnlyEnabledByOthers: isWeightOnlyEnabledByOthers)
+            .toSnapshot(
+                isConnected: isConnected,
+                isWeighOnlyModeEnabledByOthers: isWeightOnlyEnabledByOthers ?? false
+            )
     }
 
     private func makeDiscoveryEvent(scale: Device, isNew: Bool = true) -> DeviceDiscoveryEvent {

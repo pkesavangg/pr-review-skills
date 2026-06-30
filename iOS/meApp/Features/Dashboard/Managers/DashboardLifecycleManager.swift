@@ -90,6 +90,7 @@ final class DashboardLifecycleManager: DashboardLifecycleManaging { // swiftlint
 
     // MARK: - Dashboard Initialization
 
+    // swiftlint:disable:next function_body_length
     func initializeDashboard() async {
         guard let stateProvider else { return }
 

@@ -34,12 +34,20 @@ fun ScaleSetupHeader(
     title = if (isBabyScale) ScaleSetupStrings.BabyScaleHeader else ScaleSetupStrings.Header(displaySku),
     containerColor = colorScheme.secondaryBackground,
     navigationIcon = {
-      AppIconButton(AppIcons.Default.Close) {
+      // TalkBack: icon-only button needs a spoken label.
+      AppIconButton(
+        AppIcons.Default.Close,
+        contentDescription = ScaleSetupStrings.accCloseButton,
+      ) {
         onBack()
       }
     },
     actions = {
-      AppIconButton(AppIcons.Outlined.Help) {
+      // TalkBack: icon-only button needs a spoken label.
+      AppIconButton(
+        AppIcons.Outlined.Help,
+        contentDescription = ScaleSetupStrings.accHelpButton,
+      ) {
         onHelp()
       }
     },

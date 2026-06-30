@@ -23,8 +23,12 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.semantics.CustomAccessibilityAction
+import androidx.compose.ui.semantics.customActions
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import com.dmdbrands.gurus.weight.features.common.components.reorderable.ScrollAmountMultiplier
+import com.dmdbrands.gurus.weight.features.common.strings.AppListStrings
 import com.dmdbrands.gurus.weight.theme.MeAppTheme
 import com.dmdbrands.gurus.weight.theme.MeTheme
 import sh.calvin.reorderable.ReorderableItem
@@ -148,7 +152,35 @@ fun <T> AppDraggableList(
         state = reorderableState,
         key = keySelector(item),
       ) { isDragging ->
-        Column {
+        // TalkBack: drag-to-reorder is a gesture a screen-reader user can't perform.
+        // Expose equivalent move-up/move-down custom actions on the row. mergeDescendants
+        // makes the row a single focusable node that carries them.
+        val currentIndex = items.indexOf(item)
+        val reorderSemantics = if (scope.isDraggable()) {
+          Modifier.semantics(mergeDescendants = true) {
+            customActions = buildList {
+              if (currentIndex > 0) {
+                add(
+                  CustomAccessibilityAction(AppListStrings.accMoveUpLabel) {
+                    onMove(currentIndex, currentIndex - 1)
+                    true
+                  },
+                )
+              }
+              if (currentIndex >= 0 && currentIndex < items.size - 1) {
+                add(
+                  CustomAccessibilityAction(AppListStrings.accMoveDownLabel) {
+                    onMove(currentIndex, currentIndex + 1)
+                    true
+                  },
+                )
+              }
+            }
+          }
+        } else {
+          Modifier
+        }
+        Column(modifier = reorderSemantics) {
           val draggingModifier = if (scope.isDraggable()) {
             Modifier.draggableHandle(
               onDragStarted = {

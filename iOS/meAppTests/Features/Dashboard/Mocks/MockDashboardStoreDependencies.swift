@@ -30,7 +30,7 @@ final class MockDashboardFormatter: DashboardFormatterProtocol {
         return chartDateResult
     }
     func formatMetricInfoSingleDate(_ date: Date, period: TimePeriod) -> String { metricInfoSingleDateResult }
-    func formatMetricInfoDateLabel(
+    func formatMetricInfoDateLabel( // swiftlint:disable:this function_parameter_count
         entryDate: Date?,
         isFromHistory: Bool,
         period: TimePeriod,
@@ -56,7 +56,14 @@ final class MockDashboardFormatter: DashboardFormatterProtocol {
         formattedMetricValueResult ?? metric.value
     }
     func composeMetricInfoLabel(prefix: String, dateText: String) -> String { "\(prefix) \(dateText)" }
-    func selectionPrefix(for period: TimePeriod, isLatestDaySelected: Bool) -> String { "Avg" }
+    func selectionPrefix(for period: TimePeriod, isLatestDaySelected: Bool) -> String {
+        // Mirror the real DashboardFormatter so DisplayManager tests assert against the
+        // production hybrid "latest entry" / "day average" / "month average" labels.
+        switch period {
+        case .week, .month: return isLatestDaySelected ? "latest entry" : "day average"
+        case .year, .total: return "month average"
+        }
+    }
 }
 
 @MainActor
@@ -104,6 +111,7 @@ final class MockDashboardCacheManager: DashboardCacheManagerProtocol {
         return visibleOperationsOverride ?? getVisibleOperations()
     }
 
+    // swiftlint:disable:next function_parameter_count
     func getChartSeriesData(isScrolling: Bool, isProcessingScrollEnd: Bool, period: TimePeriod, selectedMetric: String?, operationsCount: Int, yAxisDomain: ClosedRange<Double>?, getChartSeries: () -> [GraphSeries]) -> [GraphSeries] {
         getChartSeriesDataCalls += 1
         lastChartSeriesRequest = (

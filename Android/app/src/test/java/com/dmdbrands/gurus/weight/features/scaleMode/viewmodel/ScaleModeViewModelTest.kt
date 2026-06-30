@@ -74,7 +74,7 @@ class ScaleModeViewModelTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `initial state has null scale and default mode values`() = runTest {
+    fun `initial state has null scale and default mode values`() = runTest(mainDispatcherRule.scheduler) {
         viewModel = createViewModel()
         advanceUntilIdle()
 
@@ -90,7 +90,7 @@ class ScaleModeViewModelTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `init subscribes to pairedScales and sets scale for matching id`() = runTest {
+    fun `init subscribes to pairedScales and sets scale for matching id`() = runTest(mainDispatcherRule.scheduler) {
         val device = TestFixtures.aDevice(id = TEST_SCALE_ID).copy(
             preferences = Preferences(
                 shouldMeasureImpedance = true,
@@ -106,7 +106,7 @@ class ScaleModeViewModelTest {
     }
 
     @Test
-    fun `init sets body metrics mode from scale preferences`() = runTest {
+    fun `init sets body metrics mode from scale preferences`() = runTest(mainDispatcherRule.scheduler) {
         val device = TestFixtures.aDevice(id = TEST_SCALE_ID).copy(
             preferences = Preferences(
                 shouldMeasureImpedance = true,
@@ -123,7 +123,7 @@ class ScaleModeViewModelTest {
     }
 
     @Test
-    fun `init sets weight only mode when impedance is off`() = runTest {
+    fun `init sets weight only mode when impedance is off`() = runTest(mainDispatcherRule.scheduler) {
         val device = TestFixtures.aDevice(id = TEST_SCALE_ID).copy(
             preferences = Preferences(
                 shouldMeasureImpedance = false,
@@ -139,7 +139,7 @@ class ScaleModeViewModelTest {
     }
 
     @Test
-    fun `init ignores devices with non-matching scaleId`() = runTest {
+    fun `init ignores devices with non-matching scaleId`() = runTest(mainDispatcherRule.scheduler) {
         val otherDevice = TestFixtures.aDevice(id = "other-id")
         every { deviceService.pairedScales } returns MutableStateFlow(listOf(otherDevice))
 
@@ -154,7 +154,7 @@ class ScaleModeViewModelTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `SetScale updates scale in state`() = runTest {
+    fun `SetScale updates scale in state`() = runTest(mainDispatcherRule.scheduler) {
         viewModel = createViewModel()
         advanceUntilIdle()
 
@@ -166,7 +166,7 @@ class ScaleModeViewModelTest {
     }
 
     @Test
-    fun `SetMode updates isAllBodyMetrics and hasModeChanged`() = runTest {
+    fun `SetMode updates isAllBodyMetrics and hasModeChanged`() = runTest(mainDispatcherRule.scheduler) {
         viewModel = createViewModel()
         advanceUntilIdle()
 
@@ -178,7 +178,7 @@ class ScaleModeViewModelTest {
     }
 
     @Test
-    fun `SetHeartRate updates isHeartRateOn and hasModeChanged`() = runTest {
+    fun `SetHeartRate updates isHeartRateOn and hasModeChanged`() = runTest(mainDispatcherRule.scheduler) {
         viewModel = createViewModel()
         advanceUntilIdle()
 
@@ -194,7 +194,7 @@ class ScaleModeViewModelTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `Back with no mode changes navigates back directly`() = runTest {
+    fun `Back with no mode changes navigates back directly`() = runTest(mainDispatcherRule.scheduler) {
         viewModel = createViewModel()
         advanceUntilIdle()
 
@@ -205,7 +205,7 @@ class ScaleModeViewModelTest {
     }
 
     @Test
-    fun `Back with unsaved mode changes shows confirm dialog`() = runTest {
+    fun `Back with unsaved mode changes shows confirm dialog`() = runTest(mainDispatcherRule.scheduler) {
         viewModel = createViewModel()
         advanceUntilIdle()
 
@@ -223,7 +223,7 @@ class ScaleModeViewModelTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `OpenBiaModal enqueues custom BIA modal dialog`() = runTest {
+    fun `OpenBiaModal enqueues custom BIA modal dialog`() = runTest(mainDispatcherRule.scheduler) {
         viewModel = createViewModel()
         advanceUntilIdle()
 
@@ -242,7 +242,7 @@ class ScaleModeViewModelTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `Save with null scale shows error toast`() = runTest {
+    fun `Save with null scale shows error toast`() = runTest(mainDispatcherRule.scheduler) {
         viewModel = createViewModel()
         advanceUntilIdle()
 
@@ -253,7 +253,7 @@ class ScaleModeViewModelTest {
     }
 
     @Test
-    fun `Save shows loader`() = runTest {
+    fun `Save shows loader`() = runTest(mainDispatcherRule.scheduler) {
         viewModel = createViewModel()
         advanceUntilIdle()
 
@@ -264,7 +264,7 @@ class ScaleModeViewModelTest {
     }
 
     @Test
-    fun `Save with valid scale calls deviceService updateScalePreferences`() = runTest {
+    fun `Save with valid scale calls deviceService updateScalePreferences`() = runTest(mainDispatcherRule.scheduler) {
         val device = TestFixtures.aDevice(id = TEST_SCALE_ID).copy(
             preferences = Preferences(
                 shouldMeasureImpedance = true,
@@ -284,7 +284,7 @@ class ScaleModeViewModelTest {
     }
 
     @Test
-    fun `Save with connected scale calls ggDeviceService updateAccount`() = runTest {
+    fun `Save with connected scale calls ggDeviceService updateAccount`() = runTest(mainDispatcherRule.scheduler) {
         val device = TestFixtures.aDevice(id = TEST_SCALE_ID).copy(
             connectionStatus = BLEStatus.CONNECTED,
             preferences = Preferences(
@@ -305,7 +305,7 @@ class ScaleModeViewModelTest {
     }
 
     @Test
-    fun `Save with disconnected scale skips ggDeviceService updateAccount`() = runTest {
+    fun `Save with disconnected scale skips ggDeviceService updateAccount`() = runTest(mainDispatcherRule.scheduler) {
         val device = TestFixtures.aDevice(id = TEST_SCALE_ID).copy(
             connectionStatus = BLEStatus.DISCONNECTED,
             preferences = Preferences(
@@ -326,7 +326,7 @@ class ScaleModeViewModelTest {
     }
 
     @Test
-    fun `Save with successful API update dismisses loader and navigates back`() = runTest {
+    fun `Save with successful API update dismisses loader and navigates back`() = runTest(mainDispatcherRule.scheduler) {
         val device = TestFixtures.aDevice(id = TEST_SCALE_ID).copy(
             connectionStatus = BLEStatus.DISCONNECTED,
             preferences = Preferences(
@@ -349,7 +349,7 @@ class ScaleModeViewModelTest {
     }
 
     @Test
-    fun `Save with failed API update shows error toast`() = runTest {
+    fun `Save with failed API update shows error toast`() = runTest(mainDispatcherRule.scheduler) {
         val device = TestFixtures.aDevice(id = TEST_SCALE_ID).copy(
             connectionStatus = BLEStatus.DISCONNECTED,
             preferences = Preferences(

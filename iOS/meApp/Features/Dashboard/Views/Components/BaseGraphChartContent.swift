@@ -1,4 +1,3 @@
-// swiftlint:disable file_length
 //
 //  BaseGraphChartContent.swift
 //  meApp
@@ -98,8 +97,8 @@ struct ChartSeriesContent: ChartContent {
             return exactMatch
         }
 
-        let previousPoint = points.last(where: { $0.xDate < boundary })
-        let nextPoint = points.first(where: { $0.xDate > boundary })
+        let previousPoint = points.last { $0.xDate < boundary }
+        let nextPoint = points.first { $0.xDate > boundary }
 
         let segment: (start: PlottedGraphSeries, end: PlottedGraphSeries)?
         switch (previousPoint, nextPoint) {

@@ -53,12 +53,12 @@ struct IntegrationsScreen: View {
 
                 // Request new integration — sits just below the list sections
                 Section {
-                    Button(action: { store.showRequestIntegrationModal() }) {
+                    Button(action: { store.showRequestIntegrationModal() }, label: {
                         Text(IntegrationsStrings.requestNewIntegration)
                             .fontOpenSans(.label1)
                             .foregroundColor(theme.textHeading)
                             .frame(maxWidth: .infinity, alignment: .center)
-                    }
+                    })
                     .listRowBackground(Color.clear)
                     .listRowInsets(EdgeInsets())
                     .padding(.vertical, .spacingSM)

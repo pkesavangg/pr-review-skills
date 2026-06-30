@@ -5,8 +5,8 @@
 
 import Combine
 import Foundation
-import Testing
 @testable import meApp
+import Testing
 
 // MARK: - Suite
 
@@ -81,12 +81,12 @@ struct BottomTabBarViewModelTests {
 
     // MARK: - BPM reading arrival card
 
-    @Test("BPM card shown when bpm entry fires on newEntryReceivedPublisher and setup is not in progress")
+    @Test("BPM card shown when bpm entry fires on pendingBpmEntryPublisher and setup is not in progress")
     func bpmReadingCardShownOnNewEntry() async {
         let (sut, bluetooth, notification, _) = makeSUT()
         bluetooth.isSetupInProgress = false
 
-        bluetooth.newEntryReceivedSubject.send(BottomTabBarViewModelTestFixtures.bpmNotification())
+        bluetooth.pendingBpmEntrySubject.send(BottomTabBarViewModelTestFixtures.bpmNotification())
 
         let shown = await waitUntil { notification.showToastCalls >= 1 }
         #expect(shown, "Expected BPM reading toast to appear")
@@ -99,7 +99,7 @@ struct BottomTabBarViewModelTests {
         let (sut, bluetooth, notification, _) = makeSUT()
         bluetooth.isSetupInProgress = true
 
-        bluetooth.newEntryReceivedSubject.send(BottomTabBarViewModelTestFixtures.bpmNotification())
+        bluetooth.pendingBpmEntrySubject.send(BottomTabBarViewModelTestFixtures.bpmNotification())
 
         try? await Task.sleep(nanoseconds: 1_300_000_000)
         #expect(notification.showToastCalls == 0, "BPM card must be suppressed during setup")
@@ -189,12 +189,27 @@ struct BottomTabBarViewModelTests {
         let (sut, bluetooth, notification, entry) = makeSUT()
         bluetooth.isSetupInProgress = false
 
-        // Override the default empty baby service with one that has a profile.
+        // Lock the SUT's injected deps DIRECTLY via the @Injector setter rather than relying on
+        // DependencyContainer registration. Under the full serialized suite, leaked async work from
+        // other tests' real services can re-register the global container before the ~1s-delayed
+        // showBabyReadingArrivalCard resolves babyService/entryService — so container timing is not
+        // deterministic. Direct assignment pins resolution to these mocks regardless of pollution.
         let babyMock = MockBabyService()
-        babyMock.babies = [Baby(accountId: "test-account", name: "Baby A", deviceId: nil,
-                                birthday: nil, biologicalSex: nil, birthLengthInches: nil,
-                                birthWeightLbs: nil, birthWeightOz: nil)]
-        DependencyContainer.shared.register(babyMock as BabyServiceProtocol)
+        babyMock.babies = [Baby(
+            accountId: "test-account",
+            name: "Baby A",
+            deviceId: nil,
+            birthday: nil,
+            biologicalSex: nil,
+            birthLengthInches: nil,
+            birthWeightLbs: nil,
+            birthWeightOz: nil
+        )]
+        sut.babyService = babyMock
+        sut.entryService = entry
+        // Pin notificationService too: the VM writes the toast here and the test reads it back,
+        // so both sides must be the same instance under full-suite container pollution.
+        sut.notificationService = notification
 
         bluetooth.newEntryReceivedSubject.send(BottomTabBarViewModelTestFixtures.babyNotification())
         let shown = await waitUntil { notification.showToastCalls >= 1 }
@@ -202,7 +217,8 @@ struct BottomTabBarViewModelTests {
 
         // No user action → auto-assign to the existing baby on dismiss.
         notification.toastData?.onDismiss?()
-        let assigned = await waitUntil { entry.assignBabyEntryCalls >= 1 }
+        // autoAssign hops through a nested Task { @MainActor }, so give it a generous window.
+        let assigned = await waitUntil(timeoutNanoseconds: 5_000_000_000) { entry.assignBabyEntryCalls >= 1 }
         #expect(assigned, "A baby profile exists — the reading should auto-assign on dismiss")
         _ = sut
     }
@@ -227,6 +243,8 @@ struct BottomTabBarViewModelTests {
 // MARK: - SUT Factory
 
 @MainActor
+// Test factory return; labeled tuple is clearer than a one-off SUT struct.
+// swiftlint:disable:next large_tuple
 private func makeSUT() -> (
     BottomTabBarViewModel,
     MockBluetoothService,
@@ -278,16 +296,28 @@ enum BottomTabBarViewModelTestFixtures {
         EntryNotification(
             from: BathScaleOperationDTO(
                 accountId: "test-account",
-                bmr: nil, bmi: nil, bodyFat: nil, boneMass: nil,
+                bmr: nil,
+                bmi: nil,
+                bodyFat: nil,
+                boneMass: nil,
                 entryTimestamp: "2026-04-22T10:00:00Z",
                 entryType: EntryType.scale.rawValue,
-                impedance: nil, metabolicAge: nil, muscleMass: nil,
+                impedance: nil,
+                metabolicAge: nil,
+                muscleMass: nil,
                 operationType: "create",
-                proteinPercent: nil, pulse: nil, serverTimestamp: nil,
-                skeletalMusclePercent: nil, source: nil,
+                proteinPercent: nil,
+                pulse: nil,
+                serverTimestamp: nil,
+                skeletalMusclePercent: nil,
+                source: nil,
                 subcutaneousFatPercent: nil,
-                systolic: nil, diastolic: nil, meanArterial: nil,
-                unit: nil, visceralFatLevel: nil, water: nil,
+                systolic: nil,
+                diastolic: nil,
+                meanArterial: nil,
+                unit: nil,
+                visceralFatLevel: nil,
+                water: nil,
                 weight: Double(weight)
             )
         )
@@ -297,18 +327,28 @@ enum BottomTabBarViewModelTestFixtures {
         EntryNotification(
             from: BathScaleOperationDTO(
                 accountId: "test-account",
-                bmr: nil, bmi: nil, bodyFat: nil, boneMass: nil,
+                bmr: nil,
+                bmi: nil,
+                bodyFat: nil,
+                boneMass: nil,
                 entryTimestamp: "2026-04-22T10:01:00Z",
                 entryType: EntryType.bpm.rawValue,
-                impedance: nil, metabolicAge: nil, muscleMass: nil,
+                impedance: nil,
+                metabolicAge: nil,
+                muscleMass: nil,
                 operationType: "create",
-                proteinPercent: nil, pulse: nil, serverTimestamp: nil,
-                skeletalMusclePercent: nil, source: nil,
+                proteinPercent: nil,
+                pulse: nil,
+                serverTimestamp: nil,
+                skeletalMusclePercent: nil,
+                source: nil,
                 subcutaneousFatPercent: nil,
                 systolic: Double(systolic),
                 diastolic: Double(diastolic),
                 meanArterial: nil,
-                unit: nil, visceralFatLevel: nil, water: nil,
+                unit: nil,
+                visceralFatLevel: nil,
+                water: nil,
                 weight: nil
             )
         )
@@ -318,16 +358,28 @@ enum BottomTabBarViewModelTestFixtures {
         EntryNotification(
             from: BathScaleOperationDTO(
                 accountId: "test-account",
-                bmr: nil, bmi: nil, bodyFat: nil, boneMass: nil,
+                bmr: nil,
+                bmi: nil,
+                bodyFat: nil,
+                boneMass: nil,
                 entryTimestamp: "2026-04-22T10:02:00Z",
                 entryType: EntryType.baby.rawValue,
-                impedance: nil, metabolicAge: nil, muscleMass: nil,
+                impedance: nil,
+                metabolicAge: nil,
+                muscleMass: nil,
                 operationType: "create",
-                proteinPercent: nil, pulse: nil, serverTimestamp: nil,
-                skeletalMusclePercent: nil, source: nil,
+                proteinPercent: nil,
+                pulse: nil,
+                serverTimestamp: nil,
+                skeletalMusclePercent: nil,
+                source: nil,
                 subcutaneousFatPercent: nil,
-                systolic: nil, diastolic: nil, meanArterial: nil,
-                unit: nil, visceralFatLevel: nil, water: nil,
+                systolic: nil,
+                diastolic: nil,
+                meanArterial: nil,
+                unit: nil,
+                visceralFatLevel: nil,
+                water: nil,
                 weight: nil
             )
         )

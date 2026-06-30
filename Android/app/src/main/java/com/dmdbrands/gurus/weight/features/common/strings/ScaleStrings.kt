@@ -5,6 +5,14 @@ object ScaleStrings {
     const val BluetoothWifi = "Bluetooth/Wi-Fi"
     const val Bluetooth = "Bluetooth"
     const val AppSync = "AppSync"
+
+    // region Accessibility (TalkBack)
+    /** Suffix word for a scale product image's content description (e.g. "0412 scale"). */
+    const val accScaleImageSuffix = "scale"
+
+    /** Suffix word for a blood-pressure monitor product image's content description. */
+    const val accMonitorImageSuffix = "monitor"
+    // endregion
 }
 
 object ScaleSourceStrings {

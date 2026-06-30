@@ -1,6 +1,6 @@
 import Foundation
-import Testing
 @testable import meApp
+import Testing
 
 extension SettingsStoreTests {
     @Suite("Weightless")
@@ -17,7 +17,7 @@ extension SettingsStoreTests {
             store.populateWeightlessFormIfNeeded()
 
             #expect(store.weightlessForm.isOn.value == false)
-            #expect(store.weightlessForm.weight.value == "")
+            #expect(store.weightlessForm.weight.value.isEmpty)
         }
 
         @Test("populateWeightlessFormIfNeeded turns off toggle when weight is missing")
@@ -47,7 +47,7 @@ extension SettingsStoreTests {
             store.resetWeightlessForm()
 
             #expect(store.weightlessForm.isOn.value == false)
-            #expect(store.weightlessForm.weight.value == "")
+            #expect(store.weightlessForm.weight.value.isEmpty)
         }
 
         @Test("populateWeightlessFormIfNeeded preserves dirty edits")

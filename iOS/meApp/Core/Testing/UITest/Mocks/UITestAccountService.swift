@@ -98,6 +98,10 @@ final class UITestAccountService: AccountServiceProtocol {
         throw UITestAccountServiceError.unsupported("updateProductTypes")
     }
 
+    func removeProductType(_ productType: String) async throws {
+        throw UITestAccountServiceError.unsupported("removeProductType")
+    }
+
     func updateMeasurementUnits(_ measurementUnits: MeasurementUnits) async throws {
         throw UITestAccountServiceError.unsupported("updateMeasurementUnits")
     }

@@ -1,7 +1,7 @@
 import Foundation
 import GGBluetoothSwiftPackage
-import Testing
 @testable import meApp
+import Testing
 
 @Suite(.serialized)
 @MainActor
@@ -103,7 +103,6 @@ struct AppSyncSetupStoreTests {
         let moved = await waitUntil { store.currentStep == .permissions }
         #expect(moved == true)
     }
-
 
     @Test("completion without active account does not save")
     func completionMissingActiveAccountDoesNotSave() async {

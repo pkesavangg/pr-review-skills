@@ -14,6 +14,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.semantics
 import com.dmdbrands.gurus.weight.features.ScaleSetup.strings.WifiScaleSetupStrings
 import com.dmdbrands.gurus.weight.features.common.components.AppButton
 import com.dmdbrands.gurus.weight.features.common.components.AppNote
@@ -57,7 +59,11 @@ fun  SelectButton(
       AppText(
         text = title,
         textType = TextType.Title,
-        modifier = Modifier.fillMaxWidth().padding(horizontal = spacing.sm),
+        // TalkBack: selection-step title is the heading.
+        modifier = Modifier
+          .fillMaxWidth()
+          .padding(horizontal = spacing.sm)
+          .semantics { heading() },
       )
       subtitle?.let {
         AppText(

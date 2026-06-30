@@ -2,9 +2,7 @@ package com.dmdbrands.gurus.weight.features.common.components
 
 import androidx.annotation.DrawableRes
 import androidx.compose.animation.core.RepeatMode
-import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.infiniteRepeatable
-import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -15,7 +13,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.blur
@@ -23,7 +20,13 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.liveRegion
+import androidx.compose.ui.semantics.LiveRegionMode
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
+import com.dmdbrands.gurus.weight.core.power.powerSaveAwareInfiniteFloat
+import com.dmdbrands.gurus.weight.features.common.components.strings.ConnectionIndicatorStrings
 import com.dmdbrands.gurus.weight.resources.AppIcons
 import com.dmdbrands.gurus.weight.theme.MeAppTheme
 import com.dmdbrands.gurus.weight.theme.MeTheme.colorScheme
@@ -64,13 +67,20 @@ fun ConnectionIndicator(
     ConnectionIndicatorState.Failed -> colorScheme.danger.copy(alpha = 0.3f)
   }
 
-  val contentDescription = when (connectionState) {
-    ConnectionIndicatorState.Connecting -> "Connection in progress"
-    ConnectionIndicatorState.Failed -> "Connection Failed"
+  val stateDescription = when (connectionState) {
+    ConnectionIndicatorState.Connecting -> ConnectionIndicatorStrings.ConnectingDescription
+    ConnectionIndicatorState.Failed -> ConnectionIndicatorStrings.FailedDescription
   }
 
   Box(
-    modifier = modifier.size(if (showIndicatorAlone) 90.dp else 170.dp),
+    modifier = modifier
+      .size(if (showIndicatorAlone) 90.dp else 170.dp)
+      // TalkBack: announce the connection status as one node, and re-announce when the
+      // state changes (Connecting -> Failed) via a polite live region.
+      .semantics {
+        contentDescription = stateDescription
+        liveRegion = LiveRegionMode.Polite
+      },
     contentAlignment = Alignment.Center,
   ) {
     // Large pulsing circle (only when connecting, behind everything)
@@ -88,10 +98,10 @@ fun ConnectionIndicator(
         .background(mainCircleColor),
     )
 
-    // White icon on top
+    // White icon on top (decorative: the status is announced on the parent Box)
     Image(
       painter = painterResource(id = indicatorIcon),
-      contentDescription = contentDescription,
+      contentDescription = null,
       modifier = Modifier.size(60.dp),
     )
   }
@@ -109,15 +119,15 @@ private fun PulsingCircle(
   color: Color,
   shouldAnimate: Boolean
 ) {
-  val infiniteTransition = rememberInfiniteTransition(label = "PulseAnimation")
-
-  val scale by infiniteTransition.animateFloat(
+  // Holds the circle at its natural size (no pulse) under Power Saving Mode (MOB-226).
+  val scale = powerSaveAwareInfiniteFloat(
     initialValue = 0.6f,
     targetValue = 1.1f,
     animationSpec = infiniteRepeatable(
       animation = tween(durationMillis = 1200),
       repeatMode = RepeatMode.Reverse,
     ),
+    restingValue = 1.0f,
     label = "PulseScale",
   )
 

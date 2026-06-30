@@ -17,6 +17,14 @@ object LoginStrings {
     const val PrivacyPolicyUrl = "https://greatergoods.com/legal/privacy-policy"
     const val LoaderMessage = "Logging in..."
 
+    // region Accessibility (TalkBack)
+    /** Label for the close (X) navigation icon button. */
+    const val accCloseLabel = "Close"
+
+    /** Label for the help (?) action icon button. */
+    const val accHelpLabel = "Help"
+    // endregion
+
     object ForgotPasswordDialogStrings {
         const val Title = "Password Reset"
         const val Subtitle = "Enter your email below."

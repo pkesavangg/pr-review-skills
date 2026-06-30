@@ -17,6 +17,26 @@ import com.dmdbrands.gurus.weight.theme.MeTheme
 /**
  * Weight history month summary row using [HistoryRowLayout].
  */
+/**
+ * TalkBack: one coherent row announcement, e.g.
+ * "Dec 2022, 3 entries, average 148.4 lbs, change -1.4 lbs".
+ */
+private fun weightRowDescription(item: HistoryMonth): String {
+    val unit = item.unit ?: "lbs"
+    val avgText = "${item.avgWeightPrefix ?: ""}${formatWeightValue(item.avgWeight)} $unit"
+    val changeText = buildString {
+        item.change?.let { if (it > 0) append("+") }
+        append(formatWeightValue(item.change))
+        append(" $unit")
+    }
+    return buildString {
+        append(item.entryTimestamp.toString())
+        append(", ${item.entryCount ?: 0} ${HistoryItemStrings.accEntriesSuffix}")
+        append(", ${HistoryItemStrings.accAverageLabel} $avgText")
+        append(", ${HistoryItemStrings.accChangeLabel} $changeText")
+    }
+}
+
 @Composable
 fun WeightHistoryItem(
     item: HistoryMonth,
@@ -26,6 +46,7 @@ fun WeightHistoryItem(
         month = item.entryTimestamp.toString(),
         entryCount = item.entryCount ?: 0,
         onClick = onClick,
+        rowContentDescription = weightRowDescription(item),
     ) {
         // Average weight
         Column(

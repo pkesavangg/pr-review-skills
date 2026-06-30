@@ -9,6 +9,8 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.unit.dp
 import com.dmdbrands.gurus.weight.domain.model.api.integration.IntegrationProvider
 import com.dmdbrands.gurus.weight.features.common.components.AppScaffold
@@ -35,21 +37,29 @@ fun IntegrationListItem(
   onToggle: () -> Unit = {},
   onIconClick: (() -> Unit)? = null,
 ) {
+  // TalkBack: announce the connected/disconnected status on the row (the checkbox conveys
+  // it only by colour/checkmark otherwise).
+  val connectionState = if (integration.isConnected) {
+    IntegrationStrings.accConnectedState
+  } else {
+    IntegrationStrings.accNotConnectedState
+  }
   // Toggle button
   BaseListItem(
     title = integration.name,
     enableCheckbox = true,
     isChecked = integration.isConnected,
-    checkboxDescription = if (integration.isConnected)
-      "Disconnect from ${integration.name}"
-    else
-      "Connect to ${integration.name}",
+    checkboxDescription = if (integration.isConnected) {
+      IntegrationStrings.accDisconnectAction(integration.name)
+    } else {
+      IntegrationStrings.accConnectAction(integration.name)
+    },
     onClick = onToggle,
-    modifier = modifier,
+    modifier = modifier.semantics { stateDescription = connectionState },
     leadingContent = {
       Image(
         painterResource(integration.iconRes),
-        contentDescription = "${integration.name} logo",
+        contentDescription = IntegrationStrings.accProviderLogo(integration.name),
         modifier = Modifier
           .size(42.dp)
           .then(if (onIconClick != null) Modifier.clickable { onIconClick() } else Modifier),

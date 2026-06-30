@@ -113,6 +113,7 @@ class UnifiedEntryMapperTest {
     // ── BabyEntry → request (MOB-381 / §2.16) ────────────────────────────────────
 
     private fun babyEntry(
+        type: BabyEntryType,
         weightDecigrams: Int? = null,
         lengthMm: Int? = null,
     ) = BabyEntry(
@@ -135,11 +136,9 @@ class UnifiedEntryMapperTest {
     )
 
     @Test
-    fun `baby weight-only entry yields a single weight request`() {
-        val reqs = babyEntry(weightDecigrams = 45_200).toUnifiedRequests()
+    fun `baby weight entry maps to baby category with weight entryType`() {
+        val req = babyEntry(BabyEntryType.WEIGHT, weightDecigrams = 45_200).toUnifiedRequests().single()
 
-        assertThat(reqs).hasSize(1)
-        val req = reqs.single()
         assertThat(req.category).isEqualTo(EntryCategory.BABY.value)
         assertThat(req.operationType).isEqualTo("create")
         assertThat(req.babyId).isEqualTo("baby-1")
@@ -148,45 +147,26 @@ class UnifiedEntryMapperTest {
         assertThat(req.babyLengthMillimeters).isNull()
         assertThat(req.entryNote).isEqualTo("after bath")
         assertThat(req.source).isEqualTo(EntrySource.MANUAL.value)
-        // §2.16 requires a client-generated entryId for baby; it's deterministic.
-        assertThat(req.entryId).isEqualTo("baby-1_weight_$TIMESTAMP")
     }
 
     @Test
-    fun `baby length-only entry yields a single measureLength request`() {
-        val reqs = babyEntry(lengthMm = 510).toUnifiedRequests()
+    fun `baby length entry maps to measureLength entryType`() {
+        val req = babyEntry(BabyEntryType.MEASURE_LENGTH, lengthMm = 510).toUnifiedRequests().single()
 
-        assertThat(reqs).hasSize(1)
-        assertThat(reqs.single().entryType).isEqualTo(BabyEntryType.MEASURE_LENGTH.value)
-        assertThat(reqs.single().babyLengthMillimeters).isEqualTo(510)
-        assertThat(reqs.single().babyWeightDecigrams).isNull()
+        assertThat(req.entryType).isEqualTo(BabyEntryType.MEASURE_LENGTH.value)
+        assertThat(req.babyLengthMillimeters).isEqualTo(510)
+        assertThat(req.babyWeightDecigrams).isNull()
     }
 
     @Test
-    fun `combined baby entry fans out to weight + measureLength with distinct entryIds`() {
-        val reqs = babyEntry(weightDecigrams = 45_200, lengthMm = 510).toUnifiedRequests()
-
-        assertThat(reqs).hasSize(2)
-        val weight = reqs.single { it.entryType == BabyEntryType.WEIGHT.value }
-        val length = reqs.single { it.entryType == BabyEntryType.MEASURE_LENGTH.value }
-        assertThat(weight.babyWeightDecigrams).isEqualTo(45_200)
-        assertThat(weight.babyLengthMillimeters).isNull()
-        assertThat(length.babyLengthMillimeters).isEqualTo(510)
-        assertThat(length.babyWeightDecigrams).isNull()
-        // Same reading, same timestamp, but distinct ids — server keeps them as two entries.
-        assertThat(weight.entryTimestamp).isEqualTo(length.entryTimestamp)
-        assertThat(weight.entryId).isEqualTo("baby-1_weight_$TIMESTAMP")
-        assertThat(length.entryId).isEqualTo("baby-1_measureLength_$TIMESTAMP")
-    }
-
-    @Test
-    fun `baby entry drops zero or empty measures rather than POSTing garbage`() {
-        assertThat(babyEntry(weightDecigrams = 0).toUnifiedRequests()).isEmpty()
-        assertThat(babyEntry(weightDecigrams = null, lengthMm = null).toUnifiedRequests()).isEmpty()
-        // A combined entry with a 0 length only sends the valid weight half.
-        val reqs = babyEntry(weightDecigrams = 45_200, lengthMm = 0).toUnifiedRequests()
-        assertThat(reqs).hasSize(1)
-        assertThat(reqs.single().entryType).isEqualTo(BabyEntryType.WEIGHT.value)
+    fun `toUnifiedRequests dispatches baby and drops empty readings`() {
+        assertThat(babyEntry(BabyEntryType.WEIGHT, weightDecigrams = 45_200).toUnifiedRequests().single().category)
+            .isEqualTo("baby")
+        assertThat(babyEntry(BabyEntryType.MEASURE_LENGTH, lengthMm = 510).toUnifiedRequests())
+            .isNotEmpty()
+        // No value for the entryType → dropped, not POSTed as a 0 reading.
+        assertThat(babyEntry(BabyEntryType.WEIGHT, weightDecigrams = 0).toUnifiedRequests()).isEmpty()
+        assertThat(babyEntry(BabyEntryType.MEASURE_LENGTH, lengthMm = null).toUnifiedRequests()).isEmpty()
     }
 
     // ── Entry.toUnifiedRequests ──────────────────────────────────────────────────

@@ -10,6 +10,8 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import com.dmdbrands.gurus.weight.features.appPermissions.helper.PermissionGroup
 import com.dmdbrands.gurus.weight.features.common.components.AppText
@@ -43,7 +45,10 @@ fun PermissionSettings(
             AppText(
                 text = group.header,
                 textType = TextType.ListTitle1,
-                modifier = Modifier.padding(bottom = MeTheme.spacing.sm),
+                // TalkBack: expose the permission group title as a navigable heading.
+                modifier = Modifier
+                    .semantics { heading() }
+                    .padding(bottom = MeTheme.spacing.sm),
             )
             Column(
                 modifier = Modifier

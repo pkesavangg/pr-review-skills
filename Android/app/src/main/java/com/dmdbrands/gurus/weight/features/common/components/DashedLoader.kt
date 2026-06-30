@@ -2,20 +2,18 @@ package com.dmdbrands.gurus.weight.features.common.components
 
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.RepeatMode
-import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.infiniteRepeatable
-import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.size
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.unit.dp
+import com.dmdbrands.gurus.weight.core.power.powerSaveAwareInfiniteFloat
 import com.dmdbrands.gurus.weight.theme.MeAppTheme
 
 @Composable
@@ -27,8 +25,8 @@ fun DashedCircularLoader(
     gapLength: Float = 10f,
     sweepAngle: Float = 300f, // Partial circle
 ) {
-    val infiniteTransition = rememberInfiniteTransition(label = "loader")
-    val startAngle by infiniteTransition.animateFloat(
+    // Stops rotating and draws a static dashed arc under Power Saving Mode (MOB-226).
+    val startAngle = powerSaveAwareInfiniteFloat(
         initialValue = 0f,
         targetValue = 360f,
         animationSpec =
@@ -36,6 +34,7 @@ fun DashedCircularLoader(
                 animation = tween(1200, easing = LinearEasing),
                 repeatMode = RepeatMode.Restart,
             ),
+        restingValue = 0f,
         label = "angle",
     )
 

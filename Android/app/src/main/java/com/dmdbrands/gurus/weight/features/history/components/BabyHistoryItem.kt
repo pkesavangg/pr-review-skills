@@ -11,6 +11,8 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
@@ -68,11 +70,24 @@ fun BabyHistoryItem(
         }
     }
 
+    // TalkBack: collapse the date + weight + length + percentile columns and the
+    // decorative chevron into one coherent row announcement.
+    val rowDescription = buildString {
+        append(item.date)
+        if (item.entryCount > 0) {
+            append(", ${item.entryCount} ${HistoryItemStrings.accEntriesSuffix}")
+        }
+        append(", ${HistoryItemStrings.accWeightLabel} ${weightText.text}")
+        append(", ${HistoryItemStrings.accLengthLabel} ${lengthText.text}")
+        append(", ${HistoryItemStrings.accPercentileLabel} ${percentText.text}")
+    }
+
     Column {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
                 .clickable { onClick() }
+                .semantics(mergeDescendants = true) { contentDescription = rowDescription }
                 .padding(horizontal = MeTheme.spacing.sm, vertical = MeTheme.spacing.sm),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(MeTheme.spacing.lg),

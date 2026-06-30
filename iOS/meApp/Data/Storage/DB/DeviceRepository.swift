@@ -66,10 +66,14 @@ final class DeviceRepository: DeviceRepositoryProtocol {
     /// - Parameters:
     ///   - oldId: The current ID of the device in the database.
     ///   - updatedDevice: The device object with updated properties including the new ID.
-    func updateDeviceWithNewId(oldId: String, updatedDevice: Device) async throws {
+    func updateDeviceWithNewId(oldId: String, updatedDevice: Device) async throws { // swiftlint:disable:this function_body_length
         let oldDevice = try fetchDeviceOrThrow(oldId)
         guard oldDevice.modelContext === context else {
-            logger.log(level: .error, tag: "DeviceRepository", message: "updateDeviceWithNewId: device \(oldId) belongs to a different context — aborting")
+            logger.log(
+                level: .error,
+                tag: "DeviceRepository",
+                message: "updateDeviceWithNewId: device \(oldId) belongs to a different context — aborting"
+            )
             throw NSError(domain: "DeviceService", code: 500, userInfo: [NSLocalizedDescriptionKey: "Device context mismatch"])
         }
         logger.log(level: .debug, tag: "DeviceRepository", message: "Updating device ID from \(oldId) to \(updatedDevice.id)")

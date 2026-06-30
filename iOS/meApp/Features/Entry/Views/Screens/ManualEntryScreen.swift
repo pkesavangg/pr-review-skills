@@ -231,7 +231,9 @@ struct ManualEntryScreen: View {
                         }
                         .accessibilityAddTraits(.isButton)
                         .accessibilityLabel(manualEntryLang.accBodyMetricsHeader)
-                        .accessibilityHint(entryStore.showMetrics ? manualEntryLang.accBodyMetricsCollapseHint : manualEntryLang.accBodyMetricsExpandHint)
+                        .accessibilityHint(entryStore.showMetrics
+                            ? manualEntryLang.accBodyMetricsCollapseHint
+                            : manualEntryLang.accBodyMetricsExpandHint)
                         .padding(.bottom, .spacingXS)
 
                         if entryStore.showMetrics {
