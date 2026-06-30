@@ -137,12 +137,12 @@ object SegmentButtonDefaults {
   @Composable
   fun colors(): SegmentedButtonColors =
     SegmentedButtonDefaults.colors(
-      activeContainerColor = MeTheme.colorScheme.secondaryAction,
+      activeContainerColor = MeTheme.colorScheme.primaryAction,
       inactiveContainerColor = Color.Transparent,
-      activeBorderColor = MeTheme.colorScheme.secondaryAction,
+      activeBorderColor = MeTheme.colorScheme.primaryAction,
       inactiveBorderColor = Color.Transparent,
       activeContentColor = MeTheme.colorScheme.inverseAction,
-      inactiveContentColor = MeTheme.colorScheme.secondaryAction,
+      inactiveContentColor = MeTheme.colorScheme.primaryAction,
     )
 }
 
