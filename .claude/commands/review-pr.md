@@ -178,10 +178,11 @@ Use each rule's prescribed severity — do not re-classify the way you do for `c
 
 When the PR is **Appium E2E** (§ Step 2), skip the SwiftUI (4a.1/4a.1.5) and Compose (4a.2/4a.2.5) pipelines — they target native app source, not test-automation code. Instead, review like a **senior mobile test-automation engineer**: first build a mental model of the project (WebdriverIO + Appium + TypeScript, Page Object Model — base `Page`, `*.page.ts` selector getters switching on `driver.isAndroid`, Mocha specs, Allure/video reporting), then apply both **technical** rules (locators, waits, async correctness) and **logical** rules (does each test actually verify behavior, is it independent, can it fail).
 
-Read these six reference files and apply them to the changed `.ts` / config files:
+Read these eight reference files and apply them to the changed `.ts` / config files:
 
 - `$REFS_DIR/appium/locators.md`
 - `$REFS_DIR/appium/waits-and-synchronization.md`
+- `$REFS_DIR/appium/gestures-and-scrolling.md`
 - `$REFS_DIR/appium/page-objects.md`
 - `$REFS_DIR/appium/test-structure-and-assertions.md`
 - `$REFS_DIR/appium/reliability-and-flakiness.md`

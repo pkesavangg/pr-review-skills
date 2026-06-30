@@ -1,5 +1,5 @@
 ---
-description: Review uncommitted local changes (staged + unstaged by default). Auto-detects SwiftUI / Compose, writes P0/P1/P2/Nit findings to .claude-review/report.md, then offers to fix them.
+description: Review uncommitted local changes (staged + unstaged by default). Auto-detects SwiftUI / Compose / Appium E2E, writes P0/P1/P2/Nit findings to .claude-review/report.md, then offers to fix them.
 argument-hint: [--staged | --unstaged | --vs <ref>] [--no-prompt] [--report <path>]
 allowed-tools: Bash(git:*), Read, Edit, Write, Grep, Glob, Skill, AskUserQuestion
 ---
@@ -70,12 +70,13 @@ Announce: `Scope: <scope> · N file(s) · M lines of diff`.
 
 Inspect file paths in `FILES`:
 
+- **Appium / E2E (WebdriverIO + TypeScript)** if any path matches: `**/wdio*.conf.*`, `**/*.page.ts`, `**/*.spec.ts` (under a `test/`, `tests/`, or `e2e/` dir), `**/pageobjects/**`, or the scope touches a `package.json` declaring `appium`, `webdriverio`, or any `@wdio/*` dependency. This is mobile test-automation code (TypeScript driving Appium), distinct from native iOS/Android source. When detected, run the **Appium pipeline (§ 4.6) instead of** the SwiftUI (§ 4.1) and Compose (§ 4.2) pipelines — the `.swift`/`.kt` rules don't apply to test code. Security (§ 4.0) and privacy (§ 4.0.5) still run.
 - **iOS / SwiftUI** if any path matches: `*.swift`, `**/*.xcodeproj/**`, `Package.swift`, `*.xcconfig`, `*.entitlements`, `**/Info.plist`, `.swiftlint.yml`
 - **Android / Compose** if any path matches: `*.kt`, `*.kts`, `**/build.gradle*`, `**/AndroidManifest.xml`, `**/res/**`, `**/proguard-rules.pro`, `gradle.properties`
-- **Both** if both sets appear
-- **Other** if neither — write a one-line report stating "no SwiftUI/Compose files in scope; this reviewer didn't run platform checks" and skip to Step 5.
+- **Both** if both SwiftUI and Compose sets appear
+- **Other** if none of the above — write a one-line report stating "no SwiftUI/Compose/Appium files in scope; this reviewer didn't run platform checks" and skip to Step 5.
 
-Announce: `Detected: iOS only` / `Android only` / `iOS + Android`.
+Announce: `Detected: iOS only` / `Android only` / `iOS + Android` / `Appium E2E`.
 
 ## Step 3 — Detect pass (first vs re-pass)
 
@@ -160,10 +161,32 @@ Read and apply (use each rule's prescribed severity):
 
 **De-dup against compose-expert** at the same `file:line` with overlapping substance.
 
+### 4.6 — Appium / E2E (if Appium detected)
+
+When the scope is **Appium E2E** (§ Step 2), skip the SwiftUI (§ 4.1) and Compose (§ 4.2) pipelines — they target native app source, not test-automation code. Instead, review like a **senior mobile test-automation engineer**: first build a mental model of the project (WebdriverIO + Appium + TypeScript, Page Object Model — base `Page`, `*.page.ts` selector getters switching on `driver.isAndroid`, Mocha specs, Allure/video reporting), then apply both **technical** rules (locators, waits, gestures, async correctness) and **logical** rules (does each test actually verify behavior, is it independent, can it fail).
+
+Read these eight reference files and apply them to the changed `.ts` / config files:
+
+- `$REFS_DIR/appium/locators.md`
+- `$REFS_DIR/appium/waits-and-synchronization.md`
+- `$REFS_DIR/appium/gestures-and-scrolling.md`
+- `$REFS_DIR/appium/page-objects.md`
+- `$REFS_DIR/appium/test-structure-and-assertions.md`
+- `$REFS_DIR/appium/reliability-and-flakiness.md`
+- `$REFS_DIR/appium/typescript-and-async.md`
+- `$REFS_DIR/appium/config-and-secrets.md`
+
+Each rule states its own severity, a **Sniff** pattern (grep/`rg` over `.ts`), and a **Fix** with before/after — **use the severity each rule prescribes**, do not re-classify. Read whole files from the working tree for context (e.g. confirm a selector getter has no real assertion downstream, or that an action method is actually awaited at the call site) rather than judging from the diff alone.
+
+**De-duplicate** Appium findings against each other by `file:line` before writing (e.g. a missing-`await` and an action-without-wait on the same line → one finding; a deprecated-`touchAction` and a manual-swipe-loop on the same gesture → one finding). For findings that overlap the security reference (a committed secret is both `config-and-secrets.md` P0 and `security/secrets-and-storage.md`), write a single finding.
+
+For Appium scope, the § 4.3 "non-trivial production code without tests" check does **not** apply (the diff *is* tests). The logging check (§ 4.3) still applies to stray `console.log` left in specs/pages.
+
 ### 4.3 — Cross-cutting (both platforms)
 
 - **P1** — `print` / `NSLog` (Swift) or `Log.d/i/w/e` / `println` (Kotlin) outside an explicit logger wrapper
 - **P1** — non-trivial production code added without any test file added in the same scope
+- **P2** — leftover `console.log` (TypeScript/Appium) in `*.spec.ts` / `*.page.ts` outside an explicit logger/reporter wrapper
 
 **Skip the `/review-pr`-only cross-cutting checks** (PR-title Jira reference, PR-description-vs-diff mismatch, missing screenshot/screen recording) — those need a PR body and make no sense pre-commit.
 

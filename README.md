@@ -10,10 +10,11 @@ A team-shared Claude Code reviewer for **SwiftUI** and **Jetpack Compose** code,
 
 Both commands:
 
-- Auto-detect whether the change touches iOS (Swift / SwiftUI), Android (Kotlin / Compose), or both.
+- Auto-detect whether the change touches iOS (Swift / SwiftUI), Android (Kotlin / Compose), both, or Appium/WebdriverIO E2E test code (TypeScript).
 - Run cross-platform **security** ([references/security/](references/security/)) and **privacy compliance** ([references/privacy/](references/privacy/)) checks — secrets, insecure storage, TLS bypass, weak crypto, PII/PHI in logs, exposure surfaces, App Store / Play Store submission gates.
 - Apply Paul Hudson's [`swiftui-pro`](https://github.com/twostraws/SwiftUI-Agent-Skill) rules (vendored under [references/vendored/swiftui-pro/](references/vendored/swiftui-pro/), MIT licensed) for SwiftUI quality, then add iOS cross-cutting checks (concurrency, logging placement, test flake) from [references/ios/](references/ios/).
 - Apply aldefy's [`compose-expert`](https://github.com/aldefy/compose-skill) rules (vendored under [references/vendored/compose-expert/](references/vendored/compose-expert/), MIT licensed) for Compose quality, then add project-tuned Compose rules from [references/compose/](references/compose/).
+- For Appium/WebdriverIO E2E code, run the mobile test-automation pipeline from [references/appium/](references/appium/) (locators, waits, gestures, Page Object discipline, test structure, flakiness, TypeScript/async, config & secrets) **instead of** the SwiftUI/Compose pipelines.
 - Tag findings `P0` / `P1` / `P2` / `Nit`.
 
 `/review-pr` adds: re-review mode (walks prior priority comments, decides resolved / accepted / partial / still open, replies on the thread; reviews any new code added since the previous pass; posts a top-level summary). Auto-approves (`gh pr review --approve`) only when the PR is genuinely clean — zero findings on a first-review, or all prior findings resolved/accepted with verified tickets and no new findings on a re-review; otherwise posts `--comment`. Never `--request-changes`.

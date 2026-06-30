@@ -27,7 +27,7 @@ it("TC001 - should login with valid credentials", async () => {
 
 ## P1 — Order-dependent / shared-state test
 
-Tests must pass in isolation and in any order. A test that only works because a previous test left the app on a certain screen is a latent flake (and breaks under `--shard`, retries, or `.only`).
+Tests must pass in isolation and in any order. A test that only works because a previous test left the app on a certain screen is a latent flake (and breaks under `--shard`, retries, or `.only`). This is the *spec* side of the same defect `reliability-and-flakiness.md` flags as **P1 — No clean state between tests** (the *config/lifecycle* side); both are P1 — when they fire on one PR, post a single comment.
 
 **Sniff.** A spec that starts mid-flow with no `before`/`beforeEach` to establish state, or relies on a global/module variable mutated by an earlier `it`.
 
