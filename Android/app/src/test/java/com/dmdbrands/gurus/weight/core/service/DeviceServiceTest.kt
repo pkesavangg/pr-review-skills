@@ -12,7 +12,7 @@ import com.dmdbrands.gurus.weight.domain.model.storage.BLEStatus
 import com.dmdbrands.gurus.weight.domain.model.storage.Device
 import com.dmdbrands.gurus.weight.domain.model.storage.Preferences
 import com.dmdbrands.gurus.weight.domain.repository.IDeviceRepository
-import com.dmdbrands.gurus.weight.features.common.enums.ScaleSetupType
+import com.dmdbrands.gurus.weight.features.common.enums.DeviceSetupType
 import com.dmdbrands.gurus.weight.features.common.model.DialogModel
 import com.dmdbrands.library.ggbluetooth.model.GGDeviceDetail
 import com.google.common.truth.Truth.assertThat
@@ -326,7 +326,7 @@ class DeviceServiceTest {
 
     @Test
     fun `hasWeightScale emits true when a weight scale is paired`() = runTest(mainDispatcherRule.scheduler) {
-        val scale = fakeDevice(deviceType = ScaleSetupType.Bluetooth.value)
+        val scale = fakeDevice(deviceType = DeviceSetupType.Bluetooth.value)
         every { deviceRepository.getDevices(accountId, any()) } returns flowOf(listOf(scale))
         service.setAccountId(accountId)
         Thread.sleep(2000) // fetchScales runs on IO
@@ -336,7 +336,7 @@ class DeviceServiceTest {
 
     @Test
     fun `hasWeightScale emits false when only a BPM device is paired`() = runTest(mainDispatcherRule.scheduler) {
-        val bpm = fakeDevice(deviceType = ScaleSetupType.BpmBluetooth.value)
+        val bpm = fakeDevice(deviceType = DeviceSetupType.BpmBluetooth.value)
         every { deviceRepository.getDevices(accountId, any()) } returns flowOf(listOf(bpm))
         service.setAccountId(accountId)
         Thread.sleep(2000) // fetchScales runs on IO
@@ -350,7 +350,7 @@ class DeviceServiceTest {
 
     @Test
     fun `getScalesByType returns empty list when no scales match`() = runTest(mainDispatcherRule.scheduler) {
-        val result = service.getScalesByType(ScaleSetupType.BtWifiR4.value)
+        val result = service.getScalesByType(DeviceSetupType.BtWifiR4.value)
         assertThat(result).isEmpty()
     }
 
@@ -582,7 +582,7 @@ class DeviceServiceTest {
         val r4Device = fakeDevice(
             id = "r4-1",
             isSynced = false,
-            deviceType = ScaleSetupType.BtWifiR4.value,
+            deviceType = DeviceSetupType.BtWifiR4.value,
             preferences = prefs,
         )
         val savedDevice = r4Device.copy(isSynced = true)
@@ -600,7 +600,7 @@ class DeviceServiceTest {
         val r4Device = fakeDevice(
             id = "r4-err",
             isSynced = false,
-            deviceType = ScaleSetupType.BtWifiR4.value,
+            deviceType = DeviceSetupType.BtWifiR4.value,
             preferences = prefs,
         )
         val savedDevice = r4Device.copy(isSynced = true)

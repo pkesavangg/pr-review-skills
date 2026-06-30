@@ -1,7 +1,7 @@
 package com.dmdbrands.gurus.weight.features.common.helper
 
 import com.dmdbrands.gurus.weight.domain.enums.ProductType
-import com.dmdbrands.gurus.weight.features.common.enums.ScaleSetupType
+import com.dmdbrands.gurus.weight.features.common.enums.DeviceSetupType
 import com.dmdbrands.gurus.weight.features.common.helper.DeviceHelper.SKU_0022
 import com.dmdbrands.gurus.weight.features.common.helper.DeviceHelper.SKU_0220
 import com.dmdbrands.gurus.weight.features.common.helper.DeviceHelper.SKU_0222
@@ -111,15 +111,15 @@ class DeviceHelperTest {
     }
 
     @Test
-    fun `ScaleDataHelper findScaleInfoBySku resolves variant SKUs to primary entry`() {
-        val info = ScaleDataHelper.findScaleInfoBySku(SKU_0664)
+    fun `DeviceDataHelper findScaleInfoBySku resolves variant SKUs to primary entry`() {
+        val info = DeviceDataHelper.findScaleInfoBySku(SKU_0664)
 
         assertThat(info).isNotNull()
         // 0664 resolves to the 0604 catalog entry for lookup, but the original
-        // variant SKU is preserved on the returned ScaleInfo. 0604 is a BPM, so its
+        // variant SKU is preserved on the returned DeviceModelInfo. 0604 is a BPM, so its
         // catalog setupType is BpmBluetooth.
         assertThat(info?.sku).isEqualTo(SKU_0664)
-        assertThat(info?.setupType).isEqualTo(ScaleSetupType.BpmBluetooth)
+        assertThat(info?.setupType).isEqualTo(DeviceSetupType.BpmBluetooth)
     }
 
     // ── productTypeForSku — device SKU → account ProductType (MOB-596) ──

@@ -4,8 +4,8 @@ import androidx.lifecycle.viewModelScope
 import com.dmdbrands.gurus.weight.core.navigation.AppRoute
 import com.dmdbrands.gurus.weight.core.network.ITokenManager
 import com.dmdbrands.gurus.weight.core.rules.MainDispatcherRule
-import com.dmdbrands.gurus.weight.features.ScaleSetup.enums.BabyScaleSetupStep
-import com.dmdbrands.gurus.weight.features.ScaleSetup.enums.LcbtScaleSetupStep
+import com.dmdbrands.gurus.weight.features.DeviceSetup.enums.BabyScaleSetupStep
+import com.dmdbrands.gurus.weight.features.DeviceSetup.enums.LcbtScaleSetupStep
 import com.dmdbrands.gurus.weight.features.common.helper.DeviceHelper.SKU_0220
 import com.dmdbrands.gurus.weight.features.common.helper.DeviceHelper.SKU_0663
 import com.dmdbrands.gurus.weight.core.service.AppNotificationEventService
@@ -322,7 +322,7 @@ class AppViewModelTest {
 
         coVerify {
             navigationService.navigateTo(
-                match<AppRoute.ScaleSetup.BabyScaleSetup> {
+                match<AppRoute.DeviceSetup.BabyScaleSetup> {
                     it.sku == SKU_0220 && it.initialStep == BabyScaleSetupStep.WAKEUP
                 },
             )
@@ -345,7 +345,7 @@ class AppViewModelTest {
 
         coVerify {
             navigationService.navigateTo(
-                match<AppRoute.ScaleSetup.LcbtScaleSetup> {
+                match<AppRoute.DeviceSetup.LcbtScaleSetup> {
                     it.sku == lcbtSku && it.initialStep == LcbtScaleSetupStep.CONNECTING_BLUETOOTH
                 },
             )
@@ -367,7 +367,7 @@ class AppViewModelTest {
 
         coVerify {
             navigationService.navigateTo(
-                match<AppRoute.ScaleSetup.BpmSetup> {
+                match<AppRoute.DeviceSetup.BpmSetup> {
                     it.sku == SKU_0663
                 },
             )

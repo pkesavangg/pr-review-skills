@@ -19,7 +19,7 @@ import com.dmdbrands.gurus.weight.domain.model.storage.entry.PopulatedEntry
 import com.dmdbrands.gurus.weight.domain.model.storage.entry.ScaleEntry
 
 /** Projection of a weight entry's timestamp + stored note for batch note merging (MOB-438). */
-data class ScaleNoteRow(val entryTimestamp: String, val note: String?)
+data class DeviceNoteRow(val entryTimestamp: String, val note: String?)
 
 /**
  * Data Access Object (DAO) for the entry table.
@@ -236,7 +236,7 @@ interface EntryDao {
       "FROM entry e INNER JOIN body_scale_entry bse ON e.id = bse.id " +
       "WHERE e.accountId = :accountId AND bse.note IS NOT NULL AND bse.note != ''",
   )
-  suspend fun getStoredScaleNotes(accountId: String): List<ScaleNoteRow>
+  suspend fun getStoredScaleNotes(accountId: String): List<DeviceNoteRow>
 
   /**
    * Note-only updates (MOB-438). These touch just the note column so editing a note never

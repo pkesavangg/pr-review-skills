@@ -12,8 +12,8 @@ import com.dmdbrands.gurus.weight.domain.repository.IDeviceRepository
 import com.dmdbrands.gurus.weight.domain.repository.IDeviceService
 import com.dmdbrands.gurus.weight.domain.services.IProductSelectionManager
 import javax.inject.Provider
-import com.dmdbrands.gurus.weight.features.ScaleSetup.strings.ScaleSetupStrings
-import com.dmdbrands.gurus.weight.features.common.enums.ScaleSetupType
+import com.dmdbrands.gurus.weight.features.DeviceSetup.strings.DeviceSetupStrings
+import com.dmdbrands.gurus.weight.features.common.enums.DeviceSetupType
 import com.dmdbrands.gurus.weight.features.common.helper.DeviceHelper
 import com.dmdbrands.gurus.weight.features.common.model.DialogModel
 import com.dmdbrands.gurus.weight.core.di.ApplicationScope
@@ -69,12 +69,12 @@ constructor(
 
   override val hasBluetoothWifiScale: Flow<Boolean>
     get() = _pairedScales.map { devices ->
-      devices.any { device -> device.deviceType == ScaleSetupType.BtWifiR4.value }
+      devices.any { device -> device.deviceType == DeviceSetupType.BtWifiR4.value }
     }
 
   override val hasWeightScale: Flow<Boolean>
     get() = _pairedScales.map { devices ->
-      devices.any { device -> ScaleSetupType.isWeightScale(device.deviceType) }
+      devices.any { device -> DeviceSetupType.isWeightScale(device.deviceType) }
     }
 
   override val isWeightOnlyModeAlertShown = MutableStateFlow(false)
@@ -269,7 +269,7 @@ constructor(
           savedDevice = savedDevice.copy(isSynced = true)
 
           // Sync preference if needed
-          if (savedDevice.deviceType == ScaleSetupType.BtWifiR4.value && savedDevice.preferences != null) {
+          if (savedDevice.deviceType == DeviceSetupType.BtWifiR4.value && savedDevice.preferences != null) {
             try {
               val updatedPref = savedDevice.preferences.copy(
                 isSynced = true,
@@ -648,10 +648,10 @@ constructor(
   ) {
     dialogQueueService.showDialog(
       DialogModel.Confirm(
-        title = ScaleSetupStrings.WeightOnlyModeAlertDismiss.Title,
-        message = ScaleSetupStrings.WeightOnlyModeAlertDismiss.Message,
-        confirmText = ScaleSetupStrings.WeightOnlyModeAlertDismiss.Dismiss,
-        cancelText = ScaleSetupStrings.WeightOnlyModeAlertDismiss.Cancel,
+        title = DeviceSetupStrings.WeightOnlyModeAlertDismiss.Title,
+        message = DeviceSetupStrings.WeightOnlyModeAlertDismiss.Message,
+        confirmText = DeviceSetupStrings.WeightOnlyModeAlertDismiss.Dismiss,
+        cancelText = DeviceSetupStrings.WeightOnlyModeAlertDismiss.Cancel,
         onConfirm = {
           updateWeightOnlyModeAlertShown(true)
           onConfirm.invoke()

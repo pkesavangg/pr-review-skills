@@ -3,7 +3,7 @@ package com.dmdbrands.gurus.weight.domain.model.api.device
 import com.dmdbrands.gurus.weight.domain.model.storage.BLEStatus
 import com.dmdbrands.gurus.weight.domain.model.storage.Device
 import com.dmdbrands.gurus.weight.domain.model.storage.Preferences
-import com.dmdbrands.gurus.weight.features.common.enums.ScaleSetupType
+import com.dmdbrands.gurus.weight.features.common.enums.DeviceSetupType
 import com.dmdbrands.gurus.weight.features.common.helper.DeviceHelper
 import com.dmdbrands.library.ggbluetooth.model.GGDeviceDetail
 import java.util.UUID
@@ -92,9 +92,9 @@ fun Device.toPairedDeviceRequest(): PairedDeviceRequest = PairedDeviceRequest(
     // that aren't valid connection types — e.g. "babyScale" is a BLE scale → "bluetooth"
     // (server 400s on type="babyScale"). The rest already match.
     type = when (deviceType) {
-        ScaleSetupType.BabyScale.value -> ScaleSetupType.Bluetooth.value
-        ScaleSetupType.BpmA6Bluetooth.value -> ScaleSetupType.BpmBluetooth.value
-        ScaleSetupType.EspTouchWifi.value -> ScaleSetupType.Wifi.value
+        DeviceSetupType.BabyScale.value -> DeviceSetupType.Bluetooth.value
+        DeviceSetupType.BpmA6Bluetooth.value -> DeviceSetupType.BpmBluetooth.value
+        DeviceSetupType.EspTouchWifi.value -> DeviceSetupType.Wifi.value
         else -> deviceType ?: ""
     },
     nickname = nickname,

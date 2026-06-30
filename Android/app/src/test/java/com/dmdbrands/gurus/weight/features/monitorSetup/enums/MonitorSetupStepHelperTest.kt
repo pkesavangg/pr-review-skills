@@ -1,8 +1,8 @@
 package com.dmdbrands.gurus.weight.features.monitorSetup.enums
 
-import com.dmdbrands.gurus.weight.features.ScaleSetup.enums.MonitorSetupStep
-import com.dmdbrands.gurus.weight.features.ScaleSetup.enums.MonitorSetupStepHelper
-import com.dmdbrands.gurus.weight.features.common.enums.ScaleSetupType
+import com.dmdbrands.gurus.weight.features.DeviceSetup.enums.MonitorSetupStep
+import com.dmdbrands.gurus.weight.features.DeviceSetup.enums.MonitorSetupStepHelper
+import com.dmdbrands.gurus.weight.features.common.enums.DeviceSetupType
 import com.greatergoods.ggbluetoothsdk.external.enums.GGDeviceProtocolType
 import com.google.common.truth.Truth.assertThat
 import org.junit.jupiter.api.Test
@@ -54,14 +54,14 @@ class MonitorSetupStepHelperTest {
 
   @Test
   fun `setupTypeForSku returns BpmA6Bluetooth for A6 SKUs`() {
-    assertThat(MonitorSetupStepHelper.setupTypeForSku("0661")).isEqualTo(ScaleSetupType.BpmA6Bluetooth)
-    assertThat(MonitorSetupStepHelper.setupTypeForSku("0663")).isEqualTo(ScaleSetupType.BpmA6Bluetooth)
+    assertThat(MonitorSetupStepHelper.setupTypeForSku("0661")).isEqualTo(DeviceSetupType.BpmA6Bluetooth)
+    assertThat(MonitorSetupStepHelper.setupTypeForSku("0663")).isEqualTo(DeviceSetupType.BpmA6Bluetooth)
   }
 
   @Test
   fun `setupTypeForSku returns BpmBluetooth for A3 SKUs`() {
     for (sku in listOf("0603", "0604", "0634", "0636")) {
-      assertThat(MonitorSetupStepHelper.setupTypeForSku(sku)).isEqualTo(ScaleSetupType.BpmBluetooth)
+      assertThat(MonitorSetupStepHelper.setupTypeForSku(sku)).isEqualTo(DeviceSetupType.BpmBluetooth)
     }
   }
 

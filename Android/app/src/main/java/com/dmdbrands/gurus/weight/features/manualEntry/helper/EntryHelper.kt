@@ -16,7 +16,7 @@ import com.dmdbrands.gurus.weight.domain.model.storage.entry.PeriodBodyScaleSumm
 import com.dmdbrands.gurus.weight.domain.model.storage.entry.ScaleEntry
 import com.dmdbrands.gurus.weight.domain.model.storage.entry.ScaleEntryWithMetrics
 import com.dmdbrands.gurus.weight.domain.enums.ProductType
-import com.dmdbrands.gurus.weight.features.common.enums.ScaleSetupType
+import com.dmdbrands.gurus.weight.features.common.enums.DeviceSetupType
 import com.dmdbrands.gurus.weight.features.common.helper.form.FormControl
 import com.dmdbrands.gurus.weight.features.manualEntry.viewmodel.EntryForm
 import com.dmdbrands.gurus.weight.data.storage.db.entity.entry.BpmEntryEntity
@@ -445,8 +445,8 @@ object EntryHelper {
   }
 
   fun getScaleSetupType(protocolType: String): String = when (protocolType) {
-    GGDeviceProtocolType.GG_DEVICE_PROTOCOL_R4.value -> ScaleSetupType.toSource(ScaleSetupType.BtWifiR4.value)
-    else -> ScaleSetupType.toSource(ScaleSetupType.Bluetooth.value)
+    GGDeviceProtocolType.GG_DEVICE_PROTOCOL_R4.value -> DeviceSetupType.toSource(DeviceSetupType.BtWifiR4.value)
+    else -> DeviceSetupType.toSource(DeviceSetupType.Bluetooth.value)
   }
 
   fun getCalculatedBMI(weight: Float, unit: WeightUnit, height: Int): Double {

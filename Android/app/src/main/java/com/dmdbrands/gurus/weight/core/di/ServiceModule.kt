@@ -31,7 +31,7 @@ import com.dmdbrands.gurus.weight.core.service.NotificationService
 import com.dmdbrands.gurus.weight.core.service.OfflineHandlerService
 import com.dmdbrands.gurus.weight.core.service.StorageClearService
 import com.dmdbrands.gurus.weight.core.service.UserSettingsService
-import com.dmdbrands.gurus.weight.core.service.WifiScaleService
+import com.dmdbrands.gurus.weight.core.service.WifiDeviceService
 import com.dmdbrands.gurus.weight.core.service.pushNotification.NotificationManager as GGNotificationManager
 import com.dmdbrands.gurus.weight.core.shared.utilities.logging.LogManager
 import com.dmdbrands.gurus.weight.data.api.IExportAPI
@@ -166,7 +166,7 @@ object ServiceModule {
    * @param context The application context.
    * @param wifiSmartConnectManager The WiFi smart connect manager.
    * @param deviceService The device service.
-   * @return [WifiScaleService] instance.
+   * @return [WifiDeviceService] instance.
    */
   @Provides
   @Singleton
@@ -175,7 +175,7 @@ object ServiceModule {
     wifiSmartConnectManager: WifiSmartConnectManager,
     deviceService: IDeviceService,
     @ApplicationScope appScope: CoroutineScope,
-  ) = WifiScaleService(
+  ) = WifiDeviceService(
     wifiSmartConnectManager,
     deviceService,
     context,

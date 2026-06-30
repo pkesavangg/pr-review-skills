@@ -43,17 +43,17 @@ import com.dmdbrands.gurus.weight.domain.services.IDeviceInfoService
 import com.dmdbrands.gurus.weight.domain.services.IEntryService
 import com.dmdbrands.gurus.weight.domain.services.IEntryReadService
 import com.dmdbrands.gurus.weight.domain.services.IFeedService
-import com.dmdbrands.gurus.weight.features.ScaleMetricsSetting.Helper.ScaleMetricsHelper
-import com.dmdbrands.gurus.weight.features.ScaleSetup.enums.BabyScaleSetupStep
-import com.dmdbrands.gurus.weight.features.ScaleSetup.enums.BtWifiSetupStep
-import com.dmdbrands.gurus.weight.features.ScaleSetup.enums.LcbtScaleSetupStep
-import com.dmdbrands.gurus.weight.features.ScaleSetup.enums.MonitorSetupStepHelper
+import com.dmdbrands.gurus.weight.features.DeviceMetricsSetting.Helper.DeviceMetricsHelper
+import com.dmdbrands.gurus.weight.features.DeviceSetup.enums.BabyScaleSetupStep
+import com.dmdbrands.gurus.weight.features.DeviceSetup.enums.BtWifiSetupStep
+import com.dmdbrands.gurus.weight.features.DeviceSetup.enums.LcbtScaleSetupStep
+import com.dmdbrands.gurus.weight.features.DeviceSetup.enums.MonitorSetupStepHelper
 import com.dmdbrands.gurus.weight.features.appPermissions.helper.AppPermissionsHelper
-import com.dmdbrands.gurus.weight.features.common.enums.ScaleSetupType
+import com.dmdbrands.gurus.weight.features.common.enums.DeviceSetupType
 import com.dmdbrands.gurus.weight.features.common.helper.DeviceHelper
 import com.dmdbrands.gurus.weight.features.common.helper.DeviceHelper.SKU_0412
 import com.dmdbrands.gurus.weight.features.common.helper.DeviceHelper.getSKU
-import com.dmdbrands.gurus.weight.features.common.helper.ScaleDataHelper
+import com.dmdbrands.gurus.weight.features.common.helper.DeviceDataHelper
 import com.dmdbrands.gurus.weight.features.common.components.DialogType
 import com.dmdbrands.gurus.weight.features.common.model.DialogModel
 import com.dmdbrands.gurus.weight.features.common.model.ReadingToast
@@ -266,11 +266,11 @@ constructor(
       // Clear all dialogs including IAM modal to ensure it's dismissed when connecting to scale
       dialogQueueService.clear()
       val localSku = sku ?: return@launch
-      val scaleInfo = ScaleDataHelper.findScaleInfoBySku(localSku)
+      val scaleInfo = DeviceDataHelper.findScaleInfoBySku(localSku)
       when {
         localSku == SKU_0412 -> {
           navigationService.navigateTo(
-            AppRoute.ScaleSetup.BtWifiScaleSetup(
+            AppRoute.DeviceSetup.BtWifiScaleSetup(
               SKU_0412,
               BtWifiSetupStep.CONNECTING_BLUETOOTH,
               discoveredBroadcastId,
@@ -279,7 +279,7 @@ constructor(
         }
         DeviceHelper.isBabyScale(localSku) -> {
           navigationService.navigateTo(
-            AppRoute.ScaleSetup.BabyScaleSetup(
+            AppRoute.DeviceSetup.BabyScaleSetup(
               sku = localSku,
               initialStep = BabyScaleSetupStep.WAKEUP,
               broadcastId = discoveredBroadcastId,
@@ -289,12 +289,12 @@ constructor(
         }
         DeviceHelper.isBpmDevice(localSku) -> {
           navigationService.navigateTo(
-            AppRoute.ScaleSetup.BpmSetup(sku = localSku),
+            AppRoute.DeviceSetup.BpmSetup(sku = localSku),
           )
         }
         else -> {
           navigationService.navigateTo(
-            AppRoute.ScaleSetup.LcbtScaleSetup(
+            AppRoute.DeviceSetup.LcbtScaleSetup(
               localSku,
               discoveredBroadcastId,
               LcbtScaleSetupStep.CONNECTING_BLUETOOTH,
@@ -534,12 +534,12 @@ constructor(
               val pairedScales = deviceService.pairedScales.first()
               AppLog.d(TAG, "Paired scales: $pairedScales")
               val hasBtWifiScales = pairedScales.isNotEmpty() && pairedScales.any { savedScale ->
-                val scaleInfo = ScaleDataHelper.findScaleInfoBySku(savedScale.getSKU())
+                val scaleInfo = DeviceDataHelper.findScaleInfoBySku(savedScale.getSKU())
                 scaleInfo?.setupType in listOf(
-                  ScaleSetupType.BtWifiR4,
-                  ScaleSetupType.Lcbt,
-                  ScaleSetupType.EspTouchWifi,
-                  ScaleSetupType.Wifi,
+                  DeviceSetupType.BtWifiR4,
+                  DeviceSetupType.Lcbt,
+                  DeviceSetupType.EspTouchWifi,
+                  DeviceSetupType.Wifi,
                 )
               }
               val canRequestNotifPermission = AppPermissionsHelper
@@ -766,7 +766,7 @@ constructor(
             val isSetupInProgress = deviceService.isSetupInProgress()
             val isOnMainScreen = currentRoute is AppRoute.Home || currentRoute is AppRoute.Main.Dashboard
 
-            if (isOnMainScreen && currentRoute !is AppRoute.ScaleSetup && !isSetupInProgress) {
+            if (isOnMainScreen && currentRoute !is AppRoute.DeviceSetup && !isSetupInProgress) {
               // Check if device is in skipDevices list
               val isSkipped =
                 data.broadcastId?.let { bluetoothPreferencesService.containsSkipDevice(it) } == true ||
@@ -805,7 +805,7 @@ constructor(
                   deviceSku == SKU_0412 -> customizeDevice(data)
                   DeviceHelper.isBabyScale(deviceSku) -> Device(
                     device = data,
-                    deviceType = ScaleSetupType.BabyScale.value,
+                    deviceType = DeviceSetupType.BabyScale.value,
                     sku = deviceSku,
                   )
                   DeviceHelper.isBpmDevice(deviceSku) -> Device(
@@ -815,7 +815,7 @@ constructor(
                   )
                   else -> Device(
                     device = data,
-                    deviceType = ScaleSetupType.Lcbt.value,
+                    deviceType = DeviceSetupType.Lcbt.value,
                     sku = deviceSku,
                   )
                 }
@@ -881,7 +881,7 @@ constructor(
         GGScanResponseType.DEVICE_MEMORY_FULL -> {
           val currentRoute = navigationService.getCurrentRoute()
           val isOnAuthScreen = currentRoute is AppRoute.Auth
-          if (currentRoute !is AppRoute.ScaleSetup && isKnownScale && !isOnAuthScreen) {
+          if (currentRoute !is AppRoute.DeviceSetup && isKnownScale && !isOnAuthScreen) {
             dialogQueueService.showDialog(
               ReconnectScale.getMaxUserAlert(
                 onConfirm = {
@@ -900,7 +900,7 @@ constructor(
                         viewModelScope.launch {
                           dialogQueueService.dismissLoader()
                           navigationService.navigateTo(
-                            AppRoute.ScaleSetup.BtWifiScaleSetup(
+                            AppRoute.DeviceSetup.BtWifiScaleSetup(
                               sku = data.getSKU().orEmpty(),
                               initialStep = BtWifiSetupStep.USER_LIMIT_REACHED,
                               broadcastId = data.broadcastId,
@@ -929,7 +929,7 @@ constructor(
           try {
             val currentRoute = navigationService.getCurrentRoute()
             val isOnAuthScreen = currentRoute is AppRoute.Auth
-            if (currentRoute !is AppRoute.ScaleSetup && !isOnAuthScreen) {
+            if (currentRoute !is AppRoute.DeviceSetup && !isOnAuthScreen) {
               dialogQueueService.showDialog(
                 ReconnectScale.getDuplicateUserAlert(
                   onConfirm = {
@@ -952,7 +952,7 @@ constructor(
                           viewModelScope.launch {
                             ggDeviceService.addCacheDevice(data.broadcastId, device)
                             navigationService.navigateTo(
-                              AppRoute.ScaleSetup.BtWifiScaleSetup(
+                              AppRoute.DeviceSetup.BtWifiScaleSetup(
                                 data.getSKU().orEmpty(),
                                 BtWifiSetupStep.CONNECTING_BLUETOOTH,
                                 data.broadcastId,
@@ -989,9 +989,9 @@ constructor(
       token = token,
     )
     return device.copy(
-      deviceType = ScaleSetupType.BtWifiR4.value,
+      deviceType = DeviceSetupType.BtWifiR4.value,
       sku = "0412",
-      preferences = ScaleMetricsHelper.getDefaultPreference(username, device.id),
+      preferences = DeviceMetricsHelper.getDefaultPreference(username, device.id),
     )
   }
 

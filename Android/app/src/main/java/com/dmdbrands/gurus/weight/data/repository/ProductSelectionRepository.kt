@@ -7,7 +7,7 @@ import com.dmdbrands.gurus.weight.data.storage.db.dao.DeviceDao
 import com.dmdbrands.gurus.weight.domain.enums.ProductType
 import com.dmdbrands.gurus.weight.domain.model.common.BabyProfile
 import com.dmdbrands.gurus.weight.domain.repository.IProductSelectionRepository
-import com.dmdbrands.gurus.weight.features.common.enums.ScaleSetupType
+import com.dmdbrands.gurus.weight.features.common.enums.DeviceSetupType
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
@@ -89,7 +89,7 @@ class ProductSelectionRepository @Inject constructor(
         deviceDao.getDevicesByTypeWithAccount("BPM", accountId).first().isNotEmpty()
 
     override suspend fun hasBabyScaleDevice(accountId: String): Boolean =
-        deviceDao.getDevicesByTypeWithAccount(ScaleSetupType.BabyScale.value, accountId).first().isNotEmpty()
+        deviceDao.getDevicesByTypeWithAccount(DeviceSetupType.BabyScale.value, accountId).first().isNotEmpty()
 
     private companion object {
         const val TAG = "ProductSelectionRepo"

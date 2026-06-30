@@ -15,7 +15,7 @@ import com.dmdbrands.gurus.weight.domain.model.storage.toDeviceDetails
 import com.dmdbrands.gurus.weight.domain.model.storage.toDeviceDomainModel
 import com.dmdbrands.gurus.weight.core.shared.utilities.logging.AppLog
 import com.dmdbrands.gurus.weight.domain.repository.IDeviceRepository
-import com.dmdbrands.gurus.weight.features.common.helper.ScaleDataHelper
+import com.dmdbrands.gurus.weight.features.common.helper.DeviceDataHelper
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.map
@@ -67,7 +67,7 @@ constructor(
   override suspend fun repairDeviceTypesFromSku(): Int {
     var repaired = 0
     deviceDao.getAllDevicesList().forEach { device ->
-      val expectedType = ScaleDataHelper.findScaleInfoBySku(device.sku)?.setupType?.value ?: return@forEach
+      val expectedType = DeviceDataHelper.findScaleInfoBySku(device.sku)?.setupType?.value ?: return@forEach
       if (device.deviceType != expectedType || device.protocolType != expectedType) {
         deviceDao.updateDevice(device.copy(deviceType = expectedType, protocolType = expectedType))
         repaired++

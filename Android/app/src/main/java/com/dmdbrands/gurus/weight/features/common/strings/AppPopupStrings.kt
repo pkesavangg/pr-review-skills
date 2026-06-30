@@ -71,7 +71,7 @@ object AppPopupStrings {
     const val Cancel = "Cancel"
   }
 
-  object ScaleDiscoveredPopup {
+  object DeviceDiscoveredPopup {
     fun Title(sku: String) = if (DeviceHelper.isBpmDevice(sku)) "New Monitor Discovered" else "New Scale Discovered"
     const val ConnectButton = "Connect"
     const val CloseContentDescription = "Close"
