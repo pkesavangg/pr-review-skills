@@ -408,6 +408,11 @@ data class SignupState(
       || (currentStep == SignupStep.BABY_ADDED && babyState?.babies.isNullOrEmpty())
   val progress: Float get() = (currentStepIndex + 1f) / steps.size
 
+  // The progress bar implies a forward, multi-step flow. The terminal ERROR
+  // screen ("Something went wrong") has no forward navigation (only X / FINISH /
+  // Try Again), so a filled bar falsely implies another step — hide it. (MOB-1161)
+  val showProgressBar: Boolean get() = currentStep != SignupStep.ERROR
+
   val isCurrentStepValid: Boolean
     get() =
       when (currentStep) {

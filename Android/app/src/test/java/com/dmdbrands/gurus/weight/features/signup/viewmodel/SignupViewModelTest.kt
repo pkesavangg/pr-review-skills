@@ -28,6 +28,7 @@ import com.google.common.truth.Truth.assertThat
 import io.mockk.MockKAnnotations
 import io.mockk.coEvery
 import io.mockk.coVerify
+import io.mockk.coVerifyOrder
 import io.mockk.every
 import io.mockk.impl.annotations.MockK
 import io.mockk.mockk
@@ -794,7 +795,7 @@ class SignupViewModelTest {
     }
 
     @Test
-    fun `Submit baby scale swallows a save failure and still reaches the Ready terminal`() = runTest(mainDispatcherRule.scheduler) {
+    fun `Submit baby scale routes to the ERROR screen when a save fails`() = runTest(mainDispatcherRule.scheduler) {
         coEvery { accountService.signup(any()) } returns TestFixtures.activeAccount
         coEvery { babyProfileService.save(any()) } throws RuntimeException("network down")
 
@@ -807,9 +808,9 @@ class SignupViewModelTest {
         viewModel.handleIntent(SignupIntent.Next)
         advanceUntilIdle()
 
-        // The failure is best-effort/swallowed: save was attempted and the flow still advances.
+        // A save failure now propagates (no longer swallowed) → terminal ERROR screen.
         coVerify { babyProfileService.save(any()) }
-        assertThat(viewModel.state.value.currentStep).isEqualTo(SignupStep.DEVICE_READY)
+        assertThat(viewModel.state.value.currentStep).isEqualTo(SignupStep.ERROR)
     }
 
     // -------------------------------------------------------------------------
@@ -912,6 +913,39 @@ class SignupViewModelTest {
         coVerify(exactly = 1) { accountService.signup(any()) }
         assertThat(viewModel.state.value.registeredDevices)
             .containsAtLeast(ProductType.MY_WEIGHT, ProductType.BLOOD_PRESSURE)
+    }
+
+    @Test
+    fun `Loop pass routes to the ERROR screen when product sync fails`() = runTest(mainDispatcherRule.scheduler) {
+        coEvery { accountService.signup(any()) } returns TestFixtures.activeAccount
+        coEvery { goalService.createGoalForSignup(any(), any(), any(), any()) } returns TestFixtures.activeAccount
+        coEvery { accountService.getCurrentAccount() } returns TestFixtures.activeAccount
+        // The loop-pass product sync fails → no longer swallowed → ERROR screen.
+        coEvery { accountService.addProduct(any()) } throws RuntimeException("network down")
+
+        registerFirstWeightDeviceThenPickBloodPressure()
+        viewModel.handleIntent(SignupIntent.Next)
+        advanceUntilIdle()
+
+        assertThat(viewModel.state.value.currentStep).isEqualTo(SignupStep.ERROR)
+    }
+
+    @Test
+    fun `Loop pass patches gender and dob via profile before adding the product type`() = runTest(mainDispatcherRule.scheduler) {
+        coEvery { accountService.signup(any()) } returns TestFixtures.activeAccount
+        coEvery { goalService.createGoalForSignup(any(), any(), any(), any()) } returns TestFixtures.activeAccount
+        coEvery { accountService.getCurrentAccount() } returns TestFixtures.activeAccount
+
+        registerFirstWeightDeviceThenPickBloodPressure()
+        viewModel.handleIntent(SignupIntent.Next)
+        advanceUntilIdle()
+
+        // Weight/BP loop devices PATCH the profile (gender + dob) BEFORE the product
+        // type is added, so the product is never added against an incomplete account.
+        coVerifyOrder {
+            accountService.updateProfile(any(), any(), any())
+            accountService.addProduct(ProductType.BLOOD_PRESSURE)
+        }
     }
 
     @Test
