@@ -58,9 +58,9 @@ await page.continue();
 
 ---
 
-## P2 — No clean state between tests
+## P1 — No clean state between tests
 
-Without an app reset between specs, residual state (logged-in session, cached input, navigation stack) leaks across tests and creates order-dependent failures.
+Without an app reset between specs, residual state (logged-in session, cached input, navigation stack) leaks across tests and creates order-dependent failures. This is the *config/lifecycle* side of the same defect that `test-structure-and-assertions.md` flags as **P1 — Order-dependent / shared-state test** (the *spec* side); keep the two at the same severity and, when both fire on one PR, post a single comment rather than two.
 
 **Sniff.** New multi-test specs with no reset strategy, or capabilities setting `noReset: true` / `fullReset: false` without a matching in-test reset.
 
