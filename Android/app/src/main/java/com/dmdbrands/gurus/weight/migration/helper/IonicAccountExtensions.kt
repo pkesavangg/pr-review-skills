@@ -17,7 +17,7 @@ import com.dmdbrands.gurus.weight.data.storage.db.entity.device.DeviceMetaDataEn
 import com.dmdbrands.gurus.weight.data.storage.db.entity.device.R4ScalePreferenceEntity
 import com.dmdbrands.gurus.weight.domain.enums.DashboardType
 import com.dmdbrands.gurus.weight.domain.enums.MilestoneKey
-import com.dmdbrands.gurus.weight.features.common.helper.ScaleDataHelper
+import com.dmdbrands.gurus.weight.features.common.helper.DeviceDataHelper
 import com.dmdbrands.gurus.weight.migration.model.IonicAccount
 import com.dmdbrands.gurus.weight.migration.model.IonicHealthConnectData
 import com.dmdbrands.gurus.weight.migration.model.IonicScale
@@ -194,7 +194,7 @@ private fun IonicScale.toDeviceEntity(accountID: String): DeviceEntity {
   val deviceSku = this.sku
 
   // Get name and type based on SKU from SCALES lookup
-  val scaleInfo = ScaleDataHelper.findScaleInfoBySku(deviceSku.toString())
+  val scaleInfo = DeviceDataHelper.findScaleInfoBySku(deviceSku.toString())
   val deviceName = this.name ?: scaleInfo?.productName ?: "Unknown Scale"
   // SKU is the source of truth for the setup/protocol type. The stored Ionic `type`
   // is only a fallback: legacy records can carry a stale value (e.g. "appsync" for the

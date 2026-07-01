@@ -31,7 +31,7 @@ import com.dmdbrands.gurus.weight.core.navigation.LocalProductSelectionManager
 import com.dmdbrands.gurus.weight.core.power.LocalPowerSaveMode
 import com.dmdbrands.gurus.weight.features.common.components.DialogHost
 import com.dmdbrands.gurus.weight.features.common.components.ProductSelectionBottomSheet
-import com.dmdbrands.gurus.weight.features.common.components.ScaleDiscoveredModal
+import com.dmdbrands.gurus.weight.features.common.components.DeviceDiscoveredModal
 import com.dmdbrands.gurus.weight.theme.MeAppTheme
 import com.dmdbrands.gurus.weight.theme.MeTheme.colorScheme
 import com.example.nav3integration.rememberTopLevelBackStack
@@ -132,7 +132,7 @@ fun MeApp() {
           dragHandle = null,
         ) {
           ApplySystemBarsForDialog()
-          ScaleDiscoveredModal(
+          DeviceDiscoveredModal(
             sku = uiState.sku,
             onConnect = {
               appViewModel.handleIntent(AppIntent.OnPopUpConnect)

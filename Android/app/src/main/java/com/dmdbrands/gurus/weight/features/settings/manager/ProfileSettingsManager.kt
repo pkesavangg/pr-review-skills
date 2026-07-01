@@ -62,7 +62,7 @@ constructor(
   private val userSettingsService: IUserSettingsService,
   private val dialogQueueService: IDialogQueueService,
   private val navigationService: IAppNavigationService,
-  private val scaleSettingsManager: IScaleSettingsManager,
+  private val scaleSettingsManager: IDeviceSettingsManager,
 ) : IProfileSettingsManager {
   companion object {
     private const val TAG = "ProfileSettingsManager"

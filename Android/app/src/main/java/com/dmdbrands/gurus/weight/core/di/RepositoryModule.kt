@@ -1,5 +1,6 @@
 package com.dmdbrands.gurus.weight.core.di
 
+import android.content.Context
 import com.dmdbrands.gurus.weight.core.network.ISecureTokenStore
 import com.dmdbrands.gurus.weight.core.network.ITokenManager
 import com.dmdbrands.gurus.weight.data.api.EntryApi
@@ -225,5 +226,6 @@ object RepositoryModule {
     @Singleton
     fun provideEntryReadRepository(
         entryReadDao: EntryReadDao,
-    ): IEntryReadRepository = EntryReadRepository(entryReadDao)
+        @dagger.hilt.android.qualifiers.ApplicationContext context: Context,
+    ): IEntryReadRepository = EntryReadRepository(entryReadDao, context)
 }

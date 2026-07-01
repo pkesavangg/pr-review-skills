@@ -58,6 +58,7 @@ fun GeneralMetricsSection(
         AnimatedAppInput(
             formControl = controls.bodyFat,
             label = EntryScreenStrings.BODY_FAT_LABEL,
+            trailingText = EntryScreenStrings.BODY_FAT_UNIT,
             type = AppInputType.BODY_COMP,
             imeAction = ImeAction.Next,
             nextFocusRequester = muscleMassFocusRequester,
@@ -72,6 +73,7 @@ fun GeneralMetricsSection(
         AnimatedAppInput(
             formControl = controls.muscleMass,
             label = EntryScreenStrings.MUSCLE_MASS_LABEL,
+            trailingText = EntryScreenStrings.MUSCLE_MASS_UNIT,
             type = AppInputType.BODY_COMP,
             imeAction = ImeAction.Next,
             nextFocusRequester = bodyWaterFocusRequester,
@@ -86,6 +88,7 @@ fun GeneralMetricsSection(
         AnimatedAppInput(
             formControl = controls.bodyWater,
             label = EntryScreenStrings.BODY_WATER_LABEL,
+            trailingText = EntryScreenStrings.BODY_WATER_UNIT,
             type = AppInputType.BODY_COMP,
             imeAction = if (isLastSection) ImeAction.Done else ImeAction.Next,
             nextFocusRequester = if (!isLastSection) nextFocusRequester else null,

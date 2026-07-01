@@ -11,7 +11,7 @@ import com.dmdbrands.gurus.weight.domain.services.IProductSelectionManager
 import com.dmdbrands.gurus.weight.features.settings.manager.IDataSettingsManager
 import com.dmdbrands.gurus.weight.features.settings.manager.INotificationSettingsManager
 import com.dmdbrands.gurus.weight.features.settings.manager.IProfileSettingsManager
-import com.dmdbrands.gurus.weight.features.settings.manager.IScaleSettingsManager
+import com.dmdbrands.gurus.weight.features.settings.manager.IDeviceSettingsManager
 import com.dmdbrands.gurus.weight.features.settings.manager.IUnitSettingsManager
 import com.dmdbrands.gurus.weight.testutil.TestFixtures
 import com.dmdbrands.gurus.weight.testutil.initTestDependencies
@@ -62,7 +62,7 @@ class SettingsViewModelTest {
     lateinit var notificationSettingsManager: INotificationSettingsManager
 
     @MockK(relaxed = true)
-    lateinit var scaleSettingsManager: IScaleSettingsManager
+    lateinit var scaleSettingsManager: IDeviceSettingsManager
 
     @MockK(relaxed = true)
     lateinit var dataSettingsManager: IDataSettingsManager

@@ -16,7 +16,7 @@ import org.junit.jupiter.api.Test
  * Unit tests for [DeviceRepository.repairDeviceTypesFromSku] (MOB-204).
  *
  * The repair reconciles a device's persisted `deviceType` / `protocolType` with the
- * setup type its SKU is known for. [com.dmdbrands.gurus.weight.features.common.helper.ScaleDataHelper]
+ * setup type its SKU is known for. [com.dmdbrands.gurus.weight.features.common.helper.DeviceDataHelper]
  * is exercised with its real SKU table, so SKU `0375` resolves to the Bluetooth setup type ("bluetooth").
  */
 class DeviceRepositoryRepairTest {

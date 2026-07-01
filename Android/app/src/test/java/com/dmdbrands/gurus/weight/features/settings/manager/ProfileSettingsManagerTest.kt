@@ -47,7 +47,7 @@ class ProfileSettingsManagerTest {
   private val userSettingsService: IUserSettingsService = mockk(relaxed = true)
   private val dialogQueueService: IDialogQueueService = mockk(relaxed = true)
   private val navigationService: IAppNavigationService = mockk(relaxed = true)
-  private val scaleSettingsManager: IScaleSettingsManager = mockk(relaxed = true)
+  private val scaleSettingsManager: IDeviceSettingsManager = mockk(relaxed = true)
 
   private val manager = ProfileSettingsManager(
     accountService = accountService,

@@ -181,6 +181,9 @@ dependencies {
   implementation(libs.androidx.work.runtime.ktx)
   implementation(libs.androidx.hilt.common)
   implementation(libs.androidx.hilt.work)
+  // Bundled SQLite engine (3.25+) so Room window-function queries work on API 26-29,
+  // whose system SQLite (3.18) lacks them. Restores the driver used on the 5.0.x line.
+  implementation(libs.androidx.sqlite.bundled)
   // Unit test dependencies
   testImplementation(libs.junit.jupiter)
   testRuntimeOnly("org.junit.platform:junit-platform-launcher")

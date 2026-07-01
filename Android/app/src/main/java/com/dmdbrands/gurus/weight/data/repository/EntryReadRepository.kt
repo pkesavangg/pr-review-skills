@@ -1,6 +1,8 @@
 package com.dmdbrands.gurus.weight.data.repository
 
+import android.content.Context
 import com.dmdbrands.gurus.weight.core.shared.utilities.ConversionTools
+import com.dmdbrands.gurus.weight.core.shared.utilities.DateTimeConverter
 import com.dmdbrands.gurus.weight.data.storage.db.dao.EntryReadDao
 import com.dmdbrands.gurus.weight.data.storage.db.entity.entry.BabyEntryEntity
 import com.dmdbrands.gurus.weight.data.storage.db.entity.entry.BpmEntryEntity
@@ -11,8 +13,10 @@ import com.dmdbrands.gurus.weight.domain.model.common.BabyWeekHistory
 import com.dmdbrands.gurus.weight.domain.model.common.BpHistoryMonth
 import com.dmdbrands.gurus.weight.domain.model.common.HistoryMonth
 import com.dmdbrands.gurus.weight.features.manualEntry.helper.EntryHelper.convertToDisplay
+import com.dmdbrands.gurus.weight.domain.enums.BabyEntryType
 import com.dmdbrands.gurus.weight.domain.model.storage.entry.BabyEntry
 import com.dmdbrands.gurus.weight.domain.model.storage.entry.Entry
+import com.dmdbrands.gurus.weight.features.common.helper.BabyPercentileHelper
 import com.dmdbrands.gurus.weight.domain.model.storage.entry.PeriodBabySummary
 import com.dmdbrands.gurus.weight.domain.model.storage.entry.PeriodBodyScaleSummary
 import com.dmdbrands.gurus.weight.domain.model.storage.entry.PeriodBpmSummary
@@ -20,8 +24,11 @@ import com.dmdbrands.gurus.weight.domain.model.storage.entry.BpmEntry
 import com.dmdbrands.gurus.weight.domain.model.storage.entry.ScaleEntry
 import com.dmdbrands.gurus.weight.domain.model.storage.entry.WeightSnapshotPoint
 import com.dmdbrands.gurus.weight.domain.repository.IEntryReadRepository
+import dagger.hilt.android.qualifiers.ApplicationContext
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
 import javax.inject.Inject
 
@@ -31,6 +38,7 @@ import javax.inject.Inject
  */
 class EntryReadRepository @Inject constructor(
     private val entryReadDao: EntryReadDao,
+    @ApplicationContext private val context: Context,
 ) : IEntryReadRepository {
 
     companion object {
@@ -75,20 +83,52 @@ class EntryReadRepository @Inject constructor(
     override fun getBabyWeeklyHistory(
         accountId: String,
         babyId: String,
+        sex: String?,
+        birthDateMillis: Long,
     ): Flow<List<BabyWeekGroup>> {
-        if (USE_SAMPLE_DATA) return flowOf(groupByWeek(sampleBabyDailySummaries()))
-        return entryReadDao.getBabyWeeklyHistory(accountId, babyId).map { groupByWeek(it) }
+        if (USE_SAMPLE_DATA) return flowOf(groupByWeek(sampleBabyDailySummaries(), sex, birthDateMillis))
+        return entryReadDao.getBabyWeeklyHistory(accountId, babyId)
+            .map { groupByWeek(it, sex, birthDateMillis) }
+            .flowOn(Dispatchers.Default)
     }
 
     override fun getBabyDayDetail(
         accountId: String,
         babyId: String,
         date: String,
+        sex: String?,
+        birthDateMillis: Long,
     ): Flow<List<BabyEntry>> {
         if (USE_SAMPLE_DATA) return flowOf(sampleBabyEntries())
         return entryReadDao.getBabyDayDetail(accountId, babyId, date).map { entries ->
-            entries.mapNotNull { it.toEntry() }.filterIsInstance<BabyEntry>()
+            entries.mapNotNull { it.toEntry() }
+                .filterIsInstance<BabyEntry>()
+                .map { it.copy(percentile = dayDetailPercentile(it, sex, birthDateMillis)) }
+        }.flowOn(Dispatchers.Default)
+    }
+
+    /**
+     * Per-entry percentile for the day-detail list. Each baby entry is a single type
+     * ([BabyEntryType]); compute the percentile for that exact measurement — matching
+     * babyApp's per-entry behaviour. Falls back to weight-then-length when the type is
+     * unset. Returns null when sex/birthdate are unknown (handled inside the helper).
+     */
+    private fun dayDetailPercentile(entry: BabyEntry, sex: String?, birthDateMillis: Long): Int? {
+        if (birthDateMillis <= 0L) return null
+        BabyPercentileHelper.loadIfNeeded(context)
+        val ageMillis = DateTimeConverter.isoToTimestamp(entry.entry.entryTimestamp)
+        val weight = entry.babyWeightDecigrams
+        val length = entry.babyLengthMillimeters
+        val type = when (entry.entryType) {
+            BabyEntryType.MEASURE_LENGTH.value -> BabyPercentileHelper.MeasurementType.LENGTH
+            BabyEntryType.WEIGHT.value -> BabyPercentileHelper.MeasurementType.WEIGHT
+            else -> if (weight != null) BabyPercentileHelper.MeasurementType.WEIGHT else BabyPercentileHelper.MeasurementType.LENGTH
         }
+        val value = when (type) {
+            BabyPercentileHelper.MeasurementType.WEIGHT -> weight
+            BabyPercentileHelper.MeasurementType.LENGTH -> length
+        } ?: return null
+        return BabyPercentileHelper.calcPercentile(sex, birthDateMillis, value.toDouble(), type, ageMillis)
     }
 
     // ---------------------------------------------------------------------------
@@ -347,8 +387,13 @@ class EntryReadRepository @Inject constructor(
     // Baby weekly grouping (converts BabyDailySummaryResult → BabyWeekGroup)
     // ---------------------------------------------------------------------------
 
-    private fun groupByWeek(dailySummaries: List<BabyDailySummaryResult>): List<BabyWeekGroup> =
-        dailySummaries
+    private fun groupByWeek(
+        dailySummaries: List<BabyDailySummaryResult>,
+        sex: String?,
+        birthDateMillis: Long,
+    ): List<BabyWeekGroup> {
+        if (birthDateMillis > 0L && dailySummaries.isNotEmpty()) BabyPercentileHelper.loadIfNeeded(context)
+        return dailySummaries
             .groupBy { "${it.year}-${it.weekNumber}" }
             .map { (_, days) ->
                 BabyWeekGroup(
@@ -361,11 +406,33 @@ class EntryReadRepository @Inject constructor(
                             weightLb = day.babyWeightDecigrams?.let { ConversionTools.convertDecigramsToLb(it) },
                             weightOz = day.babyWeightDecigrams?.let { ConversionTools.convertDecigramsToOz(it) },
                             lengthInches = day.babyLengthMillimeters?.let { ConversionTools.convertMmToInches(it) },
-                            percentile = null,
+                            percentile = weekRowPercentile(day, sex, birthDateMillis),
                         )
                     },
                 )
             }
+    }
+
+    /**
+     * Percentile for an aggregated day row. A day can hold both a weight and a length
+     * reading; the row shows a single percentile, so we prefer weight (the primary baby
+     * metric) and fall back to length. Returns null when sex/birthdate are unknown.
+     */
+    private fun weekRowPercentile(day: BabyDailySummaryResult, sex: String?, birthDateMillis: Long): Int? {
+        if (birthDateMillis <= 0L) return null
+        val ageMillis = DateTimeConverter.isoToTimestamp(day.dateKey)
+        return when {
+            day.babyWeightDecigrams != null -> BabyPercentileHelper.calcPercentile(
+                sex, birthDateMillis, day.babyWeightDecigrams.toDouble(),
+                BabyPercentileHelper.MeasurementType.WEIGHT, ageMillis,
+            )
+            day.babyLengthMillimeters != null -> BabyPercentileHelper.calcPercentile(
+                sex, birthDateMillis, day.babyLengthMillimeters.toDouble(),
+                BabyPercentileHelper.MeasurementType.LENGTH, ageMillis,
+            )
+            else -> null
+        }
+    }
 
     // ---------------------------------------------------------------------------
     // Sample data (matching DAO return types)
