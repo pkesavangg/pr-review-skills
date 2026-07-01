@@ -3,8 +3,10 @@ package com.dmdbrands.gurus.weight.features.settings.manager
 import com.dmdbrands.gurus.weight.core.rules.MainDispatcherRule
 import com.dmdbrands.gurus.weight.data.storage.datastore.UserDataStore
 import com.dmdbrands.gurus.weight.domain.interfaces.IDialogQueueService
+import com.dmdbrands.gurus.weight.domain.enums.ProductType
 import com.dmdbrands.gurus.weight.domain.model.common.MeasurementUnits
 import com.dmdbrands.gurus.weight.domain.model.common.WeightUnit
+import com.dmdbrands.gurus.weight.features.settings.strings.RadioGroupModalStrings
 import com.dmdbrands.gurus.weight.domain.services.BodyCompUpdateType
 import com.dmdbrands.gurus.weight.domain.services.IAccountService
 import com.dmdbrands.gurus.weight.domain.services.IBodyCompositionService
@@ -70,6 +72,8 @@ class UnitSettingsManagerTest {
     return custom.params["onConfirm"] as (Map<String, String?>) -> Unit
   }
 
+  // Both sections editable: a weight scale enables My Weight and a baby scale enables
+  // My Kids (MOB-1175), so the per-product save branching can be exercised.
   private fun stateWithBaby(
     adultUnit: WeightUnit = WeightUnit.LB,
     babyUnit: WeightUnit = WeightUnit.LB_OZ,
@@ -77,6 +81,8 @@ class UnitSettingsManagerTest {
     account = account.copy(weightUnit = adultUnit),
     isBabyProduct = true,
     babyWeightUnit = babyUnit,
+    hasWeightScale = true,
+    hasBabyScaleDevice = true,
   )
 
   @Test
@@ -226,22 +232,79 @@ class UnitSettingsManagerTest {
     assertThat(myWeight.selectedItem).isEqualTo(WeightUnit.LB.value)
   }
 
+  @Suppress("UNCHECKED_CAST")
+  private fun DialogModel.sections(): List<RadioGroupSection<String>> =
+    ((this as DialogModel.Custom).params["config"] as SectionedRadioGroupModalConfig<*>)
+      .sections as List<RadioGroupSection<String>>
+
   @Test
-  fun `non-baby product shows only the My Weight section`() = runTest(mainDispatcherRule.scheduler) {
+  fun `both sections always shown - non-baby account locks My Kids with an unlock message`() =
+    runTest(mainDispatcherRule.scheduler) {
+      // account.productTypes defaults to ["weight"] → My Weight enabled, My Kids locked. (MOB-1175)
+      val dialogSlot = slot<DialogModel>()
+      manager.onUnitTypeClick(
+        scope = this,
+        stateProvider = { SettingsState(account = account, isBabyProduct = false) },
+      )
+      verify { dialogQueueService.enqueue(capture(dialogSlot)) }
+
+      val sections = dialogSlot.captured.sections()
+      assertThat(sections.map { it.key })
+        .containsExactly(UnitSettingsManager.SECTION_MY_WEIGHT, UnitSettingsManager.SECTION_MY_KIDS)
+        .inOrder()
+
+      val myWeight = sections.first { it.key == UnitSettingsManager.SECTION_MY_WEIGHT }
+      val myKids = sections.first { it.key == UnitSettingsManager.SECTION_MY_KIDS }
+      assertThat(myWeight.enabled).isTrue()
+      assertThat(myWeight.lockedMessage).isNull()
+      assertThat(myKids.enabled).isFalse()
+      assertThat(myKids.lockedMessage)
+        .isEqualTo(RadioGroupModalStrings.UnitType.MyKidsLockedMessage)
+      // A locked section is pinned to the baby default (LB_OZ).
+      assertThat(myKids.selectedItem).isEqualTo(WeightUnit.LB_OZ.value)
+    }
+
+  @Test
+  fun `BP-only account locks both sections at their defaults`() = runTest(mainDispatcherRule.scheduler) {
+    val bpAccount = account.copy(productTypes = listOf(ProductType.BLOOD_PRESSURE.apiValue))
     val dialogSlot = slot<DialogModel>()
     manager.onUnitTypeClick(
       scope = this,
-      stateProvider = { SettingsState(account = account, isBabyProduct = false) },
+      stateProvider = { SettingsState(account = bpAccount, isBabyProduct = false) },
     )
     verify { dialogQueueService.enqueue(capture(dialogSlot)) }
 
-    val config = (dialogSlot.captured as DialogModel.Custom)
-      .params["config"] as SectionedRadioGroupModalConfig<*>
-    @Suppress("UNCHECKED_CAST")
-    val keys = (config.sections as List<RadioGroupSection<String>>).map { it.key }
-
-    assertThat(keys).containsExactly(UnitSettingsManager.SECTION_MY_WEIGHT)
+    val sections = dialogSlot.captured.sections()
+    val myWeight = sections.first { it.key == UnitSettingsManager.SECTION_MY_WEIGHT }
+    val myKids = sections.first { it.key == UnitSettingsManager.SECTION_MY_KIDS }
+    assertThat(myWeight.enabled).isFalse()
+    assertThat(myKids.enabled).isFalse()
+    assertThat(myWeight.selectedItem).isEqualTo(WeightUnit.DISPLAY_DEFAULT.value)
+    assertThat(myKids.selectedItem).isEqualTo(WeightUnit.LB_OZ.value)
   }
+
+  @Test
+  fun `locked My Weight never persists even if confirm carries a different unit`() =
+    runTest(mainDispatcherRule.scheduler) {
+      // Baby-only account (baby scale, no weight scale): My Weight is locked. Even if the
+      // confirm map carries a non-default adult unit, nothing must persist. (MOB-1175)
+      val babyOnly = SettingsState(
+        account = account.copy(productTypes = listOf(ProductType.BABY.apiValue)),
+        isBabyProduct = true,
+        hasBabyScaleDevice = true,
+      )
+      val onConfirm = openDialog(babyOnly)
+
+      onConfirm(
+        mapOf(
+          UnitSettingsManager.SECTION_MY_WEIGHT to WeightUnit.KG.value,
+          UnitSettingsManager.SECTION_MY_KIDS to WeightUnit.LB_OZ.value,
+        ),
+      )
+      advanceUntilIdle()
+
+      coVerify(exactly = 0) { bodyCompositionService.updateBodyComposition(any(), any(), any()) }
+    }
 
   @Test
   fun `observeBabyWeightUnit dispatches the persisted baby unit`() = runTest {
