@@ -32,6 +32,7 @@ struct HistoryListScreen: View {
                   title: productTypeStore.availableItems.count > 1
                       ? productTypeStore.selectedItem.historyTitle
                       : HistoryListStrings.title,
+                  titleColor: theme.brandWgPrimary,
                   trailingContent: {
                       AnyView(
                           Button {

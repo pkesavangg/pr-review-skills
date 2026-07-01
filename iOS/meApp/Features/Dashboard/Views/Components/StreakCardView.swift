@@ -108,6 +108,14 @@ struct StreakCardView: View {
         let streakCount = Int(displayValue) ?? 0
         return displayValue + DashboardStrings.daySuffix(forStreak: streakCount)
     }
+
+    /// VoiceOver reading for the streak value — always spells out "day"/"days" in full so the
+    /// 1000+ "d" abbreviation (visual-only, for fixed card width) is never announced as "d".
+    private var streakAccessibilityValue: String {
+        let displayValue = value == DashboardStrings.placeholder ? "0" : value
+        let streakCount = Int(displayValue) ?? 0
+        return displayValue + (streakCount == 1 ? " day" : " days")
+    }
     
     /// Formats non-streak value, converting placeholder to "0"
     private var formattedNonStreakValue: String {
@@ -144,6 +152,7 @@ struct StreakCardView: View {
                         .fontOpenSans(.heading4)
                         .fontWeight(.bold)
                         .foregroundColor(theme.textHeading)
+                        .accessibilityLabel(isStreakItem ? streakAccessibilityValue : formattedNonStreakValue)
                     Text(label)
                         .fontOpenSans(.subHeading2)
                         .foregroundColor(theme.textSubheading)
@@ -184,6 +193,20 @@ struct StreakCardView: View {
             parentView: .dashboard
         )
         
+        // Abbreviated: "1000 d" (1000+ collapses "days" → "d" to keep card width fixed)
+        StreakCardView(
+            value: "1000",
+            label: DashboardStrings.currentStreak,
+            icon: AppAssets.streak,
+            isEditMode: true,
+            isRemoved: false,
+            isDropTarget: false,
+            onToggleRemoval: {},
+            onDrop: { _, _ in true },
+            onDropTargetChanged: { _ in },
+            parentView: .dashboard
+        )
+
         // R4DeviceSetup view with streak items (icon + label only)
         StreakCardView(
             value: "3",
