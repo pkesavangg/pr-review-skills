@@ -81,7 +81,7 @@ struct HistoryEntryItem: View {
                         weightless: weightlessSettings
                     ))
                         .fontOpenSans(.heading3)
-                        .foregroundStyle(isExpanded ? theme.textInverse : theme.textHeading)
+                        .foregroundStyle(isExpanded ? theme.textInverse : theme.brandWgPrimary)
                         .lineLimit(1)
                         .minimumScaleFactor(0.8)
                         .allowsTightening(true)

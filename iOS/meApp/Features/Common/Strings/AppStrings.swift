@@ -315,6 +315,9 @@ struct InputFieldLabels {
     static let weightLabel: (Bool) -> String = { isKg in
         return isKg ? "weight (kg)" : "weight (lbs)"
     }
+    /// Plain "weight" placeholder for fields that show the unit as a fixed trailing
+    /// suffix (`weightUnitSuffix`) on the right rather than baked into the label.
+    static let weight = "weight"
     static let weightLessLabel: (Bool) -> String = { isKg in
         return isKg ? "weightless weight (kg)" : "weightless weight (lbs)"
     }

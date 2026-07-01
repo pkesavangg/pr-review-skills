@@ -83,6 +83,10 @@ struct BabySnapshotCard: View {
 
     private var babyName: String { babyProfile.name }
 
+    /// True only when the baby has at least one real weight reading. Drives the empty
+    /// state — without entries we show neither a value nor a plotted chart.
+    private var hasEntries: Bool { cachedWeekAverageDisplay != nil }
+
     var body: some View {
         Button(action: onTap) {
             content
@@ -108,10 +112,19 @@ struct BabySnapshotCard: View {
                     .padding(.horizontal, .spacingSM)
                     .padding(.top, .spacingXS)
 
-                snapshotChart
-                    .frame(height: 240)
-                    .padding(.top, .spacingXS)
-                    .padding(.bottom, .spacingSM)
+                Group {
+                    if hasEntries {
+                        snapshotChart
+                            .frame(height: 240)
+                    } else {
+                        // No real readings — show the clean empty grid instead of
+                        // plotting the synthetic percentile curves (matches the full
+                        // dashboard's BabyEmptyGraphView empty state).
+                        BabyEmptyGraphView(plotHeight: 210)
+                    }
+                }
+                .padding(.top, .spacingXS)
+                .padding(.bottom, .spacingSM)
             }
             .frame(maxWidth: .infinity, alignment: .leading)
             .background(theme.backgroundPrimary)
@@ -213,7 +226,9 @@ struct BabySnapshotCard: View {
 
                 babyWeightRow(display: avg)
             } else {
-                Text(BabyDashboardStrings.babyWeightLabel(name: babyName))
+                // No readings — "no entries" label with a zeroed placeholder value (per design mock).
+                // The chart itself stays empty (BabyEmptyGraphView); only the value is zeroed, not plotted.
+                Text(DashboardStrings.noEntries)
                     .fontOpenSans(.subHeading1)
                     .foregroundColor(theme.textSubheading)
 
