@@ -27,16 +27,20 @@ struct ManualEntryScreen: View {
     let labels = InputFieldLabels.self
     let appAssets = AppAssets.self
 
-    // Computed property for weight input config to ensure it updates when weightUnit changes
+    // Computed property for weight input config to ensure it updates when weightUnit changes.
+    // Per the Manual Entry mock the field shows a plain "weight" placeholder on the left with
+    // the unit fixed as a trailing suffix on the right (e.g. "(lbs)"/"(kg)") — matching the
+    // baby-profile birth-weight fields — so the unit stays put once a value is typed.
     private var weightInputConfig: TextInputConfig {
-        let weightLabel = labels.weightLabel(entryStore.weightUnit == .kg)
+        let isKg = entryStore.weightUnit == .kg
         return TextInputConfig(
-            label: weightLabel,
+            label: labels.weight,
             inputType: .metric,
             errorMessage: entryStore.getError(for: entryStore.manualEntryForm.weight),
             focusField: .weight,
             maxLength: 4,
-            maxValue: 999.9
+            maxValue: 999.9,
+            trailingLabel: labels.weightUnitSuffix(isKg)
         )
     }
 
@@ -46,6 +50,11 @@ struct ManualEntryScreen: View {
                 title: productTypeStore.availableItems.count > 1
                     ? productTypeStore.selectedItem.entryTitle
                     : manualEntryLang.title,
+                // Per Me.Health 2.0: tint the product-type entry title by product
+                // (weight → blue, BP → green, baby → purple); plain title stays neutral.
+                titleColor: productTypeStore.availableItems.count > 1
+                    ? theme.productAccentColor(for: productTypeStore.selectedItem.entryType)
+                    : nil,
                 onTitleTap: productTypeStore.availableItems.count > 1 ? {
                     isProductTypeSelectorPresented = true
                 } : nil,

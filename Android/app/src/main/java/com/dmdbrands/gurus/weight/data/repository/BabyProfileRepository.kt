@@ -66,8 +66,19 @@ class BabyProfileRepository @Inject constructor(
             val activeBabyId = babyProfileDao.getActiveBabyId(accountId)
             val remote = babyApi.getBabies().toDomain(accountId)
             babyProfileDao.deleteByAccountIdNotIn(accountId, remote.map { it.id })
-            remote.forEach { babyProfileDao.insert(it.toEntity()) }
-            // REPLACE wipes the denormalised activeBabyId column; restore it if still valid.
+            // Update existing profiles in place rather than INSERT-with-REPLACE. REPLACE deletes
+            // and re-inserts the baby row, and baby_entry.babyId -> baby ON DELETE CASCADE would
+            // wipe that baby's saved entries on every refresh, making them vanish from History
+            // (MOB-598).
+            remote.forEach { profile ->
+                val entity = profile.toEntity()
+                if (babyProfileDao.getById(entity.babyId) != null) {
+                    babyProfileDao.update(entity)
+                } else {
+                    babyProfileDao.insert(entity)
+                }
+            }
+            // update/REPLACE wipes the denormalised activeBabyId column; restore it if still valid.
             if (activeBabyId != null && remote.any { it.id == activeBabyId }) {
                 babyProfileDao.setActiveBabyId(accountId, activeBabyId)
             }

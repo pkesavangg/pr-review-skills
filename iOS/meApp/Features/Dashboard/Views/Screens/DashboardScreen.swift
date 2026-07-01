@@ -185,6 +185,9 @@ struct DashboardScreen: View {
             (!canShowSnapshotOverview && store.availableProductItems.count > 1)
         return NavbarHeaderView<AppIconView, EmptyView>(
             title: showProductSelector ? store.selectedProductItem.dashboardTitle : nil,
+            // Per Me.Health 2.0: the product-type title is tinted by product
+            // (weight → blue, BP → green, baby → purple).
+            titleColor: showProductSelector ? theme.productAccentColor(for: store.productType) : nil,
             leadingContent: isProductDashboardFromSnapshot
                 ? { AppIconView(icon: AppAssets.chevronLeft) }
                 : nil,

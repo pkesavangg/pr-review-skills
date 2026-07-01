@@ -366,10 +366,13 @@ class DashboardStreakManager: ObservableObject, DashboardStreakManaging {
 
     // MARK: - Streak Formatting
     func formatStreakDisplay(_ streak: Int) -> String {
+        // Mirrors DashboardStrings.daySuffix: 1 → "day", 2…999 → "days", 1000+ → abbreviated "d".
         if streak == 0 {
             return "0 days"
         } else if streak == 1 {
             return "1 day"
+        } else if streak >= 1000 {
+            return "\(streak) d"
         } else {
             return "\(streak) days"
         }

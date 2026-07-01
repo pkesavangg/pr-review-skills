@@ -12,7 +12,7 @@ import com.dmdbrands.gurus.weight.features.common.service.BaseIntentViewModel
 import com.dmdbrands.gurus.weight.features.settings.manager.IDataSettingsManager
 import com.dmdbrands.gurus.weight.features.settings.manager.INotificationSettingsManager
 import com.dmdbrands.gurus.weight.features.settings.manager.IProfileSettingsManager
-import com.dmdbrands.gurus.weight.features.settings.manager.IScaleSettingsManager
+import com.dmdbrands.gurus.weight.features.settings.manager.IDeviceSettingsManager
 import com.dmdbrands.gurus.weight.features.settings.manager.IUnitSettingsManager
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.distinctUntilChanged
@@ -27,7 +27,7 @@ constructor(
   private val profileSettingsManager: IProfileSettingsManager,
   private val unitSettingsManager: IUnitSettingsManager,
   private val notificationSettingsManager: INotificationSettingsManager,
-  private val scaleSettingsManager: IScaleSettingsManager,
+  private val scaleSettingsManager: IDeviceSettingsManager,
   private val dataSettingsManager: IDataSettingsManager,
   private val crashReportingService: ICrashReportingService,
   private val deviceService: IDeviceService,
@@ -151,7 +151,7 @@ constructor(
       }
 
       SettingsIntent.OpenA3MonitorSetup -> {
-        navigateTo(AppRoute.ScaleSetup.BpmSetup(sku = "0603"))
+        navigateTo(AppRoute.DeviceSetup.BpmSetup(sku = "0603"))
       }
 
       SettingsIntent.TriggerTestNonFatal -> {

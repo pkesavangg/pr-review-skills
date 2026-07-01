@@ -10,6 +10,7 @@ import com.dmdbrands.gurus.weight.domain.model.storage.Account.Account
 import com.dmdbrands.gurus.weight.domain.model.storage.entry.BabyEntry
 import com.dmdbrands.gurus.weight.domain.model.storage.entry.Entry
 import com.dmdbrands.gurus.weight.domain.repository.IAccountRepository
+import com.dmdbrands.gurus.weight.domain.repository.IBabyProfileRepository
 import com.dmdbrands.gurus.weight.domain.repository.IEntryRepository
 import com.dmdbrands.gurus.weight.domain.repository.IHealthConnectRepository
 import com.dmdbrands.gurus.weight.domain.services.IAnalyticsService
@@ -39,6 +40,7 @@ class EntryServiceTest {
     // --- Mocks ---
     private val entryRepository: IEntryRepository = mockk(relaxed = true)
     private val accountRepository: IAccountRepository = mockk()
+    private val babyProfileRepository: IBabyProfileRepository = mockk(relaxed = true)
     private val goalService: IGoalService = mockk(relaxed = true)
     private val healthConnectService: IHealthConnectService = mockk(relaxed = true)
     private val healthConnectRepository: IHealthConnectRepository = mockk(relaxed = true)
@@ -72,6 +74,7 @@ class EntryServiceTest {
         service = EntryService(
             entryRepository = entryRepository,
             accountRepository = accountRepository,
+            babyProfileRepository = babyProfileRepository,
             goalService = goalService,
             healthConnectService = healthConnectService,
             healthConnectRepository = healthConnectRepository,
@@ -289,7 +292,7 @@ class EntryServiceTest {
     )
 
     // -------------------------------------------------------------------------
-    // addBabyEntry / deleteBabyEntryLocally — local-only baby persistence (MOB-428)
+    // addBabyEntry / deleteBabyEntry — synced baby persistence (POST /v3/entries, §2.16)
     // -------------------------------------------------------------------------
 
     private fun babyEntry(babyId: String = "baby-1") = BabyEntry(
@@ -313,28 +316,39 @@ class EntryServiceTest {
     }
 
     @Test
-    fun `addBabyEntry persists under active account as synced create and returns new id`() = runTest {
+    fun `addBabyEntry persists under active account as unsynced create and returns new id`() = runTest {
         service.updateAllData(testAccountId)
+        coEvery { entryRepository.getUnSynced(testAccountId) } returns emptyList()
         val captured = slot<Entry>()
         coEvery { entryRepository.insert(capture(captured)) } returns 99L
 
         val result = service.addBabyEntry(babyEntry())
 
         assertThat(result).isEqualTo(99L)
-        // Stamped with the active (parent) account and kept OUT of the sync queue.
+        // Stamped with the active (parent) account and queued for sync (isSynced = false).
         assertThat(captured.captured.entry.accountId).isEqualTo(testAccountId)
-        assertThat(captured.captured.entry.isSynced).isTrue()
+        assertThat(captured.captured.entry.isSynced).isFalse()
         assertThat(captured.captured.entry.operationType).isEqualTo(OperationType.CREATE.name)
     }
 
     @Test
-    fun `addBabyEntry never sends the baby entry to the server`() = runTest {
-        service.updateAllData(testAccountId)
-        coEvery { entryRepository.insert(any<Entry>()) } returns 1L
+    fun `addBabyEntry pushes the reading to the entries endpoint as category baby`() = runTest {
+        // The 2.0 unified API carries baby entries, so an assigned reading now syncs (§2.16).
+        coEvery { entryRepository.insert(any<Entry>()) } returns 99L
+        // The freshly-inserted unsynced row is what the sync loop picks up and POSTs.
+        coEvery { entryRepository.getUnSynced(testAccountId) } returns listOf(babyEntry())
+        coEvery { entryRepository.getOperationCount(testAccountId) } returns 0
+        coEvery { accountRepository.getSyncTimeStamp() } returns flowOf("")
+        val captured = mutableListOf<List<UnifiedEntryRequest>>()
+        coEvery { entryRepository.sendBatchToAPI(capture(captured)) } returns
+            UnifiedEntryResponse(entries = emptyList(), timestamp = "2024-01-01T00:00:00.000Z")
 
+        service.updateAllData(testAccountId)
         service.addBabyEntry(babyEntry())
 
-        coVerify(exactly = 0) { entryRepository.sendOperationToAPI(any()) }
+        val batch = captured.last()
+        assertThat(batch.map { it.category }).contains("baby")
+        coVerify { entryRepository.sendBatchToAPI(any()) }
     }
 
     @Test
@@ -349,10 +363,45 @@ class EntryServiceTest {
     }
 
     @Test
-    fun `deleteBabyEntryLocally hard-deletes by id`() = runTest {
-        service.deleteBabyEntryLocally(99L)
+    fun `deleteBabyEntry syncs a delete op for the row to the entries endpoint`() = runTest {
+        coEvery { entryRepository.getEntryById(99L) } returns babyEntry()
+        coEvery { entryRepository.getUnSynced(testAccountId) } returns emptyList()
+        coEvery { entryRepository.getOperationCount(testAccountId) } returns 0
+        coEvery { accountRepository.getSyncTimeStamp() } returns flowOf("")
+        val captured = mutableListOf<List<UnifiedEntryRequest>>()
+        coEvery { entryRepository.sendBatchToAPI(capture(captured)) } returns
+            UnifiedEntryResponse(entries = emptyList(), timestamp = "2024-01-01T00:00:00.000Z")
 
-        coVerify { entryRepository.deleteById(99L) }
+        service.updateAllData(testAccountId)
+        service.deleteBabyEntry(99L)
+
+        coVerify { entryRepository.getEntryById(99L) }
+        val batch = captured.last()
+        assertThat(batch.map { it.category }).contains("baby")
+        assertThat(batch.first().operationType).isEqualTo("delete")
+    }
+
+    @Test
+    fun `deleteBabyEntry is a no-op when the row no longer exists`() = runTest {
+        service.updateAllData(testAccountId)
+        coEvery { entryRepository.getEntryById(99L) } returns null
+
+        service.deleteBabyEntry(99L)
+
+        coVerify(exactly = 0) { entryRepository.sendBatchToAPI(any()) }
+    }
+
+    @Test
+    fun `sync refreshes baby profiles before pulling entries down`() = runTest {
+        // Baby profiles must be present locally before incoming baby entries can satisfy
+        // their FK, so the read-down pull refreshes them first (MOB-598).
+        coEvery { entryRepository.getUnSynced(testAccountId) } returns emptyList()
+        coEvery { entryRepository.getOperationCount(testAccountId) } returns 0
+        coEvery { accountRepository.getSyncTimeStamp() } returns flowOf("")
+
+        service.updateAllData(testAccountId)
+
+        coVerify { babyProfileRepository.refresh(testAccountId) }
     }
 
     // -------------------------------------------------------------------------

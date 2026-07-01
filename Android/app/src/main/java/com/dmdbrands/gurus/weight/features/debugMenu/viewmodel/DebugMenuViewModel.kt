@@ -14,7 +14,7 @@ import com.dmdbrands.gurus.weight.domain.services.IEntryService
 import com.dmdbrands.gurus.weight.domain.services.IExportService
 import com.dmdbrands.gurus.weight.features.common.model.DialogModel
 import com.dmdbrands.gurus.weight.features.common.model.DEVICES
-import com.dmdbrands.gurus.weight.features.common.model.ScaleInfo
+import com.dmdbrands.gurus.weight.features.common.model.DeviceModelInfo
 import com.dmdbrands.gurus.weight.features.common.model.Toast
 import com.dmdbrands.gurus.weight.features.common.service.BaseIntentViewModel
 import com.dmdbrands.gurus.weight.features.debugMenu.model.DebugMenuIntent
@@ -57,7 +57,7 @@ class DebugMenuViewModel @Inject constructor(
           scales = pairedScales
             .filter { device ->
               val scaleInfo = getScaleInfoBySku(device.getSKU())
-              scaleInfo?.setupType == com.dmdbrands.gurus.weight.features.common.enums.ScaleSetupType.BtWifiR4
+              scaleInfo?.setupType == com.dmdbrands.gurus.weight.features.common.enums.DeviceSetupType.BtWifiR4
             }
             .map { device ->
               val scaleInfo = getScaleInfoBySku(device.getSKU())
@@ -79,7 +79,7 @@ class DebugMenuViewModel @Inject constructor(
     /**
      * Get scale info by SKU, similar to Angular scaleInfoService.getScaleInfoBySku()
      */
-    private fun getScaleInfoBySku(sku: String?): ScaleInfo? {
+    private fun getScaleInfoBySku(sku: String?): DeviceModelInfo? {
         return DEVICES.find { it.sku == sku }
     }
 
@@ -271,7 +271,7 @@ class DebugMenuViewModel @Inject constructor(
                 }
                 scales.size > 1 -> {
                     navigationService.navigateTo(
-                        AppRoute.AccountSettings.ScaleLogsPicker
+                        AppRoute.AccountSettings.DeviceLogsPicker
                     )
                 }
                 else -> {

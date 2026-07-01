@@ -17,7 +17,7 @@ import com.dmdbrands.gurus.weight.core.service.IAppNavigationService
 import com.dmdbrands.gurus.weight.core.service.NotificationEventType
 import com.dmdbrands.gurus.weight.core.service.NotificationTapPayload
 import com.dmdbrands.gurus.weight.core.service.pushNotification.PushNotificationService
-import com.dmdbrands.gurus.weight.core.service.WifiScaleService
+import com.dmdbrands.gurus.weight.core.service.WifiDeviceService
 import com.dmdbrands.gurus.weight.core.shared.utilities.IAppReviewManager
 import com.dmdbrands.gurus.weight.core.shared.utilities.browser.ICustomTabManager
 import com.dmdbrands.gurus.weight.core.shared.utilities.logging.AppLog
@@ -66,7 +66,7 @@ class MainActivity : AppCompatActivity() {
   lateinit var gGBLEService: GGBLEService
 
   @Inject
-  lateinit var wifiScaleService: WifiScaleService
+  lateinit var wifiScaleService: WifiDeviceService
 
   @Inject
   lateinit var appReviewManager: IAppReviewManager

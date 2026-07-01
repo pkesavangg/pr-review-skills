@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  E2E journey: verify the baby growth-percentile feature end to end.
+  Run against a debug build pointed at PROD (api.weightgurus.com) on an emulator.
+  Drive with the `android` CLI:  android layout / android screen / adb shell input.
+  NOTE: percentile is computed locally from the baby's sex + birthdate + the CDC
+  CSVs, so it must appear even if baby server-sync is unavailable.
+-->
+<journey name="Baby growth percentile — signup to history & chart">
+  <description>
+    Sign up a fresh account, choose the baby scale, add a baby with a known sex +
+    birthdate, add a manual baby weight entry, then confirm the growth percentile
+    shows on the history list, the day-detail rows, and the dashboard chart marker.
+  </description>
+  <actions>
+    <action>Launch the app (com.dmdbrands.gurus.weight) cold.</action>
+    <action>On the landing screen, tap "Sign Up" (create a new account).</action>
+    <action>Enter a unique email (e.g. ggtest+&lt;timestamp&gt;@gg.co) and a password (123456), then continue.</action>
+    <action>Complete any required profile fields to finish signup and reach the home/dashboard.</action>
+    <action>Open the add-device / scale flow and select the Baby Scale ("Smart Baby").</action>
+    <action>Choose "Add a baby" / skip device pairing if prompted (no hardware needed).</action>
+    <action>Add a baby: name "Test Baby", sex "Male", birthdate 8 weeks ago (note the exact date).</action>
+    <action>Save the baby profile and return to the baby dashboard.</action>
+    <action>Open manual entry for the baby and add a WEIGHT reading near the 50th percentile for an 8-week-old boy (about 12.5 lb / ~5.7 kg). Save it.</action>
+    <action>Verify the entry appears on the baby dashboard / latest reading.</action>
+    <action>Navigate to History for the baby.</action>
+    <action>Verify the history week row shows a percentile value (NOT "--") next to weight/length, e.g. a number around 50 with the "th" unit.</action>
+    <action>Tap the week row to open the day detail.</action>
+    <action>Verify the day-detail entry row shows the same percentile value (NOT "--").</action>
+    <action>Add a second weight entry clearly low (about 9 lb) and verify its percentile is much lower than the first.</action>
+    <action>Open the dashboard growth chart and verify the percentile band curves are drawn and the curve/axis starts at the baby's birthdate.</action>
+    <action>Tap a point on the chart and verify the focus label shows a percentile number.</action>
+  </actions>
+</journey>

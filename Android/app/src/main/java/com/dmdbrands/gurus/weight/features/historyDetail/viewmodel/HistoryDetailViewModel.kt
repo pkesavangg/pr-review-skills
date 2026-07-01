@@ -1,6 +1,7 @@
 package com.dmdbrands.gurus.weight.features.historyDetail.viewmodel
 
 import androidx.lifecycle.viewModelScope
+import com.dmdbrands.gurus.weight.core.shared.utilities.DateTimeConverter
 import com.dmdbrands.gurus.weight.core.shared.utilities.logging.AppLog
 import com.dmdbrands.gurus.weight.domain.enums.ProductType
 import com.dmdbrands.gurus.weight.domain.enums.BabyEntryType
@@ -12,8 +13,7 @@ import com.dmdbrands.gurus.weight.domain.services.IEntryService
 import com.dmdbrands.gurus.weight.domain.services.IHealthConnectService
 import com.dmdbrands.gurus.weight.domain.services.IEntryReadService
 import com.dmdbrands.gurus.weight.features.common.helper.AccountHelper.isMetricUnit
-import com.dmdbrands.gurus.weight.features.common.components.ButtonType
-import com.dmdbrands.gurus.weight.features.common.model.DialogModel
+import com.dmdbrands.gurus.weight.features.common.model.ActionButton
 import com.dmdbrands.gurus.weight.features.common.service.BaseIntentViewModel
 import com.dmdbrands.gurus.weight.features.common.model.Toast
 import com.dmdbrands.gurus.weight.features.historyDetail.strings.HistoryDetailScreenStrings
@@ -107,7 +107,7 @@ class HistoryDetailViewModel @AssistedInject constructor(
 
             is HistoryDetailIntent.DeleteEntry -> {
                 AppLog.d(TAG, "Delete entry intent received for entry: ${intent.entry.entry.id}")
-                showDeleteEntryDialog(intent.entry)
+                deleteEntryWithUndo(intent.entry)
             }
 
             is HistoryDetailIntent.SaveNote -> {
@@ -128,27 +128,46 @@ class HistoryDetailViewModel @AssistedInject constructor(
         viewModelScope.launch {
             try {
                 val original = intent.entry
-                val updated = BabyEntry(
-                    // addEntry re-stamps isSynced/operationType/accountId; we keep the row id (so it
-                    // updates in place via the unique entryTimestamp index) and apply the new values.
-                    entry = original.entry.copy(entryTimestamp = intent.timestamp),
-                    babyEntry = original.babyEntry.copy(
-                        babyWeightDecigrams = intent.weightDecigrams,
-                        babyLengthMillimeters = intent.lengthMillimeters,
-                        entryNote = intent.note,
-                        entryType = if (intent.weightDecigrams != null) {
-                            BabyEntryType.WEIGHT.value
-                        } else {
-                            BabyEntryType.MEASURE_LENGTH.value
-                        },
-                    ),
+                val updatedBabyEntry = original.babyEntry.copy(
+                    babyWeightDecigrams = intent.weightDecigrams,
+                    babyLengthMillimeters = intent.lengthMillimeters,
+                    entryNote = intent.note,
+                    entryType = if (intent.weightDecigrams != null) {
+                        BabyEntryType.WEIGHT.value
+                    } else {
+                        BabyEntryType.MEASURE_LENGTH.value
+                    },
                 )
-                // If the date changed the row moves to a new entryTimestamp — delete the old one so
-                // it isn't orphaned, then save the updated reading.
-                if (original.entry.entryTimestamp != intent.timestamp) {
+                // The date picker re-emits the timestamp from date + hour + minute, dropping the
+                // original seconds/millis — so a plain weight/note edit yields a timestamp that
+                // differs only in sub-minute precision. Treat the date as CHANGED only when it
+                // differs at minute granularity; otherwise a normal edit would wrongly take the
+                // delete+recreate path and send operationType=delete instead of edit. (MOB-598)
+                val dateChanged = DateTimeConverter.isoToTimestamp(original.entry.entryTimestamp) / MILLIS_PER_MINUTE !=
+                    DateTimeConverter.isoToTimestamp(intent.timestamp) / MILLIS_PER_MINUTE
+                if (dateChanged) {
+                    // Genuine move → the server entryId (babyId_entryType_timestamp) changes, so an
+                    // in-place edit would orphan the OLD reading. Delete the original (old entryId)
+                    // and create a fresh reading at the new timestamp with a NEW local id (id=0 →
+                    // autogen) so the local delete-old and create-new don't collide on a shared id.
                     entryService.deleteEntry(original)
+                    entryService.addBabyEntry(
+                        BabyEntry(
+                            entry = original.entry.copy(id = 0, entryTimestamp = intent.timestamp),
+                            babyEntry = updatedBabyEntry.copy(id = 0),
+                        ),
+                    )
+                } else {
+                    // Date unchanged → edit in place via operationType=edit (baby-only, §2.16),
+                    // keeping the ORIGINAL timestamp so the server entryId is identical and the edit
+                    // resolves in place. No delete.
+                    entryService.editBabyEntry(
+                        BabyEntry(
+                            entry = original.entry,
+                            babyEntry = updatedBabyEntry,
+                        ),
+                    )
                 }
-                entryService.addEntry(updated)
                 handleIntent(HistoryDetailIntent.DismissBabyEditor)
                 loadDetail()
             } catch (e: Exception) {
@@ -177,46 +196,67 @@ class HistoryDetailViewModel @AssistedInject constructor(
         }
     }
 
-    private fun showDeleteEntryDialog(entry: Entry) {
+    /**
+     * Deletes an entry optimistically and shows a "Reading deleted." toast with an Undo action
+     * (no confirm dialog — the toast is the safety net). Undo restores the reading; a failed
+     * delete surfaces a "Couldn't delete!" toast.
+     */
+    private fun deleteEntryWithUndo(entry: Entry) {
         viewModelScope.launch {
-            dialogQueueService.showDialog(
-                DialogModel.Confirm(
-                    title = HistoryDetailScreenStrings.DeleteEntryDialogTitle,
-                    message = HistoryDetailScreenStrings.DeleteEntryDialogMessage,
-                    confirmText = HistoryDetailScreenStrings.DeleteButton,
-                    cancelText = HistoryDetailScreenStrings.CancelButton,
-                    primaryActionType = ButtonType.ErrorText,
-                    onConfirm = {
-                        AppLog.d(TAG, "User confirmed deletion of entry: ${entry.entry.id}")
-                        dialogQueueService.showLoader(HistoryDetailScreenStrings.DeleteLoaderMessage)
-                        viewModelScope.launch {
-                            // Delete from entry service (local + API)
-                            entryService.deleteEntry(entry)
-                            // Try to delete from Health Connect (non-blocking)
-                            try {
-                                healthConnectService.deleteEntry(entry)
-                                AppLog.d(TAG, "Entry deleted from Health Connect")
-                            } catch (e: Exception) {
-                                AppLog.w(TAG, "Failed to delete entry from Health Connect")
-                                // Don't fail the operation if HC deletion fails
-                            }
+            try {
+                entryService.deleteEntry(entry)
+                // Best-effort Health Connect mirror — a HC failure must not fail the delete.
+                try {
+                    healthConnectService.deleteEntry(entry)
+                } catch (e: Exception) {
+                    AppLog.w(TAG, "Failed to delete entry from Health Connect")
+                }
+                loadDetail()
+                dialogQueueService.showToast(
+                    Toast.Simple(
+                        message = HistoryDetailScreenStrings.ReadingDeleted,
+                        action = ActionButton(
+                            text = HistoryDetailScreenStrings.UndoButton,
+                            action = { undoDelete(entry) },
+                        ),
+                    ),
+                )
+            } catch (e: Exception) {
+                AppLog.e(TAG, "Error deleting entry: ${entry.entry.id}", e)
+                dialogQueueService.showToast(
+                    Toast.Simple(
+                        title = HistoryDetailScreenStrings.DeleteFailedTitle,
+                        message = HistoryDetailScreenStrings.DeleteFailedMessage,
+                    ),
+                )
+            }
+        }
+    }
 
-                            dialogQueueService.dismissCurrent()
-                            dialogQueueService.dismissLoader()
-                        }
-                    },
-                    onCancel = {
-                        dialogQueueService.dismissCurrent()
-                    },
-                    onDismiss = {
-                        dialogQueueService.dismissCurrent()
-                    },
-                ),
-            )
+    /** Restores a just-deleted reading (Undo) and confirms with a "Reading restored." toast. */
+    private fun undoDelete(entry: Entry) {
+        viewModelScope.launch {
+            try {
+                dialogQueueService.dismissToast()
+                entryService.restoreEntry(entry)
+                loadDetail()
+                dialogQueueService.showToast(
+                    Toast.Simple(message = HistoryDetailScreenStrings.ReadingRestored),
+                )
+            } catch (e: Exception) {
+                AppLog.e(TAG, "Error restoring entry: ${entry.entry.id}", e)
+                dialogQueueService.showToast(
+                    Toast.Simple(
+                        title = HistoryDetailScreenStrings.DeleteFailedTitle,
+                        message = HistoryDetailScreenStrings.DeleteFailedMessage,
+                    ),
+                )
+            }
         }
     }
 
     companion object {
         private const val TAG = "HistoryDetailViewModel"
+        private const val MILLIS_PER_MINUTE = 60_000L
     }
 }
