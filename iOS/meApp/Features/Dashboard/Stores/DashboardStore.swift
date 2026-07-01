@@ -538,28 +538,9 @@ class DashboardStore: ObservableObject, DashboardStateProviding {
         // Snap the lower bound to the period boundary so the percentile curves fill the chart
         // from the same edge the X-axis domain starts at (see babyScrollDomainCap) — otherwise
         // the leading portion of the grid (e.g. the 1st–29th) renders without reference curves.
-        let lower = babyChartPeriodStart(for: rawLower, period: period)
+        // Shared with the chart's domainMin via TimePeriod.periodStart so the two can't drift.
+        let lower = period.periodStart(for: rawLower)
         return lower...max(rawUpper, lower)
-    }
-
-    /// Start of the calendar period containing `date`, matching the X-axis tick generators and
-    /// the baby chart domain cap (week → Sunday, month → 1st, year → Jan 1).
-    private func babyChartPeriodStart(for date: Date, period: TimePeriod) -> Date {
-        let calendar = Calendar.current
-        switch period {
-        case .week:
-            var weekCalendar = Calendar(identifier: .gregorian)
-            weekCalendar.timeZone = calendar.timeZone
-            weekCalendar.locale = calendar.locale
-            weekCalendar.firstWeekday = 1 // Sunday
-            return weekCalendar.dateInterval(of: .weekOfYear, for: date)?.start ?? date
-        case .month:
-            return calendar.dateInterval(of: .month, for: date)?.start ?? date
-        case .year:
-            return calendar.dateInterval(of: .year, for: date)?.start ?? date
-        case .total:
-            return date
-        }
     }
 
     /// Returns real baby summaries from EntryService for the given profile and period.

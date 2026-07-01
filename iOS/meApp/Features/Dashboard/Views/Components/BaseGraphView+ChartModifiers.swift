@@ -269,23 +269,9 @@ extension BaseGraphView {
                 // full reference grid renders. Anchoring to the raw earliest entry date clips
                 // the leading ticks — e.g. a single entry late in the month leaves only "29"
                 // visible instead of 1 / 8 / 15 / 22 / 29.
-                let domainMin: Date = {
-                    let calendar = Calendar.current
-                    switch viewModel.timePeriod {
-                    case .week:
-                        var weekCalendar = Calendar(identifier: .gregorian)
-                        weekCalendar.timeZone = calendar.timeZone
-                        weekCalendar.locale = calendar.locale
-                        weekCalendar.firstWeekday = 1 // Sunday, matching the weekly tick generator
-                        return weekCalendar.dateInterval(of: .weekOfYear, for: minDate)?.start ?? minDate
-                    case .month:
-                        return calendar.dateInterval(of: .month, for: minDate)?.start ?? minDate
-                    case .year:
-                        return calendar.dateInterval(of: .year, for: minDate)?.start ?? minDate
-                    case .total:
-                        return minDate
-                    }
-                }()
+                // Shared with DashboardStore's baby reference-curve start via TimePeriod.periodStart
+                // so the chart domain and the reference curves snap to the exact same boundary.
+                let domainMin = viewModel.timePeriod.periodStart(for: minDate)
                 content.chartXScale(domain: domainMin...max(maxDate, cappedMax))
             } else {
                 content
