@@ -6,6 +6,7 @@ import com.dmdbrands.gurus.weight.core.shared.utilities.ConversionTools
 import com.dmdbrands.gurus.weight.core.service.IAppNavigationService
 import com.dmdbrands.gurus.weight.domain.enums.DashboardType
 import com.dmdbrands.gurus.weight.domain.interfaces.IDialogQueueService
+import com.dmdbrands.gurus.weight.domain.enums.ProductType
 import com.dmdbrands.gurus.weight.domain.model.common.BabyProfile
 import com.dmdbrands.gurus.weight.domain.model.common.WeightUnit
 import com.dmdbrands.gurus.weight.domain.model.storage.entry.BabyEntry
@@ -19,6 +20,7 @@ import com.dmdbrands.gurus.weight.domain.services.IEntryService
 import com.dmdbrands.gurus.weight.features.common.components.DateTimeValue
 import com.dmdbrands.gurus.weight.features.common.helper.form.MultiFormGroup
 import com.dmdbrands.gurus.weight.features.common.model.DialogModel
+import com.dmdbrands.gurus.weight.features.common.model.ReadingToast
 import com.dmdbrands.gurus.weight.features.common.model.Toast
 import com.dmdbrands.gurus.weight.features.manualEntry.strings.EntryScreenStrings
 import com.dmdbrands.gurus.weight.testutil.TestFixtures
@@ -51,7 +53,6 @@ import org.junit.jupiter.api.extension.RegisterExtension
 class EntryViewModelTest {
 
     companion object {
-        private const val SUCCESS_TOAST_TITLE = "Success!"
         private const val ERROR_TOAST_TITLE = "Error saving new entry!"
         private const val NETWORK_ERROR = "Network error"
         private const val TEST_HEIGHT = 1700
@@ -230,7 +231,15 @@ class EntryViewModelTest {
     fun `Save shows success toast on success`() = runTest(mainDispatcherRule.scheduler) {
         viewModel.handleIntent(EntryIntent.Save)
         advanceUntilIdle()
-        verify { dialogQueueService.showToast(match<Toast.Simple> { it.title == SUCCESS_TOAST_TITLE }) }
+        // Success now shows the "saved to log" reading card (Toast.Custom/ReadingToast), not a Simple toast.
+        verify {
+            dialogQueueService.showToast(
+                match<Toast.Custom> {
+                    val content = it.content as? ReadingToast
+                    content?.savedToLog == true && content.type == ProductType.MY_WEIGHT
+                },
+            )
+        }
     }
 
     @Test
@@ -679,7 +688,15 @@ class EntryViewModelTest {
         selectBloodPressureForm()
         viewModel.handleIntent(EntryIntent.Save)
         advanceUntilIdle()
-        verify { dialogQueueService.showToast(match<Toast.Simple> { it.title == SUCCESS_TOAST_TITLE }) }
+        // BP success also shows the "saved to log" reading card (Toast.Custom/ReadingToast).
+        verify {
+            dialogQueueService.showToast(
+                match<Toast.Custom> {
+                    val content = it.content as? ReadingToast
+                    content?.savedToLog == true && content.type == ProductType.BLOOD_PRESSURE
+                },
+            )
+        }
         coVerify { navigationService.navigateBack(AppRoute.Home) }
     }
 

@@ -1,5 +1,6 @@
 package com.dmdbrands.gurus.weight.core.service
 
+import com.dmdbrands.gurus.weight.core.di.ApplicationScope
 import com.dmdbrands.gurus.weight.core.shared.utilities.logging.AppLog
 import com.dmdbrands.gurus.weight.domain.enums.ProductType
 import com.dmdbrands.gurus.weight.domain.model.common.BabyProfile
@@ -7,10 +8,14 @@ import com.dmdbrands.gurus.weight.domain.model.common.ProductSelection
 import com.dmdbrands.gurus.weight.domain.repository.IProductSelectionRepository
 import com.dmdbrands.gurus.weight.domain.services.IAccountService
 import com.dmdbrands.gurus.weight.domain.services.IProductSelectionManager
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.launch
 import javax.inject.Inject
 import javax.inject.Provider
 
@@ -18,6 +23,7 @@ class ProductSelectionManager @Inject constructor(
   private val productSelectionRepository: IProductSelectionRepository,
   // Provider breaks a potential Hilt init cycle (AccountService graph is large).
   private val accountService: Provider<IAccountService>,
+  @ApplicationScope private val appScope: CoroutineScope,
 ) : IProductSelectionManager {
 
   private val _availableProducts = MutableStateFlow<List<ProductSelection>>(listOf(ProductSelection.MyWeight))
@@ -31,6 +37,12 @@ class ProductSelectionManager @Inject constructor(
 
   private val _hasBabyScaleDevice = MutableStateFlow(false)
   override val hasBabyScaleDevice: StateFlow<Boolean> = _hasBabyScaleDevice.asStateFlow()
+
+  // Declared after the state fields above so they are initialized before the observer's first
+  // (potentially eager) emission touches them.
+  init {
+    observeAccountProducts()
+  }
 
   override fun setSnapshotMode(enabled: Boolean) {
     _isSnapshotMode.value = enabled
@@ -50,6 +62,30 @@ class ProductSelectionManager @Inject constructor(
       return
     }
 
+    val products = buildProducts(accountId)
+
+    _availableProducts.value = products
+    AppLog.d(TAG, "Available: $products")
+
+    val restored = restoreSavedSelection(products)
+    _selectedProduct.value = restored
+
+    // Snapshot is the multi-product chooser. With a single available product there's nothing
+    // to choose, so skip it and go straight to that product's detail dashboard. Otherwise fall
+    // back to the saved-pick behavior (skip only if the user has already chosen before).
+    if (products.size == 1) {
+      _isSnapshotMode.value = false
+    } else {
+      _isSnapshotMode.value = !productSelectionRepository.observeHasUserSelected().first()
+    }
+  }
+
+  /**
+   * Builds the account's available-product list from its owned productTypes (MOB-377) plus any
+   * locally-present baby profiles / paired devices. Pure derivation — does not touch selection or
+   * snapshot state, so it is safe to call both on initial load and on every reactive refresh.
+   */
+  private suspend fun buildProducts(accountId: String): List<ProductSelection> {
     val babyProfiles = productSelectionRepository.getBabyProfiles(accountId)
     val hasBpm = productSelectionRepository.hasBpmDevice(accountId)
     val hasBabyScale = productSelectionRepository.hasBabyScaleDevice(accountId)
@@ -98,20 +134,41 @@ class ProductSelectionManager @Inject constructor(
       products.add(ProductSelection.MyWeight)
     }
 
-    _availableProducts.value = products
-    AppLog.d(TAG, "Available: $products")
+    return products
+  }
 
-    val restored = restoreSavedSelection(products)
-    _selectedProduct.value = restored
-
-    // Snapshot is the multi-product chooser. With a single available product there's nothing
-    // to choose, so skip it and go straight to that product's detail dashboard. Otherwise fall
-    // back to the saved-pick behavior (skip only if the user has already chosen before).
-    if (products.size == 1) {
-      _isSnapshotMode.value = false
-    } else {
-      _isSnapshotMode.value = !productSelectionRepository.observeHasUserSelected().first()
+  /**
+   * Keeps [availableProducts] in sync with the account after startup. The active account is a Room
+   * @Relation flow that re-emits when `productTypes` changes, so pairing a device (adds a product),
+   * adding a baby, or a server sync all update the dashboard's product switcher live — without an
+   * app restart. Only the available list is rebuilt here; the user's selection and snapshot mode
+   * stay as they are, except we re-derive the selection if the current one disappears (e.g. a device
+   * was removed).
+   */
+  private fun observeAccountProducts() {
+    appScope.launch {
+      accountService.get().activeAccountFlow
+        .map { account -> account?.id to (account?.productTypes ?: emptyList()) }
+        .distinctUntilChanged()
+        .collect { (accountId, _) ->
+          if (USE_SAMPLE_PRODUCTS) return@collect
+          val id = accountId ?: return@collect
+          val products = buildProducts(id)
+          if (products == _availableProducts.value) return@collect
+          _availableProducts.value = products
+          AppLog.d(TAG, "Available (refreshed): $products")
+          if (products.none { it.matchesSelection(_selectedProduct.value) }) {
+            _selectedProduct.value = restoreSavedSelection(products)
+          }
+        }
     }
+  }
+
+  /** True when [selection] refers to the same product (by type, and baby id for baby profiles). */
+  private fun ProductSelection.matchesSelection(selection: ProductSelection): Boolean = when {
+    this is ProductSelection.Baby && selection is ProductSelection.Baby ->
+      profile.id == selection.profile.id
+    else -> productType == selection.productType && this::class == selection::class
   }
 
   override suspend fun persistProductForSetup(productType: ProductType) {

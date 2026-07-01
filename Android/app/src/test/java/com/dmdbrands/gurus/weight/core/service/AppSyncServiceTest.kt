@@ -9,7 +9,6 @@ import com.dmdbrands.gurus.weight.domain.model.api.entry.ScaleApiEntry
 import com.dmdbrands.gurus.weight.domain.model.storage.entry.ScaleEntry
 import com.dmdbrands.gurus.weight.domain.services.IEntryService
 import com.dmdbrands.gurus.weight.features.common.model.Toast
-import com.dmdbrands.gurus.weight.features.manualEntry.strings.EntryScreenStrings
 import com.google.common.truth.Truth.assertThat
 import io.mockk.Runs
 import io.mockk.coEvery
@@ -184,24 +183,24 @@ class AppSyncServiceTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `handleSaveAppSyncData calls entryService addEntry`() = runTest(mainDispatcherRule.scheduler) {
+    fun `handleSaveAppSyncData calls entryService addEntry and returns true`() = runTest(mainDispatcherRule.scheduler) {
         coEvery { entryService.addEntry(any<ScaleEntry>()) } just Runs
 
-        service.handleSaveAppSyncData(fakeScaleEntry)
+        val result = service.handleSaveAppSyncData(fakeScaleEntry)
 
         coVerify { entryService.addEntry(fakeScaleEntry) }
+        assertThat(result).isTrue()
     }
 
     @Test
-    fun `handleSaveAppSyncData shows success toast with correct title and message`() = runTest(mainDispatcherRule.scheduler) {
+    fun `handleSaveAppSyncData does not show a toast on success`() = runTest(mainDispatcherRule.scheduler) {
+        // The success ("New Reading saved to your log") card is now owned by HomeViewModel, which has
+        // the account/units/navigation context to build the ReadingToast — the service stays silent.
         coEvery { entryService.addEntry(any<ScaleEntry>()) } just Runs
 
         service.handleSaveAppSyncData(fakeScaleEntry)
 
-        val toastSlot = slot<Toast.Simple>()
-        coVerify { dialogQueueService.showToast(capture(toastSlot)) }
-        assertThat(toastSlot.captured.title).isEqualTo(EntryScreenStrings.EntryAddedTitle)
-        assertThat(toastSlot.captured.message).isEqualTo(EntryScreenStrings.EntryAdded)
+        coVerify(exactly = 0) { dialogQueueService.showToast(any()) }
     }
 
     @Test
@@ -217,15 +216,16 @@ class AppSyncServiceTest {
     }
 
     @Test
-    fun `handleSaveAppSyncData on addEntry exception shows failure toast with error message`() = runTest(mainDispatcherRule.scheduler) {
+    fun `handleSaveAppSyncData on addEntry exception shows failure toast and returns false`() = runTest(mainDispatcherRule.scheduler) {
         coEvery { entryService.addEntry(any<ScaleEntry>()) } throws RuntimeException("save error")
 
-        service.handleSaveAppSyncData(fakeScaleEntry)
+        val result = service.handleSaveAppSyncData(fakeScaleEntry)
 
         val toastSlot = slot<Toast>()
         coVerify { dialogQueueService.showToast(capture(toastSlot)) }
         assertThat(toastSlot.captured.message).contains("Failed to save entry")
         assertThat(toastSlot.captured.message).contains("save error")
+        assertThat(result).isFalse()
     }
 
     @Test

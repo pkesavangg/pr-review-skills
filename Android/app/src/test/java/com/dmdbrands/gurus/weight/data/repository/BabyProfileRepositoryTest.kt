@@ -101,6 +101,16 @@ class BabyProfileRepositoryTest {
     }
 
     @Test
+    fun `save returns the persisted profile carrying the server-assigned id`() = runTest {
+        coEvery { babyApi.createBaby(any()) } returns response(id = "server-id")
+
+        val result = repository.save(profile(id = "local-temp-id"))
+
+        // Callers rely on this returned id (not the client id) to set the active baby.
+        assertThat(result.id).isEqualTo("server-id")
+    }
+
+    @Test
     fun `save rethrows and skips local write when api fails`() {
         coEvery { babyApi.createBaby(any()) } throws IOException("network")
 

@@ -7,6 +7,8 @@ import com.dmdbrands.gurus.weight.domain.interfaces.IDialogQueueService
 import com.dmdbrands.gurus.weight.domain.model.storage.Account.Account
 import com.dmdbrands.gurus.weight.domain.enums.ProductType
 import com.dmdbrands.gurus.weight.domain.model.api.auth.SignupRequest
+import com.dmdbrands.gurus.weight.domain.model.common.BabyProfile
+import com.dmdbrands.gurus.weight.domain.repository.IAccountRepository
 import com.dmdbrands.gurus.weight.domain.repository.IProductSelectionRepository
 import com.dmdbrands.gurus.weight.core.shared.utilities.ConversionTools
 import com.dmdbrands.gurus.weight.domain.services.IAccountService
@@ -79,6 +81,9 @@ class SignupViewModelTest {
     @MockK(relaxed = true)
     lateinit var productSelectionRepository: IProductSelectionRepository
 
+    @MockK(relaxUnitFun = true)
+    lateinit var accountRepository: IAccountRepository
+
     private lateinit var navigationService: IAppNavigationService
     private lateinit var dialogQueueService: IDialogQueueService
     private lateinit var viewModel: SignupViewModel
@@ -88,12 +93,17 @@ class SignupViewModelTest {
         MockKAnnotations.init(this)
         navigationService = mockk(relaxed = true)
         dialogQueueService = mockk(relaxed = true)
+        // save() returns the persisted profile (server-assigned id); default stub for baby tests.
+        coEvery { babyProfileService.save(any()) } answers {
+            (firstArg<BabyProfile>()).copy(id = "server-${firstArg<BabyProfile>().id}")
+        }
         viewModel = SignupViewModel(
             accountService = accountService,
             goalService = goalService,
             analyticsService = analyticsService,
             productSelectionRepository = productSelectionRepository,
             babyProfileService = babyProfileService,
+            accountRepository = accountRepository,
         ).initTestDependencies(
             navigationService = navigationService,
             dialogQueueService = dialogQueueService,
@@ -692,6 +702,24 @@ class SignupViewModelTest {
                 },
             )
         }
+    }
+
+    @Test
+    fun `Submit baby scale sets the newly-added baby as the active baby`() = runTest(mainDispatcherRule.scheduler) {
+        coEvery { accountService.signup(any()) } returns TestFixtures.activeAccount
+
+        navigateToBabyPasswordStep { form ->
+            form.name.onValueChange("Tammy")
+            form.biologicalSex.onValueChange("male")
+            form.weightUnit.onValueChange(BabyWeightUnit.KG)
+            form.birthWeight.onValueChange("3.5")
+            form.birthLength.onValueChange("50")
+        }
+        viewModel.handleIntent(SignupIntent.Next)
+        advanceUntilIdle()
+
+        // The persisted baby (server-assigned id) becomes the account's active baby.
+        coVerify { accountRepository.setActiveBabyId(TestFixtures.activeAccount.id, any()) }
     }
 
     @Test

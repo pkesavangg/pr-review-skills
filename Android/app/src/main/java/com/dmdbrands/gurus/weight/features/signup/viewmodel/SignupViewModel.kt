@@ -11,6 +11,7 @@ import com.dmdbrands.gurus.weight.domain.model.common.BabyProfile as DomainBabyP
 import com.dmdbrands.gurus.weight.domain.model.common.MeasurementUnits
 import com.dmdbrands.gurus.weight.domain.model.common.WeightUnit
 import com.dmdbrands.gurus.weight.domain.model.storage.Account.Account
+import com.dmdbrands.gurus.weight.domain.repository.IAccountRepository
 import com.dmdbrands.gurus.weight.domain.repository.IProductSelectionRepository
 import com.dmdbrands.gurus.weight.domain.services.IAccountService
 import com.dmdbrands.gurus.weight.domain.services.IAnalyticsService
@@ -67,6 +68,7 @@ constructor(
   private val analyticsService: IAnalyticsService,
   private val productSelectionRepository: IProductSelectionRepository,
   private val babyProfileService: IBabyProfileService,
+  private val accountRepository: IAccountRepository,
 ) : BaseIntentViewModel<SignupState, SignupIntent>(
   reducer = SignupReducer(),
 ) {
@@ -433,15 +435,23 @@ constructor(
       return
     }
     var savedCount = 0
+    var lastSavedBabyId: String? = null
     babies.forEach { baby ->
       try {
-        babyProfileService.save(baby.toDomain(account.id))
+        // save() returns the persisted profile with the server-assigned id.
+        val saved = babyProfileService.save(baby.toDomain(account.id))
+        lastSavedBabyId = saved.id
         savedCount++
       } catch (e: Exception) {
         AppLog.e(TAG, "Failed to persist baby profile during signup: ${baby.id}", e)
       }
     }
     AppLog.d(TAG, "Persisted $savedCount/${babies.size} baby profiles to server")
+
+    // The last baby added during signup becomes the active baby (the one the dashboard
+    // shows). The Loading screen reloads available products next, so this surfaces without
+    // an app restart.
+    lastSavedBabyId?.let { accountRepository.setActiveBabyId(account.id, it) }
   }
 
   /** Maps a signup-flow [SignupBabyProfile] to the domain [DomainBabyProfile] the API layer expects. */

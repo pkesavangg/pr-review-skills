@@ -16,7 +16,13 @@ import io.mockk.mockk
 import io.mockk.mockkObject
 import io.mockk.unmockkAll
 import com.dmdbrands.gurus.weight.core.shared.utilities.logging.AppLog
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.cancel
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.emptyFlow
 import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.test.UnconfinedTestDispatcher
+import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.BeforeEach
@@ -38,6 +44,9 @@ class ProductSelectionManagerTest {
 
     private val accountService: IAccountService = mockk(relaxed = true)
 
+    // Unconfined test scope for the manager's reactive account observer; no emissions by default.
+    private val appScope = CoroutineScope(UnconfinedTestDispatcher())
+
     private lateinit var manager: ProductSelectionManager
 
     private val baby1 = BabyProfile(id = BABY_ID_1, name = BABY_NAME_1, birthdate = null, accountId = ACCOUNT_ID)
@@ -55,17 +64,21 @@ class ProductSelectionManagerTest {
         every { productSelectionRepository.observeHasUserSelected() } returns flowOf(false)
         // Default: account does not own a baby scale (overridden per-test). (MOB-416)
         coEvery { productSelectionRepository.hasBabyScaleDevice(any()) } returns false
+        // Default: reactive account observer sees no emissions (overridden in the reactive test).
+        every { accountService.activeAccountFlow } returns emptyFlow()
 
         ProductSelectionManager.USE_SAMPLE_PRODUCTS = false
 
         manager = ProductSelectionManager(
             productSelectionRepository = productSelectionRepository,
             accountService = Provider { accountService },
+            appScope = appScope,
         )
     }
 
     @AfterEach
     fun tearDown() {
+        appScope.cancel()
         unmockkAll()
     }
 
@@ -273,6 +286,48 @@ class ProductSelectionManagerTest {
         val available = manager.availableProducts.value
         assertThat(available).contains(ProductSelection.Baby(baby1))
         assertThat(available).doesNotContain(ProductSelection.BabyScale)
+    }
+
+    // ── reactive refresh: availableProducts follows account productTypes ──────
+    // The dashboard product switcher must update live when a device is paired (adds a
+    // product to the account) — without an app restart. The active account is a Room
+    // @Relation flow that re-emits on productTypes change; the manager observes it.
+
+    @Test
+    fun `availableProducts updates reactively when account gains the weight product`() = runTest {
+        val babyOnly = mockk<Account>(relaxed = true)
+        every { babyOnly.id } returns ACCOUNT_ID
+        every { babyOnly.productTypes } returns listOf(ProductType.BABY.apiValue)
+        val babyAndWeight = mockk<Account>(relaxed = true)
+        every { babyAndWeight.id } returns ACCOUNT_ID
+        every { babyAndWeight.productTypes } returns listOf(ProductType.BABY.apiValue, ProductType.MY_WEIGHT.apiValue)
+
+        val accountFlow = MutableStateFlow<Account?>(babyOnly)
+        every { accountService.activeAccountFlow } returns accountFlow
+        coEvery { accountService.getCurrentAccount() } answers { accountFlow.value }
+        coEvery { productSelectionRepository.getBabyProfiles(ACCOUNT_ID) } returns emptyList()
+        coEvery { productSelectionRepository.hasBpmDevice(ACCOUNT_ID) } returns false
+        coEvery { productSelectionRepository.hasBabyScaleDevice(ACCOUNT_ID) } returns false
+
+        val scope = CoroutineScope(UnconfinedTestDispatcher(testScheduler))
+        val reactiveManager = ProductSelectionManager(
+            productSelectionRepository = productSelectionRepository,
+            accountService = Provider { accountService },
+            appScope = scope,
+        )
+        advanceUntilIdle()
+
+        // Baby-only account: weight must NOT be present yet.
+        assertThat(reactiveManager.availableProducts.value).containsExactly(ProductSelection.BabyScale)
+
+        // Pairing a weight scale adds "weight" to productTypes → the account flow re-emits.
+        accountFlow.value = babyAndWeight
+        advanceUntilIdle()
+
+        assertThat(reactiveManager.availableProducts.value)
+            .containsExactly(ProductSelection.MyWeight, ProductSelection.BabyScale)
+
+        scope.cancel()
     }
 
     // ── dropdown visibility predicate (MOB-592) ──────────────────────────────

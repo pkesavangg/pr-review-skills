@@ -15,9 +15,10 @@ interface IAppSyncService {
     suspend fun handleEditAppSyncData(scaleEntry: ScaleEntry)
 
     /**
-     * Handles saving AppSync data directly
+     * Handles saving AppSync data directly.
+     * @return true if the entry was persisted successfully, false otherwise.
      */
-    suspend fun handleSaveAppSyncData(scaleEntry: ScaleEntry)
+    suspend fun handleSaveAppSyncData(scaleEntry: ScaleEntry): Boolean
 
     /**
      * Sets AppSync data for manual entry editing

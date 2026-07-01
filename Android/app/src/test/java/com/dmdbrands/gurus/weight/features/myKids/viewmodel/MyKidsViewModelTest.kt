@@ -50,8 +50,13 @@ class MyKidsViewModelTest {
         viewModel = createViewModel()
     }
 
+    // save() returns the persisted profile carrying the SERVER-assigned id (the client id is
+    // discarded by the API). Tests assert that this id — not the input id — becomes the active baby.
+    private val savedProfile = BabyProfile(id = "server-baby-id", name = "Alice", birthdate = null, accountId = "acc")
+
     private fun stubDefaults() {
         every { babyProfileService.observeAll() } returns flowOf(emptyList())
+        coEvery { babyProfileService.save(any()) } returns savedProfile
         coEvery { accountRepository.getActiveBabyId() } returns null
         coEvery { accountRepository.getActiveAccount() } returns flowOf(null)
     }
@@ -215,7 +220,7 @@ class MyKidsViewModelTest {
     }
 
     @Test
-    fun `SaveBaby sets activeBabyId when none exists`() = runTest(mainDispatcherRule.scheduler) {
+    fun `SaveBaby sets the newly-added baby as active using the server-assigned id`() = runTest(mainDispatcherRule.scheduler) {
         val account = com.dmdbrands.gurus.weight.testutil.TestFixtures.activeAccount
         coEvery { accountRepository.getActiveAccount() } returns flowOf(account)
         coEvery { accountRepository.getActiveBabyId() } returns null
@@ -231,11 +236,12 @@ class MyKidsViewModelTest {
         )
         advanceUntilIdle()
 
-        coVerify { accountRepository.setActiveBabyId(account.id, any()) }
+        // Must use the id returned by save() (server id), not the locally-minted profile id.
+        coVerify { accountRepository.setActiveBabyId(account.id, savedProfile.id) }
     }
 
     @Test
-    fun `SaveBaby does not overwrite existing activeBabyId`() = runTest(mainDispatcherRule.scheduler) {
+    fun `SaveBaby overwrites existing activeBabyId with the newly-added baby`() = runTest(mainDispatcherRule.scheduler) {
         val account = com.dmdbrands.gurus.weight.testutil.TestFixtures.activeAccount
         coEvery { accountRepository.getActiveAccount() } returns flowOf(account)
         coEvery { accountRepository.getActiveBabyId() } returns "existing-baby"
@@ -251,7 +257,8 @@ class MyKidsViewModelTest {
         )
         advanceUntilIdle()
 
-        coVerify(exactly = 0) { accountRepository.setActiveBabyId(any(), any()) }
+        // A newly-added baby always becomes active, even when one already exists.
+        coVerify { accountRepository.setActiveBabyId(account.id, savedProfile.id) }
     }
 
     @Test
