@@ -222,6 +222,7 @@ final class WifiScaleSetupStore: ObservableObject {
         )
     }
 
+    // swiftlint:disable:next function_body_length
     init(
         notificationService: NotificationHelperServiceProtocol,
         permissionsService: PermissionsServiceProtocol,

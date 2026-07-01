@@ -344,6 +344,7 @@ final class DashboardLifecycleManager: DashboardLifecycleManaging { // swiftlint
         }
     }
 
+    // swiftlint:disable:next function_body_length
     private func performEntryLifecycleChange() {
         guard let stateProvider else { return }
 
