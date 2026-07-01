@@ -524,6 +524,44 @@ class DashboardStore: ObservableObject, DashboardStateProviding {
 
     // MARK: - Baby Data Access
 
+    /// Date range the baby percentile reference curves should span: the visible chart window
+    /// (scroll position → one visible-domain length later), unioned with the actual data extent.
+    /// Spanning the window — instead of the sparse operations' min/max — keeps the WHO/CDC curves
+    /// filling the chart even when the baby has a single weight entry.
+    private func babyChartVisibleDateRange() -> ClosedRange<Date> {
+        let period = state.graph.selectedPeriod
+        let start = state.graph.xScrollPosition
+        let end = start.addingTimeInterval(visibleDomainLength(for: period))
+        let operationDates = continuousOperations.map(\.date)
+        let rawLower = min(start, end, operationDates.min() ?? start)
+        let rawUpper = max(start, end, operationDates.max() ?? end)
+        // Snap the lower bound to the period boundary so the percentile curves fill the chart
+        // from the same edge the X-axis domain starts at (see babyScrollDomainCap) — otherwise
+        // the leading portion of the grid (e.g. the 1st–29th) renders without reference curves.
+        let lower = babyChartPeriodStart(for: rawLower, period: period)
+        return lower...max(rawUpper, lower)
+    }
+
+    /// Start of the calendar period containing `date`, matching the X-axis tick generators and
+    /// the baby chart domain cap (week → Sunday, month → 1st, year → Jan 1).
+    private func babyChartPeriodStart(for date: Date, period: TimePeriod) -> Date {
+        let calendar = Calendar.current
+        switch period {
+        case .week:
+            var weekCalendar = Calendar(identifier: .gregorian)
+            weekCalendar.timeZone = calendar.timeZone
+            weekCalendar.locale = calendar.locale
+            weekCalendar.firstWeekday = 1 // Sunday
+            return weekCalendar.dateInterval(of: .weekOfYear, for: date)?.start ?? date
+        case .month:
+            return calendar.dateInterval(of: .month, for: date)?.start ?? date
+        case .year:
+            return calendar.dateInterval(of: .year, for: date)?.start ?? date
+        case .total:
+            return date
+        }
+    }
+
     /// Returns real baby summaries from EntryService for the given profile and period.
     /// Uses daily summaries for week/month and monthly summaries for year/total.
     private func babySummaries(for babyProfile: BabyProfile, period: TimePeriod) -> [BathScaleWeightSummary] {
@@ -768,7 +806,8 @@ class DashboardStore: ObservableObject, DashboardStateProviding {
                     metric: selectedBabyMetric,
                     convertWeight: goalManager.convertWeightToDisplay,
                     convertDecigramsToDisplay: convertBabyDecigramsToDisplay,
-                    yAxisDomain: chartManager.yAxisDomain
+                    yAxisDomain: chartManager.yAxisDomain,
+                    percentileDateRange: babyChartVisibleDateRange()
                 )
             }
         }
@@ -798,18 +837,21 @@ class DashboardStore: ObservableObject, DashboardStateProviding {
         }
 
         if let babyProfile = selectedBabyProfile {
+            let percentileDateRange = babyChartVisibleDateRange()
             switch selectedBabyMetric {
             case .weight:
                 return BabyDashboardChartSupport.yAxisScale(
                     for: operations,
                     babyProfile: babyProfile,
+                    dateRange: percentileDateRange,
                     convertStoredWeightToDisplay: goalManager.convertWeightToDisplay,
                     convertDecigramsToDisplay: convertBabyDecigramsToDisplay
                 )
             case .height:
                 return BabyDashboardChartSupport.heightYAxisScale(
                     for: operations,
-                    babyProfile: babyProfile
+                    babyProfile: babyProfile,
+                    dateRange: percentileDateRange
                 )
             }
         }
