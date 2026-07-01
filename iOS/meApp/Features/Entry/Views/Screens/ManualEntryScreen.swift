@@ -47,14 +47,12 @@ struct ManualEntryScreen: View {
     var body: some View {
         VStack(spacing: 0) {
             NavbarHeaderView<EmptyView, EmptyView>(
-                title: productTypeStore.availableItems.count > 1
-                    ? productTypeStore.selectedItem.entryTitle
-                    : manualEntryLang.title,
-                // Per Me.Health 2.0: tint the product-type entry title by product
-                // (weight → blue, BP → green, baby → purple); plain title stays neutral.
-                titleColor: productTypeStore.availableItems.count > 1
-                    ? theme.productAccentColor(for: productTypeStore.selectedItem.entryType)
-                    : nil,
+                // Per Me.Health 2.0: always show the product-specific entry title
+                // (Weight Entry / BP Entry / baby name), tinted by product
+                // (weight → blue, BP → green, baby → purple). The chevron/selector
+                // only appears when more than one product is available to switch between.
+                title: productTypeStore.selectedItem.entryTitle,
+                titleColor: theme.productAccentColor(for: productTypeStore.selectedItem.entryType),
                 onTitleTap: productTypeStore.availableItems.count > 1 ? {
                     isProductTypeSelectorPresented = true
                 } : nil,

@@ -105,6 +105,54 @@ struct UnifiedEntryResult: Codable, Equatable {
         self.babyLengthMillimeters = babyLengthMillimeters
         self.entryNote = entryNote
     }
+
+    private enum CodingKeys: String, CodingKey {
+        case category, entryId, operationType, entryTimestamp, serverTimestamp, source
+        case weight, bodyFat, muscleMass, water, bmi, boneMass, impedance, unit
+        case systolic, diastolic, pulse, note
+        case babyId, entryType, babyWeightDecigrams, babyLengthMillimeters, entryNote
+    }
+
+    /// Custom decoder to tolerate the server sending `entryId` as a JSON **number**
+    /// (the read side of `GET /v3/entries/` returns it numeric, while the write side is a string).
+    /// A numeric id is stringified; every other field decodes as normal. Without this, the
+    /// synthesized decoder throws `typeMismatch` on `entryId` and the whole entries response
+    /// fails to decode — which silently empties History.
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+
+        if let numericId = try? container.decode(Int.self, forKey: .entryId) {
+            self.entryId = String(numericId)
+        } else {
+            self.entryId = try container.decodeIfPresent(String.self, forKey: .entryId)
+        }
+
+        self.category = try container.decodeIfPresent(String.self, forKey: .category)
+        self.operationType = try container.decodeIfPresent(String.self, forKey: .operationType)
+        self.entryTimestamp = try container.decodeIfPresent(String.self, forKey: .entryTimestamp)
+        self.serverTimestamp = try container.decodeIfPresent(String.self, forKey: .serverTimestamp)
+        self.source = try container.decodeIfPresent(String.self, forKey: .source)
+
+        self.weight = try container.decodeIfPresent(Int.self, forKey: .weight)
+        self.bodyFat = try container.decodeIfPresent(Int.self, forKey: .bodyFat)
+        self.muscleMass = try container.decodeIfPresent(Int.self, forKey: .muscleMass)
+        self.water = try container.decodeIfPresent(Int.self, forKey: .water)
+        self.bmi = try container.decodeIfPresent(Int.self, forKey: .bmi)
+        self.boneMass = try container.decodeIfPresent(Int.self, forKey: .boneMass)
+        self.impedance = try container.decodeIfPresent(Int.self, forKey: .impedance)
+        self.unit = try container.decodeIfPresent(String.self, forKey: .unit)
+
+        self.systolic = try container.decodeIfPresent(Int.self, forKey: .systolic)
+        self.diastolic = try container.decodeIfPresent(Int.self, forKey: .diastolic)
+        self.pulse = try container.decodeIfPresent(Int.self, forKey: .pulse)
+        self.note = try container.decodeIfPresent(String.self, forKey: .note)
+
+        self.babyId = try container.decodeIfPresent(String.self, forKey: .babyId)
+        self.entryType = try container.decodeIfPresent(String.self, forKey: .entryType)
+        self.babyWeightDecigrams = try container.decodeIfPresent(Int.self, forKey: .babyWeightDecigrams)
+        self.babyLengthMillimeters = try container.decodeIfPresent(Int.self, forKey: .babyLengthMillimeters)
+        self.entryNote = try container.decodeIfPresent(String.self, forKey: .entryNote)
+    }
 }
 
 // MARK: - Legacy DTO Bridging (MOB-385)
