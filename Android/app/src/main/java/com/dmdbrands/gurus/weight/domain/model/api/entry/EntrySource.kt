@@ -2,7 +2,7 @@ package com.dmdbrands.gurus.weight.domain.model.api.entry
 
 /**
  * Source of an entry. For weight, the authoritative mapping remains
- * `ScaleSetupType.toSource(...)` (e.g. `btWifiR4`, `wifi scale`, `bluetooth scale`);
+ * `DeviceSetupType.toSource(...)` (e.g. `btWifiR4`, `wifi scale`, `bluetooth scale`);
  * this enum captures the values the unified API documents for weight + BP.
  *
  * @property value The string value used in the API payload.

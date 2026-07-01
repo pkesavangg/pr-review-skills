@@ -24,16 +24,16 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.unit.dp
 import com.dmdbrands.gurus.weight.features.common.components.AppIcon
-import com.dmdbrands.gurus.weight.features.common.components.AppScaleCard
+import com.dmdbrands.gurus.weight.features.common.components.AppDeviceCard
 import com.dmdbrands.gurus.weight.features.common.components.AppText
 import com.dmdbrands.gurus.weight.features.common.components.SegmentButtonGroup
 import com.dmdbrands.gurus.weight.features.common.components.SegmentButtonSize
 import com.dmdbrands.gurus.weight.features.common.components.SegmentButtonType
 import com.dmdbrands.gurus.weight.features.common.components.TextType
-import com.dmdbrands.gurus.weight.features.common.enums.ScaleSegmentType
-import com.dmdbrands.gurus.weight.features.common.enums.ScaleSetupType
+import com.dmdbrands.gurus.weight.features.common.enums.DeviceSegmentType
+import com.dmdbrands.gurus.weight.features.common.enums.DeviceSetupType
 import com.dmdbrands.gurus.weight.features.common.model.WEIGHT_SCALES
-import com.dmdbrands.gurus.weight.features.common.model.ScaleInfo
+import com.dmdbrands.gurus.weight.features.common.model.DeviceModelInfo
 import com.dmdbrands.gurus.weight.features.help.strings.HelpScreenStrings
 import com.dmdbrands.gurus.weight.resources.AppIcons
 import com.dmdbrands.gurus.weight.theme.MeTheme
@@ -43,24 +43,24 @@ import com.dmdbrands.gurus.weight.theme.MeTheme
  */
 @Composable
 fun WeightScaleCatalogSection(
-  onScaleSelected: (ScaleInfo) -> Unit,
+  onScaleSelected: (DeviceModelInfo) -> Unit,
 ) {
   var expanded by remember { mutableStateOf(false) }
-  var selectedType by remember { mutableStateOf(ScaleSegmentType.All) }
+  var selectedType by remember { mutableStateOf(DeviceSegmentType.All) }
 
   val filteredScales = remember(selectedType) {
     when (selectedType) {
-      ScaleSegmentType.All -> WEIGHT_SCALES
-      ScaleSegmentType.AppSync -> WEIGHT_SCALES.filter { it.setupType == ScaleSetupType.AppSync }
-      ScaleSegmentType.Bluetooth -> WEIGHT_SCALES.filter {
-        it.setupType == ScaleSetupType.Bluetooth ||
-          it.setupType == ScaleSetupType.Lcbt ||
-          it.setupType == ScaleSetupType.BtWifiR4
+      DeviceSegmentType.All -> WEIGHT_SCALES
+      DeviceSegmentType.AppSync -> WEIGHT_SCALES.filter { it.setupType == DeviceSetupType.AppSync }
+      DeviceSegmentType.Bluetooth -> WEIGHT_SCALES.filter {
+        it.setupType == DeviceSetupType.Bluetooth ||
+          it.setupType == DeviceSetupType.Lcbt ||
+          it.setupType == DeviceSetupType.BtWifiR4
       }
-      ScaleSegmentType.Wifi -> WEIGHT_SCALES.filter {
-        it.setupType == ScaleSetupType.Wifi ||
-          it.setupType == ScaleSetupType.EspTouchWifi ||
-          it.setupType == ScaleSetupType.BtWifiR4
+      DeviceSegmentType.Wifi -> WEIGHT_SCALES.filter {
+        it.setupType == DeviceSetupType.Wifi ||
+          it.setupType == DeviceSetupType.EspTouchWifi ||
+          it.setupType == DeviceSetupType.BtWifiR4
       }
     }
   }
@@ -106,12 +106,12 @@ fun WeightScaleCatalogSection(
       Column(modifier = Modifier.fillMaxWidth()) {
         SegmentButtonGroup(
           data = listOf(
-            ScaleSegmentType.All,
-            ScaleSegmentType.Bluetooth,
-            ScaleSegmentType.Wifi,
-            ScaleSegmentType.AppSync,
+            DeviceSegmentType.All,
+            DeviceSegmentType.Bluetooth,
+            DeviceSegmentType.Wifi,
+            DeviceSegmentType.AppSync,
           ),
-          key = ScaleSegmentType::name,
+          key = DeviceSegmentType::name,
           selectedData = selectedType,
           onSelected = { selectedType = it },
           size = SegmentButtonSize.Small,
@@ -131,7 +131,7 @@ fun WeightScaleCatalogSection(
         ) {
           Column {
             filteredScales.forEach { scale ->
-              AppScaleCard(
+              AppDeviceCard(
                 scale = scale,
                 isSavedScale = false,
                 onClick = onScaleSelected,

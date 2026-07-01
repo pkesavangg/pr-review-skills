@@ -12,7 +12,7 @@ import com.dmdbrands.gurus.weight.domain.services.IAccountService
 import com.dmdbrands.gurus.weight.domain.services.IEntryService
 import com.dmdbrands.gurus.weight.domain.services.IEntryReadService
 import com.dmdbrands.gurus.weight.domain.services.IGoalService
-import com.dmdbrands.gurus.weight.features.common.ScaleProfileConstants
+import com.dmdbrands.gurus.weight.features.common.DeviceProfileConstants
 import com.dmdbrands.gurus.weight.features.common.helper.AccountHelper.isMetricUnit
 import com.dmdbrands.gurus.weight.features.common.helper.form.FormGroup
 import com.dmdbrands.gurus.weight.features.common.model.DialogModel
@@ -344,7 +344,7 @@ constructor(
       AppLog.d(tag, "updateR4Profile - Error updating profile to scale: ${e.message}")
       result.complete(GGUserActionResponseType.EXCEPTION_ENCOUNTERED)
     }
-    return withTimeoutOrNull(ScaleProfileConstants.SCALE_PROFILE_UPDATE_TIMEOUT_MS) { result.await() }
+    return withTimeoutOrNull(DeviceProfileConstants.SCALE_PROFILE_UPDATE_TIMEOUT_MS) { result.await() }
       ?: run {
         AppLog.d(tag, "updateR4Profile - Timeout or no callback from scale; dismissing loader")
         GGUserActionResponseType.EXCEPTION_ENCOUNTERED

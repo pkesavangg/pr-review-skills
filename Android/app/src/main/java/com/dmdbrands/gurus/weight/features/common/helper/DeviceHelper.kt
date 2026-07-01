@@ -1,5 +1,6 @@
 package com.dmdbrands.gurus.weight.features.common.helper
 
+import com.dmdbrands.gurus.weight.domain.enums.ProductType
 import com.dmdbrands.library.ggbluetooth.model.GGDeviceDetail
 
 object DeviceHelper {
@@ -51,6 +52,18 @@ object DeviceHelper {
 
   /** Returns `true` when [sku] is non-null and identifies a Blood Pressure Monitor; `false` when [sku] is null. */
   fun isBpmDevice(sku: String?): Boolean = sku != null && sku in BPM_SKUS
+
+  /**
+   * Single source of truth mapping a device [sku] to the account [ProductType] it belongs to.
+   * Baby scales → [ProductType.BABY], BP monitors → [ProductType.BLOOD_PRESSURE], everything else
+   * → [ProductType.MY_WEIGHT]. Used when saving a device so the account's productTypes reflects the
+   * paired hardware. (MOB-596)
+   */
+  fun productTypeForSku(sku: String): ProductType = when {
+    isBabyScale(sku) -> ProductType.BABY
+    isBpmDevice(sku) -> ProductType.BLOOD_PRESSURE
+    else -> ProductType.MY_WEIGHT
+  }
 
   /**
    * Resolves a variant BPM SKU to its primary (canonical) SKU. Non-variant SKUs pass through unchanged.

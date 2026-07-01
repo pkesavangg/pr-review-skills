@@ -52,7 +52,7 @@ object EntryScreenStrings {
 
     /** Label for the visceral fat input field. */
     const val VISCERAL_FAT_LABEL = "visceral fat"
-    const val VISCERAL_FAT_UNIT = "lv."
+    const val VISCERAL_FAT_UNIT = "Lv."
 
     /** Label for the subcutaneous fat input field. */
     const val SUBCUTANEOUS_FAT_LABEL = "subcutaneous fat"

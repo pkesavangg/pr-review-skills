@@ -4,13 +4,12 @@ import androidx.lifecycle.viewModelScope
 import com.dmdbrands.gurus.weight.core.navigation.AppRoute
 import com.dmdbrands.gurus.weight.core.shared.utilities.ConversionTools
 import com.dmdbrands.gurus.weight.core.shared.utilities.logging.AppLog
-import com.dmdbrands.gurus.weight.domain.enums.BabySex
 import com.dmdbrands.gurus.weight.domain.enums.ProductType
 import com.dmdbrands.gurus.weight.domain.model.api.auth.SignupRequest
+import com.dmdbrands.gurus.weight.domain.model.api.user.ProfileUpdateRequest
 import com.dmdbrands.gurus.weight.domain.model.common.BabyProfile as DomainBabyProfile
 import com.dmdbrands.gurus.weight.domain.model.common.MeasurementUnits
 import com.dmdbrands.gurus.weight.domain.model.common.WeightUnit
-import com.dmdbrands.gurus.weight.domain.model.api.user.ProfileUpdateRequest
 import com.dmdbrands.gurus.weight.domain.model.storage.Account.Account
 import com.dmdbrands.gurus.weight.domain.repository.IProductSelectionRepository
 import com.dmdbrands.gurus.weight.domain.services.IAccountService
@@ -22,7 +21,7 @@ import com.dmdbrands.gurus.weight.features.signup.model.BabyWeightUnit
 import com.dmdbrands.gurus.weight.features.common.components.ButtonType
 import com.dmdbrands.gurus.weight.features.common.components.DateTimeValue
 import com.dmdbrands.gurus.weight.features.common.components.DialogType
-import com.dmdbrands.gurus.weight.features.common.components.RadioButtonOption
+import com.dmdbrands.gurus.weight.features.common.components.BiologicalSexOptions
 import com.dmdbrands.gurus.weight.features.common.components.showRadioGroupModal
 import com.dmdbrands.gurus.weight.features.common.helper.form.FormGroup
 import com.dmdbrands.gurus.weight.features.common.model.DialogModel
@@ -451,8 +450,8 @@ constructor(
       accountId = accountId,
       name = name,
       birthdate = birthday?.getTimestamp()?.let { DateTimeValue.getDateFormatFromMilliseconds(it) },
-      // signup uses Gender (male/female/other); the API expects BabySex (male/female/private).
-      sex = biologicalSex?.let { BabySex.fromValue(it.value).value },
+      // biologicalSex is a BabySex (male/female/private), matching the API value directly.
+      sex = biologicalSex?.value,
       birthWeightDecigrams = birthWeightDecigrams(),
       birthLengthMillimeters = birthLengthMillimeters(),
     )
@@ -575,12 +574,8 @@ constructor(
     val babyForm = state.value.babyState?.babyForm ?: return
     showRadioGroupModal(
       dialogService = dialogQueueService,
-      title = BabySignupStrings.selectSexTitle,
-      options = listOf(
-        RadioButtonOption(BabySignupStrings.male, BabySignupStrings.male),
-        RadioButtonOption(BabySignupStrings.female, BabySignupStrings.female),
-        RadioButtonOption(BabySignupStrings.other, BabySignupStrings.other),
-      ),
+      title = BiologicalSexOptions.Title,
+      options = BiologicalSexOptions.options(),
       selectedItem = babyForm.biologicalSex.value.ifEmpty { null },
       onConfirm = { selected -> selected?.let { babyForm.biologicalSex.onValueChange(it) } },
       onCancel = {},

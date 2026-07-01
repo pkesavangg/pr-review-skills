@@ -27,9 +27,21 @@ interface IEntryReadRepository {
     fun getBpmMonthlyHistory(accountId: String): Flow<List<BpHistoryMonth>>
     fun getBpmMonthDetail(accountId: String, month: String): Flow<List<BpmEntry>>
 
-    // Baby
-    fun getBabyWeeklyHistory(accountId: String, babyId: String): Flow<List<BabyWeekGroup>>
-    fun getBabyDayDetail(accountId: String, babyId: String, date: String): Flow<List<BabyEntry>>
+    // Baby — sex + birthDateMillis drive the per-row CDC growth percentile.
+    // Pass sex = null (or birthDateMillis <= 0) to skip percentile computation.
+    fun getBabyWeeklyHistory(
+        accountId: String,
+        babyId: String,
+        sex: String?,
+        birthDateMillis: Long,
+    ): Flow<List<BabyWeekGroup>>
+    fun getBabyDayDetail(
+        accountId: String,
+        babyId: String,
+        date: String,
+        sex: String?,
+        birthDateMillis: Long,
+    ): Flow<List<BabyEntry>>
 
     // Weight Graph
     fun getWeightMonthlyGraphData(accountId: String): Flow<List<PeriodBodyScaleSummary>>

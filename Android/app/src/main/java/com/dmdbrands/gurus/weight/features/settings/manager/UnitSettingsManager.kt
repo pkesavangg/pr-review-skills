@@ -43,7 +43,7 @@ class UnitSettingsManager
 constructor(
   private val bodyCompositionService: IBodyCompositionService,
   private val dialogQueueService: IDialogQueueService,
-  private val scaleSettingsManager: IScaleSettingsManager,
+  private val scaleSettingsManager: IDeviceSettingsManager,
   private val userDataStore: UserDataStore,
   private val accountService: IAccountService,
 ) : IUnitSettingsManager {

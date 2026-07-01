@@ -44,7 +44,7 @@ class UnitSettingsManagerTest {
 
   private val bodyCompositionService: IBodyCompositionService = mockk(relaxed = true)
   private val dialogQueueService: IDialogQueueService = mockk(relaxed = true)
-  private val scaleSettingsManager: IScaleSettingsManager = mockk(relaxed = true)
+  private val scaleSettingsManager: IDeviceSettingsManager = mockk(relaxed = true)
   private val userDataStore: UserDataStore = mockk(relaxed = true)
   private val accountService: IAccountService = mockk(relaxed = true)
 

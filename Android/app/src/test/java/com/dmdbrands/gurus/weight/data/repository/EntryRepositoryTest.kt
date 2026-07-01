@@ -441,7 +441,7 @@ class EntryRepositoryTest {
     fun `insert list preserves stored note for scale entry with blank note`() = runTest {
         val entry = buildScaleEntry(VALID_TIMESTAMP) // note is null
         coEvery { entryDao.getStoredScaleNotes(ACCOUNT_ID) } returns
-            listOf(com.dmdbrands.gurus.weight.data.storage.db.dao.ScaleNoteRow(VALID_TIMESTAMP, "stored note"))
+            listOf(com.dmdbrands.gurus.weight.data.storage.db.dao.DeviceNoteRow(VALID_TIMESTAMP, "stored note"))
 
         repository.insert(listOf(entry))
 
@@ -453,7 +453,7 @@ class EntryRepositoryTest {
     fun `insert list ignores blank stored note rows`() = runTest {
         val entry = buildScaleEntry(VALID_TIMESTAMP)
         coEvery { entryDao.getStoredScaleNotes(ACCOUNT_ID) } returns
-            listOf(com.dmdbrands.gurus.weight.data.storage.db.dao.ScaleNoteRow(VALID_TIMESTAMP, "  "))
+            listOf(com.dmdbrands.gurus.weight.data.storage.db.dao.DeviceNoteRow(VALID_TIMESTAMP, "  "))
 
         repository.insert(listOf(entry))
 

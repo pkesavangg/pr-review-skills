@@ -388,7 +388,7 @@ class DebugMenuViewModelTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `SendScaleLogs with multiple scales navigates to ScaleLogsPicker`() = runTest(mainDispatcherRule.scheduler) {
+    fun `SendScaleLogs with multiple scales navigates to DeviceLogsPicker`() = runTest(mainDispatcherRule.scheduler) {
         val device1 = Device(
             id = "scale-1",
             sku = BT_WIFI_R4_SKU,
@@ -403,7 +403,7 @@ class DebugMenuViewModelTest {
         viewModel.handleIntent(DebugMenuIntent.SendScaleLogs)
         advanceUntilIdle()
 
-        coVerify { navigationService.navigateTo(AppRoute.AccountSettings.ScaleLogsPicker) }
+        coVerify { navigationService.navigateTo(AppRoute.AccountSettings.DeviceLogsPicker) }
     }
 
     // -------------------------------------------------------------------------
