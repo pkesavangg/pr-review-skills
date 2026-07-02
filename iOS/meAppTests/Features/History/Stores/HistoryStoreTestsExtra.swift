@@ -382,3 +382,12 @@ struct HistoryStoreBabyAndDeleteTests {
         #expect(logger.messages.contains { $0.contains("Failed to load entries page") })
     }
 }
+
+@MainActor
+private func waitUntil(timeoutIterations: Int = 200, condition: @escaping @MainActor () -> Bool) async -> Bool {
+    for _ in 0..<timeoutIterations {
+        if condition() { return true }
+        await Task.yield()
+    }
+    return false
+}

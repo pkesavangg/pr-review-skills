@@ -76,7 +76,7 @@ func makeSUT() -> ( // swiftlint:disable:this large_tuple
 }
 
 @MainActor
-func waitUntil(timeoutIterations: Int = 200, condition: @escaping @MainActor () -> Bool) async -> Bool {
+private func waitUntil(timeoutIterations: Int = 200, condition: @escaping @MainActor () -> Bool) async -> Bool {
     for _ in 0..<timeoutIterations {
         if condition() { return true }
         await Task.yield()
