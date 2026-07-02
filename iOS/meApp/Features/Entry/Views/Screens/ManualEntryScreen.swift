@@ -95,6 +95,7 @@ struct ManualEntryScreen: View {
             }
         }
         .background(theme.backgroundSecondary)
+        .screenAccessibilityRoot(AccessibilityID.manualEntryScreenRoot)
         .animation(.easeOut(duration: 0.25), value: keyboard.currentHeight)
         .toolbar {
             ToolbarItemGroup(placement: .keyboard) {
@@ -174,11 +175,13 @@ struct ManualEntryScreen: View {
                                 toggleDatePicker()
                             }
                             .accessibilityHint(manualEntryLang.accDateHint)
+                            .appAccessibility(id: AccessibilityID.manualEntryDateButton)
                             TimeLabelView(time: entryStore.manualEntryForm.time.value,
                                           isSelected: entryStore.showTimePicker) {
                                 toggleTimePicker()
                             }
                             .accessibilityHint(manualEntryLang.accTimeHint)
+                            .appAccessibility(id: AccessibilityID.manualEntryTimeButton)
                         }
 
                         // Pickers
@@ -449,6 +452,7 @@ struct ManualEntryScreen: View {
                             }
                         }
                     }
+                    .appAccessibility(id: AccessibilityID.manualEntrySaveButton)
 
                 }
                 .padding(.horizontal, .spacingSM)
