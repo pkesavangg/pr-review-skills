@@ -101,16 +101,11 @@ private fun ReadingContent(
     } else {
         ReadingToastStrings.title(readingToast.type)
     }
-    val primaryLabel = if (singleBabyName != null) {
-        ReadingToastStrings.Save
-    } else {
-        ReadingToastStrings.primaryAction(readingToast.type)
-    }
-    val secondaryLabel = if (singleBabyName != null) {
-        ReadingToastStrings.Discard
-    } else {
-        ReadingToastStrings.secondaryAction(readingToast.type)
-    }
+    // Labels come from the product: baby → ASSIGN / DON'T ASSIGN (Figma 30295-24866), weight/BPM →
+    // SAVE / DISCARD. The single-baby card still names the baby in its title (titleForBaby above) and
+    // ASSIGN persists straight to that baby (no picker).
+    val primaryLabel = ReadingToastStrings.primaryAction(readingToast.type)
+    val secondaryLabel = ReadingToastStrings.secondaryAction(readingToast.type)
 
     Text(
         text = title,

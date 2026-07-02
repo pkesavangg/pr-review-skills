@@ -114,6 +114,17 @@ class DeviceServiceTest {
         return Device(id = id, device = detail, isSynced = true, hasServerID = true, sku = sku)
     }
 
+    /** A paired baby scale whose [GGDeviceDetail.broadcastIdString] is stubbed, for baby-scale heal tests. */
+    private fun fakeBabyDevice(id: String, sku: String = "0220", broadcastId: String?): Device {
+        val detail: GGDeviceDetail = mockk(relaxed = true)
+        every { detail.macAddress } returns "BA:B0:00:00:00:0$id".take(17)
+        every { detail.isWifiConfigured } returns false
+        every { detail.wifiMacAddress } returns null
+        every { detail.impedanceSwitchState } returns null
+        every { detail.broadcastIdString } returns broadcastId
+        return Device(id = id, device = detail, isSynced = true, hasServerID = true, sku = sku)
+    }
+
     @BeforeEach
     fun setUp() {
         every { connectivityObserver.getCurrentNetworkState() } returns
@@ -128,6 +139,8 @@ class DeviceServiceTest {
         coEvery { deviceRepository.deleteAllDevicesForAccount(any()) } just Runs
         coEvery { deviceRepository.deleteDeviceFromDb(any()) } just Runs
         coEvery { deviceRepository.deleteDeviceFromApi(any()) } returns true
+        coEvery { deviceRepository.deletePairedDevice(any()) } returns true
+        coEvery { deviceRepository.updateDeviceBroadcastId(any(), any(), any()) } just Runs
         coEvery { deviceRepository.updateDevice(any(), any()) } just Runs
         coEvery { deviceRepository.updateDeviceNickname(any(), any()) } returns fakeDevice()
         coEvery { deviceRepository.saveScalePreferencesToApi(any()) } returns fakeR4Preferences
@@ -756,21 +769,24 @@ class DeviceServiceTest {
     }
 
     @Test
-    fun `syncDevices deletes device from API and DB on delete`() = runTest(mainDispatcherRule.scheduler) {
+    fun `syncDevices deletes device via the unified paired-device endpoint and DB on delete`() = runTest(mainDispatcherRule.scheduler) {
         val deletedDevice = fakeDevice(id = "del-1", isDeleted = true, isSynced = true)
         every { deviceRepository.getDevices(accountId, false) } returns flowOf(listOf(deletedDevice))
         service.setAccountId(accountId)
         advanceUntilIdle()
 
-        coVerify { deviceRepository.deleteDeviceFromApi("del-1") }
+        // Devices are registered via the unified POST, so they must be deleted via the unified
+        // DELETE (deletePairedDevice) — not the legacy deleteDeviceFromApi.
+        coVerify { deviceRepository.deletePairedDevice("del-1") }
         coVerify { deviceRepository.deleteDeviceFromDb("del-1") }
+        coVerify(exactly = 0) { deviceRepository.deleteDeviceFromApi(any()) }
     }
 
     @Test
     fun `syncDevices handles Not Found delete response by marking synced and deleting locally`() = runTest(mainDispatcherRule.scheduler) {
         val deletedDevice = fakeDevice(id = "del-notfound", isDeleted = true, isSynced = true)
         every { deviceRepository.getDevices(accountId, false) } returns flowOf(listOf(deletedDevice))
-        coEvery { deviceRepository.deleteDeviceFromApi("del-notfound") } throws RuntimeException("404 Not Found")
+        coEvery { deviceRepository.deletePairedDevice("del-notfound") } throws RuntimeException("404 Not Found")
         service.setAccountId(accountId)
         advanceUntilIdle()
 
@@ -783,11 +799,83 @@ class DeviceServiceTest {
     fun `syncDevices updates device with isDeleted+unsynced on non-NotFound delete error`() = runTest(mainDispatcherRule.scheduler) {
         val deletedDevice = fakeDevice(id = "del-err", isDeleted = true, isSynced = true)
         every { deviceRepository.getDevices(accountId, false) } returns flowOf(listOf(deletedDevice))
-        coEvery { deviceRepository.deleteDeviceFromApi("del-err") } throws RuntimeException("500 Server Error")
+        coEvery { deviceRepository.deletePairedDevice("del-err") } throws RuntimeException("500 Server Error")
         service.setAccountId(accountId)
         advanceUntilIdle()
 
         coVerify { deviceRepository.updateDevice(any(), accountId = accountId) }
+    }
+
+    @Test
+    fun `syncDevices does not resurrect a synced device that was just deleted`() = runTest(mainDispatcherRule.scheduler) {
+        val x = fakeDevice(id = "X", isSynced = true)
+        every { deviceRepository.getDevices(accountId, any()) } returns flowOf(listOf(x))
+        every { deviceRepository.getDevice("X") } returns flowOf(x)
+        // Initially the server still returns X.
+        coEvery { deviceRepository.getDevicesFromApi(accountId) } returns listOf(x)
+        val saved = mutableListOf<Device>()
+        coEvery { deviceRepository.saveDeviceToDb(capture(saved), accountId) } just Runs
+
+        service.setAccountId(accountId)
+        advanceUntilIdle()
+
+        // User deletes X → server no longer returns it. The just-deleted id must NOT be resurrected
+        // by the "keep devices the GET omitted" (localOnlySynced) step.
+        coEvery { deviceRepository.getDevicesFromApi(accountId) } returns emptyList()
+        saved.clear()
+
+        service.deleteScale("X")
+        advanceUntilIdle()
+
+        coVerify { deviceRepository.deletePairedDevice("X") }
+        assertThat(saved.any { it.id == "X" }).isFalse()
+    }
+
+    // -------------------------------------------------------------------------
+    // healBabyScaleBroadcastId — baby-scale analog of the BPM broadcastId heal
+    // -------------------------------------------------------------------------
+
+    @Test
+    fun `healBabyScaleBroadcastId heals the lone un-identified baby scale`() = runTest(mainDispatcherRule.scheduler) {
+        val baby = fakeBabyDevice(id = "baby-1", sku = "0220", broadcastId = null)
+        every { deviceRepository.getDevices(accountId, any()) } returns flowOf(listOf(baby))
+        val healed = fakeBabyDevice(id = "baby-1", sku = "0220", broadcastId = "bc-new")
+        every { deviceRepository.getDeviceByBroadcastId("bc-new", accountId) } returns flowOf(healed)
+        service.setAccountId(accountId)
+        Thread.sleep(2000) // fetchScales runs on IO — wait for _pairedScales to populate
+
+        val result = service.healBabyScaleBroadcastId("bc-new", accountId)
+
+        coVerify { deviceRepository.updateDeviceBroadcastId("baby-1", "bc-new", accountId) }
+        assertThat(result?.id).isEqualTo("baby-1")
+    }
+
+    @Test
+    fun `healBabyScaleBroadcastId returns null when no un-identified baby scale exists`() = runTest(mainDispatcherRule.scheduler) {
+        // Already carries a broadcastId → not a heal candidate.
+        val baby = fakeBabyDevice(id = "baby-1", sku = "0220", broadcastId = "existing")
+        every { deviceRepository.getDevices(accountId, any()) } returns flowOf(listOf(baby))
+        service.setAccountId(accountId)
+        Thread.sleep(2000)
+
+        val result = service.healBabyScaleBroadcastId("bc-new", accountId)
+
+        assertThat(result).isNull()
+        coVerify(exactly = 0) { deviceRepository.updateDeviceBroadcastId(any(), any(), any()) }
+    }
+
+    @Test
+    fun `healBabyScaleBroadcastId returns null when multiple un-identified baby scales exist (ambiguous)`() = runTest(mainDispatcherRule.scheduler) {
+        val b1 = fakeBabyDevice(id = "baby-1", sku = "0220", broadcastId = null)
+        val b2 = fakeBabyDevice(id = "baby-2", sku = "0222", broadcastId = null)
+        every { deviceRepository.getDevices(accountId, any()) } returns flowOf(listOf(b1, b2))
+        service.setAccountId(accountId)
+        Thread.sleep(2000)
+
+        val result = service.healBabyScaleBroadcastId("bc-new", accountId)
+
+        assertThat(result).isNull()
+        coVerify(exactly = 0) { deviceRepository.updateDeviceBroadcastId(any(), any(), any()) }
     }
 
     @Test

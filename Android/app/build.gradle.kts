@@ -56,7 +56,7 @@ android {
     minSdk = 26
     targetSdk = 36
     versionCode = 810000
-    versionName = "5.1.0"
+    versionName = "5.0.1"
 
     testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     // 16KB page alignment for Android 15 compliance
@@ -78,7 +78,7 @@ android {
       buildConfigField(
         "String",
         "BASE_URL",
-        "\"http://49.207.187.28:3005/wg-server-2578/v3/\"",
+        "\"http://ec2-13-217-141-203.compute-1.amazonaws.com:3005/v3/\"",
       )
       buildConfigField("Boolean", "ENABLE_ANALYTICS", "false")
     }

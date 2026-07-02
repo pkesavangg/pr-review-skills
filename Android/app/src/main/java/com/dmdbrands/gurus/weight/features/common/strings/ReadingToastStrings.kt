@@ -3,9 +3,12 @@ package com.dmdbrands.gurus.weight.features.common.strings
 import com.dmdbrands.gurus.weight.domain.enums.ProductType
 
 object ReadingToastStrings {
+    // Figma 30295-24793 / 30295-25144: the arrival card title is the generic "New Reading Received"
+    // for every product (the value + its product color convey the type). Single-baby uses
+    // [titleForBaby].
     fun title(type: ProductType): String = when (type) {
-        ProductType.MY_WEIGHT -> "New Weight Scale Reading Received"
-        ProductType.BLOOD_PRESSURE -> "New BPM Reading Received"
+        ProductType.MY_WEIGHT -> "New Reading Received"
+        ProductType.BLOOD_PRESSURE -> "New Reading Received"
         ProductType.BABY -> "New Reading Received"
     }
 

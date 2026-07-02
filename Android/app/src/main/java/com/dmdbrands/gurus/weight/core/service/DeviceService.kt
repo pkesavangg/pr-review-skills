@@ -247,6 +247,9 @@ constructor(
 
     val unsyncedDevices = mutableListOf<Device>()
     val syncedDevicesToStore = mutableListOf<Device>()
+    // Ids deleted this run — hoisted to function scope so the GET-merge (separate try below) can
+    // exclude them and never resurrect a just-deleted device.
+    var deletedIds: Set<String> = emptySet()
 
     try {
       // 1. Get locally stored devices
@@ -263,10 +266,15 @@ constructor(
           (!device.isSynced || (device.preferences != null && !device.preferences.isSynced))
       }
       val devicesMarkedDeleted = storedDevices.filter { it.isDeleted }
+      // Ids being deleted this run. When deleteScale passes an isDeleted=true copy as tempDevice,
+      // the ORIGINAL DB row still has isDeleted=false, so without this it lands in onlineScales and
+      // the GET-merge "keep devices the API didn't return" step resurrects the just-deleted scale.
+      deletedIds = devicesMarkedDeleted.map { it.id }.toSet()
 
       // Initialize syncedDevicesToStore with already synced devices (online scales)
       val onlineScales = storedDevices.filter { device ->
         !device.isDeleted &&
+          device.id !in deletedIds &&
           device.isSynced &&
           (device.preferences == null || device.preferences.isSynced)
       }
@@ -332,7 +340,11 @@ constructor(
       for (device in devicesMarkedDeleted) {
         try {
           AppLog.d(tag, "DEVSYNC_DBG delete: DELETE api + db for ${device.id}")
-          deviceRepository.deleteDeviceFromApi(device.id)
+          // Devices are registered via the unified POST /v3/paired-device/, so they must be deleted
+          // via the unified DELETE /v3/paired-device/{id} — NOT the legacy /v3/paired-scale/{id}
+          // (deleteDeviceFromApi), which doesn't know the unified id and errors. The legacy delete
+          // "worked" on the release line only because that line also creates via paired-scale. (MOB-378)
+          deviceRepository.deletePairedDevice(device.id)
           deviceRepository.deleteDeviceFromDb(device.id)
           AppLog.d(tag, "DEVSYNC_DBG delete: done ${device.id}")
         } catch (e: Exception) {
@@ -384,6 +396,10 @@ constructor(
             // token here — otherwise every sync nulls it and R4 (0412) getUsers/updateAccount fail
             // (e.g. blank scale-user names). REMOVE once the backend returns scaleToken.
             token = apiDev.token?.takeIf { it.isNotBlank() } ?: source.token,
+            // R4 scale preferences (incl. the user's displayName) are local-only — there is no GET
+            // for them, so the paired-device GET never returns them. Preserve from the local source
+            // or every sync nulls the preference and the scale-detail "Users" name goes blank.
+            preferences = apiDev.preferences ?: source.preferences,
             device = apiDev.device?.copy(
               macAddress = source.device?.macAddress ?: apiDev.device?.macAddress ?: "",
               // peripheralIdentifier is dropped by the GET too; same-user pairing detection keys on it.
@@ -403,7 +419,9 @@ constructor(
       // saved via paired-device isn't echoed by this GET) so a paired device never disappears
       // from the local list and its readings keep matching (MOB-598).
       val apiIds = syncedList.map { it.id }.toSet()
-      val localOnlySynced = syncedDevicesToStore.filter { it.id !in apiIds }
+      // Never resurrect a device deleted this run: the GET legitimately omits it because it was just
+      // deleted server-side, so it must not be kept as a "GET omitted it" local-only device.
+      val localOnlySynced = syncedDevicesToStore.filter { it.id !in apiIds && it.id !in deletedIds }
       AppLog.d(
         tag,
         "DEVSYNC_DBG merge: apiIds=$apiIds fromApi=${syncedList.map { it.id }} " +

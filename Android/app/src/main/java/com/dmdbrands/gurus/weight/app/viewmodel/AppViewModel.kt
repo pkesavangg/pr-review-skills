@@ -1214,11 +1214,22 @@ constructor(
             // "VIEW" opens History so all buffered readings can be seen (MOB-598).
             viewModelScope.launch { navigationService.navigateTo(AppRoute.Main.History) }
           },
-          onTimeout = autoAssignBabyId?.let { babyId ->
-            {
-              viewModelScope.launch {
-                assignReadingToBaby(reading, entry, babyId, babiesAtArrival, emptyList(), sourceSku)
-              }
+          // Timeout = no user response → KEEP the reading (per Figma "auto-assign on timeout"),
+          // NOT discard: weight/BPM auto-save, baby auto-assigns to its target. Only the no-baby
+          // and multi-baby-without-a-target cases have nowhere to save, so they just dismiss.
+          onTimeout = when {
+            hasNoBabyProfile -> null
+            autoAssignBabyId != null -> {
+              val babyId = autoAssignBabyId
+              { viewModelScope.launch { assignReadingToBaby(reading, entry, babyId, babiesAtArrival, emptyList(), sourceSku) } }
+            }
+            readingType == ProductType.BABY && babiesAtArrival.size == 1 -> {
+              val babyId = babiesAtArrival.first().id
+              { viewModelScope.launch { assignReadingToBaby(reading, entry, babyId, babiesAtArrival, emptyList(), sourceSku) } }
+            }
+            readingType == ProductType.BABY -> null
+            else -> {
+              { saveEntryFromToast(entry) }
             }
           },
         ),
@@ -1275,10 +1286,11 @@ constructor(
         if (pending != null) {
           val newBaby = availableBabyProfiles().firstOrNull { it.id !in pending.baselineBabyIds }
           if (newBaby != null) {
-            AppLog.i(TAG, "Auto-assigning held reading to newly added baby ${newBaby.id}")
-            viewModelScope.launch {
-              assignReadingToBaby(pending.reading, pending.entry, newBaby.id, listOf(newBaby), emptyList(), pending.sourceSku)
-            }
+            // A baby now exists — re-present the reading as the ASSIGN / DON'T ASSIGN card so the
+            // user chooses (or it auto-assigns on timeout). Don't silently auto-assign and show the
+            // "Reading assigned / Assign to new baby" post card. (Figma 30295-24866)
+            AppLog.i(TAG, "Re-presenting held reading now that baby ${newBaby.id} exists")
+            showReadingToast(pending.entry, ProductType.BABY, pending.sourceSku)
           } else {
             AppLog.i(TAG, "Add-a-baby cancelled — dropping held reading")
           }
