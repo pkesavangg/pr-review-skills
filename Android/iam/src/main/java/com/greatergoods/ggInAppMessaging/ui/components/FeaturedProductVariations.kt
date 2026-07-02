@@ -203,75 +203,112 @@ private fun SupportingImageCarousel(
     horizontalAlignment = Alignment.CenterHorizontally,
     verticalArrangement = Arrangement.spacedBy(16.dp),
   ) {
-    // Image pager - shows adjacent pages slightly with 16dp spacing
-    HorizontalPager(
-      state = pagerState,
-      modifier = Modifier.fillMaxWidth(),
-      contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 32.dp),
-      beyondViewportPageCount = 2, // Pre-render 2 pages before and after visible pages
-    ) { page ->
-      val imageUrl = ringImages[page]
+    SupportingImagePager(
+      pagerState = pagerState,
+      ringImages = ringImages,
+      images = images,
+      title = title,
+      onImageClick = onImageClick,
+    )
 
-      // Calculate real page index for magnification detection
-      val realPageIndex = if (images.size <= 1) page else page % images.size
-      val currentRealPage = if (images.size <= 1) pagerState.currentPage else pagerState.currentPage % images.size
-      val isCurrentImage = realPageIndex == currentRealPage
+    SupportingImageDots(
+      pagerState = pagerState,
+      images = images,
+      ringStart = ringStart,
+      coroutineScope = coroutineScope,
+    )
+  }
+}
 
-      // Animated scale for current image magnification
-      val scale by animateFloatAsState(
-        targetValue = if (isCurrentImage) 1.1f else 0.9f,
-        animationSpec = tween(durationMillis = 300),
-        label = "imageScale",
+/**
+ * Horizontal pager that magnifies the current image
+ */
+@Composable
+private fun SupportingImagePager(
+  pagerState: androidx.compose.foundation.pager.PagerState,
+  ringImages: List<String>,
+  images: List<String>,
+  title: String,
+  onImageClick: (String) -> Unit,
+) {
+  // Image pager - shows adjacent pages slightly with 16dp spacing
+  HorizontalPager(
+    state = pagerState,
+    modifier = Modifier.fillMaxWidth(),
+    contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 32.dp),
+    beyondViewportPageCount = 2, // Pre-render 2 pages before and after visible pages
+  ) { page ->
+    val imageUrl = ringImages[page]
+
+    // Calculate real page index for magnification detection
+    val realPageIndex = if (images.size <= 1) page else page % images.size
+    val currentRealPage = if (images.size <= 1) pagerState.currentPage else pagerState.currentPage % images.size
+    val isCurrentImage = realPageIndex == currentRealPage
+
+    // Animated scale for current image magnification
+    val scale by animateFloatAsState(
+      targetValue = if (isCurrentImage) 1.1f else 0.9f,
+      animationSpec = tween(durationMillis = 300),
+      label = "imageScale",
+    )
+
+    Box(
+      modifier = Modifier
+        .aspectRatio(1.6f) // 1.6 aspect ratio like Swift
+        .padding(horizontal = 4.dp) // 4dp spacing between items
+        .scale(scale)
+        .clip(RoundedCornerShape(8.dp))
+        .clickable { onImageClick(imageUrl) },
+    ) {
+      AsyncImage(
+        model = imageUrl,
+        contentDescription = title,
+        modifier = Modifier.fillMaxWidth(),
+        contentScale = ContentScale.Crop,
+        placeholder = painterResource(id = AppIcons.Iam.placeholderImage),
+        error = painterResource(id = AppIcons.Iam.placeholderImage),
       )
+    }
+  }
+}
+
+/**
+ * Pagination dots whose active dot follows the current real page
+ */
+@Composable
+private fun SupportingImageDots(
+  pagerState: androidx.compose.foundation.pager.PagerState,
+  images: List<String>,
+  ringStart: Int,
+  coroutineScope: kotlinx.coroutines.CoroutineScope,
+) {
+  Row(
+    horizontalArrangement = Arrangement.spacedBy(8.dp),
+    verticalAlignment = Alignment.CenterVertically,
+    modifier = Modifier.padding(top = 16.dp)
+  ) {
+    repeat(images.size) { index ->
+      // Calculate current real page index from ring buffer
+      val currentRealPage = if (images.size <= 1) pagerState.currentPage else pagerState.currentPage % images.size
+      val isActive = index == currentRealPage
 
       Box(
         modifier = Modifier
-          .aspectRatio(1.6f) // 1.6 aspect ratio like Swift
-          .padding(horizontal = 4.dp) // 4dp spacing between items
-          .scale(scale)
-          .clip(RoundedCornerShape(8.dp))
-          .clickable { onImageClick(imageUrl) },
-      ) {
-        AsyncImage(
-          model = imageUrl,
-          contentDescription = title,
-          modifier = Modifier.fillMaxWidth(),
-          contentScale = ContentScale.Crop,
-          placeholder = painterResource(id = AppIcons.Iam.placeholderImage),
-          error = painterResource(id = AppIcons.Iam.placeholderImage),
-        )
-      }
-    }
-
-    // Pagination dots - active dot follows current real page
-    Row(
-      horizontalArrangement = Arrangement.spacedBy(8.dp),
-      verticalAlignment = Alignment.CenterVertically,
-      modifier = Modifier.padding(top = 16.dp)
-    ) {
-      repeat(images.size) { index ->
-        // Calculate current real page index from ring buffer
-        val currentRealPage = if (images.size <= 1) pagerState.currentPage else pagerState.currentPage % images.size
-        val isActive = index == currentRealPage
-
-        Box(
-          modifier = Modifier
-            .size(7.dp)
-            .clip(CircleShape)
-            .background(
-              if (isActive) IamTheme.colors.subSecondaryBackground else IamTheme.colors.tertiaryBackground,
-            )
-            .clickable {
-              // Jump to the corresponding image near the middle of the ring
-              if (images.size > 1) {
-                val targetPage = ringStart + index
-                coroutineScope.launch {
-                  pagerState.scrollToPage(targetPage)
-                }
+          .size(7.dp)
+          .clip(CircleShape)
+          .background(
+            if (isActive) IamTheme.colors.subSecondaryBackground else IamTheme.colors.tertiaryBackground,
+          )
+          .clickable {
+            // Jump to the corresponding image near the middle of the ring
+            if (images.size > 1) {
+              val targetPage = ringStart + index
+              coroutineScope.launch {
+                pagerState.scrollToPage(targetPage)
               }
-            },
-        )
-      }
+            }
+          },
+      )
     }
   }
 }

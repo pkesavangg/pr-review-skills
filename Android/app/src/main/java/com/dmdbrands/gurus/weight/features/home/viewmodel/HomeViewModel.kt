@@ -17,8 +17,8 @@ import com.dmdbrands.gurus.weight.domain.services.IAppSyncService
 import com.dmdbrands.gurus.weight.domain.services.IFeedService
 import com.dmdbrands.gurus.weight.domain.services.IHealthConnectService
 import com.dmdbrands.gurus.weight.features.appPermissions.helper.AppPermissionsHelper
-import com.dmdbrands.gurus.weight.features.common.enums.ScaleSetupType
-import com.dmdbrands.gurus.weight.features.common.helper.ScaleDataHelper
+import com.dmdbrands.gurus.weight.features.common.enums.DeviceSetupType
+import com.dmdbrands.gurus.weight.features.common.helper.DeviceDataHelper
 import com.dmdbrands.gurus.weight.features.common.model.Toast
 import com.dmdbrands.gurus.weight.features.common.service.BaseIntentViewModel
 import com.dmdbrands.gurus.weight.features.home.reducer.HomeIntent
@@ -159,8 +159,8 @@ constructor(
       deviceService.pairedScales.collect { savedScales ->
         val hasAppSyncScales = savedScales.any { savedScale ->
           val sku = savedScale.getSKU()
-          savedScale.deviceType.equals(ScaleSetupType.AppSync.value, ignoreCase = true) ||
-            ScaleDataHelper.findScaleInfoBySku(sku)?.setupType == ScaleSetupType.AppSync ||
+          savedScale.deviceType.equals(DeviceSetupType.AppSync.value, ignoreCase = true) ||
+            DeviceDataHelper.findScaleInfoBySku(sku)?.setupType == DeviceSetupType.AppSync ||
             sku in APPSYNC_SKUS
         }
         handleIntent(HomeIntent.SetShowAppsync(hasAppSyncScales))
@@ -176,7 +176,7 @@ constructor(
           is GGPermissionStatusMap -> {
             val isAppSyncPermissionsEnabled =
               AppPermissionsHelper.areRequiredPermissionsEnabled(
-                data, setupType = ScaleSetupType.AppSync,
+                data, setupType = DeviceSetupType.AppSync,
               )
             handleIntent(HomeIntent.isAppSyncPermissionsEnabled(isAppSyncPermissionsEnabled))
           }
@@ -213,7 +213,7 @@ constructor(
             dialogQueueService.dismissLoader()
           }
           if (loaded != null &&
-            AppPermissionsHelper.areRequiredPermissionsEnabled(loaded, setupType = ScaleSetupType.AppSync)
+            AppPermissionsHelper.areRequiredPermissionsEnabled(loaded, setupType = DeviceSetupType.AppSync)
           ) {
             onResult(true)
             return@launch
@@ -233,7 +233,7 @@ constructor(
               when (data) {
                 is GGPermissionStatusMap -> {
                   val isEnabled = AppPermissionsHelper.areRequiredPermissionsEnabled(
-                    data, setupType = ScaleSetupType.AppSync,
+                    data, setupType = DeviceSetupType.AppSync,
                   )
 
                   if (!permissionResultReceived) {

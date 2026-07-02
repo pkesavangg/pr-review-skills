@@ -61,7 +61,20 @@ fun ReadingArrivalCard(
             modifier = Modifier.padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(4.dp),
         ) {
+            // Multiple readings buffered this session — surface a count + "VIEW" pill (MOB-598).
+            if (readingToast.additionalCount > 0) {
+                ReadingCountPill(
+                    count = readingToast.additionalCount,
+                    onView = {
+                        readingToast.onView()
+                        clearToast()
+                    },
+                )
+            }
             when {
+                // Manual entry: already saved — show "saved to your log" + a single VIEW action.
+                readingToast.savedToLog -> SavedToLogContent(readingToast, clearToast)
+
                 readingToast.type == ProductType.BABY && readingToast.noBabyProfile ->
                     NoBabyContent(readingToast, clearToast)
 
@@ -81,9 +94,26 @@ private fun ReadingContent(
     clearToast: () -> Unit,
 ) {
     val measurementType = readingToast.type.toMeasurementType()
+    // A single baby exists — show its name and SAVE/DISCARD instead of the assign picker (MOB-598).
+    val singleBabyName = readingToast.assignTargetName?.takeIf { readingToast.type == ProductType.BABY }
+    val title = if (singleBabyName != null) {
+        ReadingToastStrings.titleForBaby(singleBabyName)
+    } else {
+        ReadingToastStrings.title(readingToast.type)
+    }
+    val primaryLabel = if (singleBabyName != null) {
+        ReadingToastStrings.Save
+    } else {
+        ReadingToastStrings.primaryAction(readingToast.type)
+    }
+    val secondaryLabel = if (singleBabyName != null) {
+        ReadingToastStrings.Discard
+    } else {
+        ReadingToastStrings.secondaryAction(readingToast.type)
+    }
 
     Text(
-        text = ReadingToastStrings.title(readingToast.type),
+        text = title,
         style = MeTheme.typography.heading5,
         color = colorScheme.textBody,
     )
@@ -94,6 +124,76 @@ private fun ReadingContent(
             valueStyle = MeTheme.typography.heading4,
         ),
     )
+    ReadingActionRow(
+        secondaryLabel = secondaryLabel,
+        primaryLabel = primaryLabel,
+        onSecondary = {
+            readingToast.secondaryAction()
+            clearToast()
+        },
+        onPrimary = {
+            readingToast.primaryAction()
+            clearToast()
+        },
+    )
+}
+
+/**
+ * Manual-entry confirmation: "New Reading saved to your log", the reading value, and a single
+ * VIEW pill that opens the entry's History detail (Figma 30456-24170).
+ */
+@Composable
+private fun SavedToLogContent(
+    readingToast: ReadingToast,
+    clearToast: () -> Unit,
+) {
+    val measurementType = readingToast.type.toMeasurementType()
+    Text(
+        text = ReadingToastStrings.SavedToLog,
+        style = MeTheme.typography.heading5,
+        color = colorScheme.textBody,
+    )
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(top = 4.dp),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(
+            text = rememberMeasurementText(
+                text = "${readingToast.reading} · ${readingToast.timestamp}",
+                type = measurementType,
+                valueStyle = MeTheme.typography.heading4,
+            ),
+        )
+        Card(
+            shape = RoundedCornerShape(20.dp),
+            colors = CardDefaults.cardColors(containerColor = colorScheme.textBody),
+            onClick = {
+                readingToast.onView()
+                clearToast()
+            },
+        ) {
+            Text(
+                text = ReadingToastStrings.View,
+                style = MeTheme.typography.button2,
+                fontWeight = FontWeight.Bold,
+                color = colorScheme.toastBackground,
+                modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp),
+            )
+        }
+    }
+}
+
+/** Shared bottom action row: a secondary text button and a filled primary pill button. */
+@Composable
+private fun ReadingActionRow(
+    secondaryLabel: String,
+    primaryLabel: String,
+    onSecondary: () -> Unit,
+    onPrimary: () -> Unit,
+) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -102,33 +202,61 @@ private fun ReadingContent(
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Text(
-            text = ReadingToastStrings.secondaryAction(readingToast.type),
+            text = secondaryLabel,
             style = MeTheme.typography.button2,
             fontWeight = FontWeight.Bold,
             color = colorScheme.textSubheading,
             modifier = Modifier
-                .clickable(role = Role.Button) {
-                    readingToast.secondaryAction()
-                    clearToast()
-                }
+                .clickable(role = Role.Button) { onSecondary() }
                 .padding(vertical = 6.dp),
         )
         Card(
             shape = RoundedCornerShape(20.dp),
-            colors = CardDefaults.cardColors(
-                containerColor = colorScheme.textBody,
-            ),
-            onClick = {
-                readingToast.primaryAction()
-                clearToast()
-            },
+            colors = CardDefaults.cardColors(containerColor = colorScheme.textBody),
+            onClick = onPrimary,
         ) {
             Text(
-                text = ReadingToastStrings.primaryAction(readingToast.type),
+                text = primaryLabel,
                 style = MeTheme.typography.button2,
                 fontWeight = FontWeight.Bold,
                 color = colorScheme.toastBackground,
                 modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp),
+            )
+        }
+    }
+}
+
+/** Top-of-card pill: "<N> more readings received for this session   VIEW" (MOB-598). */
+@Composable
+private fun ReadingCountPill(
+    count: Int,
+    onView: () -> Unit,
+) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(bottom = 4.dp),
+        shape = RoundedCornerShape(8.dp),
+        colors = CardDefaults.cardColors(containerColor = colorScheme.primaryBackground),
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 12.dp, vertical = 8.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(
+                text = ReadingToastStrings.moreReadings(count),
+                style = MeTheme.typography.body3,
+                color = colorScheme.textBody,
+            )
+            Text(
+                text = ReadingToastStrings.View,
+                style = MeTheme.typography.button2,
+                fontWeight = FontWeight.Bold,
+                color = colorScheme.textBody,
+                modifier = Modifier.clickable(role = Role.Button) { onView() },
             )
         }
     }
@@ -162,44 +290,18 @@ private fun NoBabyContent(
             valueStyle = MeTheme.typography.heading4,
         ),
     )
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(top = 8.dp),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Text(
-            text = ReadingToastStrings.Discard,
-            style = MeTheme.typography.button2,
-            fontWeight = FontWeight.Bold,
-            color = colorScheme.textSubheading,
-            modifier = Modifier
-                .clickable(role = Role.Button) {
-                    readingToast.secondaryAction()
-                    clearToast()
-                }
-                .padding(vertical = 6.dp),
-        )
-        Card(
-            shape = RoundedCornerShape(20.dp),
-            colors = CardDefaults.cardColors(
-                containerColor = colorScheme.textBody,
-            ),
-            onClick = {
-                readingToast.primaryAction()
-                clearToast()
-            },
-        ) {
-            Text(
-                text = ReadingToastStrings.AddBaby,
-                style = MeTheme.typography.button2,
-                fontWeight = FontWeight.Bold,
-                color = colorScheme.toastBackground,
-                modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp),
-            )
-        }
-    }
+    ReadingActionRow(
+        secondaryLabel = ReadingToastStrings.Discard,
+        primaryLabel = ReadingToastStrings.AddBaby,
+        onSecondary = {
+            readingToast.secondaryAction()
+            clearToast()
+        },
+        onPrimary = {
+            readingToast.primaryAction()
+            clearToast()
+        },
+    )
 }
 
 /** Baby-only post-assignment state: value, "Reading assigned to X", Reassign link. */
@@ -227,13 +329,20 @@ private fun BabyAssignedContent(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(4.dp),
     ) {
+        // No other baby to reassign to → offer "Assign to new baby" → Add-a-Baby flow (MOB-598).
+        if (!readingToast.assignToNewBaby) {
+            Text(
+                text = ReadingToastStrings.WrongBaby,
+                style = MeTheme.typography.body2,
+                color = colorScheme.textSubheading,
+            )
+        }
         Text(
-            text = ReadingToastStrings.WrongBaby,
-            style = MeTheme.typography.body2,
-            color = colorScheme.textSubheading,
-        )
-        Text(
-            text = ReadingToastStrings.Reassign,
+            text = if (readingToast.assignToNewBaby) {
+                ReadingToastStrings.AssignModal.AssignNewBaby
+            } else {
+                ReadingToastStrings.Reassign
+            },
             style = MeTheme.typography.button2,
             fontWeight = FontWeight.Bold,
             color = colorScheme.textBody,

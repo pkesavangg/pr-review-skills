@@ -89,7 +89,7 @@ class MultiAccountLandingViewModelTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `init subscribes to loggedInAccountsFlow and sets accounts`() = runTest {
+    fun `init subscribes to loggedInAccountsFlow and sets accounts`() = runTest(mainDispatcherRule.scheduler) {
         val accounts = listOf(TestFixtures.activeAccount, TestFixtures.secondaryAccount)
         every { accountService.loggedInAccountsFlow } returns flowOf(accounts)
         every { accountService.hasReachedMaxAccounts } returns flowOf(false)
@@ -102,7 +102,7 @@ class MultiAccountLandingViewModelTest {
     }
 
     @Test
-    fun `init sets hasReachedMaxAccounts from service`() = runTest {
+    fun `init sets hasReachedMaxAccounts from service`() = runTest(mainDispatcherRule.scheduler) {
         every { accountService.loggedInAccountsFlow } returns flowOf(listOf(TestFixtures.activeAccount))
         every { accountService.hasReachedMaxAccounts } returns flowOf(true)
 
@@ -113,7 +113,7 @@ class MultiAccountLandingViewModelTest {
     }
 
     @Test
-    fun `init with empty accounts navigates to fresh Landing`() = runTest {
+    fun `init with empty accounts navigates to fresh Landing`() = runTest(mainDispatcherRule.scheduler) {
         every { accountService.loggedInAccountsFlow } returns flowOf(emptyList())
         every { accountService.hasReachedMaxAccounts } returns flowOf(false)
 
@@ -125,7 +125,7 @@ class MultiAccountLandingViewModelTest {
     }
 
     @Test
-    fun `loggedInAccountsFlow emitting empty after removal routes to Landing`() = runTest {
+    fun `loggedInAccountsFlow emitting empty after removal routes to Landing`() = runTest(mainDispatcherRule.scheduler) {
         // Last remaining account removed from this device — no accounts remain.
         every { accountService.loggedInAccountsFlow } returns flowOf(emptyList())
         every { accountService.hasReachedMaxAccounts } returns flowOf(false)
@@ -163,7 +163,7 @@ class MultiAccountLandingViewModelTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `SelectAccount calls switchAccount on accountService`() = runTest {
+    fun `SelectAccount calls switchAccount on accountService`() = runTest(mainDispatcherRule.scheduler) {
         coEvery { accountService.switchAccount(any(), any()) } returns true
 
         viewModel.handleIntent(MultiAccountLandingIntent.SelectAccount(TestFixtures.secondaryAccount))
@@ -173,7 +173,7 @@ class MultiAccountLandingViewModelTest {
     }
 
     @Test
-    fun `SelectAccount with successful switch calls reInitialize`() = runTest {
+    fun `SelectAccount with successful switch calls reInitialize`() = runTest(mainDispatcherRule.scheduler) {
         coEvery { accountService.switchAccount(any(), any()) } returns true
 
         viewModel.handleIntent(MultiAccountLandingIntent.SelectAccount(TestFixtures.secondaryAccount))
@@ -183,7 +183,7 @@ class MultiAccountLandingViewModelTest {
     }
 
     @Test
-    fun `SelectAccount when switchAccount throws does not crash`() = runTest {
+    fun `SelectAccount when switchAccount throws does not crash`() = runTest(mainDispatcherRule.scheduler) {
         coEvery { accountService.switchAccount(any(), any()) } throws RuntimeException(ERROR_FAIL)
 
         viewModel.handleIntent(MultiAccountLandingIntent.SelectAccount(TestFixtures.secondaryAccount))
@@ -197,7 +197,7 @@ class MultiAccountLandingViewModelTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `Login with account navigates to Login with email`() = runTest {
+    fun `Login with account navigates to Login with email`() = runTest(mainDispatcherRule.scheduler) {
         val account = TestFixtures.secondaryAccount
         viewModel.handleIntent(MultiAccountLandingIntent.Login(account))
         advanceUntilIdle()
@@ -206,7 +206,7 @@ class MultiAccountLandingViewModelTest {
     }
 
     @Test
-    fun `Login with null account and limit not reached navigates to Login with null email`() = runTest {
+    fun `Login with null account and limit not reached navigates to Login with null email`() = runTest(mainDispatcherRule.scheduler) {
         viewModel.handleIntent(MultiAccountLandingIntent.Login(null))
         advanceUntilIdle()
 
@@ -214,7 +214,7 @@ class MultiAccountLandingViewModelTest {
     }
 
     @Test
-    fun `Login with null account when max reached shows max limit alert`() = runTest {
+    fun `Login with null account when max reached shows max limit alert`() = runTest(mainDispatcherRule.scheduler) {
         viewModel.handleIntent(MultiAccountLandingIntent.SetAccounts(emptyList(), true))
         viewModel.handleIntent(MultiAccountLandingIntent.Login(null))
         advanceUntilIdle()
@@ -224,7 +224,7 @@ class MultiAccountLandingViewModelTest {
     }
 
     @Test
-    fun `Login with account when max reached still navigates to Login`() = runTest {
+    fun `Login with account when max reached still navigates to Login`() = runTest(mainDispatcherRule.scheduler) {
         viewModel.handleIntent(MultiAccountLandingIntent.SetAccounts(emptyList(), true))
         val account = TestFixtures.secondaryAccount
         viewModel.handleIntent(MultiAccountLandingIntent.Login(account))
@@ -238,7 +238,7 @@ class MultiAccountLandingViewModelTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `CreateAccount navigates to Signup when limit not reached`() = runTest {
+    fun `CreateAccount navigates to Signup when limit not reached`() = runTest(mainDispatcherRule.scheduler) {
         viewModel.handleIntent(MultiAccountLandingIntent.CreateAccount)
         advanceUntilIdle()
 
@@ -246,7 +246,7 @@ class MultiAccountLandingViewModelTest {
     }
 
     @Test
-    fun `CreateAccount when max reached shows max limit alert`() = runTest {
+    fun `CreateAccount when max reached shows max limit alert`() = runTest(mainDispatcherRule.scheduler) {
         viewModel.handleIntent(MultiAccountLandingIntent.SetAccounts(emptyList(), true))
         viewModel.handleIntent(MultiAccountLandingIntent.CreateAccount)
         advanceUntilIdle()
@@ -279,7 +279,7 @@ class MultiAccountLandingViewModelTest {
     }
 
     @Test
-    fun `RequestRemoveAccount confirm callback removes account from device`() = runTest {
+    fun `RequestRemoveAccount confirm callback removes account from device`() = runTest(mainDispatcherRule.scheduler) {
         val dialogSlot = slot<DialogModel.Confirm>()
         every { dialogQueueService.enqueue(capture(dialogSlot)) } returns Unit
 
@@ -297,7 +297,7 @@ class MultiAccountLandingViewModelTest {
     }
 
     @Test
-    fun `RequestRemoveAccount confirm shows and dismisses loader`() = runTest {
+    fun `RequestRemoveAccount confirm shows and dismisses loader`() = runTest(mainDispatcherRule.scheduler) {
         val dialogSlot = slot<DialogModel.Confirm>()
         every { dialogQueueService.enqueue(capture(dialogSlot)) } returns Unit
 
@@ -310,7 +310,7 @@ class MultiAccountLandingViewModelTest {
     }
 
     @Test
-    fun `RequestRemoveAccount confirm dismisses loader on exception`() = runTest {
+    fun `RequestRemoveAccount confirm dismisses loader on exception`() = runTest(mainDispatcherRule.scheduler) {
         coEvery { accountService.removeAccountFromDevice(any(), any()) } throws RuntimeException(ERROR_FAIL)
         val dialogSlot = slot<DialogModel.Confirm>()
         every { dialogQueueService.enqueue(capture(dialogSlot)) } returns Unit
@@ -345,7 +345,7 @@ class MultiAccountLandingViewModelTest {
     }
 
     @Test
-    fun `RequestRemoveAccount confirm also dismisses current dialog`() = runTest {
+    fun `RequestRemoveAccount confirm also dismisses current dialog`() = runTest(mainDispatcherRule.scheduler) {
         val dialogSlot = slot<DialogModel.Confirm>()
         every { dialogQueueService.enqueue(capture(dialogSlot)) } returns Unit
 

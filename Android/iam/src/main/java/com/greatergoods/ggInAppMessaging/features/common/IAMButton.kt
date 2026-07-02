@@ -360,8 +360,22 @@ fun IamButton(
 @Composable
 fun AppButtonPreview() {
   Row(Modifier.padding(20.dp)) {
+    AppButtonPreviewMediumColumn()
+    AppButtonPreviewSmallColumn()
+  }
+}
+
+@Composable
+private fun AppButtonPreviewMediumColumn() {
     // Left column: Medium buttons
     Column(verticalArrangement = Arrangement.Center) {
+      AppButtonPreviewMediumGroupA()
+      AppButtonPreviewMediumGroupB()
+    }
+}
+
+@Composable
+private fun AppButtonPreviewMediumGroupA() {
       // Each group: enabled/disabled for each type
       Column {
         IamButton(type = ButtonType.ErrorText, onClick = {}, label = "Primary Filled", enabled = true)
@@ -414,6 +428,10 @@ fun AppButtonPreview() {
         IamButton(type = ButtonType.TextPrimary, onClick = {}, label = "Text Primary", enabled = false)
       }
       Spacer(Modifier.height(16.dp))
+}
+
+@Composable
+private fun AppButtonPreviewMediumGroupB() {
       Column {
         IamButton(type = ButtonType.TextSecondary, onClick = {}, label = "Text Primary")
         Spacer(Modifier.height(16.dp))
@@ -457,9 +475,21 @@ fun AppButtonPreview() {
       Column {
         IamButton(type = ButtonType.PrimaryFilled, onClick = {}, label = "Min Size")
       }
-    }
+}
+
+@Composable
+private fun AppButtonPreviewSmallColumn() {
     // Right column: Small buttons
     Column(verticalArrangement = Arrangement.Center) {
+      AppButtonPreviewSmallGroupA()
+      AppButtonPreviewSmallGroupB()
+      AppButtonPreviewSmallGroupC()
+      AppButtonPreviewSmallGroupD()
+    }
+}
+
+@Composable
+private fun AppButtonPreviewSmallGroupA() {
       Column {
         IamButton(
           type = ButtonType.PrimaryFilled,
@@ -511,6 +541,10 @@ fun AppButtonPreview() {
         )
       }
       Spacer(Modifier.height(16.dp))
+}
+
+@Composable
+private fun AppButtonPreviewSmallGroupB() {
       Column {
         IamButton(
           type = ButtonType.SecondaryOutlined,
@@ -562,6 +596,10 @@ fun AppButtonPreview() {
         )
       }
       Spacer(Modifier.height(16.dp))
+}
+
+@Composable
+private fun AppButtonPreviewSmallGroupC() {
       Column {
         IamButton(
           type = ButtonType.TextTertiary,
@@ -595,7 +633,10 @@ fun AppButtonPreview() {
           size = ButtonSize.Small,
         )
       }
-      Spacer(Modifier.height(16.dp))
+}
+
+@Composable
+private fun AppButtonPreviewSmallGroupD() {
       Column {
         IamButton(
           type = ButtonType.InlineTextSecondary,
@@ -635,6 +676,4 @@ fun AppButtonPreview() {
           IamButton(type = ButtonType.PrimaryFilled, onClick = {}, label = "Min", size = ButtonSize.Small)
         }
       }
-    }
-  }
 }

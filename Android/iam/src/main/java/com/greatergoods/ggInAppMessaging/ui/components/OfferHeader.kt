@@ -163,62 +163,91 @@ private fun ShopNowSection(
       .width(320.dp)
       .height(56.dp),
   ) {
-    Row(
-      modifier = Modifier
-        .width(320.dp)
-        .height(56.dp),
-      verticalAlignment = Alignment.CenterVertically,
-    ) {
-      // Promo code text area with dynamic marketing primary background
-      Box(
-        modifier = Modifier
-          .weight(1f)
-          .height(56.dp)
-          .background(
-            color = marketingColors.primary, // Dynamic marketing primary background
-            shape = RoundedCornerShape(
-              topStart = 8.dp,
-              bottomStart = 8.dp,
-              topEnd = 0.dp,
-              bottomEnd = 0.dp,
-            ),
-          )
-          .padding(horizontal = 16.dp),
-        contentAlignment = Alignment.CenterStart, // Left-aligned text
-      ) {
-        IAMText(
-          text = promoCode,
-          textType = TextType.Body,
-        )
-      }
+    PromoCodeRow(
+      promoCode = promoCode,
+      marketingColors = marketingColors,
+      onCopyClick = onCopyClick,
+    )
 
-      // Copy button with dynamic marketing primary action background
-      Box(
-        modifier = Modifier
-          .width(80.dp)
-          .height(56.dp)
-          .background(
-            color = marketingColors.primaryAction, // Dynamic marketing primary action background
-            shape = RoundedCornerShape(
-              topStart = 0.dp,
-              bottomStart = 0.dp,
-              topEnd = 8.dp,
-              bottomEnd = 8.dp,
-            ),
-          )
-          .clickable { onCopyClick() }
-          .padding(horizontal = 12.dp),
-        contentAlignment = Alignment.Center,
-      ) {
-        IAMText(
-          text = "COPY",
-          textType = TextType.Body,
-          canApplyUppercaseStyle = true,
-          color = Color.White, // White text on colored background
+    PromoCodeDottedBorder(
+      borderColor = marketingColors.primaryAction,
+    )
+  }
+}
+
+/**
+ * Promo code text area plus the COPY button
+ */
+@Composable
+private fun PromoCodeRow(
+  promoCode: String,
+  marketingColors: ThemeColorParser.MarketingColors,
+  onCopyClick: () -> Unit,
+) {
+  Row(
+    modifier = Modifier
+      .width(320.dp)
+      .height(56.dp),
+    verticalAlignment = Alignment.CenterVertically,
+  ) {
+    // Promo code text area with dynamic marketing primary background
+    Box(
+      modifier = Modifier
+        .weight(1f)
+        .height(56.dp)
+        .background(
+          color = marketingColors.primary, // Dynamic marketing primary background
+          shape = RoundedCornerShape(
+            topStart = 8.dp,
+            bottomStart = 8.dp,
+            topEnd = 0.dp,
+            bottomEnd = 0.dp,
+          ),
         )
-      }
+        .padding(horizontal = 16.dp),
+      contentAlignment = Alignment.CenterStart, // Left-aligned text
+    ) {
+      IAMText(
+        text = promoCode,
+        textType = TextType.Body,
+      )
     }
 
+    // Copy button with dynamic marketing primary action background
+    Box(
+      modifier = Modifier
+        .width(80.dp)
+        .height(56.dp)
+        .background(
+          color = marketingColors.primaryAction, // Dynamic marketing primary action background
+          shape = RoundedCornerShape(
+            topStart = 0.dp,
+            bottomStart = 0.dp,
+            topEnd = 8.dp,
+            bottomEnd = 8.dp,
+          ),
+        )
+        .clickable { onCopyClick() }
+        .padding(horizontal = 12.dp),
+      contentAlignment = Alignment.Center,
+    ) {
+      IAMText(
+        text = "COPY",
+        textType = TextType.Body,
+        canApplyUppercaseStyle = true,
+        color = Color.White, // White text on colored background
+      )
+    }
+  }
+}
+
+/**
+ * Dotted rounded border overlay drawn around the entire container
+ */
+@Composable
+private fun PromoCodeDottedBorder(
+  borderColor: Color,
+) {
     // Dotted border overlay for the entire container
     Canvas(
       modifier = Modifier
@@ -236,74 +265,104 @@ private fun ShopNowSection(
         0f,
       )
 
-      val dottedPath = Path().apply {
-        // Start from top-left with rounded corner
-        moveTo(cornerRadius, 0f)
-        lineTo(size.width - cornerRadius, 0f) // Top edge
-        // Top-right rounded corner
-        arcTo(
-          rect = androidx.compose.ui.geometry.Rect(
-            left = size.width - cornerRadius * 2,
-            top = 0f,
-            right = size.width,
-            bottom = cornerRadius * 2,
-          ),
-          startAngleDegrees = 270f,
-          sweepAngleDegrees = 90f,
-          forceMoveTo = false,
-        )
-        lineTo(size.width, size.height - cornerRadius) // Right edge
-        // Bottom-right rounded corner
-        arcTo(
-          rect = androidx.compose.ui.geometry.Rect(
-            left = size.width - cornerRadius * 2,
-            top = size.height - cornerRadius * 2,
-            right = size.width,
-            bottom = size.height,
-          ),
-          startAngleDegrees = 0f,
-          sweepAngleDegrees = 90f,
-          forceMoveTo = false,
-        )
-        lineTo(cornerRadius, size.height) // Bottom edge
-        // Bottom-left rounded corner
-        arcTo(
-          rect = androidx.compose.ui.geometry.Rect(
-            left = 0f,
-            top = size.height - cornerRadius * 2,
-            right = cornerRadius * 2,
-            bottom = size.height,
-          ),
-          startAngleDegrees = 90f,
-          sweepAngleDegrees = 90f,
-          forceMoveTo = false,
-        )
-        lineTo(0f, cornerRadius) // Left edge
-        // Top-left rounded corner
-        arcTo(
-          rect = androidx.compose.ui.geometry.Rect(
-            left = 0f,
-            top = 0f,
-            right = cornerRadius * 2,
-            bottom = cornerRadius * 2,
-          ),
-          startAngleDegrees = 180f,
-          sweepAngleDegrees = 90f,
-          forceMoveTo = false,
-        )
-        close()
-      }
+      val dottedPath = buildDottedBorderPath(
+        width = size.width,
+        height = size.height,
+        cornerRadius = cornerRadius,
+      )
 
       drawPath(
         path = dottedPath,
-        color = marketingColors.primaryAction, // Dynamic marketing primary action color for border
+        color = borderColor, // Dynamic marketing primary action color for border
         style = Stroke(
           width = strokeWidth,
           pathEffect = dottedPathEffect,
         ),
       )
     }
+}
+
+/**
+ * Builds the rounded-rectangle path used for the dotted promo-code border
+ */
+private fun buildDottedBorderPath(
+  width: Float,
+  height: Float,
+  cornerRadius: Float,
+): Path {
+  return Path().apply {
+    appendTopAndRightEdges(width, height, cornerRadius)
+    appendBottomAndLeftEdges(width, height, cornerRadius)
+    close()
   }
+}
+
+private fun Path.appendTopAndRightEdges(
+  width: Float,
+  height: Float,
+  cornerRadius: Float,
+) {
+  // Start from top-left with rounded corner
+  moveTo(cornerRadius, 0f)
+  lineTo(width - cornerRadius, 0f) // Top edge
+  // Top-right rounded corner
+  arcTo(
+    rect = androidx.compose.ui.geometry.Rect(
+      left = width - cornerRadius * 2,
+      top = 0f,
+      right = width,
+      bottom = cornerRadius * 2,
+    ),
+    startAngleDegrees = 270f,
+    sweepAngleDegrees = 90f,
+    forceMoveTo = false,
+  )
+  lineTo(width, height - cornerRadius) // Right edge
+  // Bottom-right rounded corner
+  arcTo(
+    rect = androidx.compose.ui.geometry.Rect(
+      left = width - cornerRadius * 2,
+      top = height - cornerRadius * 2,
+      right = width,
+      bottom = height,
+    ),
+    startAngleDegrees = 0f,
+    sweepAngleDegrees = 90f,
+    forceMoveTo = false,
+  )
+}
+
+private fun Path.appendBottomAndLeftEdges(
+  width: Float,
+  height: Float,
+  cornerRadius: Float,
+) {
+  lineTo(cornerRadius, height) // Bottom edge
+  // Bottom-left rounded corner
+  arcTo(
+    rect = androidx.compose.ui.geometry.Rect(
+      left = 0f,
+      top = height - cornerRadius * 2,
+      right = cornerRadius * 2,
+      bottom = height,
+    ),
+    startAngleDegrees = 90f,
+    sweepAngleDegrees = 90f,
+    forceMoveTo = false,
+  )
+  lineTo(0f, cornerRadius) // Left edge
+  // Top-left rounded corner
+  arcTo(
+    rect = androidx.compose.ui.geometry.Rect(
+      left = 0f,
+      top = 0f,
+      right = cornerRadius * 2,
+      bottom = cornerRadius * 2,
+    ),
+    startAngleDegrees = 180f,
+    sweepAngleDegrees = 90f,
+    forceMoveTo = false,
+  )
 }
 
 // ===== PREVIEW COMPOSABLES =====

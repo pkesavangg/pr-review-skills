@@ -72,12 +72,17 @@ fun ToastHandler(
     if (toast != null) {
         SnackbarHost(hostState = hostState, modifier = Modifier.statusBarsPadding()) { snackbarData ->
             if (!isDismissed.value) {
-                // Auto-dismiss after delay
+                // Auto-dismiss after a delay. A reading card with an onTimeout (multi-baby
+                // auto-assign) gets the longer window and fires the callback before clearing
+                // (MOB-598).
                 LaunchedEffect(snackbarData) {
-                    delay(3900)
+                    val readingToast = (toast as? Toast.Custom)?.content as? ReadingToast
+                    val timeoutAction = readingToast?.onTimeout
+                    delay(if (timeoutAction != null) READING_AUTO_ASSIGN_MS else AUTO_DISMISS_MS)
                     if (dragState.currentValue == DragAnchors.Center) {
                         clearToast()
                         snackbarData.dismiss()
+                        timeoutAction?.invoke()
                     }
                 }
                 // Dismiss on swipe
@@ -141,6 +146,12 @@ fun ToastHandler(
         }
     }
 }
+
+/** Default auto-dismiss window for a toast. */
+private const val AUTO_DISMISS_MS = 3900L
+
+/** Longer window for a reading card that auto-assigns on timeout (design: 5–8s) — MOB-598. */
+private const val READING_AUTO_ASSIGN_MS = 6000L
 
 enum class DragAnchors {
     Center,

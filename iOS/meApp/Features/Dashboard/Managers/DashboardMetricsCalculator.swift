@@ -37,6 +37,7 @@ class DashboardMetricsCalculator: DashboardMetricsCalculatorProtocol {
 
     // MARK: - Display Weight Calculation
 
+    // swiftlint:disable cyclomatic_complexity function_body_length
     /// Calculates the display weight based on selection and visible operations
     func calculateDisplayWeight(context: DisplayWeightContext) -> Double? {
         // For week/month periods, "day average" means the arithmetic mean of all
@@ -125,6 +126,7 @@ class DashboardMetricsCalculator: DashboardMetricsCalculatorProtocol {
 
         return roundedToDisplayedWeight(averageWeight)
     }
+    // swiftlint:enable cyclomatic_complexity function_body_length
 
     // MARK: - Entry Creation
 

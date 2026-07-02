@@ -7,6 +7,7 @@ import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.withStyle
+import com.greatergoods.ggInAppMessaging.core.utilities.IAMLogger
 import com.greatergoods.ggInAppMessaging.domain.models.TIMESTAMP
 import com.greatergoods.ggInAppMessaging.domain.models.UnitsOfTime
 import java.text.SimpleDateFormat
@@ -67,6 +68,7 @@ object RichTextParser {
         }
       }
     } catch (e: Exception) {
+      IAMLogger.e("RichTextParser", "transformDateToText failed", e.message)
       ""
     }
   }

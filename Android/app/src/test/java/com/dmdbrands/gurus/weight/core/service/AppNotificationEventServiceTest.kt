@@ -34,7 +34,7 @@ class AppNotificationEventServiceTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `emit delivers NOTIFICATION_RECEIVED to collector`() = runTest {
+    fun `emit delivers NOTIFICATION_RECEIVED to collector`() = runTest(mainDispatcherRule.scheduler) {
         AppNotificationEventService.events.test {
             AppNotificationEventService.emit(NotificationEventType.NOTIFICATION_RECEIVED)
             assertThat(awaitItem()).isEqualTo(NotificationEventType.NOTIFICATION_RECEIVED)
@@ -43,7 +43,7 @@ class AppNotificationEventServiceTest {
     }
 
     @Test
-    fun `emit delivers NOTIFICATION_TAPPED to collector`() = runTest {
+    fun `emit delivers NOTIFICATION_TAPPED to collector`() = runTest(mainDispatcherRule.scheduler) {
         AppNotificationEventService.events.test {
             AppNotificationEventService.emit(NotificationEventType.NOTIFICATION_TAPPED)
             assertThat(awaitItem()).isEqualTo(NotificationEventType.NOTIFICATION_TAPPED)
@@ -52,7 +52,7 @@ class AppNotificationEventServiceTest {
     }
 
     @Test
-    fun `emit delivers TOKEN_UPDATED to collector`() = runTest {
+    fun `emit delivers TOKEN_UPDATED to collector`() = runTest(mainDispatcherRule.scheduler) {
         AppNotificationEventService.events.test {
             AppNotificationEventService.emit(NotificationEventType.TOKEN_UPDATED)
             assertThat(awaitItem()).isEqualTo(NotificationEventType.TOKEN_UPDATED)
@@ -61,7 +61,7 @@ class AppNotificationEventServiceTest {
     }
 
     @Test
-    fun `emit delivers ERROR_OCCURRED to collector`() = runTest {
+    fun `emit delivers ERROR_OCCURRED to collector`() = runTest(mainDispatcherRule.scheduler) {
         AppNotificationEventService.events.test {
             AppNotificationEventService.emit(NotificationEventType.ERROR_OCCURRED)
             assertThat(awaitItem()).isEqualTo(NotificationEventType.ERROR_OCCURRED)
@@ -74,7 +74,7 @@ class AppNotificationEventServiceTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `emit delivers multiple events in order`() = runTest {
+    fun `emit delivers multiple events in order`() = runTest(mainDispatcherRule.scheduler) {
         AppNotificationEventService.events.test {
             AppNotificationEventService.emit(NotificationEventType.NOTIFICATION_RECEIVED)
             AppNotificationEventService.emit(NotificationEventType.NOTIFICATION_TAPPED)
@@ -88,7 +88,7 @@ class AppNotificationEventServiceTest {
     }
 
     @Test
-    fun `emit delivers all enum values in sequence`() = runTest {
+    fun `emit delivers all enum values in sequence`() = runTest(mainDispatcherRule.scheduler) {
         val allEvents = NotificationEventType.entries.toList()
 
         AppNotificationEventService.events.test {
@@ -101,7 +101,7 @@ class AppNotificationEventServiceTest {
     }
 
     @Test
-    fun `emit delivers same event type multiple times in order`() = runTest {
+    fun `emit delivers same event type multiple times in order`() = runTest(mainDispatcherRule.scheduler) {
         AppNotificationEventService.events.test {
             AppNotificationEventService.emit(NotificationEventType.ERROR_OCCURRED)
             AppNotificationEventService.emit(NotificationEventType.ERROR_OCCURRED)
@@ -124,7 +124,7 @@ class AppNotificationEventServiceTest {
     }
 
     @Test
-    fun `two concurrent collectors both receive the same emitted event`() = runTest {
+    fun `two concurrent collectors both receive the same emitted event`() = runTest(mainDispatcherRule.scheduler) {
         val received1 = mutableListOf<NotificationEventType>()
         val received2 = mutableListOf<NotificationEventType>()
 
@@ -151,7 +151,7 @@ class AppNotificationEventServiceTest {
     }
 
     @Test
-    fun `late subscriber does not receive previously emitted event`() = runTest {
+    fun `late subscriber does not receive previously emitted event`() = runTest(mainDispatcherRule.scheduler) {
         // Emit before any collector is attached
         AppNotificationEventService.emit(NotificationEventType.NOTIFICATION_RECEIVED)
 
@@ -171,7 +171,7 @@ class AppNotificationEventServiceTest {
         NotificationTapPayload(accountId = "acc-1", destination = "weight_scale", monthKey = "2026-06")
 
     @Test
-    fun `emitTap delivers payload to active collector`() = runTest {
+    fun `emitTap delivers payload to active collector`() = runTest(mainDispatcherRule.scheduler) {
         AppNotificationEventService.consumeTap()
         AppNotificationEventService.tapEvents.test {
             AppNotificationEventService.emitTap(tapPayload)
@@ -182,7 +182,7 @@ class AppNotificationEventServiceTest {
     }
 
     @Test
-    fun `late subscriber receives the retained tap because replay is 1`() = runTest {
+    fun `late subscriber receives the retained tap because replay is 1`() = runTest(mainDispatcherRule.scheduler) {
         AppNotificationEventService.consumeTap()
         // Emit before any collector is attached (cold-start: tap fired in MainActivity.onCreate
         // before AppViewModel subscribes). replay=1 must retain it.
@@ -196,7 +196,7 @@ class AppNotificationEventServiceTest {
     }
 
     @Test
-    fun `consumeTap clears the retained tap so a future subscriber sees nothing`() = runTest {
+    fun `consumeTap clears the retained tap so a future subscriber sees nothing`() = runTest(mainDispatcherRule.scheduler) {
         AppNotificationEventService.consumeTap()
         AppNotificationEventService.emitTap(tapPayload)
         AppNotificationEventService.consumeTap()

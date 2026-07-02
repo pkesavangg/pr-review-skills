@@ -1,6 +1,6 @@
 import Foundation
-import Testing
 @testable import meApp
+import Testing
 
 extension BluetoothScaleSetupStoreTests {
     @Suite("Completion Duplicate And Recovery")

@@ -7,23 +7,80 @@
 //
 
 import Foundation
-import Testing
 @testable import meApp
+import Testing
 
 @Suite(.serialized)
 @MainActor
 struct UnifiedEntriesReadTests {
+
+    // MARK: - Shared fixtures
+
+    private static let weightResultFixture = UnifiedEntryResult(
+        category: EntryCategory.weight.rawValue,
+        entryId: "1",
+        operationType: "create",
+        entryTimestamp: "t1",
+        serverTimestamp: nil,
+        source: nil,
+        weight: 1700,
+        bodyFat: nil,
+        muscleMass: nil,
+        water: nil,
+        bmi: nil,
+        boneMass: nil,
+        impedance: nil,
+        unit: nil,
+        systolic: nil,
+        diastolic: nil,
+        pulse: nil,
+        note: nil
+    )
+
+    private static let bpResultFixture = UnifiedEntryResult(
+        category: EntryCategory.bp.rawValue,
+        entryId: "2",
+        operationType: "create",
+        entryTimestamp: "t2",
+        serverTimestamp: nil,
+        source: nil,
+        weight: nil,
+        bodyFat: nil,
+        muscleMass: nil,
+        water: nil,
+        bmi: nil,
+        boneMass: nil,
+        impedance: nil,
+        unit: nil,
+        systolic: 120,
+        diastolic: 80,
+        pulse: 70,
+        note: nil
+    )
 
     // MARK: - UnifiedEntryResult ⇄ BathScaleOperationDTO mapping
 
     @Test("toOperationDTO: weight result maps measurement fields and category→entryType")
     func toOperationDTOWeight() {
         let result = UnifiedEntryResult(
-            category: EntryCategory.weight.rawValue, entryId: "1", operationType: "create",
-            entryTimestamp: "2026-05-06T10:00:00Z", serverTimestamp: "2026-05-06T10:00:05Z",
-            source: "btWifiR4", weight: 1723, bodyFat: 225, muscleMass: 401, water: 552,
-            bmi: 243, boneMass: 38, impedance: 495, unit: "lb",
-            systolic: nil, diastolic: nil, pulse: 68, note: nil
+            category: EntryCategory.weight.rawValue,
+            entryId: "1",
+            operationType: "create",
+            entryTimestamp: "2026-05-06T10:00:00Z",
+            serverTimestamp: "2026-05-06T10:00:05Z",
+            source: "btWifiR4",
+            weight: 1723,
+            bodyFat: 225,
+            muscleMass: 401,
+            water: 552,
+            bmi: 243,
+            boneMass: 38,
+            impedance: 495,
+            unit: "lb",
+            systolic: nil,
+            diastolic: nil,
+            pulse: 68,
+            note: nil
         )
 
         let dto = result.toOperationDTO()
@@ -39,11 +96,24 @@ struct UnifiedEntriesReadTests {
     @Test("toOperationDTO: bp result maps systolic/diastolic/pulse/note and category→entryType")
     func toOperationDTOBp() {
         let result = UnifiedEntryResult(
-            category: EntryCategory.bp.rawValue, entryId: "bp-1", operationType: "create",
-            entryTimestamp: "2026-05-06T09:30:00Z", serverTimestamp: "2026-05-06T09:30:02Z",
-            source: "bluetooth", weight: nil, bodyFat: nil, muscleMass: nil, water: nil,
-            bmi: nil, boneMass: nil, impedance: nil, unit: nil,
-            systolic: 120, diastolic: 80, pulse: 72, note: "Morning reading"
+            category: EntryCategory.bp.rawValue,
+            entryId: "bp-1",
+            operationType: "create",
+            entryTimestamp: "2026-05-06T09:30:00Z",
+            serverTimestamp: "2026-05-06T09:30:02Z",
+            source: "bluetooth",
+            weight: nil,
+            bodyFat: nil,
+            muscleMass: nil,
+            water: nil,
+            bmi: nil,
+            boneMass: nil,
+            impedance: nil,
+            unit: nil,
+            systolic: 120,
+            diastolic: 80,
+            pulse: 72,
+            note: "Morning reading"
         )
 
         let dto = result.toOperationDTO()
@@ -75,7 +145,7 @@ struct UnifiedEntriesReadTests {
 
     @Test("decodes cursor-mode JSON: entries + nextCursor + hasMore")
     func decodeCursorMode() throws {
-        let json = """
+        let json = Data("""
         {
           "entries": [
             { "category": "weight", "entryId": "12345", "operationType": "create",
@@ -85,7 +155,7 @@ struct UnifiedEntriesReadTests {
           "nextCursor": "2026-05-05T22:00:00.000Z",
           "hasMore": true
         }
-        """.data(using: .utf8)!
+        """.utf8)
 
         let response = try JSONDecoder().decode(BathScaleOperationListResponse.self, from: json)
 
@@ -98,9 +168,9 @@ struct UnifiedEntriesReadTests {
 
     @Test("decodes sync-mode JSON: entries + timestamp, no cursor metadata")
     func decodeSyncMode() throws {
-        let json = """
+        let json = Data("""
         { "entries": [], "timestamp": "2026-05-06T10:05:00.000Z" }
-        """.data(using: .utf8)!
+        """.utf8)
 
         let response = try JSONDecoder().decode(BathScaleOperationListResponse.self, from: json)
 
@@ -110,26 +180,70 @@ struct UnifiedEntriesReadTests {
         #expect(response.hasMore == nil)
     }
 
+    @Test("decodes a numeric entryId and stringifies it (read side of GET /v3/entries/) — MOB-1277")
+    func decodeNumericEntryId() throws {
+        // Regression: the read side of GET /v3/entries/ returns entryId as a JSON *number*.
+        // The synthesized decoder used to throw typeMismatch on it, so the whole response
+        // failed to decode and History silently emptied. The custom decoder must stringify it.
+        let json = Data("""
+        {
+          "entries": [
+            { "category": "weight", "entryId": 12345, "operationType": "create",
+              "entryTimestamp": "2026-05-06T10:00:00.000Z", "serverTimestamp": "2026-05-06T10:00:05.000Z",
+              "source": "btWifiR4", "weight": 1723, "bodyFat": 225, "unit": "lb" }
+          ],
+          "hasMore": false
+        }
+        """.utf8)
+
+        let response = try JSONDecoder().decode(BathScaleOperationListResponse.self, from: json)
+
+        #expect(response.entries.count == 1)
+        #expect(response.entries.first?.entryId == "12345")
+        #expect(response.entries.first?.weight == 1723)
+    }
+
+    @Test("decodes a string entryId unchanged (write side of /v3/entries/)")
+    func decodeStringEntryId() throws {
+        let json = Data("""
+        {
+          "entries": [
+            { "category": "weight", "entryId": "12345", "operationType": "create",
+              "entryTimestamp": "2026-05-06T10:00:00.000Z", "weight": 1723 }
+          ],
+          "hasMore": false
+        }
+        """.utf8)
+
+        let response = try JSONDecoder().decode(BathScaleOperationListResponse.self, from: json)
+
+        #expect(response.entries.first?.entryId == "12345")
+    }
+
     @Test("operations accessor: maps weight + bp + baby categories (baby wired in MOB-386)")
     func operationsMapsAllCategories() {
         let response = BathScaleOperationListResponse(entries: [
+            Self.weightResultFixture,
+            Self.bpResultFixture,
             UnifiedEntryResult(
-                category: EntryCategory.weight.rawValue, entryId: "1", operationType: "create",
-                entryTimestamp: "t1", serverTimestamp: nil, source: nil, weight: 1700,
-                bodyFat: nil, muscleMass: nil, water: nil, bmi: nil, boneMass: nil,
-                impedance: nil, unit: nil, systolic: nil, diastolic: nil, pulse: nil, note: nil
-            ),
-            UnifiedEntryResult(
-                category: EntryCategory.bp.rawValue, entryId: "2", operationType: "create",
-                entryTimestamp: "t2", serverTimestamp: nil, source: nil, weight: nil,
-                bodyFat: nil, muscleMass: nil, water: nil, bmi: nil, boneMass: nil,
-                impedance: nil, unit: nil, systolic: 120, diastolic: 80, pulse: 70, note: nil
-            ),
-            UnifiedEntryResult(
-                category: EntryCategory.baby.rawValue, entryId: "3", operationType: "create",
-                entryTimestamp: "t3", serverTimestamp: nil, source: nil, weight: nil,
-                bodyFat: nil, muscleMass: nil, water: nil, bmi: nil, boneMass: nil,
-                impedance: nil, unit: nil, systolic: nil, diastolic: nil, pulse: nil, note: nil
+                category: EntryCategory.baby.rawValue,
+                entryId: "3",
+                operationType: "create",
+                entryTimestamp: "t3",
+                serverTimestamp: nil,
+                source: nil,
+                weight: nil,
+                bodyFat: nil,
+                muscleMass: nil,
+                water: nil,
+                bmi: nil,
+                boneMass: nil,
+                impedance: nil,
+                unit: nil,
+                systolic: nil,
+                diastolic: nil,
+                pulse: nil,
+                note: nil
             )
         ])
 
@@ -170,10 +284,24 @@ struct UnifiedEntriesReadTests {
         remote.fetchEntriesResult = BathScaleOperationListResponse(
             entries: [
                 UnifiedEntryResult(
-                    category: EntryCategory.weight.rawValue, entryId: "1", operationType: "create",
-                    entryTimestamp: "2026-05-06T10:00:00Z", serverTimestamp: nil, source: nil,
-                    weight: 1700, bodyFat: nil, muscleMass: nil, water: nil, bmi: nil,
-                    boneMass: nil, impedance: nil, unit: nil, systolic: nil, diastolic: nil, pulse: nil, note: nil
+                    category: EntryCategory.weight.rawValue,
+                    entryId: "1",
+                    operationType: "create",
+                    entryTimestamp: "2026-05-06T10:00:00Z",
+                    serverTimestamp: nil,
+                    source: nil,
+                    weight: 1700,
+                    bodyFat: nil,
+                    muscleMass: nil,
+                    water: nil,
+                    bmi: nil,
+                    boneMass: nil,
+                    impedance: nil,
+                    unit: nil,
+                    systolic: nil,
+                    diastolic: nil,
+                    pulse: nil,
+                    note: nil
                 )
             ],
             nextCursor: "2026-05-05T22:00:00Z",
@@ -210,10 +338,24 @@ struct UnifiedEntriesReadTests {
         // A full page (count == limit) with no hasMore flag implies more rows remain.
         let full = (0..<5).map { index in
             UnifiedEntryResult(
-                category: EntryCategory.weight.rawValue, entryId: "\(index)", operationType: "create",
-                entryTimestamp: "2026-05-06T10:0\(index):00Z", serverTimestamp: nil, source: nil,
-                weight: 1700, bodyFat: nil, muscleMass: nil, water: nil, bmi: nil,
-                boneMass: nil, impedance: nil, unit: nil, systolic: nil, diastolic: nil, pulse: nil, note: nil
+                category: EntryCategory.weight.rawValue,
+                entryId: "\(index)",
+                operationType: "create",
+                entryTimestamp: "2026-05-06T10:0\(index):00Z",
+                serverTimestamp: nil,
+                source: nil,
+                weight: 1700,
+                bodyFat: nil,
+                muscleMass: nil,
+                water: nil,
+                bmi: nil,
+                boneMass: nil,
+                impedance: nil,
+                unit: nil,
+                systolic: nil,
+                diastolic: nil,
+                pulse: nil,
+                note: nil
             )
         }
         remote.fetchEntriesResult = BathScaleOperationListResponse(entries: full, nextCursor: nil, hasMore: nil)

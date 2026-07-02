@@ -247,7 +247,7 @@ class FeedLandingViewModelTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `OnBackPress sets lastAction and navigates back`() = runTest {
+    fun `OnBackPress sets lastAction and navigates back`() = runTest(mainDispatcherRule.scheduler) {
         viewModel.handleIntent(FeedLandingIntent.OnBackPress)
         advanceUntilIdle()
 
@@ -256,7 +256,7 @@ class FeedLandingViewModelTest {
     }
 
     @Test
-    fun `OnBackPress when navigateBack throws does not crash`() = runTest {
+    fun `OnBackPress when navigateBack throws does not crash`() = runTest(mainDispatcherRule.scheduler) {
         coVerify(exactly = 0) { appNavigationService.navigateBack() }
 
         viewModel.handleIntent(FeedLandingIntent.OnBackPress)
@@ -270,7 +270,7 @@ class FeedLandingViewModelTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `OpenFAQ sets lastAction and navigates to FeedFAQ`() = runTest {
+    fun `OpenFAQ sets lastAction and navigates to FeedFAQ`() = runTest(mainDispatcherRule.scheduler) {
         viewModel.handleIntent(FeedLandingIntent.OpenFAQ)
         advanceUntilIdle()
 
@@ -283,7 +283,7 @@ class FeedLandingViewModelTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `init observes selectedFeedItemHolder and sets feed item`() = runTest {
+    fun `init observes selectedFeedItemHolder and sets feed item`() = runTest(mainDispatcherRule.scheduler) {
         val feedItem = testFeedItem()
         selectedFeedItemHolder.setSelectedFeedItem(feedItem)
         advanceUntilIdle()
@@ -293,7 +293,7 @@ class FeedLandingViewModelTest {
     }
 
     @Test
-    fun `init does not set feed item when holder emits null`() = runTest {
+    fun `init does not set feed item when holder emits null`() = runTest(mainDispatcherRule.scheduler) {
         selectedFeedItemHolder.setSelectedFeedItem(null)
         advanceUntilIdle()
 
@@ -305,7 +305,7 @@ class FeedLandingViewModelTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `navigateToFAQ public method navigates to FeedFAQ route`() = runTest {
+    fun `navigateToFAQ public method navigates to FeedFAQ route`() = runTest(mainDispatcherRule.scheduler) {
         viewModel.navigateToFAQ()
         advanceUntilIdle()
 
@@ -313,7 +313,7 @@ class FeedLandingViewModelTest {
     }
 
     @Test
-    fun `navigateToFAQ via intent sets lastAction`() = runTest {
+    fun `navigateToFAQ via intent sets lastAction`() = runTest(mainDispatcherRule.scheduler) {
         viewModel.handleIntent(FeedLandingIntent.OpenFAQ)
         advanceUntilIdle()
 
@@ -325,7 +325,7 @@ class FeedLandingViewModelTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `OnBackPress navigates back via appNavigationService`() = runTest {
+    fun `OnBackPress navigates back via appNavigationService`() = runTest(mainDispatcherRule.scheduler) {
         viewModel.handleIntent(FeedLandingIntent.OnBackPress)
         advanceUntilIdle()
 

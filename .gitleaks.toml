@@ -97,7 +97,8 @@ tags = ["phi", "mrn", "hipaa"]
     '''Android/app/src/androidTest/''',
 
     # Android source files with false positives (UI string constants, mock preview data)
-    '''features/ScaleUsers/screens/ScaleUserListScreen\.kt''',
+    # NOTE: ScaleUsers → DeviceUsers rename (MOB-536); keep these allowlist paths in sync.
+    '''features/DeviceUsers/screens/DeviceUserListScreen\.kt''',
     '''features/settings/strings/SettingsScreenStrings\.kt''',
 
     # iOS settings strings — contains "changePassword" UI label, not a credential
@@ -130,8 +131,8 @@ tags = ["phi", "mrn", "hipaa"]
     # Mock/preview data + storage-key/field-name constants flagged by the broad
     # generic-secret rule (token = "dummy-token"/"preview-token"/"4244…",
     # password "password123", fcmToken key, API_TRACE, matchPassword, etc.).
-    '''features/ScaleUsers/components/ScaleUserItem\.kt''',
-    '''features/ScaleUsers/components/ScaleUserList\.kt''',
+    '''features/DeviceUsers/components/DeviceUserItem\.kt''',
+    '''features/DeviceUsers/components/DeviceUserList\.kt''',
     '''features/common/helper/form/FormValidations\.kt''',
     '''Core/Network/HTTPClient\.swift''',
     '''Core/Storage/KvStorageKeys\.swift''',

@@ -1,5 +1,5 @@
-import Foundation
 import Combine
+import Foundation
 
 /// Protocol for business logic and orchestration related to paired-scale management.
 ///
@@ -68,7 +68,7 @@ protocol ScaleServiceProtocol: DeviceServiceProtocol {
     func syncAllScalesWithRemote() async
 
     /// Creates a new Bluetooth (A3) scale entry.
-    func createBluetoothScale(device: Device, sku: String?, userNumber: String, accountId: String, deviceMetadata: DeviceMetaData?, skipDuplicateCheck: Bool) async throws -> Device
+    func createBluetoothScale(device: Device, sku: String?, userNumber: String, accountId: String, deviceMetadata: DeviceMetaData?, skipDuplicateCheck: Bool) async throws -> Device // swiftlint:disable:this function_parameter_count
 
     /// Creates a new A6 (LCBT) scale entry.
     func createA6Scale(device: Device, sku: String?, accountId: String, deviceMetadata: DeviceMetaData?, skipDuplicateCheck: Bool) async throws -> Device

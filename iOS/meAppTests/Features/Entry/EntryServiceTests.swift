@@ -1,7 +1,7 @@
 import Combine
 import Foundation
-import Testing
 @testable import meApp
+import Testing
 
 @Suite(.serialized)
 @MainActor
@@ -291,13 +291,18 @@ struct EntryServiceTests {
         await sut.loadDashboardData()
 
         #expect(sut.dailySummaries.count == 1)
-        #expect(logger.messages.contains(where: { $0.contains("loadDashboardData failed") }))
+        #expect(logger.messages.contains { $0.contains("loadDashboardData failed") })
     }
 
     @Test("exportCSV: calls unified CSV endpoint in email mode for the given category")
     func exportCSVUsesUnifiedEndpoint() async throws {
         let remote = MockEntryRepositoryAPI()
-        let account = AccountTestFixtures.makeAccountSnapshot(id: "acct-1", email: "entry@example.com", isActiveAccount: true, dashboardType: DashboardType.dashboard12.rawValue)
+        let account = AccountTestFixtures.makeAccountSnapshot(
+            id: "acct-1",
+            email: "entry@example.com",
+            isActiveAccount: true,
+            dashboardType: DashboardType.dashboard12.rawValue
+        )
         let sut = makeSUT(remote: remote, activeAccount: account)
 
         try await sut.exportCSV(category: EntryCategory.weight.rawValue)
@@ -355,18 +360,22 @@ struct EntryServiceTests {
         // the remote inline. An integration failure is logged and swallowed so the save still succeeds.
         #expect(repo.entries.count == 1)
         #expect(remote.submitEntriesCalls == 0)
-        #expect(logger.messages.contains(where: { $0.contains("Failed to sync new entry to integrations") }))
+        #expect(logger.messages.contains { $0.contains("Failed to sync new entry to integrations") })
     }
 
     private func makeSUT(
-            repo: MockEntryRepository? = nil,
-            remote: MockEntryRepositoryAPI? = nil,
-            syncStore: MockEntrySyncStore? = nil,
-            integration: MockIntegrationService? = nil,
-            goalAlert: MockGoalAlertService? = nil,
-            logger: MockLoggerService? = nil,
-            activeAccount: AccountSnapshot? = AccountTestFixtures.makeAccountSnapshot(id: "acct-1", email: "entry@example.com", isActiveAccount: true)
-        ) -> EntryService {
+        repo: MockEntryRepository? = nil,
+        remote: MockEntryRepositoryAPI? = nil,
+        syncStore: MockEntrySyncStore? = nil,
+        integration: MockIntegrationService? = nil,
+        goalAlert: MockGoalAlertService? = nil,
+        logger: MockLoggerService? = nil,
+        activeAccount: AccountSnapshot? = AccountTestFixtures.makeAccountSnapshot(
+            id: "acct-1",
+            email: "entry@example.com",
+            isActiveAccount: true
+        )
+    ) -> EntryService {
             let account = MockAccountService()
             account.activeAccount = activeAccount
 

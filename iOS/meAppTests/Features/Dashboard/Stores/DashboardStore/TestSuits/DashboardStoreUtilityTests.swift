@@ -1,7 +1,7 @@
 import Combine
 import Foundation
-import Testing
 @testable import meApp
+import Testing
 
 extension DashboardStoreTests {
     @Suite("Utility And Derived Data")
@@ -10,7 +10,9 @@ extension DashboardStoreTests {
 
     @Test("invalidateContinuousOperationsCache: delegates to cache manager")
     func invalidateCacheDelegate() {
-        let (store, _, cacheManager) = DashboardStoreTestSupport.makeSUT()
+        let sutBundle = DashboardStoreTestSupport.makeSUT()
+        let store = sutBundle.store
+        let cacheManager = sutBundle.cacheManager
 
         store.invalidateContinuousOperationsCache()
 
@@ -19,7 +21,9 @@ extension DashboardStoreTests {
 
     @Test("invalidateContinuousOperationsCache: multiple calls increment counter")
     func invalidateCacheMultipleCalls() {
-        let (store, _, cacheManager) = DashboardStoreTestSupport.makeSUT()
+        let sutBundle = DashboardStoreTestSupport.makeSUT()
+        let store = sutBundle.store
+        let cacheManager = sutBundle.cacheManager
 
         store.invalidateContinuousOperationsCache()
         store.invalidateContinuousOperationsCache()
@@ -30,7 +34,7 @@ extension DashboardStoreTests {
 
     @Test("forceImmediateUIUpdate: triggers objectWillChange")
     func forceImmediateUIUpdateTriggersChange() {
-        let (store, _, _) = DashboardStoreTestSupport.makeSUT()
+        let store = DashboardStoreTestSupport.makeSUT().store
 
         var didReceiveUpdate = false
         let cancellable = store.objectWillChange.sink { didReceiveUpdate = true }
@@ -43,7 +47,7 @@ extension DashboardStoreTests {
 
     @Test("scheduleUIUpdate: eventually triggers objectWillChange")
     func scheduleUIUpdateTriggersChange() async {
-        let (store, _, _) = DashboardStoreTestSupport.makeSUT()
+        let store = DashboardStoreTestSupport.makeSUT().store
 
         var didReceiveUpdate = false
         let cancellable = store.objectWillChange.sink { didReceiveUpdate = true }
@@ -58,7 +62,7 @@ extension DashboardStoreTests {
 
     @Test("scheduleUIUpdate: debounces multiple rapid calls")
     func scheduleUIUpdateDebounces() async {
-        let (store, _, _) = DashboardStoreTestSupport.makeSUT()
+        let store = DashboardStoreTestSupport.makeSUT().store
 
         var updateCount = 0
         let cancellable = store.objectWillChange.sink { updateCount += 1 }
@@ -87,7 +91,7 @@ extension DashboardStoreTests {
 
     @Test("continuousOperations: returns data from cache manager")
     func continuousOperationsFromCache() {
-        let (store, _, _) = DashboardStoreTestSupport.makeSUT()
+        let store = DashboardStoreTestSupport.makeSUT().store
 
         let result = store.continuousOperations
         #expect(result.isEmpty)
@@ -95,7 +99,7 @@ extension DashboardStoreTests {
 
     @Test("dataChangeRevision increments when dashboard data changes")
     func dataChangeRevisionIncrementsOnDataUpdate() async {
-        let (store, _, _) = DashboardStoreTestSupport.makeSUT()
+        let store = DashboardStoreTestSupport.makeSUT().store
         let entryService = DependencyContainer.shared.resolve(EntryService.self)
 
         #expect(entryService != nil)
@@ -109,7 +113,7 @@ extension DashboardStoreTests {
 
     @Test("continuousOperations: returns sorted daily summaries from data manager")
     func continuousOperationsReturnsSortedData() async {
-        let (store, _, _) = DashboardStoreTestSupport.makeSUT()
+        let store = DashboardStoreTestSupport.makeSUT().store
         let entryService = DependencyContainer.shared.resolve(EntryService.self)
 
         #expect(entryService != nil)
@@ -125,7 +129,7 @@ extension DashboardStoreTests {
 
     @Test("visibleOperations: returns data from cache manager")
     func visibleOperationsFromCache() {
-        let (store, _, _) = DashboardStoreTestSupport.makeSUT()
+        let store = DashboardStoreTestSupport.makeSUT().store
 
         let result = store.visibleOperations
         #expect(result.isEmpty)
@@ -133,14 +137,14 @@ extension DashboardStoreTests {
 
     @Test("chartSeriesData: returns empty when no continuous operations exist")
     func chartSeriesDataEmptyWithoutOperations() {
-        let (store, _, _) = DashboardStoreTestSupport.makeSUT()
+        let store = DashboardStoreTestSupport.makeSUT().store
 
         #expect(store.chartSeriesData.isEmpty)
     }
 
     @Test("visibleDomainLength: returns expected values for supported periods")
     func visibleDomainLengthForPeriods() {
-        let (store, _, _) = DashboardStoreTestSupport.makeSUT()
+        let store = DashboardStoreTestSupport.makeSUT().store
 
         #expect(store.visibleDomainLength(for: .week) > 0)
         #expect(store.visibleDomainLength(for: .month) > store.visibleDomainLength(for: .week))
@@ -149,13 +153,15 @@ extension DashboardStoreTests {
 
     @Test("weightlessAnchorWeight: returns nil when no account")
     func weightlessAnchorWeightNilNoAccount() {
-        let (store, _, _) = DashboardStoreTestSupport.makeSUT()
+        let store = DashboardStoreTestSupport.makeSUT().store
         #expect(store.weightlessAnchorWeight == nil)
     }
 
     @Test("weightlessAnchorWeight: returns converted anchor weight when enabled")
     func weightlessAnchorWeightReturnsConvertedValue() {
-        let (store, accountService, _) = DashboardStoreTestSupport.makeSUT()
+        let sutBundle = DashboardStoreTestSupport.makeSUT()
+        let store = sutBundle.store
+        let accountService = sutBundle.accountService
         accountService.activeAccount = DashboardStoreTestSupport.makeActiveAccount(
             weightUnit: .lb,
             weightlessOn: true,
@@ -169,13 +175,15 @@ extension DashboardStoreTests {
 
     @Test("goalWeightForDisplay: returns nil when no goal set")
     func goalWeightForDisplayNilNoGoal() {
-        let (store, _, _) = DashboardStoreTestSupport.makeSUT()
+        let store = DashboardStoreTestSupport.makeSUT().store
         #expect(store.goalWeightForDisplay == nil)
     }
 
     @Test("goalWeightForDisplay: returns displayed goal weight from active account")
     func goalWeightForDisplayFromActiveAccount() {
-        let (store, accountService, _) = DashboardStoreTestSupport.makeSUT()
+        let sutBundle = DashboardStoreTestSupport.makeSUT()
+        let store = sutBundle.store
+        let accountService = sutBundle.accountService
         accountService.activeAccount = DashboardStoreTestSupport.makeActiveAccount(goalWeight: 1900)
 
         #expect(store.goalWeightForDisplay == 190.0)
@@ -183,7 +191,9 @@ extension DashboardStoreTests {
 
     @Test("goalWeightForDisplay: subtracts anchor weight in weightless mode")
     func goalWeightForDisplayWeightlessMode() {
-        let (store, accountService, _) = DashboardStoreTestSupport.makeSUT()
+        let sutBundle = DashboardStoreTestSupport.makeSUT()
+        let store = sutBundle.store
+        let accountService = sutBundle.accountService
         accountService.activeAccount = DashboardStoreTestSupport.makeActiveAccount(
             goalWeight: 1900,
             weightlessOn: true,
@@ -196,13 +206,13 @@ extension DashboardStoreTests {
 
     @Test("hasEntriesButNoneInCurrentPeriod: false when no entries")
     func hasEntriesButNoneInCurrentPeriodFalseNoEntries() {
-        let (store, _, _) = DashboardStoreTestSupport.makeSUT()
+        let store = DashboardStoreTestSupport.makeSUT().store
         #expect(store.hasEntriesButNoneInCurrentPeriod == false)
     }
 
     @Test("hasEntriesButNoneInCurrentPeriod: true when continuous operations exist but visible operations are empty")
     func hasEntriesButNoneInCurrentPeriodTrueWhenVisibleEmpty() async {
-        let (store, _, _) = DashboardStoreTestSupport.makeSUT()
+        let store = DashboardStoreTestSupport.makeSUT().store
         let entryService = DependencyContainer.shared.resolve(EntryService.self)
 
         #expect(entryService != nil)
@@ -220,19 +230,21 @@ extension DashboardStoreTests {
 
     @Test("currentUnitString: returns rawValue of unit")
     func currentUnitStringReturnsRawValue() {
-        let (store, _, _) = DashboardStoreTestSupport.makeSUT()
+        let store = DashboardStoreTestSupport.makeSUT().store
         #expect(store.currentUnitString == store.currentUnit.rawValue)
     }
 
     @Test("currentUnitText: defaults to lbs when there is no active account")
     func currentUnitTextDefaultsToLbs() {
-        let (store, _, _) = DashboardStoreTestSupport.makeSUT()
+        let store = DashboardStoreTestSupport.makeSUT().store
         #expect(store.currentUnitText == "lbs")
     }
 
     @Test("current unit properties: reflect active account settings")
     func currentUnitPropertiesReflectActiveAccount() {
-        let (store, accountService, _) = DashboardStoreTestSupport.makeSUT()
+        let sutBundle = DashboardStoreTestSupport.makeSUT()
+        let store = sutBundle.store
+        let accountService = sutBundle.accountService
         accountService.activeAccount = DashboardStoreTestSupport.makeActiveAccount(weightUnit: .kg)
 
         #expect(store.currentUnit == .kg)
@@ -242,7 +254,9 @@ extension DashboardStoreTests {
 
     @Test("unitText: delegates to goal manager")
     func unitTextDelegatesToGoalManager() {
-        let (store, accountService, _) = DashboardStoreTestSupport.makeSUT()
+        let sutBundle = DashboardStoreTestSupport.makeSUT()
+        let store = sutBundle.store
+        let accountService = sutBundle.accountService
         accountService.activeAccount = DashboardStoreTestSupport.makeActiveAccount(weightUnit: .kg)
 
         #expect(store.unitText == "kg")
@@ -250,7 +264,7 @@ extension DashboardStoreTests {
 
     @Test("loaderData: returns nil when not loading and no override")
     func loaderDataNilWhenNotLoading() {
-        let (store, _, _) = DashboardStoreTestSupport.makeSUT()
+        let store = DashboardStoreTestSupport.makeSUT().store
         store.state.ui.isLoading = false
         store.state.ui.loaderOverride = nil
 
@@ -259,7 +273,7 @@ extension DashboardStoreTests {
 
     @Test("loaderData: returns loader when isLoading is true")
     func loaderDataReturnsWhenLoading() {
-        let (store, _, _) = DashboardStoreTestSupport.makeSUT()
+        let store = DashboardStoreTestSupport.makeSUT().store
         store.state.ui.isLoading = true
 
         #expect(store.loaderData.wrappedValue != nil)
@@ -267,7 +281,7 @@ extension DashboardStoreTests {
 
     @Test("loaderData: returns override when set")
     func loaderDataReturnsOverride() {
-        let (store, _, _) = DashboardStoreTestSupport.makeSUT()
+        let store = DashboardStoreTestSupport.makeSUT().store
         store.state.ui.loaderOverride = LoaderModel(text: "Custom")
 
         #expect(store.loaderData.wrappedValue?.text == "Custom")
@@ -275,7 +289,7 @@ extension DashboardStoreTests {
 
     @Test("store state remains consistent after rapid state mutations")
     func stateConsistencyAfterRapidMutations() {
-        let (store, _, _) = DashboardStoreTestSupport.makeSUT()
+        let store = DashboardStoreTestSupport.makeSUT().store
 
         for i in 0..<100 {
             store.state.ui.isLoading = (i % 2 == 0)

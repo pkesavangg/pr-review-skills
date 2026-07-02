@@ -1,6 +1,6 @@
-import Testing
 import Foundation
 @testable import meApp
+import Testing
 
 @Suite(.serialized)
 @MainActor
@@ -13,7 +13,7 @@ struct ScaleNameFormTests {
     @Test("scaleName starts empty and pristine")
     func initialState() {
         let form = makeForm()
-        #expect(form.scaleName.value == "")
+        #expect(form.scaleName.value.isEmpty)
         #expect(!form.scaleName.isDirty)
         #expect(!form.isValid)
     }
@@ -116,7 +116,7 @@ struct ScaleNameFormTests {
         let form = makeForm()
         form.setDeviceName("Name")
         form.reset()
-        #expect(form.scaleName.value == "")
+        #expect(form.scaleName.value.isEmpty)
         #expect(!form.scaleName.isDirty)
     }
 

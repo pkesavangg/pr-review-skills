@@ -6,9 +6,11 @@
 
 import Foundation
 
+// swiftlint:disable file_length
+
 /// A utility class for date and time formatting, parsing, and timezone operations.
 /// All methods are static and thread-safe.
-final class DateTimeTools {
+final class DateTimeTools { // swiftlint:disable:this type_body_length
     // MARK: - Error Constants
     static let invalidString: String = "---"
     static let invalidInt: Int? = nil
@@ -18,7 +20,7 @@ final class DateTimeTools {
     /// triggers `_LocaleICU.minimumDaysInFirstWeek.getter` — a leaf that surfaced in
     /// the dashboard scroll-hang traces. Reuse this instance for any read-only
     /// Calendar operation that doesn't need a custom timezone / locale / firstWeekday.
-    static let currentCalendar: Calendar = Calendar.current
+    static let currentCalendar = Calendar.current
 
     /// Gregorian calendar aligned with the user's current timezone and locale.
     /// Used instead of constructing a fresh `Calendar(identifier: .gregorian)` per call.
@@ -765,3 +767,5 @@ final class DateTimeTools {
         }
     }
 }
+
+// swiftlint:enable file_length

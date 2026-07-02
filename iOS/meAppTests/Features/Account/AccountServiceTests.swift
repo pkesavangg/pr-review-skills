@@ -1,7 +1,7 @@
 // swiftlint:disable file_length
 import Foundation
-import Testing
 @testable import meApp
+import Testing
 @Suite(.serialized)
 @MainActor
 // swiftlint:disable:next type_body_length
@@ -380,8 +380,8 @@ struct AccountServiceTests {
         let result = try await sut.fetchAllAccounts()
 
         #expect(result.count == 2)
-        #expect(result.contains(where: { $0.accountId == "101" && $0.accessToken == "a101" }))
-        #expect(result.contains(where: { $0.accountId == "102" && $0.accessToken == "a102" }))
+        #expect(result.contains { $0.accountId == "101" && $0.accessToken == "a101" })
+        #expect(result.contains { $0.accountId == "102" && $0.accessToken == "a102" })
     }
 
     // MARK: - Active Account Switching
@@ -442,8 +442,8 @@ struct AccountServiceTests {
         try await sut.setActiveAccount(accountId: "102")
 
         let all = local.all()
-        let updatedA = try #require(all.first(where: { $0.accountId == "101" }))
-        let updatedB = try #require(all.first(where: { $0.accountId == "102" }))
+        let updatedA = try #require(all.first { $0.accountId == "101" })
+        let updatedB = try #require(all.first { $0.accountId == "102" })
         #expect(updatedA.isActiveAccount == false)
         #expect(updatedB.isActiveAccount == true)
         #expect(sut.activeAccount?.accountId == "102")
@@ -718,7 +718,8 @@ struct AccountServiceTests {
             id: "101",
             email: "user@example.com",
             isActiveAccount: true,
-            accessToken: "fallbackA", // swiftlint:disable:this no_hardcoded_credentials
+            // swiftlint:disable:next no_hardcoded_credentials
+            accessToken: "fallbackA",
             refreshToken: "fallbackR",
             expiresAt: "fallbackE"
         )
@@ -1440,7 +1441,9 @@ struct AccountServiceTests {
         api.patchProductTypesResult = .success(
             AccountResponse(
                 account: AccountTestFixtures.makeAccountDTO(id: "101", productTypes: ["blood_pressure"]),
-                accessToken: nil, refreshToken: nil, expiresAt: nil
+                accessToken: nil,
+                refreshToken: nil,
+                expiresAt: nil
             )
         )
 
@@ -1506,7 +1509,9 @@ struct AccountServiceTests {
         api.patchProductTypesResult = .success(
             AccountResponse(
                 account: AccountTestFixtures.makeAccountDTO(id: "101", productTypes: ["weight"]),
-                accessToken: nil, refreshToken: nil, expiresAt: nil
+                accessToken: nil,
+                refreshToken: nil,
+                expiresAt: nil
             )
         )
 
@@ -1536,7 +1541,9 @@ struct AccountServiceTests {
         api.patchProductTypesResult = .success(
             AccountResponse(
                 account: AccountTestFixtures.makeAccountDTO(id: "101", productTypes: ["weight", "baby"]),
-                accessToken: nil, refreshToken: nil, expiresAt: nil
+                accessToken: nil,
+                refreshToken: nil,
+                expiresAt: nil
             )
         )
 
@@ -1625,6 +1632,7 @@ struct AccountServiceTests {
         api.patchProductTypesResult = .success(
             AccountResponse(
                 account: AccountTestFixtures.makeAccountDTO(id: "100", email: "a@example.com", productTypes: ["weight"]),
+                // swiftlint:disable:next no_hardcoded_credentials
                 accessToken: "tok",
                 refreshToken: "rtok",
                 expiresAt: "2099-01-01T00:00:00Z"
@@ -1653,6 +1661,7 @@ struct AccountServiceTests {
         api.patchProductTypesResult = .success(
             AccountResponse(
                 account: AccountTestFixtures.makeAccountDTO(id: "100", email: "a@example.com", productTypes: ["weight", "blood_pressure", "baby"]),
+                // swiftlint:disable:next no_hardcoded_credentials
                 accessToken: "tok",
                 refreshToken: "rtok",
                 expiresAt: "2099-01-01T00:00:00Z"
@@ -1681,6 +1690,83 @@ struct AccountServiceTests {
         } catch {
             assertNoActiveAccount(error)
         }
+    }
+
+    // MARK: - Token persistence invariant + Keychain migration gating
+
+    @Test("login persists the account with token columns cleared while Keychain holds the tokens")
+    func loginClearsTokenColumnsAndStoresTokensInKeychain() async throws {
+        let api = MockAccountAPIRepository()
+        api.logInResult = .success(AccountTestFixtures.makeAccountResponse(accountId: "777", email: "tok@example.com"))
+        api.fetchAccountResult = .success(AccountTestFixtures.makeAccountDTO(id: "777", email: "tok@example.com"))
+        let local = MockAccountRepository()
+        let keychain = MockKeychainService()
+        let sut = makeSUT(api: api, local: local, keychain: keychain)
+
+        try await sut.logIn(email: "tok@example.com", password: "secret")
+
+        let persisted = try #require(local.all().first { $0.accountId == "777" })
+        #expect(persisted.accessToken == nil)
+        #expect(persisted.refreshToken == nil)
+        #expect(persisted.expiresAt == nil)
+
+        let tokens = try #require(keychain.getTokens(for: "777"))
+        #expect(tokens.accessToken == "access-token")
+        #expect(tokens.refreshToken == "refresh-token")
+        #expect(tokens.expiresAt == "2099-01-01T00:00:00Z")
+    }
+
+    @Test("migrateTokensToKeychainIfNeeded first run: moves tokens to Keychain, clears columns, returns true")
+    func migrateTokensFirstRunMovesTokensAndGatesSync() async throws {
+        let local = MockAccountRepository()
+        let keychain = MockKeychainService()
+        let sut = makeSUT(local: local, keychain: keychain)
+        // Reset the shared migration flag so this exercises the first post-5.0.3 launch,
+        // and restore it on exit so the singleton state never leaks to sibling tests.
+        KvStorageService.shared.clearValue(forKey: KvStorageKeys.tokensMigratedToKeychain.rawValue)
+        defer { KvStorageService.shared.clearValue(forKey: KvStorageKeys.tokensMigratedToKeychain.rawValue) }
+
+        let account = AccountTestFixtures.makeAccountModel(id: "501", email: "mig@example.com")
+        // swiftlint:disable:next no_hardcoded_credentials
+        account.accessToken = "legacy-access"
+        account.refreshToken = "legacy-refresh"
+        account.expiresAt = "2099-01-01T00:00:00Z"
+        local.seed([account])
+
+        let justMigrated = try await sut.migrateTokensToKeychainIfNeeded()
+
+        // `true` is what gates the first-launch `syncUnsyncedAccounts()`/`refreshAllAccounts()` skip in init.
+        #expect(justMigrated == true)
+        let tokens = try #require(keychain.getTokens(for: "501"))
+        #expect(tokens.accessToken == "legacy-access")
+        #expect(tokens.refreshToken == "legacy-refresh")
+        let stored = try #require(local.all().first { $0.accountId == "501" })
+        #expect(stored.accessToken == nil)
+        #expect(stored.refreshToken == nil)
+        #expect(stored.expiresAt == nil)
+    }
+
+    @Test("migrateTokensToKeychainIfNeeded second run: already migrated, returns false and does not re-write Keychain")
+    func migrateTokensSecondRunIsNoOpAndResumesSync() async throws {
+        let local = MockAccountRepository()
+        let keychain = MockKeychainService()
+        let sut = makeSUT(local: local, keychain: keychain)
+        KvStorageService.shared.clearValue(forKey: KvStorageKeys.tokensMigratedToKeychain.rawValue)
+        defer { KvStorageService.shared.clearValue(forKey: KvStorageKeys.tokensMigratedToKeychain.rawValue) }
+
+        let account = AccountTestFixtures.makeAccountModel(id: "502", email: "mig2@example.com")
+        // swiftlint:disable:next no_hardcoded_credentials
+        account.accessToken = "legacy-access"
+        account.refreshToken = "legacy-refresh"
+        account.expiresAt = "2099-01-01T00:00:00Z"
+        local.seed([account])
+
+        _ = try await sut.migrateTokensToKeychainIfNeeded()
+        let secondRun = try await sut.migrateTokensToKeychainIfNeeded()
+
+        // `false` means normal sync/refresh resumes on every subsequent launch; no duplicate Keychain write.
+        #expect(secondRun == false)
+        #expect(keychain.setTokensCalls == 1)
     }
 
     private func makeSUT(

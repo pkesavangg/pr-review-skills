@@ -179,7 +179,7 @@ class HomeViewModelTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `HandleAppSyncResult with manual navigates to ManualEntry`() = runTest {
+    fun `HandleAppSyncResult with manual navigates to ManualEntry`() = runTest(mainDispatcherRule.scheduler) {
         val result = AppSyncResult(weight = null, fat = null, muscle = null, water = null, mode = null, manual = true, canceled = false)
         viewModel.handleIntent(HomeIntent.HandleAppSyncResult(result))
         advanceUntilIdle()
@@ -187,7 +187,7 @@ class HomeViewModelTest {
     }
 
     @Test
-    fun `HandleAppSyncResult with canceled does not navigate`() = runTest {
+    fun `HandleAppSyncResult with canceled does not navigate`() = runTest(mainDispatcherRule.scheduler) {
         val result = AppSyncResult(weight = null, fat = null, muscle = null, water = null, mode = null, manual = false, canceled = true)
         viewModel.handleIntent(HomeIntent.HandleAppSyncResult(result))
         advanceUntilIdle()
@@ -195,7 +195,7 @@ class HomeViewModelTest {
     }
 
     @Test
-    fun `HandleAppSyncResult with weight shows entry sync popup`() = runTest {
+    fun `HandleAppSyncResult with weight shows entry sync popup`() = runTest(mainDispatcherRule.scheduler) {
         val result = AppSyncResult(weight = TEST_WEIGHT, fat = null, muscle = null, water = null, mode = TEST_WEIGHT_MODE, manual = false, canceled = false)
         viewModel.handleIntent(HomeIntent.HandleAppSyncResult(result))
         advanceUntilIdle()
@@ -207,7 +207,7 @@ class HomeViewModelTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `OnWeightOnlyModeEnable with no connected scales dismisses loader`() = runTest {
+    fun `OnWeightOnlyModeEnable with no connected scales dismisses loader`() = runTest(mainDispatcherRule.scheduler) {
         every { deviceService.pairedScales } returns MutableStateFlow(emptyList())
         viewModel = createViewModel()
 
@@ -232,7 +232,7 @@ class HomeViewModelTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `LaunchAppReview calls appReviewManager launchInAppReview`() = runTest {
+    fun `LaunchAppReview calls appReviewManager launchInAppReview`() = runTest(mainDispatcherRule.scheduler) {
         val activity: Activity = mockk(relaxed = true)
         viewModel.handleIntent(HomeIntent.LaunchAppReview(activity))
         advanceUntilIdle()
@@ -240,7 +240,7 @@ class HomeViewModelTest {
     }
 
     @Test
-    fun `LaunchAppReview resets shouldAskForReview to false`() = runTest {
+    fun `LaunchAppReview resets shouldAskForReview to false`() = runTest(mainDispatcherRule.scheduler) {
         viewModel.handleIntent(HomeIntent.SetShouldAskForReview(true))
         assertThat(viewModel.state.value.shouldAskForReview).isTrue()
 
@@ -256,7 +256,7 @@ class HomeViewModelTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `CheckAndRequestPermission when already enabled invokes callback with true`() = runTest {
+    fun `CheckAndRequestPermission when already enabled invokes callback with true`() = runTest(mainDispatcherRule.scheduler) {
         viewModel.handleIntent(HomeIntent.isAppSyncPermissionsEnabled(true))
 
         var result: Boolean? = null
@@ -267,14 +267,14 @@ class HomeViewModelTest {
     }
 
     @Test
-    fun `CheckAndRequestPermission when not enabled shows permission alert`() = runTest {
+    fun `CheckAndRequestPermission when not enabled shows permission alert`() = runTest(mainDispatcherRule.scheduler) {
         viewModel.handleIntent(HomeIntent.CheckAndRequestPermission { })
         advanceUntilIdle()
         verify { dialogUtility.permissionAlert(any(), any(), any(), any()) }
     }
 
     @Test
-    fun `CheckAndRequestPermission dismisses the loader when permission status never loads`() = runTest {
+    fun `CheckAndRequestPermission dismisses the loader when permission status never loads`() = runTest(mainDispatcherRule.scheduler) {
         // Loader must always be dismissed, even if the flow never emits (times out) or the
         // coroutine is cancelled mid-await — the try/finally guard. (PR #2093 review)
         val permFlow = MutableStateFlow(mutableMapOf<String, String>())
@@ -295,7 +295,7 @@ class HomeViewModelTest {
     }
 
     @Test
-    fun `CheckAndRequestPermission with empty-then-granted flow opens scanner without prompting`() = runTest {
+    fun `CheckAndRequestPermission with empty-then-granted flow opens scanner without prompting`() = runTest(mainDispatcherRule.scheduler) {
         // MOB-710 regression: the permission flow holds an empty map until its first poll, then
         // emits the real (granted) status. The tap must wait for that status and proceed —
         // NOT prompt off the stale empty map. (PR #2093 review)
@@ -321,7 +321,7 @@ class HomeViewModelTest {
     }
 
     @Test
-    fun `StartAppSyncScan resets isScanning to false when the scan fails`() = runTest {
+    fun `StartAppSyncScan resets isScanning to false when the scan fails`() = runTest(mainDispatcherRule.scheduler) {
         // The scan runs on viewModelScope with a finally that always clears the flag; a failed
         // scan must leave isScanning = false, otherwise the AppSync icon stays stuck. (PR #2093 review)
         mockkStatic(::startAppSyncScan)
@@ -358,7 +358,7 @@ class HomeViewModelTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `init updates unread feed indicator when count greater than 0`() = runTest {
+    fun `init updates unread feed indicator when count greater than 0`() = runTest(mainDispatcherRule.scheduler) {
         coEvery { feedService.getUnreadFeedCount() } returns UNREAD_FEED_COUNT
         coEvery { feedService.getFeedSettings() } returns null // defaults to showBadge = true
 
@@ -369,7 +369,7 @@ class HomeViewModelTest {
     }
 
     @Test
-    fun `init sets showUnreadFeedIndicator false when count is 0`() = runTest {
+    fun `init sets showUnreadFeedIndicator false when count is 0`() = runTest(mainDispatcherRule.scheduler) {
         coEvery { feedService.getUnreadFeedCount() } returns 0
 
         viewModel = createViewModel()
@@ -383,7 +383,7 @@ class HomeViewModelTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `init calls healthConnectService checkHealthConnectPermissionDisabled`() = runTest {
+    fun `init calls healthConnectService checkHealthConnectPermissionDisabled`() = runTest(mainDispatcherRule.scheduler) {
         viewModel = createViewModel()
         advanceUntilIdle()
 
@@ -391,7 +391,7 @@ class HomeViewModelTest {
     }
 
     @Test
-    fun `checkHealthConnectPermission does not crash when service throws`() = runTest {
+    fun `checkHealthConnectPermission does not crash when service throws`() = runTest(mainDispatcherRule.scheduler) {
         coEvery { healthConnectService.checkHealthConnectPermissionDisabled() } throws RuntimeException("fail")
 
         viewModel = createViewModel()
@@ -406,7 +406,7 @@ class HomeViewModelTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `observeAppSyncStatus subscribes to pairedScales flow`() = runTest {
+    fun `observeAppSyncStatus subscribes to pairedScales flow`() = runTest(mainDispatcherRule.scheduler) {
         viewModel = createViewModel()
         advanceUntilIdle()
 
@@ -415,7 +415,7 @@ class HomeViewModelTest {
     }
 
     @Test
-    fun `observeAppSyncStatus sets showAppsync false with empty scales`() = runTest {
+    fun `observeAppSyncStatus sets showAppsync false with empty scales`() = runTest(mainDispatcherRule.scheduler) {
         every { deviceService.pairedScales } returns MutableStateFlow(emptyList())
 
         viewModel = createViewModel()
@@ -429,7 +429,7 @@ class HomeViewModelTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `observePermissions subscribes to permissionCallBackFlow`() = runTest {
+    fun `observePermissions subscribes to permissionCallBackFlow`() = runTest(mainDispatcherRule.scheduler) {
         viewModel = createViewModel()
         advanceUntilIdle()
 
@@ -437,7 +437,7 @@ class HomeViewModelTest {
     }
 
     @Test
-    fun `observePermissions handles non-Map type without crash`() = runTest {
+    fun `observePermissions handles non-Map type without crash`() = runTest(mainDispatcherRule.scheduler) {
         every { ggPermissionService.permissionCallBackFlow } returns MutableStateFlow(mutableMapOf<String, String>())
 
         viewModel = createViewModel()
@@ -452,7 +452,7 @@ class HomeViewModelTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `init sets account id on ggInAppMessagingService`() = runTest {
+    fun `init sets account id on ggInAppMessagingService`() = runTest(mainDispatcherRule.scheduler) {
         viewModel = createViewModel()
         advanceUntilIdle()
 
@@ -460,7 +460,7 @@ class HomeViewModelTest {
     }
 
     @Test
-    fun `init checks feed modal trigger`() = runTest {
+    fun `init checks feed modal trigger`() = runTest(mainDispatcherRule.scheduler) {
         viewModel = createViewModel()
         advanceUntilIdle()
 
@@ -468,7 +468,7 @@ class HomeViewModelTest {
     }
 
     @Test
-    fun `init checks account flags when feed modal is not triggered`() = runTest {
+    fun `init checks account flags when feed modal is not triggered`() = runTest(mainDispatcherRule.scheduler) {
         coEvery { feedService.checkAndTriggerFeedModal() } returns false
 
         viewModel = createViewModel()
@@ -478,7 +478,7 @@ class HomeViewModelTest {
     }
 
     @Test
-    fun `init skips account flag check when feed modal is triggered`() = runTest {
+    fun `init skips account flag check when feed modal is triggered`() = runTest(mainDispatcherRule.scheduler) {
         coEvery { feedService.checkAndTriggerFeedModal() } returns true
 
         viewModel = createViewModel()
@@ -493,7 +493,7 @@ class HomeViewModelTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `subscribeToWeightOnlyModeAlertDismissed updates state from deviceService`() = runTest {
+    fun `subscribeToWeightOnlyModeAlertDismissed updates state from deviceService`() = runTest(mainDispatcherRule.scheduler) {
         val alertFlow = MutableStateFlow(false)
         every { deviceService.isWeightOnlyModeAlertShown } returns alertFlow
 
@@ -511,7 +511,7 @@ class HomeViewModelTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `enableSessionImpedence calls ggDeviceService updateSettings`() = runTest {
+    fun `enableSessionImpedence calls ggDeviceService updateSettings`() = runTest(mainDispatcherRule.scheduler) {
         val device: com.dmdbrands.gurus.weight.domain.model.storage.Device = mockk(relaxed = true)
         viewModel.enableSessionImpedence(device)
         advanceUntilIdle()
@@ -526,7 +526,7 @@ class HomeViewModelTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `HandleAppSyncResult with null weight and not manual is no-op`() = runTest {
+    fun `HandleAppSyncResult with null weight and not manual is no-op`() = runTest(mainDispatcherRule.scheduler) {
         val result = AppSyncResult(weight = null, fat = null, muscle = null, water = null, mode = null, manual = false, canceled = false)
         viewModel.handleIntent(HomeIntent.HandleAppSyncResult(result))
         advanceUntilIdle()

@@ -2,9 +2,7 @@ package com.dmdbrands.gurus.weight.features.common.components
 
 import androidx.annotation.DrawableRes
 import androidx.compose.animation.core.RepeatMode
-import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.infiniteRepeatable
-import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -15,7 +13,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.blur
@@ -28,6 +25,7 @@ import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
+import com.dmdbrands.gurus.weight.core.power.powerSaveAwareInfiniteFloat
 import com.dmdbrands.gurus.weight.features.common.components.strings.ConnectionIndicatorStrings
 import com.dmdbrands.gurus.weight.resources.AppIcons
 import com.dmdbrands.gurus.weight.theme.MeAppTheme
@@ -121,15 +119,15 @@ private fun PulsingCircle(
   color: Color,
   shouldAnimate: Boolean
 ) {
-  val infiniteTransition = rememberInfiniteTransition(label = "PulseAnimation")
-
-  val scale by infiniteTransition.animateFloat(
+  // Holds the circle at its natural size (no pulse) under Power Saving Mode (MOB-226).
+  val scale = powerSaveAwareInfiniteFloat(
     initialValue = 0.6f,
     targetValue = 1.1f,
     animationSpec = infiniteRepeatable(
       animation = tween(durationMillis = 1200),
       repeatMode = RepeatMode.Reverse,
     ),
+    restingValue = 1.0f,
     label = "PulseScale",
   )
 

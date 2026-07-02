@@ -817,10 +817,8 @@ class BaseSectionViewModel: ObservableObject, SectionViewModelProtocol {
             // Pre-compute plotXDate for every point so visibleChartSeriesData avoids per-filter calls
             var plotXMap: [Date: Date] = [:]
             plotXMap.reserveCapacity(cachedSeriesData.count)
-            for point in cachedSeriesData {
-                if plotXMap[point.date] == nil {
-                    plotXMap[point.date] = plotXDate(for: point.date)
-                }
+            for point in cachedSeriesData where plotXMap[point.date] == nil {
+                plotXMap[point.date] = plotXDate(for: point.date)
             }
             cachedPlotXDates = plotXMap
 
@@ -894,7 +892,7 @@ class BaseSectionViewModel: ObservableObject, SectionViewModelProtocol {
     // MARK: - Fallback X-Axis Ticks (for empty data)
     // Generates calendar-based X-axis ticks for current period when there are no entries.
     // Ensures week/month/year views still show X-axis labels with a trailing phantom tick.
-    // swiftlint:disable:next cyclomatic_complexity
+    // swiftlint:disable:next cyclomatic_complexity function_body_length
     private func fallbackXAxisValues() -> [Date] {
         guard hasXAxis else { return [] }
         let calendar = Calendar.current
