@@ -1662,10 +1662,11 @@ class SettingsStore: ObservableObject {
     /// Presents the appearance picker (modal on iPad < iOS18, sheet otherwise).
     func presentAppearancePicker() {
         if useModalPicker {
+            let displayValue: (AppearanceMode) -> String = { $0.rawValue }
             let picker = PickerView(
                 selectedValues: [theme.appearanceMode],
                 options: [AppearanceMode.allCases],
-                displayValue: { $0.rawValue },
+                displayValue: displayValue,
                 title: SettingsStrings.appearance,
                 showCancel: false
             ) { vals in
@@ -1688,10 +1689,11 @@ class SettingsStore: ObservableObject {
     /// Presents the notification preference picker (modal on iPad < iOS18, sheet otherwise).
     func presentNotificationPicker() {
         if useModalPicker {
+            let displayValue: (NotificationPreference) -> String = { $0.title }
             let picker = PickerView(
                 selectedValues: [notificationPreference],
                 options: [NotificationPreference.allCases],
-                displayValue: { $0.title },
+                displayValue: displayValue,
                 title: SettingsStrings.notifications,
                 showCancel: false
             ) { vals in
@@ -1707,10 +1709,11 @@ class SettingsStore: ObservableObject {
     /// Presents the gender picker (modal on iPad < iOS18, sheet otherwise).
     func presentGenderPicker() {
         if useModalPicker {
+            let displayValue: (Sex) -> String = { $0.rawValue.capitalized }
             let picker = PickerView(
                 selectedValues: [activeAccount?.gender ?? .male],
                 options: [Sex.allCases],
-                displayValue: { $0.rawValue.capitalized },
+                displayValue: displayValue,
                 title: SettingsStrings.biologicalSex,
                 showCancel: false
             ) { vals in
@@ -1792,7 +1795,11 @@ class SettingsStore: ObservableObject {
                     notificationService.showToast(ToastModel(title: toastLang.success, message: toastLang.unitSettingUpdated))
                 }
 
-                logger.log(level: .info, tag: tag, message: "Unit selections updated weightUnit=\(weightUnit.rawValue) measurementUnits=\(measurementUnits.rawValue)")
+                logger.log(
+                    level: .info,
+                    tag: tag,
+                    message: "Unit selections updated weightUnit=\(weightUnit.rawValue) measurementUnits=\(measurementUnits.rawValue)"
+                )
             } catch {
                 notificationService.showToast(ToastModel(title: toastLang.somethingWentWrongTitle, message: toastLang.unableToUpdateAccountSettings))
                 logger.log(level: .error, tag: tag, message: "Unit selections update failed:", data: error.localizedDescription)
@@ -1805,10 +1812,11 @@ class SettingsStore: ObservableObject {
     /// Presents the activity level picker (modal on iPad < iOS18, sheet otherwise).
     func presentActivityPicker() {
         if useModalPicker {
+            let displayValue: (ActivityLevel) -> String = { $0.rawValue.capitalized }
             let picker = PickerView(
                 selectedValues: [activeAccount?.activityLevel ?? .normal],
                 options: [[ActivityLevel.normal, ActivityLevel.athlete]],
-                displayValue: { $0.rawValue.capitalized },
+                displayValue: displayValue,
                 title: SettingsStrings.activityLevel,
                 showCancel: false
             ) { vals in
@@ -1825,10 +1833,11 @@ class SettingsStore: ObservableObject {
     func presentHeightPicker() {
         if useModalPicker {
             if activeAccount?.weightUnit == .kg {
+                let displayValue: (String) -> String = { $0 }
                 let picker = PickerView(
                     selectedValues: selectedHeightCm,
                     options: heightCmOptions,
-                    displayValue: { $0 },
+                    displayValue: displayValue,
                     pickerType: .heightCm,
                     title: SettingsStrings.height,
                     showCancel: false
@@ -1842,10 +1851,11 @@ class SettingsStore: ObservableObject {
                     ))
                 )
             } else {
+                let displayValue: (String) -> String = { $0 }
                 let picker = PickerView(
                     selectedValues: selectedHeightInches,
                     options: heightInchesOptions,
-                    displayValue: { $0 },
+                    displayValue: displayValue,
                     pickerType: .heightInches,
                     title: SettingsStrings.height,
                     showCancel: false
@@ -1872,17 +1882,17 @@ class SettingsStore: ObservableObject {
     /// Presents the default graph view picker (modal on iPad < iOS18, sheet otherwise).
     func presentDefaultGraphPeriodPicker() {
         if useModalPicker {
+            let displayValue: (TimePeriod) -> String = { $0.title }
             let picker = PickerView(
                 selectedValues: [defaultGraphPeriod],
                 options: [TimePeriod.allCases],
-                displayValue: { $0.title },
+                displayValue: displayValue,
                 title: SettingsStrings.defaultGraphView,
-                showCancel: false,
-                updateValues: { vals in
-                    self.notificationService.dismissModal()
-                    if let period = vals.first { self.updateDefaultGraphPeriod(period) }
-                }
-            )
+                showCancel: false
+            ) { vals in
+                self.notificationService.dismissModal()
+                if let period = vals.first { self.updateDefaultGraphPeriod(period) }
+            }
             notificationService.showModal(ModalData(presentedView: AnyView(picker)))
         } else {
             showDefaultGraphPeriodPicker = true

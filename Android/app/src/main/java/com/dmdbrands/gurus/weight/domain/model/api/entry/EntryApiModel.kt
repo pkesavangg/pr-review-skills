@@ -26,6 +26,13 @@ data class EntryApiModel(
     val diastolic: Int? = null,
     val note: String? = null,
 
+    // baby (§2.16): weight & measureLength are separate entryTypes
+    val babyId: String? = null,
+    val entryType: String? = null,
+    val babyWeightDecigrams: Int? = null,
+    val babyLengthMillimeters: Int? = null,
+    val entryNote: String? = null,
+
     // shared
     val pulse: Int? = null,
     val source: String? = null,

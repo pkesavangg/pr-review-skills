@@ -1,5 +1,5 @@
-import Testing
 @testable import meApp
+import Testing
 
 @MainActor
 private func makeStreak(_ label: String) -> MileStoneType {

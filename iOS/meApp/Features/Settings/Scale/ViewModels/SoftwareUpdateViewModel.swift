@@ -23,7 +23,7 @@ final class SoftwareUpdateViewModel: ObservableObject {
     let latestVersion: String?
 
     private var deviceSnapshot: DeviceSnapshot? {
-        deviceService.scales.first(where: { $0.id == scaleIdString })
+        deviceService.scales.first { $0.id == scaleIdString }
     }
 
     private let tag = "SoftwareUpdateViewModel"

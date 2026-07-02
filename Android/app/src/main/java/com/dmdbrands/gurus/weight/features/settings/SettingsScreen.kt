@@ -17,7 +17,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.dmdbrands.gurus.weight.BuildConfig
 import com.dmdbrands.gurus.weight.core.navigation.AppRoute
 import com.dmdbrands.gurus.weight.core.navigation.LocalNavBackStack
-import com.dmdbrands.gurus.weight.features.addScale.strings.AddScaleScreenStrings
+import com.dmdbrands.gurus.weight.features.addDevice.strings.AddDeviceScreenStrings
 import com.dmdbrands.gurus.weight.domain.model.common.WeightUnit
 import com.dmdbrands.gurus.weight.features.common.components.AppScaffold
 import com.dmdbrands.gurus.weight.features.common.components.PreviewTheme
@@ -89,6 +89,7 @@ fun SettingsScreenContent(
             SettingsItem(
               title = SettingsScreenStrings.MyKids,
               enabled = state.isMyKidsEnabled,
+              testTag = "settings_row_my_kids",
               onClick = {
                 coroutineScope.launch {
                   backStack.addRoute(AppRoute.AccountSettings.MyKids)
@@ -105,17 +106,20 @@ fun SettingsScreenContent(
               },
             ),
           )
-          add(
-            SettingsItem(
-              title = SettingsScreenStrings.Integrations,
-              testTag = "settings_row_integrations",
-              onClick = {
-                coroutineScope.launch {
-                  backStack.addRoute(AppRoute.Integration.IntegrationList)
-                }
-              },
-            ),
-          )
+          // Hidden for baby-scale only accounts — integrations apply to weight/BP data only.
+          if (state.showIntegrations) {
+            add(
+              SettingsItem(
+                title = SettingsScreenStrings.Integrations,
+                testTag = "settings_row_integrations",
+                onClick = {
+                  coroutineScope.launch {
+                    backStack.addRoute(AppRoute.Integration.IntegrationList)
+                  }
+                },
+              ),
+            )
+          }
           add(
             SettingsItem(
               title = SettingsScreenStrings.ChangePassword,
@@ -134,52 +138,62 @@ fun SettingsScreenContent(
       SettingsSection(
         title = SettingsScreenStrings.App,
         items =
-          listOf(
-            SettingsItem(
-              title = SettingsScreenStrings.UnitType,
-              type = SettingsItemType.Dropdown(
-                state.account?.weightUnit?.unit ?: SettingsScreenStrings.NotSet,
+          buildList {
+            // Hidden for Balance Health (blood-pressure) only accounts — BP has no unit.
+            if (state.showUnitType) {
+              add(
+                SettingsItem(
+                  title = SettingsScreenStrings.UnitType,
+                  type = SettingsItemType.Dropdown(
+                    state.account?.weightUnit?.unit ?: SettingsScreenStrings.NotSet,
+                  ),
+                  testTag = "settings_row_unit_type",
+                  onClick = {
+                    handleIntent.invoke(SettingsIntent.ShowUnitTypeModal)
+                  },
+                ),
+              )
+            }
+            add(
+              SettingsItem(
+                title = SettingsScreenStrings.Permissions,
+                type = SettingsItemType.Action(),
+                testTag = "settings_row_permissions",
+                onClick = {
+                  coroutineScope.launch {
+                    backStack.addRoute(AppRoute.AccountSettings.AppPermissions)
+                  }
+                },
               ),
-              testTag = "settings_row_unit_type",
-              onClick = {
-                handleIntent.invoke(SettingsIntent.ShowUnitTypeModal)
-              },
-            ),
-            SettingsItem(
-              title = SettingsScreenStrings.Permissions,
-              type = SettingsItemType.Action(),
-              testTag = "settings_row_permissions",
-              onClick = {
-                coroutineScope.launch {
-                  backStack.addRoute(AppRoute.AccountSettings.AppPermissions)
-                }
-              },
-            ),
-            SettingsItem(
-              title = if (state.unreadFeedCount > 0) {
-                SettingsScreenStrings.MessagesWithCount(state.unreadFeedCount)
-              } else {
-                SettingsScreenStrings.Messages
-              },
-              type = SettingsItemType.Action(),
-              showUnreadIndicator = state.showUnreadFeedIndication,
-              testTag = "settings_row_messages",
-              onClick = {
-                coroutineScope.launch {
-                  backStack.addRoute(AppRoute.Feed.FeedMessages)
-                }
-              },
-            ),
-
-            SettingsItem(
-              title = SettingsScreenStrings.Appearance,
-              type = SettingsItemType.Dropdown(state.currentThemeMode),
-              testTag = "settings_row_appearance",
-              onClick = {
-                handleIntent.invoke(SettingsIntent.ShowAppearanceModal)
-              },
-            ),
-          ),
+            )
+            add(
+              SettingsItem(
+                title = if (state.unreadFeedCount > 0) {
+                  SettingsScreenStrings.MessagesWithCount(state.unreadFeedCount)
+                } else {
+                  SettingsScreenStrings.Messages
+                },
+                type = SettingsItemType.Action(),
+                showUnreadIndicator = state.showUnreadFeedIndication,
+                testTag = "settings_row_messages",
+                onClick = {
+                  coroutineScope.launch {
+                    backStack.addRoute(AppRoute.Feed.FeedMessages)
+                  }
+                },
+              ),
+            )
+            add(
+              SettingsItem(
+                title = SettingsScreenStrings.Appearance,
+                type = SettingsItemType.Dropdown(state.currentThemeMode),
+                testTag = "settings_row_appearance",
+                onClick = {
+                  handleIntent.invoke(SettingsIntent.ShowAppearanceModal)
+                },
+              ),
+            )
+          },
       )
 
       // My Weight Section — only shown when a Weight Scale is paired

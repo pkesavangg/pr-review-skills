@@ -36,6 +36,7 @@ final class AccountService: AccountServiceProtocol, ObservableObject { // swiftl
     var cancellables = Set<AnyCancellable>()
     let tag = "AccountService"
 
+    // swiftlint:disable:next cyclomatic_complexity function_body_length
     init(
         apiRepo: AccountRepositoryAPIProtocol? = nil,
         localRepo: AccountRepositoryProtocol? = nil,
@@ -51,7 +52,7 @@ final class AccountService: AccountServiceProtocol, ObservableObject { // swiftl
         self.networkMonitor = networkMonitor ?? NetworkMonitor.shared
         self.migrationService = migrationService ?? AccountMigrationService()
         self.scaleRepo = scaleRepo ?? DeviceRepository()
-        
+
         $activeAccount
             .dropFirst()
             .sink { [weak self] snapshot in
@@ -88,11 +89,16 @@ final class AccountService: AccountServiceProtocol, ObservableObject { // swiftl
             do {
                 if let activeAcct = try localRepo?.fetchAllAccountsSync()
                     .first(where: { $0.isActiveAccount == true }) {
-                    let tokens = keychainService.getTokens(for: activeAcct.accountId)
+                    let keychainTokens = keychainService.getTokens(for: activeAcct.accountId)
+                    // During the 5.0.3 → Keychain migration window, Keychain is empty but the
+                    // SwiftData columns still hold the 5.0.3 tokens. Use them as a fallback so
+                    // session services that register immediately after this assignment never see
+                    // an empty bearer token (which would cause a spurious 401 → auto-logout
+                    // before migrateTokensToKeychainIfNeeded() runs in the sibling Task).
                     self.activeAccount = activeAcct.toSnapshot(
-                        accessToken: tokens?.accessToken,
-                        refreshToken: tokens?.refreshToken,
-                        expiresAt: tokens?.expiresAt
+                        accessToken: keychainTokens?.accessToken ?? activeAcct.accessToken,
+                        refreshToken: keychainTokens?.refreshToken ?? activeAcct.refreshToken,
+                        expiresAt: keychainTokens?.expiresAt ?? activeAcct.expiresAt
                     )
                     Theme.shared.setActiveAccount(activeAcct.accountId)
                 }
@@ -104,10 +110,17 @@ final class AccountService: AccountServiceProtocol, ObservableObject { // swiftl
         // Load initial accounts from local storage
         Task {
             do {
-                try await migrateTokensToKeychainIfNeeded()
-                try await syncUnsyncedAccounts() // Try to sync any offline changes
+                let justMigrated = try await migrateTokensToKeychainIfNeeded()
+                // On first launch after a 5.0.3 upgrade the local data is already complete —
+                // skip the server sync/refresh so we never fire API calls with potentially
+                // stale tokens. Normal sync/refresh resumes on every subsequent launch.
+                if !justMigrated {
+                    try await syncUnsyncedAccounts()
+                }
                 try await updatePublishedState()
-                try await refreshAllAccounts()
+                if !justMigrated {
+                    try await refreshAllAccounts()
+                }
                 if activeAccount == nil {
                     /// migrate from ionic app if needed
                     isIonicMigrationInProgress = true
@@ -144,7 +157,7 @@ final class AccountService: AccountServiceProtocol, ObservableObject { // swiftl
             if isSameAccount {
                 activeAccount = nil
             }
-            
+
             let account = try await prepareAuthenticatedAccount(from: response, existingAccount: existingAccount)
             try await makeOtherAccountsInactive(except: account)
             if existingAccount == nil {
@@ -181,7 +194,7 @@ final class AccountService: AccountServiceProtocol, ObservableObject { // swiftl
             if isSameAccount {
                 activeAccount = nil
             }
-            
+
             let account = try await prepareAuthenticatedAccount(from: response, existingAccount: existingAccount)
             try await makeOtherAccountsInactive(except: account)
             if existingAccount == nil {
@@ -381,7 +394,7 @@ final class AccountService: AccountServiceProtocol, ObservableObject { // swiftl
     func getAllLoggedInAccounts() async throws -> [AccountSnapshot] {
         let all = try await localRepo.fetchAllAccounts()
         return all.filter { $0.isLoggedIn == true }.map { account in
-            let tokens = keychainService.getTokens(for: account.accountId)
+            let tokens = resolveTokens(for: account)
             return account.toSnapshot(
                 accessToken: tokens?.accessToken,
                 refreshToken: tokens?.refreshToken,
@@ -393,7 +406,7 @@ final class AccountService: AccountServiceProtocol, ObservableObject { // swiftl
     /// Fetches an account snapshot by its unique ID.
     func fetchAccount(byId id: String) async throws -> AccountSnapshot? {
         guard let account = try await localRepo.fetchAccount(byId: id) else { return nil }
-        let tokens = keychainService.getTokens(for: account.accountId)
+        let tokens = resolveTokens(for: account)
         return account.toSnapshot(
             accessToken: tokens?.accessToken,
             refreshToken: tokens?.refreshToken,
@@ -405,7 +418,7 @@ final class AccountService: AccountServiceProtocol, ObservableObject { // swiftl
     func fetchAllAccounts() async throws -> [AccountSnapshot] {
         let accounts = try await localRepo.fetchAllAccounts()
         return accounts.map { account in
-            let tokens = keychainService.getTokens(for: account.accountId)
+            let tokens = resolveTokens(for: account)
             return account.toSnapshot(
                 accessToken: tokens?.accessToken,
                 refreshToken: tokens?.refreshToken,
@@ -1259,7 +1272,11 @@ final class AccountService: AccountServiceProtocol, ObservableObject { // swiftl
         guard let resolvedAccountId = accountId ?? activeAccount?.accountId else {
             throw AccountError.noActiveAccount
         }
-        let refreshToken = keychainService.getTokens(for: resolvedAccountId)?.refreshToken
+        // Keychain-first with a 5.0.3 SwiftData fallback so a refresh triggered during the
+        // migration window (Keychain not yet populated) uses the upgraded refresh token
+        // instead of throwing and tripping the auto-logout path in TokenManager.
+        let account = try await localRepo.fetchAccount(byId: resolvedAccountId)
+        let refreshToken = account.flatMap { resolveTokens(for: $0) }?.refreshToken
         guard let refreshToken = refreshToken else {
             throw AccountError.noActiveAccount
         }
@@ -1293,12 +1310,31 @@ final class AccountService: AccountServiceProtocol, ObservableObject { // swiftl
         )
     }
 
+    /// Resolves tokens for an account, preferring Keychain (the source of truth).
+    ///
+    /// During the one-time 5.0.3 → Keychain migration window the Keychain is still empty
+    /// while the SwiftData columns continue to hold the upgraded tokens. Fall back to those
+    /// columns so no snapshot/request ever fires with an empty bearer — an empty bearer would
+    /// force a refresh against the empty Keychain and trigger a spurious auto-logout before
+    /// `migrateTokensToKeychainIfNeeded()` has populated the Keychain. The fallback stops
+    /// mattering once migration completes (Keychain wins and the columns are cleared).
+    private func resolveTokens(for account: Account) -> Tokens? {
+        if let tokens = keychainService.getTokens(for: account.accountId) {
+            return tokens
+        }
+        guard let access = account.accessToken, let refresh = account.refreshToken,
+              let expires = account.expiresAt, !access.isEmpty, !refresh.isEmpty else {
+            return nil
+        }
+        return Tokens(accessToken: access, refreshToken: refresh, expiresAt: expires)
+    }
+
     /// Updates the published state of active and all accounts.
     func updatePublishedState() async throws {
         let rawAccounts = try await localRepo.fetchAllAccounts()
 
         let snapshots: [AccountSnapshot] = rawAccounts.map { account in
-            let tokens = keychainService.getTokens(for: account.accountId)
+            let tokens = resolveTokens(for: account)
             return account.toSnapshot(
                 accessToken: tokens?.accessToken,
                 refreshToken: tokens?.refreshToken,
@@ -1412,10 +1448,16 @@ final class AccountService: AccountServiceProtocol, ObservableObject { // swiftl
     }
 
     /// One-time migration: copy tokens from SwiftData to Keychain, then clear on Account so SwiftData never persists them again.
-    private func migrateTokensToKeychainIfNeeded() async throws {
+    /// Moves tokens from the 5.0.3 SwiftData columns to the Keychain.
+    /// Returns `true` if this was the first run of the migration (i.e. we actually moved tokens),
+    /// `false` if the migration had already been completed on a previous launch.
+    /// `internal` (not `private`) so tests can assert the migration contract that gates the
+    /// first-launch sync/refresh skip in `init`. Not part of the public service surface.
+    @discardableResult
+    func migrateTokensToKeychainIfNeeded() async throws -> Bool {
         let key = KvStorageKeys.tokensMigratedToKeychain.rawValue
         if kvStorage.getValue(forKey: key) as? Bool == true {
-            return
+            return false
         }
         let accounts = try await localRepo.fetchAllAccounts()
         for account in accounts {
@@ -1432,6 +1474,7 @@ final class AccountService: AccountServiceProtocol, ObservableObject { // swiftl
         }
         kvStorage.setValue(true, forKey: key)
         logger.log(level: .info, tag: tag, message: "Tokens migrated from SwiftData to Keychain for \(accounts.count) account(s)")
+        return true
     }
 
     /// Clears token fields on account before persist so tokens are never stored in SwiftData (Keychain only).

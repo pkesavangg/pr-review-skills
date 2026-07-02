@@ -139,7 +139,7 @@ class FeedServiceTest {
   // -------------------------------------------------------------------------
 
   @Test
-  fun `fetchFeedItems fetches from repository and emits merged items`() = runTest {
+  fun `fetchFeedItems fetches from repository and emits merged items`() = runTest(mainDispatcherRule.scheduler) {
     val backendItems = listOf(createFeedItem(elementId = "e1"), createFeedItem(elementId = "e2"))
     coEvery { feedRepository.fetchFeedItems() } returns backendItems
     coEvery { ggIAMService.getStoredFeedNotificationSetting() } returns FeedSetting(
@@ -157,7 +157,7 @@ class FeedServiceTest {
   }
 
   @Test
-  fun `fetchFeedItems sets account ID on IAM service`() = runTest {
+  fun `fetchFeedItems sets account ID on IAM service`() = runTest(mainDispatcherRule.scheduler) {
     coEvery { feedRepository.fetchFeedItems() } returns emptyList()
     coEvery { ggIAMService.getStoredFeedNotificationSetting() } returns null
     service = createService()
@@ -168,7 +168,7 @@ class FeedServiceTest {
   }
 
   @Test
-  fun `fetchFeedItems sets empty account ID when no current account`() = runTest {
+  fun `fetchFeedItems sets empty account ID when no current account`() = runTest(mainDispatcherRule.scheduler) {
     coEvery { accountService.getCurrentAccount() } returns null
     coEvery { feedRepository.fetchFeedItems() } returns emptyList()
     coEvery { ggIAMService.getStoredFeedNotificationSetting() } returns null
@@ -180,7 +180,7 @@ class FeedServiceTest {
   }
 
   @Test
-  fun `fetchFeedItems syncs items with IAM service`() = runTest {
+  fun `fetchFeedItems syncs items with IAM service`() = runTest(mainDispatcherRule.scheduler) {
     val items = listOf(createFeedItem())
     coEvery { feedRepository.fetchFeedItems() } returns items
     coEvery { ggIAMService.getStoredFeedNotificationSetting() } returns null
@@ -192,7 +192,7 @@ class FeedServiceTest {
   }
 
   @Test
-  fun `fetchFeedItems updates notification badge`() = runTest {
+  fun `fetchFeedItems updates notification badge`() = runTest(mainDispatcherRule.scheduler) {
     val unreadItem = createFeedItem(isUnread = true)
     coEvery { feedRepository.fetchFeedItems() } returns listOf(unreadItem)
     coEvery { ggIAMService.getStoredFeedNotificationSetting() } returns FeedSetting(
@@ -213,7 +213,7 @@ class FeedServiceTest {
   // -------------------------------------------------------------------------
 
   @Test
-  fun `fetchFeedItems emits local items when offline`() = runTest {
+  fun `fetchFeedItems emits local items when offline`() = runTest(mainDispatcherRule.scheduler) {
     every { connectivityObserver.getCurrentNetworkState() } returns offlineState
     coEvery { ggIAMService.getStoredFeedNotificationSetting() } returns null
     service = createService()
@@ -226,7 +226,7 @@ class FeedServiceTest {
   }
 
   @Test
-  fun `fetchFeedItems skips repository call when offline`() = runTest {
+  fun `fetchFeedItems skips repository call when offline`() = runTest(mainDispatcherRule.scheduler) {
     every { connectivityObserver.getCurrentNetworkState() } returns offlineState
     coEvery { ggIAMService.getStoredFeedNotificationSetting() } returns null
     service = createService()
@@ -241,7 +241,7 @@ class FeedServiceTest {
   // -------------------------------------------------------------------------
 
   @Test
-  fun `fetchFeedItems emits local items on repository exception`() = runTest {
+  fun `fetchFeedItems emits local items on repository exception`() = runTest(mainDispatcherRule.scheduler) {
     coEvery { feedRepository.fetchFeedItems() } throws RuntimeException("API error")
     coEvery { ggIAMService.getStoredFeedNotificationSetting() } returns null
     service = createService()
@@ -254,7 +254,7 @@ class FeedServiceTest {
   }
 
   @Test
-  fun `fetchFeedItems offline with existing local items emits cached items`() = runTest {
+  fun `fetchFeedItems offline with existing local items emits cached items`() = runTest(mainDispatcherRule.scheduler) {
     // First fetch populates local storage while online
     val items = listOf(createFeedItem(elementId = "cached-1"), createFeedItem(elementId = "cached-2"))
     coEvery { feedRepository.fetchFeedItems() } returns items
@@ -278,7 +278,7 @@ class FeedServiceTest {
   // -------------------------------------------------------------------------
 
   @Test
-  fun `fetchFeedItems merges backend items with local storage preserving read status`() = runTest {
+  fun `fetchFeedItems merges backend items with local storage preserving read status`() = runTest(mainDispatcherRule.scheduler) {
     // First fetch populates local storage
     val initialItems = listOf(
       createFeedItem(elementId = "e1", isUnread = true),
@@ -306,7 +306,7 @@ class FeedServiceTest {
   }
 
   @Test
-  fun `fetchFeedItems adds new backend items not in local storage`() = runTest {
+  fun `fetchFeedItems adds new backend items not in local storage`() = runTest(mainDispatcherRule.scheduler) {
     val initialItems = listOf(createFeedItem(elementId = "e1"))
     coEvery { feedRepository.fetchFeedItems() } returns initialItems
     coEvery { ggIAMService.getStoredFeedNotificationSetting() } returns null
@@ -329,7 +329,7 @@ class FeedServiceTest {
   }
 
   @Test
-  fun `fetchFeedItems preserves local items not in backend response`() = runTest {
+  fun `fetchFeedItems preserves local items not in backend response`() = runTest(mainDispatcherRule.scheduler) {
     val initialItems = listOf(
       createFeedItem(elementId = "e1"),
       createFeedItem(elementId = "e2"),
@@ -355,7 +355,7 @@ class FeedServiceTest {
   // -------------------------------------------------------------------------
 
   @Test
-  fun `updateFeedItem with read action marks item as read and clears trigger`() = runTest {
+  fun `updateFeedItem with read action marks item as read and clears trigger`() = runTest(mainDispatcherRule.scheduler) {
     val item = createFeedItem(elementId = "e1", isUnread = true, trigger = "login")
     coEvery { feedRepository.fetchFeedItems() } returns listOf(item)
     coEvery { feedRepository.updateFeedItem(any(), any()) } just Runs
@@ -374,7 +374,7 @@ class FeedServiceTest {
   }
 
   @Test
-  fun `updateFeedItem with trigger action clears trigger only`() = runTest {
+  fun `updateFeedItem with trigger action clears trigger only`() = runTest(mainDispatcherRule.scheduler) {
     val item = createFeedItem(elementId = "e1", isUnread = true, trigger = "login")
     coEvery { feedRepository.fetchFeedItems() } returns listOf(item)
     coEvery { feedRepository.updateFeedItem(any(), any()) } just Runs
@@ -393,7 +393,7 @@ class FeedServiceTest {
   }
 
   @Test
-  fun `updateFeedItem with click action does not modify item fields`() = runTest {
+  fun `updateFeedItem with click action does not modify item fields`() = runTest(mainDispatcherRule.scheduler) {
     val item = createFeedItem(elementId = "e1", isUnread = true, trigger = "login")
     coEvery { feedRepository.fetchFeedItems() } returns listOf(item)
     coEvery { feedRepository.updateFeedItem(any(), any()) } just Runs
@@ -412,7 +412,7 @@ class FeedServiceTest {
   }
 
   @Test
-  fun `updateFeedItem calls repository with correct feed action`() = runTest {
+  fun `updateFeedItem calls repository with correct feed action`() = runTest(mainDispatcherRule.scheduler) {
     val item = createFeedItem(feedPostId = "post-1")
     coEvery { feedRepository.fetchFeedItems() } returns listOf(item)
     coEvery { feedRepository.updateFeedItem(any(), any()) } just Runs
@@ -430,7 +430,7 @@ class FeedServiceTest {
   }
 
   @Test
-  fun `updateFeedItem with read action emits feed notification change`() = runTest {
+  fun `updateFeedItem with read action emits feed notification change`() = runTest(mainDispatcherRule.scheduler) {
     val item = createFeedItem(elementId = "e1")
     coEvery { feedRepository.fetchFeedItems() } returns listOf(item)
     coEvery { feedRepository.updateFeedItem(any(), any()) } just Runs
@@ -444,7 +444,7 @@ class FeedServiceTest {
   }
 
   @Test
-  fun `updateFeedItem with non-read action does not emit feed notification change`() = runTest {
+  fun `updateFeedItem with non-read action does not emit feed notification change`() = runTest(mainDispatcherRule.scheduler) {
     val item = createFeedItem(elementId = "e1")
     coEvery { feedRepository.fetchFeedItems() } returns listOf(item)
     coEvery { feedRepository.updateFeedItem(any(), any()) } just Runs
@@ -458,7 +458,7 @@ class FeedServiceTest {
   }
 
   @Test
-  fun `updateFeedItem logs warning when item not found in local storage`() = runTest {
+  fun `updateFeedItem logs warning when item not found in local storage`() = runTest(mainDispatcherRule.scheduler) {
     coEvery { feedRepository.updateFeedItem(any(), any()) } just Runs
     coEvery { ggIAMService.getStoredFeedNotificationSetting() } returns null
     service = createService()
@@ -470,7 +470,7 @@ class FeedServiceTest {
   }
 
   @Test
-  fun `updateFeedItem catches repository exception`() = runTest {
+  fun `updateFeedItem catches repository exception`() = runTest(mainDispatcherRule.scheduler) {
     coEvery { feedRepository.updateFeedItem(any(), any()) } throws RuntimeException("API error")
     service = createService()
 
@@ -484,7 +484,7 @@ class FeedServiceTest {
   // -------------------------------------------------------------------------
 
   @Test
-  fun `updateFeedItem with pageView includes osType and meta`() = runTest {
+  fun `updateFeedItem with pageView includes osType and meta`() = runTest(mainDispatcherRule.scheduler) {
     val item = createFeedItem(feedPostId = "post-1")
     coEvery { feedRepository.fetchFeedItems() } returns listOf(item)
     coEvery { feedRepository.updateFeedItem(any(), any()) } just Runs
@@ -503,7 +503,7 @@ class FeedServiceTest {
   }
 
   @Test
-  fun `updateFeedItem with shopNowClick includes osType and meta`() = runTest {
+  fun `updateFeedItem with shopNowClick includes osType and meta`() = runTest(mainDispatcherRule.scheduler) {
     val item = createFeedItem(feedPostId = "post-1")
     coEvery { feedRepository.fetchFeedItems() } returns listOf(item)
     coEvery { feedRepository.updateFeedItem(any(), any()) } just Runs
@@ -520,7 +520,7 @@ class FeedServiceTest {
   }
 
   @Test
-  fun `updateFeedItem with trigger action has no osType or meta`() = runTest {
+  fun `updateFeedItem with trigger action has no osType or meta`() = runTest(mainDispatcherRule.scheduler) {
     val item = createFeedItem(feedPostId = "post-1")
     coEvery { feedRepository.fetchFeedItems() } returns listOf(item)
     coEvery { feedRepository.updateFeedItem(any(), any()) } just Runs
@@ -541,7 +541,7 @@ class FeedServiceTest {
   // -------------------------------------------------------------------------
 
   @Test
-  fun `getUnreadFeedCount returns count of unread items`() = runTest {
+  fun `getUnreadFeedCount returns count of unread items`() = runTest(mainDispatcherRule.scheduler) {
     val items = listOf(
       createFeedItem(elementId = "e1", isUnread = true),
       createFeedItem(elementId = "e2", isUnread = false),
@@ -558,7 +558,7 @@ class FeedServiceTest {
   }
 
   @Test
-  fun `getUnreadFeedCount returns zero when no items`() = runTest {
+  fun `getUnreadFeedCount returns zero when no items`() = runTest(mainDispatcherRule.scheduler) {
     service = createService()
 
     val count = service.getUnreadFeedCount()
@@ -567,7 +567,7 @@ class FeedServiceTest {
   }
 
   @Test
-  fun `getUnreadFeedCount returns zero when all items are read`() = runTest {
+  fun `getUnreadFeedCount returns zero when all items are read`() = runTest(mainDispatcherRule.scheduler) {
     val items = listOf(
       createFeedItem(elementId = "e1", isUnread = false),
       createFeedItem(elementId = "e2", isUnread = false),
@@ -587,7 +587,7 @@ class FeedServiceTest {
   // -------------------------------------------------------------------------
 
   @Test
-  fun `getFeedSettings returns settings from IAM service`() = runTest {
+  fun `getFeedSettings returns settings from IAM service`() = runTest(mainDispatcherRule.scheduler) {
     val settings = FeedSetting(showPopupMessage = true, showNotificationBadge = false)
     coEvery { ggIAMService.getStoredFeedNotificationSetting() } returns settings
     service = createService()
@@ -598,7 +598,7 @@ class FeedServiceTest {
   }
 
   @Test
-  fun `getFeedSettings returns null when IAM service returns null`() = runTest {
+  fun `getFeedSettings returns null when IAM service returns null`() = runTest(mainDispatcherRule.scheduler) {
     coEvery { ggIAMService.getStoredFeedNotificationSetting() } returns null
     service = createService()
 
@@ -612,7 +612,7 @@ class FeedServiceTest {
   // -------------------------------------------------------------------------
 
   @Test
-  fun `checkAndTriggerFeedModal returns result from IAM service`() = runTest {
+  fun `checkAndTriggerFeedModal returns result from IAM service`() = runTest(mainDispatcherRule.scheduler) {
     coEvery { ggIAMService.checkFeedModalTrigger() } returns true
     service = createService()
 
@@ -622,7 +622,7 @@ class FeedServiceTest {
   }
 
   @Test
-  fun `checkAndTriggerFeedModal returns false when IAM returns false`() = runTest {
+  fun `checkAndTriggerFeedModal returns false when IAM returns false`() = runTest(mainDispatcherRule.scheduler) {
     coEvery { ggIAMService.checkFeedModalTrigger() } returns false
     service = createService()
 
@@ -632,7 +632,7 @@ class FeedServiceTest {
   }
 
   @Test
-  fun `checkAndTriggerFeedModal returns false on exception`() = runTest {
+  fun `checkAndTriggerFeedModal returns false on exception`() = runTest(mainDispatcherRule.scheduler) {
     coEvery { ggIAMService.checkFeedModalTrigger() } throws RuntimeException("Error")
     service = createService()
 
@@ -646,7 +646,7 @@ class FeedServiceTest {
   // -------------------------------------------------------------------------
 
   @Test
-  fun `notification badge is true when unread items exist and badge setting is enabled`() = runTest {
+  fun `notification badge is true when unread items exist and badge setting is enabled`() = runTest(mainDispatcherRule.scheduler) {
     val items = listOf(createFeedItem(isUnread = true))
     coEvery { feedRepository.fetchFeedItems() } returns items
     coEvery { ggIAMService.getStoredFeedNotificationSetting() } returns FeedSetting(
@@ -662,7 +662,7 @@ class FeedServiceTest {
   }
 
   @Test
-  fun `notification badge is false when unread items exist but badge setting is disabled`() = runTest {
+  fun `notification badge is false when unread items exist but badge setting is disabled`() = runTest(mainDispatcherRule.scheduler) {
     val items = listOf(createFeedItem(isUnread = true))
     coEvery { feedRepository.fetchFeedItems() } returns items
     coEvery { ggIAMService.getStoredFeedNotificationSetting() } returns FeedSetting(
@@ -678,7 +678,7 @@ class FeedServiceTest {
   }
 
   @Test
-  fun `notification badge is false when no unread items`() = runTest {
+  fun `notification badge is false when no unread items`() = runTest(mainDispatcherRule.scheduler) {
     val items = listOf(createFeedItem(isUnread = false))
     coEvery { feedRepository.fetchFeedItems() } returns items
     coEvery { ggIAMService.getStoredFeedNotificationSetting() } returns FeedSetting(
@@ -694,7 +694,7 @@ class FeedServiceTest {
   }
 
   @Test
-  fun `notification badge defaults to true when feed settings is null`() = runTest {
+  fun `notification badge defaults to true when feed settings is null`() = runTest(mainDispatcherRule.scheduler) {
     val items = listOf(createFeedItem(isUnread = true))
     coEvery { feedRepository.fetchFeedItems() } returns items
     coEvery { ggIAMService.getStoredFeedNotificationSetting() } returns null
@@ -741,7 +741,7 @@ class FeedServiceTest {
   // -------------------------------------------------------------------------
 
   @Test
-  fun `init block handles feed update event from IAM service`() = runTest {
+  fun `init block handles feed update event from IAM service`() = runTest(mainDispatcherRule.scheduler) {
     val item = createFeedItem(elementId = "e1")
     coEvery { feedRepository.fetchFeedItems() } returns listOf(item)
     coEvery { feedRepository.updateFeedItem(any(), any()) } just Runs
@@ -762,7 +762,7 @@ class FeedServiceTest {
   }
 
   @Test
-  fun `init block handles feedNotificationChanged event`() = runTest {
+  fun `init block handles feedNotificationChanged event`() = runTest(mainDispatcherRule.scheduler) {
     coEvery { ggIAMService.getStoredFeedNotificationSetting() } returns FeedSetting(
       showPopupMessage = true,
       showNotificationBadge = true,
@@ -797,7 +797,7 @@ class FeedServiceTest {
   }
 
   @Test
-  fun `handleFeedModalAction settings navigates to FeedMessageSetting`() = runTest {
+  fun `handleFeedModalAction settings navigates to FeedMessageSetting`() = runTest(mainDispatcherRule.scheduler) {
     service = createService()
     val item = createFeedItem()
 
@@ -814,7 +814,7 @@ class FeedServiceTest {
   }
 
   @Test
-  fun `handleFeedModalAction buy_now with LANDING type navigates to FeedLanding`() = runTest {
+  fun `handleFeedModalAction buy_now with LANDING type navigates to FeedLanding`() = runTest(mainDispatcherRule.scheduler) {
     val item = createFeedItem(
       feedType = FeedTypes.LANDING,
       landingPage = LandingPage(
@@ -843,7 +843,7 @@ class FeedServiceTest {
   // -------------------------------------------------------------------------
 
   @Test
-  fun `setMockFeedItems generates items when local storage is empty`() = runTest {
+  fun `setMockFeedItems generates items when local storage is empty`() = runTest(mainDispatcherRule.scheduler) {
     service = createService()
 
     service.feedsChanged.test {
@@ -856,7 +856,7 @@ class FeedServiceTest {
   }
 
   @Test
-  fun `setMockFeedItems does not generate items when local storage has items`() = runTest {
+  fun `setMockFeedItems does not generate items when local storage has items`() = runTest(mainDispatcherRule.scheduler) {
     val existingItems = listOf(createFeedItem())
     coEvery { feedRepository.fetchFeedItems() } returns existingItems
     coEvery { ggIAMService.getStoredFeedNotificationSetting() } returns null
@@ -879,7 +879,7 @@ class FeedServiceTest {
   // -------------------------------------------------------------------------
 
   @Test
-  fun `convertStringToFeedActionType maps trigger correctly`() = runTest {
+  fun `convertStringToFeedActionType maps trigger correctly`() = runTest(mainDispatcherRule.scheduler) {
     val item = createFeedItem(elementId = "e1", trigger = "login")
     coEvery { feedRepository.fetchFeedItems() } returns listOf(item)
     coEvery { feedRepository.updateFeedItem(any(), any()) } just Runs
@@ -897,7 +897,7 @@ class FeedServiceTest {
   }
 
   @Test
-  fun `convertStringToFeedActionType maps click correctly`() = runTest {
+  fun `convertStringToFeedActionType maps click correctly`() = runTest(mainDispatcherRule.scheduler) {
     val item = createFeedItem(elementId = "e1")
     coEvery { feedRepository.fetchFeedItems() } returns listOf(item)
     coEvery { feedRepository.updateFeedItem(any(), any()) } just Runs
@@ -915,7 +915,7 @@ class FeedServiceTest {
   }
 
   @Test
-  fun `convertStringToFeedActionType maps pageView correctly`() = runTest {
+  fun `convertStringToFeedActionType maps pageView correctly`() = runTest(mainDispatcherRule.scheduler) {
     val item = createFeedItem(elementId = "e1")
     coEvery { feedRepository.fetchFeedItems() } returns listOf(item)
     coEvery { feedRepository.updateFeedItem(any(), any()) } just Runs
@@ -933,7 +933,7 @@ class FeedServiceTest {
   }
 
   @Test
-  fun `convertStringToFeedActionType maps shopNowClick correctly`() = runTest {
+  fun `convertStringToFeedActionType maps shopNowClick correctly`() = runTest(mainDispatcherRule.scheduler) {
     val item = createFeedItem(elementId = "e1")
     coEvery { feedRepository.fetchFeedItems() } returns listOf(item)
     coEvery { feedRepository.updateFeedItem(any(), any()) } just Runs
@@ -951,7 +951,7 @@ class FeedServiceTest {
   }
 
   @Test
-  fun `convertStringToFeedActionType maps variationClick correctly`() = runTest {
+  fun `convertStringToFeedActionType maps variationClick correctly`() = runTest(mainDispatcherRule.scheduler) {
     val item = createFeedItem(elementId = "e1")
     coEvery { feedRepository.fetchFeedItems() } returns listOf(item)
     coEvery { feedRepository.updateFeedItem(any(), any()) } just Runs
@@ -969,7 +969,7 @@ class FeedServiceTest {
   }
 
   @Test
-  fun `convertStringToFeedActionType maps promoClick correctly`() = runTest {
+  fun `convertStringToFeedActionType maps promoClick correctly`() = runTest(mainDispatcherRule.scheduler) {
     val item = createFeedItem(elementId = "e1")
     coEvery { feedRepository.fetchFeedItems() } returns listOf(item)
     coEvery { feedRepository.updateFeedItem(any(), any()) } just Runs
@@ -987,7 +987,7 @@ class FeedServiceTest {
   }
 
   @Test
-  fun `convertStringToFeedActionType defaults to click for unknown action`() = runTest {
+  fun `convertStringToFeedActionType defaults to click for unknown action`() = runTest(mainDispatcherRule.scheduler) {
     val item = createFeedItem(elementId = "e1")
     coEvery { feedRepository.fetchFeedItems() } returns listOf(item)
     coEvery { feedRepository.updateFeedItem(any(), any()) } just Runs
@@ -1009,7 +1009,7 @@ class FeedServiceTest {
   // -------------------------------------------------------------------------
 
   @Test
-  fun `handleFeedModalAction buy_now with LINK type tracks click`() = runTest {
+  fun `handleFeedModalAction buy_now with LINK type tracks click`() = runTest(mainDispatcherRule.scheduler) {
     val item = createFeedItem(feedType = FeedTypes.LINK, linkTarget = "https://shop.example.com")
     coEvery { feedRepository.fetchFeedItems() } returns listOf(item)
     coEvery { feedRepository.updateFeedItem(any(), any()) } just Runs
@@ -1032,7 +1032,7 @@ class FeedServiceTest {
   }
 
   @Test
-  fun `handleFeedModalAction settings catches navigation exception`() = runTest {
+  fun `handleFeedModalAction settings catches navigation exception`() = runTest(mainDispatcherRule.scheduler) {
     coEvery { appNavigationService.navigateTo(any<com.dmdbrands.gurus.weight.core.navigation.AppRoute>()) } throws RuntimeException("Nav error")
     service = createService()
 
@@ -1047,7 +1047,7 @@ class FeedServiceTest {
   }
 
   @Test
-  fun `handleFeedModalAction buy_now LANDING catches navigation exception`() = runTest {
+  fun `handleFeedModalAction buy_now LANDING catches navigation exception`() = runTest(mainDispatcherRule.scheduler) {
     val item = createFeedItem(
       feedType = FeedTypes.LANDING,
       landingPage = LandingPage(
@@ -1071,7 +1071,7 @@ class FeedServiceTest {
   }
 
   @Test
-  fun `handleFeedModalAction buy_now with LINK type and null linkTarget logs warning`() = runTest {
+  fun `handleFeedModalAction buy_now with LINK type and null linkTarget logs warning`() = runTest(mainDispatcherRule.scheduler) {
     val item = createFeedItem(feedType = FeedTypes.LINK, linkTarget = null)
     coEvery { feedRepository.updateFeedItem(any(), any()) } just Runs
     service = createService()
@@ -1088,7 +1088,7 @@ class FeedServiceTest {
   }
 
   @Test
-  fun `handleFeedModalAction buy_now with unknown feedType logs warning`() = runTest {
+  fun `handleFeedModalAction buy_now with unknown feedType logs warning`() = runTest(mainDispatcherRule.scheduler) {
     val item = createFeedItem(feedType = "unknown_type")
     coEvery { feedRepository.updateFeedItem(any(), any()) } just Runs
     service = createService()
@@ -1105,7 +1105,7 @@ class FeedServiceTest {
   }
 
   @Test
-  fun `handleFeedModalAction with unknown action type logs message`() = runTest {
+  fun `handleFeedModalAction with unknown action type logs message`() = runTest(mainDispatcherRule.scheduler) {
     service = createService()
 
     service.showIAMFeedModal(createFeedItem())
@@ -1124,7 +1124,7 @@ class FeedServiceTest {
   // -------------------------------------------------------------------------
 
   @Test
-  fun `feedSettingsChanged emits when feed notification changes`() = runTest {
+  fun `feedSettingsChanged emits when feed notification changes`() = runTest(mainDispatcherRule.scheduler) {
     val settings = FeedSetting(showPopupMessage = true, showNotificationBadge = true)
     coEvery { ggIAMService.getStoredFeedNotificationSetting() } returns settings
     service = createService()
@@ -1139,7 +1139,7 @@ class FeedServiceTest {
   }
 
   @Test
-  fun `showIAMFeedModal triggers updateFeedItem with trigger action`() = runTest {
+  fun `showIAMFeedModal triggers updateFeedItem with trigger action`() = runTest(mainDispatcherRule.scheduler) {
     val item = createFeedItem(elementId = "e1")
     coEvery { feedRepository.fetchFeedItems() } returns listOf(item)
     coEvery { feedRepository.updateFeedItem(any(), any()) } just Runs
@@ -1161,7 +1161,7 @@ class FeedServiceTest {
   // -------------------------------------------------------------------------
 
   @Test
-  fun `mergeFeedItemsWithLocalStorage updates all fields from backend`() = runTest {
+  fun `mergeFeedItemsWithLocalStorage updates all fields from backend`() = runTest(mainDispatcherRule.scheduler) {
     val initial = createFeedItem(elementId = "e1", isUnread = true, trigger = "login")
     coEvery { feedRepository.fetchFeedItems() } returns listOf(initial)
     coEvery { ggIAMService.getStoredFeedNotificationSetting() } returns null
@@ -1190,7 +1190,7 @@ class FeedServiceTest {
   }
 
   @Test
-  fun `mergeFeedItemsWithLocalStorage deduplicates by elementId`() = runTest {
+  fun `mergeFeedItemsWithLocalStorage deduplicates by elementId`() = runTest(mainDispatcherRule.scheduler) {
     val items = listOf(
       createFeedItem(elementId = "e1"),
       createFeedItem(elementId = "e1"),
@@ -1211,7 +1211,7 @@ class FeedServiceTest {
   // -------------------------------------------------------------------------
 
   @Test
-  fun `setMockFeedItems generates items with alternating read-unread status`() = runTest {
+  fun `setMockFeedItems generates items with alternating read-unread status`() = runTest(mainDispatcherRule.scheduler) {
     coEvery { ggIAMService.getStoredFeedNotificationSetting() } returns null
     service = createService()
 
@@ -1228,7 +1228,7 @@ class FeedServiceTest {
   }
 
   @Test
-  fun `setMockFeedItems generates items with unique element IDs`() = runTest {
+  fun `setMockFeedItems generates items with unique element IDs`() = runTest(mainDispatcherRule.scheduler) {
     coEvery { ggIAMService.getStoredFeedNotificationSetting() } returns null
     service = createService()
 
@@ -1242,7 +1242,7 @@ class FeedServiceTest {
   }
 
   @Test
-  fun `setMockFeedItems generates items with LANDING type having landingPage`() = runTest {
+  fun `setMockFeedItems generates items with LANDING type having landingPage`() = runTest(mainDispatcherRule.scheduler) {
     coEvery { ggIAMService.getStoredFeedNotificationSetting() } returns null
     service = createService()
 
@@ -1266,7 +1266,7 @@ class FeedServiceTest {
   // -------------------------------------------------------------------------
 
   @Test
-  fun `setMockFeedItems landing page has promo code`() = runTest {
+  fun `setMockFeedItems landing page has promo code`() = runTest(mainDispatcherRule.scheduler) {
     coEvery { ggIAMService.getStoredFeedNotificationSetting() } returns null
     service = createService()
 
@@ -1285,7 +1285,7 @@ class FeedServiceTest {
   }
 
   @Test
-  fun `setMockFeedItems landing page has featured products`() = runTest {
+  fun `setMockFeedItems landing page has featured products`() = runTest(mainDispatcherRule.scheduler) {
     coEvery { ggIAMService.getStoredFeedNotificationSetting() } returns null
     service = createService()
 
@@ -1307,7 +1307,7 @@ class FeedServiceTest {
   // -------------------------------------------------------------------------
 
   @Test
-  fun `setMockFeedItems promo codes contain only uppercase letters and digits`() = runTest {
+  fun `setMockFeedItems promo codes contain only uppercase letters and digits`() = runTest(mainDispatcherRule.scheduler) {
     coEvery { ggIAMService.getStoredFeedNotificationSetting() } returns null
     service = createService()
 
@@ -1328,7 +1328,7 @@ class FeedServiceTest {
   // -------------------------------------------------------------------------
 
   @Test
-  fun `updateFeedItem with variationClick includes osType and meta`() = runTest {
+  fun `updateFeedItem with variationClick includes osType and meta`() = runTest(mainDispatcherRule.scheduler) {
     val item = createFeedItem(feedPostId = "post-1")
     coEvery { feedRepository.fetchFeedItems() } returns listOf(item)
     coEvery { feedRepository.updateFeedItem(any(), any()) } just Runs
@@ -1346,7 +1346,7 @@ class FeedServiceTest {
   }
 
   @Test
-  fun `updateFeedItem with promoClick includes osType and meta`() = runTest {
+  fun `updateFeedItem with promoClick includes osType and meta`() = runTest(mainDispatcherRule.scheduler) {
     val item = createFeedItem(feedPostId = "post-1")
     coEvery { feedRepository.fetchFeedItems() } returns listOf(item)
     coEvery { feedRepository.updateFeedItem(any(), any()) } just Runs
@@ -1363,7 +1363,7 @@ class FeedServiceTest {
   }
 
   @Test
-  fun `updateFeedItem with click action has no osType or meta`() = runTest {
+  fun `updateFeedItem with click action has no osType or meta`() = runTest(mainDispatcherRule.scheduler) {
     val item = createFeedItem(feedPostId = "post-1")
     coEvery { feedRepository.fetchFeedItems() } returns listOf(item)
     coEvery { feedRepository.updateFeedItem(any(), any()) } just Runs
@@ -1384,7 +1384,7 @@ class FeedServiceTest {
   // -------------------------------------------------------------------------
 
   @Test
-  fun `notification badge updates when fetching offline items`() = runTest {
+  fun `notification badge updates when fetching offline items`() = runTest(mainDispatcherRule.scheduler) {
     every { connectivityObserver.getCurrentNetworkState() } returns offlineState
     coEvery { ggIAMService.getStoredFeedNotificationSetting() } returns FeedSetting(
       showPopupMessage = true,
@@ -1403,7 +1403,7 @@ class FeedServiceTest {
   // -------------------------------------------------------------------------
 
   @Test
-  fun `setMockFeedItems generates items with unique elementIds`() = runTest {
+  fun `setMockFeedItems generates items with unique elementIds`() = runTest(mainDispatcherRule.scheduler) {
     coEvery { ggIAMService.getStoredFeedNotificationSetting() } returns null
     service = createService()
 
@@ -1417,7 +1417,7 @@ class FeedServiceTest {
   }
 
   @Test
-  fun `setMockFeedItems does not generate items when local storage is populated`() = runTest {
+  fun `setMockFeedItems does not generate items when local storage is populated`() = runTest(mainDispatcherRule.scheduler) {
     val existingItems = listOf(createFeedItem(elementId = "existing-1"))
     coEvery { feedRepository.fetchFeedItems() } returns existingItems
     coEvery { ggIAMService.getStoredFeedNotificationSetting() } returns null
@@ -1440,7 +1440,7 @@ class FeedServiceTest {
   // -------------------------------------------------------------------------
 
   @Test
-  fun `setMockFeedItems landing items have non-null landing page with products`() = runTest {
+  fun `setMockFeedItems landing items have non-null landing page with products`() = runTest(mainDispatcherRule.scheduler) {
     coEvery { ggIAMService.getStoredFeedNotificationSetting() } returns null
     service = createService()
 
@@ -1462,7 +1462,7 @@ class FeedServiceTest {
   // -------------------------------------------------------------------------
 
   @Test
-  fun `init block handles unknown action type by defaulting to click`() = runTest {
+  fun `init block handles unknown action type by defaulting to click`() = runTest(mainDispatcherRule.scheduler) {
     val item = createFeedItem(elementId = "e1")
     coEvery { feedRepository.fetchFeedItems() } returns listOf(item)
     coEvery { feedRepository.updateFeedItem(any(), any()) } just Runs

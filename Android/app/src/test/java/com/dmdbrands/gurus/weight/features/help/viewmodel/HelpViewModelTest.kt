@@ -92,7 +92,7 @@ class HelpViewModelTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `OnBack navigates back`() = runTest {
+    fun `OnBack navigates back`() = runTest(mainDispatcherRule.scheduler) {
         viewModel.handleIntent(HelpIntent.OnBack)
         advanceUntilIdle()
         coVerify { navigationService.navigateBack() }
@@ -112,7 +112,7 @@ class HelpViewModelTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `OpenDebugMenu navigates to DebugMenu route`() = runTest {
+    fun `OpenDebugMenu navigates to DebugMenu route`() = runTest(mainDispatcherRule.scheduler) {
         viewModel.handleIntent(HelpIntent.OpenDebugMenu)
         advanceUntilIdle()
         coVerify { navigationService.navigateTo(AppRoute.AccountSettings.DebugMenu) }
@@ -170,7 +170,7 @@ class HelpViewModelTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `onOpenDebugMenu navigates to DebugMenu route`() = runTest {
+    fun `onOpenDebugMenu navigates to DebugMenu route`() = runTest(mainDispatcherRule.scheduler) {
         viewModel.onOpenDebugMenu()
         advanceUntilIdle()
         coVerify { navigationService.navigateTo(AppRoute.AccountSettings.DebugMenu) }
@@ -210,7 +210,7 @@ class HelpViewModelTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `OpenDebugMenu does not crash when navigation throws`() = runTest {
+    fun `OpenDebugMenu does not crash when navigation throws`() = runTest(mainDispatcherRule.scheduler) {
         coEvery { navigationService.navigateTo(any()) } throws RuntimeException("nav error")
 
         viewModel.handleIntent(HelpIntent.OpenDebugMenu)

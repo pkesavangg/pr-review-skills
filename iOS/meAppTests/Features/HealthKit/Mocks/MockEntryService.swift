@@ -181,6 +181,7 @@ final class MockEntryService: EntryServiceProtocol {
     private(set) var createBabyEntryCalls: [CreateBabyEntryCall] = []
     var createBabyEntryError: Error?
 
+    // swiftlint:disable:next function_parameter_count
     func createBabyEntry(babyId: String, weight: Int, length: Int, note: String, entryTimestamp: String, source: String?) async throws {
         createBabyEntryCalls.append(CreateBabyEntryCall(babyId: babyId, weight: weight, length: length, note: note, entryTimestamp: entryTimestamp))
         if let createBabyEntryError { throw createBabyEntryError }

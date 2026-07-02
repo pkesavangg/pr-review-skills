@@ -178,7 +178,8 @@ struct PickerTestView: View {
     @State private var showTimePicker = false
     @State private var showHeightInchesPicker = false
     @State private var showHeightCmPicker = false
-    
+    private let identityDisplay: (String) -> String = { $0 }
+
     private let timeOptions: [[String]] = [
         (1...12).map { "\($0)" },
         (0...59).map { String(format: "%02d", $0) },
@@ -251,14 +252,14 @@ struct PickerTestView: View {
             isPresented: $showHeightInchesPicker,
             selectedValues: selectedHeightInches,
             options: heightInchesOptions,
-            displayValue: { $0 },
+            displayValue: identityDisplay,
             pickerType: .heightInches
         ) { selectedHeightInches = $0 }
         .pickerSheet(
             isPresented: $showHeightCmPicker,
             selectedValues: selectedHeightCm,
             options: heightCmOptions,
-            displayValue: { $0 },
+            displayValue: identityDisplay,
             pickerType: .heightCm
         ) { selectedHeightCm = $0 }
     }

@@ -89,6 +89,7 @@ final class EntryRepository: EntryRepositoryProtocol {
         let accountId = entry.accountId
         let entryTimestamp = entry.entryTimestamp
         let serverTimestamp = entry.serverTimestamp
+        let serverEntryId = entry.serverEntryId
         let operationType = entry.operationType
         let entryType = entry.entryType ?? EntryType.scale.rawValue
         let isSynced = entry.isSynced
@@ -141,6 +142,7 @@ final class EntryRepository: EntryRepositoryProtocol {
             )
             newEntry.isFailedToSync = isFailedToSync
             newEntry.attempts = attempts
+            newEntry.serverEntryId = serverEntryId
 
             // Recreate relationships in background context
             if let data = scaleEntryData {
@@ -205,6 +207,7 @@ final class EntryRepository: EntryRepositoryProtocol {
         let accountId = entry.accountId
         let entryTimestamp = entry.entryTimestamp
         let serverTimestamp = entry.serverTimestamp
+        let serverEntryId = entry.serverEntryId
         let operationType = entry.operationType
         let entryType = entry.entryType ?? EntryType.scale.rawValue
         let isSynced = entry.isSynced
@@ -217,6 +220,9 @@ final class EntryRepository: EntryRepositoryProtocol {
                 existing.accountId = accountId
                 existing.entryTimestamp = entryTimestamp
                 existing.serverTimestamp = serverTimestamp
+                // Preserve an already-stored serverEntryId if the incoming copy lacks one,
+                // so a partial update never clears the entry's server identity.
+                existing.serverEntryId = serverEntryId ?? existing.serverEntryId
                 existing.operationType = operationType
                 existing.entryType = entryType
                 existing.isSynced = isSynced
@@ -335,6 +341,17 @@ final class EntryRepository: EntryRepositoryProtocol {
         return try await performBackgroundTask { ctx in
             let descriptor = FetchDescriptor<Entry>(predicate: #Predicate { $0.accountId == userId && $0.entryTimestamp == timestamp })
             return try ctx.fetch(descriptor)
+        }
+    }
+
+    /// Fetches the local entry matching a server-assigned entryId for a user, if any.
+    /// Used by the sync/merge engine to key on entry identity rather than entryTimestamp.
+    func fetchEntry(byServerEntryId serverEntryId: String, forUserId userId: String) async throws -> Entry? {
+        return try await performBackgroundTask { ctx in
+            let descriptor = FetchDescriptor<Entry>(predicate: #Predicate {
+                $0.accountId == userId && $0.serverEntryId == serverEntryId
+            })
+            return try ctx.fetch(descriptor).first
         }
     }
 

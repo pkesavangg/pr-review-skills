@@ -163,7 +163,7 @@ class LoginViewModelTest {
     }
 
     @Test
-    fun `Success intent calls navigationService reInitialize`() = runTest {
+    fun `Success intent calls navigationService reInitialize`() = runTest(mainDispatcherRule.scheduler) {
         viewModel.handleIntent(LoginIntent.Success)
         advanceUntilIdle()
 
@@ -175,7 +175,7 @@ class LoginViewModelTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `Submit sets isLoading to true via reducer`() = runTest {
+    fun `Submit sets isLoading to true via reducer`() = runTest(mainDispatcherRule.scheduler) {
         // Stub login so the coroutine can proceed without error
         coEvery { accountService.login(any(), any()) } returns TestFixtures.activeAccount
 
@@ -194,7 +194,7 @@ class LoginViewModelTest {
     }
 
     @Test
-    fun `Submit with valid form calls accountService login`() = runTest {
+    fun `Submit with valid form calls accountService login`() = runTest(mainDispatcherRule.scheduler) {
         coEvery { accountService.login(TEST_EMAIL, TEST_PASSWORD) } returns TestFixtures.activeAccount
 
         fillValidForm()
@@ -205,7 +205,7 @@ class LoginViewModelTest {
     }
 
     @Test
-    fun `Submit with valid form and successful login triggers Success`() = runTest {
+    fun `Submit with valid form and successful login triggers Success`() = runTest(mainDispatcherRule.scheduler) {
         coEvery { accountService.login(TEST_EMAIL, TEST_PASSWORD) } returns TestFixtures.activeAccount
 
         fillValidForm()
@@ -218,7 +218,7 @@ class LoginViewModelTest {
     }
 
     @Test
-    fun `Submit shows loader and dismisses it after success`() = runTest {
+    fun `Submit shows loader and dismisses it after success`() = runTest(mainDispatcherRule.scheduler) {
         coEvery { accountService.login(TEST_EMAIL, TEST_PASSWORD) } returns TestFixtures.activeAccount
 
         fillValidForm()
@@ -234,7 +234,7 @@ class LoginViewModelTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `Submit with invalid form dismisses loader without calling login`() = runTest {
+    fun `Submit with invalid form dismisses loader without calling login`() = runTest(mainDispatcherRule.scheduler) {
         // Touch controls with invalid values so validation fails
         viewModel.state.value.form.controls.email.onValueChange("")
         viewModel.state.value.form.controls.password.onValueChange("")
@@ -248,7 +248,7 @@ class LoginViewModelTest {
     }
 
     @Test
-    fun `Submit when login returns null sets error state`() = runTest {
+    fun `Submit when login returns null sets error state`() = runTest(mainDispatcherRule.scheduler) {
         coEvery { accountService.login(TEST_EMAIL, TEST_PASSWORD) } returns null
 
         fillValidForm()
@@ -260,7 +260,7 @@ class LoginViewModelTest {
     }
 
     @Test
-    fun `Submit when login returns null dismisses the loader`() = runTest {
+    fun `Submit when login returns null dismisses the loader`() = runTest(mainDispatcherRule.scheduler) {
         coEvery { accountService.login(TEST_EMAIL, TEST_PASSWORD) } returns null
 
         fillValidForm()
@@ -272,7 +272,7 @@ class LoginViewModelTest {
     }
 
     @Test
-    fun `Submit when login throws generic exception sets error to exception string`() = runTest {
+    fun `Submit when login throws generic exception sets error to exception string`() = runTest(mainDispatcherRule.scheduler) {
         coEvery {
             accountService.login(TEST_EMAIL, TEST_PASSWORD)
         } throws RuntimeException(GENERIC_EXCEPTION_MESSAGE)
@@ -285,7 +285,7 @@ class LoginViewModelTest {
     }
 
     @Test
-    fun `Submit when login throws generic exception sets error state`() = runTest {
+    fun `Submit when login throws generic exception sets error state`() = runTest(mainDispatcherRule.scheduler) {
         coEvery {
             accountService.login(TEST_EMAIL, TEST_PASSWORD)
         } throws RuntimeException(GENERIC_EXCEPTION_MESSAGE)
@@ -300,7 +300,7 @@ class LoginViewModelTest {
     }
 
     @Test
-    fun `Submit when login throws MaxAccountsReachedException shows max account alert`() = runTest {
+    fun `Submit when login throws MaxAccountsReachedException shows max account alert`() = runTest(mainDispatcherRule.scheduler) {
         coEvery {
             accountService.login(TEST_EMAIL, TEST_PASSWORD)
         } throws MaxAccountsReachedException()
@@ -318,7 +318,7 @@ class LoginViewModelTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `OnBack intent calls navigationService navigateBack`() = runTest {
+    fun `OnBack intent calls navigationService navigateBack`() = runTest(mainDispatcherRule.scheduler) {
         viewModel.handleIntent(LoginIntent.OnBack)
         advanceUntilIdle()
 
@@ -326,7 +326,7 @@ class LoginViewModelTest {
     }
 
     @Test
-    fun `OnBack does not crash when navigateBack throws`() = runTest {
+    fun `OnBack does not crash when navigateBack throws`() = runTest(mainDispatcherRule.scheduler) {
         coEvery { navigationService.navigateBack() } throws RuntimeException(NAV_ERROR)
 
         viewModel.handleIntent(LoginIntent.OnBack)
@@ -350,7 +350,7 @@ class LoginViewModelTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `OnRequestBack with clean form navigates back directly`() = runTest {
+    fun `OnRequestBack with clean form navigates back directly`() = runTest(mainDispatcherRule.scheduler) {
         viewModel.handleIntent(LoginIntent.OnRequestBack)
         advanceUntilIdle()
 
@@ -359,7 +359,7 @@ class LoginViewModelTest {
     }
 
     @Test
-    fun `OnRequestBack with dirty form shows confirmation dialog`() = runTest {
+    fun `OnRequestBack with dirty form shows confirmation dialog`() = runTest(mainDispatcherRule.scheduler) {
         // Make form dirty by changing a value
         viewModel.state.value.form.controls.email.onValueChange(TEST_EMAIL)
 
@@ -372,7 +372,7 @@ class LoginViewModelTest {
     }
 
     @Test
-    fun `OnRequestBack confirm callback navigates back and dismisses dialog`() = runTest {
+    fun `OnRequestBack confirm callback navigates back and dismisses dialog`() = runTest(mainDispatcherRule.scheduler) {
         viewModel.state.value.form.controls.email.onValueChange(TEST_EMAIL)
 
         viewModel.handleIntent(LoginIntent.OnRequestBack)
@@ -389,7 +389,7 @@ class LoginViewModelTest {
     }
 
     @Test
-    fun `OnRequestBack cancel callback dismisses dialog without navigating`() = runTest {
+    fun `OnRequestBack cancel callback dismisses dialog without navigating`() = runTest(mainDispatcherRule.scheduler) {
         viewModel.state.value.form.controls.email.onValueChange(TEST_EMAIL)
 
         viewModel.handleIntent(LoginIntent.OnRequestBack)
@@ -508,7 +508,7 @@ class LoginViewModelTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `Submit then Success produces correct state transitions`() = runTest {
+    fun `Submit then Success produces correct state transitions`() = runTest(mainDispatcherRule.scheduler) {
         coEvery { accountService.login(TEST_EMAIL, TEST_PASSWORD) } returns TestFixtures.activeAccount
 
         viewModel.state.test {
@@ -530,7 +530,7 @@ class LoginViewModelTest {
     }
 
     @Test
-    fun `Submit then Error produces correct state transitions`() = runTest {
+    fun `Submit then Error produces correct state transitions`() = runTest(mainDispatcherRule.scheduler) {
         coEvery {
             accountService.login(TEST_EMAIL, TEST_PASSWORD)
         } throws RuntimeException(GENERIC_EXCEPTION_MESSAGE)
@@ -558,7 +558,7 @@ class LoginViewModelTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `Submit trims email before calling login`() = runTest {
+    fun `Submit trims email before calling login`() = runTest(mainDispatcherRule.scheduler) {
         coEvery { accountService.login(TEST_EMAIL, TEST_PASSWORD) } returns TestFixtures.activeAccount
 
         viewModel.state.value.form.controls.email.onValueChange("  $TEST_EMAIL  ")
@@ -584,14 +584,14 @@ class LoginViewModelTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `navigateToDashboard calls reInitialize on navigation service`() = runTest {
+    fun `navigateToDashboard calls reInitialize on navigation service`() = runTest(mainDispatcherRule.scheduler) {
         viewModel.handleIntent(LoginIntent.Success)
         advanceUntilIdle()
         coVerify { navigationService.reInitialize() }
     }
 
     @Test
-    fun `navigateToDashboard clears loading and error state`() = runTest {
+    fun `navigateToDashboard clears loading and error state`() = runTest(mainDispatcherRule.scheduler) {
         viewModel.handleIntent(LoginIntent.Error(ERROR_MESSAGE))
         viewModel.handleIntent(LoginIntent.Success)
         advanceUntilIdle()

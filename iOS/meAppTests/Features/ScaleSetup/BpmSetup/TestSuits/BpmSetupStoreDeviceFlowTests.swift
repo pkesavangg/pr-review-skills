@@ -1,7 +1,7 @@
 import Combine
 import Foundation
-import Testing
 @testable import meApp
+import Testing
 
 extension BpmSetupStoreTests {
     @Suite("Device Flow")

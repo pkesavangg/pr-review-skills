@@ -47,6 +47,7 @@ fun R4ScaleMetricsSection(
         AnimatedAppInput(
             formControl = controls.heartRate,
             label = EntryScreenStrings.HEART_RATE_LABEL,
+            trailingText = EntryScreenStrings.HEART_RATE_UNIT,
             type = AppInputType.NUMBER,
             imeAction = ImeAction.Next,
             nextFocusRequester = boneMassFocusRequester,
@@ -61,6 +62,7 @@ fun R4ScaleMetricsSection(
         AnimatedAppInput(
             formControl = controls.boneMass,
             label = EntryScreenStrings.BONE_MASS_LABEL,
+            trailingText = EntryScreenStrings.BONE_MASS_UNIT,
             type = AppInputType.BODY_COMP,
             imeAction = ImeAction.Next,
             nextFocusRequester = visceralFatFocusRequester,
@@ -75,6 +77,7 @@ fun R4ScaleMetricsSection(
         AnimatedAppInput(
             formControl = controls.visceralFat,
             label = EntryScreenStrings.VISCERAL_FAT_LABEL,
+            trailingText = EntryScreenStrings.VISCERAL_FAT_UNIT,
             type = AppInputType.NUMBER,
             imeAction = ImeAction.Next,
             nextFocusRequester = subcutaneousFatFocusRequester,
@@ -89,6 +92,7 @@ fun R4ScaleMetricsSection(
         AnimatedAppInput(
             formControl = controls.subcutaneousFat,
             label = EntryScreenStrings.SUBCUTANEOUS_FAT_LABEL,
+            trailingText = EntryScreenStrings.SUBCUTANEOUS_FAT_UNIT,
             type = AppInputType.BODY_COMP,
             imeAction = ImeAction.Next,
             nextFocusRequester = proteinFocusRequester,
@@ -103,6 +107,7 @@ fun R4ScaleMetricsSection(
         AnimatedAppInput(
             formControl = controls.protein,
             label = EntryScreenStrings.PROTEIN_LABEL,
+            trailingText = EntryScreenStrings.PROTEIN_UNIT,
             type = AppInputType.BODY_COMP,
             imeAction = ImeAction.Next,
             nextFocusRequester = skeletalMusclesFocusRequester,
@@ -117,6 +122,7 @@ fun R4ScaleMetricsSection(
         AnimatedAppInput(
             formControl = controls.skeletalMuscles,
             label = EntryScreenStrings.SKELETAL_MUSCLES_LABEL,
+            trailingText = EntryScreenStrings.SKELETAL_MUSCLES_UNIT,
             type = AppInputType.BODY_COMP,
             imeAction = ImeAction.Next,
             nextFocusRequester = bmrFocusRequester,
@@ -131,6 +137,7 @@ fun R4ScaleMetricsSection(
         AnimatedAppInput(
             formControl = controls.bmr,
             label = EntryScreenStrings.BMR_LABEL,
+            trailingText = EntryScreenStrings.BMR_UNIT,
             type = AppInputType.NUMBER,
             imeAction = ImeAction.Next,
             nextFocusRequester = metabolicAgeFocusRequester,
@@ -145,6 +152,7 @@ fun R4ScaleMetricsSection(
         AnimatedAppInput(
             formControl = controls.metabolicAge,
             label = EntryScreenStrings.METABOLIC_AGE_LABEL,
+            trailingText = EntryScreenStrings.METABOLIC_AGE_UNIT,
             type = AppInputType.NUMBER,
             imeAction = ImeAction.Done,
             nextFocusRequester = null,

@@ -3,7 +3,7 @@ package com.dmdbrands.gurus.weight.features.debugMenu.model
 import com.dmdbrands.gurus.weight.core.shared.utilities.DateTimeConverter
 import com.dmdbrands.gurus.weight.domain.interfaces.IReducer
 import com.dmdbrands.gurus.weight.domain.model.storage.BLEStatus
-import com.dmdbrands.gurus.weight.features.common.helper.ScaleDataHelper.toScaleInfo
+import com.dmdbrands.gurus.weight.features.common.helper.DeviceDataHelper.toScaleInfo
 import kotlinx.collections.immutable.toImmutableList
 
 /**

@@ -122,7 +122,7 @@ class PushNotificationServiceTest {
   // -------------------------------------------------------------------------
 
   @Test
-  fun `onNewToken updates token when current token differs`() = runTest {
+  fun `onNewToken updates token when current token differs`() = runTest(mainDispatcherRule.scheduler) {
     coEvery { appRepository.getFcmToken() } returns "old-token"
     coEvery { appRepository.setFcmToken(any()) } just Runs
 
@@ -134,7 +134,7 @@ class PushNotificationServiceTest {
   }
 
   @Test
-  fun `onNewToken does not update when token is same`() = runTest {
+  fun `onNewToken does not update when token is same`() = runTest(mainDispatcherRule.scheduler) {
     coEvery { appRepository.getFcmToken() } returns "same-token"
 
     service.onNewToken("same-token")
@@ -145,7 +145,7 @@ class PushNotificationServiceTest {
   }
 
   @Test
-  fun `onNewToken handles getFcmToken exception gracefully`() = runTest {
+  fun `onNewToken handles getFcmToken exception gracefully`() = runTest(mainDispatcherRule.scheduler) {
     coEvery { appRepository.getFcmToken() } throws RuntimeException("DataStore error")
 
     service.onNewToken("new-token")
@@ -156,7 +156,7 @@ class PushNotificationServiceTest {
   }
 
   @Test
-  fun `onNewToken handles setFcmToken exception gracefully`() = runTest {
+  fun `onNewToken handles setFcmToken exception gracefully`() = runTest(mainDispatcherRule.scheduler) {
     coEvery { appRepository.getFcmToken() } returns "old-token"
     coEvery { appRepository.setFcmToken(any()) } throws RuntimeException("Write error")
 
@@ -167,7 +167,7 @@ class PushNotificationServiceTest {
   }
 
   @Test
-  fun `onNewToken updates when current token is empty`() = runTest {
+  fun `onNewToken updates when current token is empty`() = runTest(mainDispatcherRule.scheduler) {
     coEvery { appRepository.getFcmToken() } returns ""
     coEvery { appRepository.setFcmToken(any()) } just Runs
 
@@ -178,7 +178,7 @@ class PushNotificationServiceTest {
   }
 
   @Test
-  fun `onNewToken logs the new token`() = runTest {
+  fun `onNewToken logs the new token`() = runTest(mainDispatcherRule.scheduler) {
     coEvery { appRepository.getFcmToken() } returns "old"
     coEvery { appRepository.setFcmToken(any()) } just Runs
 
@@ -189,7 +189,7 @@ class PushNotificationServiceTest {
   }
 
   @Test
-  fun `onNewToken logs success after token update`() = runTest {
+  fun `onNewToken logs success after token update`() = runTest(mainDispatcherRule.scheduler) {
     coEvery { appRepository.getFcmToken() } returns "old"
     coEvery { appRepository.setFcmToken(any()) } just Runs
 
@@ -200,7 +200,7 @@ class PushNotificationServiceTest {
   }
 
   @Test
-  fun `onNewToken logs error when getFcmToken throws`() = runTest {
+  fun `onNewToken logs error when getFcmToken throws`() = runTest(mainDispatcherRule.scheduler) {
     coEvery { appRepository.getFcmToken() } throws RuntimeException("inner fail")
 
     service.onNewToken("token")
@@ -428,7 +428,7 @@ class PushNotificationServiceTest {
   // -------------------------------------------------------------------------
 
   @Test
-  fun `AppNotificationEventService emits events to flow`() = runTest {
+  fun `AppNotificationEventService emits events to flow`() = runTest(mainDispatcherRule.scheduler) {
     clearAllMocks()
 
     AppNotificationEventService.events.test {
@@ -459,7 +459,7 @@ class PushNotificationServiceTest {
   // -------------------------------------------------------------------------
 
   @Test
-  fun `onNewToken with blank current token updates to new token`() = runTest {
+  fun `onNewToken with blank current token updates to new token`() = runTest(mainDispatcherRule.scheduler) {
     coEvery { appRepository.getFcmToken() } returns "   "
     coEvery { appRepository.setFcmToken(any()) } just Runs
 
@@ -470,7 +470,7 @@ class PushNotificationServiceTest {
   }
 
   @Test
-  fun `onNewToken with empty new token still checks current token`() = runTest {
+  fun `onNewToken with empty new token still checks current token`() = runTest(mainDispatcherRule.scheduler) {
     coEvery { appRepository.getFcmToken() } returns "existing"
     coEvery { appRepository.setFcmToken(any()) } just Runs
 

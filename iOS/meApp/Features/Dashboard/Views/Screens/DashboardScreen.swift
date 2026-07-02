@@ -183,8 +183,16 @@ struct DashboardScreen: View {
         //      profiles exist — no snapshot overview shows, but the dropdown is still needed.
         let showProductSelector = isProductDashboardFromSnapshot ||
             (!canShowSnapshotOverview && store.availableProductItems.count > 1)
+        // Per Me.Health 2.0: single-product accounts show no snapshot. Instead the header
+        // always carries a product-tinted title (My Weight / My BP / baby name). When there
+        // is no snapshot overview there is only one product, so the title is static (no
+        // chevron/selector). When a selector is warranted the chevron is added below.
+        let showTitle = showProductSelector || !canShowSnapshotOverview
         return NavbarHeaderView<AppIconView, EmptyView>(
-            title: showProductSelector ? store.selectedProductItem.dashboardTitle : nil,
+            title: showTitle ? store.selectedProductItem.dashboardTitle : nil,
+            // Per Me.Health 2.0: the product-type title is tinted by product
+            // (weight → blue, BP → green, baby → purple).
+            titleColor: showTitle ? theme.productAccentColor(for: store.productType) : nil,
             leadingContent: isProductDashboardFromSnapshot
                 ? { AppIconView(icon: AppAssets.chevronLeft) }
                 : nil,

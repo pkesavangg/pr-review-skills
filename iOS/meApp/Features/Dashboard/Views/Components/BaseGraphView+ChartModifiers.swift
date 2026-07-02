@@ -265,13 +265,13 @@ extension BaseGraphView {
                         return now
                     }
                 }()
-                let domainMin: Date = {
-                    if viewModel.timePeriod == .year {
-                        let calendar = Calendar.current
-                        return calendar.dateInterval(of: .year, for: minDate)?.start ?? minDate
-                    }
-                    return minDate
-                }()
+                // Snap the domain start to the period boundary (week/month/year start) so the
+                // full reference grid renders. Anchoring to the raw earliest entry date clips
+                // the leading ticks — e.g. a single entry late in the month leaves only "29"
+                // visible instead of 1 / 8 / 15 / 22 / 29.
+                // Shared with DashboardStore's baby reference-curve start via TimePeriod.periodStart
+                // so the chart domain and the reference curves snap to the exact same boundary.
+                let domainMin = viewModel.timePeriod.periodStart(for: minDate)
                 content.chartXScale(domain: domainMin...max(maxDate, cappedMax))
             } else {
                 content

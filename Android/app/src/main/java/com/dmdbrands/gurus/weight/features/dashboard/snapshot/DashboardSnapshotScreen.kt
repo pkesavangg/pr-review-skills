@@ -36,7 +36,8 @@ import kotlinx.coroutines.launch
 fun DashboardSnapshotScreen(
   viewModel: DashboardSnapshotViewModel = hiltViewModel(),
 ) {
-  val products by viewModel.productSelectionManager.availableProducts.collectAsStateWithLifecycle()
+  // Snapshot collapses multiple baby profiles to a single active-baby card (MOB-598).
+  val products by viewModel.snapshotProducts.collectAsStateWithLifecycle()
   val isSnapshotMode by viewModel.productSelectionManager.isSnapshotMode.collectAsStateWithLifecycle()
   val navBackStack = LocalNavBackStack.current
   val scope = rememberCoroutineScope()
