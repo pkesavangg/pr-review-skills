@@ -21,7 +21,7 @@ final class DisplayMetricsViewModel: ObservableObject {
 
     /// Reads the current snapshot directly from the service — the single source of truth.
     private var deviceSnapshot: DeviceSnapshot? {
-        deviceService.scales.first(where: { $0.id == scaleIdString })
+        deviceService.scales.first { $0.id == scaleIdString }
     }
 
     @Published var metrics: [DeviceMetricSetting] = []

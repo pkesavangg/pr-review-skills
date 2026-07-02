@@ -1,9 +1,9 @@
 import Combine
 import Foundation
-import Network
 import GGBluetoothSwiftPackage
 import ggWifiScalePackage
 @testable import meApp
+import Network
 
 @MainActor
 final class MockWifiScaleRepositoryAPI: WifiDeviceRepositoryAPIProtocol {

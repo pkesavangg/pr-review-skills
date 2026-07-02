@@ -1,6 +1,6 @@
 import Foundation
-import Testing
 @testable import meApp
+import Testing
 
 @Suite(.serialized)
 @MainActor
@@ -215,8 +215,8 @@ struct TokenManagerTests {
 
         let successes = [firstResult, secondResult].compactMap { try? $0.get() }
         let failures: [Error] = [firstResult, secondResult].compactMap {
-            guard case .failure(let e) = $0 else { return nil }
-            return e
+            guard case .failure(let error) = $0 else { return nil }
+            return error
         }
 
         #expect(successes == [refreshed])

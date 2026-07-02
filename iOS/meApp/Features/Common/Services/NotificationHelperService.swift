@@ -25,6 +25,11 @@ class NotificationHelperService: NotificationHelperServiceProtocol, ObservableOb
     /// Task to track loader timeout
     private var loaderTimeoutTask: Task<Void, Never>?
     private let loaderTimeoutDuration: TimeInterval = 600 // 10 minutes
+
+    /// MOB-196: while the app is on the launch/loading screen, alerts are held back so they
+    /// don't appear over it. The most recent one is presented once `setAppLoading(false)` runs.
+    private var isAppLoading: Bool = false
+    private var queuedAlert: AlertModel?
     
     var isAlertVisible: Bool {
         alertData != nil
@@ -42,7 +47,26 @@ class NotificationHelperService: NotificationHelperServiceProtocol, ObservableOb
         !modalViewData.isEmpty
     }
     
+    @MainActor func setAppLoading(_ isLoading: Bool) {
+        isAppLoading = isLoading
+        if isLoading {
+            // Starting a fresh load cycle — drop any alert left over from a previous one.
+            queuedAlert = nil
+            return
+        }
+        guard let pending = queuedAlert else { return }
+        queuedAlert = nil
+        showAlert(pending)
+    }
+
     @MainActor func showAlert(_ alert: AlertModel) {
+        // MOB-196: don't surface alerts over the loading screen — hold the latest and
+        // present it once the app finishes loading.
+        guard !isAppLoading else {
+            queuedAlert = alert
+            return
+        }
+
         let wrappedButtons = alert.buttons.map { button in
             AlertButtonModel(
                 title: button.title,

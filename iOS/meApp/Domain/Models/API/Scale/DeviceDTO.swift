@@ -7,7 +7,7 @@ struct DeviceDTO: Codable, Sendable {
     /// Physical hardware type returned by the server (`weight_scale`/`baby_scale`/`bpm`).
     /// Added in Me App 2.0 — present on legacy `/paired-scale/` responses and the unified
     /// `/paired-device/` endpoints. Defaults to `nil` so existing call sites keep compiling.
-    var deviceType: String? = nil
+    var deviceType: String?
     var id: String?
     var isConnected: Bool?
     var isDeleted: Bool?

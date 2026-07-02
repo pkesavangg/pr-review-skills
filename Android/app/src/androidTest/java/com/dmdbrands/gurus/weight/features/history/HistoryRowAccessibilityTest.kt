@@ -91,6 +91,7 @@ class HistoryRowAccessibilityTest {
                 BabyHistoryItem(
                     item = BabyWeekHistory(
                         date = "Week 3",
+                        dateKey = "2026-06-15",
                         entryCount = 2,
                         weightLb = 8,
                         weightOz = 14.0,

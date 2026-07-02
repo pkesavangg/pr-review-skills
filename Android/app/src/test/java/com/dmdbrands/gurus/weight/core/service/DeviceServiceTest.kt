@@ -4,6 +4,7 @@ import app.cash.turbine.test
 import com.dmdbrands.gurus.weight.core.network.interfaces.IConnectivityObserver
 import com.dmdbrands.gurus.weight.core.network.utility.NetworkState
 import com.dmdbrands.gurus.weight.core.rules.MainDispatcherRule
+import javax.inject.Provider
 import kotlinx.coroutines.test.TestScope
 import com.dmdbrands.gurus.weight.domain.interfaces.IDialogQueueService
 import com.dmdbrands.gurus.weight.domain.model.api.device.R4ScalePreferenceApiModel
@@ -11,7 +12,7 @@ import com.dmdbrands.gurus.weight.domain.model.storage.BLEStatus
 import com.dmdbrands.gurus.weight.domain.model.storage.Device
 import com.dmdbrands.gurus.weight.domain.model.storage.Preferences
 import com.dmdbrands.gurus.weight.domain.repository.IDeviceRepository
-import com.dmdbrands.gurus.weight.features.common.enums.ScaleSetupType
+import com.dmdbrands.gurus.weight.features.common.enums.DeviceSetupType
 import com.dmdbrands.gurus.weight.features.common.model.DialogModel
 import com.dmdbrands.library.ggbluetooth.model.GGDeviceDetail
 import com.google.common.truth.Truth.assertThat
@@ -81,6 +82,7 @@ class DeviceServiceTest {
         hasServerID: Boolean = true,
         deviceType: String? = null,
         preferences: Preferences? = null,
+        sku: String? = null,
     ): Device {
         val detail: GGDeviceDetail = mockk(relaxed = true)
         every { detail.macAddress } returns mac
@@ -96,7 +98,19 @@ class DeviceServiceTest {
             hasServerID = hasServerID,
             deviceType = deviceType,
             preferences = preferences,
+            sku = sku,
         )
+    }
+
+    /** A paired BPM device whose [GGDeviceDetail.broadcastIdString] is explicitly stubbed, for heal tests. */
+    private fun fakeBpmDevice(id: String, mac: String, sku: String, broadcastId: String?): Device {
+        val detail: GGDeviceDetail = mockk(relaxed = true)
+        every { detail.macAddress } returns mac
+        every { detail.isWifiConfigured } returns false
+        every { detail.wifiMacAddress } returns null
+        every { detail.impedanceSwitchState } returns null
+        every { detail.broadcastIdString } returns broadcastId
+        return Device(id = id, device = detail, isSynced = true, hasServerID = true, sku = sku)
     }
 
     @BeforeEach
@@ -108,7 +122,7 @@ class DeviceServiceTest {
         every { deviceRepository.getDeviceByBroadcastId(any(), any()) } returns flowOf(null)
         every { deviceRepository.getDeviceByMac(any(), any()) } returns flowOf(null)
         coEvery { deviceRepository.getDevicesFromApi(any()) } returns emptyList()
-        coEvery { deviceRepository.saveDeviceToApi(any(), any()) } answers { firstArg<Device>().copy(isSynced = true) }
+        coEvery { deviceRepository.createPairedDevice(any(), any()) } answers { firstArg<Device>().copy(isSynced = true) }
         coEvery { deviceRepository.saveDeviceToDb(any(), any()) } just Runs
         coEvery { deviceRepository.deleteAllDevicesForAccount(any()) } just Runs
         coEvery { deviceRepository.deleteDeviceFromDb(any()) } just Runs
@@ -127,6 +141,7 @@ class DeviceServiceTest {
             appNavigationService,
             context,
             appScope = TestScope(mainDispatcherRule.dispatcher),
+            productSelectionManager = Provider { mockk(relaxed = true) },
         )
     }
 
@@ -135,31 +150,31 @@ class DeviceServiceTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `isInitialized returns false before setAccountId is called`() = runTest {
+    fun `isInitialized returns false before setAccountId is called`() = runTest(mainDispatcherRule.scheduler) {
         assertThat(service.isInitialized()).isFalse()
     }
 
     @Test
-    fun `isInitialized returns true after setAccountId`() = runTest {
+    fun `isInitialized returns true after setAccountId`() = runTest(mainDispatcherRule.scheduler) {
         service.setAccountId(accountId)
 
         assertThat(service.isInitialized()).isTrue()
     }
 
     @Test
-    fun `getCurrentAccountId returns null before setAccountId`() = runTest {
+    fun `getCurrentAccountId returns null before setAccountId`() = runTest(mainDispatcherRule.scheduler) {
         assertThat(service.getCurrentAccountId()).isNull()
     }
 
     @Test
-    fun `getCurrentAccountId returns set accountId`() = runTest {
+    fun `getCurrentAccountId returns set accountId`() = runTest(mainDispatcherRule.scheduler) {
         service.setAccountId(accountId)
 
         assertThat(service.getCurrentAccountId()).isEqualTo(accountId)
     }
 
     @Test
-    fun `clearAccountData sets accountId to null`() = runTest {
+    fun `clearAccountData sets accountId to null`() = runTest(mainDispatcherRule.scheduler) {
         service.setAccountId(accountId)
         service.clearAccountData()
 
@@ -172,7 +187,7 @@ class DeviceServiceTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `setAccountId calls getDevicesFromApi for initial sync`() = runTest {
+    fun `setAccountId calls getDevicesFromApi for initial sync`() = runTest(mainDispatcherRule.scheduler) {
         service.setAccountId(accountId)
         advanceUntilIdle()
 
@@ -184,7 +199,7 @@ class DeviceServiceTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `updateConnectionStatus adds entry to connection status map`() = runTest {
+    fun `updateConnectionStatus adds entry to connection status map`() = runTest(mainDispatcherRule.scheduler) {
         val mac = "AA:BB:CC"
 
         service.updateConnectionStatus(mac, BLEStatus.CONNECTED)
@@ -195,7 +210,7 @@ class DeviceServiceTest {
     }
 
     @Test
-    fun `updateConnectionStatus overwrites previous status for same mac`() = runTest {
+    fun `updateConnectionStatus overwrites previous status for same mac`() = runTest(mainDispatcherRule.scheduler) {
         val mac = "AA:BB:CC"
 
         service.updateConnectionStatus(mac, BLEStatus.CONNECTED)
@@ -209,7 +224,7 @@ class DeviceServiceTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `onDeviceUpdate updates device in pairedScales when found by mac`() = runTest {
+    fun `onDeviceUpdate updates device in pairedScales when found by mac`() = runTest(mainDispatcherRule.scheduler) {
         val mac = "AA:BB:CC:DD:EE:FF"
         val existingDevice = fakeDevice(mac = mac)
         every { deviceRepository.getDevices(accountId, any()) } returns flowOf(listOf(existingDevice))
@@ -236,7 +251,7 @@ class DeviceServiceTest {
     }
 
     @Test
-    fun `onDeviceUpdate defaults to DISCONNECTED when connectionStatus is null`() = runTest {
+    fun `onDeviceUpdate defaults to DISCONNECTED when connectionStatus is null`() = runTest(mainDispatcherRule.scheduler) {
         val mac = "AA:BB:CC:DD:EE:FF"
         val existingDevice = fakeDevice(mac = mac)
         every { deviceRepository.getDevices(accountId, any()) } returns flowOf(listOf(existingDevice))
@@ -262,7 +277,7 @@ class DeviceServiceTest {
     }
 
     @Test
-    fun `onDeviceUpdate is no-op when device not found in pairedScales`() = runTest {
+    fun `onDeviceUpdate is no-op when device not found in pairedScales`() = runTest(mainDispatcherRule.scheduler) {
         val detail: GGDeviceDetail = mockk(relaxed = true)
         every { detail.macAddress } returns "FF:FF:FF:FF:FF:FF"
         every { detail.isWifiConfigured } returns false
@@ -278,7 +293,7 @@ class DeviceServiceTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `pairedScales emits empty list initially`() = runTest {
+    fun `pairedScales emits empty list initially`() = runTest(mainDispatcherRule.scheduler) {
         service.pairedScales.test {
             assertThat(awaitItem()).isEmpty()
             cancelAndIgnoreRemainingEvents()
@@ -286,7 +301,7 @@ class DeviceServiceTest {
     }
 
     @Test
-    fun `connectedScales emits empty list initially`() = runTest {
+    fun `connectedScales emits empty list initially`() = runTest(mainDispatcherRule.scheduler) {
         service.connectedScales.test {
             assertThat(awaitItem()).isEmpty()
             cancelAndIgnoreRemainingEvents()
@@ -294,7 +309,7 @@ class DeviceServiceTest {
     }
 
     @Test
-    fun `hasBluetoothWifiScale emits false when no R4 scale paired`() = runTest {
+    fun `hasBluetoothWifiScale emits false when no R4 scale paired`() = runTest(mainDispatcherRule.scheduler) {
         service.hasBluetoothWifiScale.test {
             assertThat(awaitItem()).isFalse()
             cancelAndIgnoreRemainingEvents()
@@ -302,7 +317,7 @@ class DeviceServiceTest {
     }
 
     @Test
-    fun `hasWeightScale emits false when no scale paired`() = runTest {
+    fun `hasWeightScale emits false when no scale paired`() = runTest(mainDispatcherRule.scheduler) {
         service.hasWeightScale.test {
             assertThat(awaitItem()).isFalse()
             cancelAndIgnoreRemainingEvents()
@@ -310,8 +325,8 @@ class DeviceServiceTest {
     }
 
     @Test
-    fun `hasWeightScale emits true when a weight scale is paired`() = runTest {
-        val scale = fakeDevice(deviceType = ScaleSetupType.Bluetooth.value)
+    fun `hasWeightScale emits true when a weight scale is paired`() = runTest(mainDispatcherRule.scheduler) {
+        val scale = fakeDevice(deviceType = DeviceSetupType.Bluetooth.value)
         every { deviceRepository.getDevices(accountId, any()) } returns flowOf(listOf(scale))
         service.setAccountId(accountId)
         Thread.sleep(2000) // fetchScales runs on IO
@@ -320,8 +335,8 @@ class DeviceServiceTest {
     }
 
     @Test
-    fun `hasWeightScale emits false when only a BPM device is paired`() = runTest {
-        val bpm = fakeDevice(deviceType = ScaleSetupType.BpmBluetooth.value)
+    fun `hasWeightScale emits false when only a BPM device is paired`() = runTest(mainDispatcherRule.scheduler) {
+        val bpm = fakeDevice(deviceType = DeviceSetupType.BpmBluetooth.value)
         every { deviceRepository.getDevices(accountId, any()) } returns flowOf(listOf(bpm))
         service.setAccountId(accountId)
         Thread.sleep(2000) // fetchScales runs on IO
@@ -334,13 +349,13 @@ class DeviceServiceTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `getScalesByType returns empty list when no scales match`() = runTest {
-        val result = service.getScalesByType(ScaleSetupType.BtWifiR4.value)
+    fun `getScalesByType returns empty list when no scales match`() = runTest(mainDispatcherRule.scheduler) {
+        val result = service.getScalesByType(DeviceSetupType.BtWifiR4.value)
         assertThat(result).isEmpty()
     }
 
     @Test
-    fun `getConnectedScales returns only CONNECTED devices`() = runTest {
+    fun `getConnectedScales returns only CONNECTED devices`() = runTest(mainDispatcherRule.scheduler) {
         val mac = "AA:BB:CC:DD:EE:FF"
         val connected = fakeDevice(id = "c1", mac = mac)
         every { deviceRepository.getDevices(accountId, any()) } returns flowOf(listOf(connected))
@@ -354,13 +369,13 @@ class DeviceServiceTest {
     }
 
     @Test
-    fun `getConnectedScales returns empty when all devices are disconnected`() = runTest {
+    fun `getConnectedScales returns empty when all devices are disconnected`() = runTest(mainDispatcherRule.scheduler) {
         val result = service.getConnectedScales()
         assertThat(result).isEmpty()
     }
 
     @Test
-    fun `getUnsyncedScales returns devices where hasServerID is false`() = runTest {
+    fun `getUnsyncedScales returns devices where hasServerID is false`() = runTest(mainDispatcherRule.scheduler) {
         val mac = "AA:BB:CC:DD:EE:FF"
         val unsynced = fakeDevice(mac = mac, hasServerID = false)
         every { deviceRepository.getDevices(accountId, any()) } returns flowOf(listOf(unsynced))
@@ -376,13 +391,13 @@ class DeviceServiceTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `scaleExistsByMac returns false when pairedScales is empty`() = runTest {
+    fun `scaleExistsByMac returns false when pairedScales is empty`() = runTest(mainDispatcherRule.scheduler) {
         val result = service.scaleExistsByMac("AA:BB:CC:DD:EE:FF")
         assertThat(result).isFalse()
     }
 
     @Test
-    fun `scaleExistsByMac returns true when mac matches`() = runTest {
+    fun `scaleExistsByMac returns true when mac matches`() = runTest(mainDispatcherRule.scheduler) {
         val mac = "AA:BB:CC:DD:EE:FF"
         val device = fakeDevice(mac = mac)
         every { deviceRepository.getDevices(accountId, any()) } returns flowOf(listOf(device))
@@ -398,7 +413,7 @@ class DeviceServiceTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `getScale returns device when found`() = runTest {
+    fun `getScale returns device when found`() = runTest(mainDispatcherRule.scheduler) {
         val device = fakeDevice()
         every { deviceRepository.getDevice(deviceId) } returns flowOf(device)
 
@@ -408,7 +423,7 @@ class DeviceServiceTest {
     }
 
     @Test
-    fun `getScale returns null when device not found`() = runTest {
+    fun `getScale returns null when device not found`() = runTest(mainDispatcherRule.scheduler) {
         every { deviceRepository.getDevice(deviceId) } returns flowOf(null)
 
         val result = service.getScale(deviceId)
@@ -417,7 +432,7 @@ class DeviceServiceTest {
     }
 
     @Test
-    fun `getScale returns null and does not crash on exception`() = runTest {
+    fun `getScale returns null and does not crash on exception`() = runTest(mainDispatcherRule.scheduler) {
         every { deviceRepository.getDevice(deviceId) } throws RuntimeException("DB error")
 
         val result = service.getScale(deviceId)
@@ -430,7 +445,7 @@ class DeviceServiceTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `getScaleByBroadcastId returns device when found`() = runTest {
+    fun `getScaleByBroadcastId returns device when found`() = runTest(mainDispatcherRule.scheduler) {
         val device = fakeDevice()
         every { deviceRepository.getDeviceByBroadcastId("bcast-1", accountId) } returns flowOf(device)
 
@@ -440,7 +455,7 @@ class DeviceServiceTest {
     }
 
     @Test
-    fun `getScaleByBroadcastId returns null on exception`() = runTest {
+    fun `getScaleByBroadcastId returns null on exception`() = runTest(mainDispatcherRule.scheduler) {
         every { deviceRepository.getDeviceByBroadcastId(any(), any()) } throws RuntimeException("error")
 
         val result = service.getScaleByBroadcastId("bcast-1", accountId)
@@ -453,13 +468,13 @@ class DeviceServiceTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `getScaleByMac returns null when no accountId is set`() = runTest {
+    fun `getScaleByMac returns null when no accountId is set`() = runTest(mainDispatcherRule.scheduler) {
         val result = service.getScaleByMac("AA:BB:CC:DD:EE:FF")
         assertThat(result).isNull()
     }
 
     @Test
-    fun `getScaleByMac returns device when found`() = runTest {
+    fun `getScaleByMac returns device when found`() = runTest(mainDispatcherRule.scheduler) {
         val device = fakeDevice()
         service.setAccountId(accountId)
         every { deviceRepository.getDeviceByMac("AA:BB:CC:DD:EE:FF", accountId) } returns flowOf(device)
@@ -470,7 +485,7 @@ class DeviceServiceTest {
     }
 
     @Test
-    fun `getScaleByMac returns null on exception`() = runTest {
+    fun `getScaleByMac returns null on exception`() = runTest(mainDispatcherRule.scheduler) {
         service.setAccountId(accountId)
         every { deviceRepository.getDeviceByMac(any(), any()) } throws RuntimeException("error")
 
@@ -484,14 +499,14 @@ class DeviceServiceTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `getGGBTDevices returns emptyFlow when accountId is not set`() = runTest {
+    fun `getGGBTDevices returns emptyFlow when accountId is not set`() = runTest(mainDispatcherRule.scheduler) {
         service.getGGBTDevices().test {
             awaitComplete()
         }
     }
 
     @Test
-    fun `getGGBTDevices returns mapped devices when accountId is set`() = runTest {
+    fun `getGGBTDevices returns mapped devices when accountId is set`() = runTest(mainDispatcherRule.scheduler) {
         val device = fakeDevice()
         every { deviceRepository.getDevices(accountId, any()) } returns flowOf(listOf(device))
         service.setAccountId(accountId)
@@ -508,7 +523,7 @@ class DeviceServiceTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `getScaleToken returns token from repository`() = runTest {
+    fun `getScaleToken returns token from repository`() = runTest(mainDispatcherRule.scheduler) {
         coEvery { deviceRepository.getScaleTokenFromApi(false) } returns "token-abc"
 
         val result = service.getScaleToken(false)
@@ -517,7 +532,7 @@ class DeviceServiceTest {
     }
 
     @Test
-    fun `getScaleToken returns null on exception`() = runTest {
+    fun `getScaleToken returns null on exception`() = runTest(mainDispatcherRule.scheduler) {
         coEvery { deviceRepository.getScaleTokenFromApi(any()) } throws RuntimeException("API error")
 
         val result = service.getScaleToken(false)
@@ -530,14 +545,14 @@ class DeviceServiceTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `syncDevices returns early when no accountId set`() = runTest {
+    fun `syncDevices returns early when no accountId set`() = runTest(mainDispatcherRule.scheduler) {
         service.syncDevices()
 
         coVerify(exactly = 0) { deviceRepository.getDevicesFromApi(any()) }
     }
 
     @Test
-    fun `syncDevices fetches from API and stores devices`() = runTest {
+    fun `syncDevices fetches from API and stores devices`() = runTest(mainDispatcherRule.scheduler) {
         val apiDevice = fakeDevice(id = "api-1", isSynced = true)
         coEvery { deviceRepository.getDevicesFromApi(accountId) } returns listOf(apiDevice)
         every { deviceRepository.getDevices(accountId, false) } returns flowOf(emptyList())
@@ -550,29 +565,29 @@ class DeviceServiceTest {
     }
 
     @Test
-    fun `syncDevices syncs unsynced device to API`() = runTest {
+    fun `syncDevices syncs unsynced device to API`() = runTest(mainDispatcherRule.scheduler) {
         val unsyncedDevice = fakeDevice(id = "local-1", isSynced = false, isDeleted = false, preferences = null)
         val savedDevice = unsyncedDevice.copy(isSynced = true)
         every { deviceRepository.getDevices(accountId, false) } returns flowOf(listOf(unsyncedDevice))
-        coEvery { deviceRepository.saveDeviceToApi(any(), accountId) } returns savedDevice
+        coEvery { deviceRepository.createPairedDevice(any(), accountId) } returns savedDevice
         service.setAccountId(accountId)
         advanceUntilIdle()
 
-        coVerify { deviceRepository.saveDeviceToApi(any(), accountId) }
+        coVerify { deviceRepository.createPairedDevice(any(), accountId) }
     }
 
     @Test
-    fun `syncDevices syncs R4 scale preferences to API`() = runTest {
+    fun `syncDevices syncs R4 scale preferences to API`() = runTest(mainDispatcherRule.scheduler) {
         val prefs = fakePreferences.copy(isSynced = false)
         val r4Device = fakeDevice(
             id = "r4-1",
             isSynced = false,
-            deviceType = ScaleSetupType.BtWifiR4.value,
+            deviceType = DeviceSetupType.BtWifiR4.value,
             preferences = prefs,
         )
         val savedDevice = r4Device.copy(isSynced = true)
         every { deviceRepository.getDevices(accountId, false) } returns flowOf(listOf(r4Device))
-        coEvery { deviceRepository.saveDeviceToApi(any(), accountId) } returns savedDevice
+        coEvery { deviceRepository.createPairedDevice(any(), accountId) } returns savedDevice
         service.setAccountId(accountId)
         advanceUntilIdle()
 
@@ -580,17 +595,17 @@ class DeviceServiceTest {
     }
 
     @Test
-    fun `syncDevices handles R4 preference sync exception gracefully`() = runTest {
+    fun `syncDevices handles R4 preference sync exception gracefully`() = runTest(mainDispatcherRule.scheduler) {
         val prefs = fakePreferences.copy(isSynced = false)
         val r4Device = fakeDevice(
             id = "r4-err",
             isSynced = false,
-            deviceType = ScaleSetupType.BtWifiR4.value,
+            deviceType = DeviceSetupType.BtWifiR4.value,
             preferences = prefs,
         )
         val savedDevice = r4Device.copy(isSynced = true)
         every { deviceRepository.getDevices(accountId, false) } returns flowOf(listOf(r4Device))
-        coEvery { deviceRepository.saveDeviceToApi(any(), accountId) } returns savedDevice
+        coEvery { deviceRepository.createPairedDevice(any(), accountId) } returns savedDevice
         coEvery { deviceRepository.saveScalePreferencesToApi(any()) } throws RuntimeException("pref sync failed")
         service.setAccountId(accountId)
         advanceUntilIdle()
@@ -600,12 +615,12 @@ class DeviceServiceTest {
     }
 
     @Test
-    fun `syncDevices removes old temp record when server assigns new ID`() = runTest {
+    fun `syncDevices removes old temp record when server assigns new ID`() = runTest(mainDispatcherRule.scheduler) {
         // isSynced = false so the device is classified in devicesToSync
         val localDevice = fakeDevice(id = "temp-local", isSynced = false)
         val serverDevice = fakeDevice(id = "server-assigned")
         every { deviceRepository.getDevices(accountId, false) } returns flowOf(listOf(localDevice))
-        coEvery { deviceRepository.saveDeviceToApi(any(), accountId) } returns serverDevice
+        coEvery { deviceRepository.createPairedDevice(any(), accountId) } returns serverDevice
         service.setAccountId(accountId)
         advanceUntilIdle()
 
@@ -613,19 +628,19 @@ class DeviceServiceTest {
     }
 
     @Test
-    fun `syncDevices handles individual device sync exception gracefully`() = runTest {
+    fun `syncDevices handles individual device sync exception gracefully`() = runTest(mainDispatcherRule.scheduler) {
         val badDevice = fakeDevice(id = "bad-1", isSynced = false)
         every { deviceRepository.getDevices(accountId, false) } returns flowOf(listOf(badDevice))
-        coEvery { deviceRepository.saveDeviceToApi(any(), accountId) } throws RuntimeException("API failure")
+        coEvery { deviceRepository.createPairedDevice(any(), accountId) } throws RuntimeException("API failure")
         service.setAccountId(accountId)
         advanceUntilIdle()
 
         // Should not crash
-        coVerify { deviceRepository.saveDeviceToApi(any(), accountId) }
+        coVerify { deviceRepository.createPairedDevice(any(), accountId) }
     }
 
     @Test
-    fun `syncDevices deletes device from API and DB on delete`() = runTest {
+    fun `syncDevices deletes device from API and DB on delete`() = runTest(mainDispatcherRule.scheduler) {
         val deletedDevice = fakeDevice(id = "del-1", isDeleted = true, isSynced = true)
         every { deviceRepository.getDevices(accountId, false) } returns flowOf(listOf(deletedDevice))
         service.setAccountId(accountId)
@@ -636,7 +651,7 @@ class DeviceServiceTest {
     }
 
     @Test
-    fun `syncDevices handles Not Found delete response by marking synced and deleting locally`() = runTest {
+    fun `syncDevices handles Not Found delete response by marking synced and deleting locally`() = runTest(mainDispatcherRule.scheduler) {
         val deletedDevice = fakeDevice(id = "del-notfound", isDeleted = true, isSynced = true)
         every { deviceRepository.getDevices(accountId, false) } returns flowOf(listOf(deletedDevice))
         coEvery { deviceRepository.deleteDeviceFromApi("del-notfound") } throws RuntimeException("404 Not Found")
@@ -649,7 +664,7 @@ class DeviceServiceTest {
     }
 
     @Test
-    fun `syncDevices updates device with isDeleted+unsynced on non-NotFound delete error`() = runTest {
+    fun `syncDevices updates device with isDeleted+unsynced on non-NotFound delete error`() = runTest(mainDispatcherRule.scheduler) {
         val deletedDevice = fakeDevice(id = "del-err", isDeleted = true, isSynced = true)
         every { deviceRepository.getDevices(accountId, false) } returns flowOf(listOf(deletedDevice))
         coEvery { deviceRepository.deleteDeviceFromApi("del-err") } throws RuntimeException("500 Server Error")
@@ -660,7 +675,7 @@ class DeviceServiceTest {
     }
 
     @Test
-    fun `syncDevices uses syncedDevicesToStore as fallback when API fetch fails`() = runTest {
+    fun `syncDevices uses syncedDevicesToStore as fallback when API fetch fails`() = runTest(mainDispatcherRule.scheduler) {
         val syncedDevice = fakeDevice(id = "synced-1", isSynced = true)
         every { deviceRepository.getDevices(accountId, false) } returns flowOf(listOf(syncedDevice))
         coEvery { deviceRepository.getDevicesFromApi(accountId) } throws RuntimeException("network error")
@@ -672,7 +687,7 @@ class DeviceServiceTest {
     }
 
     @Test
-    fun `syncDevices handles general exception and stores tempDevice as unsynced`() = runTest {
+    fun `syncDevices handles general exception and stores tempDevice as unsynced`() = runTest(mainDispatcherRule.scheduler) {
         val tempDevice = fakeDevice(id = "temp-general")
         every { deviceRepository.getDevices(accountId, false) } throws RuntimeException("general error")
         coEvery { deviceRepository.getDevicesFromApi(accountId) } returns emptyList()
@@ -691,11 +706,11 @@ class DeviceServiceTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `saveScale returns adjusted device on API success`() = runTest {
+    fun `saveScale returns adjusted device on API success`() = runTest(mainDispatcherRule.scheduler) {
         service.setAccountId(accountId)
         val device = fakeDevice(id = "new-1")
         val savedDevice = device.copy(id = "server-1", isSynced = true)
-        coEvery { deviceRepository.saveDeviceToApi(any(), any()) } returns savedDevice
+        coEvery { deviceRepository.createPairedDevice(any(), any()) } returns savedDevice
 
         val result = service.saveScale(device)
 
@@ -703,10 +718,10 @@ class DeviceServiceTest {
     }
 
     @Test
-    fun `saveScale returns null on API exception (offline path)`() = runTest {
+    fun `saveScale returns null on API exception (offline path)`() = runTest(mainDispatcherRule.scheduler) {
         service.setAccountId(accountId)
         val device = fakeDevice(id = "offline-1")
-        coEvery { deviceRepository.saveDeviceToApi(any(), any()) } throws RuntimeException("no network")
+        coEvery { deviceRepository.createPairedDevice(any(), any()) } throws RuntimeException("no network")
 
         val result = service.saveScale(device)
 
@@ -714,12 +729,12 @@ class DeviceServiceTest {
     }
 
     @Test
-    fun `saveScale saves preferences to API when preferences are present`() = runTest {
+    fun `saveScale saves preferences to API when preferences are present`() = runTest(mainDispatcherRule.scheduler) {
         service.setAccountId(accountId)
         val prefs = fakePreferences
         val device = fakeDevice(id = "pref-1", preferences = prefs)
         val savedDevice = device.copy(isSynced = true)
-        coEvery { deviceRepository.saveDeviceToApi(any(), any()) } returns savedDevice
+        coEvery { deviceRepository.createPairedDevice(any(), any()) } returns savedDevice
 
         service.saveScale(device)
 
@@ -731,7 +746,7 @@ class DeviceServiceTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `deleteScale logs warning when device not found`() = runTest {
+    fun `deleteScale logs warning when device not found`() = runTest(mainDispatcherRule.scheduler) {
         service.setAccountId(accountId)
         every { deviceRepository.getDevice("missing") } returns flowOf(null)
 
@@ -740,7 +755,7 @@ class DeviceServiceTest {
     }
 
     @Test
-    fun `deleteScale deletes from DB and syncs when device is not yet synced`() = runTest {
+    fun `deleteScale deletes from DB and syncs when device is not yet synced`() = runTest(mainDispatcherRule.scheduler) {
         service.setAccountId(accountId)
         val unsyncedDevice = fakeDevice(id = deviceId, isSynced = false)
         every { deviceRepository.getDevice(deviceId) } returns flowOf(unsyncedDevice)
@@ -751,7 +766,7 @@ class DeviceServiceTest {
     }
 
     @Test
-    fun `deleteScale calls syncDevices with isDeleted=true for synced device`() = runTest {
+    fun `deleteScale calls syncDevices with isDeleted=true for synced device`() = runTest(mainDispatcherRule.scheduler) {
         service.setAccountId(accountId)
         val syncedDevice = fakeDevice(id = deviceId, isSynced = true)
         every { deviceRepository.getDevice(deviceId) } returns flowOf(syncedDevice)
@@ -767,7 +782,7 @@ class DeviceServiceTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `updateScaleNickname calls repository with device and nickname`() = runTest {
+    fun `updateScaleNickname calls repository with device and nickname`() = runTest(mainDispatcherRule.scheduler) {
         val device = fakeDevice()
         coEvery { deviceRepository.updateDeviceNickname(device, "My Scale") } returns device.copy(nickname = "My Scale")
 
@@ -777,7 +792,7 @@ class DeviceServiceTest {
     }
 
     @Test
-    fun `updateScaleNickname handles exception without crashing`() = runTest {
+    fun `updateScaleNickname handles exception without crashing`() = runTest(mainDispatcherRule.scheduler) {
         val device = fakeDevice()
         coEvery { deviceRepository.updateDeviceNickname(any(), any()) } throws RuntimeException("DB error")
 
@@ -791,7 +806,7 @@ class DeviceServiceTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `updateScalePreferences returns true on success`() = runTest {
+    fun `updateScalePreferences returns true on success`() = runTest(mainDispatcherRule.scheduler) {
         service.setAccountId(accountId)
 
         val result = service.updateScalePreferences(deviceId, fakeR4Preferences)
@@ -800,7 +815,7 @@ class DeviceServiceTest {
     }
 
     @Test
-    fun `updateScalePreferences injects tzOffset and resets wifiFotaScheduleTime`() = runTest {
+    fun `updateScalePreferences injects tzOffset and resets wifiFotaScheduleTime`() = runTest(mainDispatcherRule.scheduler) {
         service.setAccountId(accountId)
         val prefSlot = slot<R4ScalePreferenceApiModel>()
         coEvery { deviceRepository.saveScalePreferencesToApi(capture(prefSlot)) } returns fakeR4Preferences
@@ -812,7 +827,7 @@ class DeviceServiceTest {
     }
 
     @Test
-    fun `updateScalePreferences returns false on exception`() = runTest {
+    fun `updateScalePreferences returns false on exception`() = runTest(mainDispatcherRule.scheduler) {
         service.setAccountId(accountId)
         coEvery { deviceRepository.saveScalePreferencesToApi(any()) } throws RuntimeException("API fail")
 
@@ -826,7 +841,7 @@ class DeviceServiceTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `updateScalePreferencesByMac returns false when device not found by mac`() = runTest {
+    fun `updateScalePreferencesByMac returns false when device not found by mac`() = runTest(mainDispatcherRule.scheduler) {
         service.setAccountId(accountId)
         every { deviceRepository.getDeviceByMac(any(), any()) } returns flowOf(null)
 
@@ -836,7 +851,7 @@ class DeviceServiceTest {
     }
 
     @Test
-    fun `updateScalePreferencesByMac delegates to updateScalePreferences when device found`() = runTest {
+    fun `updateScalePreferencesByMac delegates to updateScalePreferences when device found`() = runTest(mainDispatcherRule.scheduler) {
         service.setAccountId(accountId)
         val device = fakeDevice()
         every { deviceRepository.getDeviceByMac("AA:BB:CC:DD:EE:FF", accountId) } returns flowOf(device)
@@ -901,7 +916,7 @@ class DeviceServiceTest {
     }
 
     @Test
-    fun `weightOnlyModeDismissAlert onConfirm sets alert shown and calls callback`() = runTest {
+    fun `weightOnlyModeDismissAlert onConfirm sets alert shown and calls callback`() = runTest(mainDispatcherRule.scheduler) {
         var callbackInvoked = false
         val dialogSlot = slot<DialogModel>()
         every { dialogQueueService.showDialog(capture(dialogSlot)) } just Runs
@@ -918,7 +933,7 @@ class DeviceServiceTest {
     }
 
     @Test
-    fun `weightOnlyModeDismissAlert onCancel dismisses dialog without setting alert shown`() = runTest {
+    fun `weightOnlyModeDismissAlert onCancel dismisses dialog without setting alert shown`() = runTest(mainDispatcherRule.scheduler) {
         val dialog = captureWeightOnlyModeDialog()
 
         dialog.onCancel?.invoke()
@@ -941,7 +956,7 @@ class DeviceServiceTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `syncDevices does not produce duplicate IDs in final device list`() = runTest {
+    fun `syncDevices does not produce duplicate IDs in final device list`() = runTest(mainDispatcherRule.scheduler) {
         val device = fakeDevice(id = "d1", isSynced = true)
         val apiDevice = fakeDevice(id = "d1", isSynced = true)
         every { deviceRepository.getDevices(accountId, false) } returns flowOf(listOf(device))
@@ -959,7 +974,7 @@ class DeviceServiceTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `onDeviceUpdate stores device detail in connectedDeviceMap for subsequent fetchScales`() = runTest {
+    fun `onDeviceUpdate stores device detail in connectedDeviceMap for subsequent fetchScales`() = runTest(mainDispatcherRule.scheduler) {
         val mac = "AA:BB:CC:DD:EE:FF"
         val detail: GGDeviceDetail = mockk(relaxed = true)
         every { detail.macAddress } returns mac
@@ -989,7 +1004,7 @@ class DeviceServiceTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `fetchScales throws IllegalArgumentException when no accountId is available`() = runTest {
+    fun `fetchScales throws IllegalArgumentException when no accountId is available`() = runTest(mainDispatcherRule.scheduler) {
         var thrownException: Exception? = null
         try {
             service.fetchScales(null)
@@ -1001,7 +1016,7 @@ class DeviceServiceTest {
     }
 
     @Test
-    fun `fetchScales applies connection status and weight-only mode from maps`() = runTest {
+    fun `fetchScales applies connection status and weight-only mode from maps`() = runTest(mainDispatcherRule.scheduler) {
         val mac = "AA:BB:CC:DD:EE:FF"
         val prefs = fakePreferences.copy(shouldMeasureImpedance = true)
         val deviceDetail: GGDeviceDetail = mockk(relaxed = true)
@@ -1032,7 +1047,7 @@ class DeviceServiceTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `updateScalePreferences sets tzOffset from getTimeZoneInMinutes`() = runTest {
+    fun `updateScalePreferences sets tzOffset from getTimeZoneInMinutes`() = runTest(mainDispatcherRule.scheduler) {
         service.setAccountId(accountId)
         advanceUntilIdle()
 
@@ -1048,7 +1063,7 @@ class DeviceServiceTest {
     }
 
     @Test
-    fun `updateScalePreferences returns false when API throws`() = runTest {
+    fun `updateScalePreferences returns false when API throws`() = runTest(mainDispatcherRule.scheduler) {
         service.setAccountId(accountId)
         advanceUntilIdle()
 
@@ -1064,12 +1079,71 @@ class DeviceServiceTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `updateScalePreferencesByMac returns false when scale not found by mac`() = runTest {
+    fun `updateScalePreferencesByMac returns false when scale not found by mac`() = runTest(mainDispatcherRule.scheduler) {
         service.setAccountId(accountId)
         every { deviceRepository.getDeviceByMac(any(), any()) } returns flowOf(null)
 
         val result = service.updateScalePreferencesByMac("unknown:mac", fakeR4Preferences)
 
         assertThat(result).isFalse()
+    }
+
+    // -------------------------------------------------------------------------
+    // healBpmDeviceBroadcastId — attribute a monitor reading to a paired BPM
+    // device only when exactly one un-identified candidate exists (MOB-596)
+    // -------------------------------------------------------------------------
+
+    private suspend fun populatePairedScales(devices: List<Device>) {
+        every { deviceRepository.getDevices(accountId, any()) } returns flowOf(devices)
+        service.setAccountId(accountId)
+        Thread.sleep(2000) // fetchScales runs on Dispatchers.IO; wait for _pairedScales to populate
+    }
+
+    @Test
+    fun `healBpmDeviceBroadcastId returns null when there are no un-identified BPM devices`() = runTest {
+        // Only an already-identified BPM device (has a broadcastId) — nothing to heal.
+        populatePairedScales(
+            listOf(fakeBpmDevice(id = "bpm-identified", mac = "AA:AA:AA:AA:AA:AA", sku = "0663", broadcastId = "AB:CD:EF:01:02:03")),
+        )
+
+        val result = service.healBpmDeviceBroadcastId("11:22:33:44:55:66", accountId)
+
+        assertThat(result).isNull()
+        coVerify(exactly = 0) { deviceRepository.updateDeviceBroadcastId(any(), any(), any()) }
+    }
+
+    @Test
+    fun `healBpmDeviceBroadcastId heals the single un-identified BPM device`() = runTest {
+        val broadcastId = "11:22:33:44:55:66"
+        val healed = fakeBpmDevice(id = "bpm-unidentified", mac = "AA:AA:AA:AA:AA:AA", sku = "0663", broadcastId = broadcastId)
+        coEvery { deviceRepository.updateDeviceBroadcastId(any(), any(), any()) } just Runs
+        every { deviceRepository.getDeviceByBroadcastId(broadcastId, accountId) } returns flowOf(healed)
+
+        populatePairedScales(
+            listOf(fakeBpmDevice(id = "bpm-unidentified", mac = "AA:AA:AA:AA:AA:AA", sku = "0663", broadcastId = null)),
+        )
+
+        val result = service.healBpmDeviceBroadcastId(broadcastId, accountId)
+
+        assertThat(result?.id).isEqualTo("bpm-unidentified")
+        coVerify(exactly = 1) {
+            deviceRepository.updateDeviceBroadcastId("bpm-unidentified", broadcastId, accountId)
+        }
+    }
+
+    @Test
+    fun `healBpmDeviceBroadcastId returns null when multiple un-identified BPM devices are ambiguous`() = runTest {
+        // Two un-identified BPM devices → ambiguous attribution → bail without writing.
+        populatePairedScales(
+            listOf(
+                fakeBpmDevice(id = "bpm-1", mac = "AA:AA:AA:AA:AA:AA", sku = "0663", broadcastId = null),
+                fakeBpmDevice(id = "bpm-2", mac = "BB:BB:BB:BB:BB:BB", sku = "0661", broadcastId = null),
+            ),
+        )
+
+        val result = service.healBpmDeviceBroadcastId("11:22:33:44:55:66", accountId)
+
+        assertThat(result).isNull()
+        coVerify(exactly = 0) { deviceRepository.updateDeviceBroadcastId(any(), any(), any()) }
     }
 }

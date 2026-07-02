@@ -7,6 +7,10 @@ import SwiftUI
 
 /// A reusable baby list view that shows added babies with swipe-to-delete and an "ADD A BABY" button.
 /// Used by both the signup flow and the baby scale setup flow.
+///
+/// When `babies` is empty and `emptyTitle`/`emptySubtitle` are provided, an empty state is shown
+/// prompting the user to add a baby before continuing (the caller is expected to disable its "Next"
+/// CTA meanwhile).
 struct BabyListStepView: View {
     @Environment(\.appTheme) private var theme
     @State private var openItemID: UUID?
@@ -14,12 +18,22 @@ struct BabyListStepView: View {
     let title: String
     let addButtonText: String
     let babies: [BabyListItem]
+    var emptyTitle: String?
+    var emptySubtitle: String?
     var onTapBaby: (Int) -> Void
     var onEditBaby: (Int) -> Void
     var onDeleteBaby: (Int) -> Void
     var onAddBaby: () -> Void
 
     var body: some View {
+        if babies.isEmpty, let emptyTitle, let emptySubtitle {
+            emptyState(title: emptyTitle, subtitle: emptySubtitle)
+        } else {
+            listContent
+        }
+    }
+
+    private var listContent: some View {
         ScrollView(.vertical, showsIndicators: false) {
             VStack(alignment: .center, spacing: .spacingLG) {
                 // Title
@@ -76,6 +90,36 @@ struct BabyListStepView: View {
             }
         }
     }
+
+    private func emptyState(title: String, subtitle: String) -> some View {
+        VStack(alignment: .leading, spacing: .spacingLG) {
+            VStack(alignment: .leading, spacing: .spacingXS) {
+                Text(title)
+                    .fontOpenSans(.heading4)
+                    .foregroundColor(theme.textHeading)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+
+                Text(subtitle)
+                    .fontOpenSans(.body2)
+                    .foregroundColor(theme.textBody)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            }
+            .padding(.top, .spacingLG)
+
+            ButtonView(
+                text: addButtonText,
+                type: .filledPrimary,
+                size: .small,
+                isDisabled: false
+            ) {
+                onAddBaby()
+            }
+            .frame(maxWidth: .infinity, alignment: .center)
+
+            Spacer()
+        }
+    }
 }
 
 #Preview {
@@ -83,6 +127,8 @@ struct BabyListStepView: View {
         title: "Your baby has been added!",
         addButtonText: "ADD A BABY",
         babies: [],
+        emptyTitle: "No babies added yet",
+        emptySubtitle: "You've removed all baby profiles. Add one to continue.",
         onTapBaby: { _ in },
         onEditBaby: { _ in },
         onDeleteBaby: { _ in },

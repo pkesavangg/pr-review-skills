@@ -83,20 +83,20 @@ class AppSyncServiceTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `setAppSyncDataForEditing updates state with ScaleEntry`() = runTest {
+    fun `setAppSyncDataForEditing updates state with ScaleEntry`() = runTest(mainDispatcherRule.scheduler) {
         service.setAppSyncDataForEditing(fakeScaleEntry)
         assertThat(service.appSyncDataForEditing.value).isEqualTo(fakeScaleEntry)
     }
 
     @Test
-    fun `setAppSyncDataForEditing with null clears state`() = runTest {
+    fun `setAppSyncDataForEditing with null clears state`() = runTest(mainDispatcherRule.scheduler) {
         service.setAppSyncDataForEditing(fakeScaleEntry)
         service.setAppSyncDataForEditing(null)
         assertThat(service.appSyncDataForEditing.value).isNull()
     }
 
     @Test
-    fun `setAppSyncDataForEditing emits values via StateFlow`() = runTest {
+    fun `setAppSyncDataForEditing emits values via StateFlow`() = runTest(mainDispatcherRule.scheduler) {
         service.appSyncDataForEditing.test {
             assertThat(awaitItem()).isNull()
             service.setAppSyncDataForEditing(fakeScaleEntry)
@@ -110,20 +110,20 @@ class AppSyncServiceTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `setAppSyncData updates state with ScaleApiEntry`() = runTest {
+    fun `setAppSyncData updates state with ScaleApiEntry`() = runTest(mainDispatcherRule.scheduler) {
         service.setAppSyncData(fakeApiEntry)
         assertThat(service.appSyncData.value).isEqualTo(fakeApiEntry)
     }
 
     @Test
-    fun `setAppSyncData with null clears state`() = runTest {
+    fun `setAppSyncData with null clears state`() = runTest(mainDispatcherRule.scheduler) {
         service.setAppSyncData(fakeApiEntry)
         service.setAppSyncData(null)
         assertThat(service.appSyncData.value).isNull()
     }
 
     @Test
-    fun `setAppSyncData emits values via StateFlow`() = runTest {
+    fun `setAppSyncData emits values via StateFlow`() = runTest(mainDispatcherRule.scheduler) {
         service.appSyncData.test {
             assertThat(awaitItem()).isNull()
             service.setAppSyncData(fakeApiEntry)
@@ -137,25 +137,25 @@ class AppSyncServiceTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `handleEditAppSyncData sets editing data`() = runTest {
+    fun `handleEditAppSyncData sets editing data`() = runTest(mainDispatcherRule.scheduler) {
         service.handleEditAppSyncData(fakeScaleEntry)
         assertThat(service.appSyncDataForEditing.value).isEqualTo(fakeScaleEntry)
     }
 
     @Test
-    fun `handleEditAppSyncData navigates to Entry with Home topLevel`() = runTest {
+    fun `handleEditAppSyncData navigates to Entry with Home topLevel`() = runTest(mainDispatcherRule.scheduler) {
         service.handleEditAppSyncData(fakeScaleEntry)
         coVerify { appNavigationService.navigateTo(AppRoute.Main.Entry, AppRoute.Home) }
     }
 
     @Test
-    fun `handleEditAppSyncData does not show toast on success`() = runTest {
+    fun `handleEditAppSyncData does not show toast on success`() = runTest(mainDispatcherRule.scheduler) {
         service.handleEditAppSyncData(fakeScaleEntry)
         coVerify(exactly = 0) { dialogQueueService.showToast(any()) }
     }
 
     @Test
-    fun `handleEditAppSyncData on navigation exception shows failure toast`() = runTest {
+    fun `handleEditAppSyncData on navigation exception shows failure toast`() = runTest(mainDispatcherRule.scheduler) {
         coEvery {
             appNavigationService.navigateTo(any<AppRoute>(), any<AppRoute>())
         } throws RuntimeException("nav error")
@@ -169,7 +169,7 @@ class AppSyncServiceTest {
     }
 
     @Test
-    fun `handleEditAppSyncData on exception still sets editing data before navigation`() = runTest {
+    fun `handleEditAppSyncData on exception still sets editing data before navigation`() = runTest(mainDispatcherRule.scheduler) {
         coEvery {
             appNavigationService.navigateTo(any<AppRoute>(), any<AppRoute>())
         } throws RuntimeException("fail")
@@ -184,7 +184,7 @@ class AppSyncServiceTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `handleSaveAppSyncData calls entryService addEntry`() = runTest {
+    fun `handleSaveAppSyncData calls entryService addEntry`() = runTest(mainDispatcherRule.scheduler) {
         coEvery { entryService.addEntry(any<ScaleEntry>()) } just Runs
 
         service.handleSaveAppSyncData(fakeScaleEntry)
@@ -193,7 +193,7 @@ class AppSyncServiceTest {
     }
 
     @Test
-    fun `handleSaveAppSyncData shows success toast with correct title and message`() = runTest {
+    fun `handleSaveAppSyncData shows success toast with correct title and message`() = runTest(mainDispatcherRule.scheduler) {
         coEvery { entryService.addEntry(any<ScaleEntry>()) } just Runs
 
         service.handleSaveAppSyncData(fakeScaleEntry)
@@ -205,7 +205,7 @@ class AppSyncServiceTest {
     }
 
     @Test
-    fun `handleSaveAppSyncData clears editing data on success`() = runTest {
+    fun `handleSaveAppSyncData clears editing data on success`() = runTest(mainDispatcherRule.scheduler) {
         coEvery { entryService.addEntry(any<ScaleEntry>()) } just Runs
 
         service.setAppSyncDataForEditing(fakeScaleEntry)
@@ -217,7 +217,7 @@ class AppSyncServiceTest {
     }
 
     @Test
-    fun `handleSaveAppSyncData on addEntry exception shows failure toast with error message`() = runTest {
+    fun `handleSaveAppSyncData on addEntry exception shows failure toast with error message`() = runTest(mainDispatcherRule.scheduler) {
         coEvery { entryService.addEntry(any<ScaleEntry>()) } throws RuntimeException("save error")
 
         service.handleSaveAppSyncData(fakeScaleEntry)
@@ -229,7 +229,7 @@ class AppSyncServiceTest {
     }
 
     @Test
-    fun `handleSaveAppSyncData on addEntry exception does not clear editing data`() = runTest {
+    fun `handleSaveAppSyncData on addEntry exception does not clear editing data`() = runTest(mainDispatcherRule.scheduler) {
         coEvery { entryService.addEntry(any<ScaleEntry>()) } throws RuntimeException("fail")
 
         service.setAppSyncDataForEditing(fakeScaleEntry)

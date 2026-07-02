@@ -19,12 +19,12 @@ final class DeviceBluetoothConnectionStore: ObservableObject {
 
     init(scale: Device) {
         self.scaleIdString = scale.id
-        isDeviceConnected = deviceService.scales.first(where: { $0.id == scaleIdString })?.isConnected ?? false
+        isDeviceConnected = deviceService.scales.first { $0.id == scaleIdString }?.isConnected ?? false
         deviceService.scalesPublisher
             .receive(on: DispatchQueue.main)
             .sink { [weak self] devices in
                 guard let self else { return }
-                self.isDeviceConnected = devices.first(where: { $0.id == self.scaleIdString })?.isConnected ?? false
+                self.isDeviceConnected = devices.first { $0.id == self.scaleIdString }?.isConnected ?? false
             }
             .store(in: &cancellables)
     }

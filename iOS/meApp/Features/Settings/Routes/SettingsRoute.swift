@@ -19,7 +19,8 @@ enum SettingsRoute: Routable {
     case deviceBluetoothScreen(scale: Device)
     case deviceSettings(scale: Device, scaleType: DeviceModelType)
     case bpmDeviceSettings(device: Device)
-    case addEditScales, integrations, goal, weightless, messages, appPermissions, help, myAccounts, myKids, addBaby, wifiMacAddress(macAddress: String)
+    case addEditScales, integrations, goal, weightless, messages, appPermissions, help, myAccounts, myKids, addBaby
+    case wifiMacAddress(macAddress: String)
 
     var body: some View {
         switch self {

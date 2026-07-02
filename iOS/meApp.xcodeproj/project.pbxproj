@@ -186,7 +186,6 @@
 			buildRules = (
 			);
 			dependencies = (
-				D0102DC82F20F8B70090AA7F /* PBXTargetDependency */,
 			);
 			fileSystemSynchronizedGroups = (
 				105A1F9C2DE585B800FBB764 /* meApp */,
@@ -292,7 +291,6 @@
 				D05336242E17C72500FFF083 /* XCRemoteSwiftPackageReference "ggAppSyncPackage" */,
 				10D170662E30E1AF00D18116 /* XCRemoteSwiftPackageReference "ggWifiScalePackage" */,
 				D0BCA1AF2E3A42070094546D /* XCRemoteSwiftPackageReference "ggInAppMessagingPackage" */,
-				D0102DC62F20F8A80090AA7F /* XCRemoteSwiftPackageReference "SwiftLint" */,
 				10E5F8EA2F2DCF82001C1DD3 /* XCRemoteSwiftPackageReference "ggBluetoothNativeLibrary" */,
 				D056187F2FB5F03000E1BBE8 /* XCRemoteSwiftPackageReference "ggHealthKitPackage" */,
 			);
@@ -366,10 +364,6 @@
 			isa = PBXTargetDependency;
 			target = 105A1F992DE585B800FBB764 /* meApp */;
 			targetProxy = 105A1FB72DE585BA00FBB764 /* PBXContainerItemProxy */;
-		};
-		D0102DC82F20F8B70090AA7F /* PBXTargetDependency */ = {
-			isa = PBXTargetDependency;
-			productRef = D0102DC72F20F8B70090AA7F /* SwiftLintBuildToolPlugin */;
 		};
 /* End PBXTargetDependency section */
 
@@ -448,7 +442,7 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_ENTITLEMENTS = meApp/meApp.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1;
+				CURRENT_PROJECT_VERSION = 3;
 				DEVELOPMENT_ASSET_PATHS = "\"meApp/Preview Content\"";
 				DEVELOPMENT_TEAM = PX369MG78T;
 				ENABLE_PREVIEWS = YES;
@@ -589,7 +583,7 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_ENTITLEMENTS = meApp/meApp_Release.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1;
+				CURRENT_PROJECT_VERSION = 3;
 				DEVELOPMENT_ASSET_PATHS = "\"meApp/Preview Content\"";
 				DEVELOPMENT_TEAM = PX369MG78T;
 				ENABLE_PREVIEWS = YES;
@@ -729,14 +723,6 @@
 				minimumVersion = 11.14.0;
 			};
 		};
-		D0102DC62F20F8A80090AA7F /* XCRemoteSwiftPackageReference "SwiftLint" */ = {
-			isa = XCRemoteSwiftPackageReference;
-			repositoryURL = "https://github.com/realm/SwiftLint";
-			requirement = {
-				kind = upToNextMajorVersion;
-				minimumVersion = 0.63.1;
-			};
-		};
 		D05336242E17C72500FFF083 /* XCRemoteSwiftPackageReference "ggAppSyncPackage" */ = {
 			isa = XCRemoteSwiftPackageReference;
 			repositoryURL = "https://github.com/gg-engineering/ggAppSyncPackage";
@@ -783,11 +769,6 @@
 			isa = XCSwiftPackageProductDependency;
 			package = 481F096B2DF05C8D00799EAA /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
 			productName = FirebaseMessaging;
-		};
-		D0102DC72F20F8B70090AA7F /* SwiftLintBuildToolPlugin */ = {
-			isa = XCSwiftPackageProductDependency;
-			package = D0102DC62F20F8A80090AA7F /* XCRemoteSwiftPackageReference "SwiftLint" */;
-			productName = "plugin:SwiftLintBuildToolPlugin";
 		};
 		D01B218F2E374CD6005D1CA2 /* ggInAppMessagingPackage */ = {
 			isa = XCSwiftPackageProductDependency;

@@ -15,7 +15,9 @@ import com.dmdbrands.gurus.weight.features.common.components.DialogType
 import com.dmdbrands.gurus.weight.features.common.components.RadioButtonOption
 import com.dmdbrands.gurus.weight.features.common.components.showRadioGroupModal
 import com.dmdbrands.gurus.weight.features.common.model.DialogModel
+import com.dmdbrands.gurus.weight.features.common.model.Toast
 import com.dmdbrands.gurus.weight.features.settings.strings.RadioGroupModalStrings
+import com.dmdbrands.gurus.weight.features.settings.strings.SettingsScreenStrings
 import com.dmdbrands.gurus.weight.features.settings.viewmodel.SettingsIntent
 import com.dmdbrands.gurus.weight.features.settings.viewmodel.SettingsState
 import com.dmdbrands.gurus.weight.features.weightless.helper.WeightlessHelper
@@ -60,7 +62,7 @@ constructor(
   private val userSettingsService: IUserSettingsService,
   private val dialogQueueService: IDialogQueueService,
   private val navigationService: IAppNavigationService,
-  private val scaleSettingsManager: IScaleSettingsManager,
+  private val scaleSettingsManager: IDeviceSettingsManager,
 ) : IProfileSettingsManager {
   companion object {
     private const val TAG = "ProfileSettingsManager"
@@ -119,6 +121,7 @@ constructor(
         AppLog.i(TAG, "Successfully updated streak mode")
       } catch (e: Exception) {
         AppLog.e(TAG, "Error updating streak mode", e)
+        showGenericError()
       } finally {
         dialogQueueService.dismissLoader()
       }
@@ -239,10 +242,21 @@ constructor(
         AppLog.i(TAG, "Successfully updated activity level")
       } catch (e: Exception) {
         AppLog.e(TAG, "Error updating activity level", e)
+        showGenericError()
       } finally {
         dialogQueueService.dismissLoader()
       }
     }
   }
 
+  /** Surfaces a generic error toast when a profile-settings update fails. */
+  private fun showGenericError() {
+    dialogQueueService.showToast(
+      Toast.Simple(
+        title = null,
+        message = SettingsScreenStrings.Error.MessageGeneric,
+        action = null,
+      ),
+    )
+  }
 }

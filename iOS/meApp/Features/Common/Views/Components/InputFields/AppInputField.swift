@@ -142,7 +142,7 @@ struct AppInputField: View {
             .accentColor(accentColor)
         }
         .frame(height: 56)
-        .background(theme.backgroundPrimary)
+        .background(inputBoxBackground)
         .cornerRadius(.radiusSM)
         .overlay(alignment: .trailing) { trailingIconView }
         .overlay { disabledOverlay }
@@ -208,6 +208,11 @@ struct AppInputField: View {
         .focused($fieldIsFocused)
         .padding(.leading, .spacingSM)
         .accessibilityLabel(config.label)
+    }
+
+    // Disabled fields use the secondary-disabled fill per Figma; enabled fields keep the primary background.
+    private var inputBoxBackground: Color {
+        config.isDisabled ? theme.actionSecondaryDisabled : theme.backgroundPrimary
     }
 
     private var disabledOverlay: some View {

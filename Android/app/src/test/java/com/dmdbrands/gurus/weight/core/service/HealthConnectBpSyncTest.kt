@@ -129,7 +129,7 @@ class HealthConnectBpSyncTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `syncAllData calls saveData with BloodPressure data when BpmEntry present`() = runTest {
+    fun `syncAllData calls saveData with BloodPressure data when BpmEntry present`() = runTest(mainDispatcherRule.scheduler) {
         stubIntegrated()
         val bpmEntry = TestFixtures.aBpmEntry(systolic = 120, diastolic = 80)
         coEvery { entryRepository.getEntriesByAccount(fakeAccountId) } returns listOf(bpmEntry)
@@ -142,7 +142,7 @@ class HealthConnectBpSyncTest {
     }
 
     @Test
-    fun `syncAllData passes correct systolic and diastolic values to HC library`() = runTest {
+    fun `syncAllData passes correct systolic and diastolic values to HC library`() = runTest(mainDispatcherRule.scheduler) {
         stubIntegrated()
         val bpmEntry = TestFixtures.aBpmEntry(systolic = 130, diastolic = 85)
         coEvery { entryRepository.getEntriesByAccount(fakeAccountId) } returns listOf(bpmEntry)
@@ -158,7 +158,7 @@ class HealthConnectBpSyncTest {
     }
 
     @Test
-    fun `syncAllData does not call saveData for BP when no BpmEntry instances`() = runTest {
+    fun `syncAllData does not call saveData for BP when no BpmEntry instances`() = runTest(mainDispatcherRule.scheduler) {
         stubIntegrated()
         coEvery { entryRepository.getEntriesByAccount(fakeAccountId) } returns emptyList()
 
@@ -174,7 +174,7 @@ class HealthConnectBpSyncTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `deleteEntry with BpmEntry returns true on success`() = runTest {
+    fun `deleteEntry with BpmEntry returns true on success`() = runTest(mainDispatcherRule.scheduler) {
         stubIntegrated()
         val bpmEntry = TestFixtures.aBpmEntry()
 
@@ -184,7 +184,7 @@ class HealthConnectBpSyncTest {
     }
 
     @Test
-    fun `deleteEntry with BpmEntry calls HC library with BloodPressure data type`() = runTest {
+    fun `deleteEntry with BpmEntry calls HC library with BloodPressure data type`() = runTest(mainDispatcherRule.scheduler) {
         stubIntegrated()
         val bpmEntry = TestFixtures.aBpmEntry(systolic = 120, diastolic = 80)
         val slot = slot<List<HealthConnectData>>()
@@ -199,7 +199,7 @@ class HealthConnectBpSyncTest {
     }
 
     @Test
-    fun `deleteEntry with BpmEntry returns false when not integrated`() = runTest {
+    fun `deleteEntry with BpmEntry returns false when not integrated`() = runTest(mainDispatcherRule.scheduler) {
         stubNotIntegrated()
         val bpmEntry = TestFixtures.aBpmEntry()
 
@@ -210,7 +210,7 @@ class HealthConnectBpSyncTest {
     }
 
     @Test
-    fun `deleteEntry with BpmEntry returns false when all BPM fields are non-positive`() = runTest {
+    fun `deleteEntry with BpmEntry returns false when all BPM fields are non-positive`() = runTest(mainDispatcherRule.scheduler) {
         stubIntegrated()
         // Pulse is now synced separately as RestingHeartRate, so an "all-invalid" BPM entry
         // requires systolic=0, diastolic=0, AND pulse=0 to truly produce an empty delete payload.
@@ -223,7 +223,7 @@ class HealthConnectBpSyncTest {
     }
 
     @Test
-    fun `syncAllData passes Instant parsed from entryTimestamp to HC library`() = runTest {
+    fun `syncAllData passes Instant parsed from entryTimestamp to HC library`() = runTest(mainDispatcherRule.scheduler) {
         stubIntegrated()
         val timestamp = "2024-06-15T08:30:00.000Z"
         val bpmEntry = TestFixtures.aBpmEntry(entryTimestamp = timestamp)
@@ -239,7 +239,7 @@ class HealthConnectBpSyncTest {
     }
 
     @Test
-    fun `deleteEntry with BpmEntry returns false on malformed entryTimestamp`() = runTest {
+    fun `deleteEntry with BpmEntry returns false on malformed entryTimestamp`() = runTest(mainDispatcherRule.scheduler) {
         stubIntegrated()
         val bpmEntry = TestFixtures.aBpmEntry(entryTimestamp = "not-a-timestamp")
 
@@ -254,7 +254,7 @@ class HealthConnectBpSyncTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `syncAllData surfaces HC saveData failure as a false result and dialog (no silent success)`() = runTest {
+    fun `syncAllData surfaces HC saveData failure as a false result and dialog (no silent success)`() = runTest(mainDispatcherRule.scheduler) {
         stubIntegrated()
         val bpmEntry = TestFixtures.aBpmEntry(systolic = 120, diastolic = 80)
         coEvery { entryRepository.getEntriesByAccount(fakeAccountId) } returns listOf(bpmEntry)
@@ -274,7 +274,7 @@ class HealthConnectBpSyncTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `syncAllData makes a single saveData call with both ScaleEntry and BpmEntry records combined`() = runTest {
+    fun `syncAllData makes a single saveData call with both ScaleEntry and BpmEntry records combined`() = runTest(mainDispatcherRule.scheduler) {
         stubIntegrated()
         val scaleEntry = TestFixtures.aWeightEntry(weight = 75.0)
         val bpmEntry = TestFixtures.aBpmEntry(systolic = 120, diastolic = 80, pulse = 70)
@@ -296,7 +296,7 @@ class HealthConnectBpSyncTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `syncAllData adds RestingHeartRate record when BpmEntry pulse is positive`() = runTest {
+    fun `syncAllData adds RestingHeartRate record when BpmEntry pulse is positive`() = runTest(mainDispatcherRule.scheduler) {
         stubIntegrated()
         val bpmEntry = TestFixtures.aBpmEntry(systolic = 120, diastolic = 80, pulse = 72)
         coEvery { entryRepository.getEntriesByAccount(fakeAccountId) } returns listOf(bpmEntry)
@@ -311,7 +311,7 @@ class HealthConnectBpSyncTest {
     }
 
     @Test
-    fun `syncAllData omits RestingHeartRate record when BpmEntry pulse is zero`() = runTest {
+    fun `syncAllData omits RestingHeartRate record when BpmEntry pulse is zero`() = runTest(mainDispatcherRule.scheduler) {
         stubIntegrated()
         val bpmEntry = TestFixtures.aBpmEntry(systolic = 120, diastolic = 80, pulse = 0)
         coEvery { entryRepository.getEntriesByAccount(fakeAccountId) } returns listOf(bpmEntry)
@@ -326,7 +326,7 @@ class HealthConnectBpSyncTest {
     }
 
     @Test
-    fun `deleteEntry with BpmEntry includes RestingHeartRate when pulse is positive`() = runTest {
+    fun `deleteEntry with BpmEntry includes RestingHeartRate when pulse is positive`() = runTest(mainDispatcherRule.scheduler) {
         stubIntegrated()
         val bpmEntry = TestFixtures.aBpmEntry(systolic = 120, diastolic = 80, pulse = 72)
         val slot = slot<List<HealthConnectData>>()
@@ -340,7 +340,7 @@ class HealthConnectBpSyncTest {
     }
 
     @Test
-    fun `deleteEntry with BpmEntry returns true with only pulse when BP readings are zero`() = runTest {
+    fun `deleteEntry with BpmEntry returns true with only pulse when BP readings are zero`() = runTest(mainDispatcherRule.scheduler) {
         // Symmetric with sync: if pulse synced (because > 0) but BP didn't (because = 0),
         // delete must remove the pulse record; failing to do so causes HC state drift.
         stubIntegrated()
@@ -360,7 +360,7 @@ class HealthConnectBpSyncTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `deleteEntry with ScaleEntry sends LeanBodyMass derived from bodyFat (not muscleMass)`() = runTest {
+    fun `deleteEntry with ScaleEntry sends LeanBodyMass derived from bodyFat (not muscleMass)`() = runTest(mainDispatcherRule.scheduler) {
         // Pre-fix: delete used (muscleMass × weight) / 100 → 28.0
         // Post-fix: delete uses weight × (1 - bodyFat/100) → 60.0 (matches sync formula)
         // The two values are different by design so a regression to the old formula will fail this test.
@@ -384,7 +384,7 @@ class HealthConnectBpSyncTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `syncAllData returns false and shows dialog when entries existed but all were filtered out`() = runTest {
+    fun `syncAllData returns false and shows dialog when entries existed but all were filtered out`() = runTest(mainDispatcherRule.scheduler) {
         // Pin the contract: if the user has entries but every one is unsyncable
         // (malformed timestamp, all-zero values), do NOT show the success toast —
         // surface the same error dialog as a sync exception so the user knows nothing
@@ -401,7 +401,7 @@ class HealthConnectBpSyncTest {
     }
 
     @Test
-    fun `syncAllData skips entries with malformed timestamps but still syncs valid ones`() = runTest {
+    fun `syncAllData skips entries with malformed timestamps but still syncs valid ones`() = runTest(mainDispatcherRule.scheduler) {
         // A future regression to a raw Instant.parse() would make ONE bad row abort the
         // entire sync. This test pins the skip-and-continue contract.
         stubIntegrated()

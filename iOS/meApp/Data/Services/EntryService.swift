@@ -33,6 +33,12 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
 
     let tag = "EntryService"
 
+    /// `start` value used for a full sync (no prior sync timestamp). The unified
+    /// `GET /v3/entries/` only returns the complete history in sync mode when a `start`
+    /// is supplied; sending no `start` triggers a 20-row cursor page instead. Using the
+    /// epoch pulls every entry so History/Dashboard reflect the full server dataset.
+    private static let fullSyncStart = "1970-01-01T00:00:00Z"
+
     @Published var isSyncing: Bool = false
     @Published var lastSyncTime: Date?
     @Published var progress: ProgressSummary = .empty
@@ -402,6 +408,7 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
 
     // MARK: - Progress/Stats
 
+    // swiftlint:disable:next function_body_length
     func getProgress(entryType: EntryType = .scale) async throws -> Progress {
         let accountId = try getAccountId()
 
@@ -548,7 +555,7 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
         return df
     }()
 
-    private static let monthSummaryDateFormatter: DateFormatter = {
+    private nonisolated static let monthSummaryDateFormatter: DateFormatter = {
         let df = DateFormatter()
         df.calendar = Calendar(identifier: .gregorian)
         df.dateFormat = "yyyy-MM-dd"
@@ -1002,8 +1009,11 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
             }
 
             // Sync mode of the unified GET /v3/entries/ — all entries since the last sync.
+            // On a full sync (no prior timestamp) send the epoch so the server returns the
+            // entire history in sync mode rather than a partial 20-row cursor page.
+            let syncStart = lastSyncTimestamp ?? Self.fullSyncStart
             let remoteOps = try await remoteRepo.fetchEntries(
-                start: lastSyncTimestamp, cursor: nil, limit: nil, category: nil
+                start: syncStart, cursor: nil, limit: nil, category: nil
             )
             let hadMergedNewCreates = await mergeRemoteOperations(remoteOps.operations, accountId: accountId)
             let dashboardDataChanged = hadPushedCreates || hadMergedNewCreates
@@ -1039,7 +1049,7 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
     /// - Returns: `true` if at least one create operation was successfully synced.
     ///   The caller uses this to decide whether to show the goal met card: we only show it when
     ///   the user actually added new entries in this sync (not on every login or pull-to-refresh).
-    private func pushUnsyncedEntriesToRemote(accountId: String) async -> Bool { // swiftlint:disable:this function_body_length
+    private func pushUnsyncedEntriesToRemote(accountId: String) async -> Bool { // swiftlint:disable:this cyclomatic_complexity function_body_length
         // 1. Get all unsynced entries (both new and delete operations)
         let unsynced = try? await localRepo.fetchUnsyncedEntries(forUserId: accountId)
 
@@ -1096,7 +1106,12 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
                                     serverEntryId: responseEntryId
                                 )
                             } catch {
-                                logger.log(level: .error, tag: tag, message: "Failed to persist serverEntryId for entryId=\(entryIdString): \(error.localizedDescription)")
+                                logger.log(
+                                    level: .error,
+                                    tag: tag,
+                                    message: "Failed to persist serverEntryId for entryId=\(entryIdString): " +
+                                        "\(error.localizedDescription)"
+                                )
                             }
                         }
                         // R9: Use primitive-based update instead of mutating @Model
@@ -1177,8 +1192,11 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
                 lastSyncTimestamp = nil
             }
 
+            // Full sync (no prior timestamp) → epoch start so the server returns the entire
+            // history in sync mode instead of a partial 20-row cursor page.
+            let syncStart = lastSyncTimestamp ?? Self.fullSyncStart
             let remoteOps = try await remoteRepo.fetchEntries(
-                start: lastSyncTimestamp, cursor: nil, limit: nil, category: nil
+                start: syncStart, cursor: nil, limit: nil, category: nil
             )
             if !remoteOps.operations.isEmpty {
                 _ = await mergeRemoteOperations(remoteOps.operations, accountId: accountId)
@@ -1215,20 +1233,60 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
         // to health integrations after the merge. Pushing the overall "latest" entry alone is
         // insufficient when multiple Wi-Fi/R4 entries arrive in a single sync.
         var newlyCreatedOps: [BathScaleOperationDTO] = []
-        // Group operations by timestamp to determine final state for each timestamp
+        // Group operations by stable entry identity. Prefer the server-assigned entryId
+        // (unique per entry) so distinct entries that happen to share an `entryTimestamp`
+        // are NOT collapsed into one. Ops without a serverEntryId (legacy/local-only data)
+        // fall back to grouping by entryTimestamp, preserving the original behavior.
         let groupedOps = Dictionary(grouping: remoteOps) { op in
-            op.entryTimestamp ?? ""
+            op.serverEntryId ?? op.entryTimestamp ?? ""
         }
-        for (timestamp, ops) in groupedOps {
-            guard !timestamp.isEmpty else { continue }
+        for (groupKey, ops) in groupedOps {
+            guard !groupKey.isEmpty else { continue }
 
             // Sort operations by serverTimestamp to process in chronological order
             let sortedOps = ops.sorted {
                 ($0.serverTimestamp ?? "") < ($1.serverTimestamp ?? "")
             }
 
-            // Find the final operation for this timestamp (the latest one)
+            // Find the final operation for this group (the latest one)
             guard let finalOp = sortedOps.last else { continue }
+
+            // Server-identified entries: match the local row by serverEntryId so that
+            // distinct entries sharing an entryTimestamp remain independent. Each unique
+            // serverEntryId maps to exactly one local Entry.
+            if let serverEntryId = finalOp.serverEntryId {
+                let existing = try? await localRepo.fetchEntry(byServerEntryId: serverEntryId, forUserId: accountId)
+                if let localEntry = existing {
+                    let localServerTS = localEntry.serverTimestamp ?? ""
+                    let remoteServerTS = finalOp.serverTimestamp ?? ""
+                    let shouldApplyRemote = localServerTS.isEmpty || remoteServerTS > localServerTS
+
+                    if shouldApplyRemote {
+                        if finalOp.operationType == OperationType.delete.rawValue {
+                            try? await localRepo.deleteEntry(byId: localEntry.id.uuidString)
+                            try? await handleEntryDeleted(localEntry)
+                        } else {
+                            let updated = Entry(from: finalOp, accountId: accountId, isSynced: true)
+                            updated.id = localEntry.id
+                            try? await localRepo.updateEntry(updated)
+                        }
+                    } else if !localServerTS.isEmpty, !localEntry.isSynced {
+                        localEntry.isSynced = true
+                        try? await localRepo.updateEntry(localEntry)
+                    }
+                } else if finalOp.operationType == OperationType.create.rawValue {
+                    // No local entry for this server id — insert the new remote create.
+                    hadNewCreates = true
+                    newlyCreatedOps.append(finalOp)
+                    let newEntry = Entry(from: finalOp, accountId: accountId, isSynced: true)
+                    try? await localRepo.saveEntry(newEntry)
+                }
+                // Final op is a delete with no local entry: nothing to do.
+                continue
+            }
+
+            // Legacy path (no serverEntryId): key on entryTimestamp.
+            let timestamp = groupKey
 
             // Check if local entry exists with this timestamp
             // Normalize timestamp format variants to improve matching reliability
@@ -1351,7 +1409,8 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
                 logger.log(
                     level: .error,
                     tag: tag,
-                    message: "Failed to sync remote-merged entry to integrations: timestamp=\(notification.entryTimestamp), error=\(error.localizedDescription)"
+                    message: "Failed to sync remote-merged entry to integrations: " +
+                        "timestamp=\(notification.entryTimestamp), error=\(error.localizedDescription)"
                 )
             }
         }
@@ -1389,8 +1448,11 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
             throw AccountError.noActiveAccount
         }
         if category == EntryCategory.baby.rawValue && babyId == nil {
-            throw NSError(domain: "EntryService", code: 400,
-                          userInfo: [NSLocalizedDescriptionKey: "babyId is required for baby CSV export"])
+            throw NSError(
+                domain: "EntryService",
+                code: 400,
+                userInfo: [NSLocalizedDescriptionKey: "babyId is required for baby CSV export"]
+            )
         }
         let request = EntriesCSVRequest(
             category: category,
@@ -1485,11 +1547,11 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
         return Double(filtered.reduce(0, +)) / Double(filtered.count)
     }
 
-    /// Aggregate entries by day, returning BathScaleWeightSummary for each day.
-    ///
-    /// MA-3937: hybrid rule — the *most recent day with valid entries* surfaces its latest
-    /// non-null-positive values per metric (so the dashboard headline reflects the actual most
-    /// recent weigh-in). Every other day reverts to the prior daily-average behaviour.
+    // Aggregate entries by day, returning BathScaleWeightSummary for each day.
+    //
+    // MA-3937: hybrid rule — the *most recent day with valid entries* surfaces its latest
+    // non-null-positive values per metric (so the dashboard headline reflects the actual most
+    // recent weigh-in). Every other day reverts to the prior daily-average behaviour.
     // swiftlint:disable:next function_body_length
     func aggregateByDay(entries: [Entry], accountId: String) -> [BathScaleWeightSummary?] {
         // Group entries by day (YYYY-MM-DD), converting UTC to local timezone
@@ -1628,11 +1690,11 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
 
     // MARK: - DTO-based Aggregation (Background Thread Safe)
 
-    /// Aggregate DTOs by day on background thread - avoids SwiftData relationship access.
-    ///
-    /// MA-3937 hybrid rule: the most recent day with valid weight surfaces its latest-non-null-positive
-    /// metrics (latest weigh-in), while every other day keeps the daily-average behaviour via the
-    /// `EntrySummaryBucket` accumulator.
+    // Aggregate DTOs by day on background thread - avoids SwiftData relationship access.
+    //
+    // MA-3937 hybrid rule: the most recent day with valid weight surfaces its latest-non-null-positive
+    // metrics (latest weigh-in), while every other day keeps the daily-average behaviour via the
+    // `EntrySummaryBucket` accumulator.
     // swiftlint:disable:next function_body_length
     private nonisolated func aggregateByDayFromDTOs(_ dtos: [BathScaleOperationDTO], accountId: String) -> [BathScaleWeightSummary] {
         var groupedDTOs: [String: [BathScaleOperationDTO]] = [:]
@@ -1973,7 +2035,9 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
             logger.log(
                 level: .info,
                 tag: tag,
-                message: "Baby dashboard data loaded: babyId=\(babyId), daily=\(babyDailySummariesByProfile[babyId]?.count ?? 0), monthly=\(babyMonthlySummariesByProfile[babyId]?.count ?? 0)"
+                message: "Baby dashboard data loaded: babyId=\(babyId), " +
+                    "daily=\(babyDailySummariesByProfile[babyId]?.count ?? 0), " +
+                    "monthly=\(babyMonthlySummariesByProfile[babyId]?.count ?? 0)"
             )
             return true
         } catch {

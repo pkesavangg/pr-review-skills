@@ -1,6 +1,6 @@
 import Foundation
-import Testing
 @testable import meApp
+import Testing
 
 @Suite(.serialized)
 @MainActor
@@ -16,8 +16,8 @@ struct IntegrationStoreTests {
         let (store, _, _, _, _) = makeSUT(accountService: account)
 
         #expect(store.accountID == "acc-1")
-        #expect(store.integrations.first(where: { $0.type == .fitbit })?.isSelected == true)
-        #expect(store.integrations.first(where: { $0.type == .myFitnessPal })?.isSelected == false)
+        #expect(store.integrations.first { $0.type == .fitbit }?.isSelected == true)
+        #expect(store.integrations.first { $0.type == .myFitnessPal }?.isSelected == false)
     }
 
     @Test("account publisher updates list mapping when account changes")
@@ -32,8 +32,8 @@ struct IntegrationStoreTests {
         )
         let updated = await waitUntil {
             store.accountID == "acc-2"
-                && store.integrations.first(where: { $0.type == .fitbit })?.isSelected == false
-                && store.integrations.first(where: { $0.type == .myFitnessPal })?.isSelected == true
+                && store.integrations.first { $0.type == .fitbit }?.isSelected == false
+                && store.integrations.first { $0.type == .myFitnessPal }?.isSelected == true
         }
 
         #expect(updated == true)
@@ -134,7 +134,7 @@ struct IntegrationStoreTests {
         }
 
         #expect(completed == true)
-        #expect(store.integrations.first(where: { $0.type == .fitbit })?.isSelected == false)
+        #expect(store.integrations.first { $0.type == .fitbit }?.isSelected == false)
         #expect(notification.alertData?.buttons.count == 1)
         #expect(notification.alertData?.buttons.first?.type == .primary)
     }
@@ -195,11 +195,11 @@ struct IntegrationStoreTests {
         store.refreshAccounts()
         let refreshed = await waitUntil {
             account.refreshAccountCalls == 1
-                && store.integrations.first(where: { $0.type == .fitbit })?.isSelected == true
+                && store.integrations.first { $0.type == .fitbit }?.isSelected == true
         }
 
         #expect(refreshed == true)
-        #expect(store.integrations.first(where: { $0.type == .fitbit })?.isSelected == true)
+        #expect(store.integrations.first { $0.type == .fitbit }?.isSelected == true)
         #expect(notification.showAlertCalls == 1)
         #expect(notification.alertData?.buttons.count == 1)
     }
@@ -432,8 +432,8 @@ struct IntegrationStoreTests {
         let (store, _, _, _, _) = makeSUT(accountService: account)
 
         // Default available items contain .myWeight → weight-scale providers are listed.
-        #expect(store.integrations.contains(where: { $0.type == .fitbit }))
-        #expect(store.integrations.contains(where: { $0.type == .myFitnessPal }))
+        #expect(store.integrations.contains { $0.type == .fitbit })
+        #expect(store.integrations.contains { $0.type == .myFitnessPal })
 
         // The store observes the mock registered under the protocol key; the concrete
         // "ProductTypeStore" key is later overwritten by the real shared store in DI setup.
@@ -454,8 +454,8 @@ struct IntegrationStoreTests {
         productTypeStore.availableItems = [.myWeight]
         account.activeAccount = IntegrationStoreTestFixtures.makeAccount(id: "acc-dev-wt", fitbitOn: true, mfpOn: true)
         let shown = await waitUntil {
-            store.integrations.contains(where: { $0.type == .fitbit })
-                && store.integrations.contains(where: { $0.type == .myFitnessPal })
+            store.integrations.contains { $0.type == .fitbit }
+                && store.integrations.contains { $0.type == .myFitnessPal }
         }
         #expect(shown == true)
     }
@@ -521,9 +521,9 @@ struct IntegrationStoreTests {
 
         account.activeAccount = nil
         let updated = await waitUntil {
-            store.accountID == ""
-                && store.integrations.first(where: { $0.type == .fitbit })?.isSelected == false
-                && store.integrations.first(where: { $0.type == .myFitnessPal })?.isSelected == false
+            store.accountID.isEmpty
+                && store.integrations.first { $0.type == .fitbit }?.isSelected == false
+                && store.integrations.first { $0.type == .myFitnessPal }?.isSelected == false
         }
 
         #expect(updated == true)

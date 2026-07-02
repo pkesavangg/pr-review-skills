@@ -167,22 +167,12 @@ final class MultiDeviceSnapshotViewModel: ObservableObject {
         if babyProfile.isPendingSelection {
             return []
         }
-        // Use real baby data from EntryService if available, otherwise fall back to dummy data
-        let real = entryService.babyDailySummariesByProfile[babyProfile.id]
+        // Real baby data only. When the baby has no weight entries we return empty so the
+        // snapshot card renders its empty state (no value, no plotted curves) instead of
+        // plotting synthetic dummy growth data — matching the full dashboard's empty grid.
+        return entryService.babyDailySummariesByProfile[babyProfile.id]
             ?? babyDailySummaries[babyProfile.id]
             ?? []
-        return real.isEmpty
-            ? BabyDashboardChartSupport.dummyDailySummaries(
-                for: babyProfile,
-                endDate: {
-                    let calendar = Calendar.current
-                    let today = calendar.startOfDay(for: Date())
-                    let weekday = calendar.component(.weekday, from: today)
-                    let daysUntilSunday = (8 - weekday) % 7
-                    return calendar.date(byAdding: .day, value: daysUntilSunday, to: today) ?? today
-                }()
-            )
-            : real
     }
 
     /// Returns true when the current snapshot set has already completed at least one load.
