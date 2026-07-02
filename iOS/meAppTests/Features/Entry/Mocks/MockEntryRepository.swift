@@ -89,6 +89,10 @@ final class MockEntryRepository: EntryRepositoryProtocol {
         entries.filter { $0.accountId == userId && $0.entryTimestamp == timestamp }
     }
 
+    func fetchEntry(byServerEntryId serverEntryId: String, forUserId userId: String) async throws -> Entry? {
+        entries.first { $0.accountId == userId && $0.serverEntryId == serverEntryId }
+    }
+
     func fetchEntries(forMonth month: String, userId: String) async throws -> [Entry] {
         entries.filter {
             $0.accountId == userId &&

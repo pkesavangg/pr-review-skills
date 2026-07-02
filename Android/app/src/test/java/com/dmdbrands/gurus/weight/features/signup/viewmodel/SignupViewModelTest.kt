@@ -823,7 +823,7 @@ class SignupViewModelTest {
     }
 
     @Test
-    fun `Submit baby scale swallows a save failure and still reaches the Ready terminal`() = runTest(mainDispatcherRule.scheduler) {
+    fun `Submit baby scale routes to the ERROR screen when a save fails`() = runTest(mainDispatcherRule.scheduler) {
         coEvery { accountService.signup(any()) } returns TestFixtures.activeAccount
         coEvery { babyProfileService.save(any()) } throws RuntimeException("network down")
 
@@ -836,9 +836,9 @@ class SignupViewModelTest {
         viewModel.handleIntent(SignupIntent.Next)
         advanceUntilIdle()
 
-        // The failure is best-effort/swallowed: save was attempted and the flow still advances.
+        // A save failure now propagates (no longer swallowed) → terminal ERROR screen.
         coVerify { babyProfileService.save(any()) }
-        assertThat(viewModel.state.value.currentStep).isEqualTo(SignupStep.DEVICE_READY)
+        assertThat(viewModel.state.value.currentStep).isEqualTo(SignupStep.ERROR)
     }
 
     // -------------------------------------------------------------------------

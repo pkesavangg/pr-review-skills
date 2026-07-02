@@ -77,8 +77,8 @@ import com.dmdbrands.library.ggbluetooth.model.GGBTUser
 import com.dmdbrands.library.ggbluetooth.model.GGDeviceDetail
 import com.dmdbrands.library.ggbluetooth.model.GGEntry
 import com.dmdbrands.library.ggbluetooth.model.GGScaleEntry
-import com.dmdbrands.library.ggbluetooth.model.GGScanResponse
 import com.dmdbrands.library.ggbluetooth.model.GGWeightEntry
+import com.dmdbrands.library.ggbluetooth.model.GGScanResponse
 import com.greatergoods.blewrapper.GGCacheDevice
 import com.greatergoods.blewrapper.GGDeviceService
 import com.greatergoods.blewrapper.GGPermissionService

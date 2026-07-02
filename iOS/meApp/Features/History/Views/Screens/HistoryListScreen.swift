@@ -20,11 +20,11 @@ struct HistoryListScreen: View {
     // iOS 17 fix: Prevent duplicate lifecycle calls
     @State private var hasAppeared = false
     @State private var lastTabCheck: BottomTab?
-    
+
     // Prevent multiple simultaneous navigation
     @State private var isNavigating = false
     @State private var navigationTask: Task<Void, Never>?
-    
+
     var body: some View {
       RoutingView(stack: $router.stack) {
           VStack(spacing: 0) {
@@ -32,6 +32,11 @@ struct HistoryListScreen: View {
                   title: productTypeStore.availableItems.count > 1
                       ? productTypeStore.selectedItem.historyTitle
                       : HistoryListStrings.title,
+                  // Color the title per active product (weight/BP/baby) when the selector is
+                  // shown so a baby name uses the baby accent, not the weight-scale color.
+                  titleColor: productTypeStore.availableItems.count > 1
+                      ? theme.productAccentColor(for: productTypeStore.selectedItem.entryType)
+                      : theme.brandWgPrimary,
                   trailingContent: {
                       AnyView(
                           Button {
@@ -75,7 +80,7 @@ struct HistoryListScreen: View {
           .onChange(of: tabViewModel.selectedTab) {
               guard tabViewModel.selectedTab != lastTabCheck else { return }
               lastTabCheck = tabViewModel.selectedTab
-              
+
               if tabViewModel.selectedTab == .history {
                   Task {
                       try? await Task.sleep(nanoseconds: 50_000_000) // 50ms

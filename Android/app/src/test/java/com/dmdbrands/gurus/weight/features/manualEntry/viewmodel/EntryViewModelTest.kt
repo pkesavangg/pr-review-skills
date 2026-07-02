@@ -220,6 +220,59 @@ class EntryViewModelTest {
     }
 
     @Test
+    fun `Save baby weight for metric account shows saved-to-log card in kg`() = runTest(mainDispatcherRule.scheduler) {
+        val kgAccount = TestFixtures.anAccount(isActiveAccount = true, isLoggedIn = true)
+            .copy(weightUnit = WeightUnit.KG)
+        every { accountService.activeAccount } returns MutableStateFlow(kgAccount)
+        every { accountService.activeAccountFlow } returns flowOf(kgAccount)
+        every { productSelectionManager.selectedProduct } returns MutableStateFlow(babyProfile())
+        viewModel = createViewModel()
+
+        val form = MultiFormGroup.create(forms = BabyEntryForm.create())
+        form.forms.baby.controls.pounds.onValueChange("7")
+        form.forms.baby.controls.ounces.onValueChange("4")
+        viewModel.handleIntent(EntryIntent.UpdateActiveForm(ActiveEntryForm.Baby(form)))
+
+        val toasts = mutableListOf<Toast>()
+        every { dialogQueueService.showToast(capture(toasts)) } returns Unit
+        coEvery { entryService.addEntry(entry = any()) } returns Unit
+
+        viewModel.handleIntent(EntryIntent.Save)
+        advanceUntilIdle()
+
+        val dg = ConversionTools.convertLbOzToDecigrams(7, 4.0)
+        val expectedKg = ConversionTools.convertBabyWeightToDisplay(dg, source = null, isMetric = true)
+        val reading = toasts.filterIsInstance<Toast.Custom>()
+            .map { it.content }.filterIsInstance<ReadingToast>().single()
+        assertThat(reading.reading).isEqualTo(expectedKg)
+    }
+
+    @Test
+    fun `Save baby weight for imperial account shows saved-to-log card in lb-oz`() = runTest(mainDispatcherRule.scheduler) {
+        // Default active account is imperial (LB).
+        every { productSelectionManager.selectedProduct } returns MutableStateFlow(babyProfile())
+        viewModel = createViewModel()
+
+        val form = MultiFormGroup.create(forms = BabyEntryForm.create())
+        form.forms.baby.controls.pounds.onValueChange("7")
+        form.forms.baby.controls.ounces.onValueChange("4")
+        viewModel.handleIntent(EntryIntent.UpdateActiveForm(ActiveEntryForm.Baby(form)))
+
+        val toasts = mutableListOf<Toast>()
+        every { dialogQueueService.showToast(capture(toasts)) } returns Unit
+        coEvery { entryService.addEntry(entry = any()) } returns Unit
+
+        viewModel.handleIntent(EntryIntent.Save)
+        advanceUntilIdle()
+
+        val dg = ConversionTools.convertLbOzToDecigrams(7, 4.0)
+        val expectedLbOz = ConversionTools.convertBabyWeightToDisplay(dg, source = null, isMetric = false)
+        val reading = toasts.filterIsInstance<Toast.Custom>()
+            .map { it.content }.filterIsInstance<ReadingToast>().single()
+        assertThat(reading.reading).isEqualTo(expectedLbOz)
+    }
+
+    @Test
     fun `Save shows loader and dismisses it after success`() = runTest(mainDispatcherRule.scheduler) {
         viewModel.handleIntent(EntryIntent.Save)
         advanceUntilIdle()
@@ -228,7 +281,10 @@ class EntryViewModelTest {
     }
 
     @Test
-    fun `Save shows success toast on success`() = runTest(mainDispatcherRule.scheduler) {
+    fun `Save shows saved-to-log reading card on success`() = runTest(mainDispatcherRule.scheduler) {
+        val toasts = mutableListOf<Toast>()
+        every { dialogQueueService.showToast(capture(toasts)) } returns Unit
+
         viewModel.handleIntent(EntryIntent.Save)
         advanceUntilIdle()
         // Success now shows the "saved to log" reading card (Toast.Custom/ReadingToast), not a Simple toast.
@@ -684,8 +740,11 @@ class EntryViewModelTest {
     }
 
     @Test
-    fun `Save with BP form shows success toast and navigates back`() = runTest(mainDispatcherRule.scheduler) {
+    fun `Save with BP form shows saved-to-log reading card and navigates back`() = runTest(mainDispatcherRule.scheduler) {
         selectBloodPressureForm()
+        val toasts = mutableListOf<Toast>()
+        every { dialogQueueService.showToast(capture(toasts)) } returns Unit
+
         viewModel.handleIntent(EntryIntent.Save)
         advanceUntilIdle()
         // BP success also shows the "saved to log" reading card (Toast.Custom/ReadingToast).

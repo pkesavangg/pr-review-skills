@@ -124,12 +124,30 @@ enum BabyDashboardChartSupport {
         guard let lowerBound = operations.map(\.date).min(),
               let upperBound = operations.map(\.date).max()
         else { return [] }
+        return percentileSeries(
+            for: babyProfile,
+            dateRange: lowerBound...upperBound,
+            convertDecigramsToDisplay: convertDecigramsToDisplay,
+            calendar: calendar
+        )
+    }
+
+    /// Weight percentile reference curves spanning an explicit date range (the visible chart
+    /// window) rather than the operations' min/max date. With sparse real data (e.g. a single
+    /// entry) the operations span collapses to a few days and the WHO/CDC curves shrink into a
+    /// sliver on the left edge; spanning the visible window keeps the curves filling the chart.
+    static func percentileSeries(
+        for babyProfile: BabyProfile,
+        dateRange: ClosedRange<Date>,
+        convertDecigramsToDisplay: (Int) -> Double,
+        calendar: Calendar = .current
+    ) -> [GraphSeries] {
         let birthday = resolvedBirthday(for: babyProfile, calendar: calendar)
 
         return BabyPercentileGrowthReference.percentileChartPoints(
             biologicalSex: babyProfile.biologicalSex,
             birthday: birthday,
-            dateRange: lowerBound...upperBound,
+            dateRange: dateRange,
             convertDecigramsToDisplay: convertDecigramsToDisplay,
             calendar: calendar
         ).map { point in
@@ -179,6 +197,39 @@ enum BabyDashboardChartSupport {
         }
     }
 
+    /// Height percentile reference curves spanning an explicit date range (the visible chart
+    /// window), sampled per day and downsampled to ~150 points. Mirrors the weight percentile
+    /// curves so the lines fill the chart even when only one real entry exists.
+    static func heightPercentileSeries(
+        for babyProfile: BabyProfile,
+        dateRange: ClosedRange<Date>,
+        calendar: Calendar = .current
+    ) -> [GraphSeries] {
+        let birthday = resolvedBirthday(for: babyProfile, calendar: calendar)
+        let birthLengthInches = resolvedBirthLengthInches(for: babyProfile)
+
+        let totalDays = max(0, calendar.dateComponents([.day], from: dateRange.lowerBound, to: dateRange.upperBound).day ?? 0)
+        let step = max(1, totalDays / 150)
+        var offsets = Array(Swift.stride(from: 0, through: totalDays, by: step))
+        if offsets.last != totalDays { offsets.append(totalDays) }
+
+        return offsets.flatMap { offset -> [GraphSeries] in
+            guard let date = calendar.date(byAdding: .day, value: offset, to: dateRange.lowerBound) else { return [] }
+            let dayOfLife = max(0, calendar.dateComponents([.day], from: birthday, to: date).day ?? 0)
+            return BabyPercentileLine.allCases.map { line in
+                GraphSeries(
+                    date: date,
+                    value: percentileHeightInches(
+                        forDayOfLife: dayOfLife,
+                        birthLengthInches: birthLengthInches,
+                        line: line
+                    ),
+                    series: percentileSeriesName(for: line)
+                )
+            }
+        }
+    }
+
     static func yAxisScale(
         for operations: [BathScaleWeightSummary],
         babyProfile: BabyProfile,
@@ -190,14 +241,42 @@ enum BabyDashboardChartSupport {
             operations: operations,
             convertStoredWeightToDisplay: convertStoredWeightToDisplay
         )
-
         let percentileValues = percentileSeries(
             for: babyProfile,
             operations: operations,
             convertDecigramsToDisplay: convertDecigramsToDisplay,
             calendar: calendar
         ).map(\.value)
+        return expandedWeightScale(baseScale: baseScale, percentileValues: percentileValues)
+    }
 
+    /// Weight Y-axis scale that sizes the domain to the percentile curves across an explicit
+    /// date range (the visible chart window), so the curves never clip when real data is sparse.
+    static func yAxisScale(
+        for operations: [BathScaleWeightSummary],
+        babyProfile: BabyProfile,
+        dateRange: ClosedRange<Date>,
+        convertStoredWeightToDisplay: (Int) -> Double,
+        convertDecigramsToDisplay: (Int) -> Double,
+        calendar: Calendar = .current
+    ) -> YAxisScale {
+        let baseScale = DashboardChartScaleProvider.babyWeightScale(
+            operations: operations,
+            convertStoredWeightToDisplay: convertStoredWeightToDisplay
+        )
+        let percentileValues = percentileSeries(
+            for: babyProfile,
+            dateRange: dateRange,
+            convertDecigramsToDisplay: convertDecigramsToDisplay,
+            calendar: calendar
+        ).map(\.value)
+        return expandedWeightScale(baseScale: baseScale, percentileValues: percentileValues)
+    }
+
+    private static func expandedWeightScale(
+        baseScale: YAxisScale,
+        percentileValues: [Double]
+    ) -> YAxisScale {
         guard let percentileMin = percentileValues.min(),
               let percentileMax = percentileValues.max()
         else { return baseScale }
@@ -248,6 +327,34 @@ enum BabyDashboardChartSupport {
             operations: operations,
             calendar: calendar
         ).map(\.value)
+        return heightScale(primaryValues: primaryValues, percentileValues: percentileValues)
+    }
+
+    /// Height Y-axis scale sized to the percentile curves across an explicit date range (the
+    /// visible chart window), keeping the curves on-screen when real data is sparse.
+    static func heightYAxisScale(
+        for operations: [BathScaleWeightSummary],
+        babyProfile: BabyProfile,
+        dateRange: ClosedRange<Date>,
+        calendar: Calendar = .current
+    ) -> YAxisScale {
+        let primaryValues = dummyHeightSeries(
+            for: babyProfile,
+            operations: operations,
+            calendar: calendar
+        ).map(\.value)
+        let percentileValues = heightPercentileSeries(
+            for: babyProfile,
+            dateRange: dateRange,
+            calendar: calendar
+        ).map(\.value)
+        return heightScale(primaryValues: primaryValues, percentileValues: percentileValues)
+    }
+
+    private static func heightScale(
+        primaryValues: [Double],
+        percentileValues: [Double]
+    ) -> YAxisScale {
         let allValues = primaryValues + percentileValues
 
         guard let allMin = allValues.min(),
@@ -521,13 +628,14 @@ enum BabyDashboardChartSupport {
         return formatBabyWeightDisplay(avgStored, units: units)
     }
 
-    /// Placeholder display shown when no readings are available.
+    /// Placeholder display shown when no readings are available. Shows a zero value (matching
+    /// each unit's populated format) rather than a "--" dash, per the baby graph empty state.
     static func emptyWeightDisplay(for units: MeasurementUnits) -> BabyWeightDisplay {
         switch units {
         case .metric:
-            return BabyWeightDisplay(primary: "--", primaryUnit: BabyDashboardStrings.kg, secondary: nil, secondaryUnit: nil)
+            return BabyWeightDisplay(primary: "0.000", primaryUnit: BabyDashboardStrings.kg, secondary: nil, secondaryUnit: nil)
         case .imperialLbDecimal:
-            return BabyWeightDisplay(primary: "--", primaryUnit: BabyDashboardStrings.lb, secondary: nil, secondaryUnit: nil)
+            return BabyWeightDisplay(primary: "0.0", primaryUnit: BabyDashboardStrings.lb, secondary: nil, secondaryUnit: nil)
         case .imperialLbOz:
             return BabyWeightDisplay(primary: "00", primaryUnit: BabyDashboardStrings.lbs, secondary: "0.0", secondaryUnit: BabyDashboardStrings.oz)
         }

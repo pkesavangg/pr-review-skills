@@ -130,11 +130,16 @@ enum DashboardChartStyleProvider {
             return (ahaColor, isOutsideMonthInterval ? ahaColor.opacity(0.4) : ahaColor)
         }
 
+        // Weight line uses the weight-scale brand blue; the co-plotted selected-metric line uses
+        // the high-contrast neutral (white on dark / black on light). `actionSecondary` is
+        // `neutral-100`, which in dark mode is the chart background color — so the metric line
+        // rendered invisible ("not shown"). These tokens keep both lines visible and distinct in
+        // either appearance.
         let isWeight = seriesName == DashboardStrings.weight
-        let lineColor = isWeight ? theme.actionPrimary : theme.actionSecondary
+        let lineColor = isWeight ? theme.weightScaleColor : theme.actionPrimary
         let pointColor = isWeight
-            ? (isOutsideMonthInterval ? theme.actionPrimaryDisabled : theme.actionPrimary)
-            : (isOutsideMonthInterval ? theme.actionSecondaryDisabled : theme.actionSecondary)
+            ? (isOutsideMonthInterval ? theme.weightScaleColor.opacity(0.4) : theme.weightScaleColor)
+            : (isOutsideMonthInterval ? theme.actionPrimaryDisabled : theme.actionPrimary)
         return (lineColor, pointColor)
     }
 }

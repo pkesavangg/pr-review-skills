@@ -226,7 +226,12 @@ constructor(
     // Inline field errors are surfaced by validate(); no toast/error screen here.
     if (needsAccount && !validateAllFields(stateValue, productType)) return
 
-    dialogQueueService.showLoader(message = SignupStrings.LoaderMessage)
+    // Only the account-creation pass says "Creating your account..."; the
+    // loop pass (connect another device) reuses the existing account, so show
+    // a generic loader instead.
+    dialogQueueService.showLoader(
+      message = if (needsAccount) SignupStrings.LoaderMessage else SignupStrings.LoadingMessage,
+    )
     AppLog.d(TAG, "Submit pass — device=${productType.id} needsAccount=$needsAccount")
 
     viewModelScope.launch {
@@ -284,7 +289,8 @@ constructor(
       handleIntent(SignupIntent.ShowDeviceError)
       return
     }
-    dialogQueueService.showLoader(message = SignupStrings.LoaderMessage)
+    // Account already exists on retry — generic loader, not "Creating your account...".
+    dialogQueueService.showLoader(message = SignupStrings.LoadingMessage)
     AppLog.d(TAG, "Retrying device profile — device=${productType.id}")
     viewModelScope.launch {
       try {
@@ -406,12 +412,14 @@ constructor(
     when (productType) {
       ProductType.MY_WEIGHT -> if (!stateValue.goalSkipped) {
         AppLog.d(TAG, "Creating goal for Weight Scale account")
+        // A null result means goal creation failed (the service swallows the cause);
+        // throw so runDeviceProfile routes to the terminal ERROR screen.
         goalService.createGoalForSignup(
           account = account,
           goalType = signupData.goalType,
           startingWeight = signupData.currentWeight.toDoubleOrNull() ?: 0.0,
           goalWeight = signupData.goalWeight.toDoubleOrNull() ?: 0.0,
-        )
+        ) ?: throw IllegalStateException("Goal creation failed during signup")
       }
       ProductType.BABY -> persistBabies(account, stateValue)
       ProductType.BLOOD_PRESSURE -> AppLog.d(TAG, "Blood Pressure pass — no additional setup")
@@ -570,7 +578,20 @@ constructor(
     val signupData: SignupData = stateValue.form.getValuesAsType()
     AppLog.d(TAG, "Skip on loop pass — syncing product=${productType.apiValue}")
     viewModelScope.launch {
-      syncDeviceToServer(productType, signupData)
+      val account = accountService.getCurrentAccount()
+      if (account == null) {
+        AppLog.e(TAG, "Skip-pass sync: no current account")
+        handleIntent(SignupIntent.ShowDeviceError)
+        return@launch
+      }
+      // Any sync failure routes to the terminal ERROR screen, matching the submit path.
+      try {
+        syncProfileForAdditionalDevice(productType, account, stateValue, signupData)
+        syncDeviceToServer(productType, signupData)
+      } catch (e: Exception) {
+        AppLog.e(TAG, "Skip-pass device sync failed", e)
+        handleIntent(SignupIntent.ShowDeviceError)
+      }
     }
   }
 

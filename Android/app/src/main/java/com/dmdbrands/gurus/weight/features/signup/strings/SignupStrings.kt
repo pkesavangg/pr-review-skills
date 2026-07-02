@@ -72,8 +72,13 @@ object SignupStrings {
   const val nextButton = "NEXT"
   const val completeButton = "CREATE"
 
-  // Loader message
+  // Loader message — account-creation pass only.
   const val LoaderMessage = "Creating your account..."
+
+  // Generic loader for subsequent passes (connect-another-device loop, error
+  // retry) where the account already exists — "Creating your account..." would
+  // be misleading there.
+  const val LoadingMessage = "Loading..."
 
   // Exit confirmation dialog
   const val ExitConfirmTitle = "Confirm"

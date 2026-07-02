@@ -239,9 +239,10 @@ constructor(
   }
 
   override fun onSkip() {
-    // On the baby-profile form, skipping confirms via the "Skip Baby Profile?" dialog and
+    // On the baby-profile steps, skipping confirms via the "Skip Baby Profile?" dialog and
     // finishes setup (MOB-440). Other steps fall through to the normal next-step advance.
     when (state.value.step) {
+      BabyScaleSetupStep.PAIRED_SUCCESS,
       BabyScaleSetupStep.BABY_PROFILE_FORM -> showSkipBabyProfileDialog()
       else -> onNext()
     }

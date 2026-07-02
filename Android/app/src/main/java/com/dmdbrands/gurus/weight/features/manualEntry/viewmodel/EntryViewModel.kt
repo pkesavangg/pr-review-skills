@@ -20,6 +20,7 @@ import com.dmdbrands.gurus.weight.domain.model.common.ProductSelection
 import com.dmdbrands.gurus.weight.domain.model.storage.entry.BabyEntry
 import com.dmdbrands.gurus.weight.domain.model.storage.entry.BpmEntry
 import com.dmdbrands.gurus.weight.domain.services.IEntryService
+import com.dmdbrands.gurus.weight.features.common.helper.AccountHelper.isMetricUnit
 import com.dmdbrands.gurus.weight.features.common.helper.form.MultiFormGroup
 import com.dmdbrands.gurus.weight.domain.enums.ProductType
 import com.dmdbrands.gurus.weight.features.common.model.DialogModel
@@ -325,8 +326,11 @@ constructor(
   private fun showBabySavedToast(babyEntry: BabyEntry?, babyName: String?) {
     val weightDecigrams = babyEntry?.babyWeightDecigrams
     if (babyEntry != null && weightDecigrams != null) {
+      // Format with the account's real unit preference so the card matches History/dashboard
+      // (kg for metric users) instead of always showing lb/oz. (MOB-598)
+      val isMetric = accountService.activeAccount.value?.isMetricUnit() ?: false
       showSavedToLogToast(
-        reading = ConversionTools.convertBabyWeightToDisplay(weightDecigrams, source = null, isMetric = false),
+        reading = ConversionTools.convertBabyWeightToDisplay(weightDecigrams, source = null, isMetric = isMetric),
         type = ProductType.BABY,
         entryTimestamp = babyEntry.entry.entryTimestamp,
         babyName = babyName,
