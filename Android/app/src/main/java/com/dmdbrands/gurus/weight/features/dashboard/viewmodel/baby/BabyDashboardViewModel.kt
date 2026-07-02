@@ -5,6 +5,7 @@ import com.dmdbrands.gurus.weight.core.navigation.AppRoute
 import com.dmdbrands.gurus.weight.core.shared.utilities.ConversionTools
 import com.dmdbrands.gurus.weight.core.shared.utilities.DateTimeConverter
 import com.dmdbrands.gurus.weight.core.shared.utilities.logging.AppLog
+import com.dmdbrands.gurus.weight.domain.model.common.BabyProfile
 import com.dmdbrands.gurus.weight.domain.model.common.ProductSelection
 import com.dmdbrands.gurus.weight.domain.model.storage.entry.PeriodBabySummary
 import com.dmdbrands.gurus.weight.domain.model.storage.entry.PeriodSummary
@@ -91,18 +92,27 @@ class BabyDashboardViewModel @AssistedInject constructor(
     val profileId = babyProduct.profile.id
 
     viewModelScope.launch {
-      entryReadService.getBabyDailyGraphData(profileId).collect { entries ->
+      entryReadService.getBabyDailyGraphData(profileId).collect { raw ->
+        // Empty-state (CTA + zeroed header, MOB-432) is driven by real readings only —
+        // the synthetic birth point is profile metadata, not a logged reading.
+        handleIntent(BabyDashboardIntent.SetIsEmpty(raw.isEmpty()))
+        val entries = withBirthPoint(raw)
         latestDailyEntries = entries
-        // Drives the below-chart CONNECT DEVICE CTA + zeroed header (MOB-432).
-        handleIntent(BabyDashboardIntent.SetIsEmpty(entries.isEmpty()))
         updateBabySegmentRanges(entries, listOf(GraphSegment.WEEK, GraphSegment.MONTH))
         rebuildProducer(_state.value.dailyProducer, entries)
       }
     }
 
     viewModelScope.launch {
-      entryReadService.getBabyMonthlyGraphData(profileId).collect { entries ->
+      entryReadService.getBabyMonthlyGraphData(profileId).collect { raw ->
+        val entries = withBirthPoint(raw)
         latestMonthlyEntries = entries
+        AppLog.d(
+          TAG,
+          "YTDEBUG monthly recv size=${entries.size} " +
+            "first=${entries.firstOrNull()?.entryTimestamp} w=${entries.firstOrNull()?.avgWeightDecigrams} " +
+            "l=${entries.firstOrNull()?.avgLengthMillimeters} metric=${_state.value.selectedMetric}",
+        )
         updateBabySegmentRanges(entries, listOf(GraphSegment.YEAR, GraphSegment.TOTAL))
         rebuildProducer(_state.value.monthlyProducer, entries)
       }
@@ -179,7 +189,7 @@ class BabyDashboardViewModel @AssistedInject constructor(
 
       val yValues: List<Double> = when (_state.value.selectedMetric) {
         BabyMetric.WEIGHT -> seedSource.mapNotNull { e ->
-          e.avgWeightDecigrams?.let { it / 283.495 / 16.0 }
+          e.avgWeightDecigrams?.let { ConversionTools.convertDecigramsToLbExact(it) }
         }
         BabyMetric.HEIGHT -> seedSource.mapNotNull { e ->
           e.avgLengthMillimeters?.let { it / 25.4 }
@@ -197,6 +207,12 @@ class BabyDashboardViewModel @AssistedInject constructor(
         scale.min to scale.max
       } else null
 
+      AppLog.d(
+        TAG,
+        "YTDEBUG range seg=$segment single=$isSingleWindow startX=$startX endX=$endX " +
+          "cMin=$chartMinX cMax=$chartMaxX tgt=${filteredTarget.size} yv=${yValues.size} seed=$seed " +
+          "ptTs=${entries.firstOrNull()?.getTimeStamp()}",
+      )
       updateSegmentState(segment) {
         it.copy(
           data = targetData,
@@ -225,6 +241,12 @@ class BabyDashboardViewModel @AssistedInject constructor(
 
   private fun rebuildProducer(producer: CartesianChartModelProducer, entries: List<PeriodBabySummary>) {
     val series = activeSeriesFor(entries)
+    AppLog.d(
+      TAG,
+      "YTDEBUG rebuild entries=${entries.size} series=${series.size} " +
+        "pts=${series.firstOrNull()?.xValues?.size} firstX=${series.firstOrNull()?.xValues?.firstOrNull()} " +
+        "firstY=${series.firstOrNull()?.yValues?.firstOrNull()} pct=${_state.value.activePercentile != null}",
+    )
     if (series.isEmpty()) {
       viewModelScope.launch { pushEmptyProducer(producer) }
       return
@@ -253,6 +275,12 @@ class BabyDashboardViewModel @AssistedInject constructor(
       }
     }
   }
+
+  // ── Birth point ──
+
+  /** Prepends the birth measurement as a day-0 chart point for the active baby. */
+  private fun withBirthPoint(entries: List<PeriodBabySummary>): List<PeriodBabySummary> =
+    prependBirthPoint(babyProduct.profile, entries)
 
   // ── Series conversion ──
 
@@ -308,4 +336,33 @@ class BabyDashboardViewModel @AssistedInject constructor(
       setRefreshing(false)
     }
   }
+}
+
+/**
+ * babyApp parity: the growth curve starts at the birthday. If [profile] carries a birth
+ * weight/length, prepend a synthetic day-0 [PeriodBabySummary] at the birthdate so the
+ * chart's first point IS the birth measurement. Returns [entries] unchanged when the
+ * profile has no birth measurement, the birthdate is unknown/unparseable, or a real
+ * reading already lands on the birth day.
+ */
+internal fun prependBirthPoint(
+  profile: BabyProfile,
+  entries: List<PeriodBabySummary>,
+): List<PeriodBabySummary> {
+  val birthIso = profile.birthdate ?: return entries
+  if (profile.birthWeightDecigrams == null && profile.birthLengthMillimeters == null) return entries
+  val birthMillis = DateTimeConverter.isoToTimestamp(birthIso)
+  if (birthMillis <= 0L) return entries
+  val msPerDay = 86_400_000L
+  val birthDay = birthMillis / msPerDay
+  val hasReadingOnBirthDay = entries.any { it.getTimeStamp() / msPerDay == birthDay }
+  if (hasReadingOnBirthDay) return entries
+  val birthPoint = PeriodBabySummary(
+    period = birthIso,
+    entryTimestamp = birthIso,
+    babyId = profile.id,
+    avgWeightDecigrams = profile.birthWeightDecigrams,
+    avgLengthMillimeters = profile.birthLengthMillimeters,
+  )
+  return listOf(birthPoint) + entries
 }

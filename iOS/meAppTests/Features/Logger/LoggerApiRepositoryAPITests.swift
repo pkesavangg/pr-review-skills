@@ -1,6 +1,6 @@
 import Foundation
-import Testing
 @testable import meApp
+import Testing
 
 @Suite(.serialized)
 @MainActor
@@ -110,8 +110,16 @@ struct LoggerApiRepositoryAPITests {
             Issue.record("Expected LogsPayload body"); return
         }
         #expect(body.logs.count == 2)
-        if case .string(let a) = body.logs[0].data { #expect(a == "A: first") } else { Issue.record("Expected first entry string") }
-        if case .string(let b) = body.logs[1].data { #expect(b == "B: second") } else { Issue.record("Expected second entry string") }
+        if case .string(let firstMessage) = body.logs[0].data {
+            #expect(firstMessage == "A: first")
+        } else {
+            Issue.record("Expected first entry string")
+        }
+        if case .string(let secondMessage) = body.logs[1].data {
+            #expect(secondMessage == "B: second")
+        } else {
+            Issue.record("Expected second entry string")
+        }
     }
 
     // MARK: - Response handling & success

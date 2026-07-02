@@ -1,7 +1,7 @@
 import Combine
 import Foundation
-import Testing
 @testable import meApp
+import Testing
 
 extension BtWifiStoreTests {
     @Suite("Action Handlers")
@@ -199,18 +199,18 @@ extension BtWifiStoreTests {
 
             store.isWifiSetupOnly = true
             store.savedScale = BtWifiStoreTestFixtures.makeScaleSnapshot(id: "wifi-only")
-            store.presentExitAlert(onConfirm: {})
+            store.presentExitAlert {}
             let wifiOnlyAlert = try #require(harness.notification.alertData)
             #expect(wifiOnlyAlert.message == AlertStrings.ExitBtWifiSetupAlert.wifiExitMessage)
 
             store.isWifiSetupOnly = false
             store.savedScale = BtWifiStoreTestFixtures.makeScaleSnapshot(id: "saved")
-            store.presentExitAlert(onConfirm: {})
+            store.presentExitAlert {}
             let postConnectionAlert = try #require(harness.notification.alertData)
             #expect(postConnectionAlert.message == AlertStrings.ExitBtWifiSetupAlert.postConnectionExitMessage)
 
             store.savedScale = nil
-            store.presentExitAlert(onConfirm: {})
+            store.presentExitAlert {}
             let preConnectionAlert = try #require(harness.notification.alertData)
             #expect(preConnectionAlert.message == AlertStrings.ExitBtWifiSetupAlert.preConnectionExitMessage)
         }

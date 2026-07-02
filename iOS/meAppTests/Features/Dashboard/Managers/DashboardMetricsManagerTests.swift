@@ -1,11 +1,13 @@
 import Foundation
+@testable import meApp
 import SwiftUI
 import Testing
-@testable import meApp
 
 @Suite(.serialized)
 @MainActor
 struct DashboardMetricsManagerTests {
+    // Test SUT alias; labeled tuple is clearer than a one-off struct.
+    // swiftlint:disable:next large_tuple
     private typealias SUT = (
         sut: DashboardMetricsManager,
         accountService: AccountService,
@@ -325,6 +327,6 @@ struct DashboardMetricsManagerTests {
     }
 
     private func value(for label: String, in sut: DashboardMetricsManager) -> String? {
-        sut.state.metrics.first(where: { $0.label == label })?.value
+        sut.state.metrics.first { $0.label == label }?.value
     }
 }

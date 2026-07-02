@@ -1,7 +1,7 @@
+@testable import meApp
 import SwiftUI
 import Testing
 import UIKit
-@testable import meApp
 
 @Suite
 @MainActor
@@ -9,18 +9,18 @@ struct BpmDomainModelTests {
 
     @Test("AHA classification respects guideline thresholds and precedence")
     func ahaClassificationThresholds() {
-        let cases: [(systolic: Int, diastolic: Int, expected: AhaPressureClass)] = [
-            (119, 79, .normal),
-            (120, 79, .elevated),
-            (129, 79, .elevated),
-            (119, 80, .hypertensionStage1),
-            (130, 79, .hypertensionStage1),
-            (139, 89, .hypertensionStage1),
-            (140, 79, .hypertensionStage2),
-            (129, 90, .hypertensionStage2),
-            (180, 120, .hypertensionStage2),
-            (181, 120, .hypertensiveCrisis),
-            (120, 121, .hypertensiveCrisis),
+        let cases: [BpmDomainModelAhaCase] = [
+            BpmDomainModelAhaCase(systolic: 119, diastolic: 79, expected: .normal),
+            BpmDomainModelAhaCase(systolic: 120, diastolic: 79, expected: .elevated),
+            BpmDomainModelAhaCase(systolic: 129, diastolic: 79, expected: .elevated),
+            BpmDomainModelAhaCase(systolic: 119, diastolic: 80, expected: .hypertensionStage1),
+            BpmDomainModelAhaCase(systolic: 130, diastolic: 79, expected: .hypertensionStage1),
+            BpmDomainModelAhaCase(systolic: 139, diastolic: 89, expected: .hypertensionStage1),
+            BpmDomainModelAhaCase(systolic: 140, diastolic: 79, expected: .hypertensionStage2),
+            BpmDomainModelAhaCase(systolic: 129, diastolic: 90, expected: .hypertensionStage2),
+            BpmDomainModelAhaCase(systolic: 180, diastolic: 120, expected: .hypertensionStage2),
+            BpmDomainModelAhaCase(systolic: 181, diastolic: 120, expected: .hypertensiveCrisis),
+            BpmDomainModelAhaCase(systolic: 120, diastolic: 121, expected: .hypertensiveCrisis)
         ]
 
         for testCase in cases {
@@ -41,7 +41,7 @@ struct BpmDomainModelTests {
             (.elevated, BpmDashboardStrings.ahaElevated, BpmDashboardStrings.systolicElevated, BpmDashboardStrings.diastolicElevated),
             (.hypertensionStage1, BpmDashboardStrings.ahaHypertensionStage1, BpmDashboardStrings.systolicStage1, BpmDashboardStrings.diastolicStage1),
             (.hypertensionStage2, BpmDashboardStrings.ahaHypertensionStage2, BpmDashboardStrings.systolicStage2, BpmDashboardStrings.diastolicStage2),
-            (.hypertensiveCrisis, BpmDashboardStrings.ahaHypertensiveCrisis, BpmDashboardStrings.systolicCrisis, BpmDashboardStrings.diastolicCrisis),
+            (.hypertensiveCrisis, BpmDashboardStrings.ahaHypertensiveCrisis, BpmDashboardStrings.systolicCrisis, BpmDashboardStrings.diastolicCrisis)
         ]
 
         for testCase in cases {
@@ -74,15 +74,15 @@ struct BpmDomainModelTests {
 
     @Test("BP category classification follows dashboard risk rules")
     func bpCategoryClassificationThresholds() {
-        let cases: [(systolic: Int, diastolic: Int, expected: BPCategory)] = [
-            (119, 79, .normal),
-            (120, 79, .elevated),
-            (129, 79, .elevated),
-            (119, 80, .highStage1),
-            (130, 79, .highStage1),
-            (139, 89, .highStage1),
-            (140, 79, .highStage2),
-            (130, 90, .highStage2),
+        let cases: [BpmDomainModelBpCategoryCase] = [
+            BpmDomainModelBpCategoryCase(systolic: 119, diastolic: 79, expected: .normal),
+            BpmDomainModelBpCategoryCase(systolic: 120, diastolic: 79, expected: .elevated),
+            BpmDomainModelBpCategoryCase(systolic: 129, diastolic: 79, expected: .elevated),
+            BpmDomainModelBpCategoryCase(systolic: 119, diastolic: 80, expected: .highStage1),
+            BpmDomainModelBpCategoryCase(systolic: 130, diastolic: 79, expected: .highStage1),
+            BpmDomainModelBpCategoryCase(systolic: 139, diastolic: 89, expected: .highStage1),
+            BpmDomainModelBpCategoryCase(systolic: 140, diastolic: 79, expected: .highStage2),
+            BpmDomainModelBpCategoryCase(systolic: 130, diastolic: 90, expected: .highStage2)
         ]
 
         for testCase in cases {
@@ -112,6 +112,18 @@ struct BpmDomainModelTests {
         #expect(ThreeReadingAverage.displayLabel(for: 3) == BpmDashboardStrings.threeEntryAverage)
         #expect(ThreeReadingAverage.displayLabel(for: 5) == BpmDashboardStrings.threeEntryAverage)
     }
+}
+
+private struct BpmDomainModelAhaCase {
+    let systolic: Int
+    let diastolic: Int
+    let expected: AhaPressureClass
+}
+
+private struct BpmDomainModelBpCategoryCase {
+    let systolic: Int
+    let diastolic: Int
+    let expected: BPCategory
 }
 
 @MainActor

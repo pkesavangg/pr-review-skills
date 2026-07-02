@@ -1,6 +1,6 @@
 import Foundation
-import Testing
 @testable import meApp
+import Testing
 
 /// Tests for the unified `/v3/review/` submission migrated into `AppReviewService` (MOB-383).
 @Suite(.serialized)

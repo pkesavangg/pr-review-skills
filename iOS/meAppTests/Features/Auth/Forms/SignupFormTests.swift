@@ -1,19 +1,19 @@
 import Combine
 import Foundation
-import Testing
 @testable import meApp
+import Testing
 
 struct SignupFormTests {
     @Test("initial state")
     func initialState() {
         let form = SignupForm()
 
-        #expect(form.firstName.value == "")
-        #expect(form.lastName.value == "")
-        #expect(form.email.value == "")
-        #expect(form.password.value == "")
-        #expect(form.confirmPassword.value == "")
-        #expect(form.zipcode.value == "")
+        #expect(form.firstName.value.isEmpty)
+        #expect(form.lastName.value.isEmpty)
+        #expect(form.email.value.isEmpty)
+        #expect(form.password.value.isEmpty)
+        #expect(form.confirmPassword.value.isEmpty)
+        #expect(form.zipcode.value.isEmpty)
         #expect(form.goalType.value == GoalTypeSegment.losegainValue)
         #expect(form.isValid == false)
     }
@@ -290,8 +290,8 @@ struct SignupFormTests {
         form.resetGoal()
 
         #expect(form.goalType.value == GoalTypeSegment.losegainValue)
-        #expect(form.currentWeight.value == "")
-        #expect(form.goalWeight.value == "")
+        #expect(form.currentWeight.value.isEmpty)
+        #expect(form.goalWeight.value.isEmpty)
         #expect(form.goalType.isTouched == false)
         #expect(form.currentWeight.isTouched == false)
         #expect(form.goalWeight.isTouched == false)

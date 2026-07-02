@@ -17,8 +17,16 @@
 
 import Combine
 import Foundation
-import Testing
 @testable import meApp
+import Testing
+
+/// Result of one simulated reading arrival: the updated counter, the updated
+/// isReplacing flag, and the header count shown (nil for the first reading).
+private struct MultipleReadingsCounterTestsArrivalState {
+    let count: Int
+    let isReplacing: Bool
+    let headerCount: Int?
+}
 
 // MARK: - Counter logic helpers
 //
@@ -192,35 +200,39 @@ struct MultipleReadingsCounterSequenceTests {
     /// Simulates the full state machine for one showXxxReadingArrivalCard call.
     /// Returns (countAfter, isReplacingAfter, headerCount).
     private func arrive(currentCount: Int, currentIsReplacing: Bool)
-        -> (count: Int, isReplacing: Bool, headerCount: Int?) {
+        -> MultipleReadingsCounterTestsArrivalState {
         let newCount = currentCount + 1
         let header = headerViewCount(readingCount: newCount)
         let newIsReplacing = isReplacingAfterShow(count: newCount)
-        return (newCount, newIsReplacing, header)
+        return MultipleReadingsCounterTestsArrivalState(
+            count: newCount,
+            isReplacing: newIsReplacing,
+            headerCount: header
+        )
     }
 
     @Test("first arrival: count=1, no header, isReplacing=false")
     func firstArrival() {
-        let s = arrive(currentCount: 0, currentIsReplacing: false)
-        #expect(s.count == 1)
-        #expect(s.headerCount == nil)
-        #expect(s.isReplacing == false)
+        let state = arrive(currentCount: 0, currentIsReplacing: false)
+        #expect(state.count == 1)
+        #expect(state.headerCount == nil)
+        #expect(state.isReplacing == false)
     }
 
     @Test("second arrival: count=2, header shows 1, isReplacing=true")
     func secondArrival() {
-        let s = arrive(currentCount: 1, currentIsReplacing: false)
-        #expect(s.count == 2)
-        #expect(s.headerCount == 1)
-        #expect(s.isReplacing == true)
+        let state = arrive(currentCount: 1, currentIsReplacing: false)
+        #expect(state.count == 2)
+        #expect(state.headerCount == 1)
+        #expect(state.isReplacing == true)
     }
 
     @Test("third arrival: count=3, header shows 2, isReplacing=true")
     func thirdArrival() {
-        let s = arrive(currentCount: 2, currentIsReplacing: true)
-        #expect(s.count == 3)
-        #expect(s.headerCount == 2)
-        #expect(s.isReplacing == true)
+        let state = arrive(currentCount: 2, currentIsReplacing: true)
+        #expect(state.count == 3)
+        #expect(state.headerCount == 2)
+        #expect(state.isReplacing == true)
     }
 
     @Test("four rapid arrivals produce correct sequence of header counts")
@@ -230,10 +242,10 @@ struct MultipleReadingsCounterSequenceTests {
         var headers: [Int?] = []
 
         for _ in 1...4 {
-            let s = arrive(currentCount: count, currentIsReplacing: isReplacing)
-            count = s.count
-            isReplacing = s.isReplacing
-            headers.append(s.headerCount)
+            let state = arrive(currentCount: count, currentIsReplacing: isReplacing)
+            count = state.count
+            isReplacing = state.isReplacing
+            headers.append(state.headerCount)
         }
 
         // Reading 1 → nil, reading 2 → 1, reading 3 → 2, reading 4 → 3
@@ -255,9 +267,9 @@ struct MultipleReadingsCounterSequenceTests {
     @Test("arrival after onViewHeader starts fresh: no header on first new reading")
     func arrivalAfterViewHeaderIsFirstReading() {
         // User viewed history (counter reset to 0), then another reading arrives
-        let s = arrive(currentCount: 0, currentIsReplacing: false)
-        #expect(s.count == 1)
-        #expect(s.headerCount == nil)
+        let state = arrive(currentCount: 0, currentIsReplacing: false)
+        #expect(state.count == 1)
+        #expect(state.headerCount == nil)
     }
 }
 
@@ -422,9 +434,18 @@ struct MultipleReadingsCounterIntegrationTests {
 
         // Override: need at least one baby so the card type is deterministic
         let babyMock = MockBabyService()
-        babyMock.babies = [Baby(accountId: "test-account", name: "Baby A", deviceId: nil,
-                                birthday: nil, biologicalSex: nil, birthLengthInches: nil,
-                                birthWeightLbs: nil, birthWeightOz: nil)]
+        babyMock.babies = [
+            Baby(
+                accountId: "test-account",
+                name: "Baby A",
+                deviceId: nil,
+                birthday: nil,
+                biologicalSex: nil,
+                birthLengthInches: nil,
+                birthWeightLbs: nil,
+                birthWeightOz: nil
+            )
+        ]
         DependencyContainer.shared.register(babyMock as BabyServiceProtocol)
 
         bluetooth.newEntryReceivedSubject.send(BottomTabBarViewModelTestFixtures.babyNotification())
@@ -463,6 +484,8 @@ struct MultipleReadingsCounterIntegrationTests {
 // MARK: - Integration SUT factory
 
 @MainActor
+// Test factory return; labeled tuple is clearer than a one-off SUT struct.
+// swiftlint:disable:next large_tuple
 private func makeCounterSUT() -> (
     BottomTabBarViewModel,
     MockBluetoothService,

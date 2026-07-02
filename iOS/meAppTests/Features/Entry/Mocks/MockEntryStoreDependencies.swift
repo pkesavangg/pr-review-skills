@@ -50,6 +50,8 @@ final class MockEntryStoreEntryService: EntryServiceProtocol {
     func fetchAllEntrySnapshots() async throws -> [EntrySnapshot] { [] }
     func fetchEntrySnapshots(forMonth month: String, entryType: EntryType) async throws -> [EntrySnapshot] { [] }
     private(set) var createBabyEntryCalls = 0
+    // Captured call args; labeled tuple is clearer than a one-off struct.
+    // swiftlint:disable:next large_tuple
     private(set) var lastBabyEntry: (babyId: String, weight: Int, length: Int, note: String)?
     var createBabyEntryError: Error?
     private(set) var createBpmEntryCalls = 0
@@ -68,7 +70,21 @@ final class MockEntryStoreEntryService: EntryServiceProtocol {
     func getMonthDetail(month: String, entryType: EntryType) async throws -> [Entry] { [] }
     func getMonthYear() async throws -> [HistoryMonth] { [] }
     func getProgress(entryType: EntryType) async throws -> meApp.Progress {
-        meApp.Progress(count: 0, currentStreak: 0, initYear: nil, initMonth: nil, initWeek: nil, initWt: 0, latest: nil, longestStreak: 0, month: 1, percent: nil, total: nil, week: 1, year: 2024)
+        meApp.Progress(
+            count: 0,
+            currentStreak: 0,
+            initYear: nil,
+            initMonth: nil,
+            initWeek: nil,
+            initWt: 0,
+            latest: nil,
+            longestStreak: 0,
+            month: 1,
+            percent: nil,
+            total: nil,
+            week: 1,
+            year: 2024
+        )
     }
     func getStreak(entryType: EntryType) async throws -> Streak { Streak(current: 0, max: 0) }
     func exportCSV(category: String?, babyId: String?) async throws {}
@@ -83,6 +99,7 @@ final class MockEntryStoreEntryService: EntryServiceProtocol {
     func exportBpmCSV() async throws {}
     func migrateBabyEntriesToDecigrams() async {}
     func getEntry(byId id: UUID) async throws -> Entry? { nil }
+    // swiftlint:disable:next function_parameter_count
     func createBabyEntry(babyId: String, weight: Int, length: Int, note: String, entryTimestamp: String, source: String?) async throws {
         createBabyEntryCalls += 1
         lastBabyEntry = (babyId, weight, length, note)

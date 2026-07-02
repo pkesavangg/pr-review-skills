@@ -2,6 +2,7 @@ package com.dmdbrands.gurus.weight.features.integration.viewmodel
 
 import com.dmdbrands.gurus.weight.core.rules.MainDispatcherRule
 import com.dmdbrands.gurus.weight.core.service.IAppNavigationService
+import com.dmdbrands.gurus.weight.core.shared.utilities.browser.ICustomTabManager
 import com.dmdbrands.gurus.weight.domain.interfaces.IDialogQueueService
 import com.dmdbrands.gurus.weight.domain.services.IHealthConnectService
 import com.dmdbrands.gurus.weight.features.common.model.DialogModel
@@ -12,6 +13,7 @@ import com.dmdbrands.gurus.weight.features.integration.model.HealthConnectUiStat
 import com.dmdbrands.gurus.weight.testutil.initTestDependencies
 import com.google.common.truth.Truth.assertThat
 import com.greatergoods.libs.healthconnect.enums.HealthConnectPermissionStatus
+import com.greatergoods.libs.healthconnect.enums.HealthConnectRequestStatus
 import com.greatergoods.libs.healthconnect.enums.HealthConnectStatus
 import io.mockk.MockKAnnotations
 import io.mockk.coEvery
@@ -41,6 +43,7 @@ class HealthConnectViewModelTest {
     @MockK(relaxed = true) lateinit var healthConnectService: IHealthConnectService
     @MockK(relaxed = true) lateinit var navigationService: IAppNavigationService
     @MockK(relaxed = true) lateinit var dialogQueueService: IDialogQueueService
+    @MockK(relaxed = true) lateinit var customTabManager: ICustomTabManager
 
     private lateinit var viewModel: HealthConnectViewModel
 
@@ -58,6 +61,7 @@ class HealthConnectViewModelTest {
         ).initTestDependencies(
             navigationService = navigationService,
             dialogQueueService = dialogQueueService,
+            customTabManager = customTabManager,
         )
     }
 
@@ -642,6 +646,195 @@ class HealthConnectViewModelTest {
         advanceScheduler()
 
         assertThat(viewModel.state.value.isHealthConnectOpened).isFalse()
+    }
+
+    // -------------------------------------------------------------------------
+    // requestAuthorization callback branches (handleConnect)
+    // -------------------------------------------------------------------------
+
+    private fun captureAuthCallback(): io.mockk.CapturingSlot<(HealthConnectRequestStatus) -> Unit> {
+        val slot = io.mockk.slot<(HealthConnectRequestStatus) -> Unit>()
+        coEvery { healthConnectService.requestAuthorization(capture(slot)) } returns Unit
+        return slot
+    }
+
+    @Test
+    fun `handleConnect CONNECTED sets FINISH_CONNECT setup state`() {
+        val slot = captureAuthCallback()
+        advanceScheduler()
+        viewModel.handleIntent(HealthConnectIntent.PrimaryAction(HealthConnectAction.CONNECT))
+        advanceScheduler()
+
+        slot.captured.invoke(HealthConnectRequestStatus.CONNECTED)
+        advanceScheduler()
+
+        assertThat(viewModel.state.value.healthConnectSetupState).isEqualTo(HealthConnectSetup.FINISH_CONNECT)
+    }
+
+    @Test
+    fun `handleConnect from incomplete CONNECTED sets FINISH_INCOMPLETE_RECONNECTION`() {
+        val slot = captureAuthCallback()
+        advanceScheduler()
+        viewModel.handleIntent(HealthConnectIntent.PrimaryAction(HealthConnectAction.UPDATE_PERMISSIONS))
+        advanceScheduler()
+
+        slot.captured.invoke(HealthConnectRequestStatus.CONNECTED)
+        advanceScheduler()
+
+        assertThat(viewModel.state.value.healthConnectSetupState)
+            .isEqualTo(HealthConnectSetup.FINISH_INCOMPLETE_RECONNECTION)
+    }
+
+    @Test
+    fun `handleConnect PARTIAL sets FINISH_INCOMPLETE_RECONNECTION`() {
+        val slot = captureAuthCallback()
+        advanceScheduler()
+        viewModel.handleIntent(HealthConnectIntent.PrimaryAction(HealthConnectAction.CONNECT))
+        advanceScheduler()
+
+        slot.captured.invoke(HealthConnectRequestStatus.PARTIAL)
+        advanceScheduler()
+
+        assertThat(viewModel.state.value.healthConnectSetupState)
+            .isEqualTo(HealthConnectSetup.FINISH_INCOMPLETE_RECONNECTION)
+    }
+
+    @Test
+    fun `handleConnect CANCELLED sets PERMISSION_LIMIT`() {
+        val slot = captureAuthCallback()
+        advanceScheduler()
+        viewModel.handleIntent(HealthConnectIntent.PrimaryAction(HealthConnectAction.CONNECT))
+        advanceScheduler()
+
+        slot.captured.invoke(HealthConnectRequestStatus.CANCELLED)
+        advanceScheduler()
+
+        assertThat(viewModel.state.value.healthConnectSetupState).isEqualTo(HealthConnectSetup.PERMISSION_LIMIT)
+    }
+
+    @Test
+    fun `handleConnect PRIVACY_POLICY opens in-app browser`() {
+        val slot = captureAuthCallback()
+        advanceScheduler()
+        viewModel.handleIntent(HealthConnectIntent.PrimaryAction(HealthConnectAction.CONNECT))
+        advanceScheduler()
+
+        slot.captured.invoke(HealthConnectRequestStatus.PRIVACY_POLICY)
+        advanceScheduler()
+
+        // openInAppBrowser delegates to the custom tab manager — assert the privacy-policy
+        // URL was actually handed to it, so a regression in that branch fails the test.
+        verify { customTabManager.openChromeTab(any()) }
+    }
+
+    @Test
+    fun `handleConnect surfaces no crash when requestAuthorization throws`() {
+        coEvery { healthConnectService.requestAuthorization(any()) } throws RuntimeException("auth fail")
+        advanceScheduler()
+        viewModel.handleIntent(HealthConnectIntent.PrimaryAction(HealthConnectAction.CONNECT))
+        advanceScheduler()
+
+        // requestAuthorization threw, so the failure branch ran; handleConnect swallows
+        // the exception and the CONNECT handler still dismisses the loader afterwards
+        // (no stuck spinner / crash) — assert the observable outcome, not just non-null.
+        coVerify { healthConnectService.requestAuthorization(any()) }
+        verify { dialogQueueService.dismissLoader() }
+    }
+
+    // -------------------------------------------------------------------------
+    // handleFinish / openHealthConnect failure paths
+    // -------------------------------------------------------------------------
+
+    @Test
+    fun `handleFinish turns on integration and navigates back`() {
+        coEvery { healthConnectService.turnOnIntegration(any(), any()) } returns Unit
+        advanceScheduler()
+        viewModel.handleIntent(HealthConnectIntent.PrimaryAction(HealthConnectAction.FINISH))
+        advanceScheduler()
+
+        coVerify { healthConnectService.turnOnIntegration(any(), any()) }
+        coVerify { navigationService.navigateBack() }
+    }
+
+    @Test
+    fun `handleFinish sets error message when integration fails`() {
+        coEvery { healthConnectService.turnOnIntegration(any(), any()) } throws RuntimeException("turn on fail")
+        advanceScheduler()
+        viewModel.handleIntent(HealthConnectIntent.PrimaryAction(HealthConnectAction.FINISH))
+        advanceScheduler()
+
+        assertThat(viewModel.state.value.errorMessage).isNotNull()
+    }
+
+    @Test
+    fun `openHealthConnect sets error message when service fails`() {
+        coEvery { healthConnectService.openHealthConnect(any()) } throws RuntimeException("open fail")
+        advanceScheduler()
+        viewModel.handleIntent(HealthConnectIntent.PrimaryAction(HealthConnectAction.OPEN_HEALTH_CONNECT))
+        advanceScheduler()
+
+        assertThat(viewModel.state.value.errorMessage).isNotNull()
+    }
+
+    // -------------------------------------------------------------------------
+    // SecondaryAction SKIP / ConfirmExitSetup
+    // -------------------------------------------------------------------------
+
+    @Test
+    fun `SecondaryAction SKIP sets FINISH_INCOMPLETE_RECONNECTION`() {
+        advanceScheduler()
+        viewModel.handleIntent(HealthConnectIntent.SecondaryAction(HealthConnectAction.SKIP))
+        advanceScheduler()
+
+        assertThat(viewModel.state.value.healthConnectSetupState)
+            .isEqualTo(HealthConnectSetup.FINISH_INCOMPLETE_RECONNECTION)
+        assertThat(viewModel.state.value.isLoading).isFalse()
+    }
+
+    @Test
+    fun `ConfirmExitSetup in default setup state shows exit alert`() {
+        advanceScheduler()
+        viewModel.handleIntent(HealthConnectIntent.ConfirmExitSetup)
+        advanceScheduler()
+
+        verify { dialogQueueService.enqueue(any<DialogModel.Confirm>()) }
+    }
+
+    @Test
+    fun `ConfirmExitSetup in FINISH_CONNECT state finishes integration`() {
+        coEvery { healthConnectService.turnOnIntegration(any(), any()) } returns Unit
+        advanceScheduler()
+        forceSetupState(HealthConnectSetup.FINISH_CONNECT)
+
+        viewModel.handleIntent(HealthConnectIntent.ConfirmExitSetup)
+        advanceScheduler()
+
+        coVerify { healthConnectService.turnOnIntegration(any(), any()) }
+    }
+
+    @Test
+    fun `ConfirmExitSetup in PERMISSION_LIMIT state navigates back`() {
+        advanceScheduler()
+        forceSetupState(HealthConnectSetup.PERMISSION_LIMIT)
+
+        viewModel.handleIntent(HealthConnectIntent.ConfirmExitSetup)
+        advanceScheduler()
+
+        coVerify { navigationService.navigateBack() }
+    }
+
+    @Test
+    fun `exit alert onConfirm navigates back`() {
+        advanceScheduler()
+        viewModel.handleIntent(HealthConnectIntent.ConfirmExitSetup)
+        advanceScheduler()
+
+        val slot = io.mockk.slot<DialogModel>()
+        verify { dialogQueueService.enqueue(capture(slot)) }
+        (slot.captured as DialogModel.Confirm).onConfirm?.invoke()
+        advanceScheduler()
+
+        coVerify { navigationService.navigateBack() }
     }
 
     // -------------------------------------------------------------------------

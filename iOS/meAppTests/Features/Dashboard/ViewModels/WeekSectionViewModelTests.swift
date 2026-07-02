@@ -1,6 +1,6 @@
 import Foundation
-import Testing
 @testable import meApp
+import Testing
 
 // MARK: - Test Helpers
 
@@ -8,12 +8,17 @@ import Testing
 private func makeSUT(
     configureStore: Bool = true,
     summaries: [BathScaleWeightSummary] = []
+    // Test factory return; labeled tuple is clearer than a one-off SUT struct.
+    // swiftlint:disable:next large_tuple
 ) -> (sut: WeekSectionViewModel, store: DashboardStore?, accountService: AccountService?, cacheManager: MockDashboardCacheManager?) {
     let vm = WeekSectionViewModel()
     guard configureStore else { return (vm, nil, nil, nil) }
 
     TestDependencyContainer.reset()
-    let (store, accountService, cacheManager) = DashboardStoreTestSupport.makeSUT()
+    let sutBundle = DashboardStoreTestSupport.makeSUT()
+    let store = sutBundle.store
+    let accountService = sutBundle.accountService
+    let cacheManager = sutBundle.cacheManager
     let account = DashboardStoreTestSupport.makeActiveAccount()
     accountService.activeAccount = account
     store.state.graph.selectedPeriod = .week
@@ -38,7 +43,10 @@ private func makeDate(year: Int = 2026, month: Int = 3, day: Int = 1, hour: Int 
     comps.hour = hour
     comps.minute = 0
     comps.second = 0
-    return Calendar.current.date(from: comps)!
+    guard let date = Calendar.current.date(from: comps) else {
+        preconditionFailure("Invalid date components in makeDate")
+    }
+    return date
 }
 
 @MainActor
@@ -107,12 +115,12 @@ struct WeekSectionViewModelTests {
     }
 
     @Test("plotXDate preserves the date even for late-night input")
-    func plotXDateLateNight() {
+    func plotXDateLateNight() throws {
         let vm = WeekSectionViewModel()
         var comps = DateComponents()
         comps.year = 2026; comps.month = 3; comps.day = 10
         comps.hour = 23; comps.minute = 59
-        let lateNight = Calendar.current.date(from: comps)!
+        let lateNight = try #require(Calendar.current.date(from: comps))
         let result = vm.plotXDate(for: lateNight)
         let calendar = Calendar.current
         #expect(calendar.component(.hour, from: result) == 12)
@@ -321,18 +329,18 @@ struct WeekSectionViewModelTests {
         let vm = WeekSectionViewModel()
         let domain = vm.fallbackXAxisDomain()
         #expect(domain != nil)
-        if let d = domain {
-            #expect(d.lowerBound < d.upperBound)
+        if let bounds = domain {
+            #expect(bounds.lowerBound < bounds.upperBound)
         }
     }
 
     @Test("shouldShowSolidLine returns true for first weekday")
-    func shouldShowSolidLineFirstWeekday() {
+    func shouldShowSolidLineFirstWeekday() throws {
         let vm = WeekSectionViewModel()
         let calendar = Calendar.current
         var comps = DateComponents()
         comps.year = 2026; comps.month = 3; comps.day = 8 // Sunday
-        let sunday = calendar.date(from: comps)!
+        let sunday = try #require(calendar.date(from: comps))
         #expect(vm.shouldShowSolidLine(for: sunday) == (calendar.component(.weekday, from: sunday) == calendar.firstWeekday))
     }
 

@@ -1,5 +1,7 @@
 package com.dmdbrands.gurus.weight.features.history.viewmodel
 
+import com.dmdbrands.gurus.weight.domain.model.common.BabyWeekGroup
+import com.dmdbrands.gurus.weight.domain.model.common.BpHistoryMonth
 import com.dmdbrands.gurus.weight.domain.model.common.HistoryMonth
 import com.google.common.truth.Truth.assertThat
 import kotlinx.collections.immutable.persistentListOf
@@ -98,6 +100,59 @@ class HistoryReducerTest {
         val result = reducer.reduce(state, HistoryIntent.SetHistoryItems(emptyList()))
 
         assertThat(result.historyItems).isEmpty()
+    }
+
+    // -------------------------------------------------------------------------
+    // BP history items
+    // -------------------------------------------------------------------------
+
+    @Test
+    fun `SetBpHistoryItems stores items and clears loading and error`() {
+        val bpA: BpHistoryMonth = mockk(relaxed = true)
+        val bpB: BpHistoryMonth = mockk(relaxed = true)
+        val state = HistoryState(isLoading = true, errorMessage = "stale error")
+
+        val result = reducer.reduce(state, HistoryIntent.SetBpHistoryItems(listOf(bpA, bpB)))
+
+        assertThat(result.bpHistoryItems).containsExactly(bpA, bpB).inOrder()
+        assertThat(result.isLoading).isFalse()
+        assertThat(result.errorMessage).isNull()
+    }
+
+    @Test
+    fun `SetBpHistoryItems with empty list clears previous items`() {
+        val bpA: BpHistoryMonth = mockk(relaxed = true)
+        val state = HistoryState(bpHistoryItems = persistentListOf(bpA))
+
+        val result = reducer.reduce(state, HistoryIntent.SetBpHistoryItems(emptyList()))
+
+        assertThat(result.bpHistoryItems).isEmpty()
+    }
+
+    // -------------------------------------------------------------------------
+    // Baby history items
+    // -------------------------------------------------------------------------
+
+    @Test
+    fun `SetBabyHistoryItems stores items and clears loading and error`() {
+        val babyA: BabyWeekGroup = mockk(relaxed = true)
+        val state = HistoryState(isLoading = true, errorMessage = "stale error")
+
+        val result = reducer.reduce(state, HistoryIntent.SetBabyHistoryItems(listOf(babyA)))
+
+        assertThat(result.babyHistoryItems).containsExactly(babyA)
+        assertThat(result.isLoading).isFalse()
+        assertThat(result.errorMessage).isNull()
+    }
+
+    @Test
+    fun `SetBabyHistoryItems with empty list clears previous items`() {
+        val babyA: BabyWeekGroup = mockk(relaxed = true)
+        val state = HistoryState(babyHistoryItems = persistentListOf(babyA))
+
+        val result = reducer.reduce(state, HistoryIntent.SetBabyHistoryItems(emptyList()))
+
+        assertThat(result.babyHistoryItems).isEmpty()
     }
 
     // -------------------------------------------------------------------------

@@ -1,6 +1,6 @@
 import Foundation
-import Testing
 @testable import meApp
+import Testing
 
 extension BluetoothScaleSetupStoreTests {
     @Suite("Pairing Start Retry And Errors")
@@ -61,7 +61,7 @@ extension BluetoothScaleSetupStoreTests {
         }
 
         @Test("bpm pairing timeout on set user shows pairing failed alert and returns to select user")
-        func bpmPairingTimeoutOnSetUserShowsAlertAndReturnsToSelectUser() async {
+        func bpmPairingTimeoutOnSetUserShowsAlertAndReturnsToSelectUser() async throws {
             let harness = BluetoothScaleSetupStoreTestFixtures.makeSUT(pairingTimeoutNs: 40_000_000)
             let store = harness.store
             BluetoothScaleSetupStoreTestFixtures.configureDefaultScale(store)
@@ -69,9 +69,8 @@ extension BluetoothScaleSetupStoreTests {
             // BPM scales skip the .connectingBluetooth screen and land on .setUser while the
             // pairing scan continues. configure() only resolves SCALES, so inject the BPM
             // catalog item directly to exercise the .bpm timeout-recovery branch.
-            let bpmItem = BPMS.first { $0.setupType == .bpm }
-            #expect(bpmItem != nil)
-            store.testSetScaleItem(bpmItem!)
+            let bpmItem = try #require(BPMS.first { $0.setupType == .bpm })
+            store.testSetScaleItem(bpmItem)
 
             // Entering .connectingBluetooth starts pair() and immediately advances to .setUser
             // for BPM. No device is discovered, so the pairing timeout should fire.

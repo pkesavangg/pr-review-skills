@@ -1,13 +1,14 @@
+// swiftlint:disable file_length
 import Foundation
-import Testing
 @testable import meApp
+import Testing
 
 // MARK: - Concrete Test Subclass
 
 /// Concrete subclass exposing `.week` as the default period for testing BaseSectionViewModel behavior.
 /// The base class declares `timePeriod` as `fatalError`; this wrapper makes it testable.
 @MainActor
-private class TestSectionViewModel: BaseSectionViewModel {
+class BaseSectionVMTestsSectionViewModel: BaseSectionViewModel {
     private let _timePeriod: TimePeriod
     init(period: TimePeriod = .week) {
         _timePeriod = period
@@ -17,7 +18,7 @@ private class TestSectionViewModel: BaseSectionViewModel {
 }
 
 @MainActor
-private final class InvalidDomainSectionViewModel: TestSectionViewModel {
+final class BaseSectionVMTestsInvalidDomainViewModel: BaseSectionVMTestsSectionViewModel {
     private let overriddenDomainLength: TimeInterval
 
     init(period: TimePeriod = .week, visibleDomainLength: TimeInterval) {
@@ -31,13 +32,13 @@ private final class InvalidDomainSectionViewModel: TestSectionViewModel {
 // MARK: - Test Helpers
 
 @MainActor
-private func makeSUT(
+func baseSectionVMTestsMakeSUT(
     period: TimePeriod = .week,
     configureStore: Bool = false
-) -> (sut: TestSectionViewModel, store: DashboardStore?) {
-    let vm = TestSectionViewModel(period: period)
+) -> (sut: BaseSectionVMTestsSectionViewModel, store: DashboardStore?) {
+    let vm = BaseSectionVMTestsSectionViewModel(period: period)
     if configureStore {
-        let (store, _, _) = DashboardStoreTestSupport.makeSUT()
+        let store = DashboardStoreTestSupport.makeSUT().store
         vm.configure(with: store)
         return (vm, store)
     }
@@ -45,11 +46,16 @@ private func makeSUT(
 }
 
 @MainActor
-private func makeConfiguredSUT(
+// swiftlint:disable large_tuple
+func baseSectionVMTestsMakeConfiguredSUT(
     period: TimePeriod = .week,
     summaries: [BathScaleWeightSummary] = []
-) -> (sut: TestSectionViewModel, store: DashboardStore, accountService: AccountService) {
-    let (store, accountService, cacheManager) = DashboardStoreTestSupport.makeSUT()
+) -> (sut: BaseSectionVMTestsSectionViewModel, store: DashboardStore, accountService: AccountService) {
+    // swiftlint:enable large_tuple
+    let sutBundle = DashboardStoreTestSupport.makeSUT()
+    let store = sutBundle.store
+    let accountService = sutBundle.accountService
+    let cacheManager = sutBundle.cacheManager
 
     if !summaries.isEmpty {
         switch period {
@@ -67,13 +73,13 @@ private func makeConfiguredSUT(
     accountService.activeAccount = account
     store.state.graph.selectedPeriod = period
 
-    let vm = TestSectionViewModel(period: period)
+    let vm = BaseSectionVMTestsSectionViewModel(period: period)
     vm.configure(with: store)
     return (vm, store, accountService)
 }
 
 @MainActor
-private func makeDate(year: Int = 2026, month: Int = 3, day: Int = 1, hour: Int = 12) -> Date {
+func baseSectionVMTestsMakeDate(year: Int = 2026, month: Int = 3, day: Int = 1, hour: Int = 12) -> Date {
     var comps = DateComponents()
     comps.year = year
     comps.month = month
@@ -88,55 +94,56 @@ private func makeDate(year: Int = 2026, month: Int = 3, day: Int = 1, hour: Int 
 
 @Suite(.serialized)
 @MainActor
+// swiftlint:disable:next type_body_length
 struct BaseSectionViewModelTests {
 
     // MARK: - Initial State
 
     @Test("Initial state: selectedPoint is nil")
     func initialSelectedPointIsNil() {
-        let (sut, _) = makeSUT()
+        let (sut, _) = baseSectionVMTestsMakeSUT()
         #expect(sut.selectedPoint == nil)
     }
 
     @Test("Initial state: selectedDate is nil")
     func initialSelectedDateIsNil() {
-        let (sut, _) = makeSUT()
+        let (sut, _) = baseSectionVMTestsMakeSUT()
         #expect(sut.selectedDate == nil)
     }
 
     @Test("Initial state: showCrosshair is false")
     func initialShowCrosshairIsFalse() {
-        let (sut, _) = makeSUT()
+        let (sut, _) = baseSectionVMTestsMakeSUT()
         #expect(sut.showCrosshair == false)
     }
 
     @Test("Initial state: isScrolling is false")
     func initialIsScrollingIsFalse() {
-        let (sut, _) = makeSUT()
+        let (sut, _) = baseSectionVMTestsMakeSUT()
         #expect(sut.isScrolling == false)
     }
 
     @Test("Initial state: yAxisDomain default is 0...100")
     func initialYAxisDomainDefault() {
-        let (sut, _) = makeSUT()
+        let (sut, _) = baseSectionVMTestsMakeSUT()
         #expect(sut.yAxisDomain == 0...100)
     }
 
     @Test("Initial state: yAxisTicks is empty")
     func initialYAxisTicksEmpty() {
-        let (sut, _) = makeSUT()
+        let (sut, _) = baseSectionVMTestsMakeSUT()
         #expect(sut.yAxisTicks.isEmpty)
     }
 
     @Test("Initial state: chartFrame is zero")
     func initialChartFrameIsZero() {
-        let (sut, _) = makeSUT()
+        let (sut, _) = baseSectionVMTestsMakeSUT()
         #expect(sut.chartFrame == .zero)
     }
 
     @Test("Initial state: dashboardStore is nil before configure")
     func initialDashboardStoreIsNil() {
-        let (sut, _) = makeSUT()
+        let (sut, _) = baseSectionVMTestsMakeSUT()
         #expect(sut.dashboardStore == nil)
     }
 
@@ -144,14 +151,14 @@ struct BaseSectionViewModelTests {
 
     @Test("timePeriod returns the injected period", arguments: [TimePeriod.week, .month, .year, .total])
     func timePeriodReturnsInjected(period: TimePeriod) {
-        let vm = TestSectionViewModel(period: period)
+        let vm = BaseSectionVMTestsSectionViewModel(period: period)
         #expect(vm.timePeriod == period)
     }
 
     @Test("adjustedLabelTicks excludes trailing phantom tick for week")
     func adjustedLabelTicksDropsTrailingWeekTick() {
-        let (sut, _, _) = makeConfiguredSUT(period: .week)
-        sut.scrollPosition = makeDate(year: 2026, month: 3, day: 1)
+        let (sut, _, _) = baseSectionVMTestsMakeConfiguredSUT(period: .week)
+        sut.scrollPosition = baseSectionVMTestsMakeDate(year: 2026, month: 3, day: 1)
 
         let ticks = sut.xAxisValues
         #expect(ticks.count > 1)
@@ -160,8 +167,8 @@ struct BaseSectionViewModelTests {
 
     @Test("gridTicks for month exclude next-month boundary tick")
     func gridTicksForMonthExcludeNextMonthBoundary() {
-        let (sut, _, _) = makeConfiguredSUT(period: .month)
-        sut.scrollPosition = makeDate(year: 2026, month: 3, day: 1, hour: 0)
+        let (sut, _, _) = baseSectionVMTestsMakeConfiguredSUT(period: .month)
+        sut.scrollPosition = baseSectionVMTestsMakeDate(year: 2026, month: 3, day: 1, hour: 0)
 
         let calendar = Calendar.current
         let tickComponents = sut.gridTicks.map { calendar.dateComponents([.month, .day], from: $0) }
@@ -174,13 +181,13 @@ struct BaseSectionViewModelTests {
 
     @Test("hasXAxis is true for week/month/year", arguments: [TimePeriod.week, .month, .year])
     func hasXAxisTrueForScrollable(period: TimePeriod) {
-        let vm = TestSectionViewModel(period: period)
+        let vm = BaseSectionVMTestsSectionViewModel(period: period)
         #expect(vm.hasXAxis == true)
     }
 
     @Test("hasXAxis is false for total")
     func hasXAxisFalseForTotal() {
-        let vm = TestSectionViewModel(period: .total)
+        let vm = BaseSectionVMTestsSectionViewModel(period: .total)
         #expect(vm.hasXAxis == false)
     }
 
@@ -188,61 +195,61 @@ struct BaseSectionViewModelTests {
 
     @Test("lineWidth is 3 for scrollable periods", arguments: [TimePeriod.week, .month, .year])
     func lineWidthForScrollable(period: TimePeriod) {
-        let vm = TestSectionViewModel(period: period)
+        let vm = BaseSectionVMTestsSectionViewModel(period: period)
         #expect(vm.lineWidth == 3)
     }
 
     @Test("lineWidth is 2 for total")
     func lineWidthForTotal() {
-        let vm = TestSectionViewModel(period: .total)
+        let vm = BaseSectionVMTestsSectionViewModel(period: .total)
         #expect(vm.lineWidth == 2)
     }
 
     @Test("basePointDiameter is 8 for scrollable, 4 for total")
     func basePointDiameter() {
-        let scrollable = TestSectionViewModel(period: .week)
+        let scrollable = BaseSectionVMTestsSectionViewModel(period: .week)
         #expect(scrollable.basePointDiameter == 8)
-        let total = TestSectionViewModel(period: .total)
+        let total = BaseSectionVMTestsSectionViewModel(period: .total)
         #expect(total.basePointDiameter == 4)
     }
 
     @Test("selectedPointDiameter is 16 for scrollable, 8 for total")
     func selectedPointDiameter() {
-        let scrollable = TestSectionViewModel(period: .month)
+        let scrollable = BaseSectionVMTestsSectionViewModel(period: .month)
         #expect(scrollable.selectedPointDiameter == 16)
-        let total = TestSectionViewModel(period: .total)
+        let total = BaseSectionVMTestsSectionViewModel(period: .total)
         #expect(total.selectedPointDiameter == 8)
     }
 
     @Test("basePointArea matches pi*r^2 for diameter 8")
     func basePointAreaCalculation() {
-        let vm = TestSectionViewModel(period: .week)
+        let vm = BaseSectionVMTestsSectionViewModel(period: .week)
         let expected = CGFloat.pi * 4 * 4 // radius=4
         #expect(abs(vm.basePointArea - expected) < 0.001)
     }
 
     @Test("selectedPointArea matches pi*r^2 for diameter 16")
     func selectedPointAreaCalculation() {
-        let vm = TestSectionViewModel(period: .week)
+        let vm = BaseSectionVMTestsSectionViewModel(period: .week)
         let expected = CGFloat.pi * 8 * 8 // radius=8
         #expect(abs(vm.selectedPointArea - expected) < 0.001)
     }
 
     @Test("pointArea returns selectedPointArea when isSelected is true")
     func pointAreaSelected() {
-        let vm = TestSectionViewModel(period: .week)
+        let vm = BaseSectionVMTestsSectionViewModel(period: .week)
         #expect(vm.pointArea(isSelected: true) == vm.selectedPointArea)
     }
 
     @Test("pointArea returns basePointArea when isSelected is false")
     func pointAreaNotSelected() {
-        let vm = TestSectionViewModel(period: .week)
+        let vm = BaseSectionVMTestsSectionViewModel(period: .week)
         #expect(vm.pointArea(isSelected: false) == vm.basePointArea)
     }
 
     @Test("symbolArea converts diameter to circle area correctly")
     func symbolAreaConversion() {
-        let vm = TestSectionViewModel(period: .week)
+        let vm = BaseSectionVMTestsSectionViewModel(period: .week)
         let area = vm.symbolArea(forDiameter: 10)
         let expected = CGFloat.pi * 25 // pi * (10/2)^2
         #expect(abs(area - expected) < 0.001)
@@ -250,7 +257,7 @@ struct BaseSectionViewModelTests {
 
     @Test("symbolArea for zero diameter returns zero")
     func symbolAreaZeroDiameter() {
-        let vm = TestSectionViewModel(period: .week)
+        let vm = BaseSectionVMTestsSectionViewModel(period: .week)
         #expect(vm.symbolArea(forDiameter: 0) == 0)
     }
 
@@ -258,7 +265,7 @@ struct BaseSectionViewModelTests {
 
     @Test("plotXDate returns the original date by default")
     func plotXDateReturnsOriginal() {
-        let vm = TestSectionViewModel(period: .week)
+        let vm = BaseSectionVMTestsSectionViewModel(period: .week)
         let date = Date()
         #expect(vm.plotXDate(for: date) == date)
     }
@@ -267,7 +274,7 @@ struct BaseSectionViewModelTests {
 
     @Test("preferredSelectedDate returns selectedDate")
     func preferredSelectedDateMatchesSelectedDate() {
-        let (sut, _) = makeSUT()
+        let (sut, _) = baseSectionVMTestsMakeSUT()
         let date = Date()
         sut.selectedDate = date
         #expect(sut.preferredSelectedDate == date)
@@ -275,7 +282,7 @@ struct BaseSectionViewModelTests {
 
     @Test("preferredSelectedDate returns nil when selectedDate is nil")
     func preferredSelectedDateNilWhenNone() {
-        let (sut, _) = makeSUT()
+        let (sut, _) = baseSectionVMTestsMakeSUT()
         #expect(sut.preferredSelectedDate == nil)
     }
 
@@ -283,7 +290,7 @@ struct BaseSectionViewModelTests {
 
     @Test("handleChartSelection sets selectedDate and showCrosshair for non-nil date")
     func handleChartSelectionSetsState() {
-        let (sut, _, _) = makeConfiguredSUT()
+        let (sut, _, _) = baseSectionVMTestsMakeConfiguredSUT()
         let date = Date()
         sut.handleChartSelection(at: date)
         #expect(sut.selectedDate == date)
@@ -292,7 +299,7 @@ struct BaseSectionViewModelTests {
 
     @Test("handleChartSelection does nothing for nil date")
     func handleChartSelectionNilDate() {
-        let (sut, _, _) = makeConfiguredSUT()
+        let (sut, _, _) = baseSectionVMTestsMakeConfiguredSUT()
         sut.selectedDate = Date()
         sut.showCrosshair = true
         sut.handleChartSelection(at: nil)
@@ -304,7 +311,10 @@ struct BaseSectionViewModelTests {
     @Test("handleChartSelection finds closest operation as selectedPoint")
     func handleChartSelectionFindsClosestPoint() {
         TestDependencyContainer.reset()
-        let (store, accountService, cacheManager) = DashboardStoreTestSupport.makeSUT()
+        let sutBundle = DashboardStoreTestSupport.makeSUT()
+        let store = sutBundle.store
+        let accountService = sutBundle.accountService
+        let cacheManager = sutBundle.cacheManager
         let account = DashboardStoreTestSupport.makeActiveAccount()
         accountService.activeAccount = account
 
@@ -321,7 +331,7 @@ struct BaseSectionViewModelTests {
         // Force continuousOperations to return our summaries
         cacheManager.chartSeriesOverride = summaries.map { GraphSeries(date: $0.date, value: $0.weight, series: "weight") }
 
-        let vm = TestSectionViewModel(period: .week)
+        let vm = BaseSectionVMTestsSectionViewModel(period: .week)
         vm.configure(with: store)
 
         // Select at exact target — earlier (-3600) is closer than later (+3600) equally but min picks first
@@ -333,7 +343,7 @@ struct BaseSectionViewModelTests {
 
     @Test("clearSelection resets selectedPoint, selectedDate, and showCrosshair")
     func clearSelectionResetsAll() {
-        let (sut, _, _) = makeConfiguredSUT()
+        let (sut, _, _) = baseSectionVMTestsMakeConfiguredSUT()
         sut.selectedDate = Date()
         sut.showCrosshair = true
         sut.selectedPoint = DashboardTestFixtures.makeSummary()
@@ -349,7 +359,7 @@ struct BaseSectionViewModelTests {
 
     @Test("handleScrollStart sets isScrolling and clears selection")
     func handleScrollStartSetsState() {
-        let (sut, _, _) = makeConfiguredSUT()
+        let (sut, _, _) = baseSectionVMTestsMakeConfiguredSUT()
         sut.selectedDate = Date()
         sut.showCrosshair = true
 
@@ -362,7 +372,7 @@ struct BaseSectionViewModelTests {
 
     @Test("handleScrollEnd sets isScrolling to false")
     func handleScrollEndResetsScrolling() {
-        let (sut, _, _) = makeConfiguredSUT()
+        let (sut, _, _) = baseSectionVMTestsMakeConfiguredSUT()
         sut.isScrolling = true
 
         sut.handleScrollEnd()
@@ -372,7 +382,7 @@ struct BaseSectionViewModelTests {
 
     @Test("updateScrollPosition updates scrollPosition value")
     func updateScrollPositionSetsValue() {
-        let (sut, _) = makeSUT()
+        let (sut, _) = baseSectionVMTestsMakeSUT()
         let newDate = Date().addingTimeInterval(1000)
         sut.updateScrollPosition(to: newDate)
         #expect(sut.scrollPosition == newDate)
@@ -382,7 +392,7 @@ struct BaseSectionViewModelTests {
 
     @Test("updateChartFrame updates the stored frame")
     func updateChartFrameStoresFrame() {
-        let (sut, _) = makeSUT()
+        let (sut, _) = baseSectionVMTestsMakeSUT()
         let frame = CGRect(x: 0, y: 0, width: 300, height: 200)
         sut.updateChartFrame(frame)
         #expect(sut.chartFrame == frame)
@@ -390,7 +400,7 @@ struct BaseSectionViewModelTests {
 
     @Test("updateChartFrame with small height change does not recalculate Y-axis")
     func updateChartFrameSmallChangeNoRecalc() {
-        let (sut, _, _) = makeConfiguredSUT()
+        let (sut, _, _) = baseSectionVMTestsMakeConfiguredSUT()
         let frame1 = CGRect(x: 0, y: 0, width: 300, height: 200)
         sut.updateChartFrame(frame1)
         let domain1 = sut.yAxisDomain
@@ -405,7 +415,7 @@ struct BaseSectionViewModelTests {
 
     @Test("configure sets dashboardStore reference")
     func configureSetsDashboardStore() {
-        let (sut, store) = makeSUT(configureStore: true)
+        let (sut, store) = baseSectionVMTestsMakeSUT(configureStore: true)
         #expect(sut.dashboardStore != nil)
         #expect(sut.dashboardStore === store)
     }
@@ -413,11 +423,11 @@ struct BaseSectionViewModelTests {
     @Test("configure syncs scrollPosition from store for scrollable period")
     func configureSyncsScrollPosition() {
         TestDependencyContainer.reset()
-        let (store, _, _) = DashboardStoreTestSupport.makeSUT()
+        let store = DashboardStoreTestSupport.makeSUT().store
         let date = Date().addingTimeInterval(-5000)
         store.state.graph.xScrollPosition = date
 
-        let vm = TestSectionViewModel(period: .week)
+        let vm = BaseSectionVMTestsSectionViewModel(period: .week)
         vm.configure(with: store)
 
         #expect(vm.scrollPosition == date)
@@ -426,10 +436,10 @@ struct BaseSectionViewModelTests {
     @Test("configure syncs isScrolling from store")
     func configureSyncsIsScrolling() {
         TestDependencyContainer.reset()
-        let (store, _, _) = DashboardStoreTestSupport.makeSUT()
+        let store = DashboardStoreTestSupport.makeSUT().store
         store.state.graph.isScrolling = true
 
-        let vm = TestSectionViewModel(period: .week)
+        let vm = BaseSectionVMTestsSectionViewModel(period: .week)
         vm.configure(with: store)
 
         #expect(vm.isScrolling == true)
@@ -439,7 +449,7 @@ struct BaseSectionViewModelTests {
 
     @Test("dateRange returns now...now when store is nil")
     func dateRangeNilStore() {
-        let (sut, _) = makeSUT()
+        let (sut, _) = baseSectionVMTestsMakeSUT()
         let range = sut.dateRange
         // Both bounds should be very close (same instant)
         #expect(range.upperBound.timeIntervalSince(range.lowerBound) < 1)
@@ -449,7 +459,7 @@ struct BaseSectionViewModelTests {
 
     @Test("chartOperations returns empty when store is nil")
     func chartOperationsEmptyWithoutStore() {
-        let (sut, _) = makeSUT()
+        let (sut, _) = baseSectionVMTestsMakeSUT()
         #expect(sut.chartOperations.isEmpty)
     }
 
@@ -457,7 +467,7 @@ struct BaseSectionViewModelTests {
 
     @Test("chartSeriesData returns empty when store is nil")
     func chartSeriesDataEmptyWithoutStore() {
-        let (sut, _) = makeSUT()
+        let (sut, _) = baseSectionVMTestsMakeSUT()
         #expect(sut.chartSeriesData.isEmpty)
     }
 
@@ -465,7 +475,7 @@ struct BaseSectionViewModelTests {
 
     @Test("visibleChartSeriesData returns all data for total period (no X-axis)")
     func visibleChartSeriesDataReturnsAllForTotal() {
-        let (sut, _, _) = makeConfiguredSUT(period: .total)
+        let (sut, _, _) = baseSectionVMTestsMakeConfiguredSUT(period: .total)
         // For total, hasXAxis is false, so visibleChartSeriesData == chartSeriesData
         #expect(sut.visibleChartSeriesData == sut.chartSeriesData)
     }
@@ -473,12 +483,12 @@ struct BaseSectionViewModelTests {
     @Test("visibleChartSeriesData filters points outside the visible window")
     func visibleChartSeriesDataFiltersOutsideWindow() {
         let summaries = [
-            DashboardTestFixtures.makeSummary(period: "2026-03-01", date: makeDate(day: 1, hour: 8), weight: 1800),
-            DashboardTestFixtures.makeSummary(period: "2026-03-04", date: makeDate(day: 4, hour: 8), weight: 1810),
-            DashboardTestFixtures.makeSummary(period: "2026-03-10", date: makeDate(day: 10, hour: 8), weight: 1820)
+            DashboardTestFixtures.makeSummary(period: "2026-03-01", date: baseSectionVMTestsMakeDate(day: 1, hour: 8), weight: 1800),
+            DashboardTestFixtures.makeSummary(period: "2026-03-04", date: baseSectionVMTestsMakeDate(day: 4, hour: 8), weight: 1810),
+            DashboardTestFixtures.makeSummary(period: "2026-03-10", date: baseSectionVMTestsMakeDate(day: 10, hour: 8), weight: 1820)
         ]
-        let (sut, _, _) = makeConfiguredSUT(period: .week, summaries: summaries)
-        sut.scrollPosition = makeDate(day: 4, hour: 12)
+        let (sut, _, _) = baseSectionVMTestsMakeConfiguredSUT(period: .week, summaries: summaries)
+        sut.scrollPosition = baseSectionVMTestsMakeDate(day: 4, hour: 12)
 
         let visible = sut.visibleChartSeriesData
 
@@ -487,17 +497,20 @@ struct BaseSectionViewModelTests {
 
     @Test("visibleChartSeriesData falls back to all data when visible domain length is invalid")
     func visibleChartSeriesDataFallsBackForInvalidDomainLength() {
-        let (store, accountService, cacheManager) = DashboardStoreTestSupport.makeSUT()
+        let sutBundle = DashboardStoreTestSupport.makeSUT()
+        let store = sutBundle.store
+        let accountService = sutBundle.accountService
+        let cacheManager = sutBundle.cacheManager
         let summaries = [
-            DashboardTestFixtures.makeSummary(period: "2026-03-01", date: makeDate(day: 1), weight: 1800),
-            DashboardTestFixtures.makeSummary(period: "2026-03-02", date: makeDate(day: 2), weight: 1810)
+            DashboardTestFixtures.makeSummary(period: "2026-03-01", date: baseSectionVMTestsMakeDate(day: 1), weight: 1800),
+            DashboardTestFixtures.makeSummary(period: "2026-03-02", date: baseSectionVMTestsMakeDate(day: 2), weight: 1810)
         ]
         store.state.data.dailySummaries = summaries
         store.state.graph.selectedPeriod = .week
         cacheManager.chartSeriesOverride = summaries.map { GraphSeries(date: $0.date, value: $0.weight, series: "weight") }
         accountService.activeAccount = DashboardStoreTestSupport.makeActiveAccount()
 
-        let vm = InvalidDomainSectionViewModel(period: .week, visibleDomainLength: 0)
+        let vm = BaseSectionVMTestsInvalidDomainViewModel(period: .week, visibleDomainLength: 0)
         vm.configure(with: store)
 
         #expect(vm.visibleChartSeriesData == vm.chartSeriesData)
@@ -507,7 +520,7 @@ struct BaseSectionViewModelTests {
 
     @Test("goalWeight returns nil when store is nil")
     func goalWeightNilWithoutStore() {
-        let (sut, _) = makeSUT()
+        let (sut, _) = baseSectionVMTestsMakeSUT()
         #expect(sut.goalWeight == nil)
     }
 
@@ -515,27 +528,27 @@ struct BaseSectionViewModelTests {
 
     @Test("displayWeight returns nil when store is nil")
     func displayWeightNilWithoutStore() {
-        let (sut, _) = makeSUT()
+        let (sut, _) = baseSectionVMTestsMakeSUT()
         #expect(sut.displayWeight == nil)
     }
 
     @Test("weightLabel returns empty string when store is nil")
     func weightLabelEmptyWithoutStore() {
-        let (sut, _) = makeSUT()
-        #expect(sut.weightLabel == "")
+        let (sut, _) = baseSectionVMTestsMakeSUT()
+        #expect(sut.weightLabel.isEmpty)
     }
 
     // MARK: - shouldAnimateChartData
 
     @Test("shouldAnimateChartData is false when no operations exist")
     func shouldAnimateChartDataFalseNoData() {
-        let (sut, _, _) = makeConfiguredSUT()
+        let (sut, _, _) = baseSectionVMTestsMakeConfiguredSUT()
         #expect(sut.shouldAnimateChartData == false)
     }
 
     @Test("shouldAnimateChartData is false when scrolling even with data")
     func shouldAnimateChartDataFalseWhenScrolling() {
-        let (sut, _, _) = makeConfiguredSUT()
+        let (sut, _, _) = baseSectionVMTestsMakeConfiguredSUT()
         sut.isScrolling = true
         #expect(sut.shouldAnimateChartData == false)
     }
@@ -544,18 +557,18 @@ struct BaseSectionViewModelTests {
 
     @Test("isAtLeftBoundary returns true when store is nil")
     func isAtLeftBoundaryTrueWithoutStore() {
-        let (sut, _) = makeSUT()
+        let (sut, _) = baseSectionVMTestsMakeSUT()
         #expect(sut.isAtLeftBoundary == true)
     }
 
     @Test("isAtLeftBoundary returns false when visible start is beyond minimum date threshold")
     func isAtLeftBoundaryFalseWhenScrolledAway() {
         let summaries = [
-            DashboardTestFixtures.makeSummary(period: "2026-03-01", date: makeDate(day: 1), weight: 1800),
-            DashboardTestFixtures.makeSummary(period: "2026-03-10", date: makeDate(day: 10), weight: 1810)
+            DashboardTestFixtures.makeSummary(period: "2026-03-01", date: baseSectionVMTestsMakeDate(day: 1), weight: 1800),
+            DashboardTestFixtures.makeSummary(period: "2026-03-10", date: baseSectionVMTestsMakeDate(day: 10), weight: 1810)
         ]
-        let (sut, _, _) = makeConfiguredSUT(period: .week, summaries: summaries)
-        sut.scrollPosition = makeDate(day: 20)
+        let (sut, _, _) = baseSectionVMTestsMakeConfiguredSUT(period: .week, summaries: summaries)
+        sut.scrollPosition = baseSectionVMTestsMakeDate(day: 20)
 
         #expect(sut.isAtLeftBoundary == false)
     }
@@ -564,7 +577,7 @@ struct BaseSectionViewModelTests {
 
     @Test("getGoalChipPosition returns middle placement when no goal is set")
     func goalChipNoGoalMiddle() {
-        let (sut, _, _) = makeConfiguredSUT()
+        let (sut, _, _) = baseSectionVMTestsMakeConfiguredSUT()
         sut.updateChartFrame(CGRect(x: 0, y: 0, width: 300, height: 200))
         let (yPos, placement) = sut.getGoalChipPosition()
         #expect(placement == .middle)
@@ -573,7 +586,7 @@ struct BaseSectionViewModelTests {
 
     @Test("getGoalChipPosition returns middle when chart frame is zero")
     func goalChipZeroFrame() {
-        let (sut, _) = makeSUT()
+        let (sut, _) = baseSectionVMTestsMakeSUT()
         let (yPos, placement) = sut.getGoalChipPosition()
         #expect(placement == .middle)
         #expect(yPos == 0) // 0/2
@@ -581,7 +594,7 @@ struct BaseSectionViewModelTests {
 
     @Test("getGoalChipXOffset returns 28 when store is nil")
     func goalChipXOffsetDefault() {
-        let (sut, _) = makeSUT()
+        let (sut, _) = baseSectionVMTestsMakeSUT()
         #expect(sut.getGoalChipXOffset() == 28)
     }
 
@@ -589,14 +602,14 @@ struct BaseSectionViewModelTests {
 
     @Test("getChartPosition returns nil when chartFrame width is 0")
     func chartPositionNilZeroWidth() {
-        let (sut, _) = makeSUT()
+        let (sut, _) = baseSectionVMTestsMakeSUT()
         let result = sut.getChartPosition(for: Date(), value: 150)
         #expect(result == nil)
     }
 
     @Test("getChartPosition returns a point when frame is set")
     func chartPositionReturnsPoint() {
-        let (sut, _, _) = makeConfiguredSUT()
+        let (sut, _, _) = baseSectionVMTestsMakeConfiguredSUT()
         sut.updateChartFrame(CGRect(x: 0, y: 0, width: 300, height: 200))
         sut.yAxisDomain = 100...200
         let result = sut.getChartPosition(for: sut.scrollPosition, value: 150)

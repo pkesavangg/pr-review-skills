@@ -207,7 +207,7 @@ class DialogQueueServiceTest {
     }
 
     @Test
-    fun `dismissCurrent shows next dialog when queue has more`() = runTest {
+    fun `dismissCurrent shows next dialog when queue has more`() = runTest(mainDispatcherRule.scheduler) {
         service.enqueue(alertDialog)
         service.enqueue(confirmDialog)
 
@@ -225,7 +225,7 @@ class DialogQueueServiceTest {
     }
 
     @Test
-    fun `dismissCurrent shows next dialog respecting priority order`() = runTest {
+    fun `dismissCurrent shows next dialog respecting priority order`() = runTest(mainDispatcherRule.scheduler) {
         service.enqueue(alertDialog)          // p=5, shows immediately
         service.enqueue(confirmDialog)        // p=3, queued
         service.enqueue(highPriorityAlert)    // p=1, queued
@@ -242,7 +242,7 @@ class DialogQueueServiceTest {
     }
 
     @Test
-    fun `dismissCurrent respects delay before showing next dialog`() = runTest {
+    fun `dismissCurrent respects delay before showing next dialog`() = runTest(mainDispatcherRule.scheduler) {
         service.enqueue(alertDialog)
         service.enqueue(delayedDialog)    // delay=500ms
 
@@ -259,7 +259,7 @@ class DialogQueueServiceTest {
     }
 
     @Test
-    fun `dismissCurrent does not show next dialog before delay elapses`() = runTest {
+    fun `dismissCurrent does not show next dialog before delay elapses`() = runTest(mainDispatcherRule.scheduler) {
         service.enqueue(alertDialog)
         service.enqueue(delayedDialog)    // delay=500ms
 
@@ -305,7 +305,7 @@ class DialogQueueServiceTest {
     }
 
     @Test
-    fun `clear cancels pending delayed dialog transition`() = runTest {
+    fun `clear cancels pending delayed dialog transition`() = runTest(mainDispatcherRule.scheduler) {
         service.enqueue(alertDialog)
         service.enqueue(delayedDialog) // delay=500ms
 
@@ -436,7 +436,7 @@ class DialogQueueServiceTest {
     }
 
     @Test
-    fun `showDialog dialog appears after dismissing current`() = runTest {
+    fun `showDialog dialog appears after dismissing current`() = runTest(mainDispatcherRule.scheduler) {
         service.enqueue(alertDialog) // p=5, showing
         val urgent = DialogModel.Confirm(message = "Urgent", confirmPriority = 99)
         service.showDialog(urgent) // becomes p=1, queued
@@ -452,7 +452,7 @@ class DialogQueueServiceTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `currentDialog flow emits null then dialog on enqueue`() = runTest {
+    fun `currentDialog flow emits null then dialog on enqueue`() = runTest(mainDispatcherRule.scheduler) {
         service.currentDialog.test {
             assertThat(awaitItem()).isNull()
             service.enqueue(alertDialog)
@@ -462,7 +462,7 @@ class DialogQueueServiceTest {
     }
 
     @Test
-    fun `currentToast flow emits null then toast on showToast`() = runTest {
+    fun `currentToast flow emits null then toast on showToast`() = runTest(mainDispatcherRule.scheduler) {
         service.currentToast.test {
             assertThat(awaitItem()).isNull()
             service.showToast(testToast)
@@ -472,7 +472,7 @@ class DialogQueueServiceTest {
     }
 
     @Test
-    fun `loader flow emits null then loader on showLoader`() = runTest {
+    fun `loader flow emits null then loader on showLoader`() = runTest(mainDispatcherRule.scheduler) {
         service.loader.test {
             assertThat(awaitItem()).isNull()
             service.showLoader("Loading...", LoaderStyle.CIRCULAR)
@@ -482,7 +482,7 @@ class DialogQueueServiceTest {
     }
 
     @Test
-    fun `loader flow emits null after dismissLoader`() = runTest {
+    fun `loader flow emits null after dismissLoader`() = runTest(mainDispatcherRule.scheduler) {
         service.loader.test {
             assertThat(awaitItem()).isNull()
             service.showLoader("Loading...", LoaderStyle.CIRCULAR)
@@ -494,7 +494,7 @@ class DialogQueueServiceTest {
     }
 
     @Test
-    fun `currentDialog flow emits null after dismissCurrent with single dialog`() = runTest {
+    fun `currentDialog flow emits null after dismissCurrent with single dialog`() = runTest(mainDispatcherRule.scheduler) {
         service.currentDialog.test {
             assertThat(awaitItem()).isNull()
             service.enqueue(alertDialog)
@@ -506,7 +506,7 @@ class DialogQueueServiceTest {
     }
 
     @Test
-    fun `currentDialog flow emits null after clear`() = runTest {
+    fun `currentDialog flow emits null after clear`() = runTest(mainDispatcherRule.scheduler) {
         service.currentDialog.test {
             assertThat(awaitItem()).isNull()
             service.enqueue(alertDialog)

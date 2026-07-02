@@ -1,5 +1,6 @@
 package com.dmdbrands.gurus.weight.domain.model.goal
 
+import com.dmdbrands.gurus.weight.core.shared.utilities.ConversionTools
 import com.dmdbrands.gurus.weight.domain.model.common.IUnitProcessable
 import com.dmdbrands.gurus.weight.domain.model.common.WeightUnit
 import com.dmdbrands.gurus.weight.domain.model.storage.Account.Account
@@ -31,13 +32,13 @@ data class Goal(
     }
     // Convert to target unit if needed (stored weight is always in LB)
     val convertedGoalWeight = if (unit == WeightUnit.KG) {
-      baseGoalWeight / 2.20462
+      ConversionTools.lbsToKg(baseGoalWeight)
     } else {
       baseGoalWeight
     }.minus(weightlessValue)
 
     val convertedInitialWeight = if (unit == WeightUnit.KG) {
-      baseInitialWeight / 2.20462
+      ConversionTools.lbsToKg(baseInitialWeight)
     } else {
       baseInitialWeight
     }.minus(weightlessValue)

@@ -6,8 +6,8 @@
 ///  are classified correctly after the dynamic SKU-based classification was introduced.
 ///
 
-import Testing
 @testable import meApp
+import Testing
 
 @Suite(.serialized)
 struct DeviceTypeFromSkuTests {
@@ -98,4 +98,3 @@ struct DeviceTypeFromSkuTests {
         #expect(DeviceType.fromSku("0222") == .babyScale)
     }
 }
-

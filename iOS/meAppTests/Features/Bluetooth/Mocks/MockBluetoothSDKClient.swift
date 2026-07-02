@@ -2,6 +2,12 @@ import Foundation
 import GGBluetoothSwiftPackage
 @testable import meApp
 
+struct SetupWifiInput {
+    let broadcastId: String
+    let ssid: String
+    let password: String
+}
+
 @MainActor
 final class MockBluetoothSDKClient: BluetoothSDKClient {
     var scanError: Error?
@@ -64,7 +70,7 @@ final class MockBluetoothSDKClient: BluetoothSDKClient {
     private(set) var deletedDevices: [(device: GGBTDevice, disconnect: Bool)] = []
     private(set) var wifiListDevices: [GGBTDevice] = []
     private(set) var setupWifiCalls: [(device: GGBTDevice, config: GGBTWifiConfig)] = []
-    private(set) var setupWifiInputs: [(broadcastId: String, ssid: String, password: String)] = []
+    private(set) var setupWifiInputs: [SetupWifiInput] = []
     private(set) var cancelledWifiDevices: [GGBTDevice] = []
     private(set) var connectedWifiSSIDRequests: [GGBTDevice] = []
     private(set) var wifiMacAddressDevices: [GGBTDevice] = []
@@ -128,7 +134,7 @@ final class MockBluetoothSDKClient: BluetoothSDKClient {
                 password = value
             }
         }
-        setupWifiInputs.append((device.broadcastId, ssid, password))
+        setupWifiInputs.append(SetupWifiInput(broadcastId: device.broadcastId, ssid: ssid, password: password))
         if let setupWifiError { throw setupWifiError }
         return setupWifiResult
     }

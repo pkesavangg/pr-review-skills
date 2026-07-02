@@ -16,9 +16,12 @@ object HistoryItemStrings {
     const val Length = "length"
     const val Percent = "percent"
 
-    /** Helper text shown in the expanded note area when an entry has no note yet (MOB-438). */
-    const val NoNoteYet = "no notes yet — tap edit icon to add one."
+    /** Helper text shown in the expanded note area when an entry has no note yet (MOB-438, MOB-1163). */
+    const val NoNoteYet = "no notes yet — tap plus icon to add one."
     const val EditNoteContentDescription = "edit entry"
+
+    /** Content description for the add-note (+) affordance shown when an entry has no note (MOB-1163). */
+    const val AddNoteContentDescription = "add note"
     const val ExpandNote = "expand note"
     const val CollapseNote = "collapse note"
 

@@ -304,10 +304,11 @@ constructor(
         weightUnit = account.weightUnit.value, // Default weight unit
         isSynced = true, // New account data is already synced
       )
-    if(existingAccount != null){
+    if (existingAccount != null) {
       accountDao.updateWeightCompSettings(weightCompSettings)
-    }else
-    accountDao.insertWeightCompSettings(weightCompSettings)
+    } else {
+      accountDao.insertWeightCompSettings(weightCompSettings)
+    }
 
     val notificationCompSettings =
       NotificationSettingsEntity(
@@ -316,10 +317,11 @@ constructor(
         shouldSendEntryNotifications = account.shouldSendEntryNotifications ?: false,
         shouldSendWeightInEntryNotifications = account.shouldSendWeightInEntryNotifications ?: false,
       )
-    if(existingAccount != null){
+    if (existingAccount != null) {
       accountDao.updateNotificationSettings(notificationCompSettings)
-    }else
-    accountDao.insertNotificationSettings(notificationCompSettings)
+    } else {
+      accountDao.insertNotificationSettings(notificationCompSettings)
+    }
 
     // Insert StreaksSettings entity with data from account
     val streaksSettings =
@@ -329,10 +331,11 @@ constructor(
         streakTimestamp = System.currentTimeMillis().toString(),
         isSynced = true,
       )
-    if(existingAccount != null){
+    if (existingAccount != null) {
       accountDao.updateStreaksSettings(streaksSettings)
-    }else
-    accountDao.insertStreaksSettings(streaksSettings)
+    } else {
+      accountDao.insertStreaksSettings(streaksSettings)
+    }
 
     // Insert WeightlessSettings entity with data from account
     val weightlessSettings =
@@ -343,10 +346,11 @@ constructor(
         weightlessWeight = account.weightlessWeight?.toFloat() ?: 0.0f,
         isSynced = true,
       )
-    if(existingAccount != null){
+    if (existingAccount != null) {
       accountDao.updateWeightlessSettings(weightlessSettings)
-    }else
-    accountDao.insertWeightlessSettings(weightlessSettings)
+    } else {
+      accountDao.insertWeightlessSettings(weightlessSettings)
+    }
     val goalEntity =
       GoalSettingsEntity(
         accountId = account.id,
@@ -356,10 +360,11 @@ constructor(
         goalPercent = account.goalPercent.toFloat(), // Will be calculated when needed
         isSynced = true,
       )
-    if(existingAccount != null){
+    if (existingAccount != null) {
       accountDao.updateGoalSettings(goalEntity)
-    }else
-    accountDao.insertGoalSettings(goalEntity)
+    } else {
+      accountDao.insertGoalSettings(goalEntity)
+    }
 
     val integrationEntity = IntegrationsSettingsEntity(
       accountId = account.id,
@@ -371,10 +376,11 @@ constructor(
       isMFPOn = account.isMFPOn,
       isMFPValid = account.isMFPValid,
     )
-    if(existingAccount != null){
+    if (existingAccount != null) {
       accountDao.updateIntegrationsSettings(integrationEntity)
-    }else
-    accountDao.insertIntegrationsSettings(integrationEntity)
+    } else {
+      accountDao.insertIntegrationsSettings(integrationEntity)
+    }
     val dashboardSettings =
       DashboardSettingsEntity(
         accountId = account.id,
@@ -383,10 +389,11 @@ constructor(
         dashboardType = account.dashboardType ?: DashboardType.DASHBOARD_4_METRICS.name,
         isSynced = true,
       )
-    if(existingAccount != null){
+    if (existingAccount != null) {
       accountDao.updateDashboardSettings(dashboardSettings)
-    }else
-    accountDao.insertDashboardSettings(dashboardSettings)
+    } else {
+      accountDao.insertDashboardSettings(dashboardSettings)
+    }
 
     // Product settings (Phase 2 / MOB-377)
     val productSettings = ProductSettingsEntity(

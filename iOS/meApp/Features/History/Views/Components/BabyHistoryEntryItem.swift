@@ -48,9 +48,7 @@ struct BabyHistoryEntryItem: View {
                 VStack(alignment: .leading, spacing: 2) {
                     Text(entry.weightDisplay)
                         .fontOpenSans(.heading5)
-                        .foregroundStyle(isExpanded ? theme.textInverse : theme.textHeading)
-                        .lineLimit(1)
-                        .minimumScaleFactor(0.7)
+                        .foregroundStyle(isExpanded ? theme.textInverse : theme.babyScaleColor)
 
                     Text(HistoryListStrings.weight)
                         .fontOpenSans(.body3)
@@ -62,7 +60,7 @@ struct BabyHistoryEntryItem: View {
                 VStack(alignment: .leading, spacing: 2) {
                     Text(entry.lengthDisplay)
                         .fontOpenSans(.heading5)
-                        .foregroundStyle(isExpanded ? theme.textInverse : theme.textHeading)
+                        .foregroundStyle(isExpanded ? theme.textInverse : theme.babyScaleColor)
 
                     Text(HistoryListStrings.length)
                         .fontOpenSans(.body3)
@@ -74,7 +72,7 @@ struct BabyHistoryEntryItem: View {
                 VStack(alignment: .leading, spacing: 2) {
                     Text(BabyWeightPercentileCalculator.percentileDisplayText(entry.percentile))
                         .fontOpenSans(.heading5)
-                        .foregroundStyle(isExpanded ? theme.textInverse : theme.actionPrimary)
+                        .foregroundStyle(isExpanded ? theme.textInverse : theme.babyScaleColor)
 
                     Text(HistoryListStrings.percentile)
                         .fontOpenSans(.body3)
@@ -90,7 +88,10 @@ struct BabyHistoryEntryItem: View {
             .padding(.vertical, .spacingSM)
             .padding(.horizontal, .spacingSM)
             .contentShape(Rectangle())
-            .background(isExpanded ? theme.actionSecondary : Color.clear)
+            // Expanded row is a dark highlight: its values use inverse (light) text, so the
+            // background must be the dark actionPrimary. actionSecondary is the same light
+            // token as textInverse, which made the values invisible.
+            .background(isExpanded ? theme.actionPrimary : Color.clear)
             .accessibilityElement(children: .ignore)
             .accessibilityLabel(combinedAccessibilityLabel)
             .accessibilityAddTraits(.isButton)

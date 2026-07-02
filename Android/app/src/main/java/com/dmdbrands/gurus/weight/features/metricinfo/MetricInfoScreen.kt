@@ -24,7 +24,7 @@ import com.dmdbrands.gurus.weight.core.shared.utilities.DateTimeConverter
 import com.dmdbrands.gurus.weight.domain.enums.DashboardType
 import com.dmdbrands.gurus.weight.domain.enums.MetricKey
 import com.dmdbrands.gurus.weight.domain.model.storage.entry.DashboardMetric
-import com.dmdbrands.gurus.weight.features.ScaleMetricsSetting.strings.ScaleMetricsSettingStrings
+import com.dmdbrands.gurus.weight.features.DeviceMetricsSetting.strings.DeviceMetricsSettingStrings
 import com.dmdbrands.gurus.weight.features.common.components.AppIconButton
 import com.dmdbrands.gurus.weight.features.common.components.AppIconType
 import com.dmdbrands.gurus.weight.features.common.components.AppNote
@@ -275,10 +275,10 @@ fun MetricInfoScreenContent(
 
           if (metricInfoState.isHeartRateOff && currentMetricKey == MetricKey.HEART_RATE) {
             AppNote(
-              message = ScaleMetricsSettingStrings.HeartRateOffNotes.Title,
+              message = DeviceMetricsSettingStrings.HeartRateOffNotes.Title,
               icon = AppIcons.Metrics.Pulse,
               iconType = AppIconType.Tertiary,
-              buttonText = ScaleMetricsSettingStrings.HeartRateOffNotes.UpdateButton,
+              buttonText = DeviceMetricsSettingStrings.HeartRateOffNotes.UpdateButton,
               onButtonClick = { handleIntent(MetricInfoIntent.UpdateScaleMode) },
             )
             Spacer(modifier = Modifier.height(spacing.xl))

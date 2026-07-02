@@ -1,6 +1,6 @@
 import Foundation
-import Testing
 @testable import meApp
+import Testing
 
 /// Coverage for EntryStore's baby-scale and blood-pressure entry paths plus
 /// form reset/validation helpers (the manual-entry variants beyond weight).
@@ -10,6 +10,8 @@ struct EntryStoreBabyAndBPTests {
 
     // MARK: - SUT
 
+    // Test factory return; labeled tuple is clearer than a one-off SUT struct.
+    // swiftlint:disable:next large_tuple
     private func makeSUT() -> (
         store: EntryStore,
         entryService: MockEntryStoreEntryService,
@@ -74,7 +76,7 @@ struct EntryStoreBabyAndBPTests {
         #expect(entryService.lastBabyEntry?.babyId == "baby-1")
         #expect((entryService.lastBabyEntry?.weight ?? 0) > 0)
         #expect((entryService.lastBabyEntry?.length ?? 0) > 0)
-        #expect(store.babyForm.pounds.value == "")
+        #expect(store.babyForm.pounds.value.isEmpty)
     }
 
     @Test("saveBabyEntry success (kg/cm): persists with metric units")
@@ -171,7 +173,6 @@ struct EntryStoreBabyAndBPTests {
         #expect(store.babyForm.pounds.value == "8")
     }
 
-
     // MARK: - saveBPEntry
 
     private func fillBP(_ store: EntryStore) {
@@ -193,7 +194,7 @@ struct EntryStoreBabyAndBPTests {
         #expect(entryService.lastBpmEntry?.systolic == 120)
         #expect(entryService.lastBpmEntry?.diastolic == 80)
         #expect(entryService.lastBpmEntry?.pulse == 70)
-        #expect(store.bpForm.systolic.value == "")
+        #expect(store.bpForm.systolic.value.isEmpty)
     }
 
     @Test("saveBPEntry invalid form: does not persist")
@@ -217,7 +218,6 @@ struct EntryStoreBabyAndBPTests {
         #expect(entryService.createBpmEntryCalls == 1)
         #expect(notificationService.toastData?.title == ToastStrings.errorSavingEntry)
     }
-
 
     // MARK: - Validation & errors
 
@@ -298,8 +298,8 @@ struct EntryStoreBabyAndBPTests {
 
         store.resetBabyForm()
 
-        #expect(store.babyForm.pounds.value == "")
-        #expect(store.babyForm.inches.value == "")
+        #expect(store.babyForm.pounds.value.isEmpty)
+        #expect(store.babyForm.inches.value.isEmpty)
     }
 
     @Test("resetBPForm clears BP fields")
@@ -309,8 +309,8 @@ struct EntryStoreBabyAndBPTests {
 
         store.resetBPForm()
 
-        #expect(store.bpForm.systolic.value == "")
-        #expect(store.bpForm.diastolic.value == "")
+        #expect(store.bpForm.systolic.value.isEmpty)
+        #expect(store.bpForm.diastolic.value.isEmpty)
     }
 
     @Test("resetWeightForm clears weight form and hides metrics")
@@ -321,7 +321,7 @@ struct EntryStoreBabyAndBPTests {
 
         store.resetWeightForm()
 
-        #expect(store.manualEntryForm.weight.value == "")
+        #expect(store.manualEntryForm.weight.value.isEmpty)
         #expect(store.showMetrics == false)
     }
 }

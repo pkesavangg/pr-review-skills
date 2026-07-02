@@ -3,8 +3,8 @@ import Foundation
 
 final class MockScaleRepositoryAPI: DeviceRepositoryAPIProtocol {
     var listScalesResult: [DeviceDTO] = []
-    var createScaleResult: DeviceDTO = DeviceDTO()
-    var editScaleResult: DeviceDTO = DeviceDTO()
+    var createScaleResult = DeviceDTO()
+    var editScaleResult = DeviceDTO()
     var createScaleError: Error?
     var listScalesError: Error?
     var editScaleError: Error?
