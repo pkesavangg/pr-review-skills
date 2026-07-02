@@ -187,6 +187,7 @@ struct HistoryEntryItem_Previews: PreviewProvider {
             accountId: "123",
             entryTimestamp: "2025-12-16T14:10:00Z",
             serverTimestamp: nil,
+            serverEntryId: nil,
             opTimestamp: nil,
             operationType: OperationType.create.rawValue,
             entryType: EntryType.scale.rawValue,

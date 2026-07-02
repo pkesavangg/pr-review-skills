@@ -499,6 +499,7 @@ private final class MockSQLiteMigrationEntryRepository: EntryRepositoryProtocol 
     func deleteAllEntries() async throws {}
     func fetchEntries(forUserId userId: String, operationType: String?) async throws -> [Entry] { [] }
     func fetchEntriesOfTimestamp(forUserId userId: String, timestamp: String) async throws -> [Entry] { [] }
+    func fetchEntry(byServerEntryId serverEntryId: String, forUserId userId: String) async throws -> Entry? { nil }
     func fetchEntries(forMonth month: String, userId: String) async throws -> [Entry] { [] }
     func fetchEntries(forDay day: String, userId: String) async throws -> [Entry] { [] }
     func fetchUnsyncedEntries(forUserId userId: String) async throws -> [Entry] { [] }

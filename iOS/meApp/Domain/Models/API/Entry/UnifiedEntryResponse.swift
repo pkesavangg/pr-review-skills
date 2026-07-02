@@ -190,6 +190,9 @@ extension UnifiedEntryResult {
             visceralFatLevel: nil,
             water: water.map(Double.init),
             weight: weight.map(Double.init),
+            // Carry the server-assigned entryId so the merge engine can key on entry
+            // identity instead of entryTimestamp (distinct entries can share a timestamp).
+            serverEntryId: entryId,
             // Baby read entries arrive per sub-type; carry whichever measurement is present.
             babyId: babyId,
             babyWeight: babyWeightDecigrams.map(Double.init),

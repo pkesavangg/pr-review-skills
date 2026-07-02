@@ -25,6 +25,11 @@ struct BathScaleOperationDTO: Codable, Sendable, Equatable {
     let visceralFatLevel: Double?
     let water: Double?
     let weight: Double?
+    /// Server-assigned entry identifier (the `entryId` returned by `GET /v3/entries/`).
+    /// This is the stable identity of an entry across create/update/delete operations.
+    /// The sync/merge engine keys on this so that distinct entries which happen to share
+    /// the same `entryTimestamp` are NOT collapsed together. Absent for legacy/local ops.
+    var serverEntryId: String?
     // Baby scale fields
     var babyId: String?
     var babyWeight: Double?
@@ -71,6 +76,7 @@ extension BathScaleOperationDTO: Identifiable {
             visceralFatLevel: visceralFatLevel,
             water: water,
             weight: weight,
+            serverEntryId: serverEntryId,
             babyId: babyId,
             babyWeight: babyWeight,
             babyLength: babyLength,
@@ -106,6 +112,7 @@ extension BathScaleOperationDTO {
         self.visceralFatLevel = summary.visceralFatLevel
         self.water = summary.water
         self.weight = summary.weight
+        self.serverEntryId = nil
         self.babyId = nil
         self.babyWeight = nil
         self.babyLength = nil
