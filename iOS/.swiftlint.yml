@@ -224,3 +224,28 @@ custom_rules:
       - "meApp/Domain/Models/DB"
       - "meAppTests"
       - "meAppUITests"
+
+# ============================================
+# Custom Rules — Accessibility-for-automation (MOB-1131 / MOB-1132)
+# Every interactive control needs a stable accessibilityIdentifier (== Android testTag)
+# so a single Appium `~snake_case` selector resolves it. Screen-root ids must NOT be a
+# bare identifier on a container — that bleeds onto child controls (the MOB-1132 gate bug).
+# The semantic "interactive control has a label but no identifier" check lives in the
+# `review-accessibility` review skill (it needs code context a regex can't see) and runs
+# via the post-change-guard.
+# ============================================
+  accessibility_id_on_screen_root:
+    name: "Use screenAccessibilityRoot(_:) for screen-root ids"
+    regex: '\.accessibilityIdentifier\(\s*(?:AccessibilityID\.)?\w*[Ss]creenRoot\b'
+    message: "Do not put a screen-root id on a container via a bare .accessibilityIdentifier — it propagates onto child controls and overrides their ids (MOB-1132). Use .screenAccessibilityRoot(_:) instead."
+    severity: error
+    excluded:
+      - "meApp/Core/Extensions/View + Extension.swift"
+
+  accessibility_identifier_string_literal:
+    name: "accessibilityIdentifier should use an AccessibilityID constant"
+    regex: '\.accessibilityIdentifier\(\s*"'
+    message: "Tag controls with an AccessibilityID constant via .appAccessibility(id:) — not an inline string literal — so the app and meAppUITests share one id source (MOB-1133)."
+    severity: warning
+    excluded:
+      - "meApp/Core/Extensions/View + Extension.swift"

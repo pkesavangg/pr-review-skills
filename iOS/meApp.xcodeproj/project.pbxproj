@@ -59,8 +59,6 @@
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
 				DashboardStoreGraphSelectionSyncTests.swift,
-				Features/ScaleSetup/Mocks/MockScaleSetupBluetoothService.swift,
-				Features/ScaleSetup/Mocks/MockScaleSetupScaleService.swift,
 				Features/Bluetooth/BluetoothServiceScanEventPipelineTests.swift,
 				Features/Dashboard/DashboardStoreCoverageTests.swift,
 				Features/Scale/DeviceTypeServerValueTests.swift,
@@ -75,6 +73,8 @@
 				Features/Scale/ScaleSettingsStoreTests.swift,
 				Features/Scale/ScaleStoreTests.swift,
 				Features/Scale/UsersViewModelTests.swift,
+				Features/ScaleSetup/Mocks/MockScaleSetupBluetoothService.swift,
+				Features/ScaleSetup/Mocks/MockScaleSetupScaleService.swift,
 			);
 			target = 105A1FAB2DE585BA00FBB764 /* meAppTests */;
 		};
@@ -100,6 +100,11 @@
 		105A1FB92DE585BA00FBB764 /* meAppUITests */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
 			path = meAppUITests;
+			sourceTree = "<group>";
+		};
+		ACCE55B10000000000000001 /* SharedAccessibility */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = SharedAccessibility;
 			sourceTree = "<group>";
 		};
 /* End PBXFileSystemSynchronizedRootGroup section */
@@ -144,6 +149,7 @@
 				105A1F9C2DE585B800FBB764 /* meApp */,
 				105A1FAF2DE585BA00FBB764 /* meAppTests */,
 				105A1FB92DE585BA00FBB764 /* meAppUITests */,
+				ACCE55B10000000000000001 /* SharedAccessibility */,
 				D09DAD742E14F16D00188753 /* Frameworks */,
 				105A1F9B2DE585B800FBB764 /* Products */,
 			);
@@ -184,6 +190,7 @@
 			);
 			fileSystemSynchronizedGroups = (
 				105A1F9C2DE585B800FBB764 /* meApp */,
+				ACCE55B10000000000000001 /* SharedAccessibility */,
 			);
 			name = meApp;
 			packageProductDependencies = (
@@ -239,6 +246,7 @@
 			);
 			fileSystemSynchronizedGroups = (
 				105A1FB92DE585BA00FBB764 /* meAppUITests */,
+				ACCE55B10000000000000001 /* SharedAccessibility */,
 			);
 			name = meAppUITests;
 			packageProductDependencies = (

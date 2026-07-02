@@ -48,3 +48,29 @@ public extension View {
             .accessibilityIdentifier(identifier)
     }
 }
+
+// MARK: - Leaf-control accessibility
+public extension View {
+    /// The single sanctioned way to tag an **interactive leaf control** (button, field,
+    /// toggle, tappable row) for both UI-test automation and VoiceOver.
+    ///
+    /// Pass an `AccessibilityID` constant as `id`. Optionally pass a human-readable
+    /// VoiceOver `label` — when omitted the control keeps whatever label SwiftUI derives
+    /// from its content. Do **not** use this on a screen-root container; use
+    /// `screenAccessibilityRoot(_:)` there (MOB-1132).
+    ///
+    /// - Parameters:
+    ///   - id: Stable snake_case identifier (mirrors the Android `testTag`).
+    ///   - label: Optional VoiceOver label.
+    @ViewBuilder
+    func appAccessibility(id: String, label: String? = nil) -> some View {
+        if let label {
+            self
+                .accessibilityIdentifier(id)
+                .accessibilityLabel(label)
+        } else {
+            self
+                .accessibilityIdentifier(id)
+        }
+    }
+}
