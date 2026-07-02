@@ -1,8 +1,10 @@
 package com.dmdbrands.gurus.weight.domain.model.api.entry
 
+import com.dmdbrands.gurus.weight.data.storage.db.entity.entry.BabyEntryEntity
 import com.dmdbrands.gurus.weight.data.storage.db.entity.entry.BpmEntryEntity
 import com.dmdbrands.gurus.weight.data.storage.db.entity.entry.EntryEntity
 import com.dmdbrands.gurus.weight.domain.model.common.WeightUnit
+import com.dmdbrands.gurus.weight.domain.model.storage.entry.BabyEntry
 import com.dmdbrands.gurus.weight.domain.model.storage.entry.BpmEntry
 import com.dmdbrands.gurus.weight.domain.model.storage.entry.Entry
 import com.dmdbrands.gurus.weight.domain.model.storage.entry.ScaleEntry
@@ -12,6 +14,7 @@ import java.util.UUID
 internal object EntryApiCategory {
     const val WEIGHT = "weight"
     const val BP = "bp"
+    const val BABY = "baby"
 }
 
 /**
@@ -25,6 +28,8 @@ fun EntryApiModel.toDomainEntry(accountId: String): Entry? =
     when (category) {
         EntryApiCategory.WEIGHT -> weight?.let { toScaleEntry(accountId) }
         EntryApiCategory.BP -> toBpmEntry(accountId)
+        // Drop a baby row with no babyId — it can't satisfy the baby_entry → baby_profile FK.
+        EntryApiCategory.BABY -> babyId?.let { toBabyEntry(accountId) }
         else -> null
     }
 
@@ -55,6 +60,30 @@ private fun EntryApiModel.toScaleEntry(accountId: String): ScaleEntry {
         metabolicAge = null,
     )
     return ScaleEntry.fromScaleApiEntry(scaleApiEntry, accountId = accountId)
+}
+
+private fun EntryApiModel.toBabyEntry(accountId: String): BabyEntry {
+    val entryEntity = EntryEntity(
+        accountId = accountId,
+        entryTimestamp = entryTimestamp,
+        serverTimestamp = serverTimestamp,
+        opTimestamp = serverTimestamp,
+        operationType = operationType ?: "create",
+        deviceType = "baby",
+        deviceId = UUID.randomUUID().toString(),
+        unit = WeightUnit.LB,
+        isSynced = true,
+    )
+    val babyEntity = BabyEntryEntity(
+        id = 0L,
+        babyId = babyId ?: "",
+        babyWeightDecigrams = babyWeightDecigrams,
+        babyLengthMillimeters = babyLengthMillimeters,
+        entryNote = entryNote,
+        entryType = entryType,
+        source = source,
+    )
+    return BabyEntry(entry = entryEntity, babyEntry = babyEntity)
 }
 
 private fun EntryApiModel.toBpmEntry(accountId: String): BpmEntry {

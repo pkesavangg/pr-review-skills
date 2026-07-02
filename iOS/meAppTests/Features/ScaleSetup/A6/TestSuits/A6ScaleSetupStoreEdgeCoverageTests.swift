@@ -1,6 +1,6 @@
 import Foundation
-import Testing
 @testable import meApp
+import Testing
 
 extension A6ScaleSetupStoreTests {
     @Suite("Edge Coverage And Cleanup")

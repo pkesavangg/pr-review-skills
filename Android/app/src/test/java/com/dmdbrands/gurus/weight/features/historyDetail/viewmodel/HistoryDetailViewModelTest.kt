@@ -7,6 +7,11 @@ import com.dmdbrands.gurus.weight.domain.model.common.HistoryDetail
 import com.dmdbrands.gurus.weight.domain.model.common.ProductSelection
 import com.dmdbrands.gurus.weight.domain.model.common.WeightUnit
 import com.dmdbrands.gurus.weight.domain.model.storage.Account.Account
+import com.dmdbrands.gurus.weight.data.storage.db.entity.entry.BabyEntryEntity
+import com.dmdbrands.gurus.weight.data.storage.db.entity.entry.EntryEntity
+import com.dmdbrands.gurus.weight.domain.enums.BabyEntryType
+import com.dmdbrands.gurus.weight.domain.model.storage.entry.BabyEntry
+import com.dmdbrands.gurus.weight.domain.model.storage.entry.Entry
 import com.dmdbrands.gurus.weight.domain.model.storage.entry.ScaleEntry
 import com.dmdbrands.gurus.weight.domain.services.IAccountService
 import com.dmdbrands.gurus.weight.domain.services.IEntryReadService
@@ -14,7 +19,7 @@ import com.dmdbrands.gurus.weight.domain.services.IEntryService
 import com.dmdbrands.gurus.weight.domain.services.IHealthConnectService
 import com.dmdbrands.gurus.weight.domain.services.IProductSelectionManager
 import com.dmdbrands.gurus.weight.features.common.components.ButtonType
-import com.dmdbrands.gurus.weight.features.common.model.DialogModel
+import com.dmdbrands.gurus.weight.features.common.model.Toast
 import com.dmdbrands.gurus.weight.testutil.TestFixtures
 import com.dmdbrands.gurus.weight.testutil.initTestDependencies
 import com.google.common.truth.Truth.assertThat
@@ -112,7 +117,7 @@ class HistoryDetailViewModelTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `init loads history detail and sets items`() = runTest {
+    fun `init loads history detail and sets items`() = runTest(mainDispatcherRule.scheduler) {
         val entries = listOf(TestFixtures.weightEntry, TestFixtures.bodyFatEntry)
         viewModel = createViewModel(entries = entries)
         advanceUntilIdle()
@@ -122,7 +127,7 @@ class HistoryDetailViewModelTest {
     }
 
     @Test
-    fun `init filters only ScaleEntry instances`() = runTest {
+    fun `init filters only ScaleEntry instances`() = runTest(mainDispatcherRule.scheduler) {
         val scaleEntries = listOf(TestFixtures.weightEntry, TestFixtures.bodyFatEntry)
         viewModel = createViewModel(entries = scaleEntries)
         advanceUntilIdle()
@@ -136,7 +141,7 @@ class HistoryDetailViewModelTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `Refresh calls entryService syncOperations`() = runTest {
+    fun `Refresh calls entryService syncOperations`() = runTest(mainDispatcherRule.scheduler) {
         viewModel = createViewModel()
         advanceUntilIdle()
 
@@ -147,7 +152,7 @@ class HistoryDetailViewModelTest {
     }
 
     @Test
-    fun `Refresh sets loading true then false`() = runTest {
+    fun `Refresh sets loading true then false`() = runTest(mainDispatcherRule.scheduler) {
         viewModel = createViewModel()
         advanceUntilIdle()
 
@@ -163,7 +168,7 @@ class HistoryDetailViewModelTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `Refresh sets error message when syncOperations throws`() = runTest {
+    fun `Refresh sets error message when syncOperations throws`() = runTest(mainDispatcherRule.scheduler) {
         viewModel = createViewModel()
         advanceUntilIdle()
 
@@ -175,7 +180,7 @@ class HistoryDetailViewModelTest {
     }
 
     @Test
-    fun `Refresh sets loading to false when syncOperations throws`() = runTest {
+    fun `Refresh sets loading to false when syncOperations throws`() = runTest(mainDispatcherRule.scheduler) {
         viewModel = createViewModel()
         advanceUntilIdle()
 
@@ -187,185 +192,11 @@ class HistoryDetailViewModelTest {
     }
 
     // -------------------------------------------------------------------------
-    // DeleteEntry — shows confirmation dialog
-    // -------------------------------------------------------------------------
-
-    @Test
-    fun `DeleteEntry shows confirmation dialog`() = runTest {
-        viewModel = createViewModel()
-        advanceUntilIdle()
-
-        val entry = TestFixtures.weightEntry
-        viewModel.handleIntent(HistoryDetailIntent.DeleteEntry(entry))
-        advanceUntilIdle()
-
-        val dialogSlot = slot<DialogModel>()
-        verify { dialogQueueService.showDialog(capture(dialogSlot)) }
-        val dialog = dialogSlot.captured
-        assertThat(dialog).isInstanceOf(DialogModel.Confirm::class.java)
-    }
-
-    @Test
-    fun `DeleteEntry dialog has correct title and message`() = runTest {
-        viewModel = createViewModel()
-        advanceUntilIdle()
-
-        val entry = TestFixtures.weightEntry
-        viewModel.handleIntent(HistoryDetailIntent.DeleteEntry(entry))
-        advanceUntilIdle()
-
-        val dialogSlot = slot<DialogModel>()
-        verify { dialogQueueService.showDialog(capture(dialogSlot)) }
-        val dialog = dialogSlot.captured as DialogModel.Confirm
-        assertThat(dialog.title).isEqualTo("Delete Entry?")
-        assertThat(dialog.message).isEqualTo("Are you sure you want to delete your entry?")
-    }
-
-    // -------------------------------------------------------------------------
-    // DeleteEntry — onConfirm callback
-    // -------------------------------------------------------------------------
-
-    @Test
-    fun `DeleteEntry onConfirm calls entryService deleteEntry`() = runTest {
-        viewModel = createViewModel()
-        advanceUntilIdle()
-
-        val entry = TestFixtures.weightEntry
-        viewModel.handleIntent(HistoryDetailIntent.DeleteEntry(entry))
-        advanceUntilIdle()
-
-        val dialogSlot = slot<DialogModel>()
-        verify { dialogQueueService.showDialog(capture(dialogSlot)) }
-        val dialog = dialogSlot.captured as DialogModel.Confirm
-        dialog.onConfirm?.invoke()
-        advanceUntilIdle()
-
-        coVerify { entryService.deleteEntry(entry) }
-    }
-
-    @Test
-    fun `DeleteEntry onConfirm shows loader`() = runTest {
-        viewModel = createViewModel()
-        advanceUntilIdle()
-
-        val entry = TestFixtures.weightEntry
-        viewModel.handleIntent(HistoryDetailIntent.DeleteEntry(entry))
-        advanceUntilIdle()
-
-        val dialogSlot = slot<DialogModel>()
-        verify { dialogQueueService.showDialog(capture(dialogSlot)) }
-        val dialog = dialogSlot.captured as DialogModel.Confirm
-        dialog.onConfirm?.invoke()
-        advanceUntilIdle()
-
-        verify { dialogQueueService.showLoader("Deleting entry...") }
-    }
-
-    @Test
-    fun `DeleteEntry onConfirm calls healthConnectService deleteEntry`() = runTest {
-        viewModel = createViewModel()
-        advanceUntilIdle()
-
-        val entry = TestFixtures.weightEntry
-        viewModel.handleIntent(HistoryDetailIntent.DeleteEntry(entry))
-        advanceUntilIdle()
-
-        val dialogSlot = slot<DialogModel>()
-        verify { dialogQueueService.showDialog(capture(dialogSlot)) }
-        val dialog = dialogSlot.captured as DialogModel.Confirm
-        dialog.onConfirm?.invoke()
-        advanceUntilIdle()
-
-        coVerify { healthConnectService.deleteEntry(entry) }
-    }
-
-    @Test
-    fun `DeleteEntry onConfirm dismisses dialog and loader`() = runTest {
-        viewModel = createViewModel()
-        advanceUntilIdle()
-
-        val entry = TestFixtures.weightEntry
-        viewModel.handleIntent(HistoryDetailIntent.DeleteEntry(entry))
-        advanceUntilIdle()
-
-        val dialogSlot = slot<DialogModel>()
-        verify { dialogQueueService.showDialog(capture(dialogSlot)) }
-        val dialog = dialogSlot.captured as DialogModel.Confirm
-        dialog.onConfirm?.invoke()
-        advanceUntilIdle()
-
-        verify { dialogQueueService.dismissCurrent() }
-        verify { dialogQueueService.dismissLoader() }
-    }
-
-    @Test
-    fun `DeleteEntry onConfirm still dismisses when healthConnect deleteEntry throws`() = runTest {
-        coEvery { healthConnectService.deleteEntry(any()) } throws RuntimeException("HC error")
-        viewModel = createViewModel()
-        advanceUntilIdle()
-
-        val entry = TestFixtures.weightEntry
-        viewModel.handleIntent(HistoryDetailIntent.DeleteEntry(entry))
-        advanceUntilIdle()
-
-        val dialogSlot = slot<DialogModel>()
-        verify { dialogQueueService.showDialog(capture(dialogSlot)) }
-        val dialog = dialogSlot.captured as DialogModel.Confirm
-        dialog.onConfirm?.invoke()
-        advanceUntilIdle()
-
-        verify { dialogQueueService.dismissCurrent() }
-        verify { dialogQueueService.dismissLoader() }
-    }
-
-    // -------------------------------------------------------------------------
-    // DeleteEntry — onCancel callback
-    // -------------------------------------------------------------------------
-
-    @Test
-    fun `DeleteEntry onCancel dismisses dialog`() = runTest {
-        viewModel = createViewModel()
-        advanceUntilIdle()
-
-        val entry = TestFixtures.weightEntry
-        viewModel.handleIntent(HistoryDetailIntent.DeleteEntry(entry))
-        advanceUntilIdle()
-
-        val dialogSlot = slot<DialogModel>()
-        verify { dialogQueueService.showDialog(capture(dialogSlot)) }
-        val dialog = dialogSlot.captured as DialogModel.Confirm
-        dialog.onCancel?.invoke()
-
-        verify { dialogQueueService.dismissCurrent() }
-    }
-
-    // -------------------------------------------------------------------------
-    // DeleteEntry — onDismiss callback
-    // -------------------------------------------------------------------------
-
-    @Test
-    fun `DeleteEntry onDismiss dismisses dialog`() = runTest {
-        viewModel = createViewModel()
-        advanceUntilIdle()
-
-        val entry = TestFixtures.weightEntry
-        viewModel.handleIntent(HistoryDetailIntent.DeleteEntry(entry))
-        advanceUntilIdle()
-
-        val dialogSlot = slot<DialogModel>()
-        verify { dialogQueueService.showDialog(capture(dialogSlot)) }
-        val dialog = dialogSlot.captured as DialogModel.Confirm
-        dialog.onDismiss?.invoke()
-
-        verify { dialogQueueService.dismissCurrent() }
-    }
-
-    // -------------------------------------------------------------------------
     // Reducer — SetHistoryItems
     // -------------------------------------------------------------------------
 
     @Test
-    fun `SetHistoryItems updates month and items`() = runTest {
+    fun `SetHistoryItems updates month and items`() = runTest(mainDispatcherRule.scheduler) {
         viewModel = createViewModel()
         advanceUntilIdle()
 
@@ -382,7 +213,7 @@ class HistoryDetailViewModelTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `SetItemsOpened updates opened item ids`() = runTest {
+    fun `SetItemsOpened updates opened item ids`() = runTest(mainDispatcherRule.scheduler) {
         viewModel = createViewModel()
         advanceUntilIdle()
 
@@ -397,7 +228,7 @@ class HistoryDetailViewModelTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `SetError updates error message`() = runTest {
+    fun `SetError updates error message`() = runTest(mainDispatcherRule.scheduler) {
         viewModel = createViewModel()
         advanceUntilIdle()
 
@@ -408,7 +239,7 @@ class HistoryDetailViewModelTest {
     }
 
     @Test
-    fun `ClearError removes error message`() = runTest {
+    fun `ClearError removes error message`() = runTest(mainDispatcherRule.scheduler) {
         viewModel = createViewModel()
         advanceUntilIdle()
 
@@ -423,7 +254,7 @@ class HistoryDetailViewModelTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `SetRefreshing true sets isLoading to true`() = runTest {
+    fun `SetRefreshing true sets isLoading to true`() = runTest(mainDispatcherRule.scheduler) {
         viewModel = createViewModel()
         advanceUntilIdle()
 
@@ -433,7 +264,7 @@ class HistoryDetailViewModelTest {
     }
 
     @Test
-    fun `SetRefreshing false sets isLoading to false`() = runTest {
+    fun `SetRefreshing false sets isLoading to false`() = runTest(mainDispatcherRule.scheduler) {
         viewModel = createViewModel()
         advanceUntilIdle()
 
@@ -448,7 +279,7 @@ class HistoryDetailViewModelTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `month parameter is accessible on viewModel`() = runTest {
+    fun `month parameter is accessible on viewModel`() = runTest(mainDispatcherRule.scheduler) {
         viewModel = createViewModel(month = "2024-06")
         advanceUntilIdle()
 
@@ -460,7 +291,7 @@ class HistoryDetailViewModelTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `loadHistoryDetail calls historyService getDetail with correct month`() = runTest {
+    fun `loadHistoryDetail calls historyService getDetail with correct month`() = runTest(mainDispatcherRule.scheduler) {
         viewModel = createViewModel(month = "2024-03")
         advanceUntilIdle()
 
@@ -468,7 +299,7 @@ class HistoryDetailViewModelTest {
     }
 
     @Test
-    fun `loadHistoryDetail sets error when entries are empty`() = runTest {
+    fun `loadHistoryDetail sets error when entries are empty`() = runTest(mainDispatcherRule.scheduler) {
         every { entryReadService.getDetail(any(), eq(TEST_MONTH)) } returns flowOf(HistoryDetail.Weight(emptyList()))
 
         viewModel = HistoryDetailViewModel(
@@ -489,7 +320,7 @@ class HistoryDetailViewModelTest {
     }
 
     @Test
-    fun `loadHistoryDetail filters only ScaleEntry instances from results`() = runTest {
+    fun `loadHistoryDetail filters only ScaleEntry instances from results`() = runTest(mainDispatcherRule.scheduler) {
         val scaleEntries = listOf(TestFixtures.weightEntry, TestFixtures.bodyFatEntry)
         viewModel = createViewModel(entries = scaleEntries)
         advanceUntilIdle()
@@ -502,7 +333,7 @@ class HistoryDetailViewModelTest {
     }
 
     @Test
-    fun `loadHistoryDetail sets error on exception`() = runTest {
+    fun `loadHistoryDetail sets error on exception`() = runTest(mainDispatcherRule.scheduler) {
         every { entryReadService.getDetail(any(), any()) } throws RuntimeException("test error")
 
         viewModel = HistoryDetailViewModel(
@@ -523,7 +354,7 @@ class HistoryDetailViewModelTest {
     }
 
     @Test
-    fun `loadHistoryDetail sets month in state`() = runTest {
+    fun `loadHistoryDetail sets month in state`() = runTest(mainDispatcherRule.scheduler) {
         viewModel = createViewModel(month = "2024-07")
         advanceUntilIdle()
 
@@ -531,11 +362,11 @@ class HistoryDetailViewModelTest {
     }
 
     // -------------------------------------------------------------------------
-    // showDeleteEntryDialog — additional coverage
+    // DeleteEntry — optimistic delete + undo (MOB-598)
     // -------------------------------------------------------------------------
 
     @Test
-    fun `showDeleteEntryDialog has delete and cancel buttons`() = runTest {
+    fun `DeleteEntry deletes and shows Reading deleted toast with Undo`() = runTest {
         viewModel = createViewModel()
         advanceUntilIdle()
 
@@ -543,50 +374,16 @@ class HistoryDetailViewModelTest {
         viewModel.handleIntent(HistoryDetailIntent.DeleteEntry(entry))
         advanceUntilIdle()
 
-        val dialogSlot = slot<DialogModel>()
-        verify { dialogQueueService.showDialog(capture(dialogSlot)) }
-        val dialog = dialogSlot.captured as DialogModel.Confirm
-        assertThat(dialog.confirmText).isNotNull()
-        assertThat(dialog.cancelText).isNotNull()
-    }
-
-    @Test
-    fun `showDeleteEntryDialog uses ErrorText button type`() = runTest {
-        viewModel = createViewModel()
-        advanceUntilIdle()
-
-        val entry = TestFixtures.weightEntry
-        viewModel.handleIntent(HistoryDetailIntent.DeleteEntry(entry))
-        advanceUntilIdle()
-
-        val dialogSlot = slot<DialogModel>()
-        verify { dialogQueueService.showDialog(capture(dialogSlot)) }
-        val dialog = dialogSlot.captured as DialogModel.Confirm
-        assertThat(dialog.primaryActionType).isEqualTo(com.dmdbrands.gurus.weight.features.common.components.ButtonType.ErrorText)
-    }
-
-    @Test
-    fun `showDeleteEntryDialog onConfirm shows success toast after deletion`() = runTest {
-        viewModel = createViewModel()
-        advanceUntilIdle()
-
-        val entry = TestFixtures.weightEntry
-        viewModel.handleIntent(HistoryDetailIntent.DeleteEntry(entry))
-        advanceUntilIdle()
-
-        val dialogSlot = slot<DialogModel>()
-        verify { dialogQueueService.showDialog(capture(dialogSlot)) }
-        val dialog = dialogSlot.captured as DialogModel.Confirm
-        dialog.onConfirm?.invoke()
-        advanceUntilIdle()
-
-        // Verify delete was called and dialog was dismissed
         coVerify { entryService.deleteEntry(entry) }
-        verify { dialogQueueService.dismissCurrent() }
+        val toasts = mutableListOf<Toast>()
+        verify { dialogQueueService.showToast(capture(toasts)) }
+        val toast = toasts.first() as Toast.Simple
+        assertThat(toast.message).isEqualTo("Reading deleted.")
+        assertThat(toast.action?.text).isEqualTo("Undo")
     }
 
     @Test
-    fun `showDeleteEntryDialog onDismiss callback is set`() = runTest {
+    fun `DeleteEntry also deletes from Health Connect`() = runTest {
         viewModel = createViewModel()
         advanceUntilIdle()
 
@@ -594,18 +391,178 @@ class HistoryDetailViewModelTest {
         viewModel.handleIntent(HistoryDetailIntent.DeleteEntry(entry))
         advanceUntilIdle()
 
-        val dialogSlot = slot<DialogModel>()
-        verify { dialogQueueService.showDialog(capture(dialogSlot)) }
-        val dialog = dialogSlot.captured as DialogModel.Confirm
-        assertThat(dialog.onDismiss).isNotNull()
+        coVerify { healthConnectService.deleteEntry(entry) }
     }
+
+    @Test
+    fun `DeleteEntry still shows deleted toast when Health Connect throws`() = runTest {
+        coEvery { healthConnectService.deleteEntry(any()) } throws RuntimeException("HC error")
+        viewModel = createViewModel()
+        advanceUntilIdle()
+
+        val entry = TestFixtures.weightEntry
+        viewModel.handleIntent(HistoryDetailIntent.DeleteEntry(entry))
+        advanceUntilIdle()
+
+        val toasts = mutableListOf<Toast>()
+        verify { dialogQueueService.showToast(capture(toasts)) }
+        assertThat((toasts.first() as Toast.Simple).message).isEqualTo("Reading deleted.")
+    }
+
+    @Test
+    fun `DeleteEntry shows Couldnt delete toast when deleteEntry fails`() = runTest {
+        coEvery { entryService.deleteEntry(any()) } throws RuntimeException("db error")
+        viewModel = createViewModel()
+        advanceUntilIdle()
+
+        val entry = TestFixtures.weightEntry
+        viewModel.handleIntent(HistoryDetailIntent.DeleteEntry(entry))
+        advanceUntilIdle()
+
+        val toasts = mutableListOf<Toast>()
+        verify { dialogQueueService.showToast(capture(toasts)) }
+        val toast = toasts.first() as Toast.Simple
+        assertThat(toast.title).isEqualTo("Couldn't delete!")
+        assertThat(toast.message).isEqualTo("Try again")
+    }
+
+    @Test
+    fun `Undo restores the entry and shows Reading restored toast`() = runTest {
+        viewModel = createViewModel()
+        advanceUntilIdle()
+
+        val entry = TestFixtures.weightEntry
+        viewModel.handleIntent(HistoryDetailIntent.DeleteEntry(entry))
+        advanceUntilIdle()
+
+        val deleted = mutableListOf<Toast>()
+        verify { dialogQueueService.showToast(capture(deleted)) }
+        (deleted.first() as Toast.Simple).action?.action?.invoke()
+        advanceUntilIdle()
+
+        coVerify { entryService.restoreEntry(entry) }
+        val all = mutableListOf<Toast>()
+        verify(atLeast = 2) { dialogQueueService.showToast(capture(all)) }
+        assertThat((all.last() as Toast.Simple).message).isEqualTo("Reading restored.")
+    }
+
+    // -------------------------------------------------------------------------
+    // Baby edit (operationType = edit, §2.16)
+    // -------------------------------------------------------------------------
+
+    @Test
+    fun `SaveBabyEdit edits in place via editBabyEntry, not delete plus re-create`() = runTest {
+        viewModel = createViewModel()
+        advanceUntilIdle()
+
+        val original = aBabyEntry(id = 7L, weightDecigrams = 30000)
+        viewModel.handleIntent(
+            HistoryDetailIntent.SaveBabyEdit(
+                entry = original,
+                weightDecigrams = 31000,
+                lengthMillimeters = null,
+                note = "after feed",
+                timestamp = original.entry.entryTimestamp,
+            ),
+        )
+        advanceUntilIdle()
+
+        val slot = slot<BabyEntry>()
+        coVerify { entryService.editBabyEntry(capture(slot)) }
+        // The buggy old path (delete + re-create) must NOT run.
+        coVerify(exactly = 0) { entryService.deleteEntry(any()) }
+        coVerify(exactly = 0) { entryService.addEntry(any<Entry>()) }
+
+        val saved = slot.captured
+        assertThat(saved.entry.id).isEqualTo(original.entry.id) // same row id
+        assertThat(saved.babyWeightDecigrams).isEqualTo(31000) // new value applied
+        assertThat(saved.entryType).isEqualTo(BabyEntryType.WEIGHT.value)
+        assertThat(saved.entryNote).isEqualTo("after feed")
+    }
+
+    @Test
+    fun `SaveBabyEdit with changed date deletes original and creates a new reading`() = runTest {
+        viewModel = createViewModel()
+        advanceUntilIdle()
+
+        val original = aBabyEntry(id = 7L, weightDecigrams = 30000, timestamp = "2024-01-01T08:00:00.000Z")
+        viewModel.handleIntent(
+            HistoryDetailIntent.SaveBabyEdit(
+                entry = original,
+                weightDecigrams = 30000,
+                lengthMillimeters = null,
+                note = "moved",
+                timestamp = "2024-02-01T08:00:00.000Z", // different day → server entryId changes
+            ),
+        )
+        advanceUntilIdle()
+
+        // Date changed → delete the old (old entryId) + create a fresh row at the new timestamp,
+        // so the old server reading isn't orphaned. No in-place edit on this path.
+        coVerify { entryService.deleteEntry(original) }
+        val added = slot<BabyEntry>()
+        coVerify { entryService.addBabyEntry(capture(added)) }
+        coVerify(exactly = 0) { entryService.editBabyEntry(any()) }
+        assertThat(added.captured.entry.id).isEqualTo(0L) // new local id (autogen)
+        assertThat(added.captured.entry.entryTimestamp).isEqualTo("2024-02-01T08:00:00.000Z")
+    }
+
+    @Test
+    fun `SaveBabyEdit edits in place when only sub-minute precision differs`() = runTest {
+        viewModel = createViewModel()
+        advanceUntilIdle()
+
+        // Original carries seconds/millis; the date picker re-emits the same minute as :00.000.
+        val original = aBabyEntry(id = 7L, weightDecigrams = 30000, timestamp = "2024-01-01T08:00:30.123Z")
+        viewModel.handleIntent(
+            HistoryDetailIntent.SaveBabyEdit(
+                entry = original,
+                weightDecigrams = 31000,
+                lengthMillimeters = null,
+                note = "fixed weight",
+                timestamp = "2024-01-01T08:00:00.000Z", // same minute, dropped sub-minute precision
+            ),
+        )
+        advanceUntilIdle()
+
+        // Same minute → in-place edit (operationType=edit), NOT delete+recreate.
+        val slot = slot<BabyEntry>()
+        coVerify { entryService.editBabyEntry(capture(slot)) }
+        coVerify(exactly = 0) { entryService.deleteEntry(any()) }
+        coVerify(exactly = 0) { entryService.addBabyEntry(any()) }
+        // Keeps the ORIGINAL timestamp so the server entryId is unchanged.
+        assertThat(slot.captured.entry.entryTimestamp).isEqualTo("2024-01-01T08:00:30.123Z")
+        assertThat(slot.captured.babyWeightDecigrams).isEqualTo(31000)
+    }
+
+    private fun aBabyEntry(
+        id: Long = 7L,
+        babyId: String = "baby-1",
+        weightDecigrams: Int? = 30000,
+        timestamp: String = "2024-01-01T08:00:00.000Z",
+    ): BabyEntry = BabyEntry(
+        entry = EntryEntity(
+            id = id,
+            accountId = "test-account-id",
+            entryTimestamp = timestamp,
+            operationType = "create",
+            deviceType = "baby",
+            deviceId = "baby-1",
+        ),
+        babyEntry = BabyEntryEntity(
+            id = id,
+            babyId = babyId,
+            babyWeightDecigrams = weightDecigrams,
+            entryType = BabyEntryType.WEIGHT.value,
+        ),
+    )
 
     // -------------------------------------------------------------------------
     // isMetric state
     // -------------------------------------------------------------------------
 
     @Test
-    fun `isMetric is true when account uses KG`() = runTest {
+    fun `isMetric is true when account uses KG`() = runTest(mainDispatcherRule.scheduler) {
         activeAccountFlow.value = TestFixtures.anAccount(weightUnit = WeightUnit.KG)
         viewModel = createViewModel()
         advanceUntilIdle()
@@ -614,7 +571,7 @@ class HistoryDetailViewModelTest {
     }
 
     @Test
-    fun `isMetric is false when account uses LB`() = runTest {
+    fun `isMetric is false when account uses LB`() = runTest(mainDispatcherRule.scheduler) {
         activeAccountFlow.value = TestFixtures.anAccount(weightUnit = WeightUnit.LB)
         viewModel = createViewModel()
         advanceUntilIdle()
@@ -623,7 +580,7 @@ class HistoryDetailViewModelTest {
     }
 
     @Test
-    fun `isMetric updates reactively when account changes`() = runTest {
+    fun `isMetric updates reactively when account changes`() = runTest(mainDispatcherRule.scheduler) {
         activeAccountFlow.value = TestFixtures.anAccount(weightUnit = WeightUnit.LB)
         viewModel = createViewModel()
         advanceUntilIdle()
@@ -633,4 +590,102 @@ class HistoryDetailViewModelTest {
         advanceUntilIdle()
         assertThat(viewModel.state.value.isMetric).isTrue()
     }
+
+    // -------------------------------------------------------------------------
+    // loadDetail — empty entries and other product types
+    // -------------------------------------------------------------------------
+
+    @Test
+    fun `loadDetail with empty weight entries sets error`() = runTest {
+        every { entryReadService.getDetail(any(), eq(TEST_MONTH)) } returns
+            flowOf(HistoryDetail.Weight(emptyList()))
+        viewModel = createViewModelRaw()
+        advanceUntilIdle()
+
+        assertThat(viewModel.state.value.errorMessage).isNotNull()
+    }
+
+    @Test
+    fun `loadDetail with blood pressure entries populates items`() = runTest {
+        every { entryReadService.getDetail(any(), eq(TEST_MONTH)) } returns
+            flowOf(HistoryDetail.BloodPressure(listOf(TestFixtures.bpmEntry)))
+        viewModel = createViewModelRaw()
+        advanceUntilIdle()
+
+        assertThat(viewModel.state.value.historyItems).hasSize(1)
+    }
+
+    @Test
+    fun `loadDetail with baby entries populates items`() = runTest {
+        val babyEntry = mockk<com.dmdbrands.gurus.weight.domain.model.storage.entry.BabyEntry>(relaxed = true)
+        every { entryReadService.getDetail(any(), eq(TEST_MONTH)) } returns
+            flowOf(HistoryDetail.Baby(listOf(babyEntry)))
+        viewModel = createViewModelRaw()
+        advanceUntilIdle()
+
+        assertThat(viewModel.state.value.historyItems).hasSize(1)
+    }
+
+    @Test
+    fun `loadDetail surfaces error when service throws`() = runTest {
+        every { entryReadService.getDetail(any(), eq(TEST_MONTH)) } throws RuntimeException("boom")
+        viewModel = createViewModelRaw()
+        advanceUntilIdle()
+
+        assertThat(viewModel.state.value.errorMessage).isNotNull()
+    }
+
+    // -------------------------------------------------------------------------
+    // SaveNote
+    // -------------------------------------------------------------------------
+
+    @Test
+    fun `SaveNote updates note via service and reloads detail`() = runTest {
+        coEvery { entryService.updateNote(any(), any()) } returns Unit
+        viewModel = createViewModel()
+        advanceUntilIdle()
+
+        viewModel.handleIntent(HistoryDetailIntent.SaveNote(TestFixtures.weightEntry, "after run"))
+        advanceUntilIdle()
+
+        coVerify { entryService.updateNote(TestFixtures.weightEntry, "after run") }
+    }
+
+    @Test
+    fun `SaveNote with blank note passes null to service`() = runTest {
+        coEvery { entryService.updateNote(any(), any()) } returns Unit
+        viewModel = createViewModel()
+        advanceUntilIdle()
+
+        viewModel.handleIntent(HistoryDetailIntent.SaveNote(TestFixtures.weightEntry, "   "))
+        advanceUntilIdle()
+
+        coVerify { entryService.updateNote(TestFixtures.weightEntry, null) }
+    }
+
+    @Test
+    fun `SaveNote shows error toast when service fails`() = runTest {
+        coEvery { entryService.updateNote(any(), any()) } throws RuntimeException("db error")
+        viewModel = createViewModel()
+        advanceUntilIdle()
+
+        viewModel.handleIntent(HistoryDetailIntent.SaveNote(TestFixtures.weightEntry, "note"))
+        advanceUntilIdle()
+
+        verify { dialogQueueService.showToast(any()) }
+    }
+
+    private fun createViewModelRaw(month: String = TEST_MONTH): HistoryDetailViewModel =
+        HistoryDetailViewModel(
+            accountService = accountService,
+            entryService = entryService,
+            healthConnectService = healthConnectService,
+            entryReadService = entryReadService,
+            month = month,
+            productType = com.dmdbrands.gurus.weight.domain.enums.ProductType.MY_WEIGHT,
+        ).initTestDependencies(
+            navigationService = navigationService,
+            dialogQueueService = dialogQueueService,
+            productSelectionManager = productSelectionManager,
+        )
 }

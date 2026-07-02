@@ -19,7 +19,7 @@ final class AdditionalSettingsViewModel: ObservableObject {
 
     /// Reads the current snapshot directly from the service — the single source of truth.
     var deviceSnapshot: DeviceSnapshot? {
-        deviceService.scales.first(where: { $0.id == scaleIdString })
+        deviceService.scales.first { $0.id == scaleIdString }
     }
 
     @Published var deviceInfo: DeviceInfo?
@@ -75,7 +75,10 @@ final class AdditionalSettingsViewModel: ObservableObject {
     func setTimeFormat(_ format: String) async {
         guard isDeviceConnected, let broadcastId = deviceSnapshot?.broadcastIdString else { return }
         let deviceId = scaleIdString
-        let res = await bluetoothService.updateSetting(broadcastId: broadcastId, settings: [DeviceSetting(key: "TIME_FORMAT", value: .string(format))])
+        let res = await bluetoothService.updateSetting(
+            broadcastId: broadcastId,
+            settings: [DeviceSetting(key: "TIME_FORMAT", value: .string(format))]
+        )
         switch res {
         case .success:
             if let preference = deviceSnapshot?.r4ScalePreference {
@@ -118,7 +121,10 @@ final class AdditionalSettingsViewModel: ObservableObject {
 
     func restoreFactorySettings() async {
         guard isDeviceConnected, let broadcastId = deviceSnapshot?.broadcastIdString else { return }
-        let res = await bluetoothService.updateSetting(broadcastId: broadcastId, settings: [DeviceSetting(key: "RESTORE_FACTORY", value: .bool(true))])
+        let res = await bluetoothService.updateSetting(
+            broadcastId: broadcastId,
+            settings: [DeviceSetting(key: "RESTORE_FACTORY", value: .bool(true))]
+        )
         switch res {
         case .success:
             notificationService.showToast(ToastModel(title: ToastStrings.success, message: "Factory reset requested"))

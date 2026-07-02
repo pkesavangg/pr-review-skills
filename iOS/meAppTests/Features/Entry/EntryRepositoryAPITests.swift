@@ -1,6 +1,6 @@
-import Testing
 import Foundation
 @testable import meApp
+import Testing
 
 @Suite(.serialized)
 @MainActor
@@ -58,7 +58,10 @@ struct EntryRepositoryAPITests {
             category: EntryCategory.bp.rawValue,
             operationType: OperationType.create.rawValue,
             entryTimestamp: "2026-03-01T07:30:00Z",
-            systolic: 120, diastolic: 80, pulse: 72, source: "manual"
+            systolic: 120,
+            diastolic: 80,
+            pulse: 72,
+            source: "manual"
         )
         _ = try await sut.submitEntries([weight, bp])
 
@@ -91,12 +94,24 @@ struct EntryRepositoryAPITests {
     func fetchEntriesSyncMode() async throws {
         let (sut, http) = makeSUT()
         let entry = UnifiedEntryResult(
-            category: EntryCategory.weight.rawValue, entryId: "12345",
-            operationType: "create", entryTimestamp: "2026-03-01T08:00:00Z",
-            serverTimestamp: "2026-03-01T08:00:05Z", source: "btWifiR4",
-            weight: 1723, bodyFat: nil, muscleMass: nil, water: nil, bmi: nil,
-            boneMass: nil, impedance: nil, unit: "lb",
-            systolic: nil, diastolic: nil, pulse: nil, note: nil
+            category: EntryCategory.weight.rawValue,
+            entryId: "12345",
+            operationType: "create",
+            entryTimestamp: "2026-03-01T08:00:00Z",
+            serverTimestamp: "2026-03-01T08:00:05Z",
+            source: "btWifiR4",
+            weight: 1723,
+            bodyFat: nil,
+            muscleMass: nil,
+            water: nil,
+            bmi: nil,
+            boneMass: nil,
+            impedance: nil,
+            unit: "lb",
+            systolic: nil,
+            diastolic: nil,
+            pulse: nil,
+            note: nil
         )
         http.getResult = BathScaleOperationListResponse(
             entries: [entry], timestamp: "2026-03-01T08:00:10Z"

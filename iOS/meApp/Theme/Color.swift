@@ -120,3 +120,17 @@ enum AppColors {
         }
     }
 }
+
+extension AppColors.Palette {
+    /// Per-product accent color used for product-type labels and values (per the
+    /// Me.Health 2.0 design): weight → blue, blood pressure → green, baby → purple.
+    /// Single source of truth so every surface (dashboard header, entry header,
+    /// history rows, latest-entry value) stays consistent. Other UI stays neutral.
+    func productAccentColor(for type: EntryType) -> Color {
+        switch type {
+        case .scale: return weightScaleColor
+        case .bpm:   return bpmColor
+        case .baby:  return babyScaleColor
+        }
+    }
+}

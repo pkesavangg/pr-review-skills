@@ -38,7 +38,12 @@ final class WifiScaleSetupStore: ObservableObject {
     
     /// Active subscription to the network form changes
     private var networkFormCancellable: AnyCancellable?
-    
+
+    /// Active polling task that watches for the phone joining the scale's AP network
+    /// while on the `.apMode` step. iOS reports the AP SSID with a delay (and intermittently
+    /// returns empty during the transition), so a single read often misses it.
+    private var apModePollTask: Task<Void, Never>?
+
     /// Indicates if the user manually cleared the SSID field (prevents auto-fill).
     private var hasUserManuallyClearedSSID: Bool = false
 
@@ -217,6 +222,7 @@ final class WifiScaleSetupStore: ObservableObject {
         )
     }
 
+    // swiftlint:disable:next function_body_length
     init(
         notificationService: NotificationHelperServiceProtocol,
         permissionsService: PermissionsServiceProtocol,
@@ -267,10 +273,16 @@ final class WifiScaleSetupStore: ObservableObject {
             .publisher(for: UIApplication.didBecomeActiveNotification)
             .sink { [weak self] _ in
                 guard let self else { return }
-                // Refresh Wi-Fi status after slight delay so underlying services are ready.
-                Task { @MainActor in
-                    try? await Task.sleep(nanoseconds: 2_000_000_000)
-                    self.getWifiStatus()
+                if self.currentStep == .apMode {
+                    // Returning from Wi-Fi Settings: poll for the AP SSID so Next enables
+                    // as soon as the join is reported, rather than on a single delayed read.
+                    self.startApModePolling()
+                } else {
+                    // Refresh Wi-Fi status after slight delay so underlying services are ready.
+                    Task { @MainActor in
+                        try? await Task.sleep(nanoseconds: 2_000_000_000)
+                        self.getWifiStatus()
+                    }
                 }
                 /// Check if location permissions are revoked and show alert if they are
                 /// If the user has revoked location permissions, this method will show an alert
@@ -589,10 +601,38 @@ final class WifiScaleSetupStore: ObservableObject {
         case .apMode:
             // Set skipCheckNetwork to true when entering AP mode
             setSkipCheckNetwork(true)
+            // Actively poll for the scale's AP SSID so Next enables promptly once joined.
+            startApModePolling()
         default:
             // Reset skipCheckNetwork to false for other steps
             setSkipCheckNetwork(false)
+            stopApModePolling()
         }
+    }
+
+    /// Polls `getWifiStatus()` while on the `.apMode` step until the phone is detected on the
+    /// scale's AP network (or the budget elapses). Replaces the previous single delayed read,
+    /// which often missed the transition and left Next disabled until the next lifecycle event.
+    private func startApModePolling(maxAttempts: Int = 20) {
+        // Already enabled (or permissions skipped) — no need to poll.
+        guard !permissionsSkipped, !networkForm.isValidApModeSSID() else { return }
+        apModePollTask?.cancel()
+        apModePollTask = Task { @MainActor [weak self] in
+            for _ in 0..<maxAttempts {
+                guard let self, !Task.isCancelled, self.currentStep == .apMode else { return }
+                self.getWifiStatus()
+                if self.networkForm.isValidApModeSSID() {
+                    self.logger.log(level: .info, tag: self.tag, message: "AP-mode SSID detected; Next enabled")
+                    return
+                }
+                try? await Task.sleep(nanoseconds: 1_500_000_000)
+            }
+        }
+    }
+
+    private func stopApModePolling() {
+        apModePollTask?.cancel()
+        apModePollTask = nil
     }
     
     private func openWifiSettings() {
@@ -609,6 +649,7 @@ final class WifiScaleSetupStore: ObservableObject {
     /// Resets skipCheckNetwork to false (called when view disappears)
     func resetSkipCheckNetwork() {
         setSkipCheckNetwork(false)
+        stopApModePolling()
     }
     
     func arePermissionsEnabled() -> Bool {

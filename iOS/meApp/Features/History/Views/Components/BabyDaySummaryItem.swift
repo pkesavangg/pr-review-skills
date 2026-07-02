@@ -12,7 +12,9 @@ struct BabyDaySummaryItem: View {
     let day: BabyHistoryDay
 
     private var combinedAccessibilityLabel: String {
-        "\(dateText), \(day.entryCount) \(HistoryListStrings.entries), \(HistoryListStrings.weight) \(weightText), \(HistoryListStrings.length) \(lengthText)"
+        "\(dateText), \(day.entryCount) \(HistoryListStrings.entries), "
+            + "\(HistoryListStrings.weight) \(weightText), "
+            + "\(HistoryListStrings.length) \(lengthText)"
     }
 
     private var dateText: String {
@@ -54,7 +56,7 @@ struct BabyDaySummaryItem: View {
                 VStack(alignment: .leading) {
                     Text(weightText)
                         .fontOpenSans(.body2)
-                        .foregroundColor(theme.textBody)
+                        .foregroundColor(theme.babyScaleColor)
                         .lineLimit(1)
                         .fixedSize(horizontal: true, vertical: false)
 
@@ -70,7 +72,7 @@ struct BabyDaySummaryItem: View {
                 VStack(alignment: .leading) {
                     Text(lengthText)
                         .fontOpenSans(.body2)
-                        .foregroundColor(theme.textBody)
+                        .foregroundColor(theme.babyScaleColor)
 
                     Text(HistoryListStrings.length)
                         .fontOpenSans(.body3)
@@ -84,7 +86,7 @@ struct BabyDaySummaryItem: View {
                 VStack(alignment: .leading) {
                     Text(percentileText)
                         .fontOpenSans(.body2)
-                        .foregroundColor(theme.actionPrimary)
+                        .foregroundColor(theme.babyScaleColor)
 
                     Text(HistoryListStrings.percentile)
                         .fontOpenSans(.body3)

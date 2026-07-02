@@ -38,6 +38,32 @@ enum TimePeriod: String, CaseIterable, Identifiable {
     func isMoreDetailedThan(_ other: TimePeriod) -> Bool {
         return self.granularityLevel < other.granularityLevel
     }
+
+    /// Snaps `date` to the start of this period: week → preceding Sunday, month → 1st,
+    /// year → Jan 1, total → `date` unchanged.
+    ///
+    /// The weekly case uses a Sunday-first Gregorian calendar (independent of the device's
+    /// `firstWeekday`) so it matches the weekly X-axis tick generator. This is the single
+    /// source of truth shared by the chart's `domainMin` (`BaseGraphView+ChartModifiers`)
+    /// and the baby reference-curve start (`DashboardStore`) — keeping them here prevents
+    /// the two from drifting and reintroducing the "reference curves don't align with the
+    /// X-axis grid" bug.
+    func periodStart(for date: Date, calendar: Calendar = .current) -> Date {
+        switch self {
+        case .week:
+            var weekCalendar = Calendar(identifier: .gregorian)
+            weekCalendar.timeZone = calendar.timeZone
+            weekCalendar.locale = calendar.locale
+            weekCalendar.firstWeekday = 1 // Sunday
+            return weekCalendar.dateInterval(of: .weekOfYear, for: date)?.start ?? date
+        case .month:
+            return calendar.dateInterval(of: .month, for: date)?.start ?? date
+        case .year:
+            return calendar.dateInterval(of: .year, for: date)?.start ?? date
+        case .total:
+            return date
+        }
+    }
 }
 
 enum WeekDay: Int, CaseIterable {

@@ -170,7 +170,7 @@ class IntegrationServiceTest {
   // -------------------------------------------------------------------------
 
   @Test
-  fun `integrationState emits initial Fitbit integration item`() = runTest {
+  fun `integrationState emits initial Fitbit integration item`() = runTest(mainDispatcherRule.scheduler) {
     service.integrationState.test {
       val item = awaitItem()
       assertThat(item.provider).isEqualTo(IntegrationProvider.Fitbit)
@@ -188,7 +188,7 @@ class IntegrationServiceTest {
   // -------------------------------------------------------------------------
 
   @Test
-  fun `getIntegrationsWithStatus returns all three integrations when account exists`() = runTest {
+  fun `getIntegrationsWithStatus returns all three integrations when account exists`() = runTest(mainDispatcherRule.scheduler) {
     stubGetCurrentAccount(fitbitConnectedAccount.copy(isMFPOn = true, isMFPValid = true))
     coEvery { healthConnectRepository.getAccountByID("acc-1") } returns fakeHealthConnectData
 
@@ -220,7 +220,7 @@ class IntegrationServiceTest {
   }
 
   @Test
-  fun `getIntegrationsWithStatus emits empty list when no current account`() = runTest {
+  fun `getIntegrationsWithStatus emits empty list when no current account`() = runTest(mainDispatcherRule.scheduler) {
     stubGetCurrentAccount(null)
 
     service.getIntegrationsWithStatus().test {
@@ -231,7 +231,7 @@ class IntegrationServiceTest {
   }
 
   @Test
-  fun `getIntegrationsWithStatus shows HealthConnect disconnected when not integrated`() = runTest {
+  fun `getIntegrationsWithStatus shows HealthConnect disconnected when not integrated`() = runTest(mainDispatcherRule.scheduler) {
     stubGetCurrentAccount(fakeAccount)
     coEvery { healthConnectRepository.getAccountByID("acc-1") } returns fakeHealthConnectDataNotIntegrated
 
@@ -244,7 +244,7 @@ class IntegrationServiceTest {
   }
 
   @Test
-  fun `getIntegrationsWithStatus shows HealthConnect disconnected when data is null`() = runTest {
+  fun `getIntegrationsWithStatus shows HealthConnect disconnected when data is null`() = runTest(mainDispatcherRule.scheduler) {
     stubGetCurrentAccount(fakeAccount)
     coEvery { healthConnectRepository.getAccountByID("acc-1") } returns null
 
@@ -256,7 +256,7 @@ class IntegrationServiceTest {
   }
 
   @Test
-  fun `getIntegrationsWithStatus completes without emission on exception`() = runTest {
+  fun `getIntegrationsWithStatus completes without emission on exception`() = runTest(mainDispatcherRule.scheduler) {
     coEvery { accountService.getCurrentAccount() } throws RuntimeException("error")
 
     service.getIntegrationsWithStatus().test {
@@ -269,7 +269,7 @@ class IntegrationServiceTest {
   // -------------------------------------------------------------------------
 
   @Test
-  fun `connectIntegration returns OAuth URL for Fitbit`() = runTest {
+  fun `connectIntegration returns OAuth URL for Fitbit`() = runTest(mainDispatcherRule.scheduler) {
     val result = service.connectIntegration(IntegrationProvider.Fitbit, "acc-1")
 
     assertThat(result).isNotNull()
@@ -278,7 +278,7 @@ class IntegrationServiceTest {
   }
 
   @Test
-  fun `connectIntegration returns OAuth URL for MyFitnessPal`() = runTest {
+  fun `connectIntegration returns OAuth URL for MyFitnessPal`() = runTest(mainDispatcherRule.scheduler) {
     val result = service.connectIntegration(IntegrationProvider.MyFitnessPal, "acc-1")
 
     assertThat(result).isNotNull()
@@ -287,7 +287,7 @@ class IntegrationServiceTest {
   }
 
   @Test
-  fun `connectIntegration returns null for HealthConnect`() = runTest {
+  fun `connectIntegration returns null for HealthConnect`() = runTest(mainDispatcherRule.scheduler) {
     val result = service.connectIntegration(IntegrationProvider.HealthConnect, "acc-1")
 
     assertThat(result).isNull()
@@ -298,7 +298,7 @@ class IntegrationServiceTest {
   // -------------------------------------------------------------------------
 
   @Test
-  fun `disconnectIntegration removes Fitbit and refreshes account`() = runTest {
+  fun `disconnectIntegration removes Fitbit and refreshes account`() = runTest(mainDispatcherRule.scheduler) {
     stubRemoveIntegration()
     stubRefreshAccount()
     stubUpdateLocalAccount()
@@ -320,7 +320,7 @@ class IntegrationServiceTest {
   }
 
   @Test
-  fun `disconnectIntegration removes MFP with correct API string`() = runTest {
+  fun `disconnectIntegration removes MFP with correct API string`() = runTest(mainDispatcherRule.scheduler) {
     stubRemoveIntegration()
     stubRefreshAccount()
     stubUpdateLocalAccount()
@@ -331,7 +331,7 @@ class IntegrationServiceTest {
   }
 
   @Test
-  fun `disconnectIntegration removes HealthConnect with correct API string`() = runTest {
+  fun `disconnectIntegration removes HealthConnect with correct API string`() = runTest(mainDispatcherRule.scheduler) {
     stubRemoveIntegration()
     stubRefreshAccount()
     stubUpdateLocalAccount()
@@ -344,7 +344,7 @@ class IntegrationServiceTest {
   }
 
   @Test
-  fun `disconnectIntegration shows network error toast and throws when offline`() = runTest {
+  fun `disconnectIntegration shows network error toast and throws when offline`() = runTest(mainDispatcherRule.scheduler) {
     stubNetworkUnavailable()
 
     assertFailsWith<Exception> { service.disconnectIntegration(IntegrationProvider.Fitbit) }
@@ -357,7 +357,7 @@ class IntegrationServiceTest {
   }
 
   @Test
-  fun `disconnectIntegration dismisses loader and rethrows on API error`() = runTest {
+  fun `disconnectIntegration dismisses loader and rethrows on API error`() = runTest(mainDispatcherRule.scheduler) {
     coEvery { integrationRepository.removeIntegration(any(), any()) } throws RuntimeException("API error")
 
     assertFailsWith<RuntimeException> { service.disconnectIntegration(IntegrationProvider.Fitbit) }
@@ -369,7 +369,7 @@ class IntegrationServiceTest {
   // -------------------------------------------------------------------------
 
   @Test
-  fun `getIntegrationStatus returns Fitbit connected and valid`() = runTest {
+  fun `getIntegrationStatus returns Fitbit connected and valid`() = runTest(mainDispatcherRule.scheduler) {
     stubUpdateLocalAccount()
     stubGetCurrentAccount(fitbitConnectedAccount)
 
@@ -380,7 +380,7 @@ class IntegrationServiceTest {
   }
 
   @Test
-  fun `getIntegrationStatus returns Fitbit disconnected`() = runTest {
+  fun `getIntegrationStatus returns Fitbit disconnected`() = runTest(mainDispatcherRule.scheduler) {
     stubUpdateLocalAccount()
     stubGetCurrentAccount(fakeAccount)
 
@@ -391,7 +391,7 @@ class IntegrationServiceTest {
   }
 
   @Test
-  fun `getIntegrationStatus returns MFP connected and valid`() = runTest {
+  fun `getIntegrationStatus returns MFP connected and valid`() = runTest(mainDispatcherRule.scheduler) {
     stubUpdateLocalAccount()
     stubGetCurrentAccount(mfpConnectedAccount)
 
@@ -402,7 +402,7 @@ class IntegrationServiceTest {
   }
 
   @Test
-  fun `getIntegrationStatus returns HealthConnect on`() = runTest {
+  fun `getIntegrationStatus returns HealthConnect on`() = runTest(mainDispatcherRule.scheduler) {
     stubUpdateLocalAccount()
     stubGetCurrentAccount(healthConnectOnAccount)
 
@@ -413,7 +413,7 @@ class IntegrationServiceTest {
   }
 
   @Test
-  fun `getIntegrationStatus returns HealthConnect off but valid`() = runTest {
+  fun `getIntegrationStatus returns HealthConnect off but valid`() = runTest(mainDispatcherRule.scheduler) {
     stubUpdateLocalAccount()
     stubGetCurrentAccount(fakeAccount) // isHealthConnectOn = false
 
@@ -424,7 +424,7 @@ class IntegrationServiceTest {
   }
 
   @Test
-  fun `getIntegrationStatus returns false pair when no account`() = runTest {
+  fun `getIntegrationStatus returns false pair when no account`() = runTest(mainDispatcherRule.scheduler) {
     stubUpdateLocalAccount()
     stubGetCurrentAccount(null)
 
@@ -435,7 +435,7 @@ class IntegrationServiceTest {
   }
 
   @Test
-  fun `getIntegrationStatus returns false pair on exception`() = runTest {
+  fun `getIntegrationStatus returns false pair on exception`() = runTest(mainDispatcherRule.scheduler) {
     coEvery { integrationRepository.updateLocalAccount() } throws RuntimeException("error")
 
     val status = service.getIntegrationStatus(IntegrationProvider.Fitbit)
@@ -469,7 +469,7 @@ class IntegrationServiceTest {
   // -------------------------------------------------------------------------
 
   @Test
-  fun `checkForInactiveIntegrations returns empty when all valid`() = runTest {
+  fun `checkForInactiveIntegrations returns empty when all valid`() = runTest(mainDispatcherRule.scheduler) {
     stubGetCurrentAccount(fitbitConnectedAccount)
 
     val result = service.checkForInactiveIntegrations()
@@ -478,7 +478,7 @@ class IntegrationServiceTest {
   }
 
   @Test
-  fun `checkForInactiveIntegrations detects inactive Fitbit`() = runTest {
+  fun `checkForInactiveIntegrations detects inactive Fitbit`() = runTest(mainDispatcherRule.scheduler) {
     stubGetCurrentAccount(fitbitInactiveAccount)
 
     val result = service.checkForInactiveIntegrations()
@@ -487,7 +487,7 @@ class IntegrationServiceTest {
   }
 
   @Test
-  fun `checkForInactiveIntegrations detects inactive MFP`() = runTest {
+  fun `checkForInactiveIntegrations detects inactive MFP`() = runTest(mainDispatcherRule.scheduler) {
     stubGetCurrentAccount(mfpInactiveAccount)
 
     val result = service.checkForInactiveIntegrations()
@@ -496,7 +496,7 @@ class IntegrationServiceTest {
   }
 
   @Test
-  fun `checkForInactiveIntegrations detects both inactive`() = runTest {
+  fun `checkForInactiveIntegrations detects both inactive`() = runTest(mainDispatcherRule.scheduler) {
     stubGetCurrentAccount(bothInactiveAccount)
 
     val result = service.checkForInactiveIntegrations()
@@ -505,7 +505,7 @@ class IntegrationServiceTest {
   }
 
   @Test
-  fun `checkForInactiveIntegrations returns empty when integrations off`() = runTest {
+  fun `checkForInactiveIntegrations returns empty when integrations off`() = runTest(mainDispatcherRule.scheduler) {
     stubGetCurrentAccount(fakeAccount)
 
     val result = service.checkForInactiveIntegrations()
@@ -514,7 +514,7 @@ class IntegrationServiceTest {
   }
 
   @Test
-  fun `checkForInactiveIntegrations returns empty when no account`() = runTest {
+  fun `checkForInactiveIntegrations returns empty when no account`() = runTest(mainDispatcherRule.scheduler) {
     stubGetCurrentAccount(null)
 
     val result = service.checkForInactiveIntegrations()
@@ -523,7 +523,7 @@ class IntegrationServiceTest {
   }
 
   @Test
-  fun `checkForInactiveIntegrations returns empty on exception`() = runTest {
+  fun `checkForInactiveIntegrations returns empty on exception`() = runTest(mainDispatcherRule.scheduler) {
     coEvery { accountService.getCurrentAccount() } throws RuntimeException("error")
 
     val result = service.checkForInactiveIntegrations()
@@ -572,14 +572,14 @@ class IntegrationServiceTest {
   // -------------------------------------------------------------------------
 
   @Test
-  fun `init does not check integrations when checkIntegrations emits false`() = runTest {
+  fun `init does not check integrations when checkIntegrations emits false`() = runTest(mainDispatcherRule.scheduler) {
     advanceUntilIdle()
 
     coVerify(exactly = 0) { integrationRepository.updateLocalAccount() }
   }
 
   @Test
-  fun `init checks integrations when checkIntegrations emits true and no inactive found`() = runTest {
+  fun `init checks integrations when checkIntegrations emits true and no inactive found`() = runTest(mainDispatcherRule.scheduler) {
     stubUpdateLocalAccount()
     stubGetCurrentAccount(fitbitConnectedAccount)
 
@@ -592,7 +592,7 @@ class IntegrationServiceTest {
   }
 
   @Test
-  fun `init shows reintegrate alert when inactive integrations found`() = runTest {
+  fun `init shows reintegrate alert when inactive integrations found`() = runTest(mainDispatcherRule.scheduler) {
     stubUpdateLocalAccount()
     stubGetCurrentAccount(fitbitInactiveAccount)
 
@@ -609,7 +609,7 @@ class IntegrationServiceTest {
   }
 
   @Test
-  fun `init shows reintegrate alert with plural text for multiple inactive providers`() = runTest {
+  fun `init shows reintegrate alert with plural text for multiple inactive providers`() = runTest(mainDispatcherRule.scheduler) {
     stubUpdateLocalAccount()
     stubGetCurrentAccount(bothInactiveAccount)
 
@@ -626,7 +626,7 @@ class IntegrationServiceTest {
   }
 
   @Test
-  fun `init handles exception in checkIntegrations processing`() = runTest {
+  fun `init handles exception in checkIntegrations processing`() = runTest(mainDispatcherRule.scheduler) {
     coEvery { integrationRepository.updateLocalAccount() } throws RuntimeException("error")
 
     checkIntegrationsFlow.value = true
@@ -641,7 +641,7 @@ class IntegrationServiceTest {
   // -------------------------------------------------------------------------
 
   @Test
-  fun `showReintegrateAlert onConfirm removes inactive integrations and refreshes`() = runTest {
+  fun `showReintegrateAlert onConfirm removes inactive integrations and refreshes`() = runTest(mainDispatcherRule.scheduler) {
     stubUpdateLocalAccount()
     stubGetCurrentAccount(fitbitInactiveAccount)
     stubRemoveIntegration()
@@ -663,7 +663,7 @@ class IntegrationServiceTest {
   }
 
   @Test
-  fun `showReintegrateAlert onConfirm removes all inactive providers`() = runTest {
+  fun `showReintegrateAlert onConfirm removes all inactive providers`() = runTest(mainDispatcherRule.scheduler) {
     stubUpdateLocalAccount()
     stubGetCurrentAccount(bothInactiveAccount)
     stubRemoveIntegration()
@@ -686,7 +686,7 @@ class IntegrationServiceTest {
   }
 
   @Test
-  fun `showReintegrateAlert onConfirm continues removing others when one fails`() = runTest {
+  fun `showReintegrateAlert onConfirm continues removing others when one fails`() = runTest(mainDispatcherRule.scheduler) {
     stubUpdateLocalAccount()
     stubGetCurrentAccount(bothInactiveAccount)
     coEvery { integrationRepository.removeIntegration("fitbit", any()) } throws RuntimeException("fail")
@@ -710,7 +710,7 @@ class IntegrationServiceTest {
   }
 
   @Test
-  fun `showReintegrateAlert onConfirm dismisses dialog even when refreshAccount fails`() = runTest {
+  fun `showReintegrateAlert onConfirm dismisses dialog even when refreshAccount fails`() = runTest(mainDispatcherRule.scheduler) {
     stubUpdateLocalAccount()
     stubGetCurrentAccount(fitbitInactiveAccount)
     stubRemoveIntegration()
@@ -730,7 +730,7 @@ class IntegrationServiceTest {
   }
 
   @Test
-  fun `showReintegrateAlert onCancel navigates to integration list`() = runTest {
+  fun `showReintegrateAlert onCancel navigates to integration list`() = runTest(mainDispatcherRule.scheduler) {
     stubUpdateLocalAccount()
     stubGetCurrentAccount(fitbitInactiveAccount)
 
@@ -759,7 +759,7 @@ class IntegrationServiceTest {
     Response.error(code, "".toResponseBody("text/plain".toMediaTypeOrNull()))
 
   @Test
-  fun `submitIntegrationRequest routes trimmed text through repository on success`() = runTest {
+  fun `submitIntegrationRequest routes trimmed text through repository on success`() = runTest(mainDispatcherRule.scheduler) {
     coEvery { integrationRepository.requestIntegration(any()) } returns successResponse()
 
     service.submitIntegrationRequest("  Garmin  ")
@@ -768,7 +768,7 @@ class IntegrationServiceTest {
   }
 
   @Test
-  fun `submitIntegrationRequest throws when server returns non-2xx`() = runTest {
+  fun `submitIntegrationRequest throws when server returns non-2xx`() = runTest(mainDispatcherRule.scheduler) {
     coEvery { integrationRepository.requestIntegration(any()) } returns errorResponse(500)
 
     assertFailsWith<IllegalStateException> {
@@ -779,7 +779,7 @@ class IntegrationServiceTest {
   }
 
   @Test
-  fun `submitIntegrationRequest rejects blank input without hitting the network`() = runTest {
+  fun `submitIntegrationRequest rejects blank input without hitting the network`() = runTest(mainDispatcherRule.scheduler) {
     assertFailsWith<IllegalArgumentException> {
       service.submitIntegrationRequest("   ")
     }

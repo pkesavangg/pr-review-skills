@@ -23,7 +23,7 @@ final class UsersViewModel: ObservableObject {
 
     /// Reads the current snapshot directly from the service — the single source of truth.
     private var deviceSnapshot: DeviceSnapshot? {
-        deviceService.scales.first(where: { $0.id == scaleIdString })
+        deviceService.scales.first { $0.id == scaleIdString }
     }
 
     private let tag = "UsersViewModel"
@@ -130,7 +130,12 @@ final class UsersViewModel: ObservableObject {
                 case .success:
                     currentDeviceUser?.name = newName
                     notificationService.showToast(ToastModel(title: ToastStrings.success, message: ToastStrings.userNameUpdated))
-                    logger.log(level: .info, tag: tag, message: "User name updated successfully", data: ["scaleId": scaleIdString, "newName": newName])
+                    logger.log(
+                        level: .info,
+                        tag: tag,
+                        message: "User name updated successfully",
+                        data: ["scaleId": scaleIdString, "newName": newName]
+                    )
                     onSuccess?()
                 case .failure(let error):
                     logger.log(level: .error, tag: tag, message: "Failed to update user name: \(error.localizedDescription)")

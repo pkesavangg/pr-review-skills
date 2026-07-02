@@ -71,7 +71,7 @@ object AppPopupStrings {
     const val Cancel = "Cancel"
   }
 
-  object ScaleDiscoveredPopup {
+  object DeviceDiscoveredPopup {
     fun Title(sku: String) = if (DeviceHelper.isBpmDevice(sku)) "New Monitor Discovered" else "New Scale Discovered"
     const val ConnectButton = "Connect"
     const val CloseContentDescription = "Close"
@@ -81,9 +81,9 @@ object AppPopupStrings {
     fun Title(permissionType: String, isScaleSetupRequest: Boolean = false) = when (permissionType) {
       GGPermissionType.BLUETOOTH_SWITCH -> if (isScaleSetupRequest) "Bluetooth is Turned Off"
       else "It looks like your Bluetooth is disabled!"
-      GGPermissionType.NEARBY_DEVICE -> "Nearby Devices Permission."
+      GGPermissionType.NEARBY_DEVICE -> "Nearby Devices Permission"
       GGPermissionType.LOCATION_SWITCH -> "Your Location may be disabled!"
-      GGPermissionType.LOCATION -> "Weight Gurus needs location access to connect your scale."
+      GGPermissionType.LOCATION -> "me.App needs location access to connect your scale."
       GGPermissionType.NOTIFICATION -> "Notifications are disabled!"
       GGPermissionType.CAMERA -> "You have not given permission to access camera!"
       GGPermissionType.ALL -> "Unable to scan devices!"
@@ -105,7 +105,7 @@ object AppPopupStrings {
 
       GGPermissionType.LOCATION ->
         "Android requires you share location permissions with any app that connects via Wi-Fi / Bluetooth. " +
-          "Weight Gurus does not store this information."
+          "me.App does not store this information."
 
       GGPermissionType.NOTIFICATION ->
         "Notification permissions have been turned off. Enable notifications to receive updates from your Wi-Fi scale."
@@ -163,7 +163,7 @@ object AppPopupStrings {
   object R4ProfileUpdatePending {
     const val Title = "Updates Pending..."
     const val Message =
-      "Scale settings can’t be updated at this time. Weight Gurus will save changes and update the scale next time it connects."
+      "Scale settings can’t be updated at this time. me.App will save changes and update the scale next time it connects."
     const val ConfirmButton = "Ok"
   }
 }

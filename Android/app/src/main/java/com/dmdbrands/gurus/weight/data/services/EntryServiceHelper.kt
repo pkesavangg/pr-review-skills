@@ -12,6 +12,7 @@ import java.util.Locale
 
 enum class OperationType {
     CREATE,
+    EDIT,
     DELETE,
 }
 
@@ -118,10 +119,15 @@ internal object EntryServiceHelper {
         if (operations.isEmpty()) return
         try {
             val sortedOperations = operations.sortedBy { it.entry.serverTimestamp }
-            val createOperations = sortedOperations.filter { it.entry.operationType == OperationType.CREATE.name }
+            // CREATE and EDIT both upsert the row in place (EDIT is the baby-only in-place edit,
+            // §2.16); only DELETE removes/soft-deletes it.
+            val upsertOperations = sortedOperations.filter {
+                it.entry.operationType == OperationType.CREATE.name ||
+                    it.entry.operationType == OperationType.EDIT.name
+            }
             val deleteOperations = sortedOperations.filter { it.entry.operationType == OperationType.DELETE.name }
 
-            for (operation in createOperations) {
+            for (operation in upsertOperations) {
                 val exists = if (userHasOperations) {
                     entryRepository.getEntryById(operation.entry.id) != null
                 } else {

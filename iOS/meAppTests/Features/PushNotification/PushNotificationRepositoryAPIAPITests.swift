@@ -1,6 +1,6 @@
 import Foundation
-import Testing
 @testable import meApp
+import Testing
 
 @Suite(.serialized)
 @MainActor
@@ -279,8 +279,8 @@ struct PushNotificationRepositoryAPIAPITests {
         guard let body = http.lastSendBody as? DeviceInfoRequest else {
             Issue.record("Expected DeviceInfoRequest"); return
         }
-        #expect(body.appVersion == "")
-        #expect(body.fcmToken == "")
+        #expect(body.appVersion.isEmpty)
+        #expect(body.fcmToken.isEmpty)
     }
 
     @Test("updateDeviceInfo edge payload: long fcmToken is passed through")

@@ -52,9 +52,8 @@ struct RequestIntegrationModalView: View {
                     text: strings.requestIntegrationSend,
                     type: .textPrimary,
                     size: .small,
-                    isDisabled: text.trimmingCharacters(in: .whitespaces).isEmpty,
-                    action: { onSend(text.trimmingCharacters(in: .whitespaces)) }
-                )
+                    isDisabled: text.trimmingCharacters(in: .whitespaces).isEmpty
+                ) { onSend(text.trimmingCharacters(in: .whitespaces)) }
             }
         }
         .padding(.spacingMD)

@@ -3,10 +3,10 @@
 //  meAppTests
 //
 
-import Testing
-import SwiftData
-@testable import meApp
 import Foundation
+@testable import meApp
+import SwiftData
+import Testing
 
 @Suite(.serialized)
 @MainActor
@@ -138,7 +138,7 @@ struct LoggerRepositoryTests {
         let insideTs  = Int64(now.addingTimeInterval(-2700).timeIntervalSince1970 * 1000)  // 45 min ago
         let outsideTs = Int64(now.addingTimeInterval(-7200).timeIntervalSince1970 * 1000)  // 2 hours ago
 
-        await sut.saveLogEntry(makeEntry(id: "inside",  sessionId: "s1", timestamp: insideTs))
+        await sut.saveLogEntry(makeEntry(id: "inside", sessionId: "s1", timestamp: insideTs))
         await sut.saveLogEntry(makeEntry(id: "outside", sessionId: "s2", timestamp: outsideTs))
 
         let logs = try await sut.fetchLogs(from: start, to: end)
@@ -173,7 +173,7 @@ struct LoggerRepositoryTests {
 
         // 1ms before start and 1ms after end — both must be excluded
         await sut.saveLogEntry(makeEntry(id: "before-start", sessionId: "s1", timestamp: startMs - 1))
-        await sut.saveLogEntry(makeEntry(id: "after-end",    sessionId: "s2", timestamp: endMs   + 1))
+        await sut.saveLogEntry(makeEntry(id: "after-end", sessionId: "s2", timestamp: endMs + 1))
 
         let logs = try await sut.fetchLogs(from: start, to: end)
 
@@ -241,7 +241,7 @@ struct LoggerRepositoryTests {
         let oldTs    = cutoff - 1
         let recentTs = DateTimeTools.getCurrentTimestampMillis()
 
-        await sut.saveLogEntry(makeEntry(id: "old",    sessionId: "s1", timestamp: oldTs))
+        await sut.saveLogEntry(makeEntry(id: "old", sessionId: "s1", timestamp: oldTs))
         await sut.saveLogEntry(makeEntry(id: "recent", sessionId: "s2", timestamp: recentTs))
 
         try await sut.deleteLogsOlderThan(olderThanDays: days)

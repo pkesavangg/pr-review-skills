@@ -55,7 +55,7 @@ final class MockMigrationKvStorageService: KvStorageServiceProtocol {
     }
 
     func lastSetValue(forKey key: String) -> Any? {
-        return setValueCalls.last(where: { $0.key == key })?.value
+        return setValueCalls.last { $0.key == key }?.value
     }
 
     func hasClearedValue(forKey key: String) -> Bool {

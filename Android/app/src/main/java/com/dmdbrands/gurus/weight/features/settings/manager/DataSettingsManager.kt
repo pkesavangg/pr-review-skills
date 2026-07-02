@@ -13,6 +13,7 @@ import com.dmdbrands.gurus.weight.features.common.components.ButtonType
 import com.dmdbrands.gurus.weight.features.common.components.RadioButtonOption
 import com.dmdbrands.gurus.weight.features.common.components.showRadioGroupModal
 import com.dmdbrands.gurus.weight.features.common.model.DialogModel
+import com.dmdbrands.gurus.weight.features.common.model.Toast
 import com.dmdbrands.gurus.weight.features.settings.strings.RadioGroupModalStrings
 import com.dmdbrands.gurus.weight.features.settings.strings.SettingsScreenStrings
 import com.dmdbrands.gurus.weight.features.settings.viewmodel.SettingsIntent
@@ -155,7 +156,9 @@ constructor(
         }
         dialogQueueService.dismissLoader()
       } catch (e: Exception) {
+        AppLog.e(TAG, "Failed to delete account", e)
         dialogQueueService.dismissLoader()
+        showGenericError()
       } finally {
         dialogQueueService.clear()
       }
@@ -305,6 +308,7 @@ constructor(
         }
       } catch (e: Exception) {
         AppLog.e(TAG, "Failed to log out", e)
+        showGenericError()
       } finally {
         dialogQueueService.dismissLoader()
         dialogQueueService.clear()
@@ -319,10 +323,22 @@ constructor(
         accountService.logoutAll()
       } catch (e: Exception) {
         AppLog.e(TAG, "Failed to log out all accounts", e)
+        showGenericError()
       } finally {
         dialogQueueService.dismissLoader()
         dialogQueueService.clear()
       }
     }
+  }
+
+  /** Surfaces a generic error toast for failed Settings actions (delete / logout). */
+  private fun showGenericError() {
+    dialogQueueService.showToast(
+      Toast.Simple(
+        title = null,
+        message = SettingsScreenStrings.Error.MessageGeneric,
+        action = null,
+      ),
+    )
   }
 }

@@ -363,7 +363,7 @@ private final class LocalDevTrustDelegate: NSObject, URLSessionDelegate {
 }
 
 private enum LocalDevTrust {
-    nonisolated(unsafe) static let session: URLSession = URLSession(
+    nonisolated(unsafe) static let session = URLSession(
         configuration: .default,
         delegate: LocalDevTrustDelegate(),
         delegateQueue: nil

@@ -25,6 +25,8 @@ import androidx.compose.ui.unit.dp
 import com.greatergoods.ggInAppMessaging.theme.IamTheme
 import com.greatergoods.ggInAppMessaging.theme.ProvideIamTheme
 
+private const val ANNOTATION_TAG = "ANNOTATED_CLICK"
+
 data class TextAppearance(
   val style: TextStyle,
   val color: Color,
@@ -57,8 +59,24 @@ object TextTypeDefaults {
     type: TextType,
     enabled: Boolean = true,
   ): TextAppearance {
-    val typography = IamTheme.typography
+    return when (type) {
+      TextType.Title,
+      TextType.Subtitle,
+      TextType.Subtitle2,
+      TextType.Body,
+      TextType.Message,
+      -> primaryAppearance(type, enabled)
 
+      else -> secondaryAppearance(type)
+    }
+  }
+
+  @Composable
+  private fun primaryAppearance(
+    type: TextType,
+    enabled: Boolean,
+  ): TextAppearance {
+    val typography = IamTheme.typography
     return when (type) {
       TextType.Title ->
         TextAppearance(
@@ -83,12 +101,18 @@ object TextTypeDefaults {
           color = if (enabled) IamTheme.colors.textBody else IamTheme.colors.utility,
         )
 
-      TextType.Message ->
+      else ->
         TextAppearance(
           style = typography.body1,
           color = if (enabled) IamTheme.colors.textBody else IamTheme.colors.utility,
         )
+    }
+  }
 
+  @Composable
+  private fun secondaryAppearance(type: TextType): TextAppearance {
+    val typography = IamTheme.typography
+    return when (type) {
       TextType.Link ->
         TextAppearance(
           style = typography.link1,
@@ -124,7 +148,7 @@ object TextTypeDefaults {
           color = IamTheme.colors.textSubheading,
         )
 
-      TextType.NoteTitle ->
+      else ->
         TextAppearance(
           style = typography.heading6,
           color = IamTheme.colors.textHeading,
@@ -153,9 +177,63 @@ fun IAMText(
 ) {
   val appearance = TextTypeDefaults.appearance(textType, enabled)
 
-  val ANNOTATION_TAG = "ANNOTATED_CLICK"
+  val finalText = buildIamFinalText(
+    text = text,
+    annotatedText = annotatedText,
+    canApplyUppercaseStyle = canApplyUppercaseStyle,
+    annotationPosition = annotationPosition,
+    spanStyle = spanStyle,
+    expiresAt = expiresAt,
+    enableRichText = enableRichText,
+  )
 
-  val finalText = remember(text, annotatedText, spanStyle, enableRichText, expiresAt) {
+  Column(
+    modifier = Modifier.wrapContentSize(),
+    horizontalAlignment = Alignment.Start,
+  ) {
+    if (onAnnotationClick != null && annotatedText != null && spanStyle != null) {
+      ClickableText(
+        text = finalText,
+        style = appearance.style.copy(color = color ?: appearance.color, textAlign = textAlign),
+        modifier = modifier,
+        onClick = { offset ->
+          finalText.getStringAnnotations(
+            tag = ANNOTATION_TAG,
+            start = offset,
+            end = offset + 1,
+          ).firstOrNull()
+            ?.let { annotation ->
+              onAnnotationClick(annotation.item)
+            }
+        },
+      )
+    } else {
+      Text(
+        text = finalText,
+        style = appearance.style,
+        color = color ?: appearance.color,
+        textAlign = textAlign,
+        modifier =
+          modifier.then(
+            if (onClick != null) Modifier.clickable { onClick() } else Modifier,
+          ),
+      )
+    }
+    Spacer(modifier = Modifier.height(spacing))
+  }
+}
+
+@Composable
+private fun buildIamFinalText(
+  text: String,
+  annotatedText: String?,
+  canApplyUppercaseStyle: Boolean,
+  annotationPosition: AnnotationPosition,
+  spanStyle: SpanStyle?,
+  expiresAt: String?,
+  enableRichText: Boolean,
+): AnnotatedString {
+  return remember(text, annotatedText, spanStyle, enableRichText, expiresAt) {
     when {
       enableRichText -> {
         // Use rich text parsing
@@ -212,41 +290,6 @@ fun IAMText(
         AnnotatedString(text)
       }
     }
-  }
-
-  Column(
-    modifier = Modifier.wrapContentSize(),
-    horizontalAlignment = Alignment.Start,
-  ) {
-    if (onAnnotationClick != null && annotatedText != null && spanStyle != null) {
-      ClickableText(
-        text = finalText,
-        style = appearance.style.copy(color = color ?: appearance.color, textAlign = textAlign),
-        modifier = modifier,
-        onClick = { offset ->
-          finalText.getStringAnnotations(
-            tag = ANNOTATION_TAG,
-            start = offset,
-            end = offset + 1,
-          ).firstOrNull()
-            ?.let { annotation ->
-              onAnnotationClick(annotation.item)
-            }
-        },
-      )
-    } else {
-      Text(
-        text = finalText,
-        style = appearance.style,
-        color = color ?: appearance.color,
-        textAlign = textAlign,
-        modifier =
-          modifier.then(
-            if (onClick != null) Modifier.clickable { onClick() } else Modifier,
-          ),
-      )
-    }
-    Spacer(modifier = Modifier.height(spacing))
   }
 }
 
