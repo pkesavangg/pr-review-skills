@@ -91,7 +91,11 @@ struct DashboardScreen: View {
                 isInProductDashboard = false
             }
         }
-        .ignoresSafeArea(.all, edges: canShowSnapshotOverview ? .bottom : .all)
+        // Snapshot overview: full-bleed only at the bottom so the WG logo sits below the
+        // status bar. Product dashboard: keep horizontal full-bleed for the graph but respect
+        // the top safe area, otherwise navbarHeader() (the product-tinted title) slides under
+        // the status bar/notch and the title is hidden (MOB-1377).
+        .ignoresSafeArea(.all, edges: canShowSnapshotOverview ? .bottom : [.horizontal, .bottom])
         .background(theme.backgroundSecondary)
         .sheet(item: $selectedEntry) { entry in
             RefetchedEntryWrapper(entryId: entry.id, selectedMetric: selectedMetric ?? .bmi, dashboardStore: store)
@@ -193,6 +197,7 @@ struct DashboardScreen: View {
             // Per Me.Health 2.0: the product-type title is tinted by product
             // (weight → blue, BP → green, baby → purple).
             titleColor: showTitle ? theme.productAccentColor(for: store.productType) : nil,
+            titleUnderline: showTitle,
             leadingContent: isProductDashboardFromSnapshot
                 ? { AppIconView(icon: AppAssets.chevronLeft) }
                 : nil,
