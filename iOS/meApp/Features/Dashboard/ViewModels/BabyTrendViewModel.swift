@@ -234,7 +234,7 @@ final class BabyTrendViewModel {
     }
 
     private func heightDisplayText(for height: Double) -> String {
-        height > 0 ? String(format: "%.1f", height) : "--.-"
+        height > 0 ? String(format: "%.1f", height) : "0.0"
     }
 
     private func percentileText(_ percentile: Int?) -> String {
