@@ -27,25 +27,32 @@ struct ManualEntryScreen: View {
     let labels = InputFieldLabels.self
     let appAssets = AppAssets.self
 
-    // Computed property for weight input config to ensure it updates when weightUnit changes
+    // Computed property for weight input config to ensure it updates when weightUnit changes.
+    // Per the Manual Entry mock the field shows a plain "weight" placeholder on the left with
+    // the unit fixed as a trailing suffix on the right (e.g. "(lbs)"/"(kg)") — matching the
+    // baby-profile birth-weight fields — so the unit stays put once a value is typed.
     private var weightInputConfig: TextInputConfig {
-        let weightLabel = labels.weightLabel(entryStore.weightUnit == .kg)
+        let isKg = entryStore.weightUnit == .kg
         return TextInputConfig(
-            label: weightLabel,
+            label: labels.weight,
             inputType: .metric,
             errorMessage: entryStore.getError(for: entryStore.manualEntryForm.weight),
             focusField: .weight,
             maxLength: 4,
-            maxValue: 999.9
+            maxValue: 999.9,
+            trailingLabel: labels.weightUnitSuffix(isKg)
         )
     }
 
     var body: some View {
         VStack(spacing: 0) {
             NavbarHeaderView<EmptyView, EmptyView>(
-                title: productTypeStore.availableItems.count > 1
-                    ? productTypeStore.selectedItem.entryTitle
-                    : manualEntryLang.title,
+                // Per Me.Health 2.0: always show the product-specific entry title
+                // (Weight Entry / BP Entry / baby name), tinted by product
+                // (weight → blue, BP → green, baby → purple). The chevron/selector
+                // only appears when more than one product is available to switch between.
+                title: productTypeStore.selectedItem.entryTitle,
+                titleColor: theme.productAccentColor(for: productTypeStore.selectedItem.entryType),
                 onTitleTap: productTypeStore.availableItems.count > 1 ? {
                     isProductTypeSelectorPresented = true
                 } : nil,
@@ -231,7 +238,9 @@ struct ManualEntryScreen: View {
                         }
                         .accessibilityAddTraits(.isButton)
                         .accessibilityLabel(manualEntryLang.accBodyMetricsHeader)
-                        .accessibilityHint(entryStore.showMetrics ? manualEntryLang.accBodyMetricsCollapseHint : manualEntryLang.accBodyMetricsExpandHint)
+                        .accessibilityHint(entryStore.showMetrics
+                            ? manualEntryLang.accBodyMetricsCollapseHint
+                            : manualEntryLang.accBodyMetricsExpandHint)
                         .padding(.bottom, .spacingXS)
 
                         if entryStore.showMetrics {

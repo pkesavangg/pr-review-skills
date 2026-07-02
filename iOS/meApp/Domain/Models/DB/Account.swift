@@ -13,9 +13,9 @@
 /// | isLoggedIn      | bool?   | If the user is logged in                    |
 /// | isExpired       | bool?   | Whether the account/session is expired      |
 /// | isActiveAccount | bool?   | Indicates if the account is active          |
-/// | accessToken     | string? | In-memory only; tokens live in Keychain     |
-/// | refreshToken    | string? | In-memory only; tokens live in Keychain     |
-/// | expiresAt       | string? | In-memory only; tokens live in Keychain     |
+/// | accessToken     | string? | Keychain is source of truth; persisted col cleared on save (5.0.3 migration only) |
+/// | refreshToken    | string? | Keychain is source of truth; persisted col cleared on save (5.0.3 migration only) |
+/// | expiresAt       | string? | Keychain is source of truth; persisted col cleared on save (5.0.3 migration only) |
 /// | fcmToken        | string? | Firebase Cloud Messaging token              |
 /// | lastActiveTime  | string? | Timestamp of last activity                  |
 /// | isSynced        | bool?   | Whether account is synced online            |
@@ -57,20 +57,27 @@ final class Account {
     var isExpired: Bool?
     /// Indicates if the account is currently active
     var isActiveAccount: Bool?
-    /// OAuth or app-specific access token (in-memory only; source of truth is Keychain).
-    @Transient var accessToken: String?
-    /// OAuth refresh token (in-memory only; source of truth is Keychain).
-    @Transient var refreshToken: String?
-    /// Access token expiration time (in-memory only; source of truth is Keychain).
-    @Transient var expiresAt: String?
+    /// OAuth or app-specific access token. Keychain is the source of truth; this column is
+    /// persisted (not `@Transient`) only so the one-time `migrateTokensToKeychainIfNeeded()`
+    /// pass can read the value an upgrading 5.0.3 store still holds. It is cleared to `nil`
+    /// on every persist by the model's `willSave()` hook, so it never re-persists a token
+    /// regardless of which code path triggers the save.
+    var accessToken: String?
+    /// OAuth refresh token. Persisted only for the one-time 5.0.3 → Keychain migration; cleared on save by `willSave()`.
+    var refreshToken: String?
+    /// Access token expiration time. Persisted only for the one-time 5.0.3 → Keychain migration; cleared on save by `willSave()`.
+    var expiresAt: String?
     /// Firebase Cloud Messaging token
     var fcmToken: String?
     /// Timestamp of last activity
     var lastActiveTime: String?
     /// Whether account is updated and synced online
     var isSynced: Bool?
-    /// Product types the user has selected (e.g. "myWeight", "myBloodPressure", "baby")
-    var productTypes: [String] = []
+    /// Product types the user has selected (e.g. "myWeight", "myBloodPressure", "baby").
+    /// Defaults to `["myWeight"]` so SwiftData lightweight migration can infer this
+    /// non-optional column when upgrading from 5.0.3 (where it did not exist) and so
+    /// existing weight-only accounts back-fill to weight rather than an empty selection.
+    var productTypes: [String] = ["myWeight"]
     /// Preferred measurement units ("metric", "imperialLbOz", "imperialLbDecimal").
     /// Sourced from the server `measurementUnits` field; nil until set.
     var measurementUnits: String?
@@ -217,6 +224,25 @@ final class Account {
             productTypes: self.productTypes,
             measurementUnits: self.measurementUnits
         )
+    }
+
+    /// SwiftData lifecycle hook — defense-in-depth for the Keychain-only token invariant.
+    ///
+    /// `accessToken`/`refreshToken`/`expiresAt` are persisted columns purely so the one-time
+    /// `migrateTokensToKeychainIfNeeded()` pass can read tokens an upgrading 5.0.3 store still
+    /// holds. Keychain is the source of truth; a token must never be (re)written to the unencrypted
+    /// on-disk store. `AccountService` clears these via `clearTokenFieldsBeforeSave` before its
+    /// save/update wrappers, but `AccountRepository.activateAccount`/`mergeAccount` (and any future
+    /// caller) call `context.save()` directly. Clearing here guarantees the invariant holds on
+    /// *every* persist path rather than relying on each writer remembering to use the wrapper.
+    ///
+    /// The migration reads tokens from the freshly fetched (unsaved) object before this fires, so
+    /// the one-time copy to Keychain is unaffected. Each field is nil-guarded so this never re-marks
+    /// the model dirty, avoiding repeated `willSave()` invocations.
+    func willSave() {
+        if accessToken != nil { accessToken = nil }
+        if refreshToken != nil { refreshToken = nil }
+        if expiresAt != nil { expiresAt = nil }
     }
 }
 

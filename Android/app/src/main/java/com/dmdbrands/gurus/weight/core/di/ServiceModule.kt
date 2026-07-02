@@ -31,7 +31,7 @@ import com.dmdbrands.gurus.weight.core.service.NotificationService
 import com.dmdbrands.gurus.weight.core.service.OfflineHandlerService
 import com.dmdbrands.gurus.weight.core.service.StorageClearService
 import com.dmdbrands.gurus.weight.core.service.UserSettingsService
-import com.dmdbrands.gurus.weight.core.service.WifiScaleService
+import com.dmdbrands.gurus.weight.core.service.WifiDeviceService
 import com.dmdbrands.gurus.weight.core.service.pushNotification.NotificationManager as GGNotificationManager
 import com.dmdbrands.gurus.weight.core.shared.utilities.logging.LogManager
 import com.dmdbrands.gurus.weight.data.api.IExportAPI
@@ -48,6 +48,7 @@ import com.dmdbrands.gurus.weight.domain.interfaces.IDialogQueueService
 import com.dmdbrands.gurus.weight.domain.interfaces.IDialogUtility
 import com.dmdbrands.gurus.weight.domain.repository.IAccountFlagRepository
 import com.dmdbrands.gurus.weight.domain.repository.IAccountRepository
+import com.dmdbrands.gurus.weight.domain.repository.IBabyProfileRepository
 import com.dmdbrands.gurus.weight.domain.repository.IAppRepository
 import com.dmdbrands.gurus.weight.domain.repository.IBodyCompositionRepository
 import com.dmdbrands.gurus.weight.domain.repository.IDashboardRepository
@@ -92,6 +93,7 @@ import dagger.hilt.InstallIn
 import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.components.SingletonComponent
 import kotlinx.coroutines.CoroutineScope
+import javax.inject.Provider
 import javax.inject.Singleton
 import android.content.Context
 
@@ -164,7 +166,7 @@ object ServiceModule {
    * @param context The application context.
    * @param wifiSmartConnectManager The WiFi smart connect manager.
    * @param deviceService The device service.
-   * @return [WifiScaleService] instance.
+   * @return [WifiDeviceService] instance.
    */
   @Provides
   @Singleton
@@ -173,7 +175,7 @@ object ServiceModule {
     wifiSmartConnectManager: WifiSmartConnectManager,
     deviceService: IDeviceService,
     @ApplicationScope appScope: CoroutineScope,
-  ) = WifiScaleService(
+  ) = WifiDeviceService(
     wifiSmartConnectManager,
     deviceService,
     context,
@@ -237,6 +239,7 @@ object ServiceModule {
   fun provideEntryService(
     entryRepository: IEntryRepository,
     accountRepository: IAccountRepository,
+    babyProfileRepository: IBabyProfileRepository,
     goalService: IGoalService,
     healthConnectService: IHealthConnectService,
     healthConnectRepository: IHealthConnectRepository,
@@ -245,6 +248,7 @@ object ServiceModule {
   ): IEntryService = EntryService(
     entryRepository = entryRepository,
     accountRepository = accountRepository,
+    babyProfileRepository = babyProfileRepository,
     goalService = goalService,
     healthConnectService = healthConnectService,
     healthConnectRepository = healthConnectRepository,
@@ -479,8 +483,9 @@ object ServiceModule {
       dialogQueueService: IDialogQueueService,
       appNavigationService: IAppNavigationService,
       @ApplicationScope appScope: CoroutineScope,
+      productSelectionManager: Provider<IProductSelectionManager>,
     ): IDeviceService =
-      DeviceService(deviceRepository, connectivityObserver, dialogQueueService, appNavigationService, context, appScope)
+      DeviceService(deviceRepository, connectivityObserver, dialogQueueService, appNavigationService, context, appScope, productSelectionManager)
 
     @Provides
     @Singleton

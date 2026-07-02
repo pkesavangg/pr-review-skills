@@ -1,6 +1,6 @@
-import Testing
 import Foundation
 @testable import meApp
+import Testing
 
 @Suite(.serialized)
 @MainActor
@@ -13,7 +13,7 @@ struct AddScaleFormTests {
     @Test("modelNumber starts empty and pristine")
     func initialState() {
         let form = makeForm()
-        #expect(form.modelNumber.value == "")
+        #expect(form.modelNumber.value.isEmpty)
         #expect(!form.modelNumber.isDirty)
     }
 
@@ -59,7 +59,7 @@ struct AddScaleFormTests {
     func setModelNumberNonNumericOnly() {
         let form = makeForm()
         form.setModelNumber("abcd")
-        #expect(form.modelNumber.value == "")
+        #expect(form.modelNumber.value.isEmpty)
     }
 
     // MARK: - modelNumberValue accessor
@@ -175,7 +175,7 @@ struct AddScaleFormTests {
         let form = makeForm()
         form.setModelNumber("0340")
         form.reset()
-        #expect(form.modelNumber.value == "")
+        #expect(form.modelNumber.value.isEmpty)
         #expect(!form.modelNumber.isDirty)
     }
 

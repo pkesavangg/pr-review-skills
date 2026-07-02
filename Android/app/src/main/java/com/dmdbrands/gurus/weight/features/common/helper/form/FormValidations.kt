@@ -1,7 +1,7 @@
 package com.dmdbrands.gurus.weight.features.common.helper.form
 
 import com.dmdbrands.gurus.weight.domain.model.common.WeightUnit
-import com.dmdbrands.gurus.weight.features.common.helper.ScaleDataHelper
+import com.dmdbrands.gurus.weight.features.common.helper.DeviceDataHelper
 import com.dmdbrands.gurus.weight.features.signup.model.SignupFormControls
 import java.util.Calendar
 
@@ -191,7 +191,7 @@ object FormValidations {
   fun skuValidator(): Validator<String> = { value ->
     val sku = value.trim()
     // Use helper to check if SKU exists (handles variant SKU mapping e.g., 0022 -> 0383)
-    val scaleInfo = ScaleDataHelper.findScaleInfoBySku(sku)
+    val scaleInfo = DeviceDataHelper.findScaleInfoBySku(sku)
     when {
       sku.isBlank() -> null // Don't show error for empty field, button will be disabled instead
       scaleInfo != null -> null

@@ -78,7 +78,7 @@ class ChangePasswordViewModelTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `Submit with valid form calls changePassword and navigates back on success`() = runTest {
+    fun `Submit with valid form calls changePassword and navigates back on success`() = runTest(mainDispatcherRule.scheduler) {
         fillValidForm()
         coEvery { accountService.changePassword(any(), any()) } returns true
 
@@ -92,7 +92,7 @@ class ChangePasswordViewModelTest {
     }
 
     @Test
-    fun `Submit with changePassword returning false sets error`() = runTest {
+    fun `Submit with changePassword returning false sets error`() = runTest(mainDispatcherRule.scheduler) {
         fillValidForm()
         coEvery { accountService.changePassword(any(), any()) } returns false
 
@@ -104,7 +104,7 @@ class ChangePasswordViewModelTest {
     }
 
     @Test
-    fun `Submit with exception sets error`() = runTest {
+    fun `Submit with exception sets error`() = runTest(mainDispatcherRule.scheduler) {
         fillValidForm()
         coEvery { accountService.changePassword(any(), any()) } throws RuntimeException("Network error")
 
@@ -116,7 +116,7 @@ class ChangePasswordViewModelTest {
     }
 
     @Test
-    fun `Submit shows loader`() = runTest {
+    fun `Submit shows loader`() = runTest(mainDispatcherRule.scheduler) {
         fillValidForm()
         coEvery { accountService.changePassword(any(), any()) } returns true
 
@@ -131,7 +131,7 @@ class ChangePasswordViewModelTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `OpenForgotPasswordModal shows confirm dialog with email`() = runTest {
+    fun `OpenForgotPasswordModal shows confirm dialog with email`() = runTest(mainDispatcherRule.scheduler) {
         val mockAccount: Account = io.mockk.mockk(relaxed = true) {
             io.mockk.every { email } returns TEST_EMAIL
         }
@@ -146,7 +146,7 @@ class ChangePasswordViewModelTest {
     }
 
     @Test
-    fun `OpenForgotPasswordModal confirm callback calls resetPassword`() = runTest {
+    fun `OpenForgotPasswordModal confirm callback calls resetPassword`() = runTest(mainDispatcherRule.scheduler) {
         val mockAccount: Account = io.mockk.mockk(relaxed = true) {
             io.mockk.every { email } returns TEST_EMAIL
         }
@@ -184,7 +184,7 @@ class ChangePasswordViewModelTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `OnRequestBack with no changes navigates back directly`() = runTest {
+    fun `OnRequestBack with no changes navigates back directly`() = runTest(mainDispatcherRule.scheduler) {
         viewModel.handleIntent(ChangePasswordIntent.OnRequestBack)
         advanceUntilIdle()
 
@@ -192,7 +192,7 @@ class ChangePasswordViewModelTest {
     }
 
     @Test
-    fun `OnRequestBack with dirty form shows confirm dialog`() = runTest {
+    fun `OnRequestBack with dirty form shows confirm dialog`() = runTest(mainDispatcherRule.scheduler) {
         fillValidForm()
         viewModel.state.value.form.controls.currentPassword.onBlur()
 
@@ -205,7 +205,7 @@ class ChangePasswordViewModelTest {
     }
 
     @Test
-    fun `OnRequestBack confirm callback navigates back and dismisses dialog`() = runTest {
+    fun `OnRequestBack confirm callback navigates back and dismisses dialog`() = runTest(mainDispatcherRule.scheduler) {
         fillValidForm()
         viewModel.state.value.form.controls.currentPassword.onBlur()
 
@@ -223,7 +223,7 @@ class ChangePasswordViewModelTest {
     }
 
     @Test
-    fun `OnRequestBack cancel callback dismisses dialog without navigation`() = runTest {
+    fun `OnRequestBack cancel callback dismisses dialog without navigation`() = runTest(mainDispatcherRule.scheduler) {
         fillValidForm()
         viewModel.state.value.form.controls.currentPassword.onBlur()
 
@@ -239,7 +239,7 @@ class ChangePasswordViewModelTest {
     }
 
     @Test
-    fun `OnRequestBack confirm resets form fields before navigating back`() = runTest {
+    fun `OnRequestBack confirm resets form fields before navigating back`() = runTest(mainDispatcherRule.scheduler) {
         fillValidForm()
         viewModel.state.value.form.controls.currentPassword.onBlur()
 
@@ -264,7 +264,7 @@ class ChangePasswordViewModelTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `Success navigates back`() = runTest {
+    fun `Success navigates back`() = runTest(mainDispatcherRule.scheduler) {
         viewModel.handleIntent(ChangePasswordIntent.Success)
         advanceUntilIdle()
 
@@ -276,7 +276,7 @@ class ChangePasswordViewModelTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `Submit with invalid form dismisses loader without calling changePassword`() = runTest {
+    fun `Submit with invalid form dismisses loader without calling changePassword`() = runTest(mainDispatcherRule.scheduler) {
         // Touch and dirty the controls with invalid values so validation actually fails
         // (untouched/undirty controls pass validation by design)
         viewModel.state.value.form.controls.currentPassword.onValueChange("ab")  // too short
@@ -292,7 +292,7 @@ class ChangePasswordViewModelTest {
     }
 
     @Test
-    fun `Submit calls changePassword with correct passwords from form`() = runTest {
+    fun `Submit calls changePassword with correct passwords from form`() = runTest(mainDispatcherRule.scheduler) {
         fillValidForm()
         coEvery { accountService.changePassword(CURRENT_PASSWORD, NEW_PASSWORD) } returns true
 
@@ -307,7 +307,7 @@ class ChangePasswordViewModelTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `Success navigates back with null argument`() = runTest {
+    fun `Success navigates back with null argument`() = runTest(mainDispatcherRule.scheduler) {
         viewModel.handleIntent(ChangePasswordIntent.Success)
         advanceUntilIdle()
 
@@ -319,7 +319,7 @@ class ChangePasswordViewModelTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `resetPasswordForCurrentUser shows and dismisses loader`() = runTest {
+    fun `resetPasswordForCurrentUser shows and dismisses loader`() = runTest(mainDispatcherRule.scheduler) {
         val mockAccount: Account = io.mockk.mockk(relaxed = true) {
             io.mockk.every { email } returns TEST_EMAIL
         }
@@ -340,7 +340,7 @@ class ChangePasswordViewModelTest {
     }
 
     @Test
-    fun `resetPasswordForCurrentUser dismisses loader when resetPassword throws`() = runTest {
+    fun `resetPasswordForCurrentUser dismisses loader when resetPassword throws`() = runTest(mainDispatcherRule.scheduler) {
         val mockAccount: Account = io.mockk.mockk(relaxed = true) {
             io.mockk.every { email } returns TEST_EMAIL
         }

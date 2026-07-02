@@ -1,6 +1,6 @@
 import Foundation
-import Testing
 @testable import meApp
+import Testing
 
 /// Tests for the server `deviceType` mapping added in MOB-383: the `DeviceType` server-value
 /// bridge plus its propagation through `Device(from:)` and `Device.toDTO()`.

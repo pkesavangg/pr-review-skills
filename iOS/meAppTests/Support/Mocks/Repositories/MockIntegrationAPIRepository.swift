@@ -28,6 +28,8 @@ final class MockIntegrationAPIRepository: IntegrationRepositoryAPIProtocol {
         return try createHealthIntegrationResult.get()
     }
 
+    // Mock conforms to a 9-parameter protocol method.
+    // swiftlint:disable:next function_parameter_count
     func logHealthIntegration(type: IntegrationType, sentAt: String, timestamp: String, weight: Int?, bodyFat: Int?, muscleMass: Int?, water: Int?, bmi: Int?, data: [String: AnyCodable]) async throws -> HealthIntegrationLogResponse {
         logHealthIntegrationCalls += 1
         throw UnexpectedCallError.methodCalled("logHealthIntegration")

@@ -301,6 +301,24 @@ final class ProductTypeStore: ObservableObject, ProductTypeStoreProtocol {
         }
     }
 
+    /// Product types implied by the account's currently paired devices (plus any
+    /// existing baby profiles), as server-side apiValues. Callers pass the result
+    /// through `normalizeProductTypes(_:)` before rebuild()'s contains() checks.
+    private func deviceDerivedProductTypes() -> [String] {
+        let devices = deviceService.scales
+        var types: [String] = []
+        if devices.contains(where: { $0.deviceType == DeviceType.scale.rawValue }) {
+            types.append(ProductType.weight.apiValue)
+        }
+        if devices.contains(where: { $0.deviceType == DeviceType.bpm.rawValue }) {
+            types.append(ProductType.bloodPressure.apiValue)
+        }
+        if devices.contains(where: { $0.deviceType == DeviceType.babyScale.rawValue }) || !babyService.currentBabies.isEmpty {
+            types.append(ProductType.baby.apiValue)
+        }
+        return types
+    }
+
     /// Returns the authoritative product types for the current account.
     ///
     /// Primary path: when `account.productTypes` is non-empty, use it directly
@@ -313,7 +331,14 @@ final class ProductTypeStore: ObservableObject, ProductTypeStoreProtocol {
         if !account.productTypes.isEmpty {
             // The server stores "weight" / "blood_pressure"; the app checks for "myWeight" / "myBloodPressure".
             // Normalize here so rebuild()'s contains() checks always succeed.
-            return normalizeProductTypes(account.productTypes)
+            //
+            // Union in device-derived types so a just-paired device surfaces its product
+            // immediately — e.g. pairing a baby scale shows the "No babies added yet" empty
+            // state right away, without waiting for the async updateProductTypes() round-trip
+            // (which may lag or fail offline) to write "baby" back into account.productTypes.
+            // Union only ADDS types backed by a real paired device (or existing baby profiles);
+            // it never drops types earned elsewhere (e.g. "blood_pressure" via manual entries).
+            return normalizeProductTypes(account.productTypes + deviceDerivedProductTypes())
         }
 
         // Reconstruction: derive from server-synced devices.
@@ -332,17 +357,7 @@ final class ProductTypeStore: ObservableObject, ProductTypeStoreProtocol {
             return ["myWeight"]
         }
 
-        var serverTypes: [String] = []
-
-        if devices.contains(where: { $0.deviceType == DeviceType.scale.rawValue }) {
-            serverTypes.append(ProductType.weight.apiValue)
-        }
-        if devices.contains(where: { $0.deviceType == DeviceType.bpm.rawValue }) {
-            serverTypes.append(ProductType.bloodPressure.apiValue)
-        }
-        if devices.contains(where: { $0.deviceType == DeviceType.babyScale.rawValue }) || !babyService.currentBabies.isEmpty {
-            serverTypes.append(ProductType.baby.apiValue)
-        }
+        var serverTypes = deviceDerivedProductTypes()
         if serverTypes.isEmpty {
             serverTypes = [ProductType.weight.apiValue]
         }

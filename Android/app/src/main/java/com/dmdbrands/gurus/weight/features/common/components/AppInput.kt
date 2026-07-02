@@ -149,7 +149,7 @@ object AppInputDefaults {
         value: String,
     ): String =
         when (type) {
-            AppInputType.BODY_COMP -> value.filter { it.isDigit() }
+            AppInputType.NUMBER, AppInputType.BODY_COMP -> value.filter { it.isDigit() }
             // Digits plus at most one decimal point (the first one typed).
             AppInputType.DECIMAL_STRING -> {
                 val firstDot = value.indexOf('.')

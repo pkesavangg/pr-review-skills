@@ -1,19 +1,24 @@
 import Foundation
-import Testing
 @testable import meApp
+import Testing
 
 // MARK: - Test Helpers
 
 @MainActor
+// swiftlint:disable large_tuple
 private func makeSUT(
     configureStore: Bool = true,
     summaries: [BathScaleWeightSummary] = []
 ) -> (sut: TotalSectionViewModel, store: DashboardStore?, cacheManager: MockDashboardCacheManager?) {
+    // swiftlint:enable large_tuple
     let vm = TotalSectionViewModel()
     guard configureStore else { return (vm, nil, nil) }
 
     TestDependencyContainer.reset()
-    let (store, accountService, cacheManager) = DashboardStoreTestSupport.makeSUT()
+    let sutBundle = DashboardStoreTestSupport.makeSUT()
+    let store = sutBundle.store
+    let accountService = sutBundle.accountService
+    let cacheManager = sutBundle.cacheManager
     let account = DashboardStoreTestSupport.makeActiveAccount()
     accountService.activeAccount = account
     store.state.graph.selectedPeriod = .total
@@ -38,7 +43,11 @@ private func makeDate(year: Int = 2026, month: Int = 1, day: Int = 1, hour: Int 
     comps.hour = hour
     comps.minute = 0
     comps.second = 0
-    return Calendar.current.date(from: comps)!
+    guard let date = Calendar.current.date(from: comps) else {
+        Issue.record("unexpected nil date from components")
+        return Date()
+    }
+    return date
 }
 
 @MainActor
@@ -334,8 +343,8 @@ struct TotalSectionViewModelTests {
 
         let point = sut.getChartPosition(for: Date(), value: 100)
         #expect(point != nil)
-        if let p = point {
-            #expect(p.y == 100) // height/2
+        if let position = point {
+            #expect(position.y == 100) // height/2
         }
     }
 
@@ -370,7 +379,7 @@ struct TotalSectionViewModelTests {
     @Test("configure syncs scrollPosition from store")
     func configureSyncsScrollPosition() {
         TestDependencyContainer.reset()
-        let (store, _, _) = DashboardStoreTestSupport.makeSUT()
+        let store = DashboardStoreTestSupport.makeSUT().store
         let date = Date().addingTimeInterval(-5000)
         store.state.graph.xScrollPosition = date
 
@@ -383,7 +392,7 @@ struct TotalSectionViewModelTests {
     @Test("configure syncs isScrolling from store")
     func configureSyncsIsScrolling() {
         TestDependencyContainer.reset()
-        let (store, _, _) = DashboardStoreTestSupport.makeSUT()
+        let store = DashboardStoreTestSupport.makeSUT().store
         store.state.graph.isScrolling = true
 
         let vm = TotalSectionViewModel()
@@ -476,11 +485,11 @@ struct TotalSectionViewModelTests {
     }
 
     @Test("handleChartSelection with right-edge slack selects last point")
-    func handleChartSelectionRightSlack() {
+    func handleChartSelectionRightSlack() throws {
         let summaries = makeMonthlySummaries(startMonth: 1, count: 6)
         let (sut, _, _) = makeSUT(summaries: summaries)
 
-        let lastDate = summaries.last!.date
+        let lastDate = try #require(summaries.last).date
         let slightlyPast = lastDate.addingTimeInterval(5 * 24 * 60 * 60)
         sut.handleChartSelection(at: slightlyPast)
 
@@ -503,7 +512,7 @@ struct TotalSectionViewModelTests {
     @Test("weightLabel returns empty string initially")
     func weightLabelEmptyInitially() {
         let (sut, _, _) = makeSUT()
-        #expect(sut.weightLabel == "")
+        #expect(sut.weightLabel.isEmpty)
     }
 
     @Test("visibleChartSeriesData returns all chartSeriesData for total (no filtering)")

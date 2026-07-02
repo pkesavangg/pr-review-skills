@@ -272,7 +272,12 @@ final class BluetoothService: ObservableObject, BluetoothServiceProtocol {
                 newEntryReceivedSubject.send(displacedNotification)
                 logger.log(level: .info, tag: tag, message: "Displaced scale entry saved on confirm. entryId=\(displacedEntry.id.uuidString)")
             } catch {
-                logger.log(level: .error, tag: tag, message: "Failed to save displaced scale entry on confirm. entryId=\(displacedEntry.id.uuidString)", data: error.localizedDescription)
+                logger.log(
+                    level: .error,
+                    tag: tag,
+                    message: "Failed to save displaced scale entry on confirm. entryId=\(displacedEntry.id.uuidString)",
+                    data: error.localizedDescription
+                )
             }
         }
         try await entryService.saveNewEntry(entry)

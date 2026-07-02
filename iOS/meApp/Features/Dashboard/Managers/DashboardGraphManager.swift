@@ -107,7 +107,10 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
         updateMetrics: @escaping () -> Void
     ) {
         state.scrollEndTimer?.invalidate()
-        state.scrollEndTimer = Timer.scheduledTimer(withTimeInterval: DashboardConstants.UIConstants.scrollEndDebounceDelay, repeats: false) { [weak self] _ in
+        state.scrollEndTimer = Timer.scheduledTimer(
+            withTimeInterval: DashboardConstants.UIConstants.scrollEndDebounceDelay,
+            repeats: false
+        ) { [weak self] _ in
             Task { @MainActor [weak self] in
                 guard let self else { return }
                 self.state.isScrolling = false
@@ -247,7 +250,8 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
         metric: BabyMetric,
         convertWeight: @escaping (Double) -> Double,
         convertDecigramsToDisplay: @escaping (Int) -> Double,
-        yAxisDomain: ClosedRange<Double>
+        yAxisDomain: ClosedRange<Double>,
+        percentileDateRange: ClosedRange<Date>
     ) -> [GraphSeries] {
         switch metric {
         case .weight:
@@ -261,9 +265,11 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
                 yAxisDomain: yAxisDomain
             )
 
+            // Span the percentile reference curves across the visible window — not the sparse
+            // operations' date range — so the WHO/CDC curves fill the chart with a single entry.
             let percentileSeries = BabyDashboardChartSupport.percentileSeries(
                 for: babyProfile,
-                operations: allOperations,
+                dateRange: percentileDateRange,
                 convertDecigramsToDisplay: convertDecigramsToDisplay
             )
 
@@ -275,7 +281,7 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
             )
             let percentileSeries = BabyDashboardChartSupport.heightPercentileSeries(
                 for: babyProfile,
-                operations: allOperations
+                dateRange: percentileDateRange
             )
             return heightSeries + percentileSeries
         }

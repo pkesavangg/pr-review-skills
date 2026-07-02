@@ -101,7 +101,7 @@ class HistoryViewModelTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `isUpdating flow sets loading state`() = runTest {
+    fun `isUpdating flow sets loading state`() = runTest(mainDispatcherRule.scheduler) {
         val isUpdatingFlow = MutableStateFlow(false)
         every { entryService.isUpdating } returns isUpdatingFlow
 
@@ -127,7 +127,7 @@ class HistoryViewModelTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `Refresh calls entryService syncOperations`() = runTest {
+    fun `Refresh calls entryService syncOperations`() = runTest(mainDispatcherRule.scheduler) {
         viewModel.handleIntent(HistoryIntent.Refresh)
         advanceUntilIdle()
         coVerify { entryService.syncOperations() }
@@ -144,7 +144,7 @@ class HistoryViewModelTest {
     }
 
     @Test
-    fun `Export confirm callback calls exportService`() = runTest {
+    fun `Export confirm callback calls exportService`() = runTest(mainDispatcherRule.scheduler) {
         val dialogSlot = slot<DialogModel.Confirm>()
         every { dialogQueueService.enqueue(capture(dialogSlot)) } returns Unit
 
@@ -156,7 +156,7 @@ class HistoryViewModelTest {
     }
 
     @Test
-    fun `Export confirm shows loader and dismisses it`() = runTest {
+    fun `Export confirm shows loader and dismisses it`() = runTest(mainDispatcherRule.scheduler) {
         val dialogSlot = slot<DialogModel.Confirm>()
         every { dialogQueueService.enqueue(capture(dialogSlot)) } returns Unit
 
@@ -169,7 +169,7 @@ class HistoryViewModelTest {
     }
 
     @Test
-    fun `Export confirm dismisses loader on exception`() = runTest {
+    fun `Export confirm dismisses loader on exception`() = runTest(mainDispatcherRule.scheduler) {
         coEvery { exportService.exportCsvWithPrompt() } throws RuntimeException("export fail")
         val dialogSlot = slot<DialogModel.Confirm>()
         every { dialogQueueService.enqueue(capture(dialogSlot)) } returns Unit
@@ -186,7 +186,7 @@ class HistoryViewModelTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `OnConnectScale navigates to MyDevices`() = runTest {
+    fun `OnConnectScale navigates to MyDevices`() = runTest(mainDispatcherRule.scheduler) {
         viewModel.handleIntent(HistoryIntent.OnConnectScale)
         advanceUntilIdle()
       coVerify { navigationService.navigateTo(AppRoute.AccountSettings.MyDevices) }
@@ -197,7 +197,7 @@ class HistoryViewModelTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `getGroupedHistory updates history items`() = runTest {
+    fun `getGroupedHistory updates history items`() = runTest(mainDispatcherRule.scheduler) {
         val items = listOf(mockk<com.dmdbrands.gurus.weight.domain.model.common.HistoryMonth>(relaxed = true))
         every { entryReadService.accountId } returns "test-account"
         every { entryReadService.getGroupedHistory(any()) } returns flowOf(GroupedHistory.Weight(items))

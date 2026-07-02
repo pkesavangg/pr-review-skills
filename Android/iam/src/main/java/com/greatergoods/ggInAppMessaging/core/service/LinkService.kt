@@ -1,6 +1,7 @@
 package com.greatergoods.ggInAppMessaging.core.service
 
 import android.content.Context
+import com.greatergoods.ggInAppMessaging.core.utilities.IAMLogger
 import com.greatergoods.ggInAppMessaging.domain.services.ILinkService
 import com.greatergoods.ggInAppMessaging.util.LinkOpener
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -45,6 +46,7 @@ class LinkService @Inject constructor(
             url.isNotEmpty() &&
             (url.startsWith("http://") || url.startsWith("https://"))
         } catch (e: Exception) {
+            IAMLogger.e("LinkService", "isValidUrl failed", e.message)
             false
         }
     }

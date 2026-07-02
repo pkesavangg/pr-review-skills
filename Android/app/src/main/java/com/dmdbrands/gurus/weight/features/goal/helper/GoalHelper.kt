@@ -1,5 +1,6 @@
 package com.dmdbrands.gurus.weight.features.goal.helper
 
+import com.dmdbrands.gurus.weight.core.shared.utilities.ConversionTools
 import com.dmdbrands.gurus.weight.domain.enums.GoalType
 import com.dmdbrands.gurus.weight.domain.model.common.WeightUnit
 import com.dmdbrands.gurus.weight.domain.model.goal.Goal
@@ -68,8 +69,8 @@ object GoalHelper {
   fun convertWeight(value: Double, from: WeightUnit, to: WeightUnit): Double {
     return when {
       from == to -> value
-      from == WeightUnit.KG && (to == WeightUnit.LB || to == WeightUnit.LB_OZ) -> value * 2.20462
-      (from == WeightUnit.LB || from == WeightUnit.LB_OZ) && to == WeightUnit.KG -> value / 2.20462
+      from == WeightUnit.KG && (to == WeightUnit.LB || to == WeightUnit.LB_OZ) -> ConversionTools.kgToLbs(value)
+      (from == WeightUnit.LB || from == WeightUnit.LB_OZ) && to == WeightUnit.KG -> ConversionTools.lbsToKg(value)
       // LB <-> LB_OZ share the same underlying pounds scale — no numeric conversion
       else -> value
     }

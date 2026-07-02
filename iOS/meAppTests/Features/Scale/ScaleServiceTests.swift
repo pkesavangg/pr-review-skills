@@ -1,7 +1,7 @@
 // swiftlint:disable file_length
 import Foundation
-import Testing
 @testable import meApp
+import Testing
 
 @Suite(.serialized)
 @MainActor
@@ -970,7 +970,13 @@ struct ScaleServiceTests {
         let remote = MockScaleRepositoryAPI()
         let otherAccount = ScaleTestFixtures.makeDevice(id: "shared-server-id", accountId: "acct-2", isSynced: true, hasServerID: true)
         repo.devices = [otherAccount]
-        remote.listScalesResult = [ScaleTestFixtures.makeScaleDTO(id: "shared-server-id", accountId: "acct-1", mac: "77:88:99:AA:BB:CC", broadcastIdString: "BBBBBB", broadcastId: 222222)]
+        remote.listScalesResult = [ScaleTestFixtures.makeScaleDTO(
+            id: "shared-server-id",
+            accountId: "acct-1",
+            mac: "77:88:99:AA:BB:CC",
+            broadcastIdString: "BBBBBB",
+            broadcastId: 222222
+        )]
         let sut = makeSUT(repo: repo, remote: remote)
 
         await sut.syncAllScalesWithRemote()
@@ -1039,23 +1045,34 @@ struct ScaleServiceTests {
         let repo = MockScaleRepository()
         let remote = MockScaleRepositoryAPI()
         let local = ScaleTestFixtures.makeDevice(
-            id: "local-scale", accountId: "acct-1", mac: "11:22:33:44:55:66",
-            broadcastIdString: "AAAAAA", broadcastId: 111111, isSynced: false, hasServerID: false
+            id: "local-scale",
+            accountId: "acct-1",
+            mac: "11:22:33:44:55:66",
+            broadcastIdString: "AAAAAA",
+            broadcastId: 111111,
+            isSynced: false,
+            hasServerID: false
         )
         repo.devices = [local]
         remote.createScaleResult = ScaleTestFixtures.makeScaleDTO(
-            id: "server-created", accountId: "acct-1", mac: "11:22:33:44:55:66",
-            broadcastIdString: "AAAAAA", broadcastId: 111111
+            id: "server-created",
+            accountId: "acct-1",
+            mac: "11:22:33:44:55:66",
+            broadcastIdString: "AAAAAA",
+            broadcastId: 111111
         )
         remote.listScalesResult = [ScaleTestFixtures.makeScaleDTO(
-            id: "server-created", accountId: "acct-1", mac: "11:22:33:44:55:66",
-            broadcastIdString: "ZZZZZZ", broadcastId: 222222
+            id: "server-created",
+            accountId: "acct-1",
+            mac: "11:22:33:44:55:66",
+            broadcastIdString: "ZZZZZZ",
+            broadcastId: 222222
         )]
         let sut = makeSUT(repo: repo, remote: remote)
 
         await sut.syncAllScalesWithRemote()
 
-        #expect(repo.devices.contains(where: { $0.id == "server-created" }))
+        #expect(repo.devices.contains { $0.id == "server-created" })
         #expect(sut.scales.map(\.id) == ["server-created"])
     }
 
@@ -1064,24 +1081,35 @@ struct ScaleServiceTests {
         let repo = MockScaleRepository()
         let remote = MockScaleRepositoryAPI()
         let local = ScaleTestFixtures.makeDevice(
-            id: "local-scale", accountId: "acct-1", mac: "11:22:33:44:55:66",
-            broadcastIdString: "AAAAAA", broadcastId: 111111, isSynced: false, hasServerID: false
+            id: "local-scale",
+            accountId: "acct-1",
+            mac: "11:22:33:44:55:66",
+            broadcastIdString: "AAAAAA",
+            broadcastId: 111111,
+            isSynced: false,
+            hasServerID: false
         )
         local.mac = nil
         repo.devices = [local]
         remote.createScaleResult = ScaleTestFixtures.makeScaleDTO(
-            id: "server-created", accountId: "acct-1", mac: "",
-            broadcastIdString: "AAAAAA", broadcastId: 111111
+            id: "server-created",
+            accountId: "acct-1",
+            mac: "",
+            broadcastIdString: "AAAAAA",
+            broadcastId: 111111
         )
         remote.listScalesResult = [ScaleTestFixtures.makeScaleDTO(
-            id: "server-created", accountId: "acct-1", mac: "",
-            broadcastIdString: "AAAAAA", broadcastId: 111111
+            id: "server-created",
+            accountId: "acct-1",
+            mac: "",
+            broadcastIdString: "AAAAAA",
+            broadcastId: 111111
         )]
         let sut = makeSUT(repo: repo, remote: remote)
 
         await sut.syncAllScalesWithRemote()
 
-        #expect(repo.devices.contains(where: { $0.id == "server-created" }))
+        #expect(repo.devices.contains { $0.id == "server-created" })
         #expect(sut.scales.map(\.id) == ["server-created"])
     }
 
@@ -1154,9 +1182,23 @@ struct ScaleServiceTests {
     func syncAllScalesWithRemoteKeepsSyncedScaleMatchedByMac() async {
         let repo = MockScaleRepository()
         let remote = MockScaleRepositoryAPI()
-        let local = ScaleTestFixtures.makeDevice(id: "server-scale", accountId: "acct-1", mac: "11:22:33:44:55:66", broadcastIdString: "AAAAAA", broadcastId: 111111, isSynced: true, hasServerID: true)
+        let local = ScaleTestFixtures.makeDevice(
+            id: "server-scale",
+            accountId: "acct-1",
+            mac: "11:22:33:44:55:66",
+            broadcastIdString: "AAAAAA",
+            broadcastId: 111111,
+            isSynced: true,
+            hasServerID: true
+        )
         repo.devices = [local]
-        remote.listScalesResult = [ScaleTestFixtures.makeScaleDTO(id: "different-server-id", accountId: "acct-1", mac: "11:22:33:44:55:66", broadcastIdString: "BBBBBB", broadcastId: 222222)]
+        remote.listScalesResult = [ScaleTestFixtures.makeScaleDTO(
+            id: "different-server-id",
+            accountId: "acct-1",
+            mac: "11:22:33:44:55:66",
+            broadcastIdString: "BBBBBB",
+            broadcastId: 222222
+        )]
         let sut = makeSUT(repo: repo, remote: remote)
 
         await sut.syncAllScalesWithRemote()
@@ -1168,10 +1210,24 @@ struct ScaleServiceTests {
     func syncAllScalesWithRemoteKeepsSyncedScaleMatchedByBroadcastId() async {
         let repo = MockScaleRepository()
         let remote = MockScaleRepositoryAPI()
-        let local = ScaleTestFixtures.makeDevice(id: "server-scale", accountId: "acct-1", mac: "11:22:33:44:55:66", broadcastIdString: "AAAAAA", broadcastId: 111111, isSynced: true, hasServerID: true)
+        let local = ScaleTestFixtures.makeDevice(
+            id: "server-scale",
+            accountId: "acct-1",
+            mac: "11:22:33:44:55:66",
+            broadcastIdString: "AAAAAA",
+            broadcastId: 111111,
+            isSynced: true,
+            hasServerID: true
+        )
         local.mac = nil
         repo.devices = [local]
-        remote.listScalesResult = [ScaleTestFixtures.makeScaleDTO(id: "different-server-id", accountId: "acct-1", mac: "", broadcastIdString: "AAAAAA", broadcastId: 111111)]
+        remote.listScalesResult = [ScaleTestFixtures.makeScaleDTO(
+            id: "different-server-id",
+            accountId: "acct-1",
+            mac: "",
+            broadcastIdString: "AAAAAA",
+            broadcastId: 111111
+        )]
         let sut = makeSUT(repo: repo, remote: remote)
 
         await sut.syncAllScalesWithRemote()
@@ -1289,8 +1345,20 @@ struct ScaleServiceTests {
     func syncDevicesDuplicateTempDeviceByBroadcastIdSkipsCreate() async throws {
         let repo = MockScaleRepository()
         let remote = MockScaleRepositoryAPI()
-        repo.devices = [ScaleTestFixtures.makeDevice(id: "existing-scale", broadcastIdString: "ABC123", broadcastId: 111111, isSynced: false, hasServerID: false)]
-        let duplicate = ScaleTestFixtures.makeDevice(id: "temp-scale", broadcastIdString: "ABC123", broadcastId: 111111, isSynced: false, hasServerID: false)
+        repo.devices = [ScaleTestFixtures.makeDevice(
+            id: "existing-scale",
+            broadcastIdString: "ABC123",
+            broadcastId: 111111,
+            isSynced: false,
+            hasServerID: false
+        )]
+        let duplicate = ScaleTestFixtures.makeDevice(
+            id: "temp-scale",
+            broadcastIdString: "ABC123",
+            broadcastId: 111111,
+            isSynced: false,
+            hasServerID: false
+        )
         let sut = makeSUT(repo: repo, remote: remote)
 
         try await sut.syncDevices(tempDevice: duplicate)
@@ -1303,8 +1371,20 @@ struct ScaleServiceTests {
     func syncDevicesDuplicateTempDeviceByMacSkipsCreate() async throws {
         let repo = MockScaleRepository()
         let remote = MockScaleRepositoryAPI()
-        repo.devices = [ScaleTestFixtures.makeDevice(id: "existing-scale", mac: "AA:BB:CC:DD:EE:FF", broadcastIdString: "ABC123", isSynced: false, hasServerID: false)]
-        let duplicate = ScaleTestFixtures.makeDevice(id: "temp-scale", mac: "AA:BB:CC:DD:EE:FF", broadcastIdString: "DIFFERENT", isSynced: false, hasServerID: false)
+        repo.devices = [ScaleTestFixtures.makeDevice(
+            id: "existing-scale",
+            mac: "AA:BB:CC:DD:EE:FF",
+            broadcastIdString: "ABC123",
+            isSynced: false,
+            hasServerID: false
+        )]
+        let duplicate = ScaleTestFixtures.makeDevice(
+            id: "temp-scale",
+            mac: "AA:BB:CC:DD:EE:FF",
+            broadcastIdString: "DIFFERENT",
+            isSynced: false,
+            hasServerID: false
+        )
         let sut = makeSUT(repo: repo, remote: remote)
 
         try await sut.syncDevices(tempDevice: duplicate)

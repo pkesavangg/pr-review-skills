@@ -1,6 +1,6 @@
 import Foundation
-import Testing
 @testable import meApp
+import Testing
 
 @Suite(.serialized)
 @MainActor     
@@ -72,7 +72,7 @@ struct EntryStoreTests {
         #expect(saved.scaleEntry?.bodyFat == 123)
         #expect(saved.scaleEntryMetric?.unit == WeightUnit.kg.rawValue)
 
-        #expect(store.manualEntryForm.weight.value == "")
+        #expect(store.manualEntryForm.weight.value.isEmpty)
         #expect(store.showMetrics == false)
         // Success path no longer shows a toast; it relies on entrySaved event streams.
         #expect(notificationService.dismissLoaderCalls == 1)
@@ -133,7 +133,6 @@ struct EntryStoreTests {
         #expect(store.isSaving == false)
         #expect(entryService.saveNewEntryCalls == 1)
     }
-
 
     @Test("saveEntry time clamp for today: future time is adjusted and still saves")
     func saveEntryClampsFutureTimeToday() async {
@@ -275,7 +274,7 @@ struct EntryStoreTests {
         notificationService.alertData?.buttons.first?.action(nil)
 
         #expect(confirmed == true)
-        #expect(store.manualEntryForm.weight.value == "")
+        #expect(store.manualEntryForm.weight.value.isEmpty)
         #expect(store.showMetrics == false)
     }
 
@@ -318,7 +317,7 @@ struct EntryStoreTests {
         let result = await task.value
 
         #expect(result == true)
-        #expect(store.manualEntryForm.weight.value == "")
+        #expect(store.manualEntryForm.weight.value.isEmpty)
     }
 
     @Test("startAutoTimeSync updates time for today when picker is closed")

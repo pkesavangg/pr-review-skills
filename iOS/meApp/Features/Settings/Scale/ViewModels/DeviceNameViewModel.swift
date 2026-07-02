@@ -18,7 +18,7 @@ final class DeviceNameViewModel: ObservableObject {
     private let tag = "DeviceNameViewModel"
 
     private var deviceSnapshot: DeviceSnapshot? {
-        deviceService.scales.first(where: { $0.id == scaleIdString })
+        deviceService.scales.first { $0.id == scaleIdString }
     }
 
     private var currentNickname: String {

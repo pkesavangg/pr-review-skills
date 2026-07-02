@@ -121,60 +121,88 @@ private fun FAQItemCard(
         )
         .padding(16.dp),
     ) {
-      // Question header with chevron
-      Row(
-        modifier = Modifier
-          .fillMaxWidth()
-          .clickable { onToggle() },
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically,
-      ) {
-        IAMText(
-          text = faqItem.question,
-          textType = TextType.Subtitle2,
-        )
+      FAQItemHeader(
+        question = faqItem.question,
+        isExpanded = isExpanded,
+        onToggle = onToggle,
+      )
 
-        Spacer(modifier = Modifier.width(14.dp))
+      FAQItemAnswer(
+        faqItem = faqItem,
+        isExpanded = isExpanded,
+      )
+    }
+  }
+}
 
-        Icon(
-          imageVector = if (isExpanded) Icons.Default.KeyboardArrowUp else Icons.Default.KeyboardArrowDown,
-          contentDescription = if (isExpanded) "Collapse" else "Expand",
-          tint = IamTheme.colors.iconPrimary,
-          modifier = Modifier.size(24.dp),
-        )
-      }
+/**
+ * Question header row with expand/collapse chevron
+ */
+@Composable
+private fun FAQItemHeader(
+  question: String,
+  isExpanded: Boolean,
+  onToggle: () -> Unit,
+) {
+  Row(
+    modifier = Modifier
+      .fillMaxWidth()
+      .clickable { onToggle() },
+    horizontalArrangement = Arrangement.SpaceBetween,
+    verticalAlignment = Alignment.CenterVertically,
+  ) {
+    IAMText(
+      text = question,
+      textType = TextType.Subtitle2,
+    )
 
-      // Expandable answer content
-      AnimatedVisibility(
-        visible = isExpanded,
-        enter = expandVertically(animationSpec = tween(300)),
-        exit = shrinkVertically(animationSpec = tween(300)),
-      ) {
-        Column(
-          modifier = Modifier
-            .fillMaxWidth()
-            .padding(top = 8.dp),
-        ) {
-          // Answer text
-          IAMText(
-            text = faqItem.answer,
-            textType = TextType.Body,
-            textAlign = TextAlign.Start,
-            modifier = Modifier.fillMaxWidth(),
+    Spacer(modifier = Modifier.width(14.dp))
+
+    Icon(
+      imageVector = if (isExpanded) Icons.Default.KeyboardArrowUp else Icons.Default.KeyboardArrowDown,
+      contentDescription = if (isExpanded) "Collapse" else "Expand",
+      tint = IamTheme.colors.iconPrimary,
+      modifier = Modifier.size(24.dp),
+    )
+  }
+}
+
+/**
+ * Expandable answer content with optional image
+ */
+@Composable
+private fun FAQItemAnswer(
+  faqItem: FAQItem,
+  isExpanded: Boolean,
+) {
+  AnimatedVisibility(
+    visible = isExpanded,
+    enter = expandVertically(animationSpec = tween(300)),
+    exit = shrinkVertically(animationSpec = tween(300)),
+  ) {
+    Column(
+      modifier = Modifier
+        .fillMaxWidth()
+        .padding(top = 8.dp),
+    ) {
+      // Answer text
+      IAMText(
+        text = faqItem.answer,
+        textType = TextType.Body,
+        textAlign = TextAlign.Start,
+        modifier = Modifier.fillMaxWidth(),
+      )
+
+      if(faqItem.imageUrl != null){
+        Spacer(modifier = Modifier.height(16.dp))
+          AsyncImage(
+            model = faqItem.imageUrl,
+            contentDescription = "FAQ illustration",
+            modifier = Modifier
+              .fillMaxSize()
+              .clip(RoundedCornerShape(8.dp)),
+            contentScale = ContentScale.Crop,
           )
-
-          if(faqItem.imageUrl != null){
-            Spacer(modifier = Modifier.height(16.dp))
-              AsyncImage(
-                model = faqItem.imageUrl,
-                contentDescription = "FAQ illustration",
-                modifier = Modifier
-                  .fillMaxSize()
-                  .clip(RoundedCornerShape(8.dp)),
-                contentScale = ContentScale.Crop,
-              )
-          }
-        }
       }
     }
   }

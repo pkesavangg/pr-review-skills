@@ -1,7 +1,7 @@
 import Combine
 import Foundation
-import Testing
 @testable import meApp
+import Testing
 
 @Suite(.serialized)
 @MainActor
@@ -35,7 +35,7 @@ struct FeedServiceTests {
         #expect(iam.lastLoadedFeeds.count == 2)
         #expect(publishedFeeds.last?.count == 2)
         #expect(sut.notificationBadgeUpdated.value == true)
-        #expect(logger.messages.contains(where: { $0.contains("Successfully fetched feed items") }))
+        #expect(logger.messages.contains { $0.contains("Successfully fetched feed items") })
         feedsCancellable.cancel()
     }
     
@@ -73,7 +73,7 @@ struct FeedServiceTests {
         #expect(iam.loadCalls == 1)
         #expect(iam.lastLoadedFeeds.isEmpty)
         #expect(sut.notificationBadgeUpdated.value == false)
-        #expect(logger.messages.contains(where: { $0.contains("Failed to fetch feed items") }))
+        #expect(logger.messages.contains { $0.contains("Failed to fetch feed items") })
     }
     
     @Test("fetchFeedItems invalid data: handles gracefully and does not crash")
@@ -131,7 +131,7 @@ struct FeedServiceTests {
         await sut.updateFeedItem(feedItem, actionType: .read, variationId: nil)
 
         #expect(repo.updateFeedItemCalls == 1)
-        #expect(logger.messages.contains(where: { $0.contains("Failed to update feed item") }))
+        #expect(logger.messages.contains { $0.contains("Failed to update feed item") })
     }
     
     @Test("getFeedSettings returns mapped setting from IAM")
@@ -170,9 +170,8 @@ struct FeedServiceTests {
         let sut = makeSUT(
             iam: iam,
             notifications: notifications,
-            modalTimeout: 0,
-            imagePreloader: { _ in true }
-        )
+            modalTimeout: 0
+        ) { _ in true }
         
         sut.checkAndTriggerFeedModal()
         for _ in 0..<20 where notifications.showModalCalls == 0 {
@@ -270,9 +269,8 @@ struct FeedServiceTests {
             iam: iam,
             logger: logger,
             notifications: notifications,
-            modalTimeout: 0,
-            imagePreloader: { _ in false }
-        )
+            modalTimeout: 0
+        ) { _ in false }
 
         sut.checkAndTriggerFeedModal()
         for _ in 0..<20 where notifications.showModalCalls == 0 {
@@ -281,7 +279,7 @@ struct FeedServiceTests {
         }
 
         #expect(notifications.showModalCalls == 1)
-        #expect(logger.messages.contains(where: { $0.contains("Failed to preload feed modal image") }))
+        #expect(logger.messages.contains { $0.contains("Failed to preload feed modal image") })
     }
     
     private func makeSUT(
