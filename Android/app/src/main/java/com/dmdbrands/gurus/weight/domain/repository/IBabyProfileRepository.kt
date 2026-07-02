@@ -7,7 +7,9 @@ interface IBabyProfileRepository {
 
     fun observeAll(accountId: String): Flow<List<BabyProfile>>
 
-    suspend fun save(profile: BabyProfile)
+    /** Creates the baby on the server and mirrors it locally. Returns the persisted profile
+     * (carrying the server-assigned id, which differs from any client-provided id). */
+    suspend fun save(profile: BabyProfile): BabyProfile
 
     suspend fun update(profile: BabyProfile)
 

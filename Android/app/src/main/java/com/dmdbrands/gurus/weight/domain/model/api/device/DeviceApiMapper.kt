@@ -15,8 +15,14 @@ fun DeviceApiModel.toDomainModel(
   connectionStatus: BLEStatus = BLEStatus.DISCONNECTED,
   wifiMacAddress: String? = null,
   isWifiConfigured: Boolean = false,
+  broadcastIdHex: String? = null,
 ): Device {
   val scaleId = if (id.isNullOrEmpty()) UUID.randomUUID().toString() else id
+  // The create/update paired-device responses omit broadcastId, so when a caller maps the
+  // response of a device it just sent (createPairedDevice/updatePairedDevice), it passes the
+  // freshly-discovered broadcastId here to preserve it. Without this the stored row has a blank
+  // broadcastId and live BLE readings can't match the device — they were silently dropped.
+  val resolvedBroadcastId = broadcastIdHex ?: convertIntToHex(broadcastId, type)
   return Device(
     id = scaleId,
     device = GGDeviceDetail(
@@ -24,8 +30,8 @@ fun DeviceApiModel.toDomainModel(
       deviceName = name ?: "",
       macAddress = mac ?: "",
       identifier = peripheralIdentifier ?: "",
-      broadcastId = convertIntToHex(broadcastId, type),
-      broadcastIdString = convertIntToHex(broadcastId, type),
+      broadcastId = resolvedBroadcastId,
+      broadcastIdString = resolvedBroadcastId,
       password = convertIntToHex(password, type),
       wifiMacAddress = wifiMacAddress, // Not in API response
       isWifiConfigured = isWifiConfigured, // Not in API response
@@ -130,7 +136,15 @@ fun convertIntToHex(value: Long?, protocolType: String?): String? {
     // converted to a Hex string before being sent to the app
     var convertedValue = value.toString(16)
 
-    if (protocolType == "btWifiR4") {
+    // R4 scales and baby scales both carry a 6-byte MAC as their broadcastId, so they must be
+    // padded to 12 hex chars. Otherwise a MAC with a trailing zero byte loses those bytes on the
+    // read-back reverse (an int drops leading zeros), and the recovered broadcastId no longer
+    // matches live BLE readings. The local deviceType for a baby scale is "babyScale"; the unified
+    // API category is "baby_scale".
+    if (protocolType == DeviceSetupType.BtWifiR4.value ||
+      protocolType == DeviceSetupType.BabyScale.value ||
+      protocolType == "baby_scale"
+    ) {
       convertedValue = "000000000000$convertedValue".takeLast(12)
     } else {
       if (convertedValue.length < 8) {

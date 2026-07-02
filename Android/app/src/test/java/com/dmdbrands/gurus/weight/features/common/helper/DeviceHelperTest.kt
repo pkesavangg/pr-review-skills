@@ -110,6 +110,69 @@ class DeviceHelperTest {
         assertThat(DeviceHelper.bpmListModelLabel(SKU_0634)).isEqualTo(SKU_0634)
     }
 
+    // ── primarySku — resolves BPM and baby-scale alternates to their primary ──
+
+    @Test
+    fun `primarySku maps baby alternate 0222 to primary 0220`() {
+        assertThat(DeviceHelper.primarySku(SKU_0222)).isEqualTo(SKU_0220)
+    }
+
+    @Test
+    fun `primarySku maps BPM variants to their primary`() {
+        assertThat(DeviceHelper.primarySku(SKU_0664)).isEqualTo(SKU_0604)
+        assertThat(DeviceHelper.primarySku(SKU_0667)).isEqualTo(SKU_0661)
+    }
+
+    @Test
+    fun `primarySku passes primary and unrelated SKUs through unchanged`() {
+        assertThat(DeviceHelper.primarySku(SKU_0220)).isEqualTo(SKU_0220)
+        assertThat(DeviceHelper.primarySku(SKU_0604)).isEqualTo(SKU_0604)
+        assertThat(DeviceHelper.primarySku("0375")).isEqualTo("0375")
+    }
+
+    // ── babyScaleListModelLabel — grouped baby pair label ──
+
+    @Test
+    fun `babyScaleListModelLabel groups the 0220 pair`() {
+        assertThat(DeviceHelper.babyScaleListModelLabel(SKU_0220)).isEqualTo("0220/0222")
+    }
+
+    @Test
+    fun `babyScaleListModelLabel passes non-primary SKUs through`() {
+        assertThat(DeviceHelper.babyScaleListModelLabel(SKU_0222)).isEqualTo(SKU_0222)
+        assertThat(DeviceHelper.babyScaleListModelLabel("0375")).isEqualTo("0375")
+    }
+
+    // ── listModelLabel — unified grouped label for list + setup header ──
+
+    @Test
+    fun `listModelLabel groups baby pair from either SKU`() {
+        assertThat(DeviceHelper.listModelLabel(SKU_0220)).isEqualTo("0220/0222")
+        assertThat(DeviceHelper.listModelLabel(SKU_0222)).isEqualTo("0220/0222")
+    }
+
+    @Test
+    fun `listModelLabel groups BPM pairs from either SKU`() {
+        assertThat(DeviceHelper.listModelLabel(SKU_0604)).isEqualTo("0604/0664")
+        assertThat(DeviceHelper.listModelLabel(SKU_0664)).isEqualTo("0604/0664")
+        assertThat(DeviceHelper.listModelLabel(SKU_0636)).isEqualTo("0636/0639")
+        assertThat(DeviceHelper.listModelLabel(SKU_0663)).isEqualTo("0663/0665")
+        assertThat(DeviceHelper.listModelLabel(SKU_0661)).isEqualTo("0661/0667")
+        assertThat(DeviceHelper.listModelLabel(SKU_0667)).isEqualTo("0661/0667")
+    }
+
+    @Test
+    fun `listModelLabel returns single label for unpaired BPM`() {
+        assertThat(DeviceHelper.listModelLabel(SKU_0603)).isEqualTo(SKU_0603)
+        assertThat(DeviceHelper.listModelLabel(SKU_0634)).isEqualTo(SKU_0634)
+    }
+
+    @Test
+    fun `listModelLabel preserves legacy 0022 to 0383 and passes weight SKUs through`() {
+        assertThat(DeviceHelper.listModelLabel(SKU_0022)).isEqualTo(SKU_0383)
+        assertThat(DeviceHelper.listModelLabel("0375")).isEqualTo("0375")
+    }
+
     @Test
     fun `DeviceDataHelper findScaleInfoBySku resolves variant SKUs to primary entry`() {
         val info = DeviceDataHelper.findScaleInfoBySku(SKU_0664)

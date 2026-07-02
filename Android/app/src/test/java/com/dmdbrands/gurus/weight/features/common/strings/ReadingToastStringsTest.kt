@@ -52,7 +52,10 @@ class ReadingToastStringsTest {
   @Test
   fun `no-baby copy matches the MOB-426 design`() {
     assertThat(ReadingToastStrings.NoBabyTitle).isEqualTo("New Reading Received")
-    assertThat(ReadingToastStrings.NoBabySubtitle).isEqualTo("Add a baby to save this reading.")
+    assertThat(ReadingToastStrings.NoBabySubtitle).isEqualTo(
+      "A new scale reading was received, but there's no baby profile to save it to. Add a baby now to keep " +
+        "this reading. If no baby is added, this reading will be discarded and won't appear in History.",
+    )
     assertThat(ReadingToastStrings.AddBaby).isEqualTo("ADD A BABY")
     assertThat(ReadingToastStrings.Discard).isEqualTo("DISCARD")
   }

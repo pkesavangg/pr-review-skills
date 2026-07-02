@@ -4,6 +4,7 @@ import androidx.compose.animation.core.LinearEasing
 import androidx.compose.foundation.layout.height
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.key
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.snapshotFlow
@@ -279,16 +280,22 @@ fun GraphView(
       }
   }
 
-  CartesianChartHost(
-    chart = chart,
-    modelProducer = modelProducer,
-    modifier = if (chartFillsHeight) modifier else modifier.height(chartHeight),
-    scrollState = scrollState,
-    animateIn = false,
-    zoomState = rememberVicoZoomState(zoomEnabled = false),
-    flingBehavior = flingBehavior,
-    initialMarkerX = state.markerIndex,
-  )
+  // Vico requires a stable CartesianChartModelProducer per CartesianChartHost — swapping the
+  // producer instance on the same host (e.g. switching baby, which hands this host a different
+  // per-baby producer) throws "A new CartesianChartModelProducer was provided". Keying the host by
+  // the producer identity disposes the old host and creates a fresh one bound to the new producer.
+  key(modelProducer) {
+    CartesianChartHost(
+      chart = chart,
+      modelProducer = modelProducer,
+      modifier = if (chartFillsHeight) modifier else modifier.height(chartHeight),
+      scrollState = scrollState,
+      animateIn = false,
+      zoomState = rememberVicoZoomState(zoomEnabled = false),
+      flingBehavior = flingBehavior,
+      initialMarkerX = state.markerIndex,
+    )
+  }
 }
 
 // ── getTargetPoints (optimised — single-pass nearest lookup) ──

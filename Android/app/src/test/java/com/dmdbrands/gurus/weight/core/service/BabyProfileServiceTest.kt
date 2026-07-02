@@ -7,6 +7,7 @@ import com.dmdbrands.gurus.weight.domain.repository.IBabyProfileRepository
 import com.dmdbrands.gurus.weight.domain.services.IAnalyticsService
 import com.google.common.truth.Truth.assertThat
 import io.mockk.MockKAnnotations
+import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.every
 import io.mockk.impl.annotations.MockK
@@ -74,13 +75,17 @@ class BabyProfileServiceTest {
     // ── save ────────────────────────────────────────────────────────────────────
 
     @Test
-    fun `save delegates to repository and logs analytics`() = runTest {
+    fun `save delegates to repository, logs analytics, and returns the persisted profile`() = runTest {
         val profile = BabyProfile(id = PROFILE_ID, name = PROFILE_NAME, birthdate = null, accountId = ACCOUNT_ID)
+        val persisted = profile.copy(id = "server-id")
+        coEvery { babyProfileRepository.save(profile) } returns persisted
 
-        service.save(profile)
+        val result = service.save(profile)
 
         coVerify { babyProfileRepository.save(profile) }
         coVerify { analyticsService.logEvent(IAnalyticsService.Events.BABY_PROFILE_CREATED) }
+        // The server-assigned id must propagate back to callers (used to set the active baby).
+        assertThat(result.id).isEqualTo("server-id")
     }
 
     // ── update ──────────────────────────────────────────────────────────────────

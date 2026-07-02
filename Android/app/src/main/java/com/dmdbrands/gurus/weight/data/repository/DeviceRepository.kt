@@ -214,7 +214,14 @@ constructor(
     if (response.isSuccessful) {
       val body = response.body()
       AppLog.i(TAG, "createPairedDevice succeeded")
-      return body?.toDomainModel(device.connectionStatus, device.device?.wifiMacAddress, device.device?.isWifiConfigured ?: false) ?: device
+      return body?.toDomainModel(
+        device.connectionStatus,
+        device.device?.wifiMacAddress,
+        device.device?.isWifiConfigured ?: false,
+        // Server omits broadcastId in the response — keep the locally-discovered one so the
+        // stored device still matches live BLE readings (MOB-598).
+        broadcastIdHex = device.device?.broadcastIdString ?: device.device?.broadcastId,
+      ) ?: device
     } else {
       AppLog.e(TAG, "createPairedDevice failed code=${response.code()}")
       throw DeviceApiException(response.code(), "createPairedDevice failed: ${response.code()}")
@@ -241,7 +248,12 @@ constructor(
     if (response.isSuccessful) {
       val body = response.body()
       AppLog.i(TAG, "updatePairedDevice succeeded deviceId=$deviceId")
-      return body?.toDomainModel(device.connectionStatus, device.device?.wifiMacAddress, device.device?.isWifiConfigured ?: false) ?: device
+      return body?.toDomainModel(
+        device.connectionStatus,
+        device.device?.wifiMacAddress,
+        device.device?.isWifiConfigured ?: false,
+        broadcastIdHex = device.device?.broadcastIdString ?: device.device?.broadcastId,
+      ) ?: device
     } else {
       AppLog.e(TAG, "updatePairedDevice failed code=${response.code()}")
       throw DeviceApiException(response.code(), "updatePairedDevice failed: ${response.code()}")

@@ -6,13 +6,13 @@ import com.dmdbrands.gurus.weight.core.shared.utilities.ConversionTools
 import com.dmdbrands.gurus.weight.core.service.IAppNavigationService
 import com.dmdbrands.gurus.weight.domain.enums.DashboardType
 import com.dmdbrands.gurus.weight.domain.interfaces.IDialogQueueService
+import com.dmdbrands.gurus.weight.domain.enums.ProductType
 import com.dmdbrands.gurus.weight.domain.model.common.BabyProfile
 import com.dmdbrands.gurus.weight.domain.model.common.WeightUnit
 import com.dmdbrands.gurus.weight.domain.model.storage.entry.BabyEntry
 import com.dmdbrands.gurus.weight.domain.model.storage.entry.BpmEntry
 import com.dmdbrands.gurus.weight.domain.model.storage.entry.Entry
 import com.dmdbrands.gurus.weight.domain.model.storage.entry.ScaleEntry
-import com.dmdbrands.gurus.weight.domain.enums.ProductType
 import com.dmdbrands.gurus.weight.domain.repository.IDeviceService
 import com.dmdbrands.gurus.weight.domain.services.IAccountService
 import com.dmdbrands.gurus.weight.domain.services.IAppSyncService

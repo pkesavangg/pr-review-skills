@@ -5,7 +5,7 @@ import com.dmdbrands.library.ggbluetooth.model.GGDeviceDetail
 import com.google.common.truth.Truth.assertThat
 import io.mockk.every
 import io.mockk.mockk
-import org.junit.Test
+import org.junit.jupiter.api.Test
 
 class DeviceApiMapperTest {
 
@@ -87,5 +87,26 @@ class DeviceApiMapperTest {
         assertThat(convertHexToInt(null)).isNull()
         assertThat(convertHexToInt("")).isNull()
         assertThat(convertHexToInt("   ")).isNull()
+    }
+
+    // ── convertIntToHex — MAC-width (12-char) padding ─────────────────────────
+
+    @Test
+    fun `convertIntToHex round-trips a baby-scale MAC with a trailing zero byte`() {
+        // A baby-scale broadcastId is the 6-byte MAC. This one ends in a zero byte, so the
+        // reversed int drops leading zeros — only 12-char padding recovers the full MAC.
+        val macHex = "F88FC8F50000"
+        val asInt = convertHexToInt(macHex)
+
+        assertThat(convertIntToHex(asInt, "babyScale")).isEqualTo(macHex)   // local deviceType
+        assertThat(convertIntToHex(asInt, "baby_scale")).isEqualTo(macHex)  // unified API category
+        assertThat(convertIntToHex(asInt, "btWifiR4")).isEqualTo(macHex)    // R4 unchanged
+    }
+
+    @Test
+    fun `convertIntToHex keeps legacy 8-char behavior for non-MAC devices`() {
+        // A generic bluetooth (A6) device must NOT get 12-char padding — behavior unchanged.
+        val asInt = convertHexToInt("F88FC8F50000")
+        assertThat(convertIntToHex(asInt, "bluetooth")).isEqualTo("F88FC8F5")
     }
 }

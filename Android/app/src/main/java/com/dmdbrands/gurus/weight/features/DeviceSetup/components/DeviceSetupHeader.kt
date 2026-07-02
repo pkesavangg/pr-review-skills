@@ -23,8 +23,8 @@ fun DeviceSetupHeader(
   onHelp: () -> Unit,
   content: @Composable () -> Unit,
 ) {
-  // Map SKU for display (e.g., 0022 -> 0383)
-  val displaySku = DeviceHelper.mapSkuForDisplay(sku)
+  // Grouped model label for display (e.g. 0664 -> "0604/0664", 0022 -> 0383).
+  val displaySku = DeviceHelper.listModelLabel(sku)
   val isBabyScale = DeviceHelper.isBabyScale(sku)
   BackHandler {
     onBack()

@@ -35,6 +35,14 @@ object DeviceHelper {
   fun isBabyScale(sku: String): Boolean = sku in BABY_SCALE_SKUS
 
   /**
+   * Alternate baby-scale model numbers → primary SKU used for pairing, storage, and asset lookup.
+   * Mirrors [BPM_ALTERNATE_TO_PRIMARY_SKU]: 0220/0222 are the same product, so 0222 collapses to 0220.
+   */
+  val BABY_ALTERNATE_TO_PRIMARY_SKU: Map<String, String> = mapOf(
+    SKU_0222 to SKU_0220,
+  )
+
+  /**
    * Alternate stamped model numbers → primary SKU used for pairing, storage, and asset lookup.
    * Mirrors iOS `bpmAlternateToPrimarySku` in `Bpms.swift`.
    */
@@ -72,6 +80,13 @@ object DeviceHelper {
   fun primaryBpmSku(sku: String): String = BPM_ALTERNATE_TO_PRIMARY_SKU[sku] ?: sku
 
   /**
+   * Resolves any alternate SKU (BPM or baby scale) to its primary (canonical) SKU. Non-variant SKUs
+   * pass through unchanged. Used to collapse paired models (e.g. 0222→0220, 0664→0604) into one entry.
+   */
+  fun primarySku(sku: String): String =
+    BPM_ALTERNATE_TO_PRIMARY_SKU[sku] ?: BABY_ALTERNATE_TO_PRIMARY_SKU[sku] ?: sku
+
+  /**
    * Label shown next to the product image in the monitor list (grouped model numbers, e.g. "0604/0664").
    * Mirrors iOS `bpmListModelLabel` in `Bpms.swift`.
    */
@@ -81,6 +96,24 @@ object DeviceHelper {
     SKU_0663 -> "$SKU_0663/$SKU_0665"
     SKU_0661 -> "$SKU_0661/$SKU_0667"
     else -> primarySku
+  }
+
+  /** Grouped model-number label for the baby-scale pair, e.g. "0220/0222". Non-pair SKUs pass through. */
+  fun babyScaleListModelLabel(primarySku: String): String =
+    if (primarySku == SKU_0220) "$SKU_0220/$SKU_0222" else primarySku
+
+  /**
+   * Grouped model-number label for the device list and setup header. Resolves [sku] to its primary,
+   * then returns the paired label ("0604/0664", "0220/0222", …). Non-paired SKUs fall back to
+   * [mapSkuForDisplay] (handles the legacy 0022→0383 case), otherwise the SKU itself.
+   */
+  fun listModelLabel(sku: String): String {
+    val primary = primarySku(sku)
+    return when {
+      isBpmDevice(primary) -> bpmListModelLabel(primary)
+      isBabyScale(primary) -> babyScaleListModelLabel(primary)
+      else -> mapSkuForDisplay(sku)
+    }
   }
 
   fun GGDeviceDetail.getSKU(): String? = SKU_MAP[deviceName]

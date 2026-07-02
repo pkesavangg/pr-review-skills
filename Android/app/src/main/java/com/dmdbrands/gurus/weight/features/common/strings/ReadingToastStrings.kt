@@ -35,9 +35,11 @@ object ReadingToastStrings {
     fun moreReadings(count: Int): String = "$count more readings received for this session"
     const val View = "VIEW"
 
-    /** Shown when a baby scale reading arrives but no baby profile exists to save it to. */
+    /** Shown when a baby scale reading arrives but no baby profile exists to save it to (Figma 30295-25144). */
     const val NoBabyTitle = "New Reading Received"
-    const val NoBabySubtitle = "Add a baby to save this reading."
+    const val NoBabySubtitle =
+        "A new scale reading was received, but there's no baby profile to save it to. Add a baby now to keep " +
+            "this reading. If no baby is added, this reading will be discarded and won't appear in History."
     const val AddBaby = "ADD A BABY"
     const val Discard = "DISCARD"
 

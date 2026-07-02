@@ -24,6 +24,14 @@ object BabyScaleSetupStrings {
     const val Subtitle = "Add a baby profile to personalize weight tracking. You can do this later from Settings."
   }
 
+  object SetupComplete {
+    const val Title = "You're Done!"
+    const val Subtitle = "Setup complete. Your scale is ready. Start tracking on the dashboard."
+  }
+
+  /** Loader shown while the scale (and any baby profiles) are saved on setup finish. */
+  const val savingLoader = "Saving your scale..."
+
   object BabyProfileForm {
     const val Title = "Complete Baby Profile"
     const val Subtitle = "Let's add a baby. This helps personalize your baby's scale readings."
@@ -58,12 +66,14 @@ object BabyScaleSetupStrings {
     const val PairAgain = "PAIR AGAIN"
     const val Continue = "CONTINUE"
     const val Finish = "FINISH"
-    const val Save = "SAVE"
   }
 
   // region Accessibility (TalkBack)
   /** Spoken description for the green check shown when the baby scale is paired. */
   const val accPairedImage = "Baby scale paired"
+
+  /** Spoken description for the green check shown on the final "You're Done!" screen. */
+  const val accDoneImage = "Setup complete"
 
   /** Spoken description for the animated loader shown while searching for the scale. */
   const val accSearchingLoader = "Searching for scale"

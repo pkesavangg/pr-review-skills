@@ -16,6 +16,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import com.dmdbrands.gurus.weight.features.common.enums.DeviceSegmentType
 import com.dmdbrands.gurus.weight.features.common.enums.DeviceSetupType
+import com.dmdbrands.gurus.weight.features.common.helper.DeviceHelper
 import com.dmdbrands.gurus.weight.features.common.model.DEVICES
 import com.dmdbrands.gurus.weight.features.common.model.DeviceModelInfo
 import com.dmdbrands.gurus.weight.theme.MeAppTheme
@@ -58,7 +59,8 @@ fun DeviceList(
             it.setupType == DeviceSetupType.Lcbt ||
             it.setupType == DeviceSetupType.BtWifiR4 ||
             it.setupType == DeviceSetupType.BpmBluetooth ||
-            it.setupType == DeviceSetupType.BpmA6Bluetooth
+            it.setupType == DeviceSetupType.BpmA6Bluetooth ||
+            it.setupType == DeviceSetupType.BabyScale
         }
 
       DeviceSegmentType.Wifi ->
@@ -68,6 +70,10 @@ fun DeviceList(
             it.setupType == DeviceSetupType.BtWifiR4
         }
     }
+      // Collapse paired models (e.g. 0220/0222) into a single row keyed by their primary SKU;
+      // the grouped label is applied on the card below. BPM alternates are already excluded
+      // from DEVICES, so this only affects the baby-scale pair.
+      .distinctBy { "${DeviceHelper.primarySku(it.sku)}-${it.setupType.name}" }
   }
 
   // Reset scroll position when segment changes for better UX
@@ -115,6 +121,8 @@ fun DeviceList(
       AppDeviceCard(
         scale = scale,
         isSavedScale = false,
+        // Grouped model label for paired SKUs (e.g. "0220/0222", "0604/0664").
+        displayLabel = DeviceHelper.listModelLabel(scale.sku),
         onClick = onScaleSelected,
       )
     }

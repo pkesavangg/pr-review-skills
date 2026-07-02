@@ -13,21 +13,23 @@ import com.dmdbrands.gurus.weight.core.service.IAppNavigationService
 import com.dmdbrands.gurus.weight.core.service.NotificationEventType
 import com.dmdbrands.gurus.weight.core.service.NotificationTapPayload
 import com.dmdbrands.gurus.weight.core.service.WeightOnlyModeEventService
-import com.dmdbrands.gurus.weight.core.service.pushNotification.NotificationDestination
 import com.dmdbrands.gurus.weight.core.service.WeightOnlyModeEventType
+import com.dmdbrands.gurus.weight.core.service.pushNotification.NotificationDestination
+import com.dmdbrands.gurus.weight.core.shared.utilities.ConversionTools
+import com.dmdbrands.gurus.weight.core.shared.utilities.DateTimeConverter
 import com.dmdbrands.gurus.weight.core.shared.utilities.logging.AppLog
 import com.dmdbrands.gurus.weight.core.shared.utilities.logging.LogManager
+import com.dmdbrands.gurus.weight.data.services.OperationType
+import com.dmdbrands.gurus.weight.data.storage.db.entity.entry.BabyEntryEntity
+import com.dmdbrands.gurus.weight.domain.enums.BabyEntryType
+import com.dmdbrands.gurus.weight.domain.enums.ProductType
 import com.dmdbrands.gurus.weight.domain.interfaces.IDialogUtility
+import com.dmdbrands.gurus.weight.domain.model.common.BabyProfile
+import com.dmdbrands.gurus.weight.domain.model.common.ProductSelection
 import com.dmdbrands.gurus.weight.domain.model.permission.PermissionState
 import com.dmdbrands.gurus.weight.domain.model.storage.Account.Account
 import com.dmdbrands.gurus.weight.domain.model.storage.BLEStatus
 import com.dmdbrands.gurus.weight.domain.model.storage.Device
-import com.dmdbrands.gurus.weight.core.shared.utilities.ConversionTools
-import com.dmdbrands.gurus.weight.core.shared.utilities.DateTimeConverter
-import com.dmdbrands.gurus.weight.data.services.OperationType
-import com.dmdbrands.gurus.weight.data.storage.db.entity.entry.BabyEntryEntity
-import com.dmdbrands.gurus.weight.domain.enums.BabyEntryType
-import com.dmdbrands.gurus.weight.domain.model.common.BabyProfile
 import com.dmdbrands.gurus.weight.domain.model.storage.entry.BabyEntry
 import com.dmdbrands.gurus.weight.domain.model.storage.entry.Entry
 import com.dmdbrands.gurus.weight.domain.model.storage.entry.ScaleEntry
@@ -40,8 +42,8 @@ import com.dmdbrands.gurus.weight.domain.services.IAccountService
 import com.dmdbrands.gurus.weight.domain.services.IAnalyticsService
 import com.dmdbrands.gurus.weight.domain.services.IDashboardService
 import com.dmdbrands.gurus.weight.domain.services.IDeviceInfoService
-import com.dmdbrands.gurus.weight.domain.services.IEntryService
 import com.dmdbrands.gurus.weight.domain.services.IEntryReadService
+import com.dmdbrands.gurus.weight.domain.services.IEntryService
 import com.dmdbrands.gurus.weight.domain.services.IFeedService
 import com.dmdbrands.gurus.weight.features.DeviceMetricsSetting.Helper.DeviceMetricsHelper
 import com.dmdbrands.gurus.weight.features.DeviceSetup.enums.BabyScaleSetupStep
@@ -61,10 +63,8 @@ import com.dmdbrands.gurus.weight.features.common.model.Toast
 import com.dmdbrands.gurus.weight.features.common.service.BaseIntentViewModel
 import com.dmdbrands.gurus.weight.features.common.strings.ReadingToastStrings
 import com.dmdbrands.gurus.weight.features.common.strings.ToastStrings
-import com.dmdbrands.gurus.weight.domain.enums.ProductType
-import com.dmdbrands.gurus.weight.domain.model.common.ProductSelection
-import com.dmdbrands.gurus.weight.features.manualEntry.helper.EntryHelper.formatWeightValue
 import com.dmdbrands.gurus.weight.features.manualEntry.helper.EntryHelper
+import com.dmdbrands.gurus.weight.features.manualEntry.helper.EntryHelper.formatWeightValue
 import com.dmdbrands.gurus.weight.features.manualEntry.helper.EntryHelper.toBpmEntry
 import com.dmdbrands.gurus.weight.features.manualEntry.helper.EntryHelper.toScaleEntry
 import com.dmdbrands.library.ggbluetooth.enums.GGAppType
@@ -97,6 +97,7 @@ import kotlinx.coroutines.launch
 import javax.inject.Inject
 import kotlin.coroutines.resume
 import kotlin.coroutines.suspendCoroutine
+import android.util.Log
 
 /**
  * Centralized ViewModel for app-wide state, including theme mode and FCM token.
@@ -756,6 +757,16 @@ constructor(
           scale.device?.broadcastId == broadcastId
         } || deviceService.getScaleByBroadcastId(broadcastId, accountId) != null
       } == true
+      // TEMP-DIAG (baby-scale reconnect): confirm what identifiers an A6 baby scale advertises and
+      // whether the broadcastId-only known-scale check fails. Remove after diagnosis.
+      AppLog.d(
+        TAG,
+        "DIAG discovery type=${deviceResponse.type} sku=${data.getSKU()} protocol=${data.protocolType} " +
+          "broadcastId=${data.broadcastId} mac=${data.macAddress} isKnownScale=$isKnownScale " +
+          "pairedCount=${latestPairedScales.size} " +
+          "pairedBroadcastIds=${latestPairedScales.map { it.device?.broadcastId }} " +
+          "pairedMacs=${latestPairedScales.map { it.device?.macAddress }}",
+      )
       AppLog.d(TAG, "device response ${deviceResponse.type}")
 
       when (deviceResponse.type) {
@@ -997,15 +1008,24 @@ constructor(
 
   private fun saveEntry(ggEntry: List<GGScaleEntry>) {
     viewModelScope.launch {
+      AppLog.i(TAG, "BABY_DEBUG saveEntry: count=${ggEntry.size} broadcastId=${ggEntry.firstOrNull()?.broadcastId} weight=${ggEntry.firstOrNull()?.weight}")
       if (ggEntry.isEmpty()) {
+        AppLog.w(TAG, "BABY_DEBUG saveEntry: empty list — return")
         return@launch
       }
-      val accountId = currentAccountId ?: return@launch
+      val accountId = currentAccountId ?: run {
+        AppLog.w(TAG, "BABY_DEBUG saveEntry: currentAccountId is null — return (reading dropped)")
+        return@launch
+      }
       // During setup scale list will be empty so ignoring this check during setup and allow all entries.
       val isSetupInProgress = deviceService.isSetupInProgress()
       val device = deviceService.getScaleByBroadcastId(ggEntry.first().broadcastId, accountId)
+      AppLog.i(TAG, "BABY_DEBUG saveEntry: isSetupInProgress=$isSetupInProgress deviceFound=${device != null} deviceSku=${device?.sku} deviceType=${device?.deviceType}")
 
-      if (device == null && !isSetupInProgress) return@launch
+      // if (device == null && !isSetupInProgress) {
+      //   AppLog.w(TAG, "BABY_DEBUG saveEntry: device lookup NULL for broadcastId=${ggEntry.first().broadcastId} and not in setup — return (reading dropped)")
+      //   return@launch
+      // }
 
       // Get user height for BMI calculation
       val activeAccount = accountService.activeAccountFlow.first()
@@ -1040,10 +1060,11 @@ constructor(
       if (isSetupInProgress) {
         // During setup, save immediately without toast
         try {
+          AppLog.i(TAG, "BABY_DEBUG saveEntry: setup-in-progress branch — addEntry directly (count=${entry.size})")
           entryService.addEntry(entry)
           checkAccountFlags("entry")
         } catch (e: Exception) {
-          AppLog.e(TAG, "Error during saving entry", e)
+          AppLog.e(TAG, "BABY_DEBUG Error during saving entry", e)
         }
       } else {
         // Show reading toast — user decides to save or discard
@@ -1209,7 +1230,11 @@ constructor(
     sourceSku: String? = null,
   ) {
     try {
-      val accountId = currentAccountId ?: return
+      AppLog.i(TAG, "BABY_DEBUG assignReadingToBaby: babyId=$babyId entries=${entry.size} sourceSku=$sourceSku")
+      val accountId = currentAccountId ?: run {
+        AppLog.w(TAG, "BABY_DEBUG assignReadingToBaby: currentAccountId null — return (not saved)")
+        return
+      }
       // Persist to the new baby first; addBabyEntry returns -1 on a null account or a swallowed
       // DB-insert exception. Bail before touching the previous baby's entries or claiming success,
       // so a failed write never surfaces as "Reading assigned to X" (and a later Reassign never
