@@ -58,7 +58,7 @@ abstract class GGScanService {
     try {
       ggBluetooth.resumeScan(clearOnlyPairing)
     } catch (e: UninitializedPropertyAccessException) {
-      Log.w("GGScanService", "resumeScan called before BLE initialized — skipping")
+      Log.e("GGScanService", "resumeScan called before BLE initialized — skipping", e)
     }
   }
 }

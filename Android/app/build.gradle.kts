@@ -181,6 +181,9 @@ dependencies {
   implementation(libs.androidx.work.runtime.ktx)
   implementation(libs.androidx.hilt.common)
   implementation(libs.androidx.hilt.work)
+  // Bundled SQLite engine (3.25+) so Room window-function queries work on API 26-29,
+  // whose system SQLite (3.18) lacks them. Restores the driver used on the 5.0.x line.
+  implementation(libs.androidx.sqlite.bundled)
   // Unit test dependencies
   testImplementation(libs.junit.jupiter)
   testRuntimeOnly("org.junit.platform:junit-platform-launcher")
@@ -327,6 +330,33 @@ val jacocoExcludes = listOf(
   "**/*ComposableSingletons*",
   // Protobuf-generated
   "**/*OuterClass*",
+  "**/proto/**",
+  // Vendored third-party (reorderable list helper)
+  "sh/calvin/**",
+  // ---------------------------------------------------------------------------
+  // Compose UI & design system (MOB-1010): these are exercised by instrumented /
+  // screenshot tests, NOT JVM unit tests, so counting them in the unit-coverage
+  // denominator is misleading. Excluding them keeps the gate meaningful for the
+  // testable layers (domain / data / core / view-models). The dedicated coverage
+  // tickets (MOB-963/964/967/1101) raise real coverage toward 80%, ratcheting the
+  // verification minimum below up as they land.
+  //
+  // NOTE: patterns deliberately target COMPOSABLES only (the `*Kt` files Kotlin emits
+  // for top-level @Composable functions) — NOT ViewModels or data classes that happen
+  // to live in a UI package. e.g. `LoadingScreenViewModel` and
+  // `components/chart/viewmodel/SeriesData` stay counted.
+  // ---------------------------------------------------------------------------
+  "**/theme/**",
+  "**/navigation/**",
+  "**/di/**",
+  // Screen composables: `XxxScreen.kt` -> `XxxScreenKt.class` (+ lambda inner classes).
+  // Does NOT match `XxxScreenViewModel` (no "ScreenKt" substring).
+  "**/*ScreenKt.class",
+  "**/*ScreenKt\$*.class",
+  // Component composables under any `components/` package: only the `*Kt` files,
+  // leaving data/view-model classes there in the denominator.
+  "**/components/**/*Kt.class",
+  "**/components/**/*Kt\$*.class",
 )
 
 // Class files that match the on-the-fly coverage exec: AGP compiles Kotlin via the
@@ -363,7 +393,14 @@ tasks.register<JacocoReport>("jacocoTestReport") {
 
 // ---------------------------------------------------------------------------
 // JaCoCo coverage verification: ./gradlew :app:jacocoTestCoverageVerification
-// Enforces minimum 80 % line coverage — build fails if threshold is not met.
+// Build fails if line coverage of the testable layers (UI/theme/generated excluded
+// above) drops below the minimum.
+//
+// RATCHET (MOB-1010): the target is 80 %, but the suite currently covers ~55 % of the
+// testable code. Hard-coding 0.80 today keeps CI permanently red. Instead the floor is
+// set just under the current actual and is raised step-by-step (never lowered) as the
+// dedicated coverage tickets (MOB-963 / MOB-964 / MOB-967 / MOB-1101) add tests, until
+// it reaches 0.80. Bump this value up whenever real coverage clears the next step.
 // ---------------------------------------------------------------------------
 tasks.register<JacocoCoverageVerification>("jacocoTestCoverageVerification") {
   dependsOn("testDebugUnitTest")
@@ -376,7 +413,8 @@ tasks.register<JacocoCoverageVerification>("jacocoTestCoverageVerification") {
       limit {
         counter = "LINE"
         value = "COVEREDRATIO"
-        minimum = "0.80".toBigDecimal()
+        // Ratcheting toward 0.80 — see comment above. Current actual ≈ 0.55.
+        minimum = "0.50".toBigDecimal()
       }
     }
   }

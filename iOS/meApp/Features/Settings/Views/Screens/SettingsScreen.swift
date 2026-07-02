@@ -22,6 +22,12 @@ struct SettingsScreen: View {
     let commonLang = CommonStrings.self
     let labels = InputFieldLabels.self
     let appAssets = AppAssets.self
+
+    private let appearanceDisplayValue: (AppearanceMode) -> String = { $0.rawValue }
+    private let notificationDisplayValue: (NotificationPreference) -> String = { $0.title }
+    private let activityDisplayValue: (ActivityLevel) -> String = { $0.rawValue.capitalized }
+    private let graphPeriodDisplayValue: (TimePeriod) -> String = { $0.title }
+
     var body: some View {
         RoutingView(stack: $router.stack) {
             VStack(spacing: 0) {
@@ -86,7 +92,7 @@ struct SettingsScreen: View {
             isPresented: $settingsStore.showAppearancePicker,
             selectedValues: [Theme.shared.appearanceMode],
             options: [AppearanceMode.allCases],
-            displayValue: { $0.rawValue },
+            displayValue: appearanceDisplayValue,
             title: settingsLang.appearance
         ) { vals in
             if let mode = vals.first {
@@ -98,7 +104,7 @@ struct SettingsScreen: View {
             isPresented: $settingsStore.showNotificationPicker,
             selectedValues: [settingsStore.notificationPreference],
             options: [NotificationPreference.allCases],
-            displayValue: { $0.title },
+            displayValue: notificationDisplayValue,
             title: settingsLang.notifications
         ) { vals in
             if let pref = vals.first {
@@ -111,7 +117,7 @@ struct SettingsScreen: View {
             isPresented: $settingsStore.showActivityPicker,
             selectedValues: [settingsStore.activeAccount?.activityLevel ?? .normal],
             options: [[ActivityLevel.normal, ActivityLevel.athlete]],
-            displayValue: { $0.rawValue.capitalized },
+            displayValue: activityDisplayValue,
             title: settingsLang.activityLevel
         ) { vals in
             if let level = vals.first {
@@ -122,7 +128,7 @@ struct SettingsScreen: View {
             isPresented: $settingsStore.showDefaultGraphPeriodPicker,
             selectedValues: [settingsStore.defaultGraphPeriod],
             options: [TimePeriod.allCases],
-            displayValue: { $0.title },
+            displayValue: graphPeriodDisplayValue,
             title: settingsLang.defaultGraphView
         ) { vals in
             if let period = vals.first {

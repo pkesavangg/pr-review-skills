@@ -2,9 +2,7 @@ package com.dmdbrands.gurus.weight.features.dashboard.components
 
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.RepeatMode
-import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.infiniteRepeatable
-import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
@@ -21,7 +19,6 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.dropShadow
@@ -31,6 +28,7 @@ import androidx.compose.ui.graphics.shadow.Shadow
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.DpOffset
 import androidx.compose.ui.unit.dp
+import com.dmdbrands.gurus.weight.core.power.powerSaveAwareInfiniteFloat
 import com.dmdbrands.gurus.weight.domain.model.common.WeightProgress
 import com.dmdbrands.gurus.weight.features.dashboard.strings.DashboardString
 import com.dmdbrands.gurus.weight.features.goal.components.EmptyGoal
@@ -68,15 +66,15 @@ fun GoalProgressMilestoneCard(
   // Defensive: computations aren't used for UI anymore; GoalMilestoneDisplay owns logic.
   // Keep locals only if needed for future UI extensions.
 
-  // Wiggle animation
-  val infiniteTransition = rememberInfiniteTransition()
-  val wiggleAngle by infiniteTransition.animateFloat(
+  // Wiggle animation — rests at 0° (no wiggle) under Power Saving Mode (MOB-226).
+  val wiggleAngle = powerSaveAwareInfiniteFloat(
     initialValue = -1f,
     targetValue = 1f,
     animationSpec = infiniteRepeatable(
       animation = tween(durationMillis = 100, easing = LinearEasing),
       repeatMode = RepeatMode.Reverse,
     ),
+    restingValue = 0f,
   )
   val metricBadgeIcon = if (isVisible) AppIcons.Filled.MinusCircle else AppIcons.Filled.AddCircle
   val dragCardShadow = if (isDragging) {

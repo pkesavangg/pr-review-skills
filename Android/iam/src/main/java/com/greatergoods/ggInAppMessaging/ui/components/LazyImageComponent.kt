@@ -23,6 +23,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
+import com.greatergoods.ggInAppMessaging.core.utilities.IAMLogger
 import com.greatergoods.ggInAppMessaging.features.resources.AppIcons
 
 /**
@@ -44,9 +45,6 @@ fun LazyImageComponent(
   var imageLoaded by remember { mutableStateOf(false) }
   var placeholderLoaded by remember { mutableStateOf(false) }
 
-  val context = LocalContext.current
-  "LazyImageComponent"
-
   // Preload placeholder
   LaunchedEffect(placeholderUrl) {
     if (!placeholderUrl.isNullOrEmpty()) {
@@ -54,6 +52,7 @@ fun LazyImageComponent(
         // Simulate placeholder preloading
         placeholderLoaded = true
       } catch (error: Exception) {
+        IAMLogger.e("LazyImageComponent", "placeholder preload failed", error.message)
         showDefaultPlaceholder = true
       }
     }
@@ -67,6 +66,7 @@ fun LazyImageComponent(
         imageLoaded = true
         onImageLoaded?.invoke()
       } catch (error: Exception) {
+        IAMLogger.e("LazyImageComponent", "image load failed", error.message)
         onImageError?.invoke()
       }
     }
@@ -76,50 +76,72 @@ fun LazyImageComponent(
     modifier = modifier,
     contentAlignment = Alignment.Center,
   ) {
-    when {
-      // Show main image when loaded
-      imageLoaded && !imageUrl.isNullOrEmpty() -> {
-        AsyncImage(
-          model = ImageRequest.Builder(context)
-            .data(imageUrl)
-            .crossfade(true)
-            .build(),
-          contentDescription = contentDescription,
-          contentScale = contentScale,
-          modifier = Modifier.fillMaxSize(),
-          placeholder = painterResource(id = AppIcons.Iam.placeholderImage),
-          error = painterResource(id = AppIcons.Iam.placeholderImage),
-        )
-      }
+    LazyImageContent(
+      imageUrl = imageUrl,
+      placeholderUrl = placeholderUrl,
+      contentDescription = contentDescription,
+      contentScale = contentScale,
+      imageLoaded = imageLoaded,
+      placeholderLoaded = placeholderLoaded,
+      showDefaultPlaceholder = showDefaultPlaceholder,
+    )
+  }
+}
 
-      // Show placeholder when available
-      placeholderLoaded && !placeholderUrl.isNullOrEmpty() -> {
-        AsyncImage(
-          model = ImageRequest.Builder(context)
-            .data(placeholderUrl)
-            .crossfade(true)
-            .build(),
-          contentDescription = "Placeholder image",
-          contentScale = contentScale,
-          modifier = Modifier.fillMaxSize(),
-          placeholder = painterResource(id = AppIcons.Iam.placeholderImage),
-          error = painterResource(id = AppIcons.Iam.placeholderImage),
-        )
-      }
+@Composable
+private fun LazyImageContent(
+  imageUrl: String?,
+  placeholderUrl: String?,
+  contentDescription: String?,
+  contentScale: ContentScale,
+  imageLoaded: Boolean,
+  placeholderLoaded: Boolean,
+  showDefaultPlaceholder: Boolean,
+) {
+  val context = LocalContext.current
+  when {
+    // Show main image when loaded
+    imageLoaded && !imageUrl.isNullOrEmpty() -> {
+      AsyncImage(
+        model = ImageRequest.Builder(context)
+          .data(imageUrl)
+          .crossfade(true)
+          .build(),
+        contentDescription = contentDescription,
+        contentScale = contentScale,
+        modifier = Modifier.fillMaxSize(),
+        placeholder = painterResource(id = AppIcons.Iam.placeholderImage),
+        error = painterResource(id = AppIcons.Iam.placeholderImage),
+      )
+    }
 
-      // Show default placeholder
-      showDefaultPlaceholder -> {
-        DefaultPlaceholder(
-          modifier = Modifier.fillMaxSize(),
-        )
-      }
+    // Show placeholder when available
+    placeholderLoaded && !placeholderUrl.isNullOrEmpty() -> {
+      AsyncImage(
+        model = ImageRequest.Builder(context)
+          .data(placeholderUrl)
+          .crossfade(true)
+          .build(),
+        contentDescription = "Placeholder image",
+        contentScale = contentScale,
+        modifier = Modifier.fillMaxSize(),
+        placeholder = painterResource(id = AppIcons.Iam.placeholderImage),
+        error = painterResource(id = AppIcons.Iam.placeholderImage),
+      )
+    }
 
-      // Show loading indicator
-      else -> {
-        LoadingIndicator(
-          modifier = Modifier.fillMaxSize(),
-        )
-      }
+    // Show default placeholder
+    showDefaultPlaceholder -> {
+      DefaultPlaceholder(
+        modifier = Modifier.fillMaxSize(),
+      )
+    }
+
+    // Show loading indicator
+    else -> {
+      LoadingIndicator(
+        modifier = Modifier.fillMaxSize(),
+      )
     }
   }
 }

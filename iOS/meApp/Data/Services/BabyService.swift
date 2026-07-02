@@ -32,7 +32,6 @@ final class BabyService: ObservableObject, BabyServiceProtocol {
         self.remoteRepo = remoteRepo ?? BabyRepositoryAPI()
     }
 
-
     // swiftlint:disable:next function_parameter_count
     func saveBaby(
         name: String,

@@ -183,9 +183,10 @@ struct UnitTypePickerModalView: View {
                 text: commonLang.save,
                 type: .inlineTextPrimary,
                 size: .small,
-                isDisabled: false,
-                action: { onSave(selectedWeightUnit, selectedMeasurementUnits) }
-            )
+                isDisabled: false
+            ) {
+                onSave(selectedWeightUnit, selectedMeasurementUnits)
+            }
         }
     }
 }

@@ -60,6 +60,13 @@ protocol EntryRepositoryProtocol {
     /// - Returns: An array of Entry objects for the user and timestamp.
     func fetchEntriesOfTimestamp(forUserId userId: String, timestamp: String) async throws -> [Entry]
 
+    /// Fetches the local entry matching a server-assigned entryId for a user, if any.
+    /// - Parameters:
+    ///   - serverEntryId: The server-assigned entry identifier.
+    ///   - userId: The user ID to filter entries by.
+    /// - Returns: The matching Entry, or nil if none exists locally.
+    func fetchEntry(byServerEntryId serverEntryId: String, forUserId userId: String) async throws -> Entry?
+
     /// Fetches all entries for a specific month and user.
     /// - Parameters:
     ///   - month: The month in 'YYYY-MM' format.

@@ -420,8 +420,13 @@ class EntryServiceHelperTest {
     }
 
     @Test
-    fun `OperationType values contains exactly CREATE and DELETE`() {
-        assertThat(OperationType.values().map { it.name }).containsExactly("CREATE", "DELETE")
+    fun `OperationType EDIT has correct name`() {
+        assertThat(OperationType.EDIT.name).isEqualTo("EDIT")
+    }
+
+    @Test
+    fun `OperationType values contains exactly CREATE EDIT and DELETE`() {
+        assertThat(OperationType.values().map { it.name }).containsExactly("CREATE", "EDIT", "DELETE")
     }
 
     // -------------------------------------------------------------------------

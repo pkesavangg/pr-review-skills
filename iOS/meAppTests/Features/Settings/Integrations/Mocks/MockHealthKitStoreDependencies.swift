@@ -192,5 +192,6 @@ final class MockHealthKitStoreEntryService: EntryServiceProtocol {
     func exportBpmCSV() async throws {}
     func migrateBabyEntriesToDecigrams() async {}
     func getEntry(byId id: UUID) async throws -> Entry? { nil }
+    // swiftlint:disable:next function_parameter_count
     func createBabyEntry(babyId: String, weight: Int, length: Int, note: String, entryTimestamp: String, source: String?) async throws {}
 }

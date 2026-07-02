@@ -70,122 +70,163 @@ fun FeedPopup(
     Column(
       modifier = Modifier.fillMaxWidth(),
     ) {
-      // Header with Image and Close Button
+      FeedPopupHeader(
+        imageUrl = imageUrl,
+        utilityColor = iamColors.utility,
+        onCloseClick = onCloseClick,
+      )
+
+      FeedPopupContent(
+        messageType = messageType,
+        headline = headline,
+        supportingText = supportingText,
+        expiresAt = expiresAt,
+        primaryButtonText = primaryButtonText,
+        secondaryButtonText = secondaryButtonText,
+        onPrimaryButtonClick = onPrimaryButtonClick,
+        onSecondaryButtonClick = onSecondaryButtonClick,
+      )
+    }
+  }
+}
+
+/**
+ * Header with product image (or placeholder fallback) and close button
+ */
+@Composable
+private fun FeedPopupHeader(
+  imageUrl: String?,
+  utilityColor: Color,
+  onCloseClick: () -> Unit,
+) {
+  Box(
+    modifier = Modifier
+      .fillMaxWidth()
+      .height(220.dp),
+  ) {
+    // Product Image with placeholder
+    if (imageUrl != null) {
+      AsyncImage(
+        model = imageUrl,
+        contentDescription = null,
+        modifier = Modifier
+          .fillMaxWidth()
+          .height(220.dp)
+          .clip(RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp)),
+        contentScale = ContentScale.Crop,
+        placeholder = painterResource(id = AppIcons.Iam.placeholderImage),
+        error = painterResource(id = AppIcons.Iam.placeholderImage),
+      )
+    } else {
+      // Fallback background with placeholder
       Box(
         modifier = Modifier
           .fillMaxWidth()
-          .height(220.dp),
+          .height(220.dp)
+          .background(utilityColor),
+        contentAlignment = Alignment.Center
       ) {
-        // Product Image with placeholder
-        if (imageUrl != null) {
-          AsyncImage(
-            model = imageUrl,
-            contentDescription = null,
-            modifier = Modifier
-              .fillMaxWidth()
-              .height(220.dp)
-              .clip(RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp)),
-            contentScale = ContentScale.Crop,
-            placeholder = painterResource(id = AppIcons.Iam.placeholderImage),
-            error = painterResource(id = AppIcons.Iam.placeholderImage),
-          )
-        } else {
-          // Fallback background with placeholder
-          Box(
-            modifier = Modifier
-              .fillMaxWidth()
-              .height(220.dp)
-              .background(iamColors.utility),
-            contentAlignment = Alignment.Center
-          ) {
-            AsyncImage(
-              model = AppIcons.Iam.placeholderImage,
-              contentDescription = "Placeholder",
-              modifier = Modifier
-                .fillMaxWidth()
-                .height(220.dp)
-                .clip(RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp)),
-              contentScale = ContentScale.Crop,
-            )
-          }
-        }
-Row(
-  horizontalArrangement = Arrangement.End,
-  modifier = Modifier.align(Alignment.TopEnd).padding(top = 16.dp, end = 16.dp)
-){
-  AppIcon(
-    id = AppIcons.Iam.RoundedClose,
-    contentDescription = "close",
-    modifier = Modifier.size(24.dp),
-    tintColor = Color.Unspecified,
-    onClick = onCloseClick
-  )
+        AsyncImage(
+          model = AppIcons.Iam.placeholderImage,
+          contentDescription = "Placeholder",
+          modifier = Modifier
+            .fillMaxWidth()
+            .height(220.dp)
+            .clip(RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp)),
+          contentScale = ContentScale.Crop,
+        )
+      }
+    }
+    Row(
+      horizontalArrangement = Arrangement.End,
+      modifier = Modifier.align(Alignment.TopEnd).padding(top = 16.dp, end = 16.dp)
+    ){
+      AppIcon(
+        id = AppIcons.Iam.RoundedClose,
+        contentDescription = "close",
+        modifier = Modifier.size(24.dp),
+        tintColor = Color.Unspecified,
+        onClick = onCloseClick
+      )
+    }
+  }
 }
-      }
 
-      // Content Section
-      Column(
+/**
+ * Content section with message type, headline, supporting text and action buttons
+ */
+@Composable
+private fun FeedPopupContent(
+  messageType: String,
+  headline: String,
+  supportingText: String,
+  expiresAt: String?,
+  primaryButtonText: String,
+  secondaryButtonText: String,
+  onPrimaryButtonClick: () -> Unit,
+  onSecondaryButtonClick: () -> Unit,
+) {
+  val iamColors = IamTheme.colors
+  Column(
+    modifier = Modifier
+      .fillMaxWidth()
+      .padding(24.dp),
+    horizontalAlignment = Alignment.CenterHorizontally,
+    verticalArrangement = Arrangement.spacedBy(16.dp),
+  ) {
+    // Message Type Label
+    if (messageType.isNotEmpty()) {
+      IAMText(
+        text = messageType.uppercase(),
+        color = iamColors.textSubheading,
+        textType = TextType.SubHeading,
+        textAlign = TextAlign.Center,
+      )
+    }
+
+    // Headline
+    IAMText(
+      text = headline,
+      color = iamColors.textBody,
+      textType = TextType.Title,
+      textAlign = TextAlign.Center,
+    )
+
+    // Supporting Text
+    IAMText(
+      text = supportingText,
+      color = iamColors.textBody,
+      textType = TextType.Body,
+      textAlign = TextAlign.Center,
+      enableRichText = true,
+      expiresAt = expiresAt,
+    )
+
+    Spacer(modifier = Modifier.padding(top = 16.dp))
+
+    // Action Buttons
+    Column(
+      horizontalAlignment = Alignment.CenterHorizontally,
+      verticalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+      // Primary Button
+      IamButton (
+        onClick = onPrimaryButtonClick,
         modifier = Modifier
-          .fillMaxWidth()
-          .padding(24.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(16.dp),
-      ) {
-        // Message Type Label
-        if (messageType.isNotEmpty()) {
-          IAMText(
-            text = messageType.uppercase(),
-            color = iamColors.textSubheading,
-            textType = TextType.SubHeading,
-            textAlign = TextAlign.Center,
-          )
-        }
+          .height(40.dp)
+          .padding(horizontal = 32.dp),
+        type = ButtonType.PrimaryFilled,
+        label = primaryButtonText
+      )
 
-        // Headline
-        IAMText(
-          text = headline,
-          color = iamColors.textBody,
-          textType = TextType.Title,
-          textAlign = TextAlign.Center,
-        )
-
-        // Supporting Text
-        IAMText(
-          text = supportingText,
-          color = iamColors.textBody,
-          textType = TextType.Body,
-          textAlign = TextAlign.Center,
-          enableRichText = true,
-          expiresAt = expiresAt,
-        )
-
-        Spacer(modifier = Modifier.padding(top = 16.dp))
-
-        // Action Buttons
-        Column(
-          horizontalAlignment = Alignment.CenterHorizontally,
-          verticalArrangement = Arrangement.spacedBy(8.dp),
-        ) {
-          // Primary Button
-          IamButton (
-            onClick = onPrimaryButtonClick,
-            modifier = Modifier
-              .height(40.dp)
-              .padding(horizontal = 32.dp),
-            type = ButtonType.PrimaryFilled,
-            label = primaryButtonText
-          )
-
-          IamButton (
-            onClick = onSecondaryButtonClick,
-            modifier = Modifier
-              .height(40.dp)
-              .padding(horizontal = 32.dp),
-            type = ButtonType.InlineTextPrimary,
-            label = secondaryButtonText
-          )
-        }
-      }
+      IamButton (
+        onClick = onSecondaryButtonClick,
+        modifier = Modifier
+          .height(40.dp)
+          .padding(horizontal = 32.dp),
+        type = ButtonType.InlineTextPrimary,
+        label = secondaryButtonText
+      )
     }
   }
 }

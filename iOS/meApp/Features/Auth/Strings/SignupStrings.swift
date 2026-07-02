@@ -69,6 +69,8 @@ struct SignupStrings {
     struct BabyListStep {
         static let title = "Your baby has been added!"
         static let addBabyButton = "ADD A BABY"
+        static let emptyTitle = "No babies added yet"
+        static let emptySubtitle = "You've removed all baby profiles. Add one to continue."
     }
 
     struct PasswordStep {

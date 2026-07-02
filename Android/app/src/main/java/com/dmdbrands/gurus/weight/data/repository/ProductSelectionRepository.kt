@@ -7,7 +7,7 @@ import com.dmdbrands.gurus.weight.data.storage.db.dao.DeviceDao
 import com.dmdbrands.gurus.weight.domain.enums.ProductType
 import com.dmdbrands.gurus.weight.domain.model.common.BabyProfile
 import com.dmdbrands.gurus.weight.domain.repository.IProductSelectionRepository
-import com.dmdbrands.gurus.weight.features.common.enums.ScaleSetupType
+import com.dmdbrands.gurus.weight.features.common.enums.DeviceSetupType
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
@@ -74,6 +74,13 @@ class ProductSelectionRepository @Inject constructor(
                 id = entity.babyId,
                 name = entity.name,
                 birthdate = entity.birthdate,
+                // sex (and birth weight/length) drive the CDC growth percentile + chart
+                // bands; omitting sex left the active profile sex=null, so every percentile
+                // resolved to null — history "--", no bands, no tooltip (MOB-598).
+                sex = entity.sex,
+                birthWeightDecigrams = entity.birthWeightDecigrams,
+                birthLengthMillimeters = entity.birthLengthMillimeters,
+                isBorn = entity.isBorn,
                 accountId = entity.accountId,
             )
         }
@@ -82,7 +89,7 @@ class ProductSelectionRepository @Inject constructor(
         deviceDao.getDevicesByTypeWithAccount("BPM", accountId).first().isNotEmpty()
 
     override suspend fun hasBabyScaleDevice(accountId: String): Boolean =
-        deviceDao.getDevicesByTypeWithAccount(ScaleSetupType.BabyScale.value, accountId).first().isNotEmpty()
+        deviceDao.getDevicesByTypeWithAccount(DeviceSetupType.BabyScale.value, accountId).first().isNotEmpty()
 
     private companion object {
         const val TAG = "ProductSelectionRepo"

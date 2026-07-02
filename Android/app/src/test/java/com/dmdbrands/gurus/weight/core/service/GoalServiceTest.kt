@@ -267,7 +267,7 @@ class GoalServiceTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `updateGoal calls updateGoalSetting when network is available`() = runTest {
+    fun `updateGoal calls updateGoalSetting when network is available`() = runTest(mainDispatcherRule.scheduler) {
         stubNetworkAvailable()
         coEvery { goalRepository.updateGoalSetting(any()) } returns fakeAccount
 
@@ -279,7 +279,7 @@ class GoalServiceTest {
     }
 
     @Test
-    fun `updateGoal calls updateGoalSettingOffline when network is unavailable`() = runTest {
+    fun `updateGoal calls updateGoalSettingOffline when network is unavailable`() = runTest(mainDispatcherRule.scheduler) {
         stubNetworkUnavailable()
         coEvery { goalRepository.updateGoalSettingOffline(any()) } returns fakeAccount
 
@@ -291,7 +291,7 @@ class GoalServiceTest {
     }
 
     @Test
-    fun `updateGoal returns null when repository throws exception`() = runTest {
+    fun `updateGoal returns null when repository throws exception`() = runTest(mainDispatcherRule.scheduler) {
         coEvery { goalRepository.updateGoalSetting(any()) } throws RuntimeException("API error")
 
         val result = service.updateGoal(goalWeight = TEST_LOSE_GOAL_WEIGHT, initialWeight = TEST_LOSE_INITIAL_WEIGHT, goalType = "lose", wasMet = false)
@@ -300,7 +300,7 @@ class GoalServiceTest {
     }
 
     @Test
-    fun `updateGoal resets goal alert after successful update`() = runTest {
+    fun `updateGoal resets goal alert after successful update`() = runTest(mainDispatcherRule.scheduler) {
         coEvery { goalRepository.updateGoalSetting(any()) } returns fakeAccount
 
         service.updateGoal(goalWeight = TEST_LOSE_GOAL_WEIGHT, initialWeight = TEST_LOSE_INITIAL_WEIGHT, goalType = "lose", wasMet = false)
@@ -309,7 +309,7 @@ class GoalServiceTest {
     }
 
     @Test
-    fun `updateGoal passes correct GoalData to repository`() = runTest {
+    fun `updateGoal passes correct GoalData to repository`() = runTest(mainDispatcherRule.scheduler) {
         coEvery { goalRepository.updateGoalSetting(any()) } returns fakeAccount
 
         service.updateGoal(goalWeight = TEST_LOSE_GOAL_WEIGHT, initialWeight = TEST_LOSE_INITIAL_WEIGHT, goalType = "lose", wasMet = true)
@@ -331,7 +331,7 @@ class GoalServiceTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `createGoalForSignup returns updated account on success`() = runTest {
+    fun `createGoalForSignup returns updated account on success`() = runTest(mainDispatcherRule.scheduler) {
         coEvery { goalRepository.updateGoalSetting(any()) } returns fakeAccount
 
         val result = service.createGoalForSignup(
@@ -345,7 +345,7 @@ class GoalServiceTest {
     }
 
     @Test
-    fun `createGoalForSignup returns null when exception occurs`() = runTest {
+    fun `createGoalForSignup returns null when exception occurs`() = runTest(mainDispatcherRule.scheduler) {
         coEvery { goalRepository.updateGoalSetting(any()) } throws RuntimeException("Network error")
 
         val result = service.createGoalForSignup(
@@ -363,7 +363,7 @@ class GoalServiceTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `checkGoalCard does nothing when no active account`() = runTest {
+    fun `checkGoalCard does nothing when no active account`() = runTest(mainDispatcherRule.scheduler) {
         withNoActiveAccount()
 
         service.checkGoalCard()
@@ -372,7 +372,7 @@ class GoalServiceTest {
     }
 
     @Test
-    fun `checkGoalCard does nothing when goal card already shown`() = runTest {
+    fun `checkGoalCard does nothing when goal card already shown`() = runTest(mainDispatcherRule.scheduler) {
         coEvery { goalAlertDataStore.getGoalCardValue(TEST_ACCOUNT_ID) } returns "true"
 
         service.checkGoalCard()
@@ -381,7 +381,7 @@ class GoalServiceTest {
     }
 
     @Test
-    fun `checkGoalCard shows popup when goalType is null and setup is not in progress`() = runTest {
+    fun `checkGoalCard shows popup when goalType is null and setup is not in progress`() = runTest(mainDispatcherRule.scheduler) {
         val accountWithNoGoal = fakeAccount.copy(goalType = null)
         every { accountRepository.getActiveAccount() } returns flowOf(accountWithNoGoal)
         coEvery { goalAlertDataStore.getGoalCardValue(accountWithNoGoal.id) } returns null
@@ -393,7 +393,7 @@ class GoalServiceTest {
     }
 
     @Test
-    fun `checkGoalCard does not show popup when setup is in progress`() = runTest {
+    fun `checkGoalCard does not show popup when setup is in progress`() = runTest(mainDispatcherRule.scheduler) {
         val accountWithNoGoal = fakeAccount.copy(goalType = null)
         every { accountRepository.getActiveAccount() } returns flowOf(accountWithNoGoal)
         coEvery { goalAlertDataStore.getGoalCardValue(accountWithNoGoal.id) } returns null
@@ -405,7 +405,7 @@ class GoalServiceTest {
     }
 
     @Test
-    fun `checkGoalCard does not show popup when goalType is already set`() = runTest {
+    fun `checkGoalCard does not show popup when goalType is already set`() = runTest(mainDispatcherRule.scheduler) {
         // fakeAccount.goalType = "lose" — goal already exists
         coEvery { goalAlertDataStore.getGoalCardValue(TEST_ACCOUNT_ID) } returns null
         every { deviceService.isSetupInProgress() } returns false
@@ -416,7 +416,7 @@ class GoalServiceTest {
     }
 
     @Test
-    fun `checkGoalCard marks goal card as shown after displaying popup`() = runTest {
+    fun `checkGoalCard marks goal card as shown after displaying popup`() = runTest(mainDispatcherRule.scheduler) {
         val accountWithNoGoal = fakeAccount.copy(goalType = null)
         every { accountRepository.getActiveAccount() } returns flowOf(accountWithNoGoal)
         coEvery { goalAlertDataStore.getGoalCardValue(accountWithNoGoal.id) } returns null
@@ -432,7 +432,7 @@ class GoalServiceTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `showGoalCompletionAlert does nothing when no active account`() = runTest {
+    fun `showGoalCompletionAlert does nothing when no active account`() = runTest(mainDispatcherRule.scheduler) {
         withNoActiveAccount()
 
         service.showGoalCompletionAlert(currentWeight = 1500.0)
@@ -441,7 +441,7 @@ class GoalServiceTest {
     }
 
     @Test
-    fun `showGoalCompletionAlert does nothing when current goal is null`() = runTest {
+    fun `showGoalCompletionAlert does nothing when current goal is null`() = runTest(mainDispatcherRule.scheduler) {
         setupCurrentGoalFlows(goal = null)
         stubAlertConditions()
 
@@ -451,7 +451,7 @@ class GoalServiceTest {
     }
 
     @Test
-    fun `showGoalCompletionAlert does nothing when alert already shown for account`() = runTest {
+    fun `showGoalCompletionAlert does nothing when alert already shown for account`() = runTest(mainDispatcherRule.scheduler) {
         coEvery { goalAlertDataStore.hasShownAlert(TEST_ACCOUNT_ID) } returns true
         every { deviceService.isSetupInProgress() } returns false
 
@@ -461,7 +461,7 @@ class GoalServiceTest {
     }
 
     @Test
-    fun `showGoalCompletionAlert does nothing when setup is in progress`() = runTest {
+    fun `showGoalCompletionAlert does nothing when setup is in progress`() = runTest(mainDispatcherRule.scheduler) {
         coEvery { goalAlertDataStore.hasShownAlert(TEST_ACCOUNT_ID) } returns false
         every { deviceService.isSetupInProgress() } returns true
 
@@ -471,7 +471,7 @@ class GoalServiceTest {
     }
 
     @Test
-    fun `showGoalCompletionAlert shows goal met alert when lose goal is achieved`() = runTest {
+    fun `showGoalCompletionAlert shows goal met alert when lose goal is achieved`() = runTest(mainDispatcherRule.scheduler) {
         setupCurrentGoalFlows(goal = fakeLoseGoal)
         stubAlertConditions()
 
@@ -482,7 +482,7 @@ class GoalServiceTest {
     }
 
     @Test
-    fun `showGoalCompletionAlert does not show alert when lose goal is not yet met`() = runTest {
+    fun `showGoalCompletionAlert does not show alert when lose goal is not yet met`() = runTest(mainDispatcherRule.scheduler) {
         setupCurrentGoalFlows(goal = fakeLoseGoal)
         stubAlertConditions()
 
@@ -492,7 +492,7 @@ class GoalServiceTest {
     }
 
     @Test
-    fun `showGoalCompletionAlert shows goal met alert when gain goal is achieved`() = runTest {
+    fun `showGoalCompletionAlert shows goal met alert when gain goal is achieved`() = runTest(mainDispatcherRule.scheduler) {
         val gainAccount = fakeAccount.copy(goalType = "gain", goalWeight = 2000.0)
         every { accountRepository.getActiveAccount() } returns flowOf(gainAccount)
         setupCurrentGoalFlows(goal = fakeGainGoal)
@@ -505,7 +505,7 @@ class GoalServiceTest {
     }
 
     @Test
-    fun `showGoalCompletionAlert does not show alert when gain goal is not yet met`() = runTest {
+    fun `showGoalCompletionAlert does not show alert when gain goal is not yet met`() = runTest(mainDispatcherRule.scheduler) {
         val gainAccount = fakeAccount.copy(goalType = "gain", goalWeight = 2000.0)
         every { accountRepository.getActiveAccount() } returns flowOf(gainAccount)
         setupCurrentGoalFlows(goal = fakeGainGoal)
@@ -517,7 +517,7 @@ class GoalServiceTest {
     }
 
     @Test
-    fun `showGoalCompletionAlert shows goal leave alert when maintain goal drifts`() = runTest {
+    fun `showGoalCompletionAlert shows goal leave alert when maintain goal drifts`() = runTest(mainDispatcherRule.scheduler) {
         val maintainAccount = fakeAccount.copy(goalType = "maintain", goalWeight = TEST_GOAL_WEIGHT)
         every { accountRepository.getActiveAccount() } returns flowOf(maintainAccount)
         setupCurrentGoalFlows(goal = fakeMaintainGoal)
@@ -530,7 +530,7 @@ class GoalServiceTest {
     }
 
     @Test
-    fun `showGoalCompletionAlert does not show alert when maintain weight matches goal`() = runTest {
+    fun `showGoalCompletionAlert does not show alert when maintain weight matches goal`() = runTest(mainDispatcherRule.scheduler) {
         val maintainAccount = fakeAccount.copy(goalType = "maintain", goalWeight = TEST_GOAL_WEIGHT)
         every { accountRepository.getActiveAccount() } returns flowOf(maintainAccount)
         setupCurrentGoalFlows(goal = fakeMaintainGoal)
@@ -547,7 +547,7 @@ class GoalServiceTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `showGoalCompletionAlert handles exception gracefully and shows no dialog`() = runTest {
+    fun `showGoalCompletionAlert handles exception gracefully and shows no dialog`() = runTest(mainDispatcherRule.scheduler) {
         // Make hasShownAlert throw → triggers the outer catch block
         coEvery { goalAlertDataStore.hasShownAlert(any()) } throws RuntimeException("DataStore error")
         every { deviceService.isSetupInProgress() } returns false
@@ -563,7 +563,7 @@ class GoalServiceTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `handleGoalMet handles exception gracefully when setAlertShown throws`() = runTest {
+    fun `handleGoalMet handles exception gracefully when setAlertShown throws`() = runTest(mainDispatcherRule.scheduler) {
         val dialogSlot = slot<DialogModel>()
         every { dialogQueueService.enqueue(capture(dialogSlot)) } just Runs
         setupCurrentGoalFlows(goal = fakeLoseGoal)
@@ -619,7 +619,7 @@ class GoalServiceTest {
     }
 
     @Test
-    fun `showGoalMetAlert onConfirm resets alert flag`() = runTest {
+    fun `showGoalMetAlert onConfirm resets alert flag`() = runTest(mainDispatcherRule.scheduler) {
         val dialog = captureGoalMetDialog()
 
         dialog.onConfirm?.invoke()
@@ -630,7 +630,7 @@ class GoalServiceTest {
     }
 
     @Test
-    fun `showGoalMetAlert onConfirm updates goal to maintain type`() = runTest {
+    fun `showGoalMetAlert onConfirm updates goal to maintain type`() = runTest(mainDispatcherRule.scheduler) {
         val dialog = captureGoalMetDialog()
 
         dialog.onConfirm?.invoke()
@@ -651,7 +651,7 @@ class GoalServiceTest {
     }
 
     @Test
-    fun `showGoalMetAlert onCancel resets alert without updating goal`() = runTest {
+    fun `showGoalMetAlert onCancel resets alert without updating goal`() = runTest(mainDispatcherRule.scheduler) {
         val dialog = captureGoalMetDialog()
 
         dialog.onCancel?.invoke()
@@ -664,7 +664,7 @@ class GoalServiceTest {
     }
 
     @Test
-    fun `showGoalMetAlert onCancel navigates to goal screen`() = runTest {
+    fun `showGoalMetAlert onCancel navigates to goal screen`() = runTest(mainDispatcherRule.scheduler) {
         val dialog = captureGoalMetDialog()
 
         dialog.onCancel?.invoke()
@@ -675,7 +675,7 @@ class GoalServiceTest {
     }
 
     @Test
-    fun `showGoalMetAlert onDismiss resets alert without updating goal`() = runTest {
+    fun `showGoalMetAlert onDismiss resets alert without updating goal`() = runTest(mainDispatcherRule.scheduler) {
         val dialog = captureGoalMetDialog()
 
         dialog.onDismiss?.invoke()
@@ -691,7 +691,7 @@ class GoalServiceTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `showGoalLeaveAlert onConfirm navigates to goal screen`() = runTest {
+    fun `showGoalLeaveAlert onConfirm navigates to goal screen`() = runTest(mainDispatcherRule.scheduler) {
         val dialog = captureGoalLeaveDialog()
 
         dialog.onConfirm?.invoke()
@@ -701,7 +701,7 @@ class GoalServiceTest {
     }
 
     @Test
-    fun `showGoalLeaveAlert onCancel does not update goal`() = runTest {
+    fun `showGoalLeaveAlert onCancel does not update goal`() = runTest(mainDispatcherRule.scheduler) {
         val dialog = captureGoalLeaveDialog()
 
         dialog.onCancel?.invoke()
@@ -716,7 +716,7 @@ class GoalServiceTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `getCurrentGoal emits processed goal from combined flows`() = runTest {
+    fun `getCurrentGoal emits processed goal from combined flows`() = runTest(mainDispatcherRule.scheduler) {
         setupCurrentGoalFlows(goal = fakeLoseGoal)
 
         service.getCurrentGoal().test {
@@ -728,7 +728,7 @@ class GoalServiceTest {
     }
 
     @Test
-    fun `getCurrentGoal emits null when repository has no goal`() = runTest {
+    fun `getCurrentGoal emits null when repository has no goal`() = runTest(mainDispatcherRule.scheduler) {
         setupCurrentGoalFlows(goal = null)
 
         service.getCurrentGoal().test {
@@ -739,7 +739,7 @@ class GoalServiceTest {
     }
 
     @Test
-    fun `getCurrentGoal applies unit conversion when account uses KG`() = runTest {
+    fun `getCurrentGoal applies unit conversion when account uses KG`() = runTest(mainDispatcherRule.scheduler) {
         every { accountRepository.getActiveAccountWeightUnitFlow() } returns flowOf(WeightUnit.KG)
         every { accountRepository.getActiveAccountWeightlessFlow() } returns flowOf(Weightless(false, 0f))
         // Goal stored in LB (raw tenths) — process() will convert to KG
@@ -770,7 +770,7 @@ class GoalServiceTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `goalStatusFlow emits null initially`() = runTest {
+    fun `goalStatusFlow emits null initially`() = runTest(mainDispatcherRule.scheduler) {
         service.goalStatusFlow.test {
             assertThat(awaitItem()).isNull()
             cancelAndIgnoreRemainingEvents()
@@ -782,7 +782,7 @@ class GoalServiceTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `showGoalCompletionAlert does not show alert for unknown goal type`() = runTest {
+    fun `showGoalCompletionAlert does not show alert for unknown goal type`() = runTest(mainDispatcherRule.scheduler) {
         val unknownGoal = Goal(goalWeight = TEST_LOSE_GOAL_WEIGHT, initialWeight = TEST_LOSE_INITIAL_WEIGHT, type = "unknown")
         setupCurrentGoalFlows(goal = unknownGoal)
         stubAlertConditions()
@@ -793,7 +793,7 @@ class GoalServiceTest {
     }
 
     @Test
-    fun `showGoalCompletionAlert does not show alert when account goalWeight is null`() = runTest {
+    fun `showGoalCompletionAlert does not show alert when account goalWeight is null`() = runTest(mainDispatcherRule.scheduler) {
         val accountNullGoalWeight = fakeAccount.copy(goalWeight = null)
         every { accountRepository.getActiveAccount() } returns flowOf(accountNullGoalWeight)
         setupCurrentGoalFlows(goal = fakeLoseGoal)
@@ -811,7 +811,7 @@ class GoalServiceTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `checkGoalCard onSetGoal callback navigates to goal screen`() = runTest {
+    fun `checkGoalCard onSetGoal callback navigates to goal screen`() = runTest(mainDispatcherRule.scheduler) {
         val dialogSlot = slot<DialogModel>()
         every { dialogQueueService.enqueue(capture(dialogSlot)) } just Runs
         val accountWithNoGoal = fakeAccount.copy(goalType = null)
@@ -832,7 +832,7 @@ class GoalServiceTest {
     }
 
     @Test
-    fun `checkGoalCard onDismiss callback dismisses dialog`() = runTest {
+    fun `checkGoalCard onDismiss callback dismisses dialog`() = runTest(mainDispatcherRule.scheduler) {
         val dialogSlot = slot<DialogModel>()
         every { dialogQueueService.enqueue(capture(dialogSlot)) } just Runs
         val accountWithNoGoal = fakeAccount.copy(goalType = null)
@@ -869,7 +869,7 @@ class GoalServiceTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `showGoalMetAlert onConfirm returns early when no active account during handleGoalMet`() = runTest {
+    fun `showGoalMetAlert onConfirm returns early when no active account during handleGoalMet`() = runTest(mainDispatcherRule.scheduler) {
         val dialogSlot = slot<DialogModel>()
         every { dialogQueueService.enqueue(capture(dialogSlot)) } just Runs
         setupCurrentGoalFlows(goal = fakeLoseGoal)
@@ -893,7 +893,7 @@ class GoalServiceTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `checkGoalCard handles exception gracefully`() = runTest {
+    fun `checkGoalCard handles exception gracefully`() = runTest(mainDispatcherRule.scheduler) {
         every { accountRepository.getActiveAccount() } returns flowOf(fakeAccount)
         coEvery { goalAlertDataStore.getGoalCardValue(any()) } throws RuntimeException("DataStore error")
 
@@ -908,7 +908,7 @@ class GoalServiceTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `createGoalForSignup catches exception from GoalHelper and returns null`() = runTest {
+    fun `createGoalForSignup catches exception from GoalHelper and returns null`() = runTest(mainDispatcherRule.scheduler) {
         // Mock GoalHelper.createGoal to throw — hits createGoalForSignup's own catch block
         // (not updateGoal's catch, which swallows the exception separately)
         mockkObject(GoalHelper)
@@ -927,7 +927,7 @@ class GoalServiceTest {
     }
 
     @Test
-    fun `createGoalForSignup returns null when updateGoal fails silently`() = runTest {
+    fun `createGoalForSignup returns null when updateGoal fails silently`() = runTest(mainDispatcherRule.scheduler) {
         // updateGoal's own catch swallows the exception and returns null
         coEvery { goalRepository.updateGoalSetting(any()) } throws RuntimeException("API error")
 
@@ -946,7 +946,7 @@ class GoalServiceTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `showGoalLeaveAlert onConfirm navigates to goal screen and dismisses`() = runTest {
+    fun `showGoalLeaveAlert onConfirm navigates to goal screen and dismisses`() = runTest(mainDispatcherRule.scheduler) {
         val dialog = captureGoalLeaveDialog()
 
         dialog.onConfirm?.invoke()
@@ -957,7 +957,7 @@ class GoalServiceTest {
     }
 
     @Test
-    fun `showGoalLeaveAlert onCancel dismisses and does not navigate`() = runTest {
+    fun `showGoalLeaveAlert onCancel dismisses and does not navigate`() = runTest(mainDispatcherRule.scheduler) {
         val dialog = captureGoalLeaveDialog()
 
         dialog.onCancel?.invoke()
@@ -972,7 +972,7 @@ class GoalServiceTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `showGoalCompletionAlert does not show second alert while first is still showing`() = runTest {
+    fun `showGoalCompletionAlert does not show second alert while first is still showing`() = runTest(mainDispatcherRule.scheduler) {
         val dialogSlot = slot<DialogModel>()
         every { dialogQueueService.enqueue(capture(dialogSlot)) } just Runs
         setupCurrentGoalFlows(goal = fakeLoseGoal)
@@ -992,7 +992,7 @@ class GoalServiceTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `updateGoal uses empty string for alert reset when account field is null`() = runTest {
+    fun `updateGoal uses empty string for alert reset when account field is null`() = runTest(mainDispatcherRule.scheduler) {
         // Create service with null active account — account field stays null
         withNoActiveAccount()
         service = createService()
@@ -1009,7 +1009,7 @@ class GoalServiceTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `showGoalMetAlert onConfirm handles null goalWeight by using 0`() = runTest {
+    fun `showGoalMetAlert onConfirm handles null goalWeight by using 0`() = runTest(mainDispatcherRule.scheduler) {
         val accountNullGoalWeight = fakeAccount.copy(goalWeight = null)
         every { accountRepository.getActiveAccount() } returns flowOf(accountNullGoalWeight)
 
@@ -1038,7 +1038,7 @@ class GoalServiceTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `createGoalForSignup converts KG weights to LB for storage`() = runTest {
+    fun `createGoalForSignup converts KG weights to LB for storage`() = runTest(mainDispatcherRule.scheduler) {
         val kgAccount = fakeAccount.copy(weightUnit = WeightUnit.KG)
         coEvery { goalRepository.updateGoalSetting(any()) } returns kgAccount
 
@@ -1055,7 +1055,7 @@ class GoalServiceTest {
     }
 
     @Test
-    fun `createGoalForSignup with maintain goal type`() = runTest {
+    fun `createGoalForSignup with maintain goal type`() = runTest(mainDispatcherRule.scheduler) {
         coEvery { goalRepository.updateGoalSetting(any()) } returns fakeAccount
 
         val result = service.createGoalForSignup(
@@ -1083,7 +1083,7 @@ class GoalServiceTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `showGoalCompletionAlert gain goal at exact boundary shows alert`() = runTest {
+    fun `showGoalCompletionAlert gain goal at exact boundary shows alert`() = runTest(mainDispatcherRule.scheduler) {
         val gainAccount = fakeAccount.copy(goalType = "gain", goalWeight = 2000.0)
         every { accountRepository.getActiveAccount() } returns flowOf(gainAccount)
         setupCurrentGoalFlows(goal = fakeGainGoal)
@@ -1096,7 +1096,7 @@ class GoalServiceTest {
     }
 
     @Test
-    fun `showGoalCompletionAlert lose goal at exact boundary shows alert`() = runTest {
+    fun `showGoalCompletionAlert lose goal at exact boundary shows alert`() = runTest(mainDispatcherRule.scheduler) {
         setupCurrentGoalFlows(goal = fakeLoseGoal)
         stubAlertConditions()
 
@@ -1111,7 +1111,7 @@ class GoalServiceTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `showGoalMetAlert onConfirm resets isShowingAlert allowing future alerts`() = runTest {
+    fun `showGoalMetAlert onConfirm resets isShowingAlert allowing future alerts`() = runTest(mainDispatcherRule.scheduler) {
         val dialogSlot = slot<DialogModel>()
         every { dialogQueueService.enqueue(capture(dialogSlot)) } just Runs
         setupCurrentGoalFlows(goal = fakeLoseGoal)
@@ -1133,7 +1133,7 @@ class GoalServiceTest {
     }
 
     @Test
-    fun `showGoalMetAlert onDismiss resets isShowingAlert allowing future alerts`() = runTest {
+    fun `showGoalMetAlert onDismiss resets isShowingAlert allowing future alerts`() = runTest(mainDispatcherRule.scheduler) {
         val dialogSlot = slot<DialogModel>()
         every { dialogQueueService.enqueue(capture(dialogSlot)) } just Runs
         setupCurrentGoalFlows(goal = fakeLoseGoal)
@@ -1156,7 +1156,7 @@ class GoalServiceTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `showGoalLeaveAlert onConfirm resets isShowingAlert`() = runTest {
+    fun `showGoalLeaveAlert onConfirm resets isShowingAlert`() = runTest(mainDispatcherRule.scheduler) {
         val dialogSlot = slot<DialogModel>()
         every { dialogQueueService.enqueue(capture(dialogSlot)) } just Runs
         val maintainAccount = fakeAccount.copy(goalType = "maintain", goalWeight = TEST_GOAL_WEIGHT)
@@ -1177,7 +1177,7 @@ class GoalServiceTest {
     }
 
     @Test
-    fun `showGoalLeaveAlert onCancel resets isShowingAlert`() = runTest {
+    fun `showGoalLeaveAlert onCancel resets isShowingAlert`() = runTest(mainDispatcherRule.scheduler) {
         val dialogSlot = slot<DialogModel>()
         every { dialogQueueService.enqueue(capture(dialogSlot)) } just Runs
         val maintainAccount = fakeAccount.copy(goalType = "maintain", goalWeight = TEST_GOAL_WEIGHT)
@@ -1202,7 +1202,7 @@ class GoalServiceTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `updateGoal resets goal alert after successful offline update`() = runTest {
+    fun `updateGoal resets goal alert after successful offline update`() = runTest(mainDispatcherRule.scheduler) {
         stubNetworkUnavailable()
         coEvery { goalRepository.updateGoalSettingOffline(any()) } returns fakeAccount
 
@@ -1216,7 +1216,7 @@ class GoalServiceTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `createGoalForSignup detects gain goal type correctly`() = runTest {
+    fun `createGoalForSignup detects gain goal type correctly`() = runTest(mainDispatcherRule.scheduler) {
         coEvery { goalRepository.updateGoalSetting(any()) } returns fakeAccount
 
         val result = service.createGoalForSignup(
@@ -1245,7 +1245,7 @@ class GoalServiceTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `checkGoalCard enqueues Custom dialog with SetGoalPopup content key`() = runTest {
+    fun `checkGoalCard enqueues Custom dialog with SetGoalPopup content key`() = runTest(mainDispatcherRule.scheduler) {
         val accountWithNoGoal = fakeAccount.copy(goalType = null)
         every { accountRepository.getActiveAccount() } returns flowOf(accountWithNoGoal)
         coEvery { goalAlertDataStore.getGoalCardValue(accountWithNoGoal.id) } returns null
@@ -1262,7 +1262,7 @@ class GoalServiceTest {
     }
 
     @Test
-    fun `checkGoalCard popup onSetGoal navigates to goal screen`() = runTest {
+    fun `checkGoalCard popup onSetGoal navigates to goal screen`() = runTest(mainDispatcherRule.scheduler) {
         val accountWithNoGoal = fakeAccount.copy(goalType = null)
         every { accountRepository.getActiveAccount() } returns flowOf(accountWithNoGoal)
         coEvery { goalAlertDataStore.getGoalCardValue(accountWithNoGoal.id) } returns null

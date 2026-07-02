@@ -1,6 +1,6 @@
-import Testing
 import Foundation
 @testable import meApp
+import Testing
 
 @Suite(.serialized)
 @MainActor
@@ -19,8 +19,8 @@ struct GoalFormTests {
     @Test("currentWeight and goalWeight start empty")
     func initialWeights() {
         let form = makeForm()
-        #expect(form.currentWeight.value == "")
-        #expect(form.goalWeight.value == "")
+        #expect(form.currentWeight.value.isEmpty)
+        #expect(form.goalWeight.value.isEmpty)
     }
 
     @Test("form is not dirty initially")

@@ -5,8 +5,8 @@
 
 import Combine
 import Foundation
-import Testing
 @testable import meApp
+import Testing
 
 struct BabyEntryFormTests {
     // MARK: - Initial State
@@ -15,13 +15,13 @@ struct BabyEntryFormTests {
     func initialState() {
         let form = BabyEntryForm()
 
-        #expect(form.pounds.value == "")
-        #expect(form.ounces.value == "")
-        #expect(form.kg.value == "")
-        #expect(form.lb.value == "")
-        #expect(form.inches.value == "")
-        #expect(form.cm.value == "")
-        #expect(form.notes.value == "")
+        #expect(form.pounds.value.isEmpty)
+        #expect(form.ounces.value.isEmpty)
+        #expect(form.kg.value.isEmpty)
+        #expect(form.lb.value.isEmpty)
+        #expect(form.inches.value.isEmpty)
+        #expect(form.cm.value.isEmpty)
+        #expect(form.notes.value.isEmpty)
         #expect(form.isPristine == true)
     }
 
@@ -104,10 +104,10 @@ struct BabyEntryFormTests {
     // MARK: - Date Validation
 
     @Test("date: returns future date error when set to tomorrow")
-    func dateFutureDateError() {
+    func dateFutureDateError() throws {
         let form = BabyEntryForm()
 
-        let tomorrow = Calendar.current.date(byAdding: .day, value: 1, to: Date())!
+        let tomorrow = try #require(Calendar.current.date(byAdding: .day, value: 1, to: Date()))
         form.date.value = tomorrow
 
         #expect(form.date.errors[.futureDate] == true)

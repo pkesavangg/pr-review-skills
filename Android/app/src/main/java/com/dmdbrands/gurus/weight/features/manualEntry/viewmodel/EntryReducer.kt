@@ -236,6 +236,10 @@ data class BloodPressureEntryForm(
         pulse = FormControl.create(
           "",
           listOf(
+            // Pulse is required (parity with systolic/diastolic). Without this the field could be
+            // left blank → pulse defaulted to 0 → the entry failed the persist gate and was
+            // silently dropped behind a fake "Entry added" toast (MOB-598).
+            FormValidations.required(),
             FormValidations.hardMaxValidator(AppValidatorConfig.Pulse.HARD_MAX),
             FormValidations.rangeWarningValidator(
               AppValidatorConfig.Pulse.WARN_MIN, AppValidatorConfig.Pulse.WARN_MAX,

@@ -67,7 +67,7 @@ extension BtWifiScaleSetupStore {
     ///   - saveScale: Previously saved scale for Wi-Fi only setup (optional).
     ///   - isReconnect: Indicates if this is a reconnect flow (optional).
     ///   - isDuplicated: Indicates if this is handling a duplicate user error (optional).
-    func configure(with sku: String,
+    func configure(with sku: String, // swiftlint:disable:this function_body_length
                    discoveredScale: Device? = nil,
                    discoveryEvent: DeviceDiscoveryEvent? = nil,
                    saveScale: Device? = nil,

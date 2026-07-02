@@ -98,7 +98,7 @@ private fun DebugMenuContent(
       AppTroubleshootingSection(handleIntent)
       // Scale Troubleshooting Section (only show if scales are available)
       if (state.hasScales) {
-        ScaleTroubleshootingSection(
+        DeviceTroubleshootingSection(
           isSendScaleLogEnabled = state.isSendScaleLogEnabled,
           handleIntent = handleIntent,
         )
@@ -221,12 +221,12 @@ private fun AppTroubleshootingSection(handleIntent: (DebugMenuIntent) -> Unit) {
 }
 
 @Composable
-private fun ScaleTroubleshootingSection(
+private fun DeviceTroubleshootingSection(
   isSendScaleLogEnabled: Boolean,
   handleIntent: (DebugMenuIntent) -> Unit
 ) {
   SettingsSection(
-    title = DebugMenuStrings.SectionHeaders.ScaleTroubleshooting,
+    title = DebugMenuStrings.SectionHeaders.DeviceTroubleshooting,
     items = listOf(
       SettingsItem(
         title = DebugMenuStrings.Actions.SendScaleLog,

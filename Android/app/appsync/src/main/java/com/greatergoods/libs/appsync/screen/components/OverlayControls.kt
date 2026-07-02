@@ -74,105 +74,158 @@ fun OverlayControls(
         ),
   ) {
     // Top bar with logo and close button
-    Row(
-      modifier = Modifier
-        .align(Alignment.TopStart)
-        .fillMaxWidth(),
-      horizontalArrangement = Arrangement.SpaceBetween,
-      verticalAlignment = Alignment.CenterVertically,
-    ) {
-      // AppSync logo on the left
-      Image(
-        painterResource(R.drawable.logo),
-        contentDescription = "Appsync Logo",
-        contentScale = ContentScale.FillWidth,
-        modifier = Modifier.width(100.dp),
-      )
-
-      // Close button on the right
-      AppsyncButton(
-        onClick = onClose,
-        src = R.drawable.ic_close,
-        contentDescription = AppSyncStrings.CloseScan,
-      )
-    }
+    OverlayTopBar(
+      onClose = onClose,
+      modifier = Modifier.align(Alignment.TopStart),
+    )
 
     // Right side zoom controls
-    Column(
-      modifier = Modifier
-        .align(Alignment.CenterEnd)
-        .padding(end = 32.dp),
-      horizontalAlignment = Alignment.CenterHorizontally,
-      verticalArrangement = Arrangement.spacedBy(16.dp),
-    ) {
-      // Zoom in button
-      AppsyncButton(
-        onClick = onZoomIn,
-        src = R.drawable.ic_plus,
-        contentDescription = AppSyncStrings.ZoomIn,
-        enabled = canZoomIn,
-      )
-
-      // Zoom indicator image
-      Image(
-        painterResource(R.drawable.zoom),
-        contentDescription = "Zoom",
-        modifier = Modifier.width(40.dp),
-        contentScale = ContentScale.FillWidth,
-      )
-
-      // Zoom out button
-      AppsyncButton(
-        onClick = onZoomOut,
-        src = R.drawable.ic_minus,
-        contentDescription = AppSyncStrings.ZoomOut,
-        enabled = canZoomOut,
-      )
-    }
+    OverlayZoomControls(
+      canZoomIn = canZoomIn,
+      canZoomOut = canZoomOut,
+      onZoomIn = onZoomIn,
+      onZoomOut = onZoomOut,
+      modifier = Modifier.align(Alignment.CenterEnd),
+    )
 
     // Low light warning indicator (left side)
     if (showLowLightWarning) {
-      Column(
-        modifier =
-          Modifier
-            .align(Alignment.CenterStart)
-            .padding(start = 40.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center,
-      ) {
-        // Warning icon
-        Image(
-          painter = painterResource(R.drawable.warning),
-          contentDescription = AppSyncStrings.LowLightWarning,
-          modifier = Modifier.size(50.dp),
-        )
-
-      }
+      OverlayLowLightWarning(
+        modifier = Modifier.align(Alignment.CenterStart),
+      )
     }
 
     // Bottom manual entry button (optional)
-    Row(
-      modifier =
-        Modifier
-          .align(Alignment.BottomEnd)
-          .padding(vertical = 16.dp),
-      horizontalArrangement = Arrangement.End,
-    ) {
-      // Only show manual entry button if callback is provided
-      if (onManualEntry != null) {
-        Button(
-          onClick = onManualEntry,
-          modifier = Modifier,
-          shape = RoundedCornerShape(4.dp),
-          contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp),
-          colors =
-            ButtonDefaults.buttonColors(
-              containerColor = Color.White,
-              contentColor = Color.Gray,
-            ),
-        ) {
-          Text(AppSyncStrings.ManualEntry.uppercase())
-        }
+    OverlayManualEntry(
+      onManualEntry = onManualEntry,
+      modifier = Modifier.align(Alignment.BottomEnd),
+    )
+  }
+}
+
+/**
+ * Top bar of [OverlayControls]: the AppSync logo on the left and the close button
+ * on the right. Extracted mechanically; rendered output is unchanged.
+ */
+@Composable
+private fun OverlayTopBar(
+  onClose: () -> Unit,
+  modifier: Modifier = Modifier,
+) {
+  Row(
+    modifier = modifier.fillMaxWidth(),
+    horizontalArrangement = Arrangement.SpaceBetween,
+    verticalAlignment = Alignment.CenterVertically,
+  ) {
+    // AppSync logo on the left
+    Image(
+      painterResource(R.drawable.logo),
+      contentDescription = "Appsync Logo",
+      contentScale = ContentScale.FillWidth,
+      modifier = Modifier.width(100.dp),
+    )
+
+    // Close button on the right
+    AppsyncButton(
+      onClick = onClose,
+      src = R.drawable.ic_close,
+      contentDescription = AppSyncStrings.CloseScan,
+    )
+  }
+}
+
+/**
+ * Right-side zoom controls of [OverlayControls]: zoom-in, zoom indicator, zoom-out.
+ * Extracted mechanically; rendered output is unchanged.
+ */
+@Composable
+private fun OverlayZoomControls(
+  canZoomIn: Boolean,
+  canZoomOut: Boolean,
+  onZoomIn: () -> Unit,
+  onZoomOut: () -> Unit,
+  modifier: Modifier = Modifier,
+) {
+  Column(
+    modifier = modifier.padding(end = 32.dp),
+    horizontalAlignment = Alignment.CenterHorizontally,
+    verticalArrangement = Arrangement.spacedBy(16.dp),
+  ) {
+    // Zoom in button
+    AppsyncButton(
+      onClick = onZoomIn,
+      src = R.drawable.ic_plus,
+      contentDescription = AppSyncStrings.ZoomIn,
+      enabled = canZoomIn,
+    )
+
+    // Zoom indicator image
+    Image(
+      painterResource(R.drawable.zoom),
+      contentDescription = "Zoom",
+      modifier = Modifier.width(40.dp),
+      contentScale = ContentScale.FillWidth,
+    )
+
+    // Zoom out button
+    AppsyncButton(
+      onClick = onZoomOut,
+      src = R.drawable.ic_minus,
+      contentDescription = AppSyncStrings.ZoomOut,
+      enabled = canZoomOut,
+    )
+  }
+}
+
+/**
+ * Left-side low light warning indicator of [OverlayControls].
+ * Extracted mechanically; rendered output is unchanged.
+ */
+@Composable
+private fun OverlayLowLightWarning(
+  modifier: Modifier = Modifier,
+) {
+  Column(
+    modifier = modifier.padding(start = 40.dp),
+    horizontalAlignment = Alignment.CenterHorizontally,
+    verticalArrangement = Arrangement.Center,
+  ) {
+    // Warning icon
+    Image(
+      painter = painterResource(R.drawable.warning),
+      contentDescription = AppSyncStrings.LowLightWarning,
+      modifier = Modifier.size(50.dp),
+    )
+  }
+}
+
+/**
+ * Bottom manual entry button of [OverlayControls]. Renders nothing when
+ * [onManualEntry] is null. Extracted mechanically; rendered output is unchanged.
+ */
+@Composable
+private fun OverlayManualEntry(
+  onManualEntry: (() -> Unit)?,
+  modifier: Modifier = Modifier,
+) {
+  Row(
+    modifier = modifier.padding(vertical = 16.dp),
+    horizontalArrangement = Arrangement.End,
+  ) {
+    // Only show manual entry button if callback is provided
+    if (onManualEntry != null) {
+      Button(
+        onClick = onManualEntry,
+        modifier = Modifier,
+        shape = RoundedCornerShape(4.dp),
+        contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp),
+        colors =
+          ButtonDefaults.buttonColors(
+            containerColor = Color.White,
+            contentColor = Color.Gray,
+          ),
+      ) {
+        Text(AppSyncStrings.ManualEntry.uppercase())
       }
     }
   }

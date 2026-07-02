@@ -1,6 +1,6 @@
 import Foundation
-import Testing
 @testable import meApp
+import Testing
 
 private enum WifiScaleSetupStoreTestError: Error {
     case tokenUnavailable

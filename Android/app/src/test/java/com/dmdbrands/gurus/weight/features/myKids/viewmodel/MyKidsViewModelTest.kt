@@ -110,7 +110,7 @@ class MyKidsViewModelTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `init observes babies and sets state`() = runTest {
+    fun `init observes babies and sets state`() = runTest(mainDispatcherRule.scheduler) {
         val babies = listOf(aBabyProfile("baby-1"), aBabyProfile("baby-2"))
         every { babyProfileService.observeAll() } returns flowOf(babies)
 
@@ -121,7 +121,7 @@ class MyKidsViewModelTest {
     }
 
     @Test
-    fun `init loads activeBabyId and sets state`() = runTest {
+    fun `init loads activeBabyId and sets state`() = runTest(mainDispatcherRule.scheduler) {
         coEvery { accountRepository.getActiveBabyId() } returns "baby-1"
 
         viewModel = createViewModel()
@@ -131,7 +131,7 @@ class MyKidsViewModelTest {
     }
 
     @Test
-    fun `init with null activeBabyId keeps activeBabyId null`() = runTest {
+    fun `init with null activeBabyId keeps activeBabyId null`() = runTest(mainDispatcherRule.scheduler) {
         coEvery { accountRepository.getActiveBabyId() } returns null
 
         viewModel = createViewModel()
@@ -145,7 +145,7 @@ class MyKidsViewModelTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `SetBabies updates babies in state`() = runTest {
+    fun `SetBabies updates babies in state`() = runTest(mainDispatcherRule.scheduler) {
         val babies = listOf(aBabyProfile()).toImmutableList()
         viewModel.handleIntent(MyKidsIntent.SetBabies(babies))
         assertThat(viewModel.state.value.babies).isEqualTo(babies)
@@ -156,7 +156,7 @@ class MyKidsViewModelTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `SaveBaby calls babyProfileService save`() = runTest {
+    fun `SaveBaby calls babyProfileService save`() = runTest(mainDispatcherRule.scheduler) {
         val account = com.dmdbrands.gurus.weight.testutil.TestFixtures.activeAccount
         coEvery { accountRepository.getActiveAccount() } returns flowOf(account)
         coEvery { accountRepository.getActiveBabyId() } returns null
@@ -176,7 +176,7 @@ class MyKidsViewModelTest {
     }
 
     @Test
-    fun `SaveBaby navigates back on success`() = runTest {
+    fun `SaveBaby navigates back on success`() = runTest(mainDispatcherRule.scheduler) {
         val account = com.dmdbrands.gurus.weight.testutil.TestFixtures.activeAccount
         coEvery { accountRepository.getActiveAccount() } returns flowOf(account)
         coEvery { accountRepository.getActiveBabyId() } returns null
@@ -196,7 +196,7 @@ class MyKidsViewModelTest {
     }
 
     @Test
-    fun `SaveBaby with null active account does not call save`() = runTest {
+    fun `SaveBaby with null active account does not call save`() = runTest(mainDispatcherRule.scheduler) {
         coEvery { accountRepository.getActiveAccount() } returns flowOf(null)
 
         viewModel.handleIntent(
@@ -215,7 +215,7 @@ class MyKidsViewModelTest {
     }
 
     @Test
-    fun `SaveBaby sets activeBabyId when none exists`() = runTest {
+    fun `SaveBaby sets activeBabyId when none exists`() = runTest(mainDispatcherRule.scheduler) {
         val account = com.dmdbrands.gurus.weight.testutil.TestFixtures.activeAccount
         coEvery { accountRepository.getActiveAccount() } returns flowOf(account)
         coEvery { accountRepository.getActiveBabyId() } returns null
@@ -235,7 +235,7 @@ class MyKidsViewModelTest {
     }
 
     @Test
-    fun `SaveBaby does not overwrite existing activeBabyId`() = runTest {
+    fun `SaveBaby does not overwrite existing activeBabyId`() = runTest(mainDispatcherRule.scheduler) {
         val account = com.dmdbrands.gurus.weight.testutil.TestFixtures.activeAccount
         coEvery { accountRepository.getActiveAccount() } returns flowOf(account)
         coEvery { accountRepository.getActiveBabyId() } returns "existing-baby"
@@ -255,7 +255,7 @@ class MyKidsViewModelTest {
     }
 
     @Test
-    fun `SaveBaby clears isLoading on exception`() = runTest {
+    fun `SaveBaby clears isLoading on exception`() = runTest(mainDispatcherRule.scheduler) {
         val account = com.dmdbrands.gurus.weight.testutil.TestFixtures.activeAccount
         coEvery { accountRepository.getActiveAccount() } returns flowOf(account)
         coEvery { accountRepository.getActiveBabyId() } returns null
@@ -281,7 +281,7 @@ class MyKidsViewModelTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `DeleteBaby calls babyProfileService delete`() = runTest {
+    fun `DeleteBaby calls babyProfileService delete`() = runTest(mainDispatcherRule.scheduler) {
         viewModel.handleIntent(MyKidsIntent.DeleteBaby("baby-1"))
         advanceUntilIdle()
 
@@ -289,7 +289,7 @@ class MyKidsViewModelTest {
     }
 
     @Test
-    fun `DeleteBaby of active baby clears activeBabyId when no remaining babies`() = runTest {
+    fun `DeleteBaby of active baby clears activeBabyId when no remaining babies`() = runTest(mainDispatcherRule.scheduler) {
         val account = com.dmdbrands.gurus.weight.testutil.TestFixtures.activeAccount
         coEvery { accountRepository.getActiveAccount() } returns flowOf(account)
         viewModel.handleIntent(MyKidsIntent.SetActiveBabyId("baby-1"))
@@ -301,7 +301,7 @@ class MyKidsViewModelTest {
     }
 
     @Test
-    fun `DeleteBaby of active baby sets next baby as active`() = runTest {
+    fun `DeleteBaby of active baby sets next baby as active`() = runTest(mainDispatcherRule.scheduler) {
         val account = com.dmdbrands.gurus.weight.testutil.TestFixtures.activeAccount
         coEvery { accountRepository.getActiveAccount() } returns flowOf(account)
         val baby1 = aBabyProfile("baby-1")
@@ -316,7 +316,7 @@ class MyKidsViewModelTest {
     }
 
     @Test
-    fun `DeleteBaby of active baby clears activeBabyId in db when no remaining babies`() = runTest {
+    fun `DeleteBaby of active baby clears activeBabyId in db when no remaining babies`() = runTest(mainDispatcherRule.scheduler) {
         val account = com.dmdbrands.gurus.weight.testutil.TestFixtures.activeAccount
         coEvery { accountRepository.getActiveAccount() } returns flowOf(account)
         viewModel.handleIntent(MyKidsIntent.SetActiveBabyId("baby-1"))
@@ -328,7 +328,7 @@ class MyKidsViewModelTest {
     }
 
     @Test
-    fun `DeleteBaby of non-active baby does not change activeBabyId`() = runTest {
+    fun `DeleteBaby of non-active baby does not change activeBabyId`() = runTest(mainDispatcherRule.scheduler) {
         viewModel.handleIntent(MyKidsIntent.SetActiveBabyId("baby-1"))
 
         viewModel.handleIntent(MyKidsIntent.DeleteBaby("baby-2"))
@@ -338,7 +338,7 @@ class MyKidsViewModelTest {
     }
 
     @Test
-    fun `DeleteBaby does not crash on exception`() = runTest {
+    fun `DeleteBaby does not crash on exception`() = runTest(mainDispatcherRule.scheduler) {
         coEvery { babyProfileService.delete(any()) } throws RuntimeException("DB error")
 
         viewModel.handleIntent(MyKidsIntent.DeleteBaby("baby-1"))

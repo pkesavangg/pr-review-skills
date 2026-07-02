@@ -54,64 +54,10 @@ fun FeedItemCard(
       )
 
     // Main content container
-    Row(
-      modifier = Modifier
-        .fillMaxWidth(),
-      verticalAlignment = Alignment.CenterVertically,
-    ) {
-      // Image container (160dp width, 230dp height)
-      Box(
-        modifier = Modifier
-          .size(width = 160.dp, height = 230.dp)
-          .clip(RoundedCornerShape(0.dp)),
-      ) {
-        AsyncImage(
-          model = feedItem.titleImage,
-          contentDescription = feedItem.titleText,
-          modifier = Modifier
-            .fillMaxWidth()
-            .fillMaxHeight(),
-          contentScale = ContentScale.Crop,
-          placeholder = painterResource(id = AppIcons.Iam.placeholderImage),
-          error = painterResource(id = AppIcons.Iam.placeholderImage),
-        )
-      }
-
-      // Text container
-      Column(
-        modifier = Modifier
-          .fillMaxWidth().padding(start = 24.dp, end = 16.dp),
-        verticalArrangement = Arrangement.spacedBy(32.dp),
-      ) {
-        // Message container
-        Column(
-          verticalArrangement = Arrangement.spacedBy(8.dp),
-        ) {
-          // Message type text (LIGHTENING DEAL)
-          IAMText(
-            text = feedItem.messageTypeText.lowercase(),
-            textType = TextType.SubHeading,
-            modifier = Modifier.fillMaxWidth(),
-          )
-
-          // Headline text
-          IAMText(
-            text = feedItem.titleText,
-            textType = TextType.ListTitle1,
-          )
-
-          // Subtitle text (Ends in X hours) with rich text formatting
-          IAMText(
-            text = feedItem.subtitleFeedText,
-            textType = TextType.Body,
-            color = IamTheme.colors.textBody,
-            enableRichText = true,
-            expiresAt = feedItem.expiresAt,
-          )
-        }
-        IamButton(label = feedItem.linkText, size = ButtonSize.Small, type = ButtonType.InlineTextPrimary, onClick = { onItemClick.invoke(feedItem) }, modifier = Modifier.padding(0.dp))
-      }
-    }
+    FeedItemCardContent(
+      feedItem = feedItem,
+      onItemClick = onItemClick,
+    )
 
     // Bottom divider
     if (showBottomDivider) {
@@ -124,10 +70,88 @@ fun FeedItemCard(
   }
 }
 
+/**
+ * Main content row: product image on the left and text/CTA on the right
+ */
+@Composable
+private fun FeedItemCardContent(
+  feedItem: FeedItem,
+  onItemClick: (FeedItem) -> Unit,
+) {
+  Row(
+    modifier = Modifier
+      .fillMaxWidth(),
+    verticalAlignment = Alignment.CenterVertically,
+  ) {
+    // Image container (160dp width, 230dp height)
+    Box(
+      modifier = Modifier
+        .size(width = 160.dp, height = 230.dp)
+        .clip(RoundedCornerShape(0.dp)),
+    ) {
+      AsyncImage(
+        model = feedItem.titleImage,
+        contentDescription = feedItem.titleText,
+        modifier = Modifier
+          .fillMaxWidth()
+          .fillMaxHeight(),
+        contentScale = ContentScale.Crop,
+        placeholder = painterResource(id = AppIcons.Iam.placeholderImage),
+        error = painterResource(id = AppIcons.Iam.placeholderImage),
+      )
+    }
+
+    // Text container
+    Column(
+      modifier = Modifier
+        .fillMaxWidth().padding(start = 24.dp, end = 16.dp),
+      verticalArrangement = Arrangement.spacedBy(32.dp),
+    ) {
+      // Message container
+      Column(
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+      ) {
+        // Message type text (LIGHTENING DEAL)
+        IAMText(
+          text = feedItem.messageTypeText.lowercase(),
+          textType = TextType.SubHeading,
+          modifier = Modifier.fillMaxWidth(),
+        )
+
+        // Headline text
+        IAMText(
+          text = feedItem.titleText,
+          textType = TextType.ListTitle1,
+        )
+
+        // Subtitle text (Ends in X hours) with rich text formatting
+        IAMText(
+          text = feedItem.subtitleFeedText,
+          textType = TextType.Body,
+          color = IamTheme.colors.textBody,
+          enableRichText = true,
+          expiresAt = feedItem.expiresAt,
+        )
+      }
+      IamButton(label = feedItem.linkText, size = ButtonSize.Small, type = ButtonType.InlineTextPrimary, onClick = { onItemClick.invoke(feedItem) }, modifier = Modifier.padding(0.dp))
+    }
+  }
+}
+
 @Preview(showBackground = true)
 @Composable
 fun FeedItemCardPreview() {
-  val mockFeedItem = FeedItem(
+  val mockFeedItem = mockFeedItemCardItem()
+  ProvideIamTheme {
+    FeedItemCard(
+      feedItem = mockFeedItem,
+      onItemClick = { },
+    )
+  }
+}
+
+private fun mockFeedItemCardItem(): FeedItem {
+  return FeedItem(
     elementId = "mockUUID0002",
     titleText = "Here's a headline that's 40 characters.",
     subtitleModalText = "Be prepare for the holidays! Offer ends in {{expiresAt}}!",
@@ -184,10 +208,4 @@ fun FeedItemCardPreview() {
       ),
     ),
   )
-  ProvideIamTheme {
-    FeedItemCard(
-      feedItem = mockFeedItem,
-      onItemClick = { },
-    )
-  }
 }

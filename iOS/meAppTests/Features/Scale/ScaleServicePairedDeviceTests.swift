@@ -1,6 +1,6 @@
 import Foundation
-import Testing
 @testable import meApp
+import Testing
 
 /// Tests for the unified `/paired-device/` service-layer wiring on `ScaleService` (MOB-383):
 /// list/create/update/delete delegation and the `pairDevice(_:deviceType:)` Device→request mapping.

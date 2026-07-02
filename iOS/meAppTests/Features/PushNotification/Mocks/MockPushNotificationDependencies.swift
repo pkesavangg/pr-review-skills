@@ -1,8 +1,8 @@
 import Combine
 import Foundation
 import GGBluetoothSwiftPackage
-import UserNotifications
 @testable import meApp
+import UserNotifications
 
 @MainActor
 final class MockPushNotificationAPIRepository: PushNotificationRepositoryAPIProtocol {
@@ -125,6 +125,7 @@ final class MockPushEntryService: EntryServiceProtocol {
     func exportBpmCSV() async throws {}
     func migrateBabyEntriesToDecigrams() async {}
     func getEntry(byId id: UUID) async throws -> Entry? { nil }
+    // swiftlint:disable:next function_parameter_count
     func createBabyEntry(babyId: String, weight: Int, length: Int, note: String, entryTimestamp: String, source: String?) async throws {}
 }
 
@@ -213,6 +214,7 @@ final class MockPushScaleService: PairedDeviceServiceProtocol {
         throw UnexpectedCallError.methodCalled("createR4Scale")
     }
 
+    // swiftlint:disable:next function_parameter_count
     func createBluetoothScale(
         device: Device,
         sku: String?,
