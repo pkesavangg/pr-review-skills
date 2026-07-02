@@ -361,6 +361,9 @@ fun DateTimeInput(
   readOnly: Boolean = false,
   minValue: DateTimeValue? = null,
   maxValue: DateTimeValue? = null,
+  // When false, disables manual keyboard entry in the date picker (calendar grid only). Set false
+  // for Date-of-Birth fields to prevent silent leap-day normalization of typed dates. (MOB-868)
+  showModeToggle: Boolean = true,
 ) {
   // State for dialog visibility
   var isDateDialogOpen by remember { mutableStateOf(false) }
@@ -464,6 +467,7 @@ fun DateTimeInput(
       },
       minValue = minValue,
       maxValue = maxValue,
+      showModeToggle = showModeToggle,
     )
   }
   // Show time picker dialog if needed

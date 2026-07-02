@@ -98,6 +98,8 @@ fun AddBabyStep(
             formControl = babyForm.birthday,
             mode = DateTimeInputMode.Date,
             maxValue = DateTimeValue.Date(System.currentTimeMillis()),
+            // DOB: calendar grid only to prevent silent leap-day normalization. (MOB-868)
+            showModeToggle = false,
         )
 
         Spacer(modifier = Modifier.height(MeTheme.spacing.sm))

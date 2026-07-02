@@ -104,6 +104,11 @@ fun DatePickerDialogContent(
   minValue: DateTimeValue? = null,
   maxValue: DateTimeValue? = null,
   hasError: Boolean = false,
+  // When false, hides the keyboard/text-input toggle so only the calendar grid can be used.
+  // Used for Date-of-Birth fields, where Material 3's text-input parsing silently normalizes an
+  // impossible leap day (e.g. 29 Feb of a non-leap year) to a valid one instead of rejecting it,
+  // causing silent DOB alteration. Grid-only entry makes impossible dates unselectable. (MOB-868)
+  showModeToggle: Boolean = true,
 ) {
   val minDateMillis = minValue.asMillis()?.let { localMillisToUtcDateMillis(it) }
   val maxDateMillis = maxValue.asMillis()?.let { localMillisToUtcDateMillis(it) }
@@ -183,6 +188,7 @@ fun DatePickerDialogContent(
         state = datePickerState,
         colors = pickerColor,
         dateFormatter = datePickerFormatter,
+        showModeToggle = showModeToggle,
       )
     }
   }
