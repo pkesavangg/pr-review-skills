@@ -270,13 +270,17 @@ jobs:
           name: Run unit tests with coverage (iPhone 16 simulator)
           working_directory: iOS
           no_output_timeout: 30m
-          # No -configuration flag: `xcodebuild test` uses the scheme's Test action config.
-          # (The project has no "Debug" config — only Dev/Production.)
+          # -configuration Dev is required: the scheme's default test config is Production
+          # (release, built -O with ENABLE_TESTABILITY=NO), which fails every `@testable import
+          # meApp` with "module 'meApp' was not compiled for testing". Dev is the project's debug
+          # config (ENABLE_TESTABILITY=YES) — the same config the build job uses. The project has
+          # no "Debug" config, only Dev/Production.
           command: |
             xcrun simctl boot "iPhone 16" || true
             xcodebuild test \
               -project meApp.xcodeproj \
               -scheme meApp \
+              -configuration Dev \
               -destination 'platform=iOS Simulator,name=iPhone 16,OS=latest' \
               -only-testing:meAppTests \
               -onlyUsePackageVersionsFromResolvedFile \
