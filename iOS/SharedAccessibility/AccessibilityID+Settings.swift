@@ -43,6 +43,18 @@ extension AccessibilityID {
     static let confirmPasswordField = "confirm_password_field"
     static let changePasswordSaveButton = "change_password_save_button"
 
+    // MARK: - Integrations
+    static let integrationsScreenRoot = "integrations_screen_root"
+    static let integrationsRequestButton = "integrations_request_button"
+    static let integrationRow = "integration_row" // suffixed with the provider (e.g. _fitbit)
+
+    // MARK: - Add & Edit Scales
+    static let addEditScalesScreenRoot = "add_edit_scales_screen_root"
+    static let addScaleModelNumberField = "add_scale_model_number_field"
+    static let addScaleSubmitButton = "add_scale_submit_button"
+    static let addScaleCantFindButton = "add_scale_cant_find_button"
+    static let deviceRow = "device_row" // suffixed with the device SKU per row
+
     // MARK: - Goal Setting Screen
     static let goalWeightInput = "goal_weight_input"
     static let startingWeightInput = "starting_weight_input"
