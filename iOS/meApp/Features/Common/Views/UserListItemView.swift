@@ -19,7 +19,13 @@ struct UserListItemView: View {
     var onTap: ((String, Bool) -> Void)
     var onEdit: ((String) -> Void)? // optional edit trigger — shows pencil icon when set
     var onDelete: ((String) -> Void)? // optional deletion trigger
-    
+
+    // Per-row automation ids: a list has many rows, so each is suffixed with the
+    // stable accountID to stay unique (one node each) while sharing a common prefix.
+    private var rowIdentifier: String { "\(AccessibilityID.accountCardRow)_\(user.accountID)" }
+    private var deleteIdentifier: String { "\(AccessibilityID.accountCardDeleteButton)_\(user.accountID)" }
+    private var logInIdentifier: String { "\(AccessibilityID.accountCardLogInButton)_\(user.accountID)" }
+
     var body: some View {
         rowContent
             .contentShape(Rectangle()) // Makes entire row tappable
@@ -37,6 +43,7 @@ struct UserListItemView: View {
                                 AnyView(
                                     AppIconView(icon: AppAssets.trash, size: IconSize(width: 24, height: 24))
                                         .foregroundColor(theme.backgroundPrimary)
+                                        .accessibilityIdentifier(deleteIdentifier)
                                 )
                             }
                         )
@@ -46,6 +53,9 @@ struct UserListItemView: View {
                 openThresholdFraction: 0.1,
                 closeWithoutAnimationOnAction: true
             )
+            // Contain so the row is one addressable tile whose child controls keep their own ids.
+            .accessibilityElement(children: .contain)
+            .accessibilityIdentifier(rowIdentifier)
     }
     
     private var rowContent: some View {
@@ -94,6 +104,7 @@ struct UserListItemView: View {
                         onTap(user.accountID, user.isExpired)
                     }
                 }
+                .appAccessibility(id: logInIdentifier)
             } else if let onEdit {
                 Button {
                     onEdit(user.accountID)
