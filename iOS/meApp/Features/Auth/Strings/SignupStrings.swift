@@ -16,7 +16,7 @@ struct SignupStrings {
     
     struct DateOfBirthStep {
         static let title = "When were you born?"
-        static let subtitle = "Your age helps us accurately calculate body metrics and healthy ranges. Note: You must be 13+ to make an account."
+        static let subtitle = "Your age helps us calculate accurate ranges and personalized insights for your health data. You must be 13+ to create an account."
         static let birthdayLabel = "BIRTHDAY"
     }
     
@@ -31,8 +31,8 @@ struct SignupStrings {
         static let subtitle = "Height is another factor that helps us provide you with the most accurate metrics."
         static let pickerHeader = "Height"
         static let fieldLabel = "Height"
-        static let imperialUnit = "Ft / In"
-        static let metricUnit = "CM"
+        static let imperialUnit = "ft/in"
+        static let metricUnit = "cm"
     }
 
     struct GoalStep {
