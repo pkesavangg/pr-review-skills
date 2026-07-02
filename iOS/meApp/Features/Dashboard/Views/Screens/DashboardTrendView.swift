@@ -10,6 +10,7 @@ struct DashboardTrendView<TopContent: View, ChartFooter: View>: View {
     @EnvironmentObject private var tabViewModel: BottomTabBarViewModel
     @Environment(\.appTheme) private var theme
     @State private var localSelectedPeriod: TimePeriod = DefaultGraphPeriodPreference.fallback
+    @State private var segmentSwitchTask: Task<Void, Never>?
 
     private let topContent: () -> TopContent
     private let chartFooter: () -> ChartFooter
@@ -88,7 +89,12 @@ struct DashboardTrendView<TopContent: View, ChartFooter: View>: View {
             // so the chart and selection land on the most recent reading.
             // Dispatch outside the current animation transaction so the segment button
             // highlight animates without being blocked by chart recalculation.
-            Task { @MainActor in
+            // MOB-243: debounce rapid taps — cancel any in-flight recalculation and restart,
+            // so only the final selected segment triggers the expensive chart update.
+            segmentSwitchTask?.cancel()
+            segmentSwitchTask = Task { @MainActor in
+                try? await Task.sleep(nanoseconds: 120_000_000)
+                guard !Task.isCancelled else { return }
                 dashboardStore.chartManager.updateSelectedPeriod(newValue)
             }
         }

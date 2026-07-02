@@ -65,7 +65,7 @@ struct MonthSummaryItem: View {
             VStack(alignment: .leading) {
                 Text(avgWeightText)
                     .fontOpenSans(.body2)
-                    .foregroundColor(theme.textBody)
+                    .foregroundColor(theme.brandWgPrimary)
 
                 Text(HistoryListStrings.average)
                     .fontOpenSans(.subHeading2)

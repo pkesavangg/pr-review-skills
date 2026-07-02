@@ -116,7 +116,7 @@ class WeightlessViewModelTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `subscribes to activeAccountFlow and updates state`() = runTest {
+    fun `subscribes to activeAccountFlow and updates state`() = runTest(mainDispatcherRule.scheduler) {
         viewModel = createViewModel()
         val account = accountWithWeightless(isWeightlessOn = true, weightlessWeight = 150.0f)
         accountFlow.value = account
@@ -127,7 +127,7 @@ class WeightlessViewModelTest {
     }
 
     @Test
-    fun `account with KG unit sets isMetric to true`() = runTest {
+    fun `account with KG unit sets isMetric to true`() = runTest(mainDispatcherRule.scheduler) {
         viewModel = createViewModel()
         val account = accountWithWeightless(weightUnit = WeightUnit.KG)
         accountFlow.value = account
@@ -138,7 +138,7 @@ class WeightlessViewModelTest {
     }
 
     @Test
-    fun `null account does not update state`() = runTest {
+    fun `null account does not update state`() = runTest(mainDispatcherRule.scheduler) {
         viewModel = createViewModel()
         accountFlow.value = null
         advanceUntilIdle()
@@ -151,7 +151,7 @@ class WeightlessViewModelTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `Submit shows loader`() = runTest {
+    fun `Submit shows loader`() = runTest(mainDispatcherRule.scheduler) {
         viewModel = createViewModel()
         accountFlow.value = accountWithWeightless()
         advanceUntilIdle()
@@ -163,7 +163,7 @@ class WeightlessViewModelTest {
     }
 
     @Test
-    fun `Submit calls userSettingsService toggleWeightlessSetting`() = runTest {
+    fun `Submit calls userSettingsService toggleWeightlessSetting`() = runTest(mainDispatcherRule.scheduler) {
         viewModel = createViewModel()
         accountFlow.value = accountWithWeightless()
         advanceUntilIdle()
@@ -175,7 +175,7 @@ class WeightlessViewModelTest {
     }
 
     @Test
-    fun `Submit dismisses loader after success`() = runTest {
+    fun `Submit dismisses loader after success`() = runTest(mainDispatcherRule.scheduler) {
         viewModel = createViewModel()
         accountFlow.value = accountWithWeightless()
         advanceUntilIdle()
@@ -187,7 +187,7 @@ class WeightlessViewModelTest {
     }
 
     @Test
-    fun `Submit shows success toast`() = runTest {
+    fun `Submit shows success toast`() = runTest(mainDispatcherRule.scheduler) {
         viewModel = createViewModel()
         accountFlow.value = accountWithWeightless()
         advanceUntilIdle()
@@ -203,7 +203,7 @@ class WeightlessViewModelTest {
     }
 
     @Test
-    fun `Submit navigates back on success`() = runTest {
+    fun `Submit navigates back on success`() = runTest(mainDispatcherRule.scheduler) {
         viewModel = createViewModel()
         accountFlow.value = accountWithWeightless()
         advanceUntilIdle()
@@ -219,7 +219,7 @@ class WeightlessViewModelTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `Submit dismisses loader when toggleWeightlessSetting throws`() = runTest {
+    fun `Submit dismisses loader when toggleWeightlessSetting throws`() = runTest(mainDispatcherRule.scheduler) {
         coEvery { userSettingsService.toggleWeightlessSetting(any(), any()) } throws RuntimeException("API error")
         viewModel = createViewModel()
         accountFlow.value = accountWithWeightless()
@@ -232,7 +232,7 @@ class WeightlessViewModelTest {
     }
 
     @Test
-    fun `Submit returns early when account is null`() = runTest {
+    fun `Submit returns early when account is null`() = runTest(mainDispatcherRule.scheduler) {
         viewModel = createViewModel()
         advanceUntilIdle()
 
@@ -247,7 +247,7 @@ class WeightlessViewModelTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `OpenHelpModal enqueues alert dialog`() = runTest {
+    fun `OpenHelpModal enqueues alert dialog`() = runTest(mainDispatcherRule.scheduler) {
         viewModel = createViewModel()
         advanceUntilIdle()
 
@@ -261,7 +261,7 @@ class WeightlessViewModelTest {
     }
 
     @Test
-    fun `OpenHelpModal dialog has correct title`() = runTest {
+    fun `OpenHelpModal dialog has correct title`() = runTest(mainDispatcherRule.scheduler) {
         viewModel = createViewModel()
         advanceUntilIdle()
 
@@ -279,7 +279,7 @@ class WeightlessViewModelTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `OnBack navigates back when no changes`() = runTest {
+    fun `OnBack navigates back when no changes`() = runTest(mainDispatcherRule.scheduler) {
         viewModel = createViewModel()
         advanceUntilIdle()
 
@@ -294,7 +294,7 @@ class WeightlessViewModelTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `OnBack shows unsaved changes dialog when toggle changed`() = runTest {
+    fun `OnBack shows unsaved changes dialog when toggle changed`() = runTest(mainDispatcherRule.scheduler) {
         viewModel = createViewModel()
         advanceUntilIdle()
 
@@ -310,7 +310,7 @@ class WeightlessViewModelTest {
     }
 
     @Test
-    fun `OnBack dialog onConfirm navigates back`() = runTest {
+    fun `OnBack dialog onConfirm navigates back`() = runTest(mainDispatcherRule.scheduler) {
         viewModel = createViewModel()
         advanceUntilIdle()
 
@@ -332,7 +332,7 @@ class WeightlessViewModelTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `Success shows toast and navigates back`() = runTest {
+    fun `Success shows toast and navigates back`() = runTest(mainDispatcherRule.scheduler) {
         viewModel = createViewModel()
         advanceUntilIdle()
 
@@ -390,7 +390,7 @@ class WeightlessViewModelTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `UpdateForm replaces form in state`() = runTest {
+    fun `UpdateForm replaces form in state`() = runTest(mainDispatcherRule.scheduler) {
         viewModel = createViewModel()
         advanceUntilIdle()
 
@@ -435,7 +435,7 @@ class WeightlessViewModelTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `updateStateWithAccount with weightless on and weight populates form`() = runTest {
+    fun `updateStateWithAccount with weightless on and weight populates form`() = runTest(mainDispatcherRule.scheduler) {
         viewModel = createViewModel()
         val account = accountWithWeightless(
             isWeightlessOn = true,
@@ -450,7 +450,7 @@ class WeightlessViewModelTest {
     }
 
     @Test
-    fun `updateStateWithAccount with weightless off uses default weight`() = runTest {
+    fun `updateStateWithAccount with weightless off uses default weight`() = runTest(mainDispatcherRule.scheduler) {
         viewModel = createViewModel()
         val account = accountWithWeightless(
             isWeightlessOn = false,
@@ -464,7 +464,7 @@ class WeightlessViewModelTest {
     }
 
     @Test
-    fun `updateStateWithAccount with KG unit sets isMetric true`() = runTest {
+    fun `updateStateWithAccount with KG unit sets isMetric true`() = runTest(mainDispatcherRule.scheduler) {
         viewModel = createViewModel()
         val account = accountWithWeightless(weightUnit = WeightUnit.KG)
         accountFlow.value = account
@@ -475,7 +475,7 @@ class WeightlessViewModelTest {
     }
 
     @Test
-    fun `updateStateWithAccount resets hasToggleChanged to false`() = runTest {
+    fun `updateStateWithAccount resets hasToggleChanged to false`() = runTest(mainDispatcherRule.scheduler) {
         viewModel = createViewModel()
         viewModel.handleIntent(WeightlessIntent.ToggleWeightless) // hasToggleChanged = true
         assertThat(viewModel.state.value.hasToggleChanged).isTrue()
@@ -492,7 +492,7 @@ class WeightlessViewModelTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `Submit with weightless on calls toggleWeightlessSetting with correct params`() = runTest {
+    fun `Submit with weightless on calls toggleWeightlessSetting with correct params`() = runTest(mainDispatcherRule.scheduler) {
         viewModel = createViewModel()
         val account = accountWithWeightless(isWeightlessOn = true, weightlessWeight = 150.0f)
         accountFlow.value = account
@@ -514,7 +514,7 @@ class WeightlessViewModelTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `Success shows toast with correct title and message`() = runTest {
+    fun `Success shows toast with correct title and message`() = runTest(mainDispatcherRule.scheduler) {
         viewModel = createViewModel()
         advanceUntilIdle()
 
@@ -529,7 +529,7 @@ class WeightlessViewModelTest {
     }
 
     @Test
-    fun `Success navigates back with null topLevel`() = runTest {
+    fun `Success navigates back with null topLevel`() = runTest(mainDispatcherRule.scheduler) {
         viewModel = createViewModel()
         advanceUntilIdle()
 

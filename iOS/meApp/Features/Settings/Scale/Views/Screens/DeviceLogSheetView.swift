@@ -31,7 +31,11 @@ struct DeviceLogSheetView: View {
                                     helpStore.sendScaleLogHandler(device: scale)
                                 },
                                 isDisabled: !scale.isConnected,
-                                scaleType: DeviceTypeHelper.determineDeviceModelType(sku: scale.sku, scaleType: scale.bathScale?.scaleType, deviceType: scale.deviceType)
+                                scaleType: DeviceTypeHelper.determineDeviceModelType(
+                                    sku: scale.sku,
+                                    scaleType: scale.bathScale?.scaleType,
+                                    deviceType: scale.deviceType
+                                )
                             )
                             Divider()
                                 .frame(height: 0.5)

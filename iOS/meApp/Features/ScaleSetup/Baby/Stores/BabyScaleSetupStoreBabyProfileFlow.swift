@@ -122,9 +122,9 @@ extension BabyScaleSetupStore {
                 LoggerService.shared.log(level: .error, tag: tag, message: "Failed to delete baby: \(error)")
             }
         }
-        // If no babies left, go back to profile form
+        // If no babies left, stay on this step to show the empty state and disable "Next".
         if savedBabies.isEmpty {
-            navigateToStep(.babyProfile)
+            updateNextEnabled()
         }
     }
 

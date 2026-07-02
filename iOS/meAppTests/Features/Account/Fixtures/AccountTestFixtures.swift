@@ -44,7 +44,8 @@ enum AccountTestFixtures {
     ) -> AccountResponse {
         AccountResponse(
             account: makeAccountDTO(id: accountId, email: email, firstName: firstName),
-            accessToken: "access-token", // swiftlint:disable:this no_hardcoded_credentials
+            // swiftlint:disable:next no_hardcoded_credentials
+            accessToken: "access-token",
             refreshToken: "refresh-token",
             expiresAt: "2099-01-01T00:00:00Z"
         )

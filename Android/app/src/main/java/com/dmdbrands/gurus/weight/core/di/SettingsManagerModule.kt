@@ -4,11 +4,11 @@ import com.dmdbrands.gurus.weight.features.settings.manager.DataSettingsManager
 import com.dmdbrands.gurus.weight.features.settings.manager.IDataSettingsManager
 import com.dmdbrands.gurus.weight.features.settings.manager.INotificationSettingsManager
 import com.dmdbrands.gurus.weight.features.settings.manager.IProfileSettingsManager
-import com.dmdbrands.gurus.weight.features.settings.manager.IScaleSettingsManager
+import com.dmdbrands.gurus.weight.features.settings.manager.IDeviceSettingsManager
 import com.dmdbrands.gurus.weight.features.settings.manager.IUnitSettingsManager
 import com.dmdbrands.gurus.weight.features.settings.manager.NotificationSettingsManager
 import com.dmdbrands.gurus.weight.features.settings.manager.ProfileSettingsManager
-import com.dmdbrands.gurus.weight.features.settings.manager.ScaleSettingsManager
+import com.dmdbrands.gurus.weight.features.settings.manager.DeviceSettingsManager
 import com.dmdbrands.gurus.weight.features.settings.manager.UnitSettingsManager
 import dagger.Binds
 import dagger.Module
@@ -34,9 +34,9 @@ abstract class SettingsManagerModule {
   ): INotificationSettingsManager
 
   @Binds
-  abstract fun bindScaleSettingsManager(
-    impl: ScaleSettingsManager,
-  ): IScaleSettingsManager
+  abstract fun bindDeviceSettingsManager(
+    impl: DeviceSettingsManager,
+  ): IDeviceSettingsManager
 
   @Binds
   abstract fun bindDataSettingsManager(

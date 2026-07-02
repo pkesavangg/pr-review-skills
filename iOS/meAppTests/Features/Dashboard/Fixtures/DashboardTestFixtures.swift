@@ -1,13 +1,22 @@
 import Combine
 import Foundation
-import Testing
 @testable import meApp
+import Testing
 
 // MARK: - Dashboard Test Error
 
 enum DashboardTestError: Error, Equatable {
     case simulatedFailure
     case repoFailure
+}
+
+// MARK: - Dashboard Data Manager SUT
+
+@MainActor
+struct DashboardTestFixturesDataManagerSUT {
+    let sut: DashboardDataManager
+    let entryService: EntryService
+    let entryRepo: MockEntryRepository
 }
 
 // MARK: - Dashboard Test Fixtures
@@ -266,7 +275,7 @@ enum DashboardTestFixtures {
     static func makeDataManagerSUT(
         entries: [Entry] = [],
         hasActiveAccount: Bool = true
-    ) -> (sut: DashboardDataManager, entryService: EntryService, entryRepo: MockEntryRepository) {
+    ) -> DashboardTestFixturesDataManagerSUT {
         TestDependencyContainer.reset()
 
         let mockAccount = MockAccountService()
@@ -289,6 +298,6 @@ enum DashboardTestFixtures {
         DependencyContainer.shared.register(entryService as EntryService)
 
         let sut = DashboardDataManager()
-        return (sut, entryService, entryRepo)
+        return DashboardTestFixturesDataManagerSUT(sut: sut, entryService: entryService, entryRepo: entryRepo)
     }
 }

@@ -16,6 +16,7 @@ import com.dmdbrands.gurus.weight.domain.model.storage.entry.ScaleEntry
 import com.dmdbrands.gurus.weight.domain.model.storage.entry.ScaleEntry.Companion.fromScaleApiEntry
 import com.dmdbrands.gurus.weight.domain.model.storage.entry.toPeriodBodyScaleSummary
 import com.dmdbrands.gurus.weight.domain.repository.IAccountRepository
+import com.dmdbrands.gurus.weight.domain.repository.IBabyProfileRepository
 import com.dmdbrands.gurus.weight.domain.repository.IEntryRepository
 import com.dmdbrands.gurus.weight.domain.repository.IHealthConnectRepository
 import com.dmdbrands.gurus.weight.domain.services.IAnalyticsService
@@ -44,6 +45,7 @@ import java.time.format.DateTimeFormatter
 class EntryService(
     private val entryRepository: IEntryRepository,
     private val accountRepository: IAccountRepository,
+    private val babyProfileRepository: IBabyProfileRepository,
     private val goalService: IGoalService,
     private val healthConnectService: IHealthConnectService,
     private val healthConnectRepository: IHealthConnectRepository,
@@ -152,23 +154,37 @@ class EntryService(
     /** Deletes an entry both locally and remotely. */
     override suspend fun deleteEntry(entry: Entry) {
         val currentAccountId = accountId ?: return
-        try {
-            val deleteEntry = entry.updateEntry(
-                entry.entry.copy(
-                    isSynced = false,
-                    operationType = OperationType.DELETE.name,
-                ),
-            )
-            syncOperationsInternal(currentAccountId, emptyList(), listOf(deleteEntry))
-        } catch (e: Exception) {
-            AppLog.e(TAG, "Error deleting entry", e)
-        }
+        // Soft-delete the local row first so a genuine persistence failure propagates to the caller
+        // (the History delete toast shows "Couldn't delete!"). Then push the delete — network
+        // errors are retried by the sync loop, not surfaced as a delete failure.
+        val deleted = entry.updateEntry(
+            entry.entry.copy(isSynced = false, operationType = OperationType.DELETE.name),
+        )
+        entryRepository.delete(deleted)
+        syncOperationsInternal(currentAccountId)
     }
 
     /**
-     * Saves a baby reading locally under the active (parent) account. Inserted with
-     * isSynced = true so [syncOperationsInternal] — which casts every unsynced entry to
-     * ScaleEntry — never picks it up; baby entries have no server contract yet (MOB-428).
+     * Restores a soft-deleted entry (Undo). Re-stamps the same row as create and upserts it in
+     * place (insert is a REPLACE by id), overwriting the soft-deleted row so the next sync batch
+     * carries a create — not a competing delete — for that id, then pushes it.
+     */
+    override suspend fun restoreEntry(entry: Entry) {
+        val currentAccountId = accountId ?: return
+        val restored = entry.updateEntry(
+            entry.entry.copy(isSynced = false, operationType = OperationType.CREATE.name),
+        )
+        entryRepository.insert(restored)
+        syncOperationsInternal(currentAccountId)
+    }
+
+    /**
+     * Saves a baby reading under the active (parent) account and returns the new local id.
+     * Inserted unsynced (isSynced = false) and pushed to POST /v3/entries/ (category=baby —
+     * §2.16) via [syncOperationsInternal], which maps each unsynced row through
+     * [com.dmdbrands.gurus.weight.domain.model.api.entry.toUnifiedRequestOrNull] (baby-aware).
+     * The 2.0 unified API now carries baby entries, so — unlike the old MOB-428 local-only
+     * stopgap — an assigned scale reading reaches the server.
      */
     override suspend fun addBabyEntry(entry: BabyEntry): Long {
         val currentAccountId = accountId ?: return -1
@@ -177,20 +193,87 @@ class EntryService(
                 entry.entry.copy(
                     accountId = currentAccountId,
                     operationType = OperationType.CREATE.name,
-                    isSynced = true,
+                    isSynced = false,
                 ),
             )
-            entryRepository.insert(localEntry)
+            val id = entryRepository.insert(localEntry)
+            // Push the freshly-inserted unsynced row to the server (atomic batch).
+            syncOperationsInternal(currentAccountId)
+            id
         } catch (e: Exception) {
             AppLog.e(TAG, "Error saving baby entry", e)
             -1
         }
     }
 
-    /** Hard-deletes a locally-saved baby entry (cascades to baby_entry). Local-only (MOB-428). */
-    override suspend fun deleteBabyEntryLocally(entryId: Long) {
+    /**
+     * Inserts every baby reading locally, then runs ONE [syncOperationsInternal] for the whole
+     * batch (a single POST /v3/entries + baby-profile refresh + delta GET) — so assigning K
+     * buffered readings is one round-trip, not K. Returns the new local ids in order; empty on
+     * failure. (MOB-598 PR #2130)
+     */
+    override suspend fun addBabyEntries(entries: List<BabyEntry>): List<Long> {
+        val currentAccountId = accountId ?: return emptyList()
+        return try {
+            val ids = entries.map { entry ->
+                val localEntry = entry.updateEntry(
+                    entry.entry.copy(
+                        accountId = currentAccountId,
+                        operationType = OperationType.CREATE.name,
+                        isSynced = false,
+                    ),
+                )
+                entryRepository.insert(localEntry)
+            }
+            syncOperationsInternal(currentAccountId)
+            ids
+        } catch (e: Exception) {
+            AppLog.e(TAG, "Error saving baby entries", e)
+            emptyList()
+        }
+    }
+
+    /**
+     * Edits a baby reading in place. The row keeps its local id and is re-stamped
+     * operationType=edit (baby-only, §2.16), upserted locally, then pushed to POST /v3/entries/
+     * on the same endpoint as create. The server resolves the edit by the deterministic baby
+     * entryId (babyId_entryType_timestamp); editing weight/length while keeping the timestamp
+     * updates the same server reading in place.
+     */
+    override suspend fun editBabyEntry(entry: BabyEntry) {
+        val currentAccountId = accountId ?: return
         try {
-            entryRepository.deleteById(entryId)
+            val editEntry = entry.updateEntry(
+                entry.entry.copy(
+                    accountId = currentAccountId,
+                    operationType = OperationType.EDIT.name,
+                    isSynced = false,
+                ),
+            )
+            // Upsert the local row in place (insert is a REPLACE keyed by id), then push the edit.
+            entryRepository.insert(editEntry)
+            syncOperationsInternal(currentAccountId)
+        } catch (e: Exception) {
+            AppLog.e(TAG, "Error editing baby entry", e)
+        }
+    }
+
+    /**
+     * Removes a previously-assigned baby entry: marks it operationType=delete and pushes the
+     * deletion to POST /v3/entries/ (category=baby — §2.16) via [syncOperationsInternal], which
+     * also drops the local row on success. Used by the reading-arrival "Reassign" flow.
+     */
+    override suspend fun deleteBabyEntry(entryId: Long) {
+        val currentAccountId = accountId ?: return
+        try {
+            val existing = entryRepository.getEntryById(entryId) ?: return
+            val deleteEntry = existing.updateEntry(
+                existing.entry.copy(
+                    isSynced = false,
+                    operationType = OperationType.DELETE.name,
+                ),
+            )
+            syncOperationsInternal(currentAccountId, emptyList(), listOf(deleteEntry))
         } catch (e: Exception) {
             AppLog.e(TAG, "Error deleting baby entry", e)
         }
@@ -300,6 +383,14 @@ class EntryService(
             // 5. Pull delta from unified /v3/entries/ (sync mode) — MOB-380.
             // Falls back to legacy operation/r4 GET if the unified endpoint is unavailable.
             val operationCount = entryRepository.getOperationCount(accountId)
+            // Pull baby profiles first so any incoming baby entry can satisfy the
+            // baby_entry → baby_profile foreign key (MOB-598). Isolated so a baby-profile
+            // failure never blocks weight/BP sync.
+            try {
+                babyProfileRepository.refresh(accountId)
+            } catch (e: Exception) {
+                AppLog.e(TAG, "Baby profile refresh before entry sync failed", e)
+            }
             try {
                 val syncTimeStamp = accountRepository.getSyncTimeStamp().first()
                 val response = entryRepository.getEntriesSync(start = syncTimeStamp)

@@ -16,7 +16,8 @@ struct HeightStepView: View {
     @Environment(\.appTheme) private var theme
     let heightStepLang = SignupStrings.HeightStep.self
     let labels = InputFieldLabels.self
-    
+    private let identityDisplay: (String) -> String = { $0 }
+
     var body: some View {
         SignupStepWrapper(title: heightStepLang.title, subtitle: heightStepLang.subtitle) {
             VStack(spacing: .spacingMD) {
@@ -40,7 +41,7 @@ struct HeightStepView: View {
             isPresented: $signupStore.showHeightInchesPicker,
             selectedValues: signupStore.selectedHeightInches,
             options: signupStore.heightInchesOptions,
-            displayValue: { $0 },
+            displayValue: identityDisplay,
             pickerType: .heightInches,
             title: heightStepLang.pickerHeader
         ) { newValues in
@@ -50,7 +51,7 @@ struct HeightStepView: View {
             isPresented: $signupStore.showHeightCmPicker,
             selectedValues: signupStore.selectedHeightCm,
             options: signupStore.heightCmOptions,
-            displayValue: { $0 },
+            displayValue: identityDisplay,
             pickerType: .heightCm,
             title: heightStepLang.pickerHeader
         ) { newValues in

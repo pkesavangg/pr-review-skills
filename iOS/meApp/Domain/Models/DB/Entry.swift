@@ -76,6 +76,7 @@ final class Entry {
             self.accountId = accountId
             self.operationType = dto.operationType ?? ""
             self.serverTimestamp = dto.serverTimestamp
+            self.serverEntryId = dto.serverEntryId
             self.attempts = 0
             self.isFailedToSync = false
 

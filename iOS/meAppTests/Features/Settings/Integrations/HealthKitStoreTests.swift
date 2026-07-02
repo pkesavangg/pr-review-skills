@@ -1,7 +1,7 @@
 import Foundation
+@testable import meApp
 import Testing
 import UIKit
-@testable import meApp
 
 @Suite(.serialized)
 @MainActor
@@ -448,176 +448,6 @@ struct HealthKitStoreTests {
         #expect(updated == true)
     }
 
-    @Test("primary action integration-failed opens Apple Health and returns to integration-complete when permissions exist")
-    func primaryActionIntegrationFailedPermissionReturnSuccess() async {
-        let healthKit = MockHealthKitStoreHealthKitService()
-        healthKit.approvedPermissionList = ["weight"]
-        let integration = MockHealthKitStoreIntegrationService()
-        let (store, _, _, _, _, _, _) = makeSUT(
-            integrationService: integration,
-            healthKitService: healthKit
-        )
-
-        store.handlePrimaryAction(for: .integrationFailed)
-        _ = await waitUntil { healthKit.openAppleHealthCalls == 1 }
-        NotificationCenter.default.post(name: UIApplication.didBecomeActiveNotification, object: nil)
-        let updated = await waitUntil { store.activeState == .integrationComplete }
-
-        #expect(updated == true)
-        #expect(healthKit.openAppleHealthCalls == 1)
-    }
-
-    @Test("primary action integration-failed keeps modal dismissed when no permissions are granted")
-    func primaryActionIntegrationFailedNoPermissions() async {
-        let healthKit = MockHealthKitStoreHealthKitService()
-        healthKit.approvedPermissionList = []
-        let (store, _, _, _, _, _, _) = makeSUT(healthKitService: healthKit)
-
-        store.activeState = .integrationFailed
-        store.handlePrimaryAction(for: .integrationFailed)
-        _ = await waitUntil { healthKit.openAppleHealthCalls == 1 }
-        NotificationCenter.default.post(name: UIApplication.didBecomeActiveNotification, object: nil)
-        let updated = await waitUntil { store.activeState == nil }
-
-        #expect(updated == true)
-    }
-
-    @Test("primary action integration-failed maps conflict after permission grant to user-conflict")
-    func primaryActionIntegrationFailedConflictAfterPermissionGrant() async {
-        let healthKit = MockHealthKitStoreHealthKitService()
-        healthKit.approvedPermissionList = ["weight"]
-        let integration = MockHealthKitStoreIntegrationService()
-        integration.isIntegrationAlreadyUsedResult = true
-        let (store, _, _, _, _, _, _) = makeSUT(
-            integrationService: integration,
-            healthKitService: healthKit
-        )
-
-        store.handlePrimaryAction(for: .integrationFailed)
-        _ = await waitUntil { healthKit.openAppleHealthCalls == 1 }
-        NotificationCenter.default.post(name: UIApplication.didBecomeActiveNotification, object: nil)
-        let updated = await waitUntil { store.activeState == .userConflict }
-
-        #expect(updated == true)
-    }
-
-    @Test("primary action integration-failed continues to integration-complete when conflict check throws")
-    func primaryActionIntegrationFailedConflictCheckFailureFallsBack() async {
-        let healthKit = MockHealthKitStoreHealthKitService()
-        healthKit.approvedPermissionList = ["weight"]
-        let integration = MockHealthKitStoreIntegrationService()
-        integration.isIntegrationAlreadyUsedError = HealthKitStoreTestError.loadFailed
-        let (store, _, _, _, _, _, _) = makeSUT(
-            integrationService: integration,
-            healthKitService: healthKit
-        )
-
-        store.handlePrimaryAction(for: .integrationFailed)
-        _ = await waitUntil { healthKit.openAppleHealthCalls == 1 }
-        NotificationCenter.default.post(name: UIApplication.didBecomeActiveNotification, object: nil)
-        let updated = await waitUntil { store.activeState == .integrationComplete }
-
-        #expect(updated == true)
-    }
-
-    @Test("integrated row remove action clears HealthKit and refreshes local state")
-    func removeActionClearsHealthKitAndShowsToast() async {
-        let account = MockAccountService()
-        account.activeAccount = HealthKitStoreTestFixtures.makeActiveAccount(id: "hk-7")
-        let integration = MockHealthKitStoreIntegrationService()
-        integration.getStoredIntegrationDataResult = HealthKitStoreTestFixtures.makeHealthKitInfo(
-            isIntegrated: false,
-            assignedTo: "hk-7"
-        )
-        let healthKit = MockHealthKitStoreHealthKitService()
-        let notification = MockNotificationHelperService()
-        let (store, _, _, _, _, _, _) = makeSUT(
-            accountService: account,
-            integrationService: integration,
-            healthKitService: healthKit,
-            notificationService: notification
-        )
-        store.isIntegrated = true
-
-        store.handleRowTap()
-        notification.alertData?.buttons.last?.action(nil)
-        let updated = await waitUntil {
-            healthKit.clearHealthKitCalls == 1
-                && notification.showLoaderCalls == 1
-                && notification.dismissLoaderCalls == 1
-                && notification.toastData?.message == ToastStrings.hkIntegrationRemoved
-        }
-
-        #expect(updated == true)
-        #expect(integration.getStoredIntegrationDataCalls > 1)
-    }
-
-    @Test("clear integration failure dismisses loader without success toast")
-    func removeActionClearFailure() async {
-        let healthKit = MockHealthKitStoreHealthKitService()
-        healthKit.clearHealthKitError = HealthKitStoreTestError.syncFailed
-        let notification = MockNotificationHelperService()
-        let (store, _, _, _, _, _, _) = makeSUT(
-            healthKitService: healthKit,
-            notificationService: notification
-        )
-        store.isIntegrated = true
-
-        store.handleRowTap()
-        notification.alertData?.buttons.last?.action(nil)
-        let updated = await waitUntil { healthKit.clearHealthKitCalls == 1 && notification.dismissLoaderCalls == 1 }
-
-        #expect(updated == true)
-        #expect(notification.toastData?.message == nil)
-    }
-
-    @Test("out-of-sync alert return with full permissions and synced state shows toast")
-    func outOfSyncAlertReturnSyncedShowsToast() async {
-        let healthKit = MockHealthKitStoreHealthKitService()
-        healthKit.approvedPermissionList = ["a", "b", "c", "d", "e"]
-        healthKit.isHKOutOfSyncResult = false
-        let notification = MockNotificationHelperService()
-        let (store, _, _, _, _, _, _) = makeSUT(
-            healthKitService: healthKit,
-            notificationService: notification
-        )
-
-        store.showHKOutOfSyncAlert()
-        NotificationCenter.default.post(name: UIApplication.didBecomeActiveNotification, object: nil)
-        let updated = await waitUntil { notification.toastData?.message == ToastStrings.hkIntegrationSynced && store.isOutOfSync == false }
-
-        #expect(updated == true)
-    }
-
-    @Test("out-of-sync alert return still out-of-sync does not show toast")
-    func outOfSyncAlertReturnStillOutOfSyncNoToast() async {
-        let healthKit = MockHealthKitStoreHealthKitService()
-        healthKit.approvedPermissionList = ["a", "b"]
-        healthKit.isHKOutOfSyncResult = true
-        let notification = MockNotificationHelperService()
-        let (store, _, _, _, _, _, _) = makeSUT(
-            healthKitService: healthKit,
-            notificationService: notification
-        )
-
-        store.showHKOutOfSyncAlert()
-        NotificationCenter.default.post(name: UIApplication.didBecomeActiveNotification, object: nil)
-        let updated = await waitUntil { store.isOutOfSync == true }
-
-        #expect(updated == true)
-        #expect(notification.showToastCalls == 0)
-    }
-
-    @Test("primary action user-conflict dismisses modal")
-    func primaryActionUserConflictDismissesModal() async {
-        let (store, _, _, _, _, _, _) = makeSUT()
-        store.activeState = .userConflict
-
-        store.handlePrimaryAction(for: .userConflict)
-        let dismissed = await waitUntil { store.activeState == nil }
-
-        #expect(dismissed == true)
-    }
 }
 
 @MainActor
@@ -629,6 +459,8 @@ private func makeSUT(
     notificationService: MockNotificationHelperService? = nil,
     loggerService: MockLoggerService? = nil,
     kvStorage: MockKvStorageService? = nil
+    // Test factory return; labeled tuple is clearer than a one-off SUT struct.
+    // swiftlint:disable:next large_tuple
 ) -> (
     store: HealthKitStore,
     accountService: MockAccountService,

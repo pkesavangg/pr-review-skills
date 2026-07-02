@@ -22,20 +22,45 @@ interface IEntryService {
   suspend fun deleteEntry(entry: Entry)
 
   /**
-   * Persists a baby reading locally under the active (parent) account, keyed by babyId,
-   * and returns the new entry id. Baby entries have no server contract yet (MOB-428), so
-   * this is a device-local write that is deliberately kept OUT of the sync queue — the sync
-   * loop sends every unsynced entry as a ScaleEntry, so a baby entry must never reach it.
-   * Server upload is a separate, backend-dependent ticket.
+   * Restores a soft-deleted entry (Undo from the History delete toast). Re-stamps the row as
+   * create, upserts it in place, and re-syncs so the reading reappears locally and on the server.
+   */
+  suspend fun restoreEntry(entry: Entry)
+
+  /**
+   * Persists a baby reading under the active (parent) account, keyed by babyId, and returns
+   * the new local entry id. The Me App 2.0 unified API now carries baby entries
+   * (POST /v3/entries/, category=baby — §2.16), so the reading is written unsynced and pushed
+   * to the server via the sync loop (mapped by [BabyEntry.toUnifiedRequest]). The returned id
+   * lets the reading-arrival "Reassign" flow remove this row before re-saving to another baby.
    */
   suspend fun addBabyEntry(entry: BabyEntry): Long
 
   /**
-   * Hard-deletes a locally-saved baby entry by its id (cascades to the baby_entry row).
-   * Used by the reading-arrival "Reassign" flow to drop a reading from the previously
-   * chosen baby before re-saving it to another (MOB-428). Local-only — no sync side effect.
+   * Batch variant of [addBabyEntry]: inserts every reading locally first, then runs a SINGLE
+   * server sync for the whole batch (one POST /v3/entries + one baby-profile refresh + one delta
+   * GET) instead of one full sync per reading. Used by the multi-reading assign flow so assigning
+   * K buffered readings is one round-trip, not K. Returns the new local ids in order; empty on
+   * failure. (MOB-598 PR #2130)
    */
-  suspend fun deleteBabyEntryLocally(entryId: Long)
+  suspend fun addBabyEntries(entries: List<BabyEntry>): List<Long>
+
+  /**
+   * Edits an existing baby reading in place. The row keeps its local id and is re-stamped
+   * operationType=edit, then pushed to POST /v3/entries/ (category=baby — §2.16, the only
+   * category that supports `edit`) on the same endpoint as create. Used when editing a reading
+   * from the History detail screen. Does NOT delete + re-create (which collided on the shared id
+   * and resolved to a delete).
+   */
+  suspend fun editBabyEntry(entry: BabyEntry)
+
+  /**
+   * Removes a previously-assigned baby entry by its id. The row is marked operationType=delete
+   * and pushed to POST /v3/entries/ (category=baby — §2.16) so the deletion propagates to the
+   * server, then dropped locally. Used by the reading-arrival "Reassign" flow to move a reading
+   * off the previously chosen baby before re-saving it to another.
+   */
+  suspend fun deleteBabyEntry(entryId: Long)
   suspend fun syncOperations(
     newEntries: List<Entry> = emptyList(),
     deleteOps: List<Entry> = emptyList(),

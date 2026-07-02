@@ -4,23 +4,23 @@ import androidx.navigation3.runtime.EntryProviderScope
 import androidx.navigation3.runtime.NavKey
 import com.dmdbrands.gurus.weight.core.navigation.AppRoute
 import com.dmdbrands.gurus.weight.features.MyAccounts.screen.MyAccountsScreen
-import com.dmdbrands.gurus.weight.features.ScaleSetup.screens.AppsyncScaleSetupScreen
-import com.dmdbrands.gurus.weight.features.ScaleSetup.screens.BabyScaleSetupScreen
-import com.dmdbrands.gurus.weight.features.ScaleSetup.screens.BpmSetupScreen
-import com.dmdbrands.gurus.weight.features.ScaleSetup.screens.BtScaleSetupScreen
-import com.dmdbrands.gurus.weight.features.ScaleSetup.screens.BtWifiScaleSetupScreen
-import com.dmdbrands.gurus.weight.features.ScaleSetup.screens.LcbtScaleSetupScreen
-import com.dmdbrands.gurus.weight.features.ScaleSetup.screens.WifiScaleSetupScreen
-import com.dmdbrands.gurus.weight.features.ScaleUsers.screens.ScaleUserListScreen
-import com.dmdbrands.gurus.weight.features.addScale.screens.AddScaleScreen
-import com.dmdbrands.gurus.weight.features.addScale.screens.ChooseScaleScreen
+import com.dmdbrands.gurus.weight.features.DeviceSetup.screens.AppsyncScaleSetupScreen
+import com.dmdbrands.gurus.weight.features.DeviceSetup.screens.BabyScaleSetupScreen
+import com.dmdbrands.gurus.weight.features.DeviceSetup.screens.BpmSetupScreen
+import com.dmdbrands.gurus.weight.features.DeviceSetup.screens.BtScaleSetupScreen
+import com.dmdbrands.gurus.weight.features.DeviceSetup.screens.BtWifiScaleSetupScreen
+import com.dmdbrands.gurus.weight.features.DeviceSetup.screens.LcbtScaleSetupScreen
+import com.dmdbrands.gurus.weight.features.DeviceSetup.screens.WifiScaleSetupScreen
+import com.dmdbrands.gurus.weight.features.DeviceUsers.screens.DeviceUserListScreen
+import com.dmdbrands.gurus.weight.features.addDevice.screens.AddDeviceScreen
+import com.dmdbrands.gurus.weight.features.addDevice.screens.ChooseScaleScreen
 import com.dmdbrands.gurus.weight.features.appPermissions.AppPermissionsScreen
 import com.dmdbrands.gurus.weight.features.appSync.AppSync
 import com.dmdbrands.gurus.weight.features.changePassword.ChangePasswordScreen
 import com.dmdbrands.gurus.weight.features.dashboard.DashboardScreen
 import com.dmdbrands.gurus.weight.features.dashboard.snapshot.DashboardSnapshotScreen
 import com.dmdbrands.gurus.weight.features.debugMenu.screen.DebugMenuScreen
-import com.dmdbrands.gurus.weight.features.debugMenu.screen.ScaleLogsPickerScreen
+import com.dmdbrands.gurus.weight.features.debugMenu.screen.DeviceLogsPickerScreen
 import com.dmdbrands.gurus.weight.features.feed.FeedFAQScreen
 import com.dmdbrands.gurus.weight.features.feed.FeedLandingScreen
 import com.dmdbrands.gurus.weight.features.feedMessages.AppFeedMessagesScreen
@@ -39,9 +39,9 @@ import com.dmdbrands.gurus.weight.features.metricinfo.MetricInfoScreen
 import com.dmdbrands.gurus.weight.features.myKids.screens.AddBabyScreen
 import com.dmdbrands.gurus.weight.features.myKids.screens.MyKidsScreen
 import com.dmdbrands.gurus.weight.features.profile.screen.ProfileScreen
-import com.dmdbrands.gurus.weight.features.scaleDetails.screens.ScaleDetailsScreen
-import com.dmdbrands.gurus.weight.features.scaleDisplayMetrics.screens.ScaleDisplayMetricsScreen
-import com.dmdbrands.gurus.weight.features.scaleMode.screens.ScaleModeScreen
+import com.dmdbrands.gurus.weight.features.deviceDetails.screens.DeviceDetailsScreen
+import com.dmdbrands.gurus.weight.features.deviceDisplayMetrics.screens.DeviceDisplayMetricsScreen
+import com.dmdbrands.gurus.weight.features.deviceMode.screens.DeviceModeScreen
 import com.dmdbrands.gurus.weight.features.settings.SettingsScreen
 import com.dmdbrands.gurus.weight.features.signup.SignupScreen
 import com.dmdbrands.gurus.weight.features.weightless.screen.WeightlessScreen
@@ -73,14 +73,14 @@ fun EntryProviderScope<NavKey>.accountSettingsEntries() {
   entry<AppRoute.AccountSettings.ChangePassword> { ChangePasswordScreen() }
   entry<AppRoute.AccountSettings.MyAccounts> { MyAccountsScreen() }
   entry<AppRoute.AccountSettings.Weightless> { WeightlessScreen() }
-  entry<AppRoute.AccountSettings.MyDevices> { AddScaleScreen() }
-  entry<AppRoute.AccountSettings.ChooseScale> { ChooseScaleScreen() }
+  entry<AppRoute.AccountSettings.MyDevices> { AddDeviceScreen() }
+  entry<AppRoute.AccountSettings.ChooseDevice> { ChooseScaleScreen() }
   entry<AppRoute.AccountSettings.Goal> { GoalScreen() }
   entry<AppRoute.AccountSettings.HelpScreen> { HelpScreen() }
   entry<AppRoute.AccountSettings.DebugMenu> { DebugMenuScreen() }
-  entry<AppRoute.AccountSettings.ScaleLogsPicker> { ScaleLogsPickerScreen() }
-  entry<AppRoute.AccountSettings.ScaleDetails> { scaleInfo ->
-    ScaleDetailsScreen(scaleInfo.scaleId)
+  entry<AppRoute.AccountSettings.DeviceLogsPicker> { DeviceLogsPickerScreen() }
+  entry<AppRoute.AccountSettings.DeviceDetails> { scaleInfo ->
+    DeviceDetailsScreen(scaleInfo.scaleId)
   }
   entry<AppRoute.AccountSettings.AppPermissions> { AppPermissionsScreen() }
   entry<AppRoute.AccountSettings.MyKids> { MyKidsScreen() }
@@ -88,14 +88,14 @@ fun EntryProviderScope<NavKey>.accountSettingsEntries() {
 }
 
 fun EntryProviderScope<NavKey>.scaleDetailEntries() {
-  entry<AppRoute.ScaleDetails.ScaleMode> { scaleInfo ->
-    ScaleModeScreen(scaleInfo.scaleId)
+  entry<AppRoute.DeviceDetails.DeviceMode> { scaleInfo ->
+    DeviceModeScreen(scaleInfo.scaleId)
   }
-  entry<AppRoute.ScaleDetails.ScaleDisplayMetrics> { scaleInfo ->
-    ScaleDisplayMetricsScreen(scaleInfo.scaleId)
+  entry<AppRoute.DeviceDetails.DeviceDisplayMetrics> { scaleInfo ->
+    DeviceDisplayMetricsScreen(scaleInfo.scaleId)
   }
-  entry<AppRoute.ScaleDetails.ScaleUsers> { scaleInfo ->
-    ScaleUserListScreen(scaleInfo.scaleId)
+  entry<AppRoute.DeviceDetails.DeviceUsers> { scaleInfo ->
+    DeviceUserListScreen(scaleInfo.scaleId)
   }
 }
 
@@ -105,25 +105,25 @@ fun EntryProviderScope<NavKey>.integrationEntries() {
 }
 
 fun EntryProviderScope<NavKey>.scaleSetupEntries() {
-  entry<AppRoute.ScaleSetup.BtWifiScaleSetup> { scaleInfo ->
+  entry<AppRoute.DeviceSetup.BtWifiScaleSetup> { scaleInfo ->
     BtWifiScaleSetupScreen(scaleInfo.sku, scaleInfo.initialStep, scaleInfo.broadcastId, scaleInfo.userList)
   }
-  entry<AppRoute.ScaleSetup.BtScaleSetup> { scaleInfo ->
+  entry<AppRoute.DeviceSetup.BtScaleSetup> { scaleInfo ->
     BtScaleSetupScreen(scaleInfo.sku, scaleInfo.scaleInfo)
   }
-  entry<AppRoute.ScaleSetup.LcbtScaleSetup> { scaleInfo ->
+  entry<AppRoute.DeviceSetup.LcbtScaleSetup> { scaleInfo ->
     LcbtScaleSetupScreen(scaleInfo.sku,scaleInfo = scaleInfo.scaleInfo, scaleInfo.broadcastId, scaleInfo.initialStep, )
   }
-  entry<AppRoute.ScaleSetup.WifiScaleSetup> { scaleInfo ->
+  entry<AppRoute.DeviceSetup.WifiScaleSetup> { scaleInfo ->
     WifiScaleSetupScreen(scaleInfo.sku, scaleInfo.wifiSetupType, scaleInfo.scaleInfo)
   }
-  entry<AppRoute.ScaleSetup.AppsyncScaleSetup> { scaleInfo ->
+  entry<AppRoute.DeviceSetup.AppsyncScaleSetup> { scaleInfo ->
     AppsyncScaleSetupScreen(scaleInfo.sku)
   }
-  entry<AppRoute.ScaleSetup.BpmSetup> { info ->
+  entry<AppRoute.DeviceSetup.BpmSetup> { info ->
     BpmSetupScreen(info.sku)
   }
-  entry<AppRoute.ScaleSetup.BabyScaleSetup> { scaleInfo ->
+  entry<AppRoute.DeviceSetup.BabyScaleSetup> { scaleInfo ->
     BabyScaleSetupScreen(scaleInfo.sku, scaleInfo.scaleInfo, scaleInfo.broadcastId, scaleInfo.initialStep)
   }
 }

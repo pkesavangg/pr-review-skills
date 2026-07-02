@@ -46,7 +46,7 @@ class WifiScaleServiceTest {
     private val activity: ComponentActivity = mockk(relaxed = true)
     private val wifiManager: WifiManager = mockk(relaxed = true)
 
-    private lateinit var service: WifiScaleService
+    private lateinit var service: WifiDeviceService
 
     // --- Test fixtures ---
     private val testSsid = "MyWiFi"
@@ -92,7 +92,7 @@ class WifiScaleServiceTest {
 
         every { activity.getSystemService(Context.WIFI_SERVICE) } returns wifiManager
 
-        service = WifiScaleService(
+        service = WifiDeviceService(
             wifiSmartConnectManager, deviceService, context,
             TestScope(UnconfinedTestDispatcher()),
         )

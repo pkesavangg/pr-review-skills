@@ -1,6 +1,6 @@
 import Foundation
-import Testing
 @testable import meApp
+import Testing
 
 @Suite(.serialized)
 @MainActor
@@ -37,48 +37,55 @@ struct LandingStoreTests {
         }
     }
 
-    // MARK: - Active Account Filtering
+    // MARK: - Account Visibility (MOB-423)
 
-    @Test("excludes accounts with isLoggedIn=false")
-    func excludesLoggedOutAccounts() async {
+    @Test("shows manually logged-out accounts flagged as needing login")
+    func showsLoggedOutAccounts() async {
         let (store, accountService) = makeSUT()
 
         let active = makeAccount(id: "active", isLoggedIn: true, isExpired: false)
         let loggedOut = makeAccount(id: "logged-out", isLoggedIn: false, isExpired: false)
         accountService.seedAccounts([active, loggedOut], active: active)
 
-        await waitUntil { store.accounts.count == 1 }
+        await waitUntil { store.accounts.count == 2 }
 
-        #expect(store.accounts.map(\.accountId) == ["active"])
+        #expect(Set(store.accounts.map(\.accountId)) == ["active", "logged-out"])
+        // The logged-out account renders the "Logged out" card (isExpired drives that UI);
+        // the active account stays tap-to-switch.
+        #expect(store.userItems.first { $0.accountID == "logged-out" }?.isExpired == true)
+        #expect(store.userItems.first { $0.accountID == "active" }?.isExpired == false)
     }
 
-    @Test("excludes accounts with isExpired=true")
-    func excludesExpiredAccounts() async {
+    @Test("shows auto-logged-out (expired) accounts flagged as needing login")
+    func showsExpiredAccounts() async {
         let (store, accountService) = makeSUT()
 
         let active = makeAccount(id: "active", isLoggedIn: true, isExpired: false)
         let expired = makeAccount(id: "expired", isLoggedIn: true, isExpired: true)
         accountService.seedAccounts([active, expired], active: active)
 
-        await waitUntil { store.accounts.count == 1 }
-
-        #expect(store.accounts.map(\.accountId) == ["active"])
-    }
-
-    @Test("includes only accounts that are logged-in and not expired")
-    func includesOnlyActiveAccounts() async {
-        let (store, accountService) = makeSUT()
-
-        let a = makeAccount(id: "a", isLoggedIn: true, isExpired: false)
-        let b = makeAccount(id: "b", isLoggedIn: false, isExpired: false)
-        let c = makeAccount(id: "c", isLoggedIn: true, isExpired: true)
-        let d = makeAccount(id: "d", isLoggedIn: true, isExpired: false)
-        accountService.seedAccounts([a, b, c, d], active: a)
-
         await waitUntil { store.accounts.count == 2 }
 
-        let ids = Set(store.accounts.map(\.accountId))
-        #expect(ids == ["a", "d"])
+        #expect(Set(store.accounts.map(\.accountId)) == ["active", "expired"])
+        #expect(store.userItems.first { $0.accountID == "expired" }?.isExpired == true)
+    }
+
+    @Test("shows every saved account regardless of login state")
+    func showsAllSavedAccounts() async {
+        let (store, accountService) = makeSUT()
+
+        let activeAccount = makeAccount(id: "a", isLoggedIn: true, isExpired: false)
+        let loggedOutAccount = makeAccount(id: "b", isLoggedIn: false, isExpired: false)
+        let expiredAccount = makeAccount(id: "c", isLoggedIn: true, isExpired: true)
+        let secondActiveAccount = makeAccount(id: "d", isLoggedIn: true, isExpired: false)
+        accountService.seedAccounts([activeAccount, loggedOutAccount, expiredAccount, secondActiveAccount], active: activeAccount)
+
+        await waitUntil { store.accounts.count == 4 }
+
+        #expect(Set(store.accounts.map(\.accountId)) == ["a", "b", "c", "d"])
+        // Only fully-active accounts are tap-to-switch; logged-out/expired need login.
+        let needsLoginIDs = Set(store.userItems.filter { $0.isExpired }.map(\.accountID))
+        #expect(needsLoginIDs == ["b", "c"])
     }
 
     @Test("sorts active accounts by most recent lastActiveTime")

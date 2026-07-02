@@ -923,4 +923,22 @@ class SignupReducerTest {
         assertThat(stateAt(step = SignupStep.DEVICE_READY, steps = weightScaleSteps).isCurrentStepValid).isTrue()
         assertThat(stateAt(step = SignupStep.ERROR, steps = weightScaleSteps).isCurrentStepValid).isTrue()
     }
+
+    // -------------------------------------------------------------------------
+    // showProgressBar — hidden on terminal ERROR screen (MOB-1161)
+    // -------------------------------------------------------------------------
+
+    @Test
+    fun `showProgressBar is false on the terminal ERROR screen`() {
+        assertThat(stateAt(step = SignupStep.ERROR, steps = weightScaleSteps).showProgressBar).isFalse()
+    }
+
+    @Test
+    fun `showProgressBar is true on every non-error step`() {
+        SignupStep.entries
+            .filter { it != SignupStep.ERROR }
+            .forEach { step ->
+                assertThat(stateAt(step = step, steps = weightScaleSteps).showProgressBar).isTrue()
+            }
+    }
 }

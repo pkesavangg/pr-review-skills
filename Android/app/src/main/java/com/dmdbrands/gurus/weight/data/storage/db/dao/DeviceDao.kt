@@ -90,6 +90,14 @@ interface DeviceDao {
   suspend fun getDeviceByBroadcastIdString(broadcastIdString: String, accountId: String): DeviceDetails?
 
   /**
+   * Backfills the broadcast id on a paired device. Devices loaded from GET /v3/paired-device carry
+   * no broadcastId (the server omits it), so a live reading can't match them; this heals the row
+   * from the reading's broadcastId so it (and future readings) resolve. (MOB-596)
+   */
+  @Query("UPDATE device SET broadcastId = :broadcastId, broadcastIdString = :broadcastId WHERE id = :id AND accountId = :accountId")
+  suspend fun updateBroadcastId(id: String, broadcastId: String, accountId: String)
+
+  /**
    * Update device nickname.
    * @param id The device ID
    * @param nickname The new nickname

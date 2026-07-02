@@ -1,5 +1,7 @@
 package com.dmdbrands.gurus.weight.data.services
 
+import android.os.Build
+import androidx.annotation.RequiresApi
 import com.dmdbrands.gurus.weight.core.config.HttpErrorConfig
 import com.dmdbrands.gurus.weight.core.shared.utilities.logging.AppLog
 import com.dmdbrands.gurus.weight.data.api.IExportAPI
@@ -153,8 +155,16 @@ constructor(
         // Download mode must produce a file. A null body (or a failed write below) is a
         // real failure — never report success without a file on disk.
         val csv = body ?: throw IllegalStateException("CSV download returned no body")
-        saveCsvToDownloads(csv, category)
-        AppLog.i(TAG, "exportEntriesCsv: file saved to Downloads (category=$category)")
+        // MediaStore.Downloads is API 29+ (scoped storage). minSdk is 26, so guard the call —
+        // accessing it on API 26–28 throws NoClassDefFoundError. Email export remains available
+        // on those devices as the default path.
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+          saveCsvToDownloads(csv, category)
+          AppLog.i(TAG, "exportEntriesCsv: file saved to Downloads (category=$category)")
+        } else {
+          csv.close()
+          throw java.io.IOException("Saving to Downloads requires Android 10 (API 29) or higher")
+        }
       } else {
         // Email mode: server sends email; body is empty or {sent:true}
         AppLog.i(TAG, "exportEntriesCsv: email triggered (category=$category)")
@@ -179,6 +189,7 @@ constructor(
    * @throws java.io.IOException if the file could not be created or written. The caller MUST
    *   surface this rather than reporting a successful export.
    */
+  @RequiresApi(Build.VERSION_CODES.Q)
   private fun saveCsvToDownloads(body: okhttp3.ResponseBody, category: String?) {
     try {
       val fileName = "entries${if (category != null) "_$category" else ""}.csv"

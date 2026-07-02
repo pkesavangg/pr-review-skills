@@ -3,8 +3,8 @@
 //  meAppTests
 //
 
-import Foundation
 import Combine
+import Foundation
 @testable import meApp
 
 @MainActor
@@ -84,6 +84,7 @@ final class MockScaleSetupScaleService: PairedDeviceServiceProtocol {
     var createBluetoothScaleError: Error?
     var createBluetoothScaleCallCount = 0
 
+    // swiftlint:disable:next function_parameter_count
     func createBluetoothScale(device: Device, sku: String?, userNumber: String, accountId: String, deviceMetadata: DeviceMetaData?, skipDuplicateCheck: Bool) async throws -> Device {
         createBluetoothScaleCallCount += 1
         if let error = createBluetoothScaleError { throw error }

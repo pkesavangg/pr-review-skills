@@ -24,10 +24,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.unit.dp
 import com.dmdbrands.gurus.weight.features.common.components.AppIcon
-import com.dmdbrands.gurus.weight.features.common.components.AppScaleCard
+import com.dmdbrands.gurus.weight.features.common.components.AppDeviceCard
 import com.dmdbrands.gurus.weight.features.common.components.AppText
 import com.dmdbrands.gurus.weight.features.common.components.TextType
-import com.dmdbrands.gurus.weight.features.common.model.ScaleInfo
+import com.dmdbrands.gurus.weight.features.common.model.DeviceModelInfo
 import com.dmdbrands.gurus.weight.resources.AppIcons
 import com.dmdbrands.gurus.weight.theme.MeTheme
 
@@ -38,8 +38,8 @@ import com.dmdbrands.gurus.weight.theme.MeTheme
 fun DeviceCatalogSection(
   title: String,
   iconId: Int,
-  devices: List<ScaleInfo>,
-  onDeviceSelected: (ScaleInfo) -> Unit,
+  devices: List<DeviceModelInfo>,
+  onDeviceSelected: (DeviceModelInfo) -> Unit,
 ) {
   var expanded by remember { mutableStateOf(false) }
 
@@ -92,7 +92,7 @@ fun DeviceCatalogSection(
       ) {
         Column {
           devices.forEach { device ->
-            AppScaleCard(
+            AppDeviceCard(
               scale = device,
               isSavedScale = false,
               onClick = onDeviceSelected,

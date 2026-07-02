@@ -1,6 +1,6 @@
-import Testing
 import Foundation
 @testable import meApp
+import Testing
 
 @Suite(.serialized)
 @MainActor
@@ -13,9 +13,9 @@ struct ChangePasswordFormTests {
     @Test("all controls start empty and clean")
     func initialState() {
         let form = makeForm()
-        #expect(form.currentPassword.value == "")
-        #expect(form.newPassword.value == "")
-        #expect(form.confirmNewPassword.value == "")
+        #expect(form.currentPassword.value.isEmpty)
+        #expect(form.newPassword.value.isEmpty)
+        #expect(form.confirmNewPassword.value.isEmpty)
         #expect(!form.currentPassword.isDirty)
         #expect(!form.newPassword.isDirty)
         #expect(!form.confirmNewPassword.isDirty)

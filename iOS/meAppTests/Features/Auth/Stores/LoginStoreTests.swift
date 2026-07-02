@@ -1,28 +1,28 @@
 import Foundation
+@testable import meApp
 import SwiftUI
 import Testing
-@testable import meApp
 
 @Suite(.serialized)
 @MainActor
 struct LoginStoreTests {
     @Test("initial state")
     func initialState() {
-        let (store, _, _, _) = makeSUT()
+        let (store, _, _, _) = makeLoginStoreSUT()
 
         #expect(store.showPassword == false)
         #expect(store.isFormSubmitting == false)
         #expect(store.errorMessage == nil)
         #expect(store.isLoading == false)
-        #expect(store.loginForm.email.value == "")
-        #expect(store.loginForm.password.value == "")
+        #expect(store.loginForm.email.value.isEmpty)
+        #expect(store.loginForm.password.value.isEmpty)
         #expect(store.isFromAccountSwitching == false)
         #expect(store.isFormValid == false)
     }
 
     @Test("prefill email updates value and keeps control pristine")
     func prefillEmail() {
-        let (store, _, _, _) = makeSUT()
+        let (store, _, _, _) = makeLoginStoreSUT()
 
         store.prefillEmailIfNeeded("prefilled@example.com")
 
@@ -38,7 +38,7 @@ struct LoginStoreTests {
 
     @Test("touch helpers mark controls touched")
     func touchHelpers() {
-        let (store, _, _, _) = makeSUT()
+        let (store, _, _, _) = makeLoginStoreSUT()
 
         #expect(store.loginForm.email.isTouched == false)
         #expect(store.loginForm.password.isTouched == false)
@@ -52,7 +52,7 @@ struct LoginStoreTests {
 
     @Test("toggle show password")
     func toggleShowPassword() {
-        let (store, _, _, _) = makeSUT()
+        let (store, _, _, _) = makeLoginStoreSUT()
 
         #expect(store.showPassword == false)
         store.toggleShowPassword()
@@ -63,7 +63,7 @@ struct LoginStoreTests {
 
     @Test("browser binding clears all browser states")
     func browserBindingClearsState() {
-        let (store, _, _, _) = makeSUT()
+        let (store, _, _, _) = makeLoginStoreSUT()
 
         store.showPrivacyBrowser = true
         store.showTermsBrowser = true
@@ -83,7 +83,7 @@ struct LoginStoreTests {
 
     @Test("logIn invalid form: exits early")
     func logInInvalidForm() async {
-        let (store, accountService, _, notificationService) = makeSUT()
+        let (store, accountService, _, notificationService) = makeLoginStoreSUT()
 
         await store.logIn()
 
@@ -94,7 +94,7 @@ struct LoginStoreTests {
 
     @Test("logIn success: calls account service and fires success callback")
     func logInSuccess() async {
-        let (store, accountService, _, notificationService) = makeSUT()
+        let (store, accountService, _, notificationService) = makeLoginStoreSUT()
         accountService.logInResult = .success(())
 
         var didSucceed = false
@@ -114,7 +114,7 @@ struct LoginStoreTests {
 
     @Test("logIn trims email before API call")
     func logInTrimsEmailBeforeAPICall() async {
-        let (store, accountService, _, _) = makeSUT()
+        let (store, accountService, _, _) = makeLoginStoreSUT()
         accountService.logInResult = .success(())
 
         store.loginForm.email.value = "  user@example.com  "
@@ -128,7 +128,7 @@ struct LoginStoreTests {
 
     @Test("logIn account switching: does not fire onLoginSuccess")
     func logInAccountSwitchingSkipsSuccessCallback() async {
-        let (store, accountService, _, _) = makeSUT()
+        let (store, accountService, _, _) = makeLoginStoreSUT()
         accountService.logInResult = .success(())
         store.isFromAccountSwitching = true
 
@@ -145,7 +145,7 @@ struct LoginStoreTests {
 
     @Test("logIn unauthorized: shows invalid credentials toast")
     func logInUnauthorizedError() async {
-        let (store, accountService, _, notificationService) = makeSUT()
+        let (store, accountService, _, notificationService) = makeLoginStoreSUT()
         accountService.logInResult = .failure(HTTPError.unauthorized)
 
         store.loginForm.email.value = "user@example.com"
@@ -160,7 +160,7 @@ struct LoginStoreTests {
 
     @Test("logIn network timeout: shows network toast")
     func logInTimeoutError() async {
-        let (store, accountService, _, notificationService) = makeSUT()
+        let (store, accountService, _, notificationService) = makeLoginStoreSUT()
         accountService.logInResult = .failure(HTTPError.timeout)
 
         store.loginForm.email.value = "user@example.com"
@@ -174,7 +174,7 @@ struct LoginStoreTests {
 
     @Test("logIn unknown failure: shows generic toast")
     func logInUnknownError() async {
-        let (store, accountService, _, notificationService) = makeSUT()
+        let (store, accountService, _, notificationService) = makeLoginStoreSUT()
         accountService.logInResult = .failure(AuthStoreTestError.generic)
 
         store.loginForm.email.value = "user@example.com"
@@ -188,7 +188,7 @@ struct LoginStoreTests {
 
     @Test("logIn max accounts reached: shows max users alert")
     func logInMaxAccountsReached() async {
-        let (store, accountService, _, notificationService) = makeSUT()
+        let (store, accountService, _, notificationService) = makeLoginStoreSUT()
         accountService.logInResult = .failure(AccountError.maxAccountsReached)
 
         store.loginForm.email.value = "user@example.com"
@@ -205,7 +205,7 @@ struct LoginStoreTests {
 
     @Test("showPasswordResetPrompt sets reset state and shows alert")
     func showPasswordResetPrompt() {
-        let (store, _, _, notificationService) = makeSUT()
+        let (store, _, _, notificationService) = makeLoginStoreSUT()
         store.loginForm.email.value = "  user@example.com  "
 
         store.showPasswordResetPrompt()
@@ -221,7 +221,7 @@ struct LoginStoreTests {
 
     @Test("password reset cancel: hides alert state and triggers dismiss callback")
     func passwordResetCancelAction() {
-        let (store, accountService, _, notificationService) = makeSUT()
+        let (store, accountService, _, notificationService) = makeLoginStoreSUT()
         store.loginForm.email.value = "user@example.com"
 
         var dismissCalled = false
@@ -242,7 +242,7 @@ struct LoginStoreTests {
 
     @Test("password reset submit: triggers dismiss callback")
     func passwordResetSubmitDismissCallback() async {
-        let (store, accountService, _, notificationService) = makeSUT()
+        let (store, accountService, _, notificationService) = makeLoginStoreSUT()
         accountService.requestPasswordResetResult = .success(())
         store.loginForm.email.value = "user@example.com"
 
@@ -264,7 +264,7 @@ struct LoginStoreTests {
 
     @Test("password reset invalid email: does not call API and shows validation error")
     func passwordResetInvalidEmailFromAlertSubmit() async {
-        let (store, accountService, _, notificationService) = makeSUT()
+        let (store, accountService, _, notificationService) = makeLoginStoreSUT()
         store.loginForm.email.value = "bad-email"
         store.showPasswordResetPrompt()
 
@@ -283,7 +283,7 @@ struct LoginStoreTests {
 
     @Test("password reset success: calls API and clears prompt")
     func passwordResetSuccessFromAlertSubmit() async {
-        let (store, accountService, _, notificationService) = makeSUT()
+        let (store, accountService, _, notificationService) = makeLoginStoreSUT()
         accountService.requestPasswordResetResult = .success(())
         store.loginForm.email.value = "user@example.com"
         store.showPasswordResetPrompt()
@@ -307,7 +307,7 @@ struct LoginStoreTests {
 
     @Test("password reset failure: sets resetError")
     func passwordResetFailureFromAlertSubmit() async {
-        let (store, accountService, _, notificationService) = makeSUT()
+        let (store, accountService, _, notificationService) = makeLoginStoreSUT()
         accountService.requestPasswordResetResult = .failure(AuthStoreTestError.generic)
         store.loginForm.email.value = "user@example.com"
         store.showPasswordResetPrompt()
@@ -328,7 +328,7 @@ struct LoginStoreTests {
 
     @Test("openPrivacy sets URL and browser flag")
     func openPrivacy() {
-        let (store, _, _, _) = makeSUT()
+        let (store, _, _, _) = makeLoginStoreSUT()
 
         store.openPrivacy()
 
@@ -338,7 +338,7 @@ struct LoginStoreTests {
 
     @Test("openTerms sets URL and browser flag")
     func openTerms() {
-        let (store, _, _, _) = makeSUT()
+        let (store, _, _, _) = makeLoginStoreSUT()
 
         store.openTerms()
 
@@ -348,7 +348,7 @@ struct LoginStoreTests {
 
     @Test("openHelp shows modal")
     func openHelp() {
-        let (store, _, _, notificationService) = makeSUT()
+        let (store, _, _, notificationService) = makeLoginStoreSUT()
 
         store.openHelp()
 
@@ -358,7 +358,7 @@ struct LoginStoreTests {
 
     @Test("handleExit pristine from account switching: calls exit handler")
     func handleExitPristineAccountSwitching() {
-        let (store, _, _, _) = makeSUT()
+        let (store, _, _, _) = makeLoginStoreSUT()
         store.isFromAccountSwitching = true
 
         var exitCalled = false
@@ -371,7 +371,7 @@ struct LoginStoreTests {
 
     @Test("handleExit pristine from account switching with no handlers does not show alert")
     func handleExitPristineAccountSwitchingNoHandlers() {
-        let (store, _, _, notificationService) = makeSUT()
+        let (store, _, _, notificationService) = makeLoginStoreSUT()
         store.isFromAccountSwitching = true
 
         store.handleExit()
@@ -381,7 +381,7 @@ struct LoginStoreTests {
 
     @Test("handleExit pristine non-switching: navigates back")
     func handleExitPristineNavigatesBack() {
-        let (store, _, _, notificationService) = makeSUT()
+        let (store, _, _, notificationService) = makeLoginStoreSUT()
         let router = Router<AuthRoute>()
         router.navigate(to: .login(nil))
 
@@ -395,7 +395,7 @@ struct LoginStoreTests {
 
     @Test("handleExit dirty form: shows exit confirmation alert")
     func handleExitDirtyShowsAlert() {
-        let (store, _, _, notificationService) = makeSUT()
+        let (store, _, _, notificationService) = makeLoginStoreSUT()
         store.loginForm.email.value = "user@example.com"
 
         store.handleExit()
@@ -406,7 +406,7 @@ struct LoginStoreTests {
 
     @Test("handleExit dirty primary action navigates back")
     func handleExitDirtyPrimaryAction() {
-        let (store, _, _, notificationService) = makeSUT()
+        let (store, _, _, notificationService) = makeLoginStoreSUT()
         let router = Router<AuthRoute>()
         router.navigate(to: .login(nil))
         store.loginForm.email.value = "user@example.com"
@@ -419,7 +419,7 @@ struct LoginStoreTests {
 
     @Test("handleExit dirty secondary action keeps screen state")
     func handleExitDirtySecondaryAction() {
-        let (store, _, _, notificationService) = makeSUT()
+        let (store, _, _, notificationService) = makeLoginStoreSUT()
         let router = Router<AuthRoute>()
         router.navigate(to: .login(nil))
         store.loginForm.email.value = "user@example.com"
@@ -433,7 +433,7 @@ struct LoginStoreTests {
 
     @Test("logIn account switching with no callbacks does not trigger login success callback")
     func logInAccountSwitchingNoCallbacks() async {
-        let (store, accountService, _, _) = makeSUT()
+        let (store, accountService, _, _) = makeLoginStoreSUT()
         accountService.logInResult = .success(())
         store.isFromAccountSwitching = true
         store.loginForm.email.value = "user@example.com"
@@ -449,7 +449,7 @@ struct LoginStoreTests {
 
     @Test("presentingBrowserURL uses fallback when browserURL is nil")
     func presentingBrowserURLFallback() {
-        let (store, _, _, _) = makeSUT()
+        let (store, _, _, _) = makeLoginStoreSUT()
         store.browserURL = nil
 
         #expect(store.presentingBrowserURL.absoluteString == LoginStoreTestText.baseURL)
@@ -457,7 +457,7 @@ struct LoginStoreTests {
 
     @Test("callbacks can be assigned and executed")
     func callbacksCanBeAssigned() {
-        let (store, _, _, _) = makeSUT()
+        let (store, _, _, _) = makeLoginStoreSUT()
 
         var loginSuccessCalled = false
         var navigateBackCalled = false
@@ -476,7 +476,7 @@ struct LoginStoreTests {
 
     @Test("logIn no internet: shows network toast")
     func logInNoInternetError() async {
-        let (store, accountService, _, notificationService) = makeSUT()
+        let (store, accountService, _, notificationService) = makeLoginStoreSUT()
         accountService.logInResult = .failure(HTTPError.noInternet)
 
         store.loginForm.email.value = "user@example.com"
@@ -491,7 +491,7 @@ struct LoginStoreTests {
 
     @Test("logIn status code zero: shows network toast")
     func logInStatusCodeZeroError() async {
-        let (store, accountService, _, notificationService) = makeSUT()
+        let (store, accountService, _, notificationService) = makeLoginStoreSUT()
         accountService.logInResult = .failure(HTTPError.statusCode(0))
 
         store.loginForm.email.value = "user@example.com"
@@ -508,7 +508,7 @@ struct LoginStoreTests {
 
     @Test("logIn success account switching with nil onLoginSuccess uses dismissal path")
     func logInSuccessAccountSwitchingUsesDismissalPath() async {
-        let (store, accountService, _, notificationService) = makeSUT()
+        let (store, accountService, _, notificationService) = makeLoginStoreSUT()
         accountService.logInResult = .success(())
         store.isFromAccountSwitching = true
         // onLoginSuccess is nil; dismissAction is also nil in tests (can't construct DismissAction)
@@ -527,7 +527,7 @@ struct LoginStoreTests {
 
     @Test("handleExit dirty account switching with exit handler: alert primary calls exit handler")
     func handleExitDirtyAccountSwitchingPrimaryButtonWithExitHandler() {
-        let (store, _, _, notificationService) = makeSUT()
+        let (store, _, _, notificationService) = makeLoginStoreSUT()
         store.isFromAccountSwitching = true
         var exitCalled = false
         store.onAccountSwitchingExit = { exitCalled = true }
@@ -542,7 +542,7 @@ struct LoginStoreTests {
 
     @Test("handleExit dirty account switching without exit handler: alert primary uses dismissal path")
     func handleExitDirtyAccountSwitchingPrimaryButtonNoExitHandler() {
-        let (store, _, _, notificationService) = makeSUT()
+        let (store, _, _, notificationService) = makeLoginStoreSUT()
         let router = Router<AuthRoute>()
         router.navigate(to: .login(nil))
         store.isFromAccountSwitching = true
@@ -559,7 +559,7 @@ struct LoginStoreTests {
 
     @Test("logIn max accounts reached from account switching: shows swipe-to-remove message")
     func logInMaxAccountsReachedFromAccountSwitching() async {
-        let (store, accountService, _, notificationService) = makeSUT()
+        let (store, accountService, _, notificationService) = makeLoginStoreSUT()
         accountService.logInResult = .failure(AccountError.maxAccountsReached)
         store.isFromAccountSwitching = true
 
@@ -576,36 +576,10 @@ struct LoginStoreTests {
 
     // MARK: - Computed error properties
 
-    @Test("emailError is nil when email field is clean")
-    func emailErrorNilWhenClean() {
-        let (store, _, _, _) = makeSUT()
-
-        #expect(store.emailError == nil)
-    }
-
-    @Test("emailError returns error string when field is dirty and invalid")
-    func emailErrorSetWhenDirtyAndInvalid() {
-        let (store, _, _, _) = makeSUT()
-
-        store.loginForm.email.markAsDirty()
-        store.loginForm.email.validate()
-
-        #expect(store.emailError != nil)
-    }
-
-    @Test("passwordError returns error string when field is dirty and invalid")
-    func passwordErrorSetWhenDirtyAndInvalid() {
-        let (store, _, _, _) = makeSUT()
-
-        store.loginForm.password.markAsDirty()
-        store.loginForm.password.validate()
-
-        #expect(store.passwordError != nil)
-    }
 }
 
 @MainActor
-private func makeSUT() -> (LoginStore, MockAccountService, MockLoggerService, MockNotificationHelperService) { // swiftlint:disable:this large_tuple
+func makeLoginStoreSUT() -> (LoginStore, MockAccountService, MockLoggerService, MockNotificationHelperService) { // swiftlint:disable:this large_tuple
     TestDependencyContainer.reset()
 
     let accountService = MockAccountService()

@@ -102,7 +102,7 @@ class UserSettingsServiceTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `toggleStreakSetting calls online repository when network available and streak on`() = runTest {
+    fun `toggleStreakSetting calls online repository when network available and streak on`() = runTest(mainDispatcherRule.scheduler) {
         // Arrange
         stubUpdateStreakSettingSuccess()
 
@@ -119,7 +119,7 @@ class UserSettingsServiceTest {
     }
 
     @Test
-    fun `toggleStreakSetting calls online repository when network available and streak off`() = runTest {
+    fun `toggleStreakSetting calls online repository when network available and streak off`() = runTest(mainDispatcherRule.scheduler) {
         // Arrange
         stubUpdateStreakSettingSuccess()
 
@@ -135,7 +135,7 @@ class UserSettingsServiceTest {
     }
 
     @Test
-    fun `toggleStreakSetting calls offline repository when network unavailable`() = runTest {
+    fun `toggleStreakSetting calls offline repository when network unavailable`() = runTest(mainDispatcherRule.scheduler) {
         // Arrange
         stubNetworkUnavailable()
         stubUpdateStreakSettingOfflineSuccess()
@@ -153,7 +153,7 @@ class UserSettingsServiceTest {
     }
 
     @Test
-    fun `toggleStreakSetting rethrows HttpException from online call`() = runTest {
+    fun `toggleStreakSetting rethrows HttpException from online call`() = runTest(mainDispatcherRule.scheduler) {
         // Arrange
         stubUpdateStreakSettingThrows(httpException(500))
 
@@ -162,7 +162,7 @@ class UserSettingsServiceTest {
     }
 
     @Test
-    fun `toggleStreakSetting rethrows RuntimeException from online call`() = runTest {
+    fun `toggleStreakSetting rethrows RuntimeException from online call`() = runTest(mainDispatcherRule.scheduler) {
         // Arrange
         stubUpdateStreakSettingThrows(RuntimeException("DB error"))
 
@@ -171,7 +171,7 @@ class UserSettingsServiceTest {
     }
 
     @Test
-    fun `toggleStreakSetting rethrows exception from offline call`() = runTest {
+    fun `toggleStreakSetting rethrows exception from offline call`() = runTest(mainDispatcherRule.scheduler) {
         // Arrange
         stubNetworkUnavailable()
         coEvery { userSettingsRepository.updateStreakSettingOffline(any()) } throws RuntimeException("DB write failed")
@@ -185,7 +185,7 @@ class UserSettingsServiceTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `toggleWeightlessSetting calls online repository when network available and weightless on`() = runTest {
+    fun `toggleWeightlessSetting calls online repository when network available and weightless on`() = runTest(mainDispatcherRule.scheduler) {
         // Arrange
         stubUpdateWeightlessSettingSuccess()
 
@@ -206,7 +206,7 @@ class UserSettingsServiceTest {
     }
 
     @Test
-    fun `toggleWeightlessSetting nulls timestamp and weight when weightless off`() = runTest {
+    fun `toggleWeightlessSetting nulls timestamp and weight when weightless off`() = runTest(mainDispatcherRule.scheduler) {
         // Arrange
         stubUpdateWeightlessSettingSuccess()
 
@@ -226,7 +226,7 @@ class UserSettingsServiceTest {
     }
 
     @Test
-    fun `toggleWeightlessSetting passes null weight when weightless on and weight is null`() = runTest {
+    fun `toggleWeightlessSetting passes null weight when weightless on and weight is null`() = runTest(mainDispatcherRule.scheduler) {
         // Arrange
         stubUpdateWeightlessSettingSuccess()
 
@@ -246,7 +246,7 @@ class UserSettingsServiceTest {
     }
 
     @Test
-    fun `toggleWeightlessSetting calls offline repository when network unavailable`() = runTest {
+    fun `toggleWeightlessSetting calls offline repository when network unavailable`() = runTest(mainDispatcherRule.scheduler) {
         // Arrange
         stubNetworkUnavailable()
         stubUpdateWeightlessSettingOfflineSuccess()
@@ -268,7 +268,7 @@ class UserSettingsServiceTest {
     }
 
     @Test
-    fun `toggleWeightlessSetting offline with weightless off nulls timestamp and weight`() = runTest {
+    fun `toggleWeightlessSetting offline with weightless off nulls timestamp and weight`() = runTest(mainDispatcherRule.scheduler) {
         // Arrange
         stubNetworkUnavailable()
         stubUpdateWeightlessSettingOfflineSuccess()
@@ -289,7 +289,7 @@ class UserSettingsServiceTest {
     }
 
     @Test
-    fun `toggleWeightlessSetting rethrows HttpException from online call`() = runTest {
+    fun `toggleWeightlessSetting rethrows HttpException from online call`() = runTest(mainDispatcherRule.scheduler) {
         // Arrange
         stubUpdateWeightlessSettingThrows(httpException(500))
 
@@ -298,7 +298,7 @@ class UserSettingsServiceTest {
     }
 
     @Test
-    fun `toggleWeightlessSetting rethrows RuntimeException from online call`() = runTest {
+    fun `toggleWeightlessSetting rethrows RuntimeException from online call`() = runTest(mainDispatcherRule.scheduler) {
         // Arrange
         stubUpdateWeightlessSettingThrows(RuntimeException("Server error"))
 
@@ -307,7 +307,7 @@ class UserSettingsServiceTest {
     }
 
     @Test
-    fun `toggleWeightlessSetting rethrows exception from offline call`() = runTest {
+    fun `toggleWeightlessSetting rethrows exception from offline call`() = runTest(mainDispatcherRule.scheduler) {
         // Arrange
         stubNetworkUnavailable()
         coEvery { userSettingsRepository.updateWeightlessSettingOffline(any()) } throws RuntimeException("DB write failed")

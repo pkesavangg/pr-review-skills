@@ -1,6 +1,6 @@
 import Foundation
-import Testing
 @testable import meApp
+import Testing
 
 @Suite(.serialized)
 @MainActor
@@ -90,7 +90,7 @@ struct YAxisCalculatorTests {
 
         #expect(scale.average == -2.5)
         #expect(scale.domain.lowerBound < 0)
-        #expect(scale.ticks.contains(where: { $0 < 0 }))
+        #expect(scale.ticks.contains { $0 < 0 })
     }
 
     @Test("niceTicks: produces nice snapped ticks and domain")
@@ -168,9 +168,8 @@ struct YAxisCalculatorTests {
             ],
             goalWeight: nil,
             isWeightlessMode: false,
-            anchorWeight: nil,
-            convertStoredWeightToDisplay: { value in Double(value) - 5 }
-        )
+            anchorWeight: nil
+        ) { value in Double(value) - 5 }
 
         #expect(scale.min == 0)
         #expect(scale.domain.lowerBound == 0)

@@ -50,7 +50,9 @@ struct WeightTrendView: View {
                         }
                         return dashboardStore.displayManager.formatWeightDisplayText(averageWeight)
                     }(),
-                    unitText: dashboardStore.displayManager.displayUnitText
+                    unitText: dashboardStore.displayManager.displayUnitText,
+                    // Per Me.Health 2.0: the weight latest-entry value is tinted blue.
+                    weightColor: theme.weightScaleColor
                 )
                 .opacity(isGraphLoading ? 0 : 1)
             }

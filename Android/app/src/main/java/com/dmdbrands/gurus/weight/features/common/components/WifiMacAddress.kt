@@ -11,7 +11,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
-import com.dmdbrands.gurus.weight.features.scaleDetails.strings.WifiMacAddressStrings
+import com.dmdbrands.gurus.weight.features.deviceDetails.strings.WifiMacAddressStrings
 import com.dmdbrands.gurus.weight.theme.MeAppTheme
 import com.dmdbrands.gurus.weight.theme.MeTheme.spacing
 import android.content.ClipData

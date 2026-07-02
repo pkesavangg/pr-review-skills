@@ -1,7 +1,7 @@
 import Foundation
+@testable import meApp
 import SwiftData
 import Testing
-@testable import meApp
 
 @Suite(.serialized)
 struct SwiftDataWorkerTests {
@@ -417,12 +417,8 @@ struct SwiftDataWorkerTests {
 
     // MARK: - EntryData.toDTO
 
-    @Test("EntryData toDTO maps all fields correctly via round-trip")
     @MainActor
-    func entryDataToDTOMapsFields() async throws {
-        let container = try makeContainer()
-        let ctx = container.mainContext
-
+    private func makeFullEntry() -> Entry {
         let entry = Entry(
             entryTimestamp: "2026-03-10T00:00:00Z",
             accountId: "acct-1",
@@ -431,14 +427,35 @@ struct SwiftDataWorkerTests {
             isSynced: true
         )
         entry.scaleEntry = BathScaleEntry(
-            weight: 72000, bodyFat: 2200, muscleMass: 4500,
-            water: 5500, bmi: 2400, source: "bluetooth"
+            weight: 72000,
+            bodyFat: 2200,
+            muscleMass: 4500,
+            water: 5500,
+            bmi: 2400,
+            source: "bluetooth"
         )
         entry.scaleEntryMetric = BathScaleMetric(
-            bmr: 1650, metabolicAge: 28, proteinPercent: 18,
-            pulse: 72, skeletalMusclePercent: 35, subcutaneousFatPercent: 15,
-            visceralFatLevel: 8, boneMass: 3200, impedance: 500, unit: "kg"
+            bmr: 1650,
+            metabolicAge: 28,
+            proteinPercent: 18,
+            pulse: 72,
+            skeletalMusclePercent: 35,
+            subcutaneousFatPercent: 15,
+            visceralFatLevel: 8,
+            boneMass: 3200,
+            impedance: 500,
+            unit: "kg"
         )
+        return entry
+    }
+
+    @Test("EntryData toDTO maps all fields correctly via round-trip")
+    @MainActor
+    func entryDataToDTOMapsFields() async throws {
+        let container = try makeContainer()
+        let ctx = container.mainContext
+
+        let entry = makeFullEntry()
         ctx.insert(entry)
         try ctx.save()
 

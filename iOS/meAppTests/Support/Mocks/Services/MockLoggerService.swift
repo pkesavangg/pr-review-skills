@@ -17,6 +17,7 @@ final class MockLoggerService: LoggerServiceProtocol {
     func getLogsForAccount(_ accountId: String) async throws -> [LogEntry] { [] }
     func getLogs(from: Date, to: Date) async throws -> [LogEntry] { [] }
 
+    // swiftlint:disable:next function_parameter_count
     func log(
         level: LogLevel,
         tag: String,
