@@ -1,6 +1,6 @@
 import Foundation
-import Testing
 @testable import meApp
+import Testing
 
 // MARK: - BpmReadingDisplayData Tests
 
@@ -357,7 +357,7 @@ struct GraphDataPreparerBpmTests {
     @Test("buildBabyWeightSeries returns empty for no operations")
     func babyWeightSeriesEmptyForNoOps() {
         let sut = makePreparer()
-        let result = sut.buildBabyWeightSeries(from: [], convertWeight: { ConversionTools.convertStoredToLbs($0) })
+        let result = sut.buildBabyWeightSeries(from: []) { ConversionTools.convertStoredToLbs($0) }
         #expect(result.isEmpty)
     }
 
@@ -369,9 +369,8 @@ struct GraphDataPreparerBpmTests {
             DashboardTestFixtures.makeSummary(period: "2026-03-02", weight: 810)
         ]
         let result = sut.buildBabyWeightSeries(
-            from: summaries,
-            convertWeight: { ConversionTools.convertStoredToLbs($0) }
-        )
+            from: summaries
+        ) { ConversionTools.convertStoredToLbs($0) }
         #expect(result.count == 2)
     }
 
@@ -382,9 +381,8 @@ struct GraphDataPreparerBpmTests {
         let summary = DashboardTestFixtures.makeSummary(weight: Double(stored))
 
         let result = sut.buildBabyWeightSeries(
-            from: [summary],
-            convertWeight: { ConversionTools.convertStoredToLbs($0) }
-        )
+            from: [summary]
+        ) { ConversionTools.convertStoredToLbs($0) }
 
         let expected = ConversionTools.convertStoredToLbs(stored)
         #expect(result.count == 1)

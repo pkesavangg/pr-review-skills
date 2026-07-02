@@ -1,8 +1,8 @@
 import Foundation
+@testable import meApp
 import SwiftUI
 import Testing
 import UIKit
-@testable import meApp
 
 extension BtWifiStoreTests {
     @Suite("Store Core")
@@ -227,9 +227,7 @@ extension BtWifiStoreTests {
 
         @Test("view settings dashboard metrics branch initializes dashboard store")
         func viewSettingsDashboardMetricsBranchInitializesDashboardStore() {
-            let harness = BtWifiStoreTestFixtures.makeSUT(
-                dashboardStoreFactory: { DashboardStore(lightweight: true) }
-            )
+            let harness = BtWifiStoreTestFixtures.makeSUT { DashboardStore(lightweight: true) }
             let store = harness.store
 
             TestDependencyContainer.registerDashboardConcreteDependencies()

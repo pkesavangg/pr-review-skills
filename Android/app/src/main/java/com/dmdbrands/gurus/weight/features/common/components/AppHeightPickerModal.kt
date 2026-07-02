@@ -186,62 +186,62 @@ fun AppHeightPickerModal(
   // State to control dialog visibility
 
   val itemHeight = (spacing.sm * 2) + 24.dp
-          BaseModal(
-            title = "Height",
-            primaryAction =
-              ActionButton(
-                text = confirmText,
-                action = {
-                  onOk(state.item)
-                },
-              ),
-            secondaryAction = ActionButton(text = "Cancel", action = { onCancel() }),
-          ) {
-            Spacer(Modifier.height(spacing.xs))
-            when (value) {
-              is HeightInput.Cm -> {
-                AppPicker(
-                  items = AppPickerDefaults.cmHeights,
-                  selectedItem = state.item,
-                  labelMapper = { it, _ -> "${(it as HeightInput.Cm).value} cm" },
-                  onItemSelected = { state.setItem(it) },
-                  itemHeight = itemHeight,
-                )
-              }
+  BaseModal(
+    title = "Height",
+    primaryAction =
+      ActionButton(
+        text = confirmText,
+        action = {
+          onOk(state.item)
+        },
+      ),
+    secondaryAction = ActionButton(text = "Cancel", action = { onCancel() }),
+  ) {
+    Spacer(Modifier.height(spacing.xs))
+    when (value) {
+      is HeightInput.Cm -> {
+        AppPicker(
+          items = AppPickerDefaults.cmHeights,
+          selectedItem = state.item,
+          labelMapper = { it, _ -> "${(it as HeightInput.Cm).value} cm" },
+          onItemSelected = { state.setItem(it) },
+          itemHeight = itemHeight,
+        )
+      }
 
-              else -> {
-                Row(
-                  horizontalArrangement = Arrangement.Center,
-                  verticalAlignment = Alignment.CenterVertically,
-                ) {
-                  AppPicker(
-                    items = AppPickerDefaults.feetHeights,
-                    selectedItem = (state.item as HeightInput.FtIn).feet,
-                    labelMapper = { it, _ -> "$it'" },
-                    onItemSelected = { state.setItem((state.item as HeightInput.FtIn).copy(feet = it)) },
-                    modifier = Modifier.weight(1f),
-                    itemHeight = itemHeight,
-                  )
-                  Spacer(modifier = Modifier.padding(horizontal = spacing.sm))
-                  AppPicker(
-                    items = AppPickerDefaults.inchHeights,
-                    selectedItem = (state.item as HeightInput.FtIn).inches,
-                    labelMapper = { it, _ -> "$it\"" },
-                    onItemSelected = {
-                      state.setItem(
-                        (state.item as HeightInput.FtIn).copy(
-                          inches = it,
-                        ),
-                      )
-                    },
-                    modifier = Modifier.weight(1f),
-                    itemHeight = itemHeight,
-                  )
-                }
-              }
-            }
-          }
+      else -> {
+        Row(
+          horizontalArrangement = Arrangement.Center,
+          verticalAlignment = Alignment.CenterVertically,
+        ) {
+          AppPicker(
+            items = AppPickerDefaults.feetHeights,
+            selectedItem = (state.item as HeightInput.FtIn).feet,
+            labelMapper = { it, _ -> "$it'" },
+            onItemSelected = { state.setItem((state.item as HeightInput.FtIn).copy(feet = it)) },
+            modifier = Modifier.weight(1f),
+            itemHeight = itemHeight,
+          )
+          Spacer(modifier = Modifier.padding(horizontal = spacing.sm))
+          AppPicker(
+            items = AppPickerDefaults.inchHeights,
+            selectedItem = (state.item as HeightInput.FtIn).inches,
+            labelMapper = { it, _ -> "$it\"" },
+            onItemSelected = {
+              state.setItem(
+                (state.item as HeightInput.FtIn).copy(
+                  inches = it,
+                ),
+              )
+            },
+            modifier = Modifier.weight(1f),
+            itemHeight = itemHeight,
+          )
         }
+      }
+    }
+  }
+}
 
 @PreviewTheme
 @Composable

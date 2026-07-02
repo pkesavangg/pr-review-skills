@@ -1,7 +1,7 @@
 import Combine
 import Foundation
-import Testing
 @testable import meApp
+import Testing
 
 @Suite(.serialized)
 @MainActor
@@ -135,32 +135,7 @@ struct BluetoothServiceTests {
             isNew: true
         )
         let info = DeviceInfo(deviceName: "Scale", broadcastIdString: "P1", macAddress: "AA:BB")
-        let entry = EntryNotification(from: BathScaleOperationDTO(
-            accountId: "101",
-            bmr: nil,
-            bmi: nil,
-            bodyFat: nil,
-            boneMass: nil,
-            entryTimestamp: "2026-02-01T00:00:00.000Z",
-            entryType: nil,
-            impedance: nil,
-            metabolicAge: nil,
-            muscleMass: nil,
-            operationType: "CREATE",
-            proteinPercent: nil,
-            pulse: nil,
-            serverTimestamp: nil,
-            skeletalMusclePercent: nil,
-            source: EntrySource.bluetooth.rawValue,
-            subcutaneousFatPercent: nil,
-            systolic: nil,
-            diastolic: nil,
-            meanArterial: nil,
-            unit: "kg",
-            visceralFatLevel: nil,
-            water: nil,
-            weight: 72.5
-        ))
+        let entry = Self.makePublisherEntryNotification()
         let firmware = FirmwareUpdateStatus(progress: 0.42, isComplete: false, error: nil)
 
         var discovered: [DeviceDiscoveryEvent] = []
@@ -205,6 +180,35 @@ struct BluetoothServiceTests {
         #expect(entries.first == entry)
         #expect(firmwareStates == [firmware])
         #expect(cancellables.count == 5)
+    }
+
+    private static func makePublisherEntryNotification() -> EntryNotification {
+        EntryNotification(from: BathScaleOperationDTO(
+            accountId: "101",
+            bmr: nil,
+            bmi: nil,
+            bodyFat: nil,
+            boneMass: nil,
+            entryTimestamp: "2026-02-01T00:00:00.000Z",
+            entryType: nil,
+            impedance: nil,
+            metabolicAge: nil,
+            muscleMass: nil,
+            operationType: "CREATE",
+            proteinPercent: nil,
+            pulse: nil,
+            serverTimestamp: nil,
+            skeletalMusclePercent: nil,
+            source: EntrySource.bluetooth.rawValue,
+            subcutaneousFatPercent: nil,
+            systolic: nil,
+            diastolic: nil,
+            meanArterial: nil,
+            unit: "kg",
+            visceralFatLevel: nil,
+            water: nil,
+            weight: 72.5
+        ))
     }
 
     @Test("clearScaleDiscoveredInfo clears both skip and reconnect skipped lists")

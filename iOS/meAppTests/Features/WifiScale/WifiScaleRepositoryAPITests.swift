@@ -1,6 +1,6 @@
-import Testing
 import Foundation
 @testable import meApp
+import Testing
 
 @Suite(.serialized)
 @MainActor
@@ -88,7 +88,7 @@ struct WifiScaleRepositoryAPITests {
 
         let result = try await sut.getScaleToken(request: nil)
 
-        #expect(result.token == "")
+        #expect(result.token.isEmpty)
     }
 
     @Test("getScaleToken success with long token: returns full token value")

@@ -10,6 +10,7 @@ import SwiftData
 import SwiftUI
 
 @MainActor
+// swiftlint:disable:next type_body_length
 final class HealthKitService: HealthKitServiceProtocol {
     static let shared = HealthKitService()
     private let integrationService: IntegrationServiceProtocol
@@ -327,7 +328,11 @@ final class HealthKitService: HealthKitServiceProtocol {
     /// Writes entry data into Apple Health using an EntryNotification.
     /// This method is safe to call from any actor as it uses extracted data.
     func syncNewData(notification: EntryNotification) async throws {
-        logger.log(level: .info, tag: tag, message: "HealthKit sync new entry started. timestamp=\(notification.entryTimestamp), entryType=\(notification.entryType)")
+        logger.log(
+            level: .info,
+            tag: tag,
+            message: "HealthKit sync new entry started. timestamp=\(notification.entryTimestamp), entryType=\(notification.entryType)"
+        )
         let export = HealthKitExportExtended(
             timestamp: notification.entryTimestamp,
             weight: notification.weight,

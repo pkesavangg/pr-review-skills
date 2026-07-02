@@ -12,7 +12,7 @@ object DebugMenuStrings {
     object SectionHeaders {
         const val AppInformation = "App Information"
         const val AppTroubleshooting = "App Troubleshooting"
-        const val ScaleTroubleshooting = "Scale Troubleshooting"
+        const val DeviceTroubleshooting = "Scale Troubleshooting"
     }
 
     object AppInfo {

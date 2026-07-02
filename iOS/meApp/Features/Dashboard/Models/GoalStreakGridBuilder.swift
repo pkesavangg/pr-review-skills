@@ -141,6 +141,7 @@ enum GoalStreakGridBuilder {
         return (clampedGoalPos / columns) * columns
     }
 
+    // swiftlint:disable:next function_parameter_count
     private static func buildWidgetsWithGoalCard(
         activeStreaks: [MetricItem],
         removedStreaks: [MetricItem],

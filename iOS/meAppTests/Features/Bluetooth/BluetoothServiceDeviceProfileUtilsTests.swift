@@ -1,8 +1,8 @@
 import Combine
 import Foundation
 import GGBluetoothSwiftPackage
-import Testing
 @testable import meApp
+import Testing
 
 @Suite(.serialized)
 @MainActor

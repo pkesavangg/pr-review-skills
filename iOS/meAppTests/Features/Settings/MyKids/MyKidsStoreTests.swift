@@ -2,8 +2,8 @@
 
 import Combine
 import Foundation
-import Testing
 @testable import meApp
+import Testing
 
 @Suite(.serialized)
 @MainActor
@@ -34,8 +34,7 @@ struct MyKidsStoreTests {
     func isSaveEnabled_editMode_formNotDirty_returnsFalse() {
         let sut = makeSUT()
         let store = sut.store
-        let baby = Baby(accountId: "acct-1", name: "Test",
-                        birthday: Date(), biologicalSex: "male")
+        let baby = Baby(accountId: "acct-1", name: "Test", birthday: Date(), biologicalSex: "male")
         store.editBaby(baby)
         #expect(store.isSaveEnabled == false)
     }
@@ -44,8 +43,7 @@ struct MyKidsStoreTests {
     func isSaveEnabled_editMode_formDirtyAndValid_returnsTrue() {
         let sut = makeSUT()
         let store = sut.store
-        let baby = Baby(accountId: "acct-1", name: "Test",
-                        birthday: Date(), biologicalSex: "male")
+        let baby = Baby(accountId: "acct-1", name: "Test", birthday: Date(), biologicalSex: "male")
         store.editBaby(baby)
         store.babyProfileForm.name.value = "Updated Name"
         #expect(store.isSaveEnabled == true)
@@ -55,8 +53,7 @@ struct MyKidsStoreTests {
     func isSaveEnabled_editMode_formDirtyButInvalid_returnsFalse() {
         let sut = makeSUT()
         let store = sut.store
-        let baby = Baby(accountId: "acct-1", name: "Test",
-                        birthday: Date(), biologicalSex: "male")
+        let baby = Baby(accountId: "acct-1", name: "Test", birthday: Date(), biologicalSex: "male")
         store.editBaby(baby)
         store.babyProfileForm.name.value = ""
         #expect(store.isSaveEnabled == false)
@@ -66,9 +63,15 @@ struct MyKidsStoreTests {
     func isSaveEnabled_editMode_eachFieldDirtyEnablesSave() {
         let sut = makeSUT()
         let store = sut.store
-        let baby = Baby(accountId: "acct-1", name: "Test",
-                        birthday: Date(), biologicalSex: "male",
-                        birthLengthInches: 20.0, birthWeightLbs: 7, birthWeightOz: 4.0)
+        let baby = Baby(
+            accountId: "acct-1",
+            name: "Test",
+            birthday: Date(),
+            biologicalSex: "male",
+            birthLengthInches: 20.0,
+            birthWeightLbs: 7,
+            birthWeightOz: 4.0
+        )
         let fields: [(String, (MyKidsStore) -> Void)] = [
             ("name", { $0.babyProfileForm.name.value = "Changed" }),
             ("birthday", { $0.babyProfileForm.birthday.value = Date.distantPast }),
@@ -89,9 +92,15 @@ struct MyKidsStoreTests {
     func editBaby_populatesForm_andFormIsNotDirty() {
         let sut = makeSUT()
         let store = sut.store
-        let baby = Baby(accountId: "acct-1", name: "Baby",
-                        birthday: Date(), biologicalSex: "male",
-                        birthLengthInches: 20.0, birthWeightLbs: 7, birthWeightOz: 4.0)
+        let baby = Baby(
+            accountId: "acct-1",
+            name: "Baby",
+            birthday: Date(),
+            biologicalSex: "male",
+            birthLengthInches: 20.0,
+            birthWeightLbs: 7,
+            birthWeightOz: 4.0
+        )
         store.editBaby(baby)
         #expect(store.isSaveEnabled == false)
     }
@@ -104,7 +113,7 @@ struct MyKidsStoreTests {
         let store = sut.store
         store.babyProfileForm.name.value = "Leftover"
         store.addBaby()
-        #expect(store.babyProfileForm.name.value == "")
+        #expect(store.babyProfileForm.name.value.isEmpty)
     }
 
     @Test("addBaby sets editingBaby to nil")
@@ -140,9 +149,15 @@ struct MyKidsStoreTests {
         let sut = makeSUT()
         let store = sut.store
         let birthday = Date()
-        let baby = Baby(accountId: "acct-1", name: "My Baby",
-                        birthday: birthday, biologicalSex: "female",
-                        birthLengthInches: 19.5, birthWeightLbs: 8, birthWeightOz: 3.5)
+        let baby = Baby(
+            accountId: "acct-1",
+            name: "My Baby",
+            birthday: birthday,
+            biologicalSex: "female",
+            birthLengthInches: 19.5,
+            birthWeightLbs: 8,
+            birthWeightOz: 3.5
+        )
         store.editBaby(baby)
         #expect(store.babyProfileForm.name.value == "My Baby")
         #expect(store.babyProfileForm.biologicalSex.value == "female")
@@ -158,10 +173,10 @@ struct MyKidsStoreTests {
         let store = sut.store
         let baby = Baby(accountId: "acct-1", name: "Minimal Baby")
         store.editBaby(baby)
-        #expect(store.babyProfileForm.biologicalSex.value == "")
-        #expect(store.babyProfileForm.birthLengthInches.value == "")
-        #expect(store.babyProfileForm.birthWeightLbs.value == "")
-        #expect(store.babyProfileForm.birthWeightOz.value == "")
+        #expect(store.babyProfileForm.biologicalSex.value.isEmpty)
+        #expect(store.babyProfileForm.birthLengthInches.value.isEmpty)
+        #expect(store.babyProfileForm.birthWeightLbs.value.isEmpty)
+        #expect(store.babyProfileForm.birthWeightOz.value.isEmpty)
     }
 
     // MARK: - saveBabyProfile
@@ -203,8 +218,7 @@ struct MyKidsStoreTests {
         let sut = makeSUT()
         let store = sut.store
         let babyService = sut.babyService
-        let baby = Baby(accountId: "acct-1", name: "Old Name",
-                        birthday: Date(), biologicalSex: "male")
+        let baby = Baby(accountId: "acct-1", name: "Old Name", birthday: Date(), biologicalSex: "male")
         store.editBaby(baby)
         store.babyProfileForm.name.value = "New Name"
 

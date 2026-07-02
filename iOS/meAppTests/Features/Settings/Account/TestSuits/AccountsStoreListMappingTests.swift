@@ -1,6 +1,6 @@
 import Foundation
-import Testing
 @testable import meApp
+import Testing
 
 extension AccountsStoreTests {
     @Suite("List Mapping And Ordering")
@@ -85,24 +85,24 @@ extension AccountsStoreTests {
 
         @Test("active account publisher updates store active account")
         func activeAccountPublisherUpdatesStore() async {
-            let a = AccountsStoreTestFixtures.makeAccount(
+            let accountA = AccountsStoreTestFixtures.makeAccount(
                 id: "acct-a",
                 email: "a@example.com",
                 firstName: "A",
                 isLoggedIn: true,
                 isActive: true
             )
-            let b = AccountsStoreTestFixtures.makeAccount(
+            let accountB = AccountsStoreTestFixtures.makeAccount(
                 id: "acct-b",
                 email: "b@example.com",
                 firstName: "B",
                 isLoggedIn: true
             )
 
-            let harness = AccountsStoreTestFixtures.makeSUT(accounts: [a, b], activeAccount: a)
+            let harness = AccountsStoreTestFixtures.makeSUT(accounts: [accountA, accountB], activeAccount: accountA)
             let store = harness.store
 
-            harness.accountService.activeAccount = b
+            harness.accountService.activeAccount = accountB
             await AccountsStoreTestFixtures.waitUntil {
                 store.activeAccount?.accountId == "acct-b"
             }

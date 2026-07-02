@@ -35,7 +35,7 @@ fun WeightOnlyModePopup(
       ){
         AppIcon(
           id = AppIcons.Default.closeFilled,
-          contentDescription = AppPopupStrings.ScaleDiscoveredPopup.CloseContentDescription,
+          contentDescription = AppPopupStrings.DeviceDiscoveredPopup.CloseContentDescription,
           modifier = Modifier
             .padding(top = spacing.md, end = spacing.sm)
             .size(24.dp),

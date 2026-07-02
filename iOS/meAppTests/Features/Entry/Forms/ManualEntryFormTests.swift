@@ -1,6 +1,6 @@
-import Testing
 import Foundation
 @testable import meApp
+import Testing
 
 @Suite(.serialized)
 @MainActor
@@ -13,7 +13,7 @@ struct ManualEntryFormTests {
     @Test("weight starts empty")
     func initialWeight() {
         let form = makeForm()
-        #expect(form.weight.value == "")
+        #expect(form.weight.value.isEmpty)
     }
 
     @Test("date defaults to today")
@@ -26,18 +26,18 @@ struct ManualEntryFormTests {
     @Test("body metrics start empty")
     func initialBodyMetrics() {
         let form = makeForm()
-        #expect(form.bmi.value == "")
-        #expect(form.bodyFat.value == "")
-        #expect(form.muscleMass.value == "")
-        #expect(form.bodyWater.value == "")
-        #expect(form.heartRate.value == "")
-        #expect(form.boneMass.value == "")
-        #expect(form.visceralFat.value == "")
-        #expect(form.subcutaneousFat.value == "")
-        #expect(form.protein.value == "")
-        #expect(form.skeletalMuscles.value == "")
-        #expect(form.bmr.value == "")
-        #expect(form.metabolicAge.value == "")
+        #expect(form.bmi.value.isEmpty)
+        #expect(form.bodyFat.value.isEmpty)
+        #expect(form.muscleMass.value.isEmpty)
+        #expect(form.bodyWater.value.isEmpty)
+        #expect(form.heartRate.value.isEmpty)
+        #expect(form.boneMass.value.isEmpty)
+        #expect(form.visceralFat.value.isEmpty)
+        #expect(form.subcutaneousFat.value.isEmpty)
+        #expect(form.protein.value.isEmpty)
+        #expect(form.skeletalMuscles.value.isEmpty)
+        #expect(form.bmr.value.isEmpty)
+        #expect(form.metabolicAge.value.isEmpty)
     }
 
     // MARK: - weight validators

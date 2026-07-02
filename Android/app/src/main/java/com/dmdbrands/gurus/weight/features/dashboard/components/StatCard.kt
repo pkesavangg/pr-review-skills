@@ -2,9 +2,7 @@ package com.dmdbrands.gurus.weight.features.dashboard.components
 
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.RepeatMode
-import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.infiniteRepeatable
-import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -24,7 +22,6 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
@@ -37,6 +34,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.DpOffset
 import androidx.compose.ui.unit.dp
+import com.dmdbrands.gurus.weight.core.power.powerSaveAwareInfiniteFloat
 import com.dmdbrands.gurus.weight.domain.enums.MilestoneKey
 import com.dmdbrands.gurus.weight.features.common.components.AppIcon
 import com.dmdbrands.gurus.weight.features.common.components.AppIconType
@@ -200,15 +198,15 @@ fun AnimatedStatCard(
   onLongClick: (Stat) -> Unit = {},
   onClick: () -> Unit = {},
 ) {
-  // Wiggle animation
-  val infiniteTransition = rememberInfiniteTransition()
-  val wiggleAngle by infiniteTransition.animateFloat(
+  // Wiggle animation — rests at 0° (no wiggle) under Power Saving Mode (MOB-226).
+  val wiggleAngle = powerSaveAwareInfiniteFloat(
     initialValue = -1f,
     targetValue = 1f,
     animationSpec = infiniteRepeatable(
       animation = tween(durationMillis = 100, easing = LinearEasing),
       repeatMode = RepeatMode.Reverse,
     ),
+    restingValue = 0f,
   )
   if (isVisible) MeTheme.colorScheme.secondaryAction else MeTheme.colorScheme.iconPrimary
   val dragCardShadow = if (isDragging) {
