@@ -16,6 +16,18 @@ fun DeviceApiModel.toDomainModel(
   wifiMacAddress: String? = null,
   isWifiConfigured: Boolean = false,
   broadcastIdHex: String? = null,
+  // create/update paired-device responses drop the BLE identifiers and collapse the device's
+  // category into the connection `type`. When mapping the response of a device we just sent, the
+  // caller passes the locally-discovered values here to preserve them (see [broadcastIdHex]).
+  macAddressOverride: String? = null,
+  peripheralIdentifierOverride: String? = null,
+  deviceTypeOverride: String? = null,
+  // BACKEND WORKAROUND: the create/update AND get paired-device responses never return `scaleToken`,
+  // so the caller passes the locally-generated token to preserve it. Without this the stored token
+  // is null and R4 (0412) operations that need it (getUsers, updateAccount, readings) fail — e.g.
+  // the scale user list shows blank names. REMOVE once the backend returns scaleToken in the
+  // paired-device responses.
+  scaleTokenOverride: String? = null,
 ): Device {
   val scaleId = if (id.isNullOrEmpty()) UUID.randomUUID().toString() else id
   // The create/update paired-device responses omit broadcastId, so when a caller maps the
@@ -28,8 +40,10 @@ fun DeviceApiModel.toDomainModel(
     device = GGDeviceDetail(
       systemID = scaleId,
       deviceName = name ?: "",
-      macAddress = mac ?: "",
-      identifier = peripheralIdentifier ?: "",
+      // Server omits mac/peripheralIdentifier on create/update — keep the discovered ones so the
+      // stored row can be matched on reconnect (baby scales have no broadcastId → rely on these).
+      macAddress = macAddressOverride?.takeIf { it.isNotBlank() } ?: mac ?: "",
+      identifier = peripheralIdentifierOverride?.takeIf { it.isNotBlank() } ?: peripheralIdentifier ?: "",
       broadcastId = resolvedBroadcastId,
       broadcastIdString = resolvedBroadcastId,
       password = convertIntToHex(password, type),
@@ -39,7 +53,10 @@ fun DeviceApiModel.toDomainModel(
     connectionStatus = connectionStatus,
     preferences = preference?.toPreferences(scaleId, isSynced = true),
     nickname = nickname ?: name ?: "",
-    deviceType = type,
+    // The API `type` is the CONNECTION type (e.g. a baby scale is sent as "bluetooth"), so mapping
+    // it straight to deviceType would demote "babyScale"/"bpmA6Bluetooth" to "bluetooth". Preserve
+    // the local setup category when the caller provides it. (baby-scale reconnect fix)
+    deviceType = deviceTypeOverride ?: type,
     alreadyPaired = false,
     isSynced = true,
     sku = sku,
@@ -47,7 +64,9 @@ fun DeviceApiModel.toDomainModel(
     userNumber = userNumber,
     hasServerID = !id.isNullOrEmpty(),
     isWeighOnlyModeEnabledByOthers = false,
-    token = scaleToken,
+    // BACKEND WORKAROUND: server never echoes scaleToken, so fall back to the caller-supplied local
+    // token. REMOVE the override once the backend returns scaleToken.
+    token = scaleTokenOverride?.takeIf { it.isNotBlank() } ?: scaleToken,
     productType = productType,
   )
 }

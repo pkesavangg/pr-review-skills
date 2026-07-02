@@ -31,6 +31,7 @@ import com.dmdbrands.gurus.weight.domain.model.storage.Account.Account
 import com.dmdbrands.gurus.weight.domain.model.storage.BLEStatus
 import com.dmdbrands.gurus.weight.domain.model.storage.Device
 import com.dmdbrands.gurus.weight.domain.model.storage.entry.BabyEntry
+import com.dmdbrands.gurus.weight.domain.model.storage.entry.BpmEntry
 import com.dmdbrands.gurus.weight.domain.model.storage.entry.Entry
 import com.dmdbrands.gurus.weight.domain.model.storage.entry.ScaleEntry
 import com.dmdbrands.gurus.weight.domain.model.storage.toGGBTDevice
@@ -694,13 +695,18 @@ constructor(
   )
 
   private fun saveBpmEntry(ggEntries: List<GGBPMEntry>) {
-    saveBluetoothEntries(ggEntries) { accountId, deviceId ->
+    // A monitor holds multiple user slots; attribute the reading to the row matching this slot.
+    val userNumber = ggEntries.firstOrNull()?.userNumber?.toInt()
+    val protocolType = ggEntries.firstOrNull()?.protocolType
+    saveBluetoothEntries(ggEntries, userNumber, protocolType) { accountId, deviceId ->
       ggEntries.mapIndexed { index, entry -> entry.toBpmEntry(accountId, deviceId, index.toLong()) }
     }
   }
 
   private fun <T : GGEntry> saveBluetoothEntries(
     ggEntries: List<T>,
+    userNumber: Int? = null,
+    protocolType: String? = null,
     mapEntries: suspend (accountId: String, deviceId: String) -> List<Entry>,
   ) {
     viewModelScope.launch {
@@ -708,24 +714,72 @@ constructor(
       val accountId = currentAccountId ?: return@launch
       val isSetupInProgress = deviceService.isSetupInProgress()
       val broadcastId = ggEntries.first().broadcastId
-      // A device synced from GET /v3/paired-device carries no broadcastId (the server omits it),
-      // so a live monitor reading can't match it and the entry was silently dropped. Heal: attribute
-      // the reading to the single paired BPM device and backfill its broadcastId so it syncs now and
-      // future readings resolve directly. (MOB-596)
-      val device = deviceService.getScaleByBroadcastId(broadcastId, accountId)
-        ?: deviceService.healBpmDeviceBroadcastId(broadcastId, accountId)
+      // Match the reading to the exact paired row by broadcastId + userNumber (a monitor can be
+      // paired under multiple user slots). Fall back to broadcastId-only, then to the single-device
+      // heal: a device synced from GET /v3/paired-device carries no broadcastId (the server omits
+      // it), so we attribute to the single un-identified BPM device and backfill it. (MOB-596)
+      val device = (userNumber?.let { deviceService.getScaleByBroadcastIdAndUser(broadcastId, it, accountId) })
+        ?: deviceService.getScaleByBroadcastId(broadcastId, accountId)
+        ?: deviceService.healBpmDeviceBroadcastId(broadcastId, accountId, protocolType)
 
       if (device == null && !isSetupInProgress) return@launch
 
       try {
         val entries = mapEntries(accountId, device?.id ?: "")
-        entryService.addEntry(entries)
-        if (!isSetupInProgress) {
-          dialogQueueService.showToast(Toast.Simple(message = "entry saved successfully"))
+        if (isSetupInProgress) {
+          // During setup, save immediately without a reading card (parity with the weight path).
+          entryService.addEntry(entries)
+          checkAccountFlags("entry")
+        } else {
+          // Show the "New BPM Reading Received" card with SAVE/DISCARD; the reading is persisted
+          // only when the user taps SAVE — no auto-save, matching the weight-scale flow.
+          showBpmReadingToast(entries)
         }
-        checkAccountFlags("entry")
       } catch (e: Exception) {
         AppLog.e(TAG, "Error saving entry", e)
+      }
+    }
+  }
+
+  /**
+   * Shows the "New BPM Reading Received" arrival card (SAVE/DISCARD) for a synced monitor reading,
+   * mirroring the weight-scale flow: the reading is only persisted on SAVE; DISCARD just dismisses
+   * (nothing was written). Extra buffered readings surface a "+N more… VIEW" pill and all save
+   * together on SAVE.
+   */
+  private fun showBpmReadingToast(entries: List<Entry>) {
+    val latest = entries.filterIsInstance<BpmEntry>().maxByOrNull { it.entry.entryTimestamp } ?: return
+    val additionalCount = (entries.size - 1).coerceAtLeast(0)
+    dialogQueueService.showToast(
+      Toast.Custom(
+        ReadingToast(
+          reading = "${latest.systolic}/${latest.diastolic} mmHg pulse ${latest.pulse}",
+          type = ProductType.BLOOD_PRESSURE,
+          timestamp = "Just now",
+          additionalCount = additionalCount,
+          primaryAction = { saveBpmEntriesFromToast(entries) },
+          secondaryAction = {
+            // The reading is only persisted on SAVE, so discarding just dismisses the card (MOB-598).
+            dialogQueueService.dismissToast()
+            AppLog.i(TAG, "BPM entry discarded via reading toast")
+          },
+          onView = {
+            viewModelScope.launch { navigationService.navigateTo(AppRoute.Main.History) }
+          },
+        ),
+      ),
+    )
+  }
+
+  /** Persists the buffered BPM readings from the reading toast's SAVE action. */
+  private fun saveBpmEntriesFromToast(entries: List<Entry>) {
+    viewModelScope.launch {
+      try {
+        entryService.addEntry(entries)
+        checkAccountFlags("entry")
+        AppLog.i(TAG, "BPM entry saved via reading toast")
+      } catch (e: Exception) {
+        AppLog.e(TAG, "Error saving BPM entry from toast", e)
       }
     }
   }
@@ -759,16 +813,6 @@ constructor(
           scale.device?.broadcastId == broadcastId
         } || deviceService.getScaleByBroadcastId(broadcastId, accountId) != null
       } == true
-      // TEMP-DIAG (baby-scale reconnect): confirm what identifiers an A6 baby scale advertises and
-      // whether the broadcastId-only known-scale check fails. Remove after diagnosis.
-      AppLog.d(
-        TAG,
-        "DIAG discovery type=${deviceResponse.type} sku=${data.getSKU()} protocol=${data.protocolType} " +
-          "broadcastId=${data.broadcastId} mac=${data.macAddress} isKnownScale=$isKnownScale " +
-          "pairedCount=${latestPairedScales.size} " +
-          "pairedBroadcastIds=${latestPairedScales.map { it.device?.broadcastId }} " +
-          "pairedMacs=${latestPairedScales.map { it.device?.macAddress }}",
-      )
       AppLog.d(TAG, "device response ${deviceResponse.type}")
 
       when (deviceResponse.type) {
@@ -1021,8 +1065,16 @@ constructor(
       }
       // During setup scale list will be empty so ignoring this check during setup and allow all entries.
       val isSetupInProgress = deviceService.isSetupInProgress()
-      val device = deviceService.getScaleByBroadcastId(ggEntry.first().broadcastId, accountId)
-      AppLog.i(TAG, "BABY_DEBUG saveEntry: isSetupInProgress=$isSetupInProgress deviceFound=${device != null} deviceSku=${device?.sku} deviceType=${device?.deviceType}")
+      val readingBroadcastId = ggEntry.first().broadcastId
+      // A6 baby scales are often saved without a broadcastId (server omits it / older rows), so the
+      // id lookup misses and the reading gets misclassified as a WEIGHT reading — surfacing a
+      // "weight reading received" toast and saving it as weight even when it's a baby scale with no
+      // baby profile. Fall back to attributing an A6 reading to the lone paired baby scale (by SKU)
+      // so it classifies as BABY. (baby-scale reconnect fix)
+      val readingIsA6 = ggEntry.first().protocolType == GGDeviceProtocolType.GG_DEVICE_PROTOCOL_A6.value
+      val device = deviceService.getScaleByBroadcastId(readingBroadcastId, accountId)
+        ?: if (readingIsA6) deviceService.healBabyScaleBroadcastId(readingBroadcastId, accountId) else null
+      AppLog.i(TAG, "BABY_DEBUG saveEntry: isSetupInProgress=$isSetupInProgress deviceFound=${device != null} deviceSku=${device?.sku} deviceType=${device?.deviceType} readingIsA6=$readingIsA6")
 
       // if (device == null && !isSetupInProgress) {
       //   AppLog.w(TAG, "BABY_DEBUG saveEntry: device lookup NULL for broadcastId=${ggEntry.first().broadcastId} and not in setup — return (reading dropped)")
@@ -1125,7 +1177,16 @@ constructor(
           additionalCount = additionalCount,
           primaryAction = {
             if (hasNoBabyProfile) {
+              // Hold the reading and auto-assign it to the baby the user is about to create; the
+              // deactivate handler assigns on success or drops it on cancel (Option A).
+              pendingBabyReading = PendingBabyReading(
+                reading = reading,
+                entry = entry,
+                sourceSku = sourceSku,
+                baselineBabyIds = babiesAtArrival.map { it.id }.toSet(),
+              )
               viewModelScope.launch {
+                registerAddBabyDeactivateHandler()
                 navigationService.navigateTo(AppRoute.AccountSettings.AddBaby())
               }
             } else if (readingType == ProductType.BABY) {
@@ -1143,7 +1204,9 @@ constructor(
           },
           secondaryAction = {
             // The reading is only persisted on Save/Assign, so discarding an unsynced
-            // reading just dismisses the card — nothing was written (MOB-428).
+            // reading just dismisses the card — nothing was written (MOB-428). Also drop any
+            // held reading so a later baby-add never picks it up.
+            pendingBabyReading = null
             dialogQueueService.dismissToast()
             AppLog.i(TAG, "Entry discarded via reading toast")
           },
@@ -1183,6 +1246,49 @@ constructor(
 
   /** Most-recently-assigned baby; the timeout auto-assign target for multi-baby readings (MOB-598). */
   private var lastAssignedBabyId: String? = null
+
+  /**
+   * A baby-scale reading held while the user creates a baby from the no-baby toast's "ADD A BABY".
+   * [baselineBabyIds] is the set of baby ids that existed when the reading arrived, so we can detect
+   * the one newly-created baby to auto-assign it to.
+   */
+  private data class PendingBabyReading(
+    val reading: String,
+    val entry: List<ScaleEntry>,
+    val sourceSku: String?,
+    val baselineBabyIds: Set<String>,
+  )
+
+  private var pendingBabyReading: PendingBabyReading? = null
+
+  /**
+   * Registers a one-shot handler that fires when the user leaves the Add-a-Baby screen after tapping
+   * "ADD A BABY" on a no-baby reading toast. If a new baby was created, the held reading is
+   * auto-assigned to it (Option A); if the user cancelled (no new baby), the pending reading is
+   * dropped so it can never latch onto an unrelated future baby.
+   */
+  private fun registerAddBabyDeactivateHandler() {
+    viewModelScope.launch {
+      navigationService.registerOnDeactivate(AppRoute.AccountSettings.AddBaby()) {
+        val pending = pendingBabyReading
+        pendingBabyReading = null
+        if (pending != null) {
+          val newBaby = availableBabyProfiles().firstOrNull { it.id !in pending.baselineBabyIds }
+          if (newBaby != null) {
+            AppLog.i(TAG, "Auto-assigning held reading to newly added baby ${newBaby.id}")
+            viewModelScope.launch {
+              assignReadingToBaby(pending.reading, pending.entry, newBaby.id, listOf(newBaby), emptyList(), pending.sourceSku)
+            }
+          } else {
+            AppLog.i(TAG, "Add-a-baby cancelled — dropping held reading")
+          }
+        }
+        navigationService.unregisterOnDeactivate(AppRoute.AccountSettings.AddBaby())
+        // Never block leaving the screen.
+        true
+      }
+    }
+  }
 
   /**
    * Shows the baby picker. On confirm, assigns the reading to the chosen baby.

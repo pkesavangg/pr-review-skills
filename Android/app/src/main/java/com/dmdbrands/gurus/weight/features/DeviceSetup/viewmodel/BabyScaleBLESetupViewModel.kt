@@ -300,6 +300,25 @@ constructor(
         viewModelScope.launch {
           try {
             AppLog.d(TAG, "Baby scale device found: ${data.deviceName}")
+            // Block re-pairing a scale that's already paired to this account (Figma 33013-205573):
+            // show the "Scale Already Connected" alert and exit instead of adding a duplicate.
+            if (deviceService.scaleExistsByMac(data.macAddress)) {
+              AppLog.w(TAG, "Baby scale already paired for this account: ${data.macAddress}")
+              clearBluetoothTimeout()
+              stopObservingDevices()
+              dialogQueueService.showDialog(
+                DialogModel.Alert(
+                  title = BabyScaleSetupStrings.AlreadyPaired.Title,
+                  message = BabyScaleSetupStrings.AlreadyPaired.Message,
+                  dismissText = BabyScaleSetupStrings.AlreadyPaired.Exit,
+                  onDismiss = {
+                    handleIntent(DeviceSetupIntent.ExitSetup(true))
+                    dialogQueueService.dismissCurrent()
+                  },
+                ),
+              )
+              return@launch
+            }
             discoveredScale = Device(
               device = data,
               deviceType = DeviceSetupType.BabyScale.value,

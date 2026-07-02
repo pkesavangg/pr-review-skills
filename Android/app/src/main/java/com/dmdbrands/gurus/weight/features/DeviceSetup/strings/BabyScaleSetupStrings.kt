@@ -19,6 +19,13 @@ object BabyScaleSetupStrings {
     const val Hint = "nickname"
   }
 
+  /** Shown when the discovered baby scale is already paired to this account (Figma 33013-205573). */
+  object AlreadyPaired {
+    const val Title = "Caution: Scale Already Connected"
+    const val Message = "This baby scale is already paired to your profile. Please use a different scale to continue setup."
+    const val Exit = "OK, EXIT"
+  }
+
   object PairedSuccess {
     const val Title = "You're Paired!"
     const val Subtitle = "Add a baby profile to personalize weight tracking. You can do this later from Settings."

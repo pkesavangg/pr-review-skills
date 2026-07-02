@@ -127,10 +127,12 @@ fun DashboardScreen() {
           product = product,
           goal = state.goal,
           scrollToTopSignal = state.resetSignal,
+          // Goal set → goal-anchored range + goal badge; no goal → a default range so the Y axis
+          // still shows (consistent with BP/Baby) instead of a bare, axis-less grid.
           emptyRange = EmptyGraphDefaults.weightGoal(
             goalDisplay = state.goal?.goalWeight,
             isKg = state.weightUnit == WeightUnit.KG,
-          ),
+          ) ?: EmptyGraphDefaults.weightDefault(isKg = state.weightUnit == WeightUnit.KG),
           onRefresh = { vm.handleIntent(WeightDashboardIntent.Refresh) },
           createFallbackEntry = { ts, yValues, seg ->
             val y = yValues.firstOrNull() ?: return@DashboardPage null

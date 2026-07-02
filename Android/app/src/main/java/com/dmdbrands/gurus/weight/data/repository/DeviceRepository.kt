@@ -1,5 +1,6 @@
 package com.dmdbrands.gurus.weight.data.repository
 
+import com.dmdbrands.gurus.weight.core.shared.utilities.logging.AppLog
 import com.dmdbrands.gurus.weight.data.api.IDeviceAPI
 import com.dmdbrands.gurus.weight.data.storage.db.dao.DeviceDao
 import com.dmdbrands.gurus.weight.domain.model.api.device.DeviceApiException
@@ -13,7 +14,6 @@ import com.dmdbrands.gurus.weight.domain.model.api.device.toPairedDeviceRequest
 import com.dmdbrands.gurus.weight.domain.model.storage.Device
 import com.dmdbrands.gurus.weight.domain.model.storage.toDeviceDetails
 import com.dmdbrands.gurus.weight.domain.model.storage.toDeviceDomainModel
-import com.dmdbrands.gurus.weight.core.shared.utilities.logging.AppLog
 import com.dmdbrands.gurus.weight.domain.repository.IDeviceRepository
 import com.dmdbrands.gurus.weight.features.common.helper.DeviceDataHelper
 import kotlinx.coroutines.flow.Flow
@@ -116,6 +116,12 @@ constructor(
       emit(deviceEntity?.toDeviceDomainModel())
     }
 
+  override fun getDeviceByBroadcastIdAndUser(broadcastId: String, userNumber: Int, accountId: String): Flow<Device?> =
+    flow {
+      val deviceEntity = deviceDao.getDeviceByBroadcastIdStringAndUser(broadcastId, userNumber.toString(), accountId)
+      emit(deviceEntity?.toDeviceDomainModel())
+    }
+
   override fun getDeviceByMac(mac: String, accountId: String): Flow<Device?> =
     flow {
       val deviceEntity = deviceDao.getDeviceByMac(mac, accountId)
@@ -213,7 +219,7 @@ constructor(
     val response = deviceApi.createPairedDevice(request)
     if (response.isSuccessful) {
       val body = response.body()
-      AppLog.i(TAG, "createPairedDevice succeeded")
+      AppLog.i(TAG, "createPairedDevice succeeded, $body")
       return body?.toDomainModel(
         device.connectionStatus,
         device.device?.wifiMacAddress,
@@ -221,6 +227,14 @@ constructor(
         // Server omits broadcastId in the response — keep the locally-discovered one so the
         // stored device still matches live BLE readings (MOB-598).
         broadcastIdHex = device.device?.broadcastIdString ?: device.device?.broadcastId,
+        // Server also drops mac/peripheralIdentifier and collapses the category into the connection
+        // type — preserve the local values so baby scales stay matchable + typed as "babyScale".
+        macAddressOverride = device.device?.macAddress,
+        peripheralIdentifierOverride = device.device?.identifier,
+        deviceTypeOverride = device.deviceType,
+        // BACKEND WORKAROUND: server never returns scaleToken — keep the local one so R4 (0412)
+        // getUsers/updateAccount keep working. REMOVE once the backend returns scaleToken.
+        scaleTokenOverride = device.token,
       ) ?: device
     } else {
       AppLog.e(TAG, "createPairedDevice failed code=${response.code()}")
@@ -253,6 +267,12 @@ constructor(
         device.device?.wifiMacAddress,
         device.device?.isWifiConfigured ?: false,
         broadcastIdHex = device.device?.broadcastIdString ?: device.device?.broadcastId,
+        macAddressOverride = device.device?.macAddress,
+        peripheralIdentifierOverride = device.device?.identifier,
+        deviceTypeOverride = device.deviceType,
+        // BACKEND WORKAROUND: server never returns scaleToken — keep the local one.
+        // REMOVE once the backend returns scaleToken.
+        scaleTokenOverride = device.token,
       ) ?: device
     } else {
       AppLog.e(TAG, "updatePairedDevice failed code=${response.code()}")

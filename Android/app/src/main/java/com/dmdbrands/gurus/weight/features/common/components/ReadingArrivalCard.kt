@@ -148,8 +148,11 @@ private fun SavedToLogContent(
     clearToast: () -> Unit,
 ) {
     val measurementType = readingToast.type.toMeasurementType()
+    // A baby manual entry names the selected baby ("New Reading Received for NAME"), matching the
+    // device-sync single-baby card; weight/BP keep the plain "New Reading saved to your log".
+    val babyName = readingToast.assignedTo?.takeIf { readingToast.type == ProductType.BABY }
     Text(
-        text = ReadingToastStrings.SavedToLog,
+        text = babyName?.let { ReadingToastStrings.titleForBaby(it) } ?: ReadingToastStrings.SavedToLog,
         style = MeTheme.typography.heading5,
         color = colorScheme.textBody,
     )

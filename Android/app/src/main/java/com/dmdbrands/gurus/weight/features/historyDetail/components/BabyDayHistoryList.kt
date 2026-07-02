@@ -1,40 +1,59 @@
 package com.dmdbrands.gurus.weight.features.historyDetail.components
 
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.dp
 import com.dmdbrands.gurus.weight.domain.model.storage.entry.BabyEntry
+import com.dmdbrands.gurus.weight.features.common.components.AppSwipeableActionItem
+import com.dmdbrands.gurus.weight.features.common.components.AppSwipeableList
+import com.dmdbrands.gurus.weight.features.common.components.AppSwipeableListActions
+import com.dmdbrands.gurus.weight.features.historyDetail.strings.HistoryDetailScreenStrings
+import com.dmdbrands.gurus.weight.theme.MeTheme
 
 /**
- * List of baby day history entries with expandable notes.
+ * List of baby day history entries with expandable notes. Each row swipes left to reveal a
+ * Delete action ([onItemDelete]) — mirrors the weight history list.
  */
 @Composable
 fun BabyDayHistoryList(
     entries: List<BabyEntry>,
     isMetric: Boolean = false,
     onEditEntry: (BabyEntry) -> Unit = {},
+    onItemDelete: (BabyEntry) -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
-    val expandedIndices = remember { mutableStateListOf<Int>() }
+    // Track expansion by entry id (the swipeable list yields the item, not its index).
+    val expandedIds = remember { mutableStateListOf<Long>() }
 
-    LazyColumn(modifier = modifier) {
-        itemsIndexed(entries, key = { _, item -> item.entry.id }) { index, item ->
-            BabyDayHistoryItem(
-                item = item,
-                isMetric = isMetric,
-                isExpanded = expandedIndices.contains(index),
-                onToggleExpand = {
-                    if (expandedIndices.contains(index)) {
-                        expandedIndices.remove(index)
-                    } else {
-                        expandedIndices.add(index)
-                    }
-                },
-                onEditEntry = { onEditEntry(item) },
-            )
-        }
+    AppSwipeableList(
+        items = entries,
+        modifier = modifier,
+        iconWidth = 88.dp,
+        keySelector = { it.entry.id },
+        trailingActions = { _, item ->
+            AppSwipeableListActions {
+                AppSwipeableActionItem(
+                    itemWidth = 88.dp,
+                    text = HistoryDetailScreenStrings.DeleteButton,
+                    contentDescription = HistoryDetailScreenStrings.DeleteEntryContentDescription,
+                    backgroundColor = MeTheme.colorScheme.textError,
+                ) {
+                    onItemDelete(item)
+                }
+            }
+        },
+    ) { item ->
+        val id = item.entry.id
+        BabyDayHistoryItem(
+            item = item,
+            isMetric = isMetric,
+            isExpanded = expandedIds.contains(id),
+            onToggleExpand = {
+                if (expandedIds.contains(id)) expandedIds.remove(id) else expandedIds.add(id)
+            },
+            onEditEntry = { onEditEntry(item) },
+        )
     }
 }

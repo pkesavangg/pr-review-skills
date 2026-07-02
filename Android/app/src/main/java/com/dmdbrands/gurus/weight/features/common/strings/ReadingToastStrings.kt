@@ -37,9 +37,9 @@ object ReadingToastStrings {
 
     /** Shown when a baby scale reading arrives but no baby profile exists to save it to (Figma 30295-25144). */
     const val NoBabyTitle = "New Reading Received"
-    const val NoBabySubtitle =
-        "A new scale reading was received, but there's no baby profile to save it to. Add a baby now to keep " +
-            "this reading. If no baby is added, this reading will be discarded and won't appear in History."
+    // Short per Figma 30295-25144; the longer "…discarded and won't appear in History" copy is a
+    // design annotation/note, not the visible subtitle.
+    const val NoBabySubtitle = "Add a baby to save this reading."
     const val AddBaby = "ADD A BABY"
     const val Discard = "DISCARD"
 

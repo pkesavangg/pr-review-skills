@@ -128,7 +128,13 @@ fun Device.toDeviceDetails(accountId: String): DeviceDetails =
     bpm = null, // Add mapping if needed
   )
 
-fun Device.toGGBTDevice(): GGBTDevice =
+/**
+ * [syncAllData] tells the SDK to pull history for ALL user slots on the unit in one sync. It should
+ * be true only for an A6 monitor that is paired under more than one user slot on this account
+ * (same broadcastId, count > 1); A3 and single-slot devices pass false. Callers that don't have the
+ * paired-list context (user management, delete, etc.) use the default false. (mirrors bpmMobileApp4)
+ */
+fun Device.toGGBTDevice(syncAllData: Boolean = false): GGBTDevice =
   GGBTDevice(
     name = device?.deviceName ?: nickname,
     password = device?.password,
@@ -136,7 +142,7 @@ fun Device.toGGBTDevice(): GGBTDevice =
     preference = this.preferences?.toGGDevicePreference(),
     userNumber = userNumber,
     token = token,
-    syncAllData = true,
+    syncAllData = syncAllData,
   )
 
 fun Preferences.toGGDevicePreference(): GGDevicePreference =

@@ -15,6 +15,7 @@ import javax.inject.Provider
 import com.dmdbrands.gurus.weight.features.DeviceSetup.strings.DeviceSetupStrings
 import com.dmdbrands.gurus.weight.features.common.enums.DeviceSetupType
 import com.dmdbrands.gurus.weight.features.common.helper.DeviceHelper
+import com.greatergoods.ggbluetoothsdk.external.enums.GGDeviceProtocolType
 import com.dmdbrands.gurus.weight.features.common.model.DialogModel
 import com.dmdbrands.gurus.weight.core.di.ApplicationScope
 import com.dmdbrands.library.ggbluetooth.model.GGBTDevice
@@ -166,7 +167,19 @@ constructor(
     return deviceRepository
       .getDevices(accountId)
       .map { deviceList ->
-        deviceList.map { it.toGGBTDevice() }
+        // A6-only: when the same monitor (broadcastId) is paired under more than one user slot,
+        // set syncAllData so the SDK pulls history for every slot. A3 / single-slot never get it.
+        val countByBroadcast = deviceList
+          .mapNotNull { it.device?.broadcastId }
+          .groupingBy { it }
+          .eachCount()
+        deviceList.map { device ->
+          val broadcastId = device.device?.broadcastId
+          val syncAll = DeviceHelper.isA6BpmSku(device.sku) &&
+            broadcastId != null &&
+            (countByBroadcast[broadcastId] ?: 0) > 1
+          device.toGGBTDevice(syncAllData = syncAll)
+        }
       }
       .distinctUntilChanged { oldList, newList ->
         if (oldList.size != newList.size) return@distinctUntilChanged false
@@ -259,6 +272,14 @@ constructor(
       }
       syncedDevicesToStore.addAll(onlineScales)
 
+      AppLog.d(
+        tag,
+        "DEVSYNC_DBG classify: temp=${tempDevice?.id}(synced=${tempDevice?.isSynced},deleted=${tempDevice?.isDeleted}) " +
+          "stored=${storedDevices.map { "${it.id}|synced=${it.isSynced}|del=${it.isDeleted}" }} " +
+          "toSync=${devicesToSync.map { it.id }} markedDeleted=${devicesMarkedDeleted.map { it.id }} " +
+          "online=${onlineScales.map { it.id }}",
+      )
+
       // 4. Sync new/updated devices
       for (device in devicesToSync) {
         try {
@@ -287,6 +308,7 @@ constructor(
 
           // ✅ FIX: If ID changed (server-generated ID), remove old temp record
           if (savedDevice.id != device.id) {
+            AppLog.d(tag, "DEVSYNC_DBG create: id changed ${device.id} -> ${savedDevice.id}, removing temp local row")
             try {
               deviceRepository.deleteDeviceFromDb(device.id)
             } catch (e: Exception) {
@@ -294,6 +316,11 @@ constructor(
             }
           }
 
+          AppLog.d(
+            tag,
+            "DEVSYNC_DBG create: synced ${device.id} -> ${savedDevice.id} " +
+              "broadcastId=${savedDevice.device?.broadcastId} userNumber=${savedDevice.userNumber}",
+          )
           syncedDevicesToStore.add(savedDevice)
         } catch (e: Exception) {
           AppLog.e(tag, "Error syncing device ${device.id}", e)
@@ -304,8 +331,10 @@ constructor(
       // 5. Delete devices marked for deletion
       for (device in devicesMarkedDeleted) {
         try {
+          AppLog.d(tag, "DEVSYNC_DBG delete: DELETE api + db for ${device.id}")
           deviceRepository.deleteDeviceFromApi(device.id)
           deviceRepository.deleteDeviceFromDb(device.id)
+          AppLog.d(tag, "DEVSYNC_DBG delete: done ${device.id}")
         } catch (e: Exception) {
           AppLog.e(tag, "Error deleting device ${device.id}", e)
           val errorMessage = e.message ?: ""
@@ -336,20 +365,34 @@ constructor(
     val finalDevices = try {
       val apiDevices = deviceRepository.getDevicesFromApi(accountId)
       AppLog.i(tag, "Successfully fetched ${apiDevices.size} devices from API")
+      // The unified POST /v3/paired-device/ (§2.3) echoes broadcastId, userNumber, mac, password and
+      // peripheralIdentifier, but the GET (§2.4) omits them. Preserve those fields from the local DB
+      // row — or, for a device paired THIS run that isn't in the DB yet (saveScale writes the DB only
+      // at the end of this method), from the in-memory copy we just synced, which still carries the
+      // POST response values. Without this every GET-driven sync nulls out the fields BPM/baby
+      // reading attribution + same-user pairing detection depend on (MOB-596).
+      val syncedById = syncedDevicesToStore.associateBy { it.id }
       val syncedList = apiDevices.map { apiDev ->
-        val localMatch = deviceRepository.getDevice(apiDev.id).first()
-        if (localMatch != null) {
+        val source = deviceRepository.getDevice(apiDev.id).first() ?: syncedById[apiDev.id]
+        if (source != null) {
           apiDev.copy(
             isSynced = true,
+            // Top-level userNumber is omitted by the GET, so preserve the user slot from the source
+            // or every sync would null it — breaking multi-user reading attribution.
+            userNumber = apiDev.userNumber ?: source.userNumber,
+            // BACKEND WORKAROUND: the GET (and POST) never return scaleToken, so preserve the local
+            // token here — otherwise every sync nulls it and R4 (0412) getUsers/updateAccount fail
+            // (e.g. blank scale-user names). REMOVE once the backend returns scaleToken.
+            token = apiDev.token?.takeIf { it.isNotBlank() } ?: source.token,
             device = apiDev.device?.copy(
-              macAddress = localMatch.device?.macAddress ?: apiDev.device?.macAddress ?: "",
-              // Preserve the locally-paired broadcastId/password: the unified GET /v3/paired-device/
-              // (§2.4) omits them, so the API copy would be null and break the broadcastId match
-              // that routes a scale reading to its device (MOB-598).
-              broadcastId = apiDev.device?.broadcastId ?: localMatch.device?.broadcastId,
-              broadcastIdString = apiDev.device?.broadcastIdString ?: localMatch.device?.broadcastIdString,
-              password = apiDev.device?.password ?: localMatch.device?.password,
-              isWifiConfigured = localMatch.device?.isWifiConfigured ?: apiDev.device?.isWifiConfigured ?: false,
+              macAddress = source.device?.macAddress ?: apiDev.device?.macAddress ?: "",
+              // peripheralIdentifier is dropped by the GET too; same-user pairing detection keys on it.
+              identifier = apiDev.device?.identifier?.takeIf { it.isNotBlank() }
+                ?: source.device?.identifier ?: "",
+              broadcastId = apiDev.device?.broadcastId ?: source.device?.broadcastId,
+              broadcastIdString = apiDev.device?.broadcastIdString ?: source.device?.broadcastIdString,
+              password = apiDev.device?.password ?: source.device?.password,
+              isWifiConfigured = source.device?.isWifiConfigured ?: apiDev.device?.isWifiConfigured ?: false,
             ),
           )
         } else {
@@ -361,12 +404,19 @@ constructor(
       // from the local list and its readings keep matching (MOB-598).
       val apiIds = syncedList.map { it.id }.toSet()
       val localOnlySynced = syncedDevicesToStore.filter { it.id !in apiIds }
+      AppLog.d(
+        tag,
+        "DEVSYNC_DBG merge: apiIds=$apiIds fromApi=${syncedList.map { it.id }} " +
+          "localOnlySynced(kept-because-GET-omitted)=${localOnlySynced.map { it.id }} " +
+          "unsynced=${unsyncedDevices.map { it.id }}",
+      )
       mergeSyncedWithUnsyncedById(syncedList + localOnlySynced, unsyncedDevices)
     } catch (e: Exception) {
       AppLog.e(tag, "Error fetching devices from API $e", )
       // Use syncedDevicesToStore (contains both already synced and newly synced devices) as fallback
       mergeSyncedWithUnsyncedById(syncedDevicesToStore, unsyncedDevices)
     }
+    AppLog.d(tag, "DEVSYNC_DBG persist: finalDevices=${finalDevices.map { it.id }} (deleteAll + reinsert)")
     // 7. Store updated device list locally
     try {
       deviceRepository.deleteAllDevicesForAccount(accountId = accountId)
@@ -388,6 +438,12 @@ constructor(
    */
   override suspend fun saveScale(device: Device): Device? {
     val tag = "DeviceService-saveScale"
+    AppLog.d(
+      tag,
+      "DEVSYNC_DBG saveScale: sku=${device.sku} deviceType=${device.deviceType} " +
+        "broadcastId=${device.device?.broadcastId} userNumber=${device.userNumber} " +
+        "peripheralId=${device.device?.identifier} mac=${device.device?.macAddress}",
+    )
     val scaleID = System.currentTimeMillis().toString()
 
     // If your Preferences has `scaleId`, align it; otherwise keep using `id`.
@@ -451,6 +507,11 @@ constructor(
     AppLog.d(tag, "deleteScale (via syncDevices): $deviceId")
     val device = deviceRepository.getDevice(deviceId).first()
     if (device != null) {
+      AppLog.d(
+        tag,
+        "DEVSYNC_DBG deleteScale: $deviceId isSynced=${device.isSynced} " +
+          "-> ${if (!device.isSynced) "unsynced: delete-db + full resync" else "synced: syncDevices(isDeleted=true)"}",
+      )
       if (!device.isSynced) {
         deviceRepository.deleteDeviceFromDb(deviceId)
         syncDevices()
@@ -458,7 +519,7 @@ constructor(
         syncDevices(device.copy(isDeleted = true))
       }
     } else {
-      AppLog.w(tag, "Device not found for delete: $deviceId")
+      AppLog.w(tag, "DEVSYNC_DBG deleteScale: device not found for delete: $deviceId")
     }
   }
 
@@ -577,14 +638,27 @@ constructor(
       null
     }
 
-  override suspend fun healBpmDeviceBroadcastId(broadcastId: String, accountId: String): Device? =
+  override suspend fun getScaleByBroadcastIdAndUser(broadcastId: String, userNumber: Int, accountId: String): Device? =
+    try {
+      deviceRepository.getDeviceByBroadcastIdAndUser(broadcastId, userNumber, accountId).first()
+    } catch (e: Exception) {
+      AppLog.e(tag, "Error getting scale by broadcast ID + user", e)
+      null
+    }
+
+  override suspend fun healBpmDeviceBroadcastId(broadcastId: String, accountId: String, protocolType: String?): Device? =
     try {
       // Only safe to attribute a monitor reading when there's exactly one paired BPM device still
       // missing a broadcastId (the server-synced state). Multiple → ambiguous, so bail.
+      // Protocol guard: never stamp an A6 reading's broadcastId onto an A3 row (or vice-versa). Only
+      // enforced when the reading's protocolType is known; unknown → fall back so a missing protocol
+      // never regresses the heal. (MOB-596)
+      val readingIsA6 = protocolType?.let { it == GGDeviceProtocolType.GG_DEVICE_PROTOCOL_A6.value }
       val candidate = _pairedScales.value.singleOrNull { device ->
         !device.isDeleted &&
           DeviceHelper.isBpmDevice(device.sku.orEmpty()) &&
-          device.device?.broadcastIdString.isNullOrBlank()
+          device.device?.broadcastIdString.isNullOrBlank() &&
+          (readingIsA6 == null || DeviceHelper.isA6BpmSku(device.sku) == readingIsA6)
       }
       if (candidate == null) {
         AppLog.w(tag, "healBpmDeviceBroadcastId: no single un-identified BPM device to heal")
@@ -596,6 +670,29 @@ constructor(
       }
     } catch (e: Exception) {
       AppLog.e(tag, "Error healing BPM device broadcastId", e)
+      null
+    }
+
+  override suspend fun healBabyScaleBroadcastId(broadcastId: String, accountId: String): Device? =
+    try {
+      // Safe only when there's exactly one paired baby scale still missing a broadcastId — matched
+      // by SKU (0220/0222), which survives even when the id/deviceType were dropped on save.
+      // Multiple → ambiguous, so bail. Mirrors [healBpmDeviceBroadcastId].
+      val candidate = _pairedScales.value.singleOrNull { device ->
+        !device.isDeleted &&
+          DeviceHelper.isBabyScale(device.sku.orEmpty()) &&
+          device.device?.broadcastIdString.isNullOrBlank()
+      }
+      if (candidate == null) {
+        AppLog.w(tag, "healBabyScaleBroadcastId: no single un-identified baby scale to heal")
+        null
+      } else {
+        deviceRepository.updateDeviceBroadcastId(candidate.id, broadcastId, accountId)
+        AppLog.i(tag, "Healed baby scale ${candidate.id} with broadcastId=$broadcastId")
+        deviceRepository.getDeviceByBroadcastId(broadcastId, accountId).first()
+      }
+    } catch (e: Exception) {
+      AppLog.e(tag, "Error healing baby scale broadcastId", e)
       null
     }
 
