@@ -80,7 +80,7 @@ private extension View {
         var body: some View {
             VStack(spacing: 24) {
                 UnitSelectionToggle(imperialTitle: "Ft / In", metricTitle: "CM", isMetric: $isMetric)
-                UnitSelectionToggle(imperialTitle: "lbs", metricTitle: "kg", isMetric: $isMetric)
+                UnitSelectionToggle(imperialTitle: "lb", metricTitle: "kg", isMetric: $isMetric)
             }
             .padding()
             .background(Color.gray.opacity(0.2))

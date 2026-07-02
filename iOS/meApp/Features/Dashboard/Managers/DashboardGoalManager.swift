@@ -351,7 +351,7 @@ class DashboardGoalManager: ObservableObject, DashboardGoalManaging {
     
     /// Returns the current weight unit as a string (e.g., "lbs" or "kg")
     func getUnitText() -> String {
-        return accountService.activeAccount?.weightUnit.rawValue ?? "lbs"
+        return accountService.activeAccount?.weightUnit.rawValue ?? "lb"
     }
 
     /// Returns the weight display label for the current period

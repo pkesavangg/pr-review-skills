@@ -278,7 +278,7 @@ class DashboardStreakManager: ObservableObject, DashboardStreakManaging {
     
     /// Returns the current weight unit as a string (e.g., "lbs" or "kg")
     private func getUnitText() -> String {
-        return accountService.activeAccount?.weightUnit.rawValue ?? "lbs"
+        return accountService.activeAccount?.weightUnit.rawValue ?? "lb"
     }
     
     /// Returns dynamic streak labels based on current unit

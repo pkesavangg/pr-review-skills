@@ -224,7 +224,7 @@ struct StreakCardView: View {
         // R4DeviceSetup view with non-streak items (icon + value + label)
         StreakCardView(
             value: "2.5",
-            label: "lbs/week",
+            label: "lb/week",
             icon: nil,
             isEditMode: true,
             isRemoved: false,

@@ -10,7 +10,7 @@ struct WeightlessScreen: View {
     @EnvironmentObject private var router: Router<SettingsRoute>
     @Environment(\.registerTabDeactivationHandler) private var registerDeactivation
     @State private var focusedField: FocusField?
-    
+
     private let strings = WeightlessStrings.self
     private let toast = ToastStrings.self
     private let commonLang = CommonStrings.self
@@ -19,14 +19,14 @@ struct WeightlessScreen: View {
     private var weightUnit: WeightUnit {
         settingsStore.activeAccount?.weightUnit ?? .lb
     }
-    
+
     var body: some View {
         // Ensure form is synced with account state before rendering (only when pristine)
         _ = {
             // Sync form with account state - this will only populate if form is not dirty
             settingsStore.populateWeightlessFormIfNeeded()
         }()
-        
+
         return VStack(spacing: 0) {
             NavbarHeaderView(
                 title: strings.title,
@@ -47,7 +47,7 @@ struct WeightlessScreen: View {
                 onTrailingTap: {},
                 canShowBorder: true
             )
-            
+
             ScrollView {
                 VStack(alignment: .leading, spacing: .spacingXS) {
                     Text(strings.subtitle)
@@ -56,7 +56,7 @@ struct WeightlessScreen: View {
                     Text(strings.description)
                         .fontOpenSans(.body2)
                         .foregroundColor(theme.textBody)
-                    
+
                     // Toggle
                     HStack {
                         CustomToggleView(
@@ -65,17 +65,18 @@ struct WeightlessScreen: View {
                         )
                     }
                     .padding(.vertical, .spacingSM)
-                    
+
                     // Weight input field
                     MetricInputField(
                         config: TextInputConfig(
-                            label: inputLabels.weightLessLabel(weightUnit == .kg),
+                            label: inputLabels.weightLess,
                             inputType: .metric,
                             errorMessage: settingsStore.weightlessForm.getWeightError(for: settingsStore.weightlessForm.weight, unit: weightUnit),
                             isDisabled: !settingsStore.weightlessForm.isOn.value,
                             focusField: .weight,
                             maxLength: 4,
-                            maxValue: 999.9
+                            maxValue: 999.9,
+                            trailingLabel: inputLabels.weightUnitSuffix(weightUnit == .kg)
                         ),
                         value: $settingsStore.weightlessForm.weight.value,
                         focusedField: $focusedField

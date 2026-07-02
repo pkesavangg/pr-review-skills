@@ -33,7 +33,7 @@ enum HistoryListStrings {
     static let length = "length"
     static let percentile = "percent"
     static let week = "week"
-    static let lbs = "lbs"
+    static let lbs = "lb"
     static let oz = "oz"
     static let kg = "kg"
     static let lb = "lb"

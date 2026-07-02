@@ -119,7 +119,7 @@ struct DashboardEditSessionManagerTests {
     func hasUnsavedChangesDetectsStreakDifferences() {
         let sut = DashboardEditSessionManager()
         let original = makeSnapshot(
-            streakLabels: [DashboardStrings.currentStreak, DashboardStrings.longestStreak, "lbs/week"],
+            streakLabels: [DashboardStrings.currentStreak, DashboardStrings.longestStreak, "lb/week"],
             activeStreakItemsCount: 3,
             streakGridOrder: ["s1", "s2", "s3"],
             removedStreaks: []
@@ -127,7 +127,7 @@ struct DashboardEditSessionManagerTests {
         sut.takeSnapshot(original)
 
         let current = makeSnapshot(
-            streakLabels: ["lbs/week", DashboardStrings.currentStreak, DashboardStrings.longestStreak],
+            streakLabels: ["lb/week", DashboardStrings.currentStreak, DashboardStrings.longestStreak],
             activeStreakItemsCount: 2,
             streakGridOrder: ["s3", "s1", "s2"],
             removedStreaks: [DashboardStrings.longestStreak]

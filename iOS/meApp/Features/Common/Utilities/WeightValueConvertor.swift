@@ -5,20 +5,9 @@ struct WeightValueConvertor {
     /// - Parameters:
     ///   - value: Display value in the provided unit (already converted for display, not stored tenths).
     ///   - unit: Target unit for display.
-    /// - Returns: "kg" for metric; for imperial returns "lb" or "lbs" using these rules:
-    ///            0.0 → "lbs", 0.35 → "lb", 1 → "lb", 2.3 → "lbs"
+    /// - Returns: "kg" for metric, "lb" for imperial (the "lb" symbol is not pluralized).
     static func unitForDisplay(value: Double, unit: WeightUnit) -> String {
-        if unit == .kg { return "kg" }
-        let epsilon = AppConstants.Precision.doubleEqualityEpsilon
-        let magnitude = abs(value)
-        if magnitude < epsilon { return "lbs" }
-        let isInteger = abs(magnitude - magnitude.rounded()) < epsilon
-        let displayedMagnitude: Double = isInteger
-            ? magnitude.rounded()
-            : (magnitude * 10).rounded() / 10
-        if displayedMagnitude < 1.0 - epsilon { return "lb" }
-        if abs(displayedMagnitude - 1.0) <= epsilon { return "lb" }
-        return "lbs"
+        return unit == .kg ? "kg" : "lb"
     }
     /// Converts and formats a weight value, optionally applying weightless mode and showing plus symbol
     /// - Parameters:
