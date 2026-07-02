@@ -197,7 +197,6 @@ struct DashboardScreen: View {
             // Per Me.Health 2.0: the product-type title is tinted by product
             // (weight → blue, BP → green, baby → purple).
             titleColor: showTitle ? theme.productAccentColor(for: store.productType) : nil,
-            titleUnderline: showTitle,
             leadingContent: isProductDashboardFromSnapshot
                 ? { AppIconView(icon: AppAssets.chevronLeft) }
                 : nil,
@@ -208,7 +207,8 @@ struct DashboardScreen: View {
             onTitleTap: showProductSelector ? {
                 isProductTypeSelectorPresented = true
             } : nil,
-            canShowBorder: false,
+            // Per mock: a bottom border/divider sits under the product title header.
+            canShowBorder: showTitle,
             canShowTitleChevron: showProductSelector
         )
         .sheet(isPresented: $isProductTypeSelectorPresented) {
