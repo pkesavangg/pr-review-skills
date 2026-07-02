@@ -68,6 +68,7 @@
 				Features/Scale/ScaleMigrationServiceTests.swift,
 				Features/Scale/ScaleRepositoryLocalTests.swift,
 				Features/Scale/ScaleRepositoryTests.swift,
+				Features/Scale/ScaleRepositoryTestsExtra.swift,
 				Features/Scale/ScaleServicePairedDeviceTests.swift,
 				Features/Scale/ScaleServiceTests.swift,
 				Features/Scale/ScaleSettingsStoreTests.swift,
