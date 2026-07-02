@@ -1,11 +1,13 @@
+// swiftlint:disable file_length
 import Combine
 import Foundation
 import GGBluetoothSwiftPackage
-import Testing
 @testable import meApp
+import Testing
 
 @Suite(.serialized)
 @MainActor
+// swiftlint:disable:next type_body_length
 struct BluetoothServiceCoreOperationsTests {
 
     @Test("scan with no active account returns early")
@@ -508,7 +510,10 @@ struct BluetoothServiceCoreOperationsTests {
         let sut = makeSUT(sdk: sdk)
         let device = makeDevice(id: "setting-1", broadcastIdString: "SETTING11", isConnected: true)
 
-        let result = await sut.updateSetting(broadcastId: device.broadcastIdString ?? "", settings: [DeviceSetting(key: "SESSION_IMPEDANCE", value: .bool(true))])
+        let result = await sut.updateSetting(
+            broadcastId: device.broadcastIdString ?? "",
+            settings: [DeviceSetting(key: "SESSION_IMPEDANCE", value: .bool(true))]
+        )
 
         guard case .success = result else {
             Issue.record("Expected updateSetting to succeed")
@@ -726,7 +731,7 @@ struct BluetoothServiceCoreOperationsTests {
 
     // MARK: - Helpers
 
-    private func makeSUT(
+    func makeSUT(
         account: MockAccountService? = nil,
         scale: MockScaleService? = nil,
         entry: MockEntryService? = nil,
@@ -747,7 +752,7 @@ struct BluetoothServiceCoreOperationsTests {
         )
     }
 
-    private func makeDevice(
+    func makeDevice(
         id: String = "device-1",
         broadcastIdString: String? = "ABC123",
         isConnected: Bool? = true,
@@ -761,7 +766,7 @@ struct BluetoothServiceCoreOperationsTests {
         )
     }
 
-    private func makePreference(id: String) -> R4ScalePreference {
+    func makePreference(id: String) -> R4ScalePreference {
         R4ScalePreference(
             scaleId: id,
             displayName: "Test User",
@@ -776,7 +781,7 @@ struct BluetoothServiceCoreOperationsTests {
         )
     }
 
-    private func expectInvalidBroadcast<T>(_ result: Result<T, BluetoothServiceError>) {
+    func expectInvalidBroadcast<T>(_ result: Result<T, BluetoothServiceError>) {
         switch result {
         case .success:
             Issue.record("Expected invalidBroadcastId")

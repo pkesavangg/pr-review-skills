@@ -8,8 +8,8 @@ import com.dmdbrands.gurus.weight.domain.enums.MetricKey
 import com.dmdbrands.gurus.weight.domain.model.storage.entry.DashboardMetric
 import com.dmdbrands.gurus.weight.domain.repository.IAccountRepository
 import com.dmdbrands.gurus.weight.domain.repository.IDeviceService
-import com.dmdbrands.gurus.weight.features.common.enums.ScaleSetupType
-import com.dmdbrands.gurus.weight.features.common.helper.ScaleDataHelper.toScaleInfo
+import com.dmdbrands.gurus.weight.features.common.enums.DeviceSetupType
+import com.dmdbrands.gurus.weight.features.common.helper.DeviceDataHelper.toScaleInfo
 import com.dmdbrands.gurus.weight.features.common.helper.StatHelper
 import com.dmdbrands.gurus.weight.features.common.service.BaseIntentViewModel
 import dagger.assisted.Assisted
@@ -100,7 +100,7 @@ class MetricInfoViewModel @AssistedInject constructor(
       // Collect saved scales from DeviceService
       deviceService.pairedScales.collect { devices ->
         val heartRateEnabled = devices.any {
-          it.toScaleInfo().setupType == ScaleSetupType.BtWifiR4
+          it.toScaleInfo().setupType == DeviceSetupType.BtWifiR4
             && it.preferences?.shouldMeasurePulse == false && it.preferences.shouldMeasureImpedance == true
             && !it.isWeighOnlyModeEnabledByOthers
         }
@@ -122,7 +122,7 @@ class MetricInfoViewModel @AssistedInject constructor(
 
         // Filter R4 scales
         val r4Scales = scales.filter {
-          it.toScaleInfo().setupType == ScaleSetupType.BtWifiR4
+          it.toScaleInfo().setupType == DeviceSetupType.BtWifiR4
             && it.preferences?.shouldMeasureImpedance == true
             && !it.isWeighOnlyModeEnabledByOthers
         }
@@ -157,14 +157,14 @@ class MetricInfoViewModel @AssistedInject constructor(
           scalesWithHeartRateOff.size == 1 -> {
             val scaleId = scalesWithHeartRateOff.first().id
             AppLog.d("MetricInfoViewModel", "Navigating to scale with heart rate OFF: $scaleId")
-            navigationService.navigateTo(AppRoute.ScaleDetails.ScaleMode(scaleId))
+            navigationService.navigateTo(AppRoute.DeviceDetails.DeviceMode(scaleId))
           }
 
           // All scales have heart rate ON (edge case)
           else -> {
             AppLog.d("MetricInfoViewModel", "All R4 scales have heart rate ON, navigating to first scale")
             val scaleId = r4Scales.first().id
-            navigationService.navigateTo(AppRoute.ScaleDetails.ScaleMode(scaleId))
+            navigationService.navigateTo(AppRoute.DeviceDetails.DeviceMode(scaleId))
           }
         }
       } catch (e: Exception) {

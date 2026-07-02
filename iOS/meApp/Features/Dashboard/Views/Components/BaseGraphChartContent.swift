@@ -1,4 +1,3 @@
-// swiftlint:disable file_length
 //
 //  BaseGraphChartContent.swift
 //  meApp
@@ -98,8 +97,8 @@ struct ChartSeriesContent: ChartContent {
             return exactMatch
         }
 
-        let previousPoint = points.last(where: { $0.xDate < boundary })
-        let nextPoint = points.first(where: { $0.xDate > boundary })
+        let previousPoint = points.last { $0.xDate < boundary }
+        let nextPoint = points.first { $0.xDate > boundary }
 
         let segment: (start: PlottedGraphSeries, end: PlottedGraphSeries)?
         switch (previousPoint, nextPoint) {
@@ -182,10 +181,13 @@ struct ChartSeriesContent: ChartContent {
                 x: .value("Date", xDate),
                 y: .value(point.series, isWithinDomain ? point.value : clampedValue)
             )
+            // A dot is hidden when its value is outside the Y-domain, EXCEPT while scrolling:
+            // the Y-axis is frozen mid-gesture, so show the dot at its clamped (edge) position
+            // rather than letting it blink out as the curve crosses the frozen boundary.
             .symbolSize(
                 isBabyPercentileSeries
                     ? 0
-                    : (isWithinDomain ? pointArea(isThisPointSelected) : 0)
+                    : ((isWithinDomain || isScrolling) ? pointArea(isThisPointSelected) : 0)
             )
             .foregroundStyle(colors.point)
         }
@@ -244,7 +246,10 @@ struct CrosshairContent: ChartContent {
             let xDate = plotXDate(snapped)
             RuleMark(x: .value("Date", xDate))
                 .zIndex(-100)
-                .foregroundStyle(theme.actionSecondary)
+                // High-contrast neutral (white on dark / black on light). `actionSecondary`
+                // is neutral-100, which in dark mode is the chart background color — the
+                // crosshair rendered invisible. This keeps the focus line visible like 5.0.3.
+                .foregroundStyle(theme.actionPrimary)
                 .lineStyle(StrokeStyle(lineWidth: 1))
         }
     }
@@ -254,7 +259,8 @@ struct CrosshairContent: ChartContent {
         if showCrosshair, let yValue = horizontalYValue {
             RuleMark(y: .value("SelectedY", yValue))
                 .zIndex(-100)
-                .foregroundStyle(theme.actionSecondary)
+                // Same high-contrast token as the vertical crosshair (see above).
+                .foregroundStyle(theme.actionPrimary)
                 .lineStyle(StrokeStyle(lineWidth: 1))
                 .annotation(position: .top, alignment: .leading, spacing: 6) {
                     if timePeriod == .total, let percentile = selectedBabyPercentile {

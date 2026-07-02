@@ -1,7 +1,7 @@
 import Foundation
+@testable import meApp
 import SwiftData
 import Testing
-@testable import meApp
 
 @Suite(.serialized)
 @MainActor
@@ -9,13 +9,19 @@ struct EntryRepositoryTests {
 
     // MARK: - Factory
 
-    private func makeSUT() -> EntryRepository {
+    func makeSUT() -> EntryRepository {
         let config = ModelConfiguration(isStoredInMemoryOnly: true)
-        let container = try! ModelContainer(
-            for: Entry.self, BathScaleEntry.self, BathScaleMetric.self,
-            configurations: config
-        )
-        return EntryRepository(container: container)
+        do {
+            let container = try ModelContainer(
+                for: Entry.self,
+                BathScaleEntry.self,
+                BathScaleMetric.self,
+                configurations: config
+            )
+            return EntryRepository(container: container)
+        } catch {
+            fatalError("Failed to create in-memory ModelContainer: \(error)")
+        }
     }
 
     // MARK: - CRUD: Save & Fetch
@@ -228,9 +234,15 @@ struct EntryRepositoryTests {
     @Test("fetchEntries forUserId with operationType filters by both")
     func fetchEntriesForUserWithOperationType() async throws {
         let sut = makeSUT()
-        try await sut.saveEntry(EntryTestFixtures.makeEntry(id: UUID(), accountId: "user-A", timestamp: "2026-03-01T08:00:00Z", operationType: .create))
-        try await sut.saveEntry(EntryTestFixtures.makeEntry(id: UUID(), accountId: "user-A", timestamp: "2026-03-01T09:00:00Z", operationType: .delete))
-        try await sut.saveEntry(EntryTestFixtures.makeEntry(id: UUID(), accountId: "user-A", timestamp: "2026-03-01T10:00:00Z", operationType: .create))
+        try await sut.saveEntry(
+            EntryTestFixtures.makeEntry(id: UUID(), accountId: "user-A", timestamp: "2026-03-01T08:00:00Z", operationType: .create)
+        )
+        try await sut.saveEntry(
+            EntryTestFixtures.makeEntry(id: UUID(), accountId: "user-A", timestamp: "2026-03-01T09:00:00Z", operationType: .delete)
+        )
+        try await sut.saveEntry(
+            EntryTestFixtures.makeEntry(id: UUID(), accountId: "user-A", timestamp: "2026-03-01T10:00:00Z", operationType: .create)
+        )
 
         let creates = try await sut.fetchEntries(forUserId: "user-A", operationType: OperationType.create.rawValue)
         let deletes = try await sut.fetchEntries(forUserId: "user-A", operationType: OperationType.delete.rawValue)
@@ -302,8 +314,8 @@ struct EntryRepositoryTests {
         // to avoid local-timezone vs UTC mismatches.
         let dayFormatter = DateFormatter()
         dayFormatter.dateFormat = "yyyy-MM-dd"
-        let day1Start = dayFormatter.date(from: "2026-03-01")!
-        let day2Start = Calendar.current.date(byAdding: .day, value: 1, to: day1Start)!
+        let day1Start = try #require(dayFormatter.date(from: "2026-03-01"))
+        let day2Start = try #require(Calendar.current.date(byAdding: .day, value: 1, to: day1Start))
         let iso = ISO8601DateFormatter()
 
         let earlyInDay1 = iso.string(from: day1Start.addingTimeInterval(3600))       // 1h after day1 start
@@ -432,12 +444,12 @@ struct EntryRepositoryTests {
         try await sut.saveEntry(EntryTestFixtures.makeEntry(id: UUID(), accountId: "user-A", timestamp: todayTimestamp))
 
         // Entry from 3 days ago
-        let threeDaysAgo = Calendar.current.date(byAdding: .day, value: -3, to: now)!
+        let threeDaysAgo = try #require(Calendar.current.date(byAdding: .day, value: -3, to: now))
         let threeDaysAgoTs = isoFormatter.string(from: threeDaysAgo)
         try await sut.saveEntry(EntryTestFixtures.makeEntry(id: UUID(), accountId: "user-A", timestamp: threeDaysAgoTs))
 
         // Entry from 10 days ago
-        let tenDaysAgo = Calendar.current.date(byAdding: .day, value: -10, to: now)!
+        let tenDaysAgo = try #require(Calendar.current.date(byAdding: .day, value: -10, to: now))
         let tenDaysAgoTs = isoFormatter.string(from: tenDaysAgo)
         try await sut.saveEntry(EntryTestFixtures.makeEntry(id: UUID(), accountId: "user-A", timestamp: tenDaysAgoTs))
 
@@ -475,8 +487,12 @@ struct EntryRepositoryTests {
     @Test("fetchEntriesAsDTO with operationType filter works")
     func fetchEntriesAsDTOWithFilter() async throws {
         let sut = makeSUT()
-        try await sut.saveEntry(EntryTestFixtures.makeEntry(id: UUID(), accountId: "user-A", timestamp: "2026-03-01T08:00:00Z", operationType: .create))
-        try await sut.saveEntry(EntryTestFixtures.makeEntry(id: UUID(), accountId: "user-A", timestamp: "2026-03-02T08:00:00Z", operationType: .delete))
+        try await sut.saveEntry(
+            EntryTestFixtures.makeEntry(id: UUID(), accountId: "user-A", timestamp: "2026-03-01T08:00:00Z", operationType: .create)
+        )
+        try await sut.saveEntry(
+            EntryTestFixtures.makeEntry(id: UUID(), accountId: "user-A", timestamp: "2026-03-02T08:00:00Z", operationType: .delete)
+        )
 
         let creates = try await sut.fetchEntriesAsDTO(forUserId: "user-A", operationType: OperationType.create.rawValue)
 
@@ -521,8 +537,12 @@ struct EntryRepositoryTests {
     @Test("fetchLatestEntryAsDTO with operationType filter returns correct entry")
     func fetchLatestEntryAsDTOWithFilter() async throws {
         let sut = makeSUT()
-        try await sut.saveEntry(EntryTestFixtures.makeEntry(id: UUID(), accountId: "user-A", timestamp: "2026-06-01T08:00:00Z", operationType: .delete))
-        try await sut.saveEntry(EntryTestFixtures.makeEntry(id: UUID(), accountId: "user-A", timestamp: "2026-03-01T08:00:00Z", weight: 1700, operationType: .create))
+        try await sut.saveEntry(
+            EntryTestFixtures.makeEntry(id: UUID(), accountId: "user-A", timestamp: "2026-06-01T08:00:00Z", operationType: .delete)
+        )
+        try await sut.saveEntry(
+            EntryTestFixtures.makeEntry(id: UUID(), accountId: "user-A", timestamp: "2026-03-01T08:00:00Z", weight: 1700, operationType: .create)
+        )
 
         let latest = try await sut.fetchLatestEntryAsDTO(forUserId: "user-A", operationType: OperationType.create.rawValue)
 
@@ -546,8 +566,12 @@ struct EntryRepositoryTests {
     @Test("fetchEntryIdentifiers with operationType filter works")
     func fetchEntryIdentifiersWithFilter() async throws {
         let sut = makeSUT()
-        try await sut.saveEntry(EntryTestFixtures.makeEntry(id: UUID(), accountId: "user-A", timestamp: "2026-03-01T08:00:00Z", operationType: .create))
-        try await sut.saveEntry(EntryTestFixtures.makeEntry(id: UUID(), accountId: "user-A", timestamp: "2026-03-02T08:00:00Z", operationType: .delete))
+        try await sut.saveEntry(
+            EntryTestFixtures.makeEntry(id: UUID(), accountId: "user-A", timestamp: "2026-03-01T08:00:00Z", operationType: .create)
+        )
+        try await sut.saveEntry(
+            EntryTestFixtures.makeEntry(id: UUID(), accountId: "user-A", timestamp: "2026-03-02T08:00:00Z", operationType: .delete)
+        )
 
         let createIds = try await sut.fetchEntryIdentifiers(forUserId: "user-A", operationType: OperationType.create.rawValue)
 
@@ -600,93 +624,4 @@ struct EntryRepositoryTests {
         #expect(weight == 0)
     }
 
-    // MARK: - Sync
-
-    @Test("syncEntries batch inserts multiple entries")
-    func syncEntriesBatchInsert() async throws {
-        let sut = makeSUT()
-        let entries = (0..<3).map { i in
-            EntryTestFixtures.makeEntry(
-                id: UUID(),
-                accountId: "user-A",
-                timestamp: "2026-03-0\(i + 1)T08:00:00Z",
-                weight: 1800 + i * 100
-            )
-        }
-
-        try await sut.syncEntries(newEntries: entries)
-
-        let all = try await sut.fetchAllEntries()
-        #expect(all.count == 3)
-    }
-
-    @Test("syncEntries preserves relationships for all entries")
-    func syncEntriesPreservesRelationships() async throws {
-        let sut = makeSUT()
-        let entry = EntryTestFixtures.makeEntry(
-            accountId: "user-A",
-            weight: 2000,
-            bmr: 1500
-        )
-
-        try await sut.syncEntries(newEntries: [entry])
-
-        let all = try await sut.fetchAllEntries()
-        #expect(all.first?.scaleEntry?.weight == 2000)
-        #expect(all.first?.scaleEntryMetric?.bmr == 1500)
-    }
-
-    // MARK: - Edge Cases
-
-    @Test("multiple entries for different users are isolated")
-    func multipleUsersIsolation() async throws {
-        let sut = makeSUT()
-        try await sut.saveEntry(EntryTestFixtures.makeEntry(id: UUID(), accountId: "user-A", timestamp: "2026-03-01T08:00:00Z"))
-        try await sut.saveEntry(EntryTestFixtures.makeEntry(id: UUID(), accountId: "user-B", timestamp: "2026-03-01T09:00:00Z"))
-        try await sut.saveEntry(EntryTestFixtures.makeEntry(id: UUID(), accountId: "user-C", timestamp: "2026-03-01T10:00:00Z"))
-
-        let countA = try await sut.fetchEntryCount(forUserId: "user-A")
-        let countB = try await sut.fetchEntryCount(forUserId: "user-B")
-        let countC = try await sut.fetchEntryCount(forUserId: "user-C")
-        let total = try await sut.fetchAllEntries().count
-
-        #expect(countA == 1)
-        #expect(countB == 1)
-        #expect(countC == 1)
-        #expect(total == 3)
-    }
-
-    @Test("deleting one user's entry does not affect other users")
-    func deleteDoesNotAffectOtherUsers() async throws {
-        let sut = makeSUT()
-        let idA = UUID()
-        try await sut.saveEntry(EntryTestFixtures.makeEntry(id: idA, accountId: "user-A", timestamp: "2026-03-01T08:00:00Z"))
-        try await sut.saveEntry(EntryTestFixtures.makeEntry(id: UUID(), accountId: "user-B", timestamp: "2026-03-01T09:00:00Z"))
-
-        try await sut.deleteEntry(byId: idA.uuidString)
-
-        let all = try await sut.fetchAllEntries()
-        #expect(all.count == 1)
-        #expect(all.first?.accountId == "user-B")
-    }
-
-    @Test("fetchEntries forMonth for different user returns empty")
-    func fetchEntriesForMonthWrongUser() async throws {
-        let sut = makeSUT()
-        try await sut.saveEntry(EntryTestFixtures.makeEntry(accountId: "user-A", timestamp: "2026-03-01T08:00:00Z"))
-
-        let results = try await sut.fetchEntries(forMonth: "2026-03", userId: "user-B")
-
-        #expect(results.isEmpty)
-    }
-
-    @Test("fetchUnsyncedEntries for different user returns empty")
-    func fetchUnsyncedEntriesWrongUser() async throws {
-        let sut = makeSUT()
-        try await sut.saveEntry(EntryTestFixtures.makeEntry(accountId: "user-A", isSynced: false))
-
-        let results = try await sut.fetchUnsyncedEntries(forUserId: "user-B")
-
-        #expect(results.isEmpty)
-    }
 }

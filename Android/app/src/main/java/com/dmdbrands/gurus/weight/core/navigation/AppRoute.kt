@@ -3,10 +3,10 @@ package com.dmdbrands.gurus.weight.core.navigation
 import androidx.navigation3.runtime.NavKey
 import com.dmdbrands.gurus.weight.domain.enums.MetricKey
 import com.dmdbrands.gurus.weight.domain.model.storage.entry.DashboardMetric
-import com.dmdbrands.gurus.weight.features.ScaleSetup.enums.BabyScaleSetupStep
-import com.dmdbrands.gurus.weight.features.ScaleSetup.enums.BtWifiSetupStep
-import com.dmdbrands.gurus.weight.features.ScaleSetup.enums.LcbtScaleSetupStep
-import com.dmdbrands.gurus.weight.features.common.model.ScaleInfo
+import com.dmdbrands.gurus.weight.features.DeviceSetup.enums.BabyScaleSetupStep
+import com.dmdbrands.gurus.weight.features.DeviceSetup.enums.BtWifiSetupStep
+import com.dmdbrands.gurus.weight.features.DeviceSetup.enums.LcbtScaleSetupStep
+import com.dmdbrands.gurus.weight.features.common.model.DeviceModelInfo
 import com.dmdbrands.gurus.weight.features.metricinfo.MetricInfoSource
 import com.dmdbrands.library.ggbluetooth.model.GGBTUser
 import com.example.nav3integration.PublicRoute
@@ -111,7 +111,7 @@ sealed class AppRoute : NavKey {
     data object MyDevices : AccountSettings()
 
     @Serializable
-    data object ChooseScale : AccountSettings()
+    data object ChooseDevice : AccountSettings()
 
     @Serializable
     data object Goal : AccountSettings()
@@ -124,7 +124,7 @@ sealed class AppRoute : NavKey {
 
     /** Screen to choose a paired scale (e.g. 0412) when multiple scales; send log for selected scale. */
     @Serializable
-    data object ScaleLogsPicker : AccountSettings()
+    data object DeviceLogsPicker : AccountSettings()
 
     @Serializable
     data object AppPermissions : AccountSettings()
@@ -137,27 +137,27 @@ sealed class AppRoute : NavKey {
     data class AddBaby(val babyId: String? = null) : AccountSettings()
 
     @Serializable
-    data class ScaleDetails(
+    data class DeviceDetails(
       val scaleId: String,
     ) : AccountSettings()
   }
 
   @Serializable
-  sealed class ScaleDetails : AppRoute() {
+  sealed class DeviceDetails : AppRoute() {
     @Serializable
-    data class ScaleMode(
+    data class DeviceMode(
       val scaleId: String,
-    ) : ScaleDetails()
+    ) : DeviceDetails()
 
     @Serializable
-    data class ScaleDisplayMetrics(
+    data class DeviceDisplayMetrics(
       val scaleId: String,
-    ) : ScaleDetails()
+    ) : DeviceDetails()
 
     @Serializable
-    data class ScaleUsers(
+    data class DeviceUsers(
       val scaleId: String,
-    ) : ScaleDetails()
+    ) : DeviceDetails()
   }
 
   @Serializable
@@ -185,53 +185,53 @@ sealed class AppRoute : NavKey {
   }
 
   @Serializable
-  sealed class ScaleSetup : AppRoute() {
+  sealed class DeviceSetup : AppRoute() {
     @Serializable
     data class BtWifiScaleSetup(
       val sku: String,
       val initialStep: BtWifiSetupStep = BtWifiSetupStep.SCALE_INFO,
       val broadcastId: String? = null,
       val userList: List<@Contextual GGBTUser>? = null
-    ) : ScaleSetup()
+    ) : DeviceSetup()
 
     @Serializable
     data class BtScaleSetup(
       val sku: String,
-      val scaleInfo: ScaleInfo? = null
-    ) : ScaleSetup()
+      val scaleInfo: DeviceModelInfo? = null
+    ) : DeviceSetup()
 
     @Serializable
     data class LcbtScaleSetup(
       val sku: String,
       val broadcastId: String? = null,
       val initialStep: LcbtScaleSetupStep = LcbtScaleSetupStep.SCALE_INFO,
-      val scaleInfo: ScaleInfo? = null
-    ) : ScaleSetup()
+      val scaleInfo: DeviceModelInfo? = null
+    ) : DeviceSetup()
 
     @Serializable
     data class WifiScaleSetup(
       val sku: String,
       val wifiSetupType: String = "first",
-      val scaleInfo: ScaleInfo? = null
-    ) : ScaleSetup()
+      val scaleInfo: DeviceModelInfo? = null
+    ) : DeviceSetup()
 
     @Serializable
     data class AppsyncScaleSetup(
       val sku: String
-    ) : ScaleSetup()
+    ) : DeviceSetup()
 
     @Serializable
     data class BpmSetup(
       val sku: String
-    ) : ScaleSetup()
+    ) : DeviceSetup()
 
     @Serializable
     data class BabyScaleSetup(
       val sku: String,
       val initialStep: BabyScaleSetupStep = BabyScaleSetupStep.SCALE_INFO,
       val broadcastId: String? = null,
-      val scaleInfo: ScaleInfo? = null,
-    ) : ScaleSetup()
+      val scaleInfo: DeviceModelInfo? = null,
+    ) : DeviceSetup()
   }
 
   @Serializable

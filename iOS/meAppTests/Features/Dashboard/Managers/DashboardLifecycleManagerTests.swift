@@ -1,17 +1,19 @@
+// swiftlint:disable file_length
 import Foundation
-import SwiftUI
-import SwiftData
-import Testing
 @testable import meApp
+import SwiftData
+import SwiftUI
+import Testing
 
 @Suite(.serialized)
 @MainActor
+// swiftlint:disable:next type_body_length
 struct DashboardLifecycleManagerTests {
 
     // MARK: - SUT Factory
 
     // swiftlint:disable:next large_tuple
-    private typealias SUTBundle = (
+    typealias SUTBundle = (
         store: DashboardStore,
         accountService: AccountService,
         entryService: EntryService,
@@ -19,7 +21,7 @@ struct DashboardLifecycleManagerTests {
         accountLocalRepo: MockAccountRepository
     )
 
-    private func makeSUT() -> SUTBundle {
+    func makeSUT() -> SUTBundle {
         let cacheManager = MockDashboardCacheManager()
         let sut = DashboardManagerTestSupport.makeStoreWithRepo(
             cacheManager: cacheManager,
@@ -34,7 +36,7 @@ struct DashboardLifecycleManagerTests {
         )
     }
 
-    private func makeNotification() -> MockNotificationHelperService? {
+    func makeNotification() -> MockNotificationHelperService? {
         DependencyContainer.shared.resolve(MockNotificationHelperService.self)
     }
 
@@ -119,7 +121,11 @@ struct DashboardLifecycleManagerTests {
 
     @Test("handleActiveAccountChanged: clears chart caches and resets chart init flag")
     func handleActiveAccountChangedClearsCaches() async {
-        let sut = makeSUT(); let store = sut.store; let accountService = sut.accountService; let entryService = sut.entryService; let cacheManager = sut.cacheManager
+        let sut = makeSUT()
+        let store = sut.store
+        let accountService = sut.accountService
+        let entryService = sut.entryService
+        let cacheManager = sut.cacheManager
         accountService.activeAccount = DashboardStoreTestSupport.makeActiveAccount()
 
         let daily = DashboardTestFixtures.makeSortedDailySummaries()
@@ -694,7 +700,7 @@ struct DashboardLifecycleManagerTests {
 
     // MARK: - Helper
 
-    private func makeEntryNotification() -> EntryNotification {
+    func makeEntryNotification() -> EntryNotification {
         let dto = BathScaleOperationDTO(
             accountId: "acct-1",
             bmr: nil,
@@ -724,7 +730,7 @@ struct DashboardLifecycleManagerTests {
         return EntryNotification(from: dto)
     }
 
-    private func makeSnapshot(for store: DashboardStore) -> EditSessionSnapshot {
+    func makeSnapshot(for store: DashboardStore) -> EditSessionSnapshot {
         EditSessionSnapshot(
             metrics: store.metricsManager.state.metrics,
             activeMetricsCount: store.metricsManager.state.activeMetricsCount,
@@ -738,7 +744,7 @@ struct DashboardLifecycleManagerTests {
         )
     }
 
-    private func persistEntries(_ entries: [Entry]) throws {
+    func persistEntries(_ entries: [Entry]) throws {
         let context = PersistenceController.shared.context
         for entry in entries {
             context.insert(entry)
@@ -746,7 +752,7 @@ struct DashboardLifecycleManagerTests {
         try context.save()
     }
 
-    private func waitUntil(
+    func waitUntil(
         timeoutNanoseconds: UInt64 = 2_000_000_000,
         pollNanoseconds: UInt64 = 20_000_000,
         condition: @escaping @MainActor () -> Bool

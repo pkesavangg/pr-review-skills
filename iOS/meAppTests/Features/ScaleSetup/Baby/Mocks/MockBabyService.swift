@@ -39,18 +39,32 @@ final class MockBabyService: BabyServiceProtocol {
 
     // MARK: - Protocol Methods
 
-    func saveBaby(name: String, accountId: String, deviceId: String?,
-                  birthday: Date?, biologicalSex: String?,
-                  birthLengthInches: Double?, birthWeightLbs: Double?, birthWeightOz: Double?) async throws -> Baby {
+    // swiftlint:disable:next function_parameter_count
+    func saveBaby(
+        name: String,
+        accountId: String,
+        deviceId: String?,
+        birthday: Date?,
+        biologicalSex: String?,
+        birthLengthInches: Double?,
+        birthWeightLbs: Double?,
+        birthWeightOz: Double?
+    ) async throws -> Baby {
         saveBabyCalls += 1
         lastSavedName = name
         lastSavedAccountId = accountId
         lastSavedDeviceId = deviceId
         if let error = saveBabyError { throw error }
-        let baby = Baby(accountId: accountId, name: name, deviceId: deviceId,
-                        birthday: birthday, biologicalSex: biologicalSex,
-                        birthLengthInches: birthLengthInches,
-                        birthWeightLbs: birthWeightLbs, birthWeightOz: birthWeightOz)
+        let baby = Baby(
+            accountId: accountId,
+            name: name,
+            deviceId: deviceId,
+            birthday: birthday,
+            biologicalSex: biologicalSex,
+            birthLengthInches: birthLengthInches,
+            birthWeightLbs: birthWeightLbs,
+            birthWeightOz: birthWeightOz
+        )
         return baby
     }
 
@@ -61,9 +75,16 @@ final class MockBabyService: BabyServiceProtocol {
         baby.name = name
     }
 
-    func updateBabyProfile(_ baby: Baby, name: String, birthday: Date?,
-                           biologicalSex: String?, birthLengthInches: Double?,
-                           birthWeightLbs: Double?, birthWeightOz: Double?) async throws {
+    // swiftlint:disable:next function_parameter_count
+    func updateBabyProfile(
+        _ baby: Baby,
+        name: String,
+        birthday: Date?,
+        biologicalSex: String?,
+        birthLengthInches: Double?,
+        birthWeightLbs: Double?,
+        birthWeightOz: Double?
+    ) async throws {
         updateBabyProfileCalls += 1
         lastUpdatedBaby = baby
         if let error = updateBabyProfileError { throw error }

@@ -1,8 +1,8 @@
 import Combine
 import Foundation
 import GGBluetoothSwiftPackage
-import Testing
 @testable import meApp
+import Testing
 
 @Suite(.serialized)
 @MainActor
@@ -234,7 +234,6 @@ struct BluetoothServiceEventAlertsTests {
     }
 
     // MARK: - handleDeviceEventAlert: openScaleSetup deletes user when userToDelete has token
-
 
     // MARK: - findUserToDelete
 

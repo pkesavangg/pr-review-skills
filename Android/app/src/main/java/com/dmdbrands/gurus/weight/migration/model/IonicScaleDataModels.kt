@@ -48,7 +48,7 @@ enum class SetupType {
 /**
  * Scale setup type enum
  */
-enum class ScaleSetupType {
+enum class DeviceSetupType {
   @SerializedName("wifi")
   WIFI,
 
@@ -103,7 +103,7 @@ enum class ScaleType {
 /**
  * Scale setup error enum
  */
-enum class ScaleSetupError {
+enum class DeviceSetupError {
   @SerializedName("none")
   NONE,
 
@@ -132,7 +132,7 @@ enum class ScaleSetupError {
 /**
  * Scale mode enum
  */
-enum class ScaleModeEnum {
+enum class DeviceModeEnum {
   @SerializedName("metrics")
   METRICS,
 
@@ -143,7 +143,7 @@ enum class ScaleModeEnum {
 /**
  * Scale detail loader enum
  */
-enum class ScaleDetailLoader {
+enum class DeviceDetailLoader {
   @SerializedName("none")
   NONE,
 
@@ -174,7 +174,7 @@ enum class CustomizeSettings {
   SCALE_MODE,
 
   @SerializedName("scaleUsername")
-  SCALE_USERNAME
+  DEVICE_USERNAME
 }
 
 /**
@@ -237,7 +237,7 @@ data class IonicScaleMetaData(
 )
 
 /**
- * ScaleMode interface equivalent
+ * DeviceMode interface equivalent
  */
 data class IonicScaleMode(
   @SerializedName("mode") val mode: Boolean? = null,

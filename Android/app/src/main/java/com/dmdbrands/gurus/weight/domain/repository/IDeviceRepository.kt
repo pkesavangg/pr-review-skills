@@ -16,6 +16,9 @@ interface IDeviceRepository {
 
   suspend fun updateDevice(device: Device, accountId: String)
 
+  /** Backfills a paired device's broadcastId from a live reading (server omits it). (MOB-596) */
+  suspend fun updateDeviceBroadcastId(deviceId: String, broadcastId: String, accountId: String)
+
   /**
    * Save a device to the local database.
    * @param device The device to save. Must have a valid accountId.

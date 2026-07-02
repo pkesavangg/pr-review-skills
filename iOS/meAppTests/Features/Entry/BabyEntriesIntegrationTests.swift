@@ -7,8 +7,8 @@
 //
 
 import Foundation
-import Testing
 @testable import meApp
+import Testing
 
 @Suite(.serialized)
 @MainActor
@@ -24,8 +24,14 @@ struct BabyEntriesIntegrationTests {
     @Test("listBabies: GET /baby/ with auth")
     func listBabies() async throws {
         let (sut, http) = makeRepo()
-        http.getResult = [BabyResponse(id: "b1", name: "Emma", birthdate: nil, sex: nil,
-                                       birthWeightDecigrams: nil, birthLengthMillimeters: nil)]
+        http.getResult = [BabyResponse(
+            id: "b1",
+            name: "Emma",
+            birthdate: nil,
+            sex: nil,
+            birthWeightDecigrams: nil,
+            birthLengthMillimeters: nil
+        )]
 
         let result = try await sut.listBabies()
 
@@ -38,12 +44,23 @@ struct BabyEntriesIntegrationTests {
     @Test("createBaby: POST /baby/ with request body")
     func createBaby() async throws {
         let (sut, http) = makeRepo()
-        http.sendResult = BabyResponse(id: "b1", name: "Emma", birthdate: "2026-03-15", sex: "female",
-                                       birthWeightDecigrams: 32500, birthLengthMillimeters: 510)
+        http.sendResult = BabyResponse(
+            id: "b1",
+            name: "Emma",
+            birthdate: "2026-03-15",
+            sex: "female",
+            birthWeightDecigrams: 32500,
+            birthLengthMillimeters: 510
+        )
 
         let response = try await sut.createBaby(
-            BabyRequest(name: "Emma", birthdate: "2026-03-15", sex: "female",
-                        birthWeightDecigrams: 32500, birthLengthMillimeters: 510)
+            BabyRequest(
+                name: "Emma",
+                birthdate: "2026-03-15",
+                sex: "female",
+                birthWeightDecigrams: 32500,
+                birthLengthMillimeters: 510
+            )
         )
 
         #expect(http.lastSendMethod == .post)
@@ -54,11 +71,22 @@ struct BabyEntriesIntegrationTests {
     @Test("updateBaby: PUT /baby/:id with request body")
     func updateBaby() async throws {
         let (sut, http) = makeRepo()
-        http.sendResult = BabyResponse(id: "b1", name: "Renamed", birthdate: nil, sex: nil,
-                                       birthWeightDecigrams: nil, birthLengthMillimeters: nil)
+        http.sendResult = BabyResponse(
+            id: "b1",
+            name: "Renamed",
+            birthdate: nil,
+            sex: nil,
+            birthWeightDecigrams: nil,
+            birthLengthMillimeters: nil
+        )
 
-        _ = try await sut.updateBaby("b1", BabyRequest(name: "Renamed", birthdate: nil, sex: nil,
-                                                       birthWeightDecigrams: nil, birthLengthMillimeters: nil))
+        _ = try await sut.updateBaby("b1", BabyRequest(
+            name: "Renamed",
+            birthdate: nil,
+            sex: nil,
+            birthWeightDecigrams: nil,
+            birthLengthMillimeters: nil
+        ))
 
         #expect(http.lastSendMethod == .put)
         guard case .babyId(let id) = http.lastSendEndpoint else { Issue.record("Expected .babyId"); return }
@@ -90,8 +118,12 @@ struct BabyEntriesIntegrationTests {
     func babyRequestConversion() {
         let birthday = DateTimeTools.formatter("yyyy-MM-dd").date(from: "2026-03-15")
         let request = BabyRequest(
-            name: "Emma", birthday: birthday, biologicalSex: "female",
-            birthLengthInches: 20.0, birthWeightLbs: 7.0, birthWeightOz: 2.0
+            name: "Emma",
+            birthday: birthday,
+            biologicalSex: "female",
+            birthLengthInches: 20.0,
+            birthWeightLbs: 7.0,
+            birthWeightOz: 2.0
         )
         #expect(request.birthdate == "2026-03-15")
         #expect(request.sex == "female")
@@ -101,8 +133,14 @@ struct BabyEntriesIntegrationTests {
 
     @Test("BabyRequest(from local fields): nil weight/length stay nil")
     func babyRequestNilUnits() {
-        let request = BabyRequest(name: "Emma", birthday: nil, biologicalSex: nil,
-                                  birthLengthInches: nil, birthWeightLbs: nil, birthWeightOz: nil)
+        let request = BabyRequest(
+            name: "Emma",
+            birthday: nil,
+            biologicalSex: nil,
+            birthLengthInches: nil,
+            birthWeightLbs: nil,
+            birthWeightOz: nil
+        )
         #expect(request.birthdate == nil)
         #expect(request.birthWeightDecigrams == nil)
         #expect(request.birthLengthMillimeters == nil)
@@ -110,8 +148,14 @@ struct BabyEntriesIntegrationTests {
 
     @Test("BabyResponse.toBaby: maps wire units back into a synced local Baby")
     func babyResponseToBaby() {
-        let response = BabyResponse(id: "b1", name: "Emma", birthdate: "2026-03-15", sex: "female",
-                                    birthWeightDecigrams: 32500, birthLengthMillimeters: 510)
+        let response = BabyResponse(
+            id: "b1",
+            name: "Emma",
+            birthdate: "2026-03-15",
+            sex: "female",
+            birthWeightDecigrams: 32500,
+            birthLengthMillimeters: 510
+        )
         let baby = response.toBaby(accountId: "acct-1")
 
         #expect(baby.id == "b1")
@@ -127,9 +171,14 @@ struct BabyEntriesIntegrationTests {
     @Test("makeRequests create: emits weight + measureLength rows with shared timestamp")
     func babyEntryRequestsCreate() {
         let requests = BabyEntryRequest.makeRequests(
-            babyId: "baby-1", entryId: "entry-1", operationType: OperationType.create.rawValue,
-            entryTimestamp: "2026-05-06T08:00:00Z", weightDecigrams: 45200, lengthMillimeters: 510,
-            source: "0220", note: "After bath"
+            babyId: "baby-1",
+            entryId: "entry-1",
+            operationType: OperationType.create.rawValue,
+            entryTimestamp: "2026-05-06T08:00:00Z",
+            weightDecigrams: 45200,
+            lengthMillimeters: 510,
+            source: "0220",
+            note: "After bath"
         )
         #expect(requests.count == 2)
         let weight = requests.first { $0.entryType == BabyEntryType.weight.rawValue }
@@ -147,8 +196,14 @@ struct BabyEntriesIntegrationTests {
     @Test("makeRequests create: weight-only entry emits a single request")
     func babyEntryRequestsWeightOnly() {
         let requests = BabyEntryRequest.makeRequests(
-            babyId: "baby-1", entryId: "e", operationType: OperationType.create.rawValue,
-            entryTimestamp: "t", weightDecigrams: 45200, lengthMillimeters: 0, source: nil, note: nil
+            babyId: "baby-1",
+            entryId: "e",
+            operationType: OperationType.create.rawValue,
+            entryTimestamp: "t",
+            weightDecigrams: 45200,
+            lengthMillimeters: 0,
+            source: nil,
+            note: nil
         )
         #expect(requests.count == 1)
         #expect(requests.first?.entryType == BabyEntryType.weight.rawValue)
@@ -157,8 +212,14 @@ struct BabyEntriesIntegrationTests {
     @Test("makeRequests delete: single delete keyed by entryId")
     func babyEntryRequestsDelete() {
         let requests = BabyEntryRequest.makeRequests(
-            babyId: "baby-1", entryId: "e", operationType: OperationType.delete.rawValue,
-            entryTimestamp: "t", weightDecigrams: 45200, lengthMillimeters: 510, source: nil, note: nil
+            babyId: "baby-1",
+            entryId: "e",
+            operationType: OperationType.delete.rawValue,
+            entryTimestamp: "t",
+            weightDecigrams: 45200,
+            lengthMillimeters: 510,
+            source: nil,
+            note: nil
         )
         #expect(requests.count == 1)
         #expect(requests.first?.operationType == OperationType.delete.rawValue)
@@ -168,12 +229,30 @@ struct BabyEntriesIntegrationTests {
     @Test("makeRequests(from dto:): non-baby DTO yields no requests")
     func babyEntryRequestsFromNonBaby() {
         let dto = BathScaleOperationDTO(
-            accountId: nil, bmr: nil, bmi: nil, bodyFat: nil, boneMass: nil,
-            entryTimestamp: "t", entryType: EntryType.scale.rawValue, impedance: nil, metabolicAge: nil,
-            muscleMass: nil, operationType: "create", proteinPercent: nil, pulse: nil,
-            serverTimestamp: nil, skeletalMusclePercent: nil, source: nil, subcutaneousFatPercent: nil,
-            systolic: nil, diastolic: nil, meanArterial: nil, unit: nil, visceralFatLevel: nil,
-            water: nil, weight: 1700
+            accountId: nil,
+            bmr: nil,
+            bmi: nil,
+            bodyFat: nil,
+            boneMass: nil,
+            entryTimestamp: "t",
+            entryType: EntryType.scale.rawValue,
+            impedance: nil,
+            metabolicAge: nil,
+            muscleMass: nil,
+            operationType: "create",
+            proteinPercent: nil,
+            pulse: nil,
+            serverTimestamp: nil,
+            skeletalMusclePercent: nil,
+            source: nil,
+            subcutaneousFatPercent: nil,
+            systolic: nil,
+            diastolic: nil,
+            meanArterial: nil,
+            unit: nil,
+            visceralFatLevel: nil,
+            water: nil,
+            weight: 1700
         )
         #expect(BabyEntryRequest.makeRequests(from: dto, entryId: "e", note: nil).isEmpty)
     }
@@ -183,12 +262,29 @@ struct BabyEntriesIntegrationTests {
     @Test("UnifiedEntryResult baby → DTO: carries babyId + decigrams/mm + note")
     func babyResultToDTO() {
         let result = UnifiedEntryResult(
-            category: EntryCategory.baby.rawValue, entryId: "be-1", operationType: "create",
-            entryTimestamp: "t", serverTimestamp: "s", source: "manual",
-            weight: nil, bodyFat: nil, muscleMass: nil, water: nil, bmi: nil, boneMass: nil,
-            impedance: nil, unit: nil, systolic: nil, diastolic: nil, pulse: nil, note: nil,
-            babyId: "baby-1", entryType: BabyEntryType.weight.rawValue,
-            babyWeightDecigrams: 45200, babyLengthMillimeters: nil, entryNote: "After bath"
+            category: EntryCategory.baby.rawValue,
+            entryId: "be-1",
+            operationType: "create",
+            entryTimestamp: "t",
+            serverTimestamp: "s",
+            source: "manual",
+            weight: nil,
+            bodyFat: nil,
+            muscleMass: nil,
+            water: nil,
+            bmi: nil,
+            boneMass: nil,
+            impedance: nil,
+            unit: nil,
+            systolic: nil,
+            diastolic: nil,
+            pulse: nil,
+            note: nil,
+            babyId: "baby-1",
+            entryType: BabyEntryType.weight.rawValue,
+            babyWeightDecigrams: 45200,
+            babyLengthMillimeters: nil,
+            entryNote: "After bath"
         )
         let dto = result.toOperationDTO()
         #expect(dto.entryType == EntryType.baby.rawValue)
@@ -201,12 +297,29 @@ struct BabyEntriesIntegrationTests {
     func operationsIncludesBaby() {
         let response = BathScaleOperationListResponse(entries: [
             UnifiedEntryResult(
-                category: EntryCategory.baby.rawValue, entryId: "be-1", operationType: "create",
-                entryTimestamp: "t", serverTimestamp: nil, source: nil,
-                weight: nil, bodyFat: nil, muscleMass: nil, water: nil, bmi: nil, boneMass: nil,
-                impedance: nil, unit: nil, systolic: nil, diastolic: nil, pulse: nil, note: nil,
-                babyId: "baby-1", entryType: BabyEntryType.weight.rawValue,
-                babyWeightDecigrams: 45200, babyLengthMillimeters: nil, entryNote: nil
+                category: EntryCategory.baby.rawValue,
+                entryId: "be-1",
+                operationType: "create",
+                entryTimestamp: "t",
+                serverTimestamp: nil,
+                source: nil,
+                weight: nil,
+                bodyFat: nil,
+                muscleMass: nil,
+                water: nil,
+                bmi: nil,
+                boneMass: nil,
+                impedance: nil,
+                unit: nil,
+                systolic: nil,
+                diastolic: nil,
+                pulse: nil,
+                note: nil,
+                babyId: "baby-1",
+                entryType: BabyEntryType.weight.rawValue,
+                babyWeightDecigrams: 45200,
+                babyLengthMillimeters: nil,
+                entryNote: nil
             )
         ])
         #expect(response.operations.count == 1)

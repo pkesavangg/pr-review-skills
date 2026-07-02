@@ -41,7 +41,7 @@ class CustomTabViewModelTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `initial chromeTabState is Idle`() = runTest {
+    fun `initial chromeTabState is Idle`() = runTest(mainDispatcherRule.scheduler) {
         viewModel = createViewModel()
         advanceUntilIdle()
 
@@ -53,7 +53,7 @@ class CustomTabViewModelTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `chromeTabState updates to TabShown when manager emits TabShown`() = runTest {
+    fun `chromeTabState updates to TabShown when manager emits TabShown`() = runTest(mainDispatcherRule.scheduler) {
         viewModel = createViewModel()
         advanceUntilIdle()
 
@@ -64,7 +64,7 @@ class CustomTabViewModelTest {
     }
 
     @Test
-    fun `chromeTabState updates to TabHidden when manager emits TabHidden`() = runTest {
+    fun `chromeTabState updates to TabHidden when manager emits TabHidden`() = runTest(mainDispatcherRule.scheduler) {
         viewModel = createViewModel()
         advanceUntilIdle()
 
@@ -75,7 +75,7 @@ class CustomTabViewModelTest {
     }
 
     @Test
-    fun `chromeTabState ignores null emissions from manager`() = runTest {
+    fun `chromeTabState ignores null emissions from manager`() = runTest(mainDispatcherRule.scheduler) {
         viewModel = createViewModel()
         advanceUntilIdle()
 
@@ -95,7 +95,7 @@ class CustomTabViewModelTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `launchTab calls customTabManager openChromeTab`() = runTest {
+    fun `launchTab calls customTabManager openChromeTab`() = runTest(mainDispatcherRule.scheduler) {
         viewModel = createViewModel()
         advanceUntilIdle()
 
@@ -106,7 +106,7 @@ class CustomTabViewModelTest {
     }
 
     @Test
-    fun `launchTab with different URL passes correct URL`() = runTest {
+    fun `launchTab with different URL passes correct URL`() = runTest(mainDispatcherRule.scheduler) {
         viewModel = createViewModel()
         advanceUntilIdle()
 
@@ -121,7 +121,7 @@ class CustomTabViewModelTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `onCleared does not unbind the shared customTabManager`() = runTest {
+    fun `onCleared does not unbind the shared customTabManager`() = runTest(mainDispatcherRule.scheduler) {
         viewModel = createViewModel()
         advanceUntilIdle()
 

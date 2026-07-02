@@ -32,9 +32,8 @@ struct ScaleSetupIntroView: View {
                         }
                     }
                 }
-                .frame(maxWidth: .infinity, alignment: .top)
-                .frame(minHeight: geometry.size.height, alignment: .top)
-                .padding(.top, .spacingLG)
+                .frame(maxWidth: .infinity)
+                .frame(minHeight: geometry.size.height, alignment: .center)
             }
         }
     }

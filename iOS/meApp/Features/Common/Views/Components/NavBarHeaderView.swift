@@ -11,6 +11,7 @@ struct NavbarHeaderView<Leading: View, Trailing: View>: View {
     @Environment(\.appTheme) var theme
 
     var title: String?
+    var titleColor: Color?
     var leadingContent: (() -> Leading)?
     var trailingContent: (() -> Trailing)?
     var onLeadingTap: (() -> Void)?
@@ -33,7 +34,7 @@ struct NavbarHeaderView<Leading: View, Trailing: View>: View {
                     Text(title)
                         .fontOpenSans(.heading5)
                         .fontWeight(.bold)
-                        .foregroundColor(theme.textHeading)
+                        .foregroundColor(titleColor ?? theme.textHeading)
                         .lineLimit(1)
                         .accessibilityAddTraits(.isHeader)
                     if canShowTitleChevron {

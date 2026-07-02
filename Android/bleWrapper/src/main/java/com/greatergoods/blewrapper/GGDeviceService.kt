@@ -178,7 +178,7 @@ class GGDeviceService @Inject constructor(
     try {
       ggBluetooth.scanForPairing()
     } catch (e: UninitializedPropertyAccessException) {
-      Log.w("GGDeviceService", "scanForPairing called before BLE initialized — skipping")
+      Log.e("GGDeviceService", "scanForPairing called before BLE initialized — skipping", e)
     }
   }
 

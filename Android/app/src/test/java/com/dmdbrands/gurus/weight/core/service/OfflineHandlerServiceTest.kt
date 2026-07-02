@@ -216,7 +216,7 @@ class OfflineHandlerServiceTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `handleOfflineSync does nothing when offline`() = runTest {
+    fun `handleOfflineSync does nothing when offline`() = runTest(mainDispatcherRule.scheduler) {
         stubNetworkUnavailable()
 
         service.handleOfflineSync()
@@ -228,7 +228,7 @@ class OfflineHandlerServiceTest {
     }
 
     @Test
-    fun `handleOfflineSync does nothing when no unsynced data exists`() = runTest {
+    fun `handleOfflineSync does nothing when no unsynced data exists`() = runTest(mainDispatcherRule.scheduler) {
         service.handleOfflineSync()
 
         // All getUnsynced returned null → no API calls
@@ -246,7 +246,7 @@ class OfflineHandlerServiceTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `handleOfflineSync syncs profile when unsynced account exists`() = runTest {
+    fun `handleOfflineSync syncs profile when unsynced account exists`() = runTest(mainDispatcherRule.scheduler) {
         stubProfileSync()
 
         service.handleOfflineSync()
@@ -267,7 +267,7 @@ class OfflineHandlerServiceTest {
     }
 
     @Test
-    fun `handleOfflineSync skips profile sync when no unsynced account`() = runTest {
+    fun `handleOfflineSync skips profile sync when no unsynced account`() = runTest(mainDispatcherRule.scheduler) {
         // Default stub returns null
         service.handleOfflineSync()
 
@@ -275,7 +275,7 @@ class OfflineHandlerServiceTest {
     }
 
     @Test
-    fun `handleOfflineSync catches profile sync exception and continues`() = runTest {
+    fun `handleOfflineSync catches profile sync exception and continues`() = runTest(mainDispatcherRule.scheduler) {
         coEvery { accountRepository.getUnsyncedActiveAccount() } returns fakeAccount
         coEvery { accountRepository.updateProfile(any()) } throws RuntimeException("API error")
         stubGoalSync() // Stub a later sync to verify continuation
@@ -291,7 +291,7 @@ class OfflineHandlerServiceTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `handleOfflineSync syncs body composition when unsynced data exists`() = runTest {
+    fun `handleOfflineSync syncs body composition when unsynced data exists`() = runTest(mainDispatcherRule.scheduler) {
         stubBodyCompSync()
 
         service.handleOfflineSync()
@@ -320,7 +320,7 @@ class OfflineHandlerServiceTest {
     }
 
     @Test
-    fun `handleOfflineSync uses default height and activityLevel when null`() = runTest {
+    fun `handleOfflineSync uses default height and activityLevel when null`() = runTest(mainDispatcherRule.scheduler) {
         val accountNullFields = fakeAccount.copy(height = null, activityLevel = null)
         stubBodyCompSync(accountNullFields)
 
@@ -338,14 +338,14 @@ class OfflineHandlerServiceTest {
     }
 
     @Test
-    fun `handleOfflineSync skips body composition sync when no unsynced data`() = runTest {
+    fun `handleOfflineSync skips body composition sync when no unsynced data`() = runTest(mainDispatcherRule.scheduler) {
         service.handleOfflineSync()
 
         coVerify(exactly = 0) { bodyCompositionRepository.updateBodyCompInAPI(any()) }
     }
 
     @Test
-    fun `handleOfflineSync catches body composition exception and continues`() = runTest {
+    fun `handleOfflineSync catches body composition exception and continues`() = runTest(mainDispatcherRule.scheduler) {
         coEvery { bodyCompositionRepository.getUnsyncedActiveBodyCompAccountFromDB() } returns fakeAccount
         coEvery { bodyCompositionRepository.updateBodyCompInAPI(any()) } throws RuntimeException("API error")
         stubGoalSync()
@@ -360,14 +360,14 @@ class OfflineHandlerServiceTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `handleOfflineSync syncs devices`() = runTest {
+    fun `handleOfflineSync syncs devices`() = runTest(mainDispatcherRule.scheduler) {
         service.handleOfflineSync()
 
         coVerify { deviceService.syncDevices() }
     }
 
     @Test
-    fun `handleOfflineSync catches device sync exception and continues`() = runTest {
+    fun `handleOfflineSync catches device sync exception and continues`() = runTest(mainDispatcherRule.scheduler) {
         coEvery { deviceService.syncDevices(any()) } throws RuntimeException("BLE error")
         stubGoalSync()
 
@@ -381,7 +381,7 @@ class OfflineHandlerServiceTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `handleOfflineSync syncs notification settings when unsynced data exists`() = runTest {
+    fun `handleOfflineSync syncs notification settings when unsynced data exists`() = runTest(mainDispatcherRule.scheduler) {
         stubNotificationSync()
 
         service.handleOfflineSync()
@@ -408,7 +408,7 @@ class OfflineHandlerServiceTest {
     }
 
     @Test
-    fun `handleOfflineSync uses false defaults for null notification settings`() = runTest {
+    fun `handleOfflineSync uses false defaults for null notification settings`() = runTest(mainDispatcherRule.scheduler) {
         val accountNullNotif = fakeAccount.copy(
             shouldSendEntryNotifications = null,
             shouldSendWeightInEntryNotifications = null,
@@ -428,14 +428,14 @@ class OfflineHandlerServiceTest {
     }
 
     @Test
-    fun `handleOfflineSync skips notification sync when no unsynced data`() = runTest {
+    fun `handleOfflineSync skips notification sync when no unsynced data`() = runTest(mainDispatcherRule.scheduler) {
         service.handleOfflineSync()
 
         coVerify(exactly = 0) { notificationRepository.updateNotificationSettingsInAPI(any()) }
     }
 
     @Test
-    fun `handleOfflineSync catches notification exception and continues`() = runTest {
+    fun `handleOfflineSync catches notification exception and continues`() = runTest(mainDispatcherRule.scheduler) {
         coEvery { notificationRepository.getUnsyncedActiveNotificationAccountFromDB() } returns fakeAccount
         coEvery { notificationRepository.updateNotificationSettingsInAPI(any()) } throws RuntimeException("API error")
         stubGoalSync()
@@ -450,7 +450,7 @@ class OfflineHandlerServiceTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `handleOfflineSync syncs goal data when unsynced account exists`() = runTest {
+    fun `handleOfflineSync syncs goal data when unsynced account exists`() = runTest(mainDispatcherRule.scheduler) {
         stubGoalSync()
 
         service.handleOfflineSync()
@@ -468,7 +468,7 @@ class OfflineHandlerServiceTest {
     }
 
     @Test
-    fun `handleOfflineSync uses defaults for null goal fields`() = runTest {
+    fun `handleOfflineSync uses defaults for null goal fields`() = runTest(mainDispatcherRule.scheduler) {
         val accountNullGoal = fakeAccount.copy(goalWeight = null, goalType = null)
         stubGoalSync(accountNullGoal)
 
@@ -487,14 +487,14 @@ class OfflineHandlerServiceTest {
     }
 
     @Test
-    fun `handleOfflineSync skips goal sync when no unsynced data`() = runTest {
+    fun `handleOfflineSync skips goal sync when no unsynced data`() = runTest(mainDispatcherRule.scheduler) {
         service.handleOfflineSync()
 
         coVerify(exactly = 0) { goalRepository.updateGoalSetting(any()) }
     }
 
     @Test
-    fun `handleOfflineSync catches goal sync exception and continues`() = runTest {
+    fun `handleOfflineSync catches goal sync exception and continues`() = runTest(mainDispatcherRule.scheduler) {
         coEvery { goalRepository.getUnsyncedActiveGoalAccountFromDB() } returns fakeAccount
         coEvery { goalRepository.updateGoalSetting(any()) } throws RuntimeException("API error")
         stubWeightlessSync()
@@ -509,7 +509,7 @@ class OfflineHandlerServiceTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `handleOfflineSync syncs weightless settings when unsynced data exists`() = runTest {
+    fun `handleOfflineSync syncs weightless settings when unsynced data exists`() = runTest(mainDispatcherRule.scheduler) {
         stubWeightlessSync()
 
         service.handleOfflineSync()
@@ -526,7 +526,7 @@ class OfflineHandlerServiceTest {
     }
 
     @Test
-    fun `handleOfflineSync uses false default for null isWeightlessOn`() = runTest {
+    fun `handleOfflineSync uses false default for null isWeightlessOn`() = runTest(mainDispatcherRule.scheduler) {
         val accountNullWeightless = fakeAccount.copy(isWeightlessOn = null, weightlessWeight = null)
         stubWeightlessSync(accountNullWeightless)
 
@@ -544,14 +544,14 @@ class OfflineHandlerServiceTest {
     }
 
     @Test
-    fun `handleOfflineSync skips weightless sync when no unsynced data`() = runTest {
+    fun `handleOfflineSync skips weightless sync when no unsynced data`() = runTest(mainDispatcherRule.scheduler) {
         service.handleOfflineSync()
 
         coVerify(exactly = 0) { userSettingsRepository.updateWeightlessSetting(any()) }
     }
 
     @Test
-    fun `handleOfflineSync catches weightless exception and continues`() = runTest {
+    fun `handleOfflineSync catches weightless exception and continues`() = runTest(mainDispatcherRule.scheduler) {
         coEvery { userSettingsRepository.getUnsyncedActiveWeightlessAccountFromDB() } returns fakeAccount
         coEvery { userSettingsRepository.updateWeightlessSetting(any()) } throws RuntimeException("API error")
         stubStreakSync()
@@ -566,7 +566,7 @@ class OfflineHandlerServiceTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `handleOfflineSync syncs streak settings when unsynced data exists`() = runTest {
+    fun `handleOfflineSync syncs streak settings when unsynced data exists`() = runTest(mainDispatcherRule.scheduler) {
         stubStreakSync()
 
         service.handleOfflineSync()
@@ -582,7 +582,7 @@ class OfflineHandlerServiceTest {
     }
 
     @Test
-    fun `handleOfflineSync uses false default for null isStreakOn`() = runTest {
+    fun `handleOfflineSync uses false default for null isStreakOn`() = runTest(mainDispatcherRule.scheduler) {
         val accountNullStreak = fakeAccount.copy(isStreakOn = null)
         stubStreakSync(accountNullStreak)
 
@@ -599,14 +599,14 @@ class OfflineHandlerServiceTest {
     }
 
     @Test
-    fun `handleOfflineSync skips streak sync when no unsynced data`() = runTest {
+    fun `handleOfflineSync skips streak sync when no unsynced data`() = runTest(mainDispatcherRule.scheduler) {
         service.handleOfflineSync()
 
         coVerify(exactly = 0) { userSettingsRepository.updateStreakSetting(any()) }
     }
 
     @Test
-    fun `handleOfflineSync catches streak exception and continues`() = runTest {
+    fun `handleOfflineSync catches streak exception and continues`() = runTest(mainDispatcherRule.scheduler) {
         coEvery { userSettingsRepository.getUnsyncedActiveStreakAccountFromDB() } returns fakeAccount
         coEvery { userSettingsRepository.updateStreakSetting(any()) } throws RuntimeException("API error")
         stubDashboardSync()
@@ -621,7 +621,7 @@ class OfflineHandlerServiceTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `handleOfflineSync syncs dashboard when unsynced settings exist`() = runTest {
+    fun `handleOfflineSync syncs dashboard when unsynced settings exist`() = runTest(mainDispatcherRule.scheduler) {
         stubDashboardSync()
 
         service.handleOfflineSync()
@@ -640,7 +640,7 @@ class OfflineHandlerServiceTest {
     }
 
     @Test
-    fun `handleOfflineSync uses DASHBOARD_4_METRICS as default when type is unknown`() = runTest {
+    fun `handleOfflineSync uses DASHBOARD_4_METRICS as default when type is unknown`() = runTest(mainDispatcherRule.scheduler) {
         val settingsUnknownType = fakeDashboardSettings.copy(dashboardType = "unknown_type")
         stubDashboardSync(settingsUnknownType)
 
@@ -658,7 +658,7 @@ class OfflineHandlerServiceTest {
     }
 
     @Test
-    fun `handleOfflineSync resolves DASHBOARD_12_METRICS type correctly`() = runTest {
+    fun `handleOfflineSync resolves DASHBOARD_12_METRICS type correctly`() = runTest(mainDispatcherRule.scheduler) {
         val settings12 = fakeDashboardSettings.copy(dashboardType = "dashboard_12_metrics")
         stubDashboardSync(settings12)
 
@@ -676,7 +676,7 @@ class OfflineHandlerServiceTest {
     }
 
     @Test
-    fun `handleOfflineSync skips dashboard sync when no unsynced settings`() = runTest {
+    fun `handleOfflineSync skips dashboard sync when no unsynced settings`() = runTest(mainDispatcherRule.scheduler) {
         service.handleOfflineSync()
 
         coVerify(exactly = 0) { accountRepository.updateDashboardMetrics(any()) }
@@ -684,7 +684,7 @@ class OfflineHandlerServiceTest {
     }
 
     @Test
-    fun `handleOfflineSync catches dashboard exception and completes`() = runTest {
+    fun `handleOfflineSync catches dashboard exception and completes`() = runTest(mainDispatcherRule.scheduler) {
         coEvery { accountRepository.getUnsyncedActiveDashboardSettings() } returns fakeDashboardSettings
         coEvery { accountRepository.updateDashboardMetrics(any()) } throws RuntimeException("API error")
 
@@ -697,7 +697,7 @@ class OfflineHandlerServiceTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `handleOfflineSync continues all syncs even when multiple fail`() = runTest {
+    fun `handleOfflineSync continues all syncs even when multiple fail`() = runTest(mainDispatcherRule.scheduler) {
         // Profile: fails
         coEvery { accountRepository.getUnsyncedActiveAccount() } returns fakeAccount
         coEvery { accountRepository.updateProfile(any()) } throws RuntimeException("profile error")
@@ -739,7 +739,7 @@ class OfflineHandlerServiceTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `handleOfflineSync catches top-level exception gracefully`() = runTest {
+    fun `handleOfflineSync catches top-level exception gracefully`() = runTest(mainDispatcherRule.scheduler) {
         // Make the first call inside the try block throw a non-catchable error from the
         // getUnsyncedActiveAccount itself (not its inner catch)
         coEvery { accountRepository.getUnsyncedActiveAccount() } throws RuntimeException("fatal")
@@ -753,7 +753,7 @@ class OfflineHandlerServiceTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `handleOfflineSync runs all sync steps when all have unsynced data`() = runTest {
+    fun `handleOfflineSync runs all sync steps when all have unsynced data`() = runTest(mainDispatcherRule.scheduler) {
         stubProfileSync()
         stubBodyCompSync()
         stubNotificationSync()

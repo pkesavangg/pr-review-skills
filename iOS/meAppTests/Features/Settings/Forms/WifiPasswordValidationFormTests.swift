@@ -1,6 +1,6 @@
-import Testing
 import Foundation
 @testable import meApp
+import Testing
 
 @Suite(.serialized)
 @MainActor
@@ -13,7 +13,7 @@ struct WifiPasswordValidationFormTests {
     @Test("password starts empty")
     func initialState() {
         let form = makeForm()
-        #expect(form.password.value == "")
+        #expect(form.password.value.isEmpty)
         #expect(!form.password.isDirty)
     }
 

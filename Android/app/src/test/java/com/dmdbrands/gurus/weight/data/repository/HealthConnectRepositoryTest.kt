@@ -24,8 +24,8 @@ import io.mockk.impl.annotations.MockK
 import io.mockk.mockk
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.test.runTest
-import org.junit.Before
-import org.junit.Test
+import org.junit.jupiter.api.BeforeEach
+import org.junit.jupiter.api.Test
 import kotlin.test.assertFailsWith
 import java.io.IOException
 
@@ -51,7 +51,7 @@ class HealthConnectRepositoryTest {
     private val mockHealthConnectData: HealthConnectData = mockk(relaxed = true)
     private val mockAccount: Account = mockk(relaxed = true)
 
-    @Before
+    @BeforeEach
     fun setUp() {
         MockKAnnotations.init(this)
         every { mockAccount.id } returns ACCOUNT_ID

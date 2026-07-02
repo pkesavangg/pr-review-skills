@@ -39,6 +39,7 @@ final class MockEntryScaleService: ScaleServiceProtocol {
     func fetchAttachedPreference(by id: String) async -> R4ScalePreference? { nil }
     func fetchAttachedPreferenceSync(by id: String) -> R4ScalePreference? { nil }
     func syncAllScalesWithRemote() async {}
+    // swiftlint:disable:next function_parameter_count
     func createBluetoothScale(
         device: Device,
         sku: String?,

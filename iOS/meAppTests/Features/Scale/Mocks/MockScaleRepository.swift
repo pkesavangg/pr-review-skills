@@ -1,6 +1,6 @@
 import Foundation
-import SwiftData
 @testable import meApp
+import SwiftData
 
 @MainActor
 final class MockScaleRepository: DeviceRepositoryProtocol {
@@ -241,7 +241,7 @@ final class MockScaleRepository: DeviceRepositoryProtocol {
 
     func fetchAttachedPreference(by id: String) -> R4ScalePreference? {
         syncSnapshotFromContext()
-        return devices.first(where: { $0.id == id })?.r4ScalePreference
+        return devices.first { $0.id == id }?.r4ScalePreference
     }
 
     func fetchAttachedPreferenceSync(by id: String) -> R4ScalePreference? {

@@ -1,7 +1,7 @@
 import Foundation
+@testable import meApp
 import Network
 import Testing
-@testable import meApp
 
 @Suite(.serialized)
 @MainActor
@@ -45,8 +45,8 @@ struct WifiScaleServiceTests {
 
         #expect(info.status == .disabled)
         #expect(info.locationStatus == .ENABLED)
-        #expect(info.ssid == "")
-        #expect(info.bssid == "")
+        #expect(info.ssid?.isEmpty == true)
+        #expect(info.bssid?.isEmpty == true)
         #expect(deps.wifiInfo.currentSSIDCalls == 0)
         #expect(deps.wifiInfo.currentBSSIDCalls == 0)
     }
@@ -64,8 +64,8 @@ struct WifiScaleServiceTests {
 
         #expect(info.status == .enabled)
         #expect(info.locationStatus == .DISABLED)
-        #expect(info.ssid == "")
-        #expect(info.bssid == "")
+        #expect(info.ssid?.isEmpty == true)
+        #expect(info.bssid?.isEmpty == true)
         #expect(deps.wifiInfo.currentSSIDCalls == 0)
         #expect(deps.wifiInfo.currentBSSIDCalls == 0)
     }
@@ -101,7 +101,7 @@ struct WifiScaleServiceTests {
         let info = await sut.getConnectedWifiInfo()
 
         #expect(info.status == .enabled)
-        #expect(info.ssid == "")
+        #expect(info.ssid?.isEmpty == true)
         #expect(info.bssid == "11:22")
     }
 
@@ -201,10 +201,10 @@ struct WifiScaleServiceTests {
 
         try await sut.smartConnect(WifiScaleTestFixtures.makeSetupInfo(ssid: nil, bssid: nil, password: nil, userNumber: nil, token: nil))
 
-        #expect(deps.setupClient.lastSmartConfig?.ssid == "")
-        #expect(deps.setupClient.lastSmartConfig?.bssid == "")
-        #expect(deps.setupClient.lastSmartConfig?.password == "")
-        #expect(deps.setupClient.lastSmartConfig?.token == "")
+        #expect(deps.setupClient.lastSmartConfig?.ssid.isEmpty == true)
+        #expect(deps.setupClient.lastSmartConfig?.bssid.isEmpty == true)
+        #expect(deps.setupClient.lastSmartConfig?.password.isEmpty == true)
+        #expect(deps.setupClient.lastSmartConfig?.token.isEmpty == true)
         #expect(deps.setupClient.lastSmartConfig?.userNumber == 0)
     }
 

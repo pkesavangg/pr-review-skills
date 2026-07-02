@@ -7,8 +7,8 @@
 //
 
 import Foundation
-import Testing
 @testable import meApp
+import Testing
 
 // MARK: - MockProductTypeStore.hasPersistedSelection
 

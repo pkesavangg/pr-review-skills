@@ -53,8 +53,11 @@ struct MetricCardView: View {
     }
     
     private var backgroundColor: Color {
+        // Selected card is a dark highlight: its value/label use inverse (light) text, so the
+        // background must be the dark actionPrimary. actionSecondary is the same light token as
+        // textInverse, which made the value and label invisible on tap.
         isDropTarget ? theme.backgroundSecondary
-        : (isSelected && !isEditMode ? theme.actionSecondary : theme.backgroundPrimary)
+        : (isSelected && !isEditMode ? theme.actionPrimary : theme.backgroundPrimary)
     }
     
     private var foregroundColor: Color {

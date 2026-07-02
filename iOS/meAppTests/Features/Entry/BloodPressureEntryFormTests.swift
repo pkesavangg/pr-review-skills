@@ -1,7 +1,7 @@
 import Combine
 import Foundation
-import Testing
 @testable import meApp
+import Testing
 
 struct BloodPressureEntryFormTests {
     // MARK: - Initial State
@@ -10,10 +10,10 @@ struct BloodPressureEntryFormTests {
     func initialState() {
         let form = BloodPressureEntryForm()
 
-        #expect(form.systolic.value == "")
-        #expect(form.diastolic.value == "")
-        #expect(form.pulse.value == "")
-        #expect(form.notes.value == "")
+        #expect(form.systolic.value.isEmpty)
+        #expect(form.diastolic.value.isEmpty)
+        #expect(form.pulse.value.isEmpty)
+        #expect(form.notes.value.isEmpty)
         #expect(form.isValid == false)
         #expect(form.isPristine == true)
     }
@@ -166,10 +166,10 @@ struct BloodPressureEntryFormTests {
     // MARK: - Date Validation
 
     @Test("date shows future date error when set to tomorrow")
-    func dateFutureDateError() {
+    func dateFutureDateError() throws {
         let form = BloodPressureEntryForm()
 
-        let tomorrow = Calendar.current.date(byAdding: .day, value: 1, to: Date())!
+        let tomorrow = try #require(Calendar.current.date(byAdding: .day, value: 1, to: Date()))
         form.date.value = tomorrow
 
         #expect(form.date.errors[.futureDate] == true)
