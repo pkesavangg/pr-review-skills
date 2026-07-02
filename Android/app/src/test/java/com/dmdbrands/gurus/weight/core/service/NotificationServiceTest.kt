@@ -121,7 +121,7 @@ class NotificationServiceTest {
   // -------------------------------------------------------------------------
 
   @Test
-  fun `updateNotificationSettings online returns updated account from DB`() = runTest {
+  fun `updateNotificationSettings online returns updated account from DB`() = runTest(mainDispatcherRule.scheduler) {
     val response = createAccountResponse()
     coEvery { notificationRepository.updateNotificationSettingsInAPI(testRequest) } returns response
     coEvery { notificationRepository.updateNotificationSettingsInDB(any(), any()) } returns fakeUpdatedAccount
@@ -132,7 +132,7 @@ class NotificationServiceTest {
   }
 
   @Test
-  fun `updateNotificationSettings online calls API then saves to DB with isSynced true`() = runTest {
+  fun `updateNotificationSettings online calls API then saves to DB with isSynced true`() = runTest(mainDispatcherRule.scheduler) {
     val response = createAccountResponse()
     coEvery { notificationRepository.updateNotificationSettingsInAPI(testRequest) } returns response
     coEvery { notificationRepository.updateNotificationSettingsInDB(any(), any()) } returns fakeUpdatedAccount
@@ -149,7 +149,7 @@ class NotificationServiceTest {
   }
 
   @Test
-  fun `updateNotificationSettings online uses response account values for entity`() = runTest {
+  fun `updateNotificationSettings online uses response account values for entity`() = runTest(mainDispatcherRule.scheduler) {
     val response = createAccountResponse(
       shouldSendEntry = false,
       shouldSendWeightInEntry = true,
@@ -170,7 +170,7 @@ class NotificationServiceTest {
   // -------------------------------------------------------------------------
 
   @Test
-  fun `updateNotificationSettings offline saves to DB with isSynced false`() = runTest {
+  fun `updateNotificationSettings offline saves to DB with isSynced false`() = runTest(mainDispatcherRule.scheduler) {
     every { connectivityObserver.getCurrentNetworkState() } returns offlineState
     coEvery { notificationRepository.updateNotificationSettingsInDB(any(), any()) } returns fakeUpdatedAccount
 
@@ -186,7 +186,7 @@ class NotificationServiceTest {
   }
 
   @Test
-  fun `updateNotificationSettings offline does not call API`() = runTest {
+  fun `updateNotificationSettings offline does not call API`() = runTest(mainDispatcherRule.scheduler) {
     every { connectivityObserver.getCurrentNetworkState() } returns offlineState
     coEvery { notificationRepository.updateNotificationSettingsInDB(any(), any()) } returns fakeUpdatedAccount
 
@@ -196,7 +196,7 @@ class NotificationServiceTest {
   }
 
   @Test
-  fun `updateNotificationSettings offline uses request values for entity`() = runTest {
+  fun `updateNotificationSettings offline uses request values for entity`() = runTest(mainDispatcherRule.scheduler) {
     every { connectivityObserver.getCurrentNetworkState() } returns offlineState
     val request = NotificationSettingsRequest(
       shouldSendEntryNotifications = false,
@@ -217,7 +217,7 @@ class NotificationServiceTest {
   // -------------------------------------------------------------------------
 
   @Test
-  fun `updateNotificationSettings returns null when no active account`() = runTest {
+  fun `updateNotificationSettings returns null when no active account`() = runTest(mainDispatcherRule.scheduler) {
     coEvery { notificationRepository.getActiveAccountFromDB() } returns null
 
     val result = service.updateNotificationSettings(testRequest)
@@ -226,7 +226,7 @@ class NotificationServiceTest {
   }
 
   @Test
-  fun `updateNotificationSettings returns null when API call throws`() = runTest {
+  fun `updateNotificationSettings returns null when API call throws`() = runTest(mainDispatcherRule.scheduler) {
     coEvery { notificationRepository.updateNotificationSettingsInAPI(any()) } throws RuntimeException("API error")
 
     val result = service.updateNotificationSettings(testRequest)
@@ -235,7 +235,7 @@ class NotificationServiceTest {
   }
 
   @Test
-  fun `updateNotificationSettings returns null when DB update throws online`() = runTest {
+  fun `updateNotificationSettings returns null when DB update throws online`() = runTest(mainDispatcherRule.scheduler) {
     val response = createAccountResponse()
     coEvery { notificationRepository.updateNotificationSettingsInAPI(testRequest) } returns response
     coEvery { notificationRepository.updateNotificationSettingsInDB(any(), any()) } throws RuntimeException("DB error")
@@ -246,7 +246,7 @@ class NotificationServiceTest {
   }
 
   @Test
-  fun `updateNotificationSettings returns null when DB update throws offline`() = runTest {
+  fun `updateNotificationSettings returns null when DB update throws offline`() = runTest(mainDispatcherRule.scheduler) {
     every { connectivityObserver.getCurrentNetworkState() } returns offlineState
     coEvery { notificationRepository.updateNotificationSettingsInDB(any(), any()) } throws RuntimeException("DB error")
 
@@ -256,7 +256,7 @@ class NotificationServiceTest {
   }
 
   @Test
-  fun `updateNotificationSettings logs error on exception`() = runTest {
+  fun `updateNotificationSettings logs error on exception`() = runTest(mainDispatcherRule.scheduler) {
     coEvery { notificationRepository.getActiveAccountFromDB() } returns null
 
     service.updateNotificationSettings(testRequest)
@@ -266,7 +266,7 @@ class NotificationServiceTest {
   }
 
   @Test
-  fun `updateNotificationSettings returns null when getActiveAccountFromDB throws`() = runTest {
+  fun `updateNotificationSettings returns null when getActiveAccountFromDB throws`() = runTest(mainDispatcherRule.scheduler) {
     coEvery { notificationRepository.getActiveAccountFromDB() } throws RuntimeException("DB unavailable")
 
     val result = service.updateNotificationSettings(testRequest)
@@ -279,7 +279,7 @@ class NotificationServiceTest {
   // -------------------------------------------------------------------------
 
   @Test
-  fun `updateNotificationSettings online passes active account ID to DB update`() = runTest {
+  fun `updateNotificationSettings online passes active account ID to DB update`() = runTest(mainDispatcherRule.scheduler) {
     val response = createAccountResponse()
     coEvery { notificationRepository.updateNotificationSettingsInAPI(testRequest) } returns response
     coEvery { notificationRepository.updateNotificationSettingsInDB(any(), any()) } returns fakeUpdatedAccount
@@ -290,7 +290,7 @@ class NotificationServiceTest {
   }
 
   @Test
-  fun `updateNotificationSettings offline passes active account ID to DB update`() = runTest {
+  fun `updateNotificationSettings offline passes active account ID to DB update`() = runTest(mainDispatcherRule.scheduler) {
     every { connectivityObserver.getCurrentNetworkState() } returns offlineState
     coEvery { notificationRepository.updateNotificationSettingsInDB(any(), any()) } returns fakeUpdatedAccount
 

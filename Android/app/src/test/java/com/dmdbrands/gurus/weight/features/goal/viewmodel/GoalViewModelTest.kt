@@ -142,7 +142,7 @@ class GoalViewModelTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `subscribes to activeAccountFlow and updates account`() = runTest {
+    fun `subscribes to activeAccountFlow and updates account`() = runTest(mainDispatcherRule.scheduler) {
         viewModel = createViewModel()
         val account = accountWithGoal()
         accountFlow.value = account
@@ -156,7 +156,7 @@ class GoalViewModelTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `subscribes to latestEntry and updates latestWeight`() = runTest {
+    fun `subscribes to latestEntry and updates latestWeight`() = runTest(mainDispatcherRule.scheduler) {
         viewModel = createViewModel()
         val entry = TestFixtures.weightEntry
         latestEntryFlow.value = entry
@@ -170,7 +170,7 @@ class GoalViewModelTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `Submit shows loader`() = runTest {
+    fun `Submit shows loader`() = runTest(mainDispatcherRule.scheduler) {
         viewModel = createViewModel()
         accountFlow.value = accountWithGoal()
         advanceUntilIdle()
@@ -182,7 +182,7 @@ class GoalViewModelTest {
     }
 
     @Test
-    fun `Submit calls goalService updateGoal`() = runTest {
+    fun `Submit calls goalService updateGoal`() = runTest(mainDispatcherRule.scheduler) {
         viewModel = createViewModel()
         accountFlow.value = accountWithGoal()
         advanceUntilIdle()
@@ -194,7 +194,7 @@ class GoalViewModelTest {
     }
 
     @Test
-    fun `Submit dismisses loader after success`() = runTest {
+    fun `Submit dismisses loader after success`() = runTest(mainDispatcherRule.scheduler) {
         viewModel = createViewModel()
         accountFlow.value = accountWithGoal()
         advanceUntilIdle()
@@ -210,7 +210,7 @@ class GoalViewModelTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `Submit sets error when goalService throws`() = runTest {
+    fun `Submit sets error when goalService throws`() = runTest(mainDispatcherRule.scheduler) {
         coEvery { goalService.updateGoal(any(), any(), any(), any()) } throws RuntimeException("API error")
         viewModel = createViewModel()
         accountFlow.value = accountWithGoal()
@@ -223,7 +223,7 @@ class GoalViewModelTest {
     }
 
     @Test
-    fun `Submit dismisses loader when goalService throws`() = runTest {
+    fun `Submit dismisses loader when goalService throws`() = runTest(mainDispatcherRule.scheduler) {
         coEvery { goalService.updateGoal(any(), any(), any(), any()) } throws RuntimeException("API error")
         viewModel = createViewModel()
         accountFlow.value = accountWithGoal()
@@ -236,7 +236,7 @@ class GoalViewModelTest {
     }
 
     @Test
-    fun `Submit returns early when account is null`() = runTest {
+    fun `Submit returns early when account is null`() = runTest(mainDispatcherRule.scheduler) {
         viewModel = createViewModel()
         advanceUntilIdle()
 
@@ -251,7 +251,7 @@ class GoalViewModelTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `OnBack navigates back when no changes`() = runTest {
+    fun `OnBack navigates back when no changes`() = runTest(mainDispatcherRule.scheduler) {
         viewModel = createViewModel()
         advanceUntilIdle()
 
@@ -266,7 +266,7 @@ class GoalViewModelTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `OnBack shows unsaved changes dialog when form is dirty`() = runTest {
+    fun `OnBack shows unsaved changes dialog when form is dirty`() = runTest(mainDispatcherRule.scheduler) {
         viewModel = createViewModel()
         accountFlow.value = accountWithGoal()
         advanceUntilIdle()
@@ -283,7 +283,7 @@ class GoalViewModelTest {
     }
 
     @Test
-    fun `OnBack dialog onConfirm navigates back and dismisses`() = runTest {
+    fun `OnBack dialog onConfirm navigates back and dismisses`() = runTest(mainDispatcherRule.scheduler) {
         viewModel = createViewModel()
         accountFlow.value = accountWithGoal()
         advanceUntilIdle()
@@ -303,7 +303,7 @@ class GoalViewModelTest {
     }
 
     @Test
-    fun `OnBack dialog onCancel dismisses dialog`() = runTest {
+    fun `OnBack dialog onCancel dismisses dialog`() = runTest(mainDispatcherRule.scheduler) {
         viewModel = createViewModel()
         accountFlow.value = accountWithGoal()
         advanceUntilIdle()
@@ -325,7 +325,7 @@ class GoalViewModelTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `Success shows toast`() = runTest {
+    fun `Success shows toast`() = runTest(mainDispatcherRule.scheduler) {
         viewModel = createViewModel()
         advanceUntilIdle()
 
@@ -340,7 +340,7 @@ class GoalViewModelTest {
     }
 
     @Test
-    fun `Success navigates back`() = runTest {
+    fun `Success navigates back`() = runTest(mainDispatcherRule.scheduler) {
         viewModel = createViewModel()
         advanceUntilIdle()
 
@@ -355,7 +355,7 @@ class GoalViewModelTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `HandleGoalMet with setNewGoal true resets form to LOSE_GAIN`() = runTest {
+    fun `HandleGoalMet with setNewGoal true resets form to LOSE_GAIN`() = runTest(mainDispatcherRule.scheduler) {
         viewModel = createViewModel()
         accountFlow.value = accountWithGoal(goalType = GoalType.MAINTAIN.value)
         advanceUntilIdle()
@@ -368,7 +368,7 @@ class GoalViewModelTest {
     }
 
     @Test
-    fun `HandleGoalMet with setNewGoal false switches to maintain mode`() = runTest {
+    fun `HandleGoalMet with setNewGoal false switches to maintain mode`() = runTest(mainDispatcherRule.scheduler) {
         viewModel = createViewModel()
         accountFlow.value = accountWithGoal()
         advanceUntilIdle()
@@ -385,7 +385,7 @@ class GoalViewModelTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `HandleGoalLeave with updateGoal true does not crash`() = runTest {
+    fun `HandleGoalLeave with updateGoal true does not crash`() = runTest(mainDispatcherRule.scheduler) {
         viewModel = createViewModel()
         advanceUntilIdle()
 
@@ -397,7 +397,7 @@ class GoalViewModelTest {
     }
 
     @Test
-    fun `HandleGoalLeave with updateGoal false does not crash`() = runTest {
+    fun `HandleGoalLeave with updateGoal false does not crash`() = runTest(mainDispatcherRule.scheduler) {
         viewModel = createViewModel()
         advanceUntilIdle()
 
@@ -412,7 +412,7 @@ class GoalViewModelTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `ChangeGoalType to MAINTAIN updates goalType control`() = runTest {
+    fun `ChangeGoalType to MAINTAIN updates goalType control`() = runTest(mainDispatcherRule.scheduler) {
         viewModel = createViewModel()
         advanceUntilIdle()
 
@@ -423,7 +423,7 @@ class GoalViewModelTest {
     }
 
     @Test
-    fun `ChangeGoalType to LOSE_GAIN updates goalType control`() = runTest {
+    fun `ChangeGoalType to LOSE_GAIN updates goalType control`() = runTest(mainDispatcherRule.scheduler) {
         viewModel = createViewModel()
         advanceUntilIdle()
 
@@ -435,7 +435,7 @@ class GoalViewModelTest {
     }
 
     @Test
-    fun `ChangeGoalType to LOSE_GAIN with empty fields does not mark weight controls dirty`() = runTest {
+    fun `ChangeGoalType to LOSE_GAIN with empty fields does not mark weight controls dirty`() = runTest(mainDispatcherRule.scheduler) {
         viewModel = createViewModel() // new account — weights are ""
         advanceUntilIdle()
 
@@ -447,7 +447,7 @@ class GoalViewModelTest {
     }
 
     @Test
-    fun `ChangeGoalType to LOSE_GAIN with empty fields shows no weight field error`() = runTest {
+    fun `ChangeGoalType to LOSE_GAIN with empty fields shows no weight field error`() = runTest(mainDispatcherRule.scheduler) {
         viewModel = createViewModel()
         advanceUntilIdle()
 
@@ -459,7 +459,7 @@ class GoalViewModelTest {
     }
 
     @Test
-    fun `ChangeGoalType to LOSE_GAIN with pre-filled fields marks weight controls dirty`() = runTest {
+    fun `ChangeGoalType to LOSE_GAIN with pre-filled fields marks weight controls dirty`() = runTest(mainDispatcherRule.scheduler) {
         viewModel = createViewModel()
         advanceUntilIdle()
         val controls = viewModel.state.value.form.controls
@@ -473,7 +473,7 @@ class GoalViewModelTest {
     }
 
     @Test
-    fun `ChangeGoalType to LOSE_GAIN with empty-but-touched field clears stale touched state`() = runTest {
+    fun `ChangeGoalType to LOSE_GAIN with empty-but-touched field clears stale touched state`() = runTest(mainDispatcherRule.scheduler) {
         viewModel = createViewModel()
         advanceUntilIdle()
         val controls = viewModel.state.value.form.controls
@@ -551,7 +551,7 @@ class GoalViewModelTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `account with MAINTAIN goalType loads form in maintain mode`() = runTest {
+    fun `account with MAINTAIN goalType loads form in maintain mode`() = runTest(mainDispatcherRule.scheduler) {
         val account = accountWithGoal(goalType = GoalType.MAINTAIN.value, goalWeight = 160.0)
         viewModel = createViewModel()
         accountFlow.value = account
@@ -562,7 +562,7 @@ class GoalViewModelTest {
     }
 
     @Test
-    fun `account with null goalType defaults to LOSE_GAIN`() = runTest {
+    fun `account with null goalType defaults to LOSE_GAIN`() = runTest(mainDispatcherRule.scheduler) {
         val account = accountWithGoal(goalType = GoalType.LOSE_GAIN.value).copy(goalType = null)
         viewModel = createViewModel()
         accountFlow.value = account
@@ -572,7 +572,7 @@ class GoalViewModelTest {
     }
 
     @Test
-    fun `account with zero weights produces empty form fields`() = runTest {
+    fun `account with zero weights produces empty form fields`() = runTest(mainDispatcherRule.scheduler) {
         val account = accountWithGoal(goalWeight = 0.0, initialWeight = 0.0)
         viewModel = createViewModel()
         accountFlow.value = account
@@ -583,7 +583,7 @@ class GoalViewModelTest {
     }
 
     @Test
-    fun `account with metric unit uses KG`() = runTest {
+    fun `account with metric unit uses KG`() = runTest(mainDispatcherRule.scheduler) {
         val account = accountWithGoal(weightUnit = WeightUnit.KG, goalWeight = 70.0, initialWeight = 80.0)
         viewModel = createViewModel()
         accountFlow.value = account
@@ -597,7 +597,7 @@ class GoalViewModelTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `Submit in MAINTAIN mode uses latest weight as starting weight`() = runTest {
+    fun `Submit in MAINTAIN mode uses latest weight as starting weight`() = runTest(mainDispatcherRule.scheduler) {
         val account = accountWithGoal(goalType = GoalType.MAINTAIN.value, goalWeight = 160.0)
         viewModel = createViewModel()
         accountFlow.value = account
@@ -612,7 +612,7 @@ class GoalViewModelTest {
     }
 
     @Test
-    fun `Submit calls goalService and dismisses loader`() = runTest {
+    fun `Submit calls goalService and dismisses loader`() = runTest(mainDispatcherRule.scheduler) {
         val account = accountWithGoal()
         viewModel = createViewModel()
         accountFlow.value = account
@@ -631,7 +631,7 @@ class GoalViewModelTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `account with lose goal and latest weight triggers percentage calculation`() = runTest {
+    fun `account with lose goal and latest weight triggers percentage calculation`() = runTest(mainDispatcherRule.scheduler) {
         val account = accountWithGoal(
             goalType = GoalType.LOSE_GAIN.value,
             goalWeight = 150.0,
@@ -648,7 +648,7 @@ class GoalViewModelTest {
     }
 
     @Test
-    fun `account with maintain goal skips percentage calculation`() = runTest {
+    fun `account with maintain goal skips percentage calculation`() = runTest(mainDispatcherRule.scheduler) {
         val account = accountWithGoal(goalType = GoalType.MAINTAIN.value)
 
         viewModel = createViewModel()
@@ -663,7 +663,7 @@ class GoalViewModelTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `Submit calls updateR4Profile after goalService updateGoal`() = runTest {
+    fun `Submit calls updateR4Profile after goalService updateGoal`() = runTest(mainDispatcherRule.scheduler) {
         val account = accountWithGoal()
         viewModel = createViewModel()
         accountFlow.value = account
@@ -680,7 +680,7 @@ class GoalViewModelTest {
     }
 
     @Test
-    fun `Submit with MAINTAIN goalType and zero latestWeight still calls goalService`() = runTest {
+    fun `Submit with MAINTAIN goalType and zero latestWeight still calls goalService`() = runTest(mainDispatcherRule.scheduler) {
         val account = accountWithGoal(goalType = GoalType.MAINTAIN.value)
         viewModel = createViewModel()
         accountFlow.value = account
@@ -697,7 +697,7 @@ class GoalViewModelTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `Success navigates back with null topLevel`() = runTest {
+    fun `Success navigates back with null topLevel`() = runTest(mainDispatcherRule.scheduler) {
         viewModel = createViewModel()
         advanceUntilIdle()
 
@@ -712,7 +712,7 @@ class GoalViewModelTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `HandleGoalMet with setNewGoal true clears existing form values`() = runTest {
+    fun `HandleGoalMet with setNewGoal true clears existing form values`() = runTest(mainDispatcherRule.scheduler) {
         viewModel = createViewModel()
         accountFlow.value = accountWithGoal(goalWeight = 150.0, initialWeight = 180.0)
         advanceUntilIdle()
@@ -730,7 +730,7 @@ class GoalViewModelTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `HandleGoalLeave with updateGoal true preserves state`() = runTest {
+    fun `HandleGoalLeave with updateGoal true preserves state`() = runTest(mainDispatcherRule.scheduler) {
         viewModel = createViewModel()
         accountFlow.value = accountWithGoal()
         advanceUntilIdle()
@@ -748,7 +748,7 @@ class GoalViewModelTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `updateStateWithAccount preserves latestWeight when account changes`() = runTest {
+    fun `updateStateWithAccount preserves latestWeight when account changes`() = runTest(mainDispatcherRule.scheduler) {
         every { goalService.getPercentComplete(any(), any()) } returns 50
 
         viewModel = createViewModel()
@@ -763,7 +763,7 @@ class GoalViewModelTest {
     }
 
     @Test
-    fun `updateStateWithAccount with non-zero weights populates form fields`() = runTest {
+    fun `updateStateWithAccount with non-zero weights populates form fields`() = runTest(mainDispatcherRule.scheduler) {
         val account = accountWithGoal(goalWeight = 150.0, initialWeight = 180.0)
         viewModel = createViewModel()
         accountFlow.value = account

@@ -65,12 +65,18 @@ struct ProductTypeSelectorRow: View {
     let isSelected: Bool
     let onTap: () -> Void
 
+    /// Per-product accent color applied to the row label (per Figma):
+    /// weight → blue, blood pressure → green, baby → purple.
+    private var accentColor: Color {
+        theme.productAccentColor(for: item.entryType)
+    }
+
     var body: some View {
         Button(action: onTap) {
             HStack(spacing: .spacingSM) {
                 Text(item.displayName)
                     .fontOpenSans(.body2)
-                    .foregroundColor(theme.textBody)
+                    .foregroundColor(accentColor)
                 Spacer()
                 AppIconView(
                     icon: isSelected ? AppAssets.circleCheckFilled : AppAssets.circleOutline,

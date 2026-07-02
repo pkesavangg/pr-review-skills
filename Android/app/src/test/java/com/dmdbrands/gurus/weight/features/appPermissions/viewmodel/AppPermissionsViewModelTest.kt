@@ -67,7 +67,7 @@ class AppPermissionsViewModelTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `initial state has default values`() = runTest {
+    fun `initial state has default values`() = runTest(mainDispatcherRule.scheduler) {
         viewModel = createViewModel()
         advanceUntilIdle()
 
@@ -83,7 +83,7 @@ class AppPermissionsViewModelTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `permission flow updates state with permissions`() = runTest {
+    fun `permission flow updates state with permissions`() = runTest(mainDispatcherRule.scheduler) {
         viewModel = createViewModel()
         advanceUntilIdle()
 
@@ -95,7 +95,7 @@ class AppPermissionsViewModelTest {
     }
 
     @Test
-    fun `permission flow updates reflect multiple permission types`() = runTest {
+    fun `permission flow updates reflect multiple permission types`() = runTest(mainDispatcherRule.scheduler) {
         viewModel = createViewModel()
         advanceUntilIdle()
 
@@ -116,7 +116,7 @@ class AppPermissionsViewModelTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `paired scales update triggers required permissions update`() = runTest {
+    fun `paired scales update triggers required permissions update`() = runTest(mainDispatcherRule.scheduler) {
         val pairedScalesFlow = MutableStateFlow(listOf(TestFixtures.bleDevice))
         every { deviceService.pairedScales } returns pairedScalesFlow
 
@@ -132,7 +132,7 @@ class AppPermissionsViewModelTest {
     }
 
     @Test
-    fun `empty paired scales results in empty required permissions`() = runTest {
+    fun `empty paired scales results in empty required permissions`() = runTest(mainDispatcherRule.scheduler) {
         every { deviceService.pairedScales } returns MutableStateFlow(emptyList())
 
         viewModel = createViewModel()
@@ -146,7 +146,7 @@ class AppPermissionsViewModelTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `RequestPermission intent triggers permission alert`() = runTest {
+    fun `RequestPermission intent triggers permission alert`() = runTest(mainDispatcherRule.scheduler) {
         viewModel = createViewModel()
         advanceUntilIdle()
 
@@ -157,7 +157,7 @@ class AppPermissionsViewModelTest {
     }
 
     @Test
-    fun `RequestPermission for different type passes correct type to dialog`() = runTest {
+    fun `RequestPermission for different type passes correct type to dialog`() = runTest(mainDispatcherRule.scheduler) {
         viewModel = createViewModel()
         advanceUntilIdle()
 
@@ -172,7 +172,7 @@ class AppPermissionsViewModelTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `SetPermissions intent updates permissionMap in state`() = runTest {
+    fun `SetPermissions intent updates permissionMap in state`() = runTest(mainDispatcherRule.scheduler) {
         viewModel = createViewModel()
         advanceUntilIdle()
 
@@ -187,7 +187,7 @@ class AppPermissionsViewModelTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `SetRequiredPermissions intent updates requiredPermissions in state`() = runTest {
+    fun `SetRequiredPermissions intent updates requiredPermissions in state`() = runTest(mainDispatcherRule.scheduler) {
         viewModel = createViewModel()
         advanceUntilIdle()
 

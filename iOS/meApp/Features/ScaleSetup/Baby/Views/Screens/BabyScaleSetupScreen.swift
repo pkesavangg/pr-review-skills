@@ -201,17 +201,15 @@ struct BabyScaleSetupScreen: View {
                     text: lang.SkipDialog.yesSkip,
                     type: .filledPrimary,
                     size: .large,
-                    isDisabled: false,
-                    action: { onConfirm() }
-                )
+                    isDisabled: false
+                ) { onConfirm() }
 
                 ButtonView(
                     text: lang.SkipDialog.goBack,
                     type: .inlineTextPrimary,
                     size: .large,
-                    isDisabled: false,
-                    action: { onCancel() }
-                )
+                    isDisabled: false
+                ) { onCancel() }
             }
             .padding(.spacingMD)
             .background(theme.backgroundPrimary)

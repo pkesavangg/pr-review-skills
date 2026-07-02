@@ -26,6 +26,7 @@ import kotlinx.coroutines.delay
  * @param maxLength Maximum length for the input
  * @param modifier Modifier for the input
  * @param index Index for staggered animation timing
+ * @param trailingText Optional unit suffix pinned to the field's right edge (rendered as "(unit)")
  */
 @Composable
 fun AnimatedAppInput(
@@ -39,6 +40,7 @@ fun AnimatedAppInput(
     modifier: Modifier,
     index: Int,
     testTag: String? = null,
+    trailingText: String? = null,
 ) {
     val alpha = remember { Animatable(0f) }
 
@@ -58,5 +60,6 @@ fun AnimatedAppInput(
         maxLength = maxLength,
         modifier = modifier.graphicsLayer { this.alpha = alpha.value },
         testTag = testTag,
+        trailingText = trailingText,
     )
 }

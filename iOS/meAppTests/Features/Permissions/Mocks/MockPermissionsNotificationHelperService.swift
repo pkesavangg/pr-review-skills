@@ -45,4 +45,3 @@ final class MockPermissionsNotificationHelperService: NotificationHelperServiceP
         action(value)
     }
 }
-

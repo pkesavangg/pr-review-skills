@@ -1,7 +1,7 @@
 import Combine
 import Foundation
-import Testing
 @testable import meApp
+import Testing
 
 @Suite(.serialized)
 @MainActor
@@ -15,6 +15,8 @@ struct BpmDeviceSettingsStoreTests {
         scaleService: MockScaleService? = nil,
         bluetooth: MockBluetoothService? = nil,
         permissions: MockPermissionsService? = nil
+        // Test factory return; labeled tuple is clearer than a one-off SUT struct.
+        // swiftlint:disable:next large_tuple
     ) -> (
         store: BpmDeviceSettingsStore,
         notification: MockNotificationHelperService,
@@ -26,12 +28,12 @@ struct BpmDeviceSettingsStoreTests {
         let scaleService = scaleService ?? MockScaleService()
         let bluetooth = bluetooth ?? MockBluetoothService()
         let permissions = permissions ?? {
-            let p = MockPermissionsService()
-            p.permissions = [
+            let mockPermissions = MockPermissionsService()
+            mockPermissions.permissions = [
                 .BLUETOOTH: .ENABLED,
                 .BLUETOOTH_SWITCH: .ENABLED
             ]
-            return p
+            return mockPermissions
         }()
         let logger = MockLoggerService()
         let device = device ?? makeDevice()

@@ -505,6 +505,7 @@ final class SignupStore: ObservableObject {
         updateNextButtonState()
     }
 
+    // swiftlint:disable:next cyclomatic_complexity
     func updateNextButtonState() {
         switch currentStep {
         case .name:
@@ -672,8 +673,11 @@ final class SignupStore: ObservableObject {
         } catch {
             accountService.markSignupInProgress(false)
             notificationService.dismissLoader()
-            logger.log(level: .error, tag: tag,
-                message: "Signup account creation failed. error=\(error.localizedDescription)")
+            logger.log(
+                level: .error,
+                tag: tag,
+                message: "Signup account creation failed. error=\(error.localizedDescription)"
+            )
             if case AccountError.maxAccountsReached = error {
                 showMaxUserAccountsAlert()
                 return
@@ -719,12 +723,18 @@ final class SignupStore: ObservableObject {
             do {
                 try await saveDeviceProfile(deviceType: deviceType, account: account, goal: goal)
                 deviceStatuses[index] = (deviceType, .success)
-                logger.log(level: .success, tag: tag,
-                    message: "Device profile saved. deviceType=\(deviceType.rawValue)")
+                logger.log(
+                    level: .success,
+                    tag: tag,
+                    message: "Device profile saved. deviceType=\(deviceType.rawValue)"
+                )
             } catch {
                 deviceStatuses[index] = (deviceType, .failure(error))
-                logger.log(level: .error, tag: tag,
-                    message: "Device profile failed. deviceType=\(deviceType.rawValue), error=\(error.localizedDescription)")
+                logger.log(
+                    level: .error,
+                    tag: tag,
+                    message: "Device profile failed. deviceType=\(deviceType.rawValue), error=\(error.localizedDescription)"
+                )
             }
         }
 
@@ -769,12 +779,18 @@ final class SignupStore: ObservableObject {
             do {
                 try await saveDeviceProfile(deviceType: item.device, account: account, goal: goal)
                 deviceStatuses[index] = (item.device, .success)
-                logger.log(level: .success, tag: tag,
-                    message: "Retry succeeded. deviceType=\(item.device.rawValue)")
+                logger.log(
+                    level: .success,
+                    tag: tag,
+                    message: "Retry succeeded. deviceType=\(item.device.rawValue)"
+                )
             } catch {
                 deviceStatuses[index] = (item.device, .failure(error))
-                logger.log(level: .error, tag: tag,
-                    message: "Retry failed. deviceType=\(item.device.rawValue), error=\(error.localizedDescription)")
+                logger.log(
+                    level: .error,
+                    tag: tag,
+                    message: "Retry failed. deviceType=\(item.device.rawValue), error=\(error.localizedDescription)"
+                )
             }
         }
 
@@ -801,8 +817,11 @@ final class SignupStore: ObservableObject {
         }
 
         if deviceType == .weightScale, let goal = goal {
-            logger.log(level: .info, tag: tag,
-                message: "Creating goal. goalType=\(goal.goalType.rawValue), goalWeight=\(goal.goalWeight)")
+            logger.log(
+                level: .info,
+                tag: tag,
+                message: "Creating goal. goalType=\(goal.goalType.rawValue), goalWeight=\(goal.goalWeight)"
+            )
             _ = try await accountService.createGoal(goal)
         }
     }
@@ -822,8 +841,11 @@ final class SignupStore: ObservableObject {
         do {
             try await accountService.updateProductTypes(productTypes)
         } catch {
-            logger.log(level: .error, tag: tag,
-                message: "Failed to write accumulated product types. error=\(error.localizedDescription)")
+            logger.log(
+                level: .error,
+                tag: tag,
+                message: "Failed to write accumulated product types. error=\(error.localizedDescription)"
+            )
             for index in successfulIndices {
                 deviceStatuses[index] = (deviceStatuses[index].device, .failure(error))
             }

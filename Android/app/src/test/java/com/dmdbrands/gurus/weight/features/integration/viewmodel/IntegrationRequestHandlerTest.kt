@@ -51,7 +51,7 @@ class IntegrationRequestHandlerTest {
         (dialogSlot.captured as DialogModel.Custom).onConfirm!!
 
     @Test
-    fun `submitting non-blank input shows the success toast`() = runTest {
+    fun `submitting non-blank input shows the success toast`() = runTest(mainDispatcherRule.scheduler) {
         coEvery { service.submitIntegrationRequest(any()) } just Runs
         val toastSlot = slot<Toast.Simple>()
         every { dialogQueueService.showToast(capture(toastSlot)) } just Runs
@@ -67,7 +67,7 @@ class IntegrationRequestHandlerTest {
     }
 
     @Test
-    fun `submission failure shows the failure toast`() = runTest {
+    fun `submission failure shows the failure toast`() = runTest(mainDispatcherRule.scheduler) {
         coEvery { service.submitIntegrationRequest(any()) } throws RuntimeException("boom")
         val toastSlot = slot<Toast.Simple>()
         every { dialogQueueService.showToast(capture(toastSlot)) } just Runs
@@ -81,7 +81,7 @@ class IntegrationRequestHandlerTest {
     }
 
     @Test
-    fun `blank input does not submit or show a toast`() = runTest {
+    fun `blank input does not submit or show a toast`() = runTest(mainDispatcherRule.scheduler) {
         enqueueIntegrationRequestModal(this, dialogQueueService, service)
         capturedOnConfirm().invoke("   ")
         advanceUntilIdle()
@@ -92,7 +92,7 @@ class IntegrationRequestHandlerTest {
     }
 
     @Test
-    fun `cancellation propagates without a false failure toast`() = runTest {
+    fun `cancellation propagates without a false failure toast`() = runTest(mainDispatcherRule.scheduler) {
         coEvery { service.submitIntegrationRequest(any()) } throws CancellationException("screen left")
 
         enqueueIntegrationRequestModal(this, dialogQueueService, service)

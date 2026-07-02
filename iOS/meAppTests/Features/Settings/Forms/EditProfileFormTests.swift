@@ -1,6 +1,6 @@
-import Testing
 import Foundation
 @testable import meApp
+import Testing
 
 @Suite(.serialized)
 @MainActor
@@ -13,15 +13,15 @@ struct EditProfileFormTests {
     @Test("firstName and lastName start empty")
     func initialNameFields() {
         let form = makeForm()
-        #expect(form.firstName.value == "")
-        #expect(form.lastName.value == "")
+        #expect(form.firstName.value.isEmpty)
+        #expect(form.lastName.value.isEmpty)
     }
 
     @Test("email and zipcode start empty")
     func initialEmailZipcode() {
         let form = makeForm()
-        #expect(form.email.value == "")
-        #expect(form.zipcode.value == "")
+        #expect(form.email.value.isEmpty)
+        #expect(form.zipcode.value.isEmpty)
     }
 
     @Test("birthday has default value of Jan 1, 2000")

@@ -1,6 +1,6 @@
 import Foundation
-import Testing
 @testable import meApp
+import Testing
 
 extension DashboardStoreTests {
     @Suite("Edit Session")
@@ -9,7 +9,7 @@ extension DashboardStoreTests {
 
     @Test("beginEdit: takes snapshot of current state")
     func beginEditTakesSnapshot() {
-        let (store, _, _) = DashboardStoreTestSupport.makeSUT()
+        let store = DashboardStoreTestSupport.makeSUT().store
 
         store.metricsManager.state.metrics = [DashboardTestFixtures.makeMetricItem(label: "bmi")]
         store.metricsManager.state.activeMetricsCount = 4
@@ -27,7 +27,7 @@ extension DashboardStoreTests {
 
     @Test("beginEdit: does not overwrite existing snapshot")
     func beginEditDoesNotOverwrite() {
-        let (store, _, _) = DashboardStoreTestSupport.makeSUT()
+        let store = DashboardStoreTestSupport.makeSUT().store
 
         store.metricsManager.state.metrics = [DashboardTestFixtures.makeMetricItem(label: "bmi")]
         store.beginEdit()
@@ -43,7 +43,7 @@ extension DashboardStoreTests {
 
     @Test("cancelEdit: restores state from snapshot")
     func cancelEditRestoresSnapshot() {
-        let (store, _, _) = DashboardStoreTestSupport.makeSUT()
+        let store = DashboardStoreTestSupport.makeSUT().store
 
         store.metricsManager.state.metrics = [DashboardTestFixtures.makeMetricItem(label: "bmi")]
         store.metricsManager.state.activeMetricsCount = 4
@@ -69,7 +69,7 @@ extension DashboardStoreTests {
 
     @Test("cancelEdit: clears edit mode and selection state")
     func cancelEditClearsEditState() {
-        let (store, _, _) = DashboardStoreTestSupport.makeSUT()
+        let store = DashboardStoreTestSupport.makeSUT().store
 
         store.state.ui.isEditMode = true
         store.state.ui.selectedMetricLabel = "bmi"
@@ -89,7 +89,7 @@ extension DashboardStoreTests {
 
     @Test("cancelEdit: clears snapshot after restoration")
     func cancelEditClearsSnapshot() {
-        let (store, _, _) = DashboardStoreTestSupport.makeSUT()
+        let store = DashboardStoreTestSupport.makeSUT().store
 
         store.beginEdit()
         store.cancelEdit()
@@ -99,7 +99,7 @@ extension DashboardStoreTests {
 
     @Test("cancelEdit: without snapshot does not crash")
     func cancelEditWithoutSnapshotSafe() {
-        let (store, _, _) = DashboardStoreTestSupport.makeSUT()
+        let store = DashboardStoreTestSupport.makeSUT().store
 
         store.cancelEdit()
 
@@ -108,13 +108,13 @@ extension DashboardStoreTests {
 
     @Test("hasUnsavedChanges: returns false when no snapshot")
     func hasUnsavedChangesFalseNoSnapshot() {
-        let (store, _, _) = DashboardStoreTestSupport.makeSUT()
+        let store = DashboardStoreTestSupport.makeSUT().store
         #expect(store.hasUnsavedChanges() == false)
     }
 
     @Test("hasUnsavedChanges: returns false when state unchanged")
     func hasUnsavedChangesFalseUnchanged() {
-        let (store, _, _) = DashboardStoreTestSupport.makeSUT()
+        let store = DashboardStoreTestSupport.makeSUT().store
 
         store.metricsManager.state.metrics = [DashboardTestFixtures.makeMetricItem(label: "bmi")]
         store.beginEdit()
@@ -124,7 +124,7 @@ extension DashboardStoreTests {
 
     @Test("hasUnsavedChanges: returns true when metrics changed")
     func hasUnsavedChangesTrueMetricsChanged() {
-        let (store, _, _) = DashboardStoreTestSupport.makeSUT()
+        let store = DashboardStoreTestSupport.makeSUT().store
 
         store.metricsManager.state.metrics = [DashboardTestFixtures.makeMetricItem(label: "bmi")]
         store.beginEdit()
@@ -136,7 +136,7 @@ extension DashboardStoreTests {
 
     @Test("hasUnsavedChanges: returns true when activeMetricsCount changed")
     func hasUnsavedChangesTrueActiveCountChanged() {
-        let (store, _, _) = DashboardStoreTestSupport.makeSUT()
+        let store = DashboardStoreTestSupport.makeSUT().store
 
         store.metricsManager.state.activeMetricsCount = 12
         store.beginEdit()
@@ -148,7 +148,7 @@ extension DashboardStoreTests {
 
     @Test("hasUnsavedChanges: returns true when goal card removal changed")
     func hasUnsavedChangesTrueGoalCardChanged() {
-        let (store, _, _) = DashboardStoreTestSupport.makeSUT()
+        let store = DashboardStoreTestSupport.makeSUT().store
 
         store.state.ui.isGoalCardRemoved = false
         store.beginEdit()
@@ -160,7 +160,7 @@ extension DashboardStoreTests {
 
     @Test("hasUnsavedChanges: returns true when streaks changed")
     func hasUnsavedChangesTrueStreaksChanged() {
-        let (store, _, _) = DashboardStoreTestSupport.makeSUT()
+        let store = DashboardStoreTestSupport.makeSUT().store
 
         store.streakManager.state.streakItems = [DashboardTestFixtures.makeMetricItem(label: "current")]
         store.beginEdit()
@@ -172,7 +172,7 @@ extension DashboardStoreTests {
 
     @Test("hasUnsavedChanges: returns true when removedMetrics changed")
     func hasUnsavedChangesTrueRemovedMetricsChanged() {
-        let (store, _, _) = DashboardStoreTestSupport.makeSUT()
+        let store = DashboardStoreTestSupport.makeSUT().store
 
         store.state.ui.removedMetrics = []
         store.beginEdit()
@@ -184,7 +184,7 @@ extension DashboardStoreTests {
 
     @Test("hasUnsavedChanges: returns true when removedStreaks changed")
     func hasUnsavedChangesTrueRemovedStreaksChanged() {
-        let (store, _, _) = DashboardStoreTestSupport.makeSUT()
+        let store = DashboardStoreTestSupport.makeSUT().store
 
         store.state.ui.removedStreaks = []
         store.beginEdit()
@@ -196,7 +196,7 @@ extension DashboardStoreTests {
 
     @Test("hasUnsavedChanges: returns true when goalCardPosition changed")
     func hasUnsavedChangesTrueGoalCardPositionChanged() {
-        let (store, _, _) = DashboardStoreTestSupport.makeSUT()
+        let store = DashboardStoreTestSupport.makeSUT().store
 
         store.state.ui.goalCardPosition = 0
         store.beginEdit()
@@ -208,7 +208,7 @@ extension DashboardStoreTests {
 
     @Test("hasUnsavedChanges: returns true when streakGridOrder changed")
     func hasUnsavedChangesTrueStreakGridOrderChanged() {
-        let (store, _, _) = DashboardStoreTestSupport.makeSUT()
+        let store = DashboardStoreTestSupport.makeSUT().store
 
         store.state.ui.streakGridOrder = ["a", "b"]
         store.beginEdit()
@@ -220,7 +220,7 @@ extension DashboardStoreTests {
 
     @Test("updateSnapshot: updates existing snapshot")
     func updateSnapshotUpdatesExisting() {
-        let (store, _, _) = DashboardStoreTestSupport.makeSUT()
+        let store = DashboardStoreTestSupport.makeSUT().store
 
         store.metricsManager.state.metrics = [DashboardTestFixtures.makeMetricItem(label: "bmi")]
         store.beginEdit()
@@ -237,7 +237,7 @@ extension DashboardStoreTests {
 
     @Test("currentEditSnapshot: captures all fields correctly")
     func currentEditSnapshotCapturesAllFields() {
-        let (store, _, _) = DashboardStoreTestSupport.makeSUT()
+        let store = DashboardStoreTestSupport.makeSUT().store
 
         let metrics = [DashboardTestFixtures.makeMetricItem(label: "bmi")]
         let streaks = [DashboardTestFixtures.makeMetricItem(label: "streak")]
@@ -268,7 +268,7 @@ extension DashboardStoreTests {
 
     @Test("restoreFromSnapshot: restores all fields correctly")
     func restoreFromSnapshotRestoresAll() {
-        let (store, _, _) = DashboardStoreTestSupport.makeSUT()
+        let store = DashboardStoreTestSupport.makeSUT().store
 
         let snapshot = EditSessionSnapshot(
             metrics: [DashboardTestFixtures.makeMetricItem(label: "restored")],
@@ -299,7 +299,7 @@ extension DashboardStoreTests {
 
     @Test("resetEditSession: restores snapshot, resets order, clears state, and starts new edit")
     func resetEditSessionBehavior() {
-        let (store, _, _) = DashboardStoreTestSupport.makeSUT()
+        let store = DashboardStoreTestSupport.makeSUT().store
 
         store.metricsManager.state.metrics = [DashboardTestFixtures.makeMetricItem(label: "bmi")]
         store.state.ui.selectedMetricLabel = "bmi"
@@ -320,7 +320,7 @@ extension DashboardStoreTests {
 
     @Test("full edit flow: begin → modify → cancel restores original state")
     func fullEditFlowBeginModifyCancel() {
-        let (store, _, _) = DashboardStoreTestSupport.makeSUT()
+        let store = DashboardStoreTestSupport.makeSUT().store
 
         let initialMetrics = [
             DashboardTestFixtures.makeMetricItem(label: "bmi"),
@@ -362,7 +362,7 @@ extension DashboardStoreTests {
 
     @Test("full edit flow: begin → modify → save (update snapshot)")
     func fullEditFlowBeginModifySave() {
-        let (store, _, _) = DashboardStoreTestSupport.makeSUT()
+        let store = DashboardStoreTestSupport.makeSUT().store
 
         store.metricsManager.state.metrics = [DashboardTestFixtures.makeMetricItem(label: "bmi")]
 
@@ -380,7 +380,7 @@ extension DashboardStoreTests {
 
     @Test("edit mode: multiple edit sessions work independently")
     func multipleEditSessions() {
-        let (store, _, _) = DashboardStoreTestSupport.makeSUT()
+        let store = DashboardStoreTestSupport.makeSUT().store
 
         store.metricsManager.state.metrics = [DashboardTestFixtures.makeMetricItem(label: "bmi")]
         store.beginEdit()
@@ -401,7 +401,7 @@ extension DashboardStoreTests {
 
     @Test("edit session with empty metrics array")
     func editSessionEmptyMetrics() {
-        let (store, _, _) = DashboardStoreTestSupport.makeSUT()
+        let store = DashboardStoreTestSupport.makeSUT().store
 
         store.metricsManager.state.metrics = []
         store.beginEdit()
@@ -418,7 +418,7 @@ extension DashboardStoreTests {
 
     @Test("edit session with empty streaks array")
     func editSessionEmptyStreaks() {
-        let (store, _, _) = DashboardStoreTestSupport.makeSUT()
+        let store = DashboardStoreTestSupport.makeSUT().store
 
         store.streakManager.state.streakItems = []
         store.beginEdit()
@@ -432,7 +432,7 @@ extension DashboardStoreTests {
 
     @Test("edit session: all removal sets empty then populated")
     func editSessionRemovalSetsEmptyThenPopulated() {
-        let (store, _, _) = DashboardStoreTestSupport.makeSUT()
+        let store = DashboardStoreTestSupport.makeSUT().store
 
         store.state.ui.removedMetrics = []
         store.state.ui.removedStreaks = []
@@ -451,7 +451,7 @@ extension DashboardStoreTests {
 
     @Test("edit session: goalCardPosition from 0 to large value")
     func editSessionGoalCardPositionLargeValue() {
-        let (store, _, _) = DashboardStoreTestSupport.makeSUT()
+        let store = DashboardStoreTestSupport.makeSUT().store
 
         store.state.ui.goalCardPosition = 0
         store.beginEdit()
@@ -467,7 +467,7 @@ extension DashboardStoreTests {
 
     @Test("edit session: streakGridOrder reorder detection")
     func editSessionStreakGridOrderReorder() {
-        let (store, _, _) = DashboardStoreTestSupport.makeSUT()
+        let store = DashboardStoreTestSupport.makeSUT().store
 
         store.state.ui.streakGridOrder = ["a", "b", "c"]
         store.beginEdit()
@@ -479,7 +479,7 @@ extension DashboardStoreTests {
 
     @Test("edit session: same data different order is detected")
     func editSessionSameDataDifferentOrderDetected() {
-        let (store, _, _) = DashboardStoreTestSupport.makeSUT()
+        let store = DashboardStoreTestSupport.makeSUT().store
 
         store.metricsManager.state.metrics = [
             DashboardTestFixtures.makeMetricItem(label: "bmi"),

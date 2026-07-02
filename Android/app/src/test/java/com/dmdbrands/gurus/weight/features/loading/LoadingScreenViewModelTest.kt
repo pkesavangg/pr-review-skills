@@ -146,7 +146,7 @@ class LoadingScreenViewModelTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `start with logged in account calls loadData and autoLogin`() = runTest {
+    fun `start with logged in account calls loadData and autoLogin`() = runTest(mainDispatcherRule.scheduler) {
         setupLoggedInFlow()
 
         createViewModel()
@@ -161,7 +161,7 @@ class LoadingScreenViewModelTest {
     }
 
     @Test
-    fun `start with logged in account calls autoLogin`() = runTest {
+    fun `start with logged in account calls autoLogin`() = runTest(mainDispatcherRule.scheduler) {
         setupLoggedInFlow()
 
         createViewModel()
@@ -171,7 +171,7 @@ class LoadingScreenViewModelTest {
     }
 
     @Test
-    fun `start with logged in account emits LoggedInFromLoading auth event`() = runTest {
+    fun `start with logged in account emits LoggedInFromLoading auth event`() = runTest(mainDispatcherRule.scheduler) {
         setupLoggedInFlow()
 
         createViewModel()
@@ -189,7 +189,7 @@ class LoadingScreenViewModelTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `start with null account navigates to landing`() = runTest {
+    fun `start with null account navigates to landing`() = runTest(mainDispatcherRule.scheduler) {
         coEvery { accountService.checkLoginStatusForActiveAccount() } returns true
         coEvery { accountService.checkLoginStatusForLoggedInAccounts() } returns true
         coEvery { accountService.getCurrentAccount() } returns null
@@ -202,7 +202,7 @@ class LoadingScreenViewModelTest {
     }
 
     @Test
-    fun `start not logged in with no other accounts routes to Landing`() = runTest {
+    fun `start not logged in with no other accounts routes to Landing`() = runTest(mainDispatcherRule.scheduler) {
         coEvery { accountService.checkLoginStatusForActiveAccount() } returns false
         coEvery { accountService.checkLoginStatusForLoggedInAccounts() } returns false
         coEvery { accountService.getCurrentAccount() } returns TestFixtures.anAccount(
@@ -225,7 +225,7 @@ class LoadingScreenViewModelTest {
     }
 
     @Test
-    fun `start not logged in with other logged-in accounts routes to MultiAccountLanding`() = runTest {
+    fun `start not logged in with other logged-in accounts routes to MultiAccountLanding`() = runTest(mainDispatcherRule.scheduler) {
         coEvery { accountService.checkLoginStatusForActiveAccount() } returns false
         coEvery { accountService.checkLoginStatusForLoggedInAccounts() } returns false
         coEvery { accountService.getCurrentAccount() } returns null
@@ -242,7 +242,7 @@ class LoadingScreenViewModelTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `start with login check failed but valid local account proceeds as logged in`() = runTest {
+    fun `start with login check failed but valid local account proceeds as logged in`() = runTest(mainDispatcherRule.scheduler) {
         val validAccount = TestFixtures.anAccount(
             isActiveAccount = true,
             isLoggedIn = true,
@@ -273,7 +273,7 @@ class LoadingScreenViewModelTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `start with login check exception and valid local account proceeds`() = runTest {
+    fun `start with login check exception and valid local account proceeds`() = runTest(mainDispatcherRule.scheduler) {
         val validAccount = TestFixtures.anAccount(
             isActiveAccount = true,
             isLoggedIn = true,
@@ -301,7 +301,7 @@ class LoadingScreenViewModelTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `start with exception during flow and valid local account recovers`() = runTest {
+    fun `start with exception during flow and valid local account recovers`() = runTest(mainDispatcherRule.scheduler) {
         val validAccount = TestFixtures.anAccount(
             isActiveAccount = true,
             isLoggedIn = true,
@@ -339,7 +339,7 @@ class LoadingScreenViewModelTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `start with exception and no valid local account routes to landing`() = runTest {
+    fun `start with exception and no valid local account routes to landing`() = runTest(mainDispatcherRule.scheduler) {
         coEvery { accountService.checkLoginStatusForActiveAccount() } throws RuntimeException("fail")
         // checkLoginStatus falls back to checkLocalAccountValidity
         // which calls getCurrentAccount() — return null
@@ -357,7 +357,7 @@ class LoadingScreenViewModelTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `start with exception and expired local account routes to landing`() = runTest {
+    fun `start with exception and expired local account routes to landing`() = runTest(mainDispatcherRule.scheduler) {
         val expiredAccount = TestFixtures.anAccount(isActiveAccount = true, isLoggedIn = false)
         // isExpired defaults to false in Account, so we need an account that IS expired
         // Unfortunately TestFixtures.anAccount doesn't expose isExpired param
@@ -384,7 +384,7 @@ class LoadingScreenViewModelTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `loadData calls all services in parallel`() = runTest {
+    fun `loadData calls all services in parallel`() = runTest(mainDispatcherRule.scheduler) {
         setupLoggedInFlow()
 
         createViewModel()
@@ -403,7 +403,7 @@ class LoadingScreenViewModelTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `start with active account check passes but logged in check fails falls back`() = runTest {
+    fun `start with active account check passes but logged in check fails falls back`() = runTest(mainDispatcherRule.scheduler) {
         val validAccount = TestFixtures.anAccount(
             isActiveAccount = true,
             isLoggedIn = true,
@@ -427,7 +427,7 @@ class LoadingScreenViewModelTest {
     }
 
     @Test
-    fun `start with both login checks failing and expired account routes to landing`() = runTest {
+    fun `start with both login checks failing and expired account routes to landing`() = runTest(mainDispatcherRule.scheduler) {
         coEvery { accountService.checkLoginStatusForActiveAccount() } returns false
         coEvery { accountService.checkLoginStatusForLoggedInAccounts() } returns false
         // Return an account that is expired

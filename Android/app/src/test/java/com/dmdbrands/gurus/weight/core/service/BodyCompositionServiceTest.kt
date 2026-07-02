@@ -109,14 +109,14 @@ class BodyCompositionServiceTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `updateBodyComposition calls API when network is available`() = runTest {
+    fun `updateBodyComposition calls API when network is available`() = runTest(mainDispatcherRule.scheduler) {
         service.updateBodyComposition(BodyCompUpdateType.HEIGHT, fakeRequest)
 
         coVerify { bodyCompositionRepository.updateBodyCompInAPI(fakeRequest) }
     }
 
     @Test
-    fun `updateBodyComposition passes correct request to API`() = runTest {
+    fun `updateBodyComposition passes correct request to API`() = runTest(mainDispatcherRule.scheduler) {
         val requestSlot = slot<BodyCompUpdateRequest>()
         coEvery { bodyCompositionRepository.updateBodyCompInAPI(capture(requestSlot)) } returns fakeApiResponse
 
@@ -126,7 +126,7 @@ class BodyCompositionServiceTest {
     }
 
     @Test
-    fun `updateBodyComposition saves entity with isSynced=true from API response fields when online`() = runTest {
+    fun `updateBodyComposition saves entity with isSynced=true from API response fields when online`() = runTest(mainDispatcherRule.scheduler) {
         val entitySlot = slot<WeightCompSettingsEntity>()
         coEvery { bodyCompositionRepository.updateBodyCompInDB(any(), capture(entitySlot)) } just Runs
 
@@ -136,7 +136,7 @@ class BodyCompositionServiceTest {
     }
 
     @Test
-    fun `updateBodyComposition maps API response height to entity when online`() = runTest {
+    fun `updateBodyComposition maps API response height to entity when online`() = runTest(mainDispatcherRule.scheduler) {
         val entitySlot = slot<WeightCompSettingsEntity>()
         coEvery { bodyCompositionRepository.updateBodyCompInDB(any(), capture(entitySlot)) } just Runs
 
@@ -146,7 +146,7 @@ class BodyCompositionServiceTest {
     }
 
     @Test
-    fun `updateBodyComposition maps API response activityLevel to entity when online`() = runTest {
+    fun `updateBodyComposition maps API response activityLevel to entity when online`() = runTest(mainDispatcherRule.scheduler) {
         val entitySlot = slot<WeightCompSettingsEntity>()
         coEvery { bodyCompositionRepository.updateBodyCompInDB(any(), capture(entitySlot)) } just Runs
 
@@ -156,7 +156,7 @@ class BodyCompositionServiceTest {
     }
 
     @Test
-    fun `updateBodyComposition maps API response weightUnit to entity when online`() = runTest {
+    fun `updateBodyComposition maps API response weightUnit to entity when online`() = runTest(mainDispatcherRule.scheduler) {
         val entitySlot = slot<WeightCompSettingsEntity>()
         coEvery { bodyCompositionRepository.updateBodyCompInDB(any(), capture(entitySlot)) } just Runs
 
@@ -166,7 +166,7 @@ class BodyCompositionServiceTest {
     }
 
     @Test
-    fun `updateBodyComposition uses active account id as entity accountId when online`() = runTest {
+    fun `updateBodyComposition uses active account id as entity accountId when online`() = runTest(mainDispatcherRule.scheduler) {
         val entitySlot = slot<WeightCompSettingsEntity>()
         coEvery { bodyCompositionRepository.updateBodyCompInDB(any(), capture(entitySlot)) } just Runs
 
@@ -176,7 +176,7 @@ class BodyCompositionServiceTest {
     }
 
     @Test
-    fun `updateBodyComposition calls updateBodyCompInDB with active account id when online`() = runTest {
+    fun `updateBodyComposition calls updateBodyCompInDB with active account id when online`() = runTest(mainDispatcherRule.scheduler) {
         val accountIdSlot = slot<String>()
         coEvery { bodyCompositionRepository.updateBodyCompInDB(capture(accountIdSlot), any()) } just Runs
 
@@ -190,7 +190,7 @@ class BodyCompositionServiceTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `updateBodyComposition skips API call when network is unavailable`() = runTest {
+    fun `updateBodyComposition skips API call when network is unavailable`() = runTest(mainDispatcherRule.scheduler) {
         every { connectivityObserver.getCurrentNetworkState() } returns NetworkState(available = false, unAvailable = true)
 
         service.updateBodyComposition(BodyCompUpdateType.HEIGHT, fakeRequest)
@@ -199,7 +199,7 @@ class BodyCompositionServiceTest {
     }
 
     @Test
-    fun `updateBodyComposition saves entity with isSynced=false when offline`() = runTest {
+    fun `updateBodyComposition saves entity with isSynced=false when offline`() = runTest(mainDispatcherRule.scheduler) {
         every { connectivityObserver.getCurrentNetworkState() } returns NetworkState(available = false, unAvailable = true)
         val entitySlot = slot<WeightCompSettingsEntity>()
         coEvery { bodyCompositionRepository.updateBodyCompInDB(any(), capture(entitySlot)) } just Runs
@@ -210,7 +210,7 @@ class BodyCompositionServiceTest {
     }
 
     @Test
-    fun `updateBodyComposition maps request height to entity when offline`() = runTest {
+    fun `updateBodyComposition maps request height to entity when offline`() = runTest(mainDispatcherRule.scheduler) {
         every { connectivityObserver.getCurrentNetworkState() } returns NetworkState(available = false, unAvailable = true)
         val entitySlot = slot<WeightCompSettingsEntity>()
         coEvery { bodyCompositionRepository.updateBodyCompInDB(any(), capture(entitySlot)) } just Runs
@@ -221,7 +221,7 @@ class BodyCompositionServiceTest {
     }
 
     @Test
-    fun `updateBodyComposition maps request activityLevel to entity when offline`() = runTest {
+    fun `updateBodyComposition maps request activityLevel to entity when offline`() = runTest(mainDispatcherRule.scheduler) {
         every { connectivityObserver.getCurrentNetworkState() } returns NetworkState(available = false, unAvailable = true)
         val entitySlot = slot<WeightCompSettingsEntity>()
         coEvery { bodyCompositionRepository.updateBodyCompInDB(any(), capture(entitySlot)) } just Runs
@@ -232,7 +232,7 @@ class BodyCompositionServiceTest {
     }
 
     @Test
-    fun `updateBodyComposition maps request weightUnit to entity when offline`() = runTest {
+    fun `updateBodyComposition maps request weightUnit to entity when offline`() = runTest(mainDispatcherRule.scheduler) {
         every { connectivityObserver.getCurrentNetworkState() } returns NetworkState(available = false, unAvailable = true)
         val entitySlot = slot<WeightCompSettingsEntity>()
         coEvery { bodyCompositionRepository.updateBodyCompInDB(any(), capture(entitySlot)) } just Runs
@@ -243,7 +243,7 @@ class BodyCompositionServiceTest {
     }
 
     @Test
-    fun `updateBodyComposition still writes to DB when offline`() = runTest {
+    fun `updateBodyComposition still writes to DB when offline`() = runTest(mainDispatcherRule.scheduler) {
         every { connectivityObserver.getCurrentNetworkState() } returns NetworkState(available = false, unAvailable = true)
 
         service.updateBodyComposition(BodyCompUpdateType.HEIGHT, fakeRequest)
@@ -256,7 +256,7 @@ class BodyCompositionServiceTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `updateBodyComposition returns without calling API or DB when no active account`() = runTest {
+    fun `updateBodyComposition returns without calling API or DB when no active account`() = runTest(mainDispatcherRule.scheduler) {
         coEvery { bodyCompositionRepository.getActiveAccountFromDB() } returns null
 
         service.updateBodyComposition(BodyCompUpdateType.HEIGHT, fakeRequest)
@@ -266,7 +266,7 @@ class BodyCompositionServiceTest {
     }
 
     @Test
-    fun `updateBodyComposition handles getActiveAccountFromDB exception gracefully`() = runTest {
+    fun `updateBodyComposition handles getActiveAccountFromDB exception gracefully`() = runTest(mainDispatcherRule.scheduler) {
         coEvery { bodyCompositionRepository.getActiveAccountFromDB() } throws RuntimeException("DB error")
 
         service.updateBodyComposition(BodyCompUpdateType.HEIGHT, fakeRequest)
@@ -276,7 +276,7 @@ class BodyCompositionServiceTest {
     }
 
     @Test
-    fun `updateBodyComposition handles API exception gracefully and does not write to DB`() = runTest {
+    fun `updateBodyComposition handles API exception gracefully and does not write to DB`() = runTest(mainDispatcherRule.scheduler) {
         coEvery { bodyCompositionRepository.updateBodyCompInAPI(any()) } throws RuntimeException("API error")
 
         service.updateBodyComposition(BodyCompUpdateType.HEIGHT, fakeRequest)
@@ -285,7 +285,7 @@ class BodyCompositionServiceTest {
     }
 
     @Test
-    fun `updateBodyComposition handles DB write exception gracefully when online`() = runTest {
+    fun `updateBodyComposition handles DB write exception gracefully when online`() = runTest(mainDispatcherRule.scheduler) {
         coEvery { bodyCompositionRepository.updateBodyCompInDB(any(), any()) } throws RuntimeException("DB write error")
 
         service.updateBodyComposition(BodyCompUpdateType.HEIGHT, fakeRequest)
@@ -294,7 +294,7 @@ class BodyCompositionServiceTest {
     }
 
     @Test
-    fun `updateBodyComposition handles DB write exception gracefully when offline`() = runTest {
+    fun `updateBodyComposition handles DB write exception gracefully when offline`() = runTest(mainDispatcherRule.scheduler) {
         every { connectivityObserver.getCurrentNetworkState() } returns NetworkState(available = false, unAvailable = true)
         coEvery { bodyCompositionRepository.updateBodyCompInDB(any(), any()) } throws RuntimeException("DB write error")
 

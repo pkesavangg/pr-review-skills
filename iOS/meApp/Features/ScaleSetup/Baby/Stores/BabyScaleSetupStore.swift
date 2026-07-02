@@ -145,8 +145,11 @@ final class BabyScaleSetupStore: ObservableObject {
     /// Updates the enabled state of the footer "Next" button based on the current step.
     func updateNextEnabled() {
         switch currentStep {
-        case .intro, .wakeup, .connectingBluetooth, .connectionError, .paired, .babyAdded, .done:
+        case .intro, .wakeup, .connectingBluetooth, .connectionError, .paired, .done:
             isNextEnabled = true
+        case .babyAdded:
+            // Disable "Next" when the user has removed every baby profile.
+            isNextEnabled = !savedBabies.isEmpty
         case .permissions:
             isNextEnabled = arePermissionsEnabled()
         case .scaleName:

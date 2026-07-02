@@ -74,28 +74,19 @@ enum BtWifiStoreTestFixtures {
         let networkMonitor = networkMonitor ?? MockNetworkMonitor(isConnected: true)
         let bluetoothSetupManager = bluetoothSetupManager ?? MockBtWifiBluetoothSetupManager()
 
-        if account.activeAccount == nil {
-            let activeAccount = makeAccount()
-            account.seedAccounts([activeAccount], active: activeAccount)
-        }
+        seedDefaults(account: account, permissions: permissions)
 
-        if permissions.permissions == nil {
-            permissions.setPermissions([
-                .BLUETOOTH: .ENABLED,
-                .BLUETOOTH_SWITCH: .ENABLED
-            ])
-        }
-
-        DependencyContainer.shared.register(notification as NotificationHelperService)
-        DependencyContainer.shared.register(notification as NotificationHelperServiceProtocol)
-        DependencyContainer.shared.register(permissions as PermissionsServiceProtocol)
-        DependencyContainer.shared.register(bluetooth as BluetoothServiceProtocol)
-        DependencyContainer.shared.register(account as AccountServiceProtocol)
-        DependencyContainer.shared.register(scaleService as PairedDeviceServiceProtocol)
-        DependencyContainer.shared.register(wifiScaleService as WifiPairedDeviceServiceProtocol)
-        DependencyContainer.shared.register(pushNotifications as PushNotificationServiceProtocol)
-        DependencyContainer.shared.register(entryService as EntryServiceProtocol)
-        DependencyContainer.shared.register(goalAlertService as GoalAlertServiceProtocol)
+        registerDependencies(
+            notification: notification,
+            permissions: permissions,
+            bluetooth: bluetooth,
+            account: account,
+            scaleService: scaleService,
+            wifiScaleService: wifiScaleService,
+            pushNotifications: pushNotifications,
+            entryService: entryService,
+            goalAlertService: goalAlertService
+        )
 
         let store = BtWifiScaleSetupStore(
             bluetoothSetupManager: bluetoothSetupManager,
@@ -105,17 +96,7 @@ enum BtWifiStoreTestFixtures {
             dashboardStoreFactory: dashboardStoreFactory ?? { fatalError("Dashboard store should not be used in BtWifiScaleSetupStore unit tests") }
         )
 
-        // Prime injector-backed dependencies immediately to avoid cross-suite DI races
-        // when async tasks resolve them later.
-        _ = store.notificationService
-        _ = store.permissionsService
-        _ = store.bluetoothService
-        _ = store.accountService
-        _ = store.wifiDeviceService
-        _ = store.deviceService
-        _ = store.pushNotificationService
-        _ = store.entryService
-        _ = store.goalAlertService
+        primeInjectors(store)
 
         return BtWifiStoreTestHarness(
             store: store,
@@ -131,6 +112,61 @@ enum BtWifiStoreTestFixtures {
             networkMonitor: networkMonitor,
             bluetoothSetupManager: bluetoothSetupManager
         )
+    }
+
+    @MainActor
+    private static func seedDefaults(account: MockAccountService, permissions: MockPermissionsService) {
+        if account.activeAccount == nil {
+            let activeAccount = makeAccount()
+            account.seedAccounts([activeAccount], active: activeAccount)
+        }
+
+        if permissions.permissions == nil {
+            permissions.setPermissions([
+                .BLUETOOTH: .ENABLED,
+                .BLUETOOTH_SWITCH: .ENABLED
+            ])
+        }
+    }
+
+    @MainActor
+    // swiftlint:disable:next function_parameter_count
+    private static func registerDependencies(
+        notification: TestNotificationHelperService,
+        permissions: MockPermissionsService,
+        bluetooth: MockBluetoothService,
+        account: MockAccountService,
+        scaleService: MockScaleService,
+        wifiScaleService: MockWifiScaleService,
+        pushNotifications: MockPushNotificationService,
+        entryService: MockEntryService,
+        goalAlertService: MockGoalAlertService
+    ) {
+        DependencyContainer.shared.register(notification as NotificationHelperService)
+        DependencyContainer.shared.register(notification as NotificationHelperServiceProtocol)
+        DependencyContainer.shared.register(permissions as PermissionsServiceProtocol)
+        DependencyContainer.shared.register(bluetooth as BluetoothServiceProtocol)
+        DependencyContainer.shared.register(account as AccountServiceProtocol)
+        DependencyContainer.shared.register(scaleService as PairedDeviceServiceProtocol)
+        DependencyContainer.shared.register(wifiScaleService as WifiPairedDeviceServiceProtocol)
+        DependencyContainer.shared.register(pushNotifications as PushNotificationServiceProtocol)
+        DependencyContainer.shared.register(entryService as EntryServiceProtocol)
+        DependencyContainer.shared.register(goalAlertService as GoalAlertServiceProtocol)
+    }
+
+    @MainActor
+    private static func primeInjectors(_ store: BtWifiScaleSetupStore) {
+        // Prime injector-backed dependencies immediately to avoid cross-suite DI races
+        // when async tasks resolve them later.
+        _ = store.notificationService
+        _ = store.permissionsService
+        _ = store.bluetoothService
+        _ = store.accountService
+        _ = store.wifiDeviceService
+        _ = store.deviceService
+        _ = store.pushNotificationService
+        _ = store.entryService
+        _ = store.goalAlertService
     }
 
     @MainActor

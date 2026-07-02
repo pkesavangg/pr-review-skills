@@ -3,9 +3,9 @@ package com.dmdbrands.gurus.weight.features.common.components
 import androidx.compose.runtime.Composable
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.dmdbrands.gurus.weight.domain.model.storage.entry.ScaleEntry
-import com.dmdbrands.gurus.weight.features.ScaleModeSettings.screens.BiaModal
-import com.dmdbrands.gurus.weight.features.ScaleSetup.components.AccucheckModal
-import com.dmdbrands.gurus.weight.features.addScale.screens.ModelNumberHelpDialog
+import com.dmdbrands.gurus.weight.features.DeviceModeSettings.screens.BiaModal
+import com.dmdbrands.gurus.weight.features.DeviceSetup.components.AccucheckModal
+import com.dmdbrands.gurus.weight.features.addDevice.screens.ModelNumberHelpDialog
 import com.dmdbrands.gurus.weight.features.common.components.DialogType.HelpPopup
 import com.dmdbrands.gurus.weight.features.common.viewmodel.DialogQueueViewModel
 import com.dmdbrands.gurus.weight.features.forgotPasswordDialog.screen.PasswordResetModal
@@ -13,7 +13,7 @@ import com.dmdbrands.gurus.weight.features.integration.components.AddHealthConne
 import com.dmdbrands.gurus.weight.features.integration.components.MultipleDeviceConnectionScreen
 import com.dmdbrands.gurus.weight.features.integration.components.OutOfSyncScreen
 import com.dmdbrands.gurus.weight.features.integration.components.RequestIntegrationModal
-import com.dmdbrands.gurus.weight.features.scaleDetails.components.ScaleNameModal
+import com.dmdbrands.gurus.weight.features.deviceDetails.components.DeviceNameModal
 import com.dmdbrands.gurus.weight.features.settings.components.AccountSwitchInfoModal
 
 enum class DialogType {
@@ -30,7 +30,7 @@ enum class DialogType {
   OutOfSyncModal,
   MultipleDeviceConnection,
   FinishConnect,
-  ScaleName,
+  DeviceName,
   AppsyncEntryPopup,
   SetGoalPopup,
   IAMFeedModal,
@@ -240,10 +240,10 @@ fun DialogHost() {
         )
       }
 
-      DialogType.ScaleName -> {
+      DialogType.DeviceName -> {
         val scaleId = dialog.params["scaleId"] as? String ?: ""
         val accountId = dialog.params["accountId"] as? String
-        ScaleNameModal(
+        DeviceNameModal(
           scaleId = scaleId,
           accountId = accountId,
           onDismiss = {
@@ -301,6 +301,7 @@ fun DialogHost() {
         val reading = dialog.params["reading"] as String
         val timestamp = dialog.params["timestamp"] as String
         val preSelectedBabyId = dialog.params["preSelectedBabyId"] as? String
+        val onAssignNewBaby = dialog.params["onAssignNewBaby"] as? (() -> Unit)
 
         AssignMeasurementDialog(
           reading = reading,
@@ -309,6 +310,10 @@ fun DialogHost() {
           preSelectedBabyId = preSelectedBabyId,
           onAssign = { babyId ->
             dialog.onConfirm?.invoke(babyId)
+            dialogQueueViewModel.dismissCurrent()
+          },
+          onAssignNewBaby = {
+            onAssignNewBaby?.invoke()
             dialogQueueViewModel.dismissCurrent()
           },
           onDismiss = {

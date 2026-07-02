@@ -22,7 +22,7 @@ final class DeviceSettingsStore: ObservableObject {
 
     // Reads the current snapshot directly from the service — the single source of truth.
     private var deviceSnapshot: DeviceSnapshot? {
-        deviceService.scales.first(where: { $0.id == scaleIdString })
+        deviceService.scales.first { $0.id == scaleIdString }
     }
 
     @Published var isDeviceConnected: Bool = false
@@ -340,7 +340,9 @@ final class DeviceSettingsStore: ObservableObject {
         do {
             // Pause scans and mark setup in progress to avoid race with ongoing reconnect/pairing
             bluetoothService.isSetupInProgress = true
-            if let scaleType = getDeviceModelType(), disconnectableDeviceModelTypes.contains(scaleType), let broadcastId = deviceSnapshot?.broadcastIdString {
+            if let scaleType = getDeviceModelType(),
+               disconnectableDeviceModelTypes.contains(scaleType),
+               let broadcastId = deviceSnapshot?.broadcastIdString {
                 // Ensure the user slot on the scale is deleted as well (aligns with Android behavior)
                 let deletionTask = Task { @MainActor in
                     _ = await bluetoothService.deleteCurrentUserFromScaleIfPossible(broadcastId: broadcastId, disconnect: false)
@@ -446,7 +448,10 @@ final class DeviceSettingsStore: ObservableObject {
 
     func setSessionImpedance(_ enabled: Bool) async {
         guard isDeviceConnected else { return }
-        let res = await bluetoothService.updateSetting(broadcastId: deviceSnapshot?.broadcastIdString ?? "", settings: [DeviceSetting(key: "SESSION_IMPEDANCE", value: .bool(enabled))])
+        let res = await bluetoothService.updateSetting(
+            broadcastId: deviceSnapshot?.broadcastIdString ?? "",
+            settings: [DeviceSetting(key: "SESSION_IMPEDANCE", value: .bool(enabled))]
+        )
         switch res {
         case .success:
             isImpedanceSwitchedOnForSession = enabled

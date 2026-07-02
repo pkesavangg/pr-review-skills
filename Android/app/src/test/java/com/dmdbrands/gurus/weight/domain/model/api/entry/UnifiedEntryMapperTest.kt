@@ -137,7 +137,7 @@ class UnifiedEntryMapperTest {
 
     @Test
     fun `baby weight entry maps to baby category with weight entryType`() {
-        val req = babyEntry(BabyEntryType.WEIGHT, weightDecigrams = 45_200).toUnifiedRequest()
+        val req = babyEntry(BabyEntryType.WEIGHT, weightDecigrams = 45_200).toUnifiedRequests().single()
 
         assertThat(req.category).isEqualTo(EntryCategory.BABY.value)
         assertThat(req.operationType).isEqualTo("create")
@@ -151,7 +151,7 @@ class UnifiedEntryMapperTest {
 
     @Test
     fun `baby length entry maps to measureLength entryType`() {
-        val req = babyEntry(BabyEntryType.MEASURE_LENGTH, lengthMm = 510).toUnifiedRequest()
+        val req = babyEntry(BabyEntryType.MEASURE_LENGTH, lengthMm = 510).toUnifiedRequests().single()
 
         assertThat(req.entryType).isEqualTo(BabyEntryType.MEASURE_LENGTH.value)
         assertThat(req.babyLengthMillimeters).isEqualTo(510)
@@ -159,17 +159,17 @@ class UnifiedEntryMapperTest {
     }
 
     @Test
-    fun `toUnifiedRequestOrNull dispatches baby and drops empty readings`() {
-        assertThat(babyEntry(BabyEntryType.WEIGHT, weightDecigrams = 45_200).toUnifiedRequestOrNull()?.category)
+    fun `toUnifiedRequests dispatches baby and drops empty readings`() {
+        assertThat(babyEntry(BabyEntryType.WEIGHT, weightDecigrams = 45_200).toUnifiedRequests().single().category)
             .isEqualTo("baby")
-        assertThat(babyEntry(BabyEntryType.MEASURE_LENGTH, lengthMm = 510).toUnifiedRequestOrNull())
-            .isNotNull()
+        assertThat(babyEntry(BabyEntryType.MEASURE_LENGTH, lengthMm = 510).toUnifiedRequests())
+            .isNotEmpty()
         // No value for the entryType → dropped, not POSTed as a 0 reading.
-        assertThat(babyEntry(BabyEntryType.WEIGHT, weightDecigrams = 0).toUnifiedRequestOrNull()).isNull()
-        assertThat(babyEntry(BabyEntryType.MEASURE_LENGTH, lengthMm = null).toUnifiedRequestOrNull()).isNull()
+        assertThat(babyEntry(BabyEntryType.WEIGHT, weightDecigrams = 0).toUnifiedRequests()).isEmpty()
+        assertThat(babyEntry(BabyEntryType.MEASURE_LENGTH, lengthMm = null).toUnifiedRequests()).isEmpty()
     }
 
-    // ── Entry.toUnifiedRequestOrNull ─────────────────────────────────────────────
+    // ── Entry.toUnifiedRequests ──────────────────────────────────────────────────
 
     @Test
     fun `toUnifiedRequests dispatches weight and bp`() {
@@ -192,8 +192,9 @@ class UnifiedEntryMapperTest {
             it.copy(bpmEntry = it.bpmEntry.copy(systolic = 0, diastolic = 0, pulse = 0))
         }
         assertThat(garbage.toUnifiedRequests()).isEmpty()
-        // An above-range systolic is also rejected.
-        val tooHigh = bpmEntry().let { it.copy(bpmEntry = it.bpmEntry.copy(systolic = 400)) }
+        // A systolic above the hard cap (BP_HARD_MAX = 500) is also rejected. Values within the
+        // cap (e.g. 400) are intentionally kept — the window mirrors the manual form's contract.
+        val tooHigh = bpmEntry().let { it.copy(bpmEntry = it.bpmEntry.copy(systolic = 501)) }
         assertThat(tooHigh.toUnifiedRequests()).isEmpty()
     }
 

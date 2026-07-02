@@ -52,7 +52,7 @@ class AppNavigationServiceTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `navigateTo emits NavigateTo with route only`() = runTest {
+    fun `navigateTo emits NavigateTo with route only`() = runTest(mainDispatcherRule.scheduler) {
         service.navigationIntent.test {
             service.navigateTo(AppRoute.Main.Dashboard)
             val intent = awaitItem() as NavigationIntent.NavigateTo
@@ -64,7 +64,7 @@ class AppNavigationServiceTest {
     }
 
     @Test
-    fun `navigateTo emits NavigateTo with topLevel and popUpTo`() = runTest {
+    fun `navigateTo emits NavigateTo with topLevel and popUpTo`() = runTest(mainDispatcherRule.scheduler) {
         service.navigationIntent.test {
             service.navigateTo(
                 route = AppRoute.Main.Settings,
@@ -84,7 +84,7 @@ class AppNavigationServiceTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `navigateBack emits NavigateBack with null topLevel`() = runTest {
+    fun `navigateBack emits NavigateBack with null topLevel`() = runTest(mainDispatcherRule.scheduler) {
         service.navigationIntent.test {
             service.navigateBack()
             val intent = awaitItem() as NavigationIntent.NavigateBack
@@ -94,7 +94,7 @@ class AppNavigationServiceTest {
     }
 
     @Test
-    fun `navigateBack emits NavigateBack with topLevel`() = runTest {
+    fun `navigateBack emits NavigateBack with topLevel`() = runTest(mainDispatcherRule.scheduler) {
         service.navigationIntent.test {
             service.navigateBack(topLevel = AppRoute.Main.Dashboard)
             val intent = awaitItem() as NavigationIntent.NavigateBack
@@ -108,7 +108,7 @@ class AppNavigationServiceTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `replaceLastAndNavigate emits correct intent without topLevel`() = runTest {
+    fun `replaceLastAndNavigate emits correct intent without topLevel`() = runTest(mainDispatcherRule.scheduler) {
         service.navigationIntent.test {
             service.replaceLastAndNavigate(AppRoute.Main.Entry)
             val intent = awaitItem() as NavigationIntent.ReplaceLastAndNavigate
@@ -119,7 +119,7 @@ class AppNavigationServiceTest {
     }
 
     @Test
-    fun `replaceLastAndNavigate emits correct intent with topLevel`() = runTest {
+    fun `replaceLastAndNavigate emits correct intent with topLevel`() = runTest(mainDispatcherRule.scheduler) {
         service.navigationIntent.test {
             service.replaceLastAndNavigate(
                 route = AppRoute.Main.Entry,
@@ -137,7 +137,7 @@ class AppNavigationServiceTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `replaceStack single route emits ReplaceStack with single-element list`() = runTest {
+    fun `replaceStack single route emits ReplaceStack with single-element list`() = runTest(mainDispatcherRule.scheduler) {
         service.navigationIntent.test {
             service.replaceStack(AppRoute.Main.History)
             val intent = awaitItem() as NavigationIntent.ReplaceStack
@@ -148,7 +148,7 @@ class AppNavigationServiceTest {
     }
 
     @Test
-    fun `replaceStack single route emits ReplaceStack with topLevel`() = runTest {
+    fun `replaceStack single route emits ReplaceStack with topLevel`() = runTest(mainDispatcherRule.scheduler) {
         service.navigationIntent.test {
             service.replaceStack(
                 route = AppRoute.Main.Settings,
@@ -166,7 +166,7 @@ class AppNavigationServiceTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `replaceStack route list emits ReplaceStack with all routes`() = runTest {
+    fun `replaceStack route list emits ReplaceStack with all routes`() = runTest(mainDispatcherRule.scheduler) {
         val routes = listOf(AppRoute.Main.Dashboard, AppRoute.Main.Entry, AppRoute.Main.History)
         service.navigationIntent.test {
             service.replaceStack(routes)
@@ -178,7 +178,7 @@ class AppNavigationServiceTest {
     }
 
     @Test
-    fun `replaceStack route list emits ReplaceStack with topLevel`() = runTest {
+    fun `replaceStack route list emits ReplaceStack with topLevel`() = runTest(mainDispatcherRule.scheduler) {
         val routes = listOf(AppRoute.Main.Dashboard, AppRoute.Main.Settings)
         service.navigationIntent.test {
             service.replaceStack(routes, topLevel = AppRoute.Home)
@@ -194,7 +194,7 @@ class AppNavigationServiceTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `login emits Login intent`() = runTest {
+    fun `login emits Login intent`() = runTest(mainDispatcherRule.scheduler) {
         service.navigationIntent.test {
             service.login()
             val intent = awaitItem()
@@ -208,7 +208,7 @@ class AppNavigationServiceTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `autoLogin emits AutoLogin intent`() = runTest {
+    fun `autoLogin emits AutoLogin intent`() = runTest(mainDispatcherRule.scheduler) {
         service.navigationIntent.test {
             service.autoLogin()
             val intent = awaitItem()
@@ -222,7 +222,7 @@ class AppNavigationServiceTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `reInitialize emits ReInitialize intent`() = runTest {
+    fun `reInitialize emits ReInitialize intent`() = runTest(mainDispatcherRule.scheduler) {
         service.navigationIntent.test {
             service.reInitialize()
             val intent = awaitItem()
@@ -236,7 +236,7 @@ class AppNavigationServiceTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `registerOnDeactivate emits intent with same route and callback instance`() = runTest {
+    fun `registerOnDeactivate emits intent with same route and callback instance`() = runTest(mainDispatcherRule.scheduler) {
         val route = AppRoute.Main.Entry
         val callback: suspend () -> Boolean = { true }
         service.navigationIntent.test {
@@ -253,7 +253,7 @@ class AppNavigationServiceTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `unregisterOnDeactivate emits UnregisterOnDeactivate with correct route`() = runTest {
+    fun `unregisterOnDeactivate emits UnregisterOnDeactivate with correct route`() = runTest(mainDispatcherRule.scheduler) {
         val route = AppRoute.Main.Dashboard
         service.navigationIntent.test {
             service.unregisterOnDeactivate(route)
@@ -269,7 +269,7 @@ class AppNavigationServiceTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `getCurrentRoute returns NavKey when deferred is completed`() = runTest {
+    fun `getCurrentRoute returns NavKey when deferred is completed`() = runTest(mainDispatcherRule.scheduler) {
         var result: NavKey? = null
         service.navigationIntent.test {
             val job = launch { result = service.getCurrentRoute() }
@@ -282,7 +282,7 @@ class AppNavigationServiceTest {
     }
 
     @Test
-    fun `getCurrentRoute returns null when deferred is completed with null`() = runTest {
+    fun `getCurrentRoute returns null when deferred is completed with null`() = runTest(mainDispatcherRule.scheduler) {
         var result: Any? = "sentinel"
         service.navigationIntent.test {
             val job = launch { result = service.getCurrentRoute() }
@@ -299,7 +299,7 @@ class AppNavigationServiceTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `emitAuthEvent emits LoggedInFromLoading state`() = runTest {
+    fun `emitAuthEvent emits LoggedInFromLoading state`() = runTest(mainDispatcherRule.scheduler) {
         val state = AuthState.LoggedInFromLoading(account = fakeAccount)
         service.authEvent.test {
             service.emitAuthEvent(state)
@@ -309,7 +309,7 @@ class AppNavigationServiceTest {
     }
 
     @Test
-    fun `emitAuthEvent emits LoggedOut state`() = runTest {
+    fun `emitAuthEvent emits LoggedOut state`() = runTest(mainDispatcherRule.scheduler) {
         val state = AuthState.LoggedOut(isActiveAccount = true, isLastAccount = false)
         service.authEvent.test {
             service.emitAuthEvent(state)
@@ -319,7 +319,7 @@ class AppNavigationServiceTest {
     }
 
     @Test
-    fun `emitAuthEvent emits UnauthorizedLogout state`() = runTest {
+    fun `emitAuthEvent emits UnauthorizedLogout state`() = runTest(mainDispatcherRule.scheduler) {
         val state = AuthState.UnauthorizedLogout(accountId = "account-1")
         service.authEvent.test {
             service.emitAuthEvent(state)
@@ -329,7 +329,7 @@ class AppNavigationServiceTest {
     }
 
     @Test
-    fun `emitAuthEvent emits AccountAdded state`() = runTest {
+    fun `emitAuthEvent emits AccountAdded state`() = runTest(mainDispatcherRule.scheduler) {
         val state = AuthState.AccountAdded(account = fakeAccount)
         service.authEvent.test {
             service.emitAuthEvent(state)
@@ -339,7 +339,7 @@ class AppNavigationServiceTest {
     }
 
     @Test
-    fun `emitAuthEvent emits AccountSwitched state`() = runTest {
+    fun `emitAuthEvent emits AccountSwitched state`() = runTest(mainDispatcherRule.scheduler) {
         val state = AuthState.AccountSwitched(account = fakeAccount, showToast = true)
         service.authEvent.test {
             service.emitAuthEvent(state)
@@ -349,7 +349,7 @@ class AppNavigationServiceTest {
     }
 
     @Test
-    fun `emitAuthEvent emits ProfileUpdated state`() = runTest {
+    fun `emitAuthEvent emits ProfileUpdated state`() = runTest(mainDispatcherRule.scheduler) {
         val state = AuthState.ProfileUpdated(account = fakeAccount)
         service.authEvent.test {
             service.emitAuthEvent(state)
@@ -359,7 +359,7 @@ class AppNavigationServiceTest {
     }
 
     @Test
-    fun `emitAuthEvent emits TokensUpdated state`() = runTest {
+    fun `emitAuthEvent emits TokensUpdated state`() = runTest(mainDispatcherRule.scheduler) {
         service.authEvent.test {
             service.emitAuthEvent(AuthState.TokensUpdated)
             assertThat(awaitItem()).isEqualTo(AuthState.TokensUpdated)
@@ -368,7 +368,7 @@ class AppNavigationServiceTest {
     }
 
     @Test
-    fun `emitAuthEvent emits Error state`() = runTest {
+    fun `emitAuthEvent emits Error state`() = runTest(mainDispatcherRule.scheduler) {
         val state = AuthState.Error(message = "Something went wrong")
         service.authEvent.test {
             service.emitAuthEvent(state)
@@ -378,7 +378,7 @@ class AppNavigationServiceTest {
     }
 
     @Test
-    fun `emitAuthEvent emits AccountDeleted state`() = runTest {
+    fun `emitAuthEvent emits AccountDeleted state`() = runTest(mainDispatcherRule.scheduler) {
         val state = AuthState.AccountDeleted(isActiveAccount = true, message = "Deleted")
         service.authEvent.test {
             service.emitAuthEvent(state)
@@ -388,7 +388,7 @@ class AppNavigationServiceTest {
     }
 
     @Test
-    fun `emitAuthEvent emits NavigateToMyAccounts state`() = runTest {
+    fun `emitAuthEvent emits NavigateToMyAccounts state`() = runTest(mainDispatcherRule.scheduler) {
         service.authEvent.test {
             service.emitAuthEvent(AuthState.NavigateToMyAccounts)
             assertThat(awaitItem()).isEqualTo(AuthState.NavigateToMyAccounts)
@@ -397,7 +397,7 @@ class AppNavigationServiceTest {
     }
 
     @Test
-    fun `emitAuthEvent emits NavigateBackFromMyAccounts state`() = runTest {
+    fun `emitAuthEvent emits NavigateBackFromMyAccounts state`() = runTest(mainDispatcherRule.scheduler) {
         service.authEvent.test {
             service.emitAuthEvent(AuthState.NavigateBackFromMyAccounts)
             assertThat(awaitItem()).isEqualTo(AuthState.NavigateBackFromMyAccounts)
@@ -410,7 +410,7 @@ class AppNavigationServiceTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `navigationIntent delivers same event to multiple collectors`() = runTest {
+    fun `navigationIntent delivers same event to multiple collectors`() = runTest(mainDispatcherRule.scheduler) {
         var collector1Result: NavigationIntent? = null
         var collector2Result: NavigationIntent? = null
 
@@ -429,7 +429,7 @@ class AppNavigationServiceTest {
     }
 
     @Test
-    fun `authEvent delivers same event to multiple collectors`() = runTest {
+    fun `authEvent delivers same event to multiple collectors`() = runTest(mainDispatcherRule.scheduler) {
         val state = AuthState.TokensUpdated
         var collector1Result: AuthState? = null
         var collector2Result: AuthState? = null
@@ -453,7 +453,7 @@ class AppNavigationServiceTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `navigateTo emits intent via emitNavigationIntent to the shared flow`() = runTest {
+    fun `navigateTo emits intent via emitNavigationIntent to the shared flow`() = runTest(mainDispatcherRule.scheduler) {
         var collected: NavigationIntent? = null
         val job = launch { collected = service.navigationIntent.first() }
         advanceUntilIdle()
@@ -466,7 +466,7 @@ class AppNavigationServiceTest {
     }
 
     @Test
-    fun `multiple navigateTo calls emit multiple intents sequentially`() = runTest {
+    fun `multiple navigateTo calls emit multiple intents sequentially`() = runTest(mainDispatcherRule.scheduler) {
         service.navigationIntent.test {
             service.navigateTo(AppRoute.Main.Dashboard)
             assertThat((awaitItem() as NavigationIntent.NavigateTo).route).isEqualTo(AppRoute.Main.Dashboard)

@@ -86,10 +86,15 @@ fun GraphView(
     Scroll.Absolute.xWithPadding(initialStartX, startPaddingXStep)
   }
 
+  // Re-key on the empty→data transition too: `initialScroll` is only applied when the scroll
+  // state is (re)created. On a cold reopen (or the very first entry) the state is created on the
+  // empty frame-0, so when data arrives the chart stays scrolled to an empty region until a
+  // segment switch re-created it. Keying on isEmptyGraph re-applies the initial scroll the moment
+  // data lands — fixing the empty-graph-after-reopen and first-entry-no-update cases (MOB-598).
   val scrollState = rememberVicoScrollState(
     scrollEnabled = segment != GraphSegment.TOTAL && !segmentState.isSingleWindow,
     initialScroll = initialScroll,
-    key = segment,
+    key = segment to segmentState.isEmptyGraph,
   )
 
   val snapConfig = remember(segment, startPaddingXStep) {

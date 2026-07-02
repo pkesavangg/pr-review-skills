@@ -51,6 +51,15 @@ object ConversionTools {
   }
 
   /**
+   * Converts kilograms to pounds. Centralizes the kg↔lbs factor so feature code
+   * (goals, weightless, unit-aware display) no longer hardcodes `2.20462`.
+   */
+  fun kgToLbs(kg: Double): Double = kg * KG_TO_LBS_FACTOR
+
+  /** Converts pounds to kilograms. Inverse of [kgToLbs]. */
+  fun lbsToKg(lbs: Double): Double = lbs / KG_TO_LBS_FACTOR
+
+  /**
    * Converts kilograms to stored weight format.
    * @param kgs Weight in kilograms
    * @return Weight in stored format
@@ -189,6 +198,14 @@ object ConversionTools {
    * part matters.
    */
   fun convertDecigramsToLbExact(decigrams: Int): Double =
+      decigrams / DECIGRAMS_PER_OZ / OZ_PER_LB
+
+  /**
+   * [convertDecigramsToLbExact] for continuous/decimal decigram inputs (e.g. WHO
+   * percentile curve values). Keeps the exact same factor so chart Y-values and
+   * percentile series share one conversion.
+   */
+  fun convertDecigramsToLbExact(decigrams: Double): Double =
       decigrams / DECIGRAMS_PER_OZ / OZ_PER_LB
 
   /**

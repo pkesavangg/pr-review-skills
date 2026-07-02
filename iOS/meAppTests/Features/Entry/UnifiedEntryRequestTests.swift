@@ -1,6 +1,6 @@
 import Foundation
-import Testing
 @testable import meApp
+import Testing
 
 @Suite(.serialized)
 struct UnifiedEntryRequestTests {
@@ -25,12 +25,30 @@ struct UnifiedEntryRequestTests {
         timestamp: String = "2026-05-06T10:00:00Z"
     ) -> BathScaleOperationDTO {
         BathScaleOperationDTO(
-            accountId: "acct-1", bmr: nil, bmi: bmi, bodyFat: bodyFat, boneMass: boneMass,
-            entryTimestamp: timestamp, entryType: entryType, impedance: impedance, metabolicAge: nil,
-            muscleMass: muscleMass, operationType: operationType, proteinPercent: nil, pulse: pulse,
-            serverTimestamp: nil, skeletalMusclePercent: nil, source: source,
-            subcutaneousFatPercent: nil, systolic: systolic, diastolic: diastolic, meanArterial: nil,
-            unit: unit, visceralFatLevel: nil, water: water, weight: weight
+            accountId: "acct-1",
+            bmr: nil,
+            bmi: bmi,
+            bodyFat: bodyFat,
+            boneMass: boneMass,
+            entryTimestamp: timestamp,
+            entryType: entryType,
+            impedance: impedance,
+            metabolicAge: nil,
+            muscleMass: muscleMass,
+            operationType: operationType,
+            proteinPercent: nil,
+            pulse: pulse,
+            serverTimestamp: nil,
+            skeletalMusclePercent: nil,
+            source: source,
+            subcutaneousFatPercent: nil,
+            systolic: systolic,
+            diastolic: diastolic,
+            meanArterial: nil,
+            unit: unit,
+            visceralFatLevel: nil,
+            water: water,
+            weight: weight
         )
     }
 
@@ -49,9 +67,16 @@ struct UnifiedEntryRequestTests {
     func weightCreateMapsFields() throws {
         let dto = makeDTO(
             entryType: EntryType.scale.rawValue,
-            weight: 1723, bodyFat: 225, muscleMass: 401, water: 552,
-            bmi: 243, boneMass: 38, impedance: 495, pulse: 68,
-            unit: "lb", source: "btWifiR4"
+            weight: 1723,
+            bodyFat: 225,
+            muscleMass: 401,
+            water: 552,
+            bmi: 243,
+            boneMass: 38,
+            impedance: 495,
+            pulse: 68,
+            unit: "lb",
+            source: "btWifiR4"
         )
         let request = try #require(UnifiedEntryRequest(from: dto))
 
@@ -89,7 +114,10 @@ struct UnifiedEntryRequestTests {
         let dto = makeDTO(
             entryType: EntryType.scale.rawValue,
             operationType: OperationType.delete.rawValue,
-            weight: 1723, bodyFat: 225, unit: "lb", source: "btWifiR4"
+            weight: 1723,
+            bodyFat: 225,
+            unit: "lb",
+            source: "btWifiR4"
         )
         let request = try #require(UnifiedEntryRequest(from: dto))
 
@@ -108,7 +136,10 @@ struct UnifiedEntryRequestTests {
     func bpCreateMapsFields() throws {
         let dto = makeDTO(
             entryType: EntryType.bpm.rawValue,
-            pulse: 72, systolic: 120, diastolic: 80, source: "manual"
+            pulse: 72,
+            systolic: 120,
+            diastolic: 80,
+            source: "manual"
         )
         let request = try #require(UnifiedEntryRequest(from: dto, note: "Morning reading"))
 
@@ -129,7 +160,10 @@ struct UnifiedEntryRequestTests {
         let dto = makeDTO(
             entryType: EntryType.bpm.rawValue,
             operationType: OperationType.delete.rawValue,
-            pulse: 72, systolic: 120, diastolic: 80, source: "manual"
+            pulse: 72,
+            systolic: 120,
+            diastolic: 80,
+            source: "manual"
         )
         let request = try #require(UnifiedEntryRequest(from: dto, note: "should be dropped"))
 
@@ -180,7 +214,10 @@ struct UnifiedEntryRequestTests {
             category: EntryCategory.bp.rawValue,
             operationType: OperationType.create.rawValue,
             entryTimestamp: "2026-05-06T10:00:00Z",
-            systolic: 120, diastolic: 80, pulse: 72, source: "manual"
+            systolic: 120,
+            diastolic: 80,
+            pulse: 72,
+            source: "manual"
         )
         let data = try JSONEncoder().encode([request])
         let json = try #require(String(data: data, encoding: .utf8))

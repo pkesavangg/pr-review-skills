@@ -1,19 +1,19 @@
 import Foundation
-import Testing
 @testable import meApp
+import Testing
 
 @Suite(.serialized)
 @MainActor
 struct DashboardStreakManagerTests {
-    private typealias SUT = (
-        sut: DashboardStreakManager,
-        accountService: AccountService,
-        entryRepo: MockEntryRepository
-    )
+    private struct DashboardStreakManagerTestsSUT {
+        let sut: DashboardStreakManager
+        let accountService: AccountService
+        let entryRepo: MockEntryRepository
+    }
 
     @Test("init and setupInitialStreakItems: create six placeholder streak cards")
     func initAndSetupInitialStreakItems() {
-        let (sut, _, _) = makeSUT()
+        let sut = makeSUT().sut
 
         #expect(sut.state.streakItems.count == 6)
         #expect(sut.state.activeStreakItemsCount == 6)
@@ -30,7 +30,9 @@ struct DashboardStreakManagerTests {
 
     @Test("updateStreakItems: populates streak cards from Progress in pounds")
     func updateStreakItemsPopulatesLbsValues() async throws {
-        let (sut, accountService, _) = makeSUT(weightUnit: .lb)
+        let sutBundle = makeSUT(weightUnit: .lb)
+        let sut = sutBundle.sut
+        let accountService = sutBundle.accountService
         accountService.activeAccount = DashboardStoreTestSupport.makeActiveAccount(weightUnit: .lb)
 
         try await sut.updateStreakItems(with: makeProgress())
@@ -44,7 +46,9 @@ struct DashboardStreakManagerTests {
 
     @Test("updateStreakItems: populates streak cards from Progress in kilograms")
     func updateStreakItemsPopulatesKgValues() async throws {
-        let (sut, accountService, _) = makeSUT(weightUnit: .kg)
+        let sutBundle = makeSUT(weightUnit: .kg)
+        let sut = sutBundle.sut
+        let accountService = sutBundle.accountService
         accountService.activeAccount = DashboardStoreTestSupport.makeActiveAccount(weightUnit: .kg)
 
         try await sut.updateStreakItems(with: makeProgress())
@@ -57,7 +61,9 @@ struct DashboardStreakManagerTests {
 
     @Test("updateStreakItems: preserves the visible streak count after the first real refresh")
     func updateStreakItemsPreservesActiveCountAfterInitialRefresh() async throws {
-        let (sut, accountService, _) = makeSUT()
+        let sutBundle = makeSUT()
+        let sut = sutBundle.sut
+        let accountService = sutBundle.accountService
         accountService.activeAccount = DashboardStoreTestSupport.makeActiveAccount()
 
         try await sut.updateStreakItems(with: makeProgress())
@@ -85,7 +91,9 @@ struct DashboardStreakManagerTests {
 
     @Test("refreshStreakData: loads progress from entry service and replaces placeholders")
     func refreshStreakDataLoadsFromEntryService() async throws {
-        let (sut, accountService, _) = makeSUT()
+        let sutBundle = makeSUT()
+        let sut = sutBundle.sut
+        let accountService = sutBundle.accountService
         let accountId = "streak-refresh"
         accountService.activeAccount = DashboardStoreTestSupport.makeActiveAccount(id: accountId)
         try persistEntries([
@@ -110,7 +118,7 @@ struct DashboardStreakManagerTests {
 
     @Test("refreshStreakData: wraps service failures as dataLoadingFailed")
     func refreshStreakDataErrorHandling() async {
-        let (sut, _, _) = makeSUT()
+        let sut = makeSUT().sut
 
         do {
             try await sut.refreshStreakData()
@@ -127,7 +135,7 @@ struct DashboardStreakManagerTests {
 
     @Test("toggleStreakVisibility and getStreakItemsToShow: keep streak visibility and ordering consistent")
     func toggleStreakVisibilityMaintainsShownItems() async throws {
-        let (sut, _, _) = makeSUT()
+        let sut = makeSUT().sut
         sut.state.streakItems = [
             DashboardTestFixtures.makeMetricItem(label: DashboardStrings.currentStreak),
             DashboardTestFixtures.makeMetricItem(label: DashboardStrings.longestStreak),
@@ -147,7 +155,7 @@ struct DashboardStreakManagerTests {
 
     @Test("validateStreakData: rejects invalid active streak counts")
     func validateStreakDataRejectsInvalidState() {
-        let (sut, _, _) = makeSUT()
+        let sut = makeSUT().sut
         sut.state.streakItems = [DashboardTestFixtures.makeMetricItem(label: DashboardStrings.currentStreak)]
         sut.state.activeStreakItemsCount = 2
 
@@ -166,7 +174,9 @@ struct DashboardStreakManagerTests {
 
     @Test("resetStreakData and refreshStreakDataForUnitChange: restore placeholders, clear removals, and reload values")
     func resetAndRefreshStreakData() async throws {
-        let (sut, accountService, _) = makeSUT()
+        let sutBundle = makeSUT()
+        let sut = sutBundle.sut
+        let accountService = sutBundle.accountService
         let accountId = "streak-reset"
         accountService.activeAccount = DashboardStoreTestSupport.makeActiveAccount(id: accountId)
         try persistEntries([
@@ -190,7 +200,7 @@ struct DashboardStreakManagerTests {
 
     @Test("streak analytics: derive trend and momentum from the visible streak items")
     func calculateStreakAnalytics() {
-        let (sut, _, _) = makeSUT()
+        let sut = makeSUT().sut
         sut.state.streakItems = [
             DashboardTestFixtures.makeMetricItem(value: "4", label: DashboardStrings.currentStreak),
             DashboardTestFixtures.makeMetricItem(value: "8", label: DashboardStrings.longestStreak),
@@ -212,7 +222,7 @@ struct DashboardStreakManagerTests {
 
     @Test("streak formatting helpers: format streak counts and weight changes")
     func streakFormattingHelpers() {
-        let (sut, _, _) = makeSUT()
+        let sut = makeSUT().sut
 
         #expect(sut.formatStreakDisplay(0) == "0 days")
         #expect(sut.formatStreakDisplay(1) == "1 day")
@@ -222,7 +232,7 @@ struct DashboardStreakManagerTests {
 
     @Test("streak visibility helpers: report removed items, show grid state, and expose grid columns")
     func streakVisibilityHelpers() {
-        let (sut, _, _) = makeSUT()
+        let sut = makeSUT().sut
         sut.state.streakItems = [
             DashboardTestFixtures.makeMetricItem(label: DashboardStrings.currentStreak),
             DashboardTestFixtures.makeMetricItem(label: DashboardStrings.longestStreak)
@@ -240,7 +250,7 @@ struct DashboardStreakManagerTests {
 
     @Test("reorderStreakItems: reorders the underlying streak array")
     func reorderStreakItems() async throws {
-        let (sut, _, _) = makeSUT()
+        let sut = makeSUT().sut
         sut.state.streakItems = [
             DashboardTestFixtures.makeMetricItem(label: DashboardStrings.currentStreak),
             DashboardTestFixtures.makeMetricItem(label: DashboardStrings.longestStreak),
@@ -256,7 +266,7 @@ struct DashboardStreakManagerTests {
         ])
     }
 
-    private func makeSUT(weightUnit: WeightUnit = .lb) -> SUT {
+    private func makeSUT(weightUnit: WeightUnit = .lb) -> DashboardStreakManagerTestsSUT {
         TestDependencyContainer.reset()
 
         let accountService = AccountService(
@@ -282,7 +292,7 @@ struct DashboardStreakManagerTests {
         accountService.activeAccount = DashboardStoreTestSupport.makeActiveAccount(weightUnit: weightUnit)
 
         let sut = DashboardStreakManager()
-        return (sut, accountService, entryRepo)
+        return DashboardStreakManagerTestsSUT(sut: sut, accountService: accountService, entryRepo: entryRepo)
     }
 
     private func makeProgress() -> meApp.Progress {

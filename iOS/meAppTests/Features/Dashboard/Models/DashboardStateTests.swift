@@ -1,18 +1,20 @@
+// swiftlint:disable file_length
 import Foundation
+@testable import meApp
 import SwiftUI
 import Testing
-@testable import meApp
 
 // MARK: - DashboardState Tests
 
 @Suite(.serialized)
 @MainActor
+// swiftlint:disable:next type_body_length
 struct DashboardStateTests {
 
     // MARK: - Default Initialization
 
-    @Test("init: creates state with all default sub-states")
-    func initDefaults() {
+    @Test("init: creates state with default UI, metrics, and streak sub-states")
+    func initDefaultsUIMetricsStreak() {
         let state = DashboardState()
 
         // UIState defaults
@@ -46,6 +48,11 @@ struct DashboardStateTests {
         #expect(state.streak.streakItems.isEmpty)
         #expect(state.streak.activeStreakItemsCount == 6)
         #expect(state.streak.removedStreaks.isEmpty)
+    }
+
+    @Test("init: creates state with default graph, goal, and data sub-states")
+    func initDefaultsGraphGoalData() {
+        let state = DashboardState()
 
         // GraphState defaults
         #expect(state.graph.selectedEntry == nil)
@@ -618,7 +625,6 @@ struct DashboardStateTests {
         #expect(dataState.hasAnyEntries == true) // Array is not empty even with nils
     }
 
-
     @Test("DataState: dailyCache stores and retrieves by period key")
     func dataDailyCacheStoreRetrieve() {
         var dataState = DataState()
@@ -646,7 +652,6 @@ struct DashboardStateTests {
 
         #expect(dataState.latestWeightStored == 1805)
     }
-
 
     // MARK: - Cross-State Mutation Tests
 
@@ -699,7 +704,7 @@ struct DashboardStateTests {
     func uiSelectedMetricLabelEmptyString() {
         var ui = UIState()
         ui.selectedMetricLabel = ""
-        #expect(ui.selectedMetricLabel == "")
+        #expect(ui.selectedMetricLabel?.isEmpty == true)
     }
 
     @Test("UIState: goalCardPosition negative value")

@@ -1,6 +1,6 @@
 import Foundation
-import Testing
 @testable import meApp
+import Testing
 
 extension SettingsStoreTests {
     @Suite("Goals")
@@ -337,7 +337,11 @@ extension SettingsStoreTests {
             accountService.createGoalResult = .failure(AccountTestError.apiFailed)
             let entryService = MockEntryService()
             entryService.getLatestEntryResult = .success(nil)
-            let (store, _, _, _, _) = SettingsStoreTestFixtures.makeSUT(notification: notification, accountService: accountService, entryService: entryService)
+            let (store, _, _, _, _) = SettingsStoreTestFixtures.makeSUT(
+                notification: notification,
+                accountService: accountService,
+                entryService: entryService
+            )
             let router = Router<SettingsRoute>()
             store.handleGoalTypeChange(.maintain)
             store.goalForm.goalWeight.value = "150.0"

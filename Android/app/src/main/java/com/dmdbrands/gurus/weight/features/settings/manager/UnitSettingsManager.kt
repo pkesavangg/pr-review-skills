@@ -4,12 +4,15 @@ import com.dmdbrands.gurus.weight.core.shared.utilities.logging.AppLog
 import com.dmdbrands.gurus.weight.data.storage.datastore.UserDataStore
 import com.dmdbrands.gurus.weight.domain.interfaces.IDialogQueueService
 import com.dmdbrands.gurus.weight.domain.model.api.user.BodyCompUpdateRequest
+import com.dmdbrands.gurus.weight.domain.model.common.MeasurementUnits
 import com.dmdbrands.gurus.weight.domain.model.common.WeightUnit
 import com.dmdbrands.gurus.weight.domain.services.BodyCompUpdateType
+import com.dmdbrands.gurus.weight.domain.services.IAccountService
 import com.dmdbrands.gurus.weight.domain.services.IBodyCompositionService
 import com.dmdbrands.gurus.weight.features.common.components.RadioButtonOption
 import com.dmdbrands.gurus.weight.features.common.components.RadioGroupSection
 import com.dmdbrands.gurus.weight.features.common.components.showSectionedRadioGroupModal
+import com.dmdbrands.gurus.weight.features.common.model.Toast
 import com.dmdbrands.gurus.weight.features.settings.strings.RadioGroupModalStrings
 import com.dmdbrands.gurus.weight.features.settings.strings.SettingsScreenStrings
 import com.dmdbrands.gurus.weight.features.settings.viewmodel.SettingsIntent
@@ -40,8 +43,9 @@ class UnitSettingsManager
 constructor(
   private val bodyCompositionService: IBodyCompositionService,
   private val dialogQueueService: IDialogQueueService,
-  private val scaleSettingsManager: IScaleSettingsManager,
+  private val scaleSettingsManager: IDeviceSettingsManager,
   private val userDataStore: UserDataStore,
+  private val accountService: IAccountService,
 ) : IUnitSettingsManager {
   companion object {
     private const val TAG = "UnitSettingsManager"
@@ -148,9 +152,9 @@ constructor(
       return
     }
 
-    if (newAdultUnit != null) {
-      dialogQueueService.showLoader(SettingsScreenStrings.UpdatingUnitType)
-    }
+    // Both adult and baby changes now hit the network (bodycomp + measurement-units
+    // APIs respectively), so show the loader whenever either is persisting.
+    dialogQueueService.showLoader(SettingsScreenStrings.UpdatingUnitType)
 
     scope.launch {
       try {
@@ -158,15 +162,19 @@ constructor(
           updateAdultUnit(currentAccount, newAdultUnit)
         }
         if (newBabyUnit != null) {
-          userDataStore.setBabyWeightUnit(currentAccount.id, newBabyUnit)
-          AppLog.i(TAG, "Persisted baby weight unit: ${newBabyUnit.value}")
+          updateBabyUnit(currentAccount.id, newBabyUnit)
         }
       } catch (e: Exception) {
         AppLog.e(TAG, "Error updating unit type", e)
+        dialogQueueService.showToast(
+          Toast.Simple(
+            title = null,
+            message = SettingsScreenStrings.Error.MessageGeneric,
+            action = null,
+          ),
+        )
       } finally {
-        if (newAdultUnit != null) {
-          dialogQueueService.dismissLoader()
-        }
+        dialogQueueService.dismissLoader()
       }
     }
   }
@@ -186,6 +194,29 @@ constructor(
     scaleSettingsManager.handleScaleUpdateResult(scaleResult)
     bodyCompositionService.updateBodyComposition(BodyCompUpdateType.WEIGHT_UNIT, bodyComposition)
     AppLog.i(TAG, "Successfully updated adult unit type: ${newWeightUnit.value}")
+  }
+
+  /**
+   * Persists a My Kids (baby) unit change. The unit is kept device-local for
+   * display ([UserDataStore.setBabyWeightUnit]) AND synced to the account-level
+   * measurement system on the server via `PATCH /v3/account/measurement-units`
+   * (Me App 2.0 API spec §2.1, MOB-377). `measurementUnits` is the baby unit
+   * format — `imperialLbOz` / `imperialLbDecimal` / `metric` — so without this
+   * call the choice would never leave the device (lost on reinstall / account
+   * switch / other devices). Mirrors how signup sets it.
+   */
+  private suspend fun updateBabyUnit(
+    accountId: String,
+    newBabyUnit: WeightUnit,
+  ) {
+    // Sync to the server FIRST, then persist the device-local display unit only once the
+    // PATCH succeeds. updateMeasurementUnits throws when offline (requireNetworkAvailable)
+    // and on HTTP failure, so guarding the local write behind it keeps the two in lockstep:
+    // writing locally first left the device showing a unit the server never received, with
+    // no rollback in the failure path — a local/server divergence (PR #2109 review).
+    accountService.updateMeasurementUnits(MeasurementUnits.fromWeightUnit(newBabyUnit))
+    userDataStore.setBabyWeightUnit(accountId, newBabyUnit)
+    AppLog.i(TAG, "Persisted baby weight unit: ${newBabyUnit.value} (measurement-units API + local)")
   }
 
   // [label] is supplied per section: My Weight uses [WeightUnit.unit] (adult

@@ -30,7 +30,7 @@ final class MockDashboardFormatter: DashboardFormatterProtocol {
         return chartDateResult
     }
     func formatMetricInfoSingleDate(_ date: Date, period: TimePeriod) -> String { metricInfoSingleDateResult }
-    func formatMetricInfoDateLabel(
+    func formatMetricInfoDateLabel( // swiftlint:disable:this function_parameter_count
         entryDate: Date?,
         isFromHistory: Bool,
         period: TimePeriod,
@@ -111,6 +111,7 @@ final class MockDashboardCacheManager: DashboardCacheManagerProtocol {
         return visibleOperationsOverride ?? getVisibleOperations()
     }
 
+    // swiftlint:disable:next function_parameter_count
     func getChartSeriesData(isScrolling: Bool, isProcessingScrollEnd: Bool, period: TimePeriod, selectedMetric: String?, operationsCount: Int, yAxisDomain: ClosedRange<Double>?, getChartSeries: () -> [GraphSeries]) -> [GraphSeries] {
         getChartSeriesDataCalls += 1
         lastChartSeriesRequest = (

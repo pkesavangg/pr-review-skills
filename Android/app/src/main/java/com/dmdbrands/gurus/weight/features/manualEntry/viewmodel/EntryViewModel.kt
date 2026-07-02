@@ -20,16 +20,23 @@ import com.dmdbrands.gurus.weight.domain.model.common.ProductSelection
 import com.dmdbrands.gurus.weight.domain.model.storage.entry.BabyEntry
 import com.dmdbrands.gurus.weight.domain.model.storage.entry.BpmEntry
 import com.dmdbrands.gurus.weight.domain.services.IEntryService
+import com.dmdbrands.gurus.weight.features.common.helper.AccountHelper.isMetricUnit
 import com.dmdbrands.gurus.weight.features.common.helper.form.MultiFormGroup
+import com.dmdbrands.gurus.weight.domain.enums.ProductType
 import com.dmdbrands.gurus.weight.features.common.model.DialogModel
+import com.dmdbrands.gurus.weight.features.common.model.ReadingToast
 import com.dmdbrands.gurus.weight.features.common.model.Toast
 import com.dmdbrands.gurus.weight.features.common.service.BaseIntentViewModel
 import com.dmdbrands.gurus.weight.features.common.strings.AppPopupStrings
 import com.dmdbrands.gurus.weight.features.dashboard.string.DashboardString
+import com.dmdbrands.gurus.weight.features.manualEntry.helper.EntryHelper
 import com.dmdbrands.gurus.weight.features.manualEntry.helper.EntryHelper.toScaleEntry
 import com.dmdbrands.gurus.weight.features.manualEntry.strings.EntryScreenStrings
+import com.dmdbrands.gurus.weight.core.di.ApplicationScope
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.delay
+import java.util.Locale
 import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneId
@@ -56,6 +63,9 @@ constructor(
   private val appSyncService: IAppSyncService,
   private val deviceService: IDeviceService,
   private val analyticsService: IAnalyticsService,
+  // App-lifetime scope: the saved-to-log toast's VIEW is tapped AFTER this screen pops (so
+  // viewModelScope is already cancelled). Navigating from the app scope keeps it working.
+  @ApplicationScope private val appScope: CoroutineScope,
 ) : BaseIntentViewModel<EntryState, EntryIntent>(
   reducer = EntryReducer(),
 ) {
@@ -304,6 +314,53 @@ constructor(
     earlyExit()
   }
 
+  /**
+   * Baby manual-entry confirmation: show the rich "saved to your log" card (with VIEW) like the
+   * weight/BP flow when a weight was entered; fall back to the plain toast for a length-only entry.
+   */
+  private fun showBabySavedToast(babyEntry: BabyEntry?) {
+    val weightDecigrams = babyEntry?.babyWeightDecigrams
+    if (babyEntry != null && weightDecigrams != null) {
+      // Format with the account's real unit preference so the card matches History/dashboard
+      // (kg for metric users) instead of always showing lb/oz. (MOB-598)
+      val isMetric = accountService.activeAccount.value?.isMetricUnit() ?: false
+      showSavedToLogToast(
+        reading = ConversionTools.convertBabyWeightToDisplay(weightDecigrams, source = null, isMetric = isMetric),
+        type = ProductType.BABY,
+        entryTimestamp = babyEntry.entry.entryTimestamp,
+      )
+    } else {
+      dialogQueueService.showToast(
+        Toast.Simple(
+          title = EntryScreenStrings.EntryAddedTitle,
+          message = EntryScreenStrings.EntryAdded,
+        ),
+      )
+    }
+  }
+
+  private fun showSavedToLogToast(reading: String, type: ProductType, entryTimestamp: String) {
+    // VIEW opens this entry's History detail, whose query matches the bucketed key the History list
+    // passes (a "Mon YYYY" month label for weight/BP, a "yyyy-MM-dd" day key for baby) — not the raw
+    // entryTimestamp, which lands on an empty detail. See EntryHelper.historyDetailKey.
+    val detailKey = EntryHelper.historyDetailKey(entryTimestamp, type)
+    dialogQueueService.showToast(
+      Toast.Custom(
+        ReadingToast(
+          reading = reading,
+          type = type,
+          timestamp = "Just now",
+          savedToLog = true,
+          onView = {
+            appScope.launch {
+              navigationService.navigateTo(AppRoute.History.MonthDetails(detailKey, type))
+            }
+          },
+        ),
+      ),
+    )
+  }
+
   private fun saveEntry() {
     dialogQueueService.showLoader(
       message = DashboardString.Loader.save,
@@ -320,11 +377,9 @@ constructor(
         // Clear AppSync data after successful save
         appSyncService.setAppSyncDataForEditing(null)
 
-        // Brief settle delay so the just-saved entry is reflected on the
-        // dashboard before the success toast appears and we navigate back,
-        // avoiding the perceived "entry shows up a few seconds after the
-        // popup" lag (MOB-183). addEntry() already awaits the local save +
-        // server-sync attempt, so this only smooths the hand-off.
+        // Brief settle delay so the just-saved entry is reflected on the dashboard before the
+        // success card appears and we navigate back (MOB-183). addEntry() already awaits the
+        // local save + server-sync attempt, so this only smooths the hand-off.
         //
         // TODO(MOB-183 follow-up): this fixed delay is a short-term smoothing, not a real fix — it
         // will still lag on a slow device and over-hold the loader on a fast one. The systematic
@@ -334,11 +389,13 @@ constructor(
         // worth tracking together in a dedicated follow-up ticket.
         delay(ENTRY_SAVE_SETTLE_DELAY_MS)
 
-        dialogQueueService.showToast(
-          Toast.Simple(
-            title = EntryScreenStrings.EntryAddedTitle,
-            message = EntryScreenStrings.EntryAdded,
-          ),
+        val isMetric = _state.value.weightMode == WeightUnit.KG
+        val displayValue =
+          ConversionTools.convertStoredToDisplay(scaleEntry.scale.scaleEntry.weight, isMetric)
+        showSavedToLogToast(
+          reading = "${String.format(Locale.US, "%.1f", displayValue)} ${_state.value.weightMode.label}",
+          type = ProductType.MY_WEIGHT,
+          entryTimestamp = scaleEntry.entry.entryTimestamp,
         )
         deactivate()
         navigationService.navigateBack(AppRoute.Home)
@@ -390,11 +447,10 @@ constructor(
         )
         entryService.addEntry(entry = bpmEntry)
         analyticsService.logEvent(IAnalyticsService.Events.MANUAL_ENTRY_CREATED)
-        dialogQueueService.showToast(
-          Toast.Simple(
-            title = EntryScreenStrings.EntryAddedTitle,
-            message = EntryScreenStrings.EntryAdded,
-          ),
+        showSavedToLogToast(
+          reading = "$systolic/$diastolic",
+          type = ProductType.BLOOD_PRESSURE,
+          entryTimestamp = entryEntity.entryTimestamp,
         )
         // Reset form
         handleIntent(
@@ -456,16 +512,14 @@ constructor(
       }
       try {
         // addEntry persists locally (isSynced=false) and syncs to POST /v3/entries/
-        // (category=baby) — the same path manual BP uses.
-        buildBabyEntries(babyForm.forms.baby.controls, accountId, babyId)
-          .forEach { entryService.addEntry(it) }
+        // (category=baby) — the same path manual BP uses. One combined local row carries BOTH
+        // measures: the local UNIQUE(accountId, entryTimestamp) index allows only one row per
+        // timestamp, and the POST split into distinct §2.16 weight/length requests happens later
+        // in the mapper. Null when no measure was entered.
+        val babyEntry = buildBabyEntry(babyForm.forms.baby.controls, accountId, babyId)
+        babyEntry?.let { entryService.addEntry(it) }
         analyticsService.logEvent(IAnalyticsService.Events.MANUAL_ENTRY_CREATED)
-        dialogQueueService.showToast(
-          Toast.Simple(
-            title = EntryScreenStrings.EntryAddedTitle,
-            message = EntryScreenStrings.EntryAdded,
-          ),
-        )
+        showBabySavedToast(babyEntry)
         handleIntent(
           EntryIntent.UpdateActiveForm(
             ActiveEntryForm.Baby(form = MultiFormGroup.create(forms = BabyEntryForm.create())),
@@ -508,64 +562,45 @@ constructor(
    * Reads the baby form and builds one [BabyEntry] per provided measure. Weight and length
    * are distinct entryTypes (§2.16), so an entry with both yields two entries.
    */
-  private fun buildBabyEntries(
+  /**
+   * Builds the single combined baby [BabyEntry] for manual entry, carrying BOTH measures
+   * (weight + length) on one local row. The local UNIQUE(accountId, entryTimestamp) index
+   * allows only one row per timestamp; the POST split into distinct §2.16 weight/length
+   * requests happens later in the mapper. Returns null when neither measure was entered.
+   */
+  private fun buildBabyEntry(
     controls: BabyEntryFormControls,
     accountId: String,
     babyId: String,
-  ): List<BabyEntry> {
+  ): BabyEntry? {
     val timestamp = DateTimeConverter.timestampToIso(controls.dateTime.value.getTimestamp())
     val note = controls.notes.value.ifBlank { null }
     val lbs = controls.pounds.value.toIntOrNull() ?: 0
     val oz = controls.ounces.value.toDoubleOrNull() ?: 0.0
     val inches = controls.inches.value.toDoubleOrNull()
-    return buildList {
-      if (lbs > 0 || oz > 0) {
-        add(
-          buildBabyEntry(
-            accountId, babyId, timestamp, note, BabyEntryType.WEIGHT,
-            weightDecigrams = ConversionTools.convertLbOzToDecigrams(lbs, oz),
-          ),
-        )
-      }
-      if (inches != null && inches > 0) {
-        add(
-          buildBabyEntry(
-            accountId, babyId, timestamp, note, BabyEntryType.MEASURE_LENGTH,
-            lengthMm = ConversionTools.convertInchesToMm(inches),
-          ),
-        )
-      }
-    }
+    val weightDecigrams = if (lbs > 0 || oz > 0) ConversionTools.convertLbOzToDecigrams(lbs, oz) else null
+    val lengthMm = if (inches != null && inches > 0) ConversionTools.convertInchesToMm(inches) else null
+    if (weightDecigrams == null && lengthMm == null) return null
+    return BabyEntry(
+      entry = EntryEntity(
+        accountId = accountId,
+        entryTimestamp = timestamp,
+        operationType = "create",
+        deviceType = "manual",
+        deviceId = "",
+      ),
+      babyEntry = BabyEntryEntity(
+        id = 0L,
+        babyId = babyId,
+        babyWeightDecigrams = weightDecigrams,
+        babyLengthMillimeters = lengthMm,
+        entryNote = note,
+        // Primary type for the local row; POST splits per present measure regardless.
+        entryType = if (weightDecigrams != null) BabyEntryType.WEIGHT.value else BabyEntryType.MEASURE_LENGTH.value,
+        source = EntrySource.MANUAL.value,
+      ),
+    )
   }
-
-  /** Builds a single-measure baby [BabyEntry] (weight OR length per [type]) for manual entry. */
-  private fun buildBabyEntry(
-    accountId: String,
-    babyId: String,
-    timestamp: String,
-    note: String?,
-    type: BabyEntryType,
-    weightDecigrams: Int? = null,
-    lengthMm: Int? = null,
-  ): BabyEntry = BabyEntry(
-    entry = EntryEntity(
-      accountId = accountId,
-      entryTimestamp = timestamp,
-      operationType = "create",
-      deviceType = "manual",
-      deviceId = "",
-    ),
-    babyEntry = BabyEntryEntity(
-      id = 0L,
-      babyId = babyId,
-      babyWeightDecigrams = weightDecigrams,
-      babyLengthMillimeters = lengthMm,
-      entryNote = note,
-      // Primary type for the local row; POST splits per present measure regardless.
-      entryType = if (weightDecigrams != null) BabyEntryType.WEIGHT.value else BabyEntryType.MEASURE_LENGTH.value,
-      source = EntrySource.MANUAL.value,
-    ),
-  )
 
   /**
    * Loads AppSync data into the form for editing, following ProfileViewModel pattern.

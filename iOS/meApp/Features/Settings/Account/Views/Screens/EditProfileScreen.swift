@@ -25,6 +25,9 @@ struct EditProfileScreen: View {
 
     private let maxDate = DateTimeTools.minAllowedBirthdayDate()
 
+    private let capitalizedSexDisplay: (Sex) -> String = { $0.rawValue.capitalized }
+    private let identityDisplay: (String) -> String = { $0 }
+
     var body: some View {
         VStack(spacing: 0) {
             headerView()
@@ -35,7 +38,7 @@ struct EditProfileScreen: View {
             isPresented: $settingsStore.showGenderPicker,
             selectedValues: [settingsStore.editProfileForm.gender.value],
             options: [Sex.allCases],
-            displayValue: { $0.rawValue.capitalized },
+            displayValue: capitalizedSexDisplay,
             title: SettingsStrings.biologicalSex
         ) { vals in
             if let sex = vals.first {
@@ -46,7 +49,7 @@ struct EditProfileScreen: View {
             isPresented: $settingsStore.showHeightInchesPicker,
             selectedValues: settingsStore.selectedHeightInches,
             options: settingsStore.heightInchesOptions,
-            displayValue: { $0 },
+            displayValue: identityDisplay,
             pickerType: .heightInches,
             title: SettingsStrings.height
         ) { newValues in
@@ -56,7 +59,7 @@ struct EditProfileScreen: View {
             isPresented: $settingsStore.showHeightCmPicker,
             selectedValues: settingsStore.selectedHeightCm,
             options: settingsStore.heightCmOptions,
-            displayValue: { $0 },
+            displayValue: identityDisplay,
             pickerType: .heightCm,
             title: SettingsStrings.height
         ) { newValues in
