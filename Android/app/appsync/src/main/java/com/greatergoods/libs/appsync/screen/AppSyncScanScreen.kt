@@ -24,6 +24,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.Stable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -73,109 +74,177 @@ fun AppSyncScanScreen(
     showManualEntryButton: Boolean = true,
     onResult: (AppSyncResult) -> Unit,
 ) {
-    val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
+    val state = rememberAppSyncScanState(initialZoom = initialZoom, onResult = onResult)
 
-    // Camera permission state and launcher
-    var hasCameraPermission by remember {
-        mutableStateOf(
-            ContextCompat.checkSelfPermission(
-                context,
-                Manifest.permission.CAMERA,
-            ) == PackageManager.PERMISSION_GRANTED,
-        )
-    }
+    // Request camera permission if not already granted
     val cameraPermissionLauncher =
         rememberLauncherForActivityResult(
             contract = ActivityResultContracts.RequestPermission(),
-            onResult = { granted -> hasCameraPermission = granted },
+            onResult = { granted -> state.hasCameraPermission = granted },
         )
-
-    // Request camera permission if not already granted
     LaunchedEffect(Unit) {
-        if (!hasCameraPermission) {
+        if (!state.hasCameraPermission) {
             cameraPermissionLauncher.launch(Manifest.permission.CAMERA)
         }
     }
 
-    // CameraX state management
-    val cameraControlState = remember { mutableStateOf<CameraControl?>(null) }
-    val cameraInfoState = remember { mutableStateOf<CameraInfo?>(null) }
-    val cameraExecutor = remember { Executors.newSingleThreadExecutor() }
-
-    // Zoom state with animation support
-    var zoomLevel by remember {
-        mutableStateOf(
-            initialZoom.toFloat().coerceIn(AppSyncConstants.MIN_ZOOM, AppSyncConstants.MAX_ZOOM),
-        )
-    }
-    var zoomManager by remember { mutableStateOf<AppSyncZoomManager?>(null) }
-
-    // UI state management
-    var scanResult by remember { mutableStateOf<AppSyncResult?>(null) }
-    var resultHandled by remember { mutableStateOf(false) }
-    var cameraReady by remember { mutableStateOf(false) }
-    var cameraError by remember { mutableStateOf<String?>(null) }
-    var showResultTransition by remember { mutableStateOf(false) }
-    var showLowLightWarning by remember { mutableStateOf(false) }
-
     // Cleanup resources when scan completes or composable is disposed
-    DisposableEffect(resultHandled) {
+    DisposableEffect(state.resultHandled) {
         onDispose {
-            if (resultHandled) {
-                cameraExecutor.shutdown()
-                zoomManager?.stopAnimation()
+            if (state.resultHandled) {
+                state.cameraExecutor.shutdown()
+                state.zoomManager?.stopAnimation()
             }
-        }
-    }
-
-    // Manual entry handler - creates a manual entry result and delivers it
-    val handleManualEntry = {
-        if (!resultHandled) {
-            val result = AppSyncResultFactory.createManualEntryResult(zoomLevel.toInt())
-            scanResult = result
-            resultHandled = true
-            showResultTransition = true
-            onResult(result)
-        }
-    }
-
-    // Cancel handler - creates a cancel result and delivers it
-    val handleCancel = {
-        if (!resultHandled) {
-            val result = AppSyncResultFactory.createCancelResult(zoomLevel.toInt())
-            scanResult = result
-            resultHandled = true
-            showResultTransition = true
-            onResult(result)
         }
     }
 
     // Handle back button press
     BackHandler {
-        handleCancel()
+        state.handleCancel()
     }
 
-    // Initialize zoom manager when camera is ready
-    LaunchedEffect(cameraControlState.value, cameraInfoState.value, coroutineScope) {
-        if (cameraControlState.value != null && cameraInfoState.value != null) {
-            zoomManager =
-                AppSyncZoomManager(
-                    cameraControl = cameraControlState.value,
-                    cameraInfo = cameraInfoState.value,
-                    coroutineScope = coroutineScope,
-                )
-            // Set initial zoom without animation
-            zoomManager?.setZoom(zoomLevel, animate = false)
+    // Wire up zoom manager creation and zoom level synchronization effects
+    ZoomManagerEffects(
+        cameraControl = state.cameraControl,
+        cameraInfo = state.cameraInfo,
+        coroutineScope = coroutineScope,
+        zoomLevel = state.zoomLevel,
+        zoomManager = state.zoomManager,
+        onZoomManagerCreated = { state.zoomManager = it },
+    )
+
+    // Main UI layout
+    ScanScreenContent(
+        cameraError = state.cameraError,
+        scanResult = state.scanResult,
+        showResultTransition = state.showResultTransition,
+        hasCameraPermission = state.hasCameraPermission,
+        zoomLevel = state.zoomLevel,
+        cameraReady = state.cameraReady,
+        showLowLightWarning = state.showLowLightWarning,
+        cameraExecutor = state.cameraExecutor,
+        showManualEntryButton = showManualEntryButton,
+        handleManualEntry = state::handleManualEntry,
+        handleCancel = state::handleCancel,
+        onCameraReady = { cameraControl, cameraInfo ->
+            state.cameraControl = cameraControl
+            state.cameraInfo = cameraInfo
+            state.cameraReady = true
+        },
+        onScanResult = state::handleScanResult,
+        onCameraError = { errorMsg -> state.cameraError = errorMsg },
+        onLowLightDetected = { isLowLight -> state.showLowLightWarning = isLowLight },
+        onZoomIn = state::zoomIn,
+        onZoomOut = state::zoomOut,
+    )
+}
+
+/**
+ * Holder for the mutable UI state of [AppSyncScanScreen].
+ *
+ * Extracted from the screen composable so the parent stays small. All fields are
+ * Compose snapshot state, so reads inside composition are observed exactly as the
+ * original inline `var ... by remember { mutableStateOf(...) }` declarations were;
+ * the result/zoom handlers reproduce the original logic verbatim.
+ */
+@Stable
+private class AppSyncScanState(
+    initialZoom: Int,
+    val cameraExecutor: java.util.concurrent.ExecutorService,
+    hasCameraPermission: Boolean,
+    private val onResult: (AppSyncResult) -> Unit,
+) {
+    var hasCameraPermission by mutableStateOf(hasCameraPermission)
+    var cameraControl by mutableStateOf<CameraControl?>(null)
+    var cameraInfo by mutableStateOf<CameraInfo?>(null)
+    var zoomManager by mutableStateOf<AppSyncZoomManager?>(null)
+    var zoomLevel by mutableStateOf(
+        initialZoom.toFloat().coerceIn(AppSyncConstants.MIN_ZOOM, AppSyncConstants.MAX_ZOOM),
+    )
+    var scanResult by mutableStateOf<AppSyncResult?>(null)
+    var resultHandled by mutableStateOf(false)
+    var cameraReady by mutableStateOf(false)
+    var cameraError by mutableStateOf<String?>(null)
+    var showResultTransition by mutableStateOf(false)
+    var showLowLightWarning by mutableStateOf(false)
+
+    private fun deliver(result: AppSyncResult) {
+        if (!resultHandled) {
+            scanResult = result
+            resultHandled = true
+            showResultTransition = true
+            onResult(result)
         }
     }
 
-    // Update camera zoom when zoom level changes
-    LaunchedEffect(zoomLevel) {
-        zoomManager?.setZoom(zoomLevel, animate = true)
+    fun handleManualEntry() = deliver(AppSyncResultFactory.createManualEntryResult(zoomLevel.toInt()))
+
+    fun handleCancel() = deliver(AppSyncResultFactory.createCancelResult(zoomLevel.toInt()))
+
+    fun handleScanResult(result: AppSyncResult) = deliver(result)
+
+    fun zoomIn() {
+        if (zoomLevel < AppSyncConstants.MAX_ZOOM) {
+            zoomLevel += AppSyncConstants.ZOOM_STEP
+        }
     }
 
-    // Main UI layout
+    fun zoomOut() {
+        if (zoomLevel > AppSyncConstants.MIN_ZOOM) {
+            zoomLevel -= AppSyncConstants.ZOOM_STEP
+        }
+    }
+}
+
+/**
+ * Creates and remembers the [AppSyncScanState] for [AppSyncScanScreen].
+ */
+@Composable
+private fun rememberAppSyncScanState(
+    initialZoom: Int,
+    onResult: (AppSyncResult) -> Unit,
+): AppSyncScanState {
+    val context = LocalContext.current
+    val cameraExecutor = remember { Executors.newSingleThreadExecutor() }
+    return remember {
+        AppSyncScanState(
+            initialZoom = initialZoom,
+            cameraExecutor = cameraExecutor,
+            hasCameraPermission = ContextCompat.checkSelfPermission(
+                context,
+                Manifest.permission.CAMERA,
+            ) == PackageManager.PERMISSION_GRANTED,
+            onResult = onResult,
+        )
+    }
+}
+
+/**
+ * Top-level UI dispatcher for [AppSyncScanScreen]. Selects between the error,
+ * completion, scanning, and permission-required states. Extracted to keep the
+ * parent composable concise; rendered output and branching are unchanged.
+ */
+@Composable
+private fun ScanScreenContent(
+    cameraError: String?,
+    scanResult: AppSyncResult?,
+    showResultTransition: Boolean,
+    hasCameraPermission: Boolean,
+    zoomLevel: Float,
+    cameraReady: Boolean,
+    showLowLightWarning: Boolean,
+    cameraExecutor: java.util.concurrent.ExecutorService,
+    showManualEntryButton: Boolean,
+    handleManualEntry: () -> Unit,
+    handleCancel: () -> Unit,
+    onCameraReady: (CameraControl?, CameraInfo?) -> Unit,
+    onScanResult: (AppSyncResult) -> Unit,
+    onCameraError: (String) -> Unit,
+    onLowLightDetected: (Boolean) -> Unit,
+    onZoomIn: () -> Unit,
+    onZoomOut: () -> Unit,
+) {
     Box(
         modifier = Modifier
             .fillMaxSize()
@@ -184,88 +253,161 @@ fun AppSyncScanScreen(
         when {
             // Show error message if camera initialization failed
             cameraError != null -> {
-                val error = cameraError
-                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    Text(text = error ?: "", color = MaterialTheme.colorScheme.error)
-                }
+                CameraErrorContent(error = cameraError)
             }
 
             // Show completion transition when scan finishes
             scanResult != null && showResultTransition -> {
-                AnimatedVisibility(
-                    visible = true,
-                    enter = fadeIn(),
-                    exit = fadeOut(),
-                    modifier = Modifier.fillMaxSize(),
-                ) {
-                    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                        Text(AppSyncStrings.ScanComplete, style = MaterialTheme.typography.headlineMedium)
-                    }
-                }
+                ScanCompleteContent()
             }
 
             // Main scanning interface when camera permission is granted
             hasCameraPermission -> {
-                // Camera preview component with callbacks
-                CameraPreview(
-                    onCameraReady = { camera, cameraControl, cameraInfo ->
-                        cameraControlState.value = cameraControl
-                        cameraInfoState.value = cameraInfo
-                        cameraReady = true
-                    },
-                    cameraExecutor = cameraExecutor,
-                    onScanResult = { result ->
-                        if (!resultHandled) {
-                            scanResult = result
-                            resultHandled = true
-                            showResultTransition = true
-                            onResult(result)
-                        }
-                    },
-                    currentZoom = { zoomLevel.toInt() },
-                    onError = { errorMsg ->
-                        cameraError = errorMsg
-                    },
-                    onLowLightDetected = { isLowLight ->
-                        showLowLightWarning = isLowLight
-                    },
-                )
-
-                // Overlay controls for user interaction
-                OverlayControls(
+                CameraScanContent(
                     zoomLevel = zoomLevel,
+                    cameraReady = cameraReady,
+                    hasCameraPermission = hasCameraPermission,
                     showLowLightWarning = showLowLightWarning,
-                    onZoomIn = {
-                        if (zoomLevel < AppSyncConstants.MAX_ZOOM) {
-                            zoomLevel += AppSyncConstants.ZOOM_STEP
-                        }
-                    },
-                    onZoomOut = {
-                        if (zoomLevel > AppSyncConstants.MIN_ZOOM) {
-                            zoomLevel -= AppSyncConstants.ZOOM_STEP
-                        }
-                    },
-                    onManualEntry = if (showManualEntryButton) handleManualEntry else null,
-                    onClose = handleCancel,
+                    cameraExecutor = cameraExecutor,
+                    showManualEntryButton = showManualEntryButton,
+                    handleManualEntry = handleManualEntry,
+                    handleCancel = handleCancel,
+                    onCameraReady = onCameraReady,
+                    onScanResult = onScanResult,
+                    onCameraError = onCameraError,
+                    onLowLightDetected = onLowLightDetected,
+                    onZoomIn = onZoomIn,
+                    onZoomOut = onZoomOut,
                 )
-
-                // Loading indicator while camera initializes
-                if (!cameraReady) {
-                    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                        Column {
-                            CircularProgressIndicator(
-                                modifier = Modifier.semantics { contentDescription = AppSyncStrings.LoadingCamera },
-                            )
-                            Text("cameraReady $cameraReady")
-                            Text("hasCameraPermission $hasCameraPermission")
-                        }
-                    }
-                }
             }
 
             // Show permission request message when camera permission is not granted
             else -> {
                 Text(AppSyncStrings.CameraPermissionRequired)
+            }
+        }
+    }
+}
+
+/**
+ * Error state shown when camera initialization fails.
+ * Extracted from [AppSyncScanScreen]; rendered output is unchanged.
+ */
+@Composable
+private fun CameraErrorContent(error: String?) {
+    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+        Text(text = error ?: "", color = MaterialTheme.colorScheme.error)
+    }
+}
+
+/**
+ * Completion transition shown when the scan finishes.
+ * Extracted from [AppSyncScanScreen]; rendered output is unchanged.
+ */
+@Composable
+private fun ScanCompleteContent() {
+    AnimatedVisibility(
+        visible = true,
+        enter = fadeIn(),
+        exit = fadeOut(),
+        modifier = Modifier.fillMaxSize(),
+    ) {
+        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+            Text(AppSyncStrings.ScanComplete, style = MaterialTheme.typography.headlineMedium)
+        }
+    }
+}
+
+/**
+ * Creates the [AppSyncZoomManager] once the camera is ready and keeps the camera
+ * zoom synchronized with [zoomLevel]. Extracted from [AppSyncScanScreen]; the
+ * effect keys and behavior are unchanged.
+ */
+@Composable
+private fun ZoomManagerEffects(
+    cameraControl: CameraControl?,
+    cameraInfo: CameraInfo?,
+    coroutineScope: kotlinx.coroutines.CoroutineScope,
+    zoomLevel: Float,
+    zoomManager: AppSyncZoomManager?,
+    onZoomManagerCreated: (AppSyncZoomManager) -> Unit,
+) {
+    // Initialize zoom manager when camera is ready
+    LaunchedEffect(cameraControl, cameraInfo, coroutineScope) {
+        if (cameraControl != null && cameraInfo != null) {
+            val manager =
+                AppSyncZoomManager(
+                    cameraControl = cameraControl,
+                    cameraInfo = cameraInfo,
+                    coroutineScope = coroutineScope,
+                )
+            onZoomManagerCreated(manager)
+            // Set initial zoom without animation
+            manager.setZoom(zoomLevel, animate = false)
+        }
+    }
+
+    // Update camera zoom when zoom level changes
+    LaunchedEffect(zoomLevel) {
+        zoomManager?.setZoom(zoomLevel, animate = true)
+    }
+}
+
+/**
+ * Camera scanning interface shown when camera permission has been granted.
+ *
+ * Renders the camera preview, overlay controls, and the loading indicator while
+ * the camera initializes. Extracted from [AppSyncScanScreen] to keep the parent
+ * composable concise; behavior and rendered UI are unchanged.
+ */
+@Composable
+private fun CameraScanContent(
+    zoomLevel: Float,
+    cameraReady: Boolean,
+    hasCameraPermission: Boolean,
+    showLowLightWarning: Boolean,
+    cameraExecutor: java.util.concurrent.ExecutorService,
+    showManualEntryButton: Boolean,
+    handleManualEntry: () -> Unit,
+    handleCancel: () -> Unit,
+    onCameraReady: (CameraControl?, CameraInfo?) -> Unit,
+    onScanResult: (AppSyncResult) -> Unit,
+    onCameraError: (String) -> Unit,
+    onLowLightDetected: (Boolean) -> Unit,
+    onZoomIn: () -> Unit,
+    onZoomOut: () -> Unit,
+) {
+    // Camera preview component with callbacks
+    CameraPreview(
+        onCameraReady = { _, cameraControl, cameraInfo ->
+            onCameraReady(cameraControl, cameraInfo)
+        },
+        cameraExecutor = cameraExecutor,
+        onScanResult = onScanResult,
+        currentZoom = { zoomLevel.toInt() },
+        onError = onCameraError,
+        onLowLightDetected = onLowLightDetected,
+    )
+
+    // Overlay controls for user interaction
+    OverlayControls(
+        zoomLevel = zoomLevel,
+        showLowLightWarning = showLowLightWarning,
+        onZoomIn = onZoomIn,
+        onZoomOut = onZoomOut,
+        onManualEntry = if (showManualEntryButton) handleManualEntry else null,
+        onClose = handleCancel,
+    )
+
+    // Loading indicator while camera initializes
+    if (!cameraReady) {
+        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+            Column {
+                CircularProgressIndicator(
+                    modifier = Modifier.semantics { contentDescription = AppSyncStrings.LoadingCamera },
+                )
+                Text("cameraReady $cameraReady")
+                Text("hasCameraPermission $hasCameraPermission")
             }
         }
     }

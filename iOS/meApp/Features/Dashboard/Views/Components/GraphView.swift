@@ -27,7 +27,11 @@ struct GraphView: View {
 
     /// Latest entry date in the active period — used to drive first-appear / initial-load auto-select.
     private var latestEntryDate: Date? {
-        dashboardStore.continuousOperations.max(by: { $0.date < $1.date })?.date
+        // A baby with no real readings would otherwise auto-select a phantom point from the
+        // dummy summaries in `continuousOperations`, flipping the header to "<period> average".
+        // Treat it as having no data so the empty state stays clean.
+        if dashboardStore.isBabySelection && !dashboardStore.hasBabyEntries { return nil }
+        return dashboardStore.continuousOperations.max { $0.date < $1.date }?.date
     }
 
     // Whether the selection callout is currently visible for the active period
@@ -164,6 +168,20 @@ struct GraphView: View {
             didInitialSelect = true
             dashboardStore.chartManager.selectLatestEntryIfNeeded()
         }
+        // Cold-start safety net: the one-shot 100ms auto-select above can fire before the
+        // section VM / chart data / scroll-to-latest have settled, so on first open the chart
+        // can land on the wrong week with no crosshair and the date callout on the wrong entry
+        // (release reset to the latest reliably via updateSelectedPeriod). When the graph
+        // finishes loading (isGraphReady true) and nothing landed yet, re-run the same
+        // reset-to-latest path a tab switch uses — it scrolls to the latest window AND
+        // auto-selects the latest entry. hasLandedInitialSelection keeps this to cold start so
+        // it never overrides a user's manual scroll/selection.
+        .onChange(of: dashboardStore.state.graph.isGraphReady) { wasReady, isReady in
+            guard !wasReady, isReady else { return }
+            guard latestEntryDate != nil, !dashboardStore.state.ui.hasLandedInitialSelection else { return }
+            didInitialSelect = true
+            dashboardStore.chartManager.updateSelectedPeriod(dashboardStore.state.graph.selectedPeriod)
+        }
     }
 
     // MARK: - First-Appear Auto Selection
@@ -191,29 +209,36 @@ struct GraphView: View {
 
     // MARK: - Chart View
 
+    @ViewBuilder
     private var chartView: some View {
-        HStack(spacing: 0) {
-            switch dashboardStore.state.graph.selectedPeriod {
-            case .week:
-                WeekGraphView(
-                    viewModel: weekSectionViewModel,
-                    dashboardStore: dashboardStore
-                )
-            case .month:
-                MonthGraphView(
-                    viewModel: monthSectionViewModel,
-                    dashboardStore: dashboardStore
-                )
-            case .year:
-                YearGraphView(
-                    viewModel: yearSectionViewModel,
-                    dashboardStore: dashboardStore
-                )
-            case .total:
-                TotalGraphView(
-                    viewModel: totalSectionViewModel,
-                    dashboardStore: dashboardStore
-                )
+        if dashboardStore.isBabySelection && !dashboardStore.hasBabyEntries {
+            // No real baby readings yet — show the empty grid instead of plotting the
+            // dummy summaries that `continuousOperations` falls back to (matches design mock).
+            BabyEmptyGraphView()
+        } else {
+            HStack(spacing: 0) {
+                switch dashboardStore.state.graph.selectedPeriod {
+                case .week:
+                    WeekGraphView(
+                        viewModel: weekSectionViewModel,
+                        dashboardStore: dashboardStore
+                    )
+                case .month:
+                    MonthGraphView(
+                        viewModel: monthSectionViewModel,
+                        dashboardStore: dashboardStore
+                    )
+                case .year:
+                    YearGraphView(
+                        viewModel: yearSectionViewModel,
+                        dashboardStore: dashboardStore
+                    )
+                case .total:
+                    TotalGraphView(
+                        viewModel: totalSectionViewModel,
+                        dashboardStore: dashboardStore
+                    )
+                }
             }
         }
     }

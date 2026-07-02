@@ -1,19 +1,22 @@
 import Foundation
-import Testing
 @testable import meApp
+import Testing
 
 @Suite(.serialized)
 @MainActor
 struct DashboardGoalManagerTests {
-    private typealias SUT = (
-        sut: DashboardGoalManager,
-        accountService: AccountService,
-        entryRepo: MockEntryRepository
-    )
+    private struct DashboardGoalManagerTestsSUT {
+        let sut: DashboardGoalManager
+        let accountService: AccountService
+        let entryRepo: MockEntryRepository
+    }
 
     @Test("loadGoalData: sets target, current delta, and progress from the active account and latest entry")
     func loadGoalDataSuccess() async throws {
-        let (sut, accountService, entryRepo) = makeSUT(goalWeight: 2000)
+        let sutBundle = makeSUT(goalWeight: 2000)
+        let sut = sutBundle.sut
+        let accountService = sutBundle.accountService
+        let entryRepo = sutBundle.entryRepo
         accountService.activeAccount = DashboardStoreTestSupport.makeActiveAccount(goalWeight: 2000)
         entryRepo.entries = [
             EntryTestFixtures.makeEntry(timestamp: "2026-03-09T08:00:00Z", weight: 1900)
@@ -30,7 +33,9 @@ struct DashboardGoalManagerTests {
 
     @Test("loadGoalData: no goal weight keeps goal hidden")
     func loadGoalDataWithoutGoalKeepsHiddenState() async throws {
-        let (sut, accountService, _) = makeSUT(goalWeight: nil)
+        let sutBundle = makeSUT(goalWeight: nil)
+        let sut = sutBundle.sut
+        let accountService = sutBundle.accountService
         accountService.activeAccount = DashboardStoreTestSupport.makeActiveAccount(goalWeight: nil)
 
         try await sut.loadGoalData()
@@ -41,7 +46,9 @@ struct DashboardGoalManagerTests {
 
     @Test("loadGoalData: without an active account throws noActiveAccount")
     func loadGoalDataWithoutActiveAccountThrows() async {
-        let (sut, accountService, _) = makeSUT(goalWeight: 2000)
+        let sutBundle = makeSUT(goalWeight: 2000)
+        let sut = sutBundle.sut
+        let accountService = sutBundle.accountService
         accountService.activeAccount = nil
 
         do {
@@ -59,7 +66,10 @@ struct DashboardGoalManagerTests {
 
     @Test("loadGoalData: latest entry failure does not prevent goal state refresh")
     func loadGoalDataToleratesLatestEntryFailure() async throws {
-        let (sut, accountService, entryRepo) = makeSUT(goalWeight: 2000)
+        let sutBundle = makeSUT(goalWeight: 2000)
+        let sut = sutBundle.sut
+        let accountService = sutBundle.accountService
+        let entryRepo = sutBundle.entryRepo
         accountService.activeAccount = DashboardStoreTestSupport.makeActiveAccount(goalWeight: 2000)
         entryRepo.fetchLatestEntryError = DashboardTestError.repoFailure
 
@@ -73,7 +83,9 @@ struct DashboardGoalManagerTests {
 
     @Test("loadGoalData: missing goal settings returns without mutating goal state")
     func loadGoalDataWithoutGoalSettingsReturns() async throws {
-        let (sut, accountService, _) = makeSUT(goalWeight: 2000)
+        let sutBundle = makeSUT(goalWeight: 2000)
+        let sut = sutBundle.sut
+        let accountService = sutBundle.accountService
         accountService.activeAccount = DashboardStoreTestSupport.makeActiveAccount(
             goalType: nil,
             goalWeight: nil,
@@ -89,7 +101,9 @@ struct DashboardGoalManagerTests {
 
     @Test("updateGoalProgress: recomputes target versus current progress")
     func updateGoalProgressRecomputesState() async throws {
-        let (sut, accountService, _) = makeSUT(goalWeight: 2000)
+        let sutBundle = makeSUT(goalWeight: 2000)
+        let sut = sutBundle.sut
+        let accountService = sutBundle.accountService
         accountService.activeAccount = DashboardStoreTestSupport.makeActiveAccount(goalWeight: 2000)
 
         try await sut.updateGoalProgress(currentWeight: 1950)
@@ -102,7 +116,9 @@ struct DashboardGoalManagerTests {
 
     @Test("getGoalWeightForDisplay: uses live account fallback before state refresh and supports weightless mode")
     func getGoalWeightForDisplayUsesFallbackAndWeightlessMode() {
-        let (sut, accountService, _) = makeSUT(goalWeight: 2000)
+        let sutBundle = makeSUT(goalWeight: 2000)
+        let sut = sutBundle.sut
+        let accountService = sutBundle.accountService
         accountService.activeAccount = DashboardStoreTestSupport.makeActiveAccount(goalWeight: 2000)
 
         #expect(sut.getGoalWeightForDisplay(isWeightlessMode: false, anchorWeight: nil) == 200.0)
@@ -111,7 +127,10 @@ struct DashboardGoalManagerTests {
 
     @Test("refreshGoalDataForUnitChange: reloads the goal state using the current unit")
     func refreshGoalDataForUnitChangeUsesCurrentUnit() async throws {
-        let (sut, accountService, entryRepo) = makeSUT(goalWeight: 2000, weightUnit: .kg)
+        let sutBundle = makeSUT(goalWeight: 2000, weightUnit: .kg)
+        let sut = sutBundle.sut
+        let accountService = sutBundle.accountService
+        let entryRepo = sutBundle.entryRepo
         accountService.activeAccount = DashboardStoreTestSupport.makeActiveAccount(
             weightUnit: .kg,
             goalWeight: 2000
@@ -130,7 +149,9 @@ struct DashboardGoalManagerTests {
 
     @Test("updateGoalProgress: missing goal settings returns without mutating state")
     func updateGoalProgressWithoutGoalSettingsReturns() async throws {
-        let (sut, accountService, _) = makeSUT(goalWeight: 2000)
+        let sutBundle = makeSUT(goalWeight: 2000)
+        let sut = sutBundle.sut
+        let accountService = sutBundle.accountService
         accountService.activeAccount = DashboardStoreTestSupport.makeActiveAccount(
             goalType: nil,
             goalWeight: nil,
@@ -145,7 +166,7 @@ struct DashboardGoalManagerTests {
 
     @Test("resetGoalState and goal state mutators: update goal type and unit predictably")
     func goalStateMutators() {
-        let (sut, _, _) = makeSUT(goalWeight: 2000)
+        let sut = makeSUT(goalWeight: 2000).sut
 
         sut.updateGoalType(.lose)
         sut.updateGoalUnit(.kg)
@@ -162,7 +183,10 @@ struct DashboardGoalManagerTests {
 
     @Test("calculateWeightlessGoal: offsets start, target, delta, and progress by the anchor")
     func calculateWeightlessGoalUsesAnchor() async throws {
-        let (sut, accountService, entryRepo) = makeSUT(goalWeight: 2000)
+        let sutBundle = makeSUT(goalWeight: 2000)
+        let sut = sutBundle.sut
+        let accountService = sutBundle.accountService
+        let entryRepo = sutBundle.entryRepo
         accountService.activeAccount = DashboardStoreTestSupport.makeActiveAccount(goalWeight: 2000)
         entryRepo.entries = [EntryTestFixtures.makeEntry(timestamp: "2026-03-09T08:00:00Z", weight: 1900)]
 
@@ -176,7 +200,9 @@ struct DashboardGoalManagerTests {
 
     @Test("calculateWeightlessGoal: missing goal settings returns without mutating state")
     func calculateWeightlessGoalWithoutGoalSettingsReturns() async throws {
-        let (sut, accountService, _) = makeSUT(goalWeight: 2000)
+        let sutBundle = makeSUT(goalWeight: 2000)
+        let sut = sutBundle.sut
+        let accountService = sutBundle.accountService
         accountService.activeAccount = DashboardStoreTestSupport.makeActiveAccount(
             goalType: nil,
             goalWeight: nil,
@@ -191,7 +217,9 @@ struct DashboardGoalManagerTests {
 
     @Test("validateGoalSettings: succeeds for a valid gain goal")
     func validateGoalSettingsSuccess() throws {
-        let (sut, accountService, _) = makeSUT(goalWeight: 2000)
+        let sutBundle = makeSUT(goalWeight: 2000)
+        let sut = sutBundle.sut
+        let accountService = sutBundle.accountService
         accountService.activeAccount = DashboardStoreTestSupport.makeActiveAccount(goalWeight: 2000)
 
         try sut.validateGoalSettings()
@@ -199,7 +227,9 @@ struct DashboardGoalManagerTests {
 
     @Test("validateGoalSettings: rejects missing goal settings and invalid gain targets")
     func validateGoalSettingsFailures() {
-        let (sut, accountService, _) = makeSUT(goalWeight: 1700)
+        let sutBundle = makeSUT(goalWeight: 1700)
+        let sut = sutBundle.sut
+        let accountService = sutBundle.accountService
 
         accountService.activeAccount = DashboardStoreTestSupport.makeActiveAccount(goalWeight: 1700)
         do {
@@ -221,7 +251,9 @@ struct DashboardGoalManagerTests {
 
     @Test("validateGoalSettings: without an active account throws noActiveAccount")
     func validateGoalSettingsWithoutActiveAccountThrows() {
-        let (sut, accountService, _) = makeSUT(goalWeight: 2000)
+        let sutBundle = makeSUT(goalWeight: 2000)
+        let sut = sutBundle.sut
+        let accountService = sutBundle.accountService
         accountService.activeAccount = nil
 
         do {
@@ -239,7 +271,7 @@ struct DashboardGoalManagerTests {
 
     @Test("calculateGoalAnalytics: returns neutral analytics with formatted progress percentage")
     func calculateGoalAnalyticsReturnsProgress() {
-        let (sut, _, _) = makeSUT(goalWeight: 2000)
+        let sut = makeSUT(goalWeight: 2000).sut
         sut.state.goalProgress = 0.75
 
         let analytics = sut.calculateGoalAnalytics()
@@ -252,7 +284,9 @@ struct DashboardGoalManagerTests {
 
     @Test("weight formatting helpers: convert and format weights for normal and weightless display")
     func weightFormattingHelpers() {
-        let (sut, accountService, _) = makeSUT(goalWeight: 2000)
+        let sutBundle = makeSUT(goalWeight: 2000)
+        let sut = sutBundle.sut
+        let accountService = sutBundle.accountService
         accountService.activeAccount = DashboardStoreTestSupport.makeActiveAccount(goalWeight: 2000)
 
         #expect(sut.convertWeightToDisplay(1800) == 180.0)
@@ -262,7 +296,9 @@ struct DashboardGoalManagerTests {
 
     @Test("goal display helpers: expose unit text and period label")
     func goalDisplayHelpers() {
-        let (sut, accountService, _) = makeSUT(goalWeight: 2000, weightUnit: .kg)
+        let sutBundle = makeSUT(goalWeight: 2000, weightUnit: .kg)
+        let sut = sutBundle.sut
+        let accountService = sutBundle.accountService
         accountService.activeAccount = DashboardStoreTestSupport.makeActiveAccount(
             weightUnit: .kg,
             goalWeight: 2000
@@ -274,7 +310,7 @@ struct DashboardGoalManagerTests {
 
     @Test("hasEntriesButNoneInCurrentPeriod: returns true only when historical entries exist but the current period is empty")
     func hasEntriesButNoneInCurrentPeriod() {
-        let (sut, _, _) = makeSUT(goalWeight: 2000)
+        let sut = makeSUT(goalWeight: 2000).sut
 
         #expect(sut.hasEntriesButNoneInCurrentPeriod(
             continuousOperations: [DashboardTestFixtures.makeSummary()],
@@ -288,7 +324,7 @@ struct DashboardGoalManagerTests {
 
     @Test("updateVisibleDataAfterScroll: triggers UI update and logs the visible average")
     func updateVisibleDataAfterScrollLogsAverage() {
-        let (sut, _, _) = makeSUT(goalWeight: 2000)
+        let sut = makeSUT(goalWeight: 2000).sut
         var triggerCalls = 0
         var loggedAverage: Double?
 
@@ -311,7 +347,7 @@ struct DashboardGoalManagerTests {
     private func makeSUT(
         goalWeight: Double?,
         weightUnit: WeightUnit = .lb
-    ) -> SUT {
+    ) -> DashboardGoalManagerTestsSUT {
         TestDependencyContainer.reset()
 
         let accountService = AccountService(
@@ -340,6 +376,6 @@ struct DashboardGoalManagerTests {
         )
 
         let sut = DashboardGoalManager()
-        return (sut, accountService, entryRepo)
+        return DashboardGoalManagerTestsSUT(sut: sut, accountService: accountService, entryRepo: entryRepo)
     }
 }

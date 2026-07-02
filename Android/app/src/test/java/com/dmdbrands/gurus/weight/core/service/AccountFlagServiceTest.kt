@@ -44,7 +44,7 @@ class AccountFlagServiceTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `getAccountFlag returns null when repository returns empty list`() = runTest {
+    fun `getAccountFlag returns null when repository returns empty list`() = runTest(mainDispatcherRule.scheduler) {
         coEvery { accountFlagRepository.getAccountFlags() } returns emptyList()
 
         val result = service.getAccountFlag()
@@ -53,7 +53,7 @@ class AccountFlagServiceTest {
     }
 
     @Test
-    fun `getAccountFlag returns login flag when both login and entry flags exist`() = runTest {
+    fun `getAccountFlag returns login flag when both login and entry flags exist`() = runTest(mainDispatcherRule.scheduler) {
         coEvery { accountFlagRepository.getAccountFlags() } returns listOf(entryFlag, loginFlag)
 
         val result = service.getAccountFlag()
@@ -62,7 +62,7 @@ class AccountFlagServiceTest {
     }
 
     @Test
-    fun `getAccountFlag returns first flag when no login flag exists`() = runTest {
+    fun `getAccountFlag returns first flag when no login flag exists`() = runTest(mainDispatcherRule.scheduler) {
         coEvery { accountFlagRepository.getAccountFlags() } returns listOf(entryFlag)
 
         val result = service.getAccountFlag()
@@ -71,7 +71,7 @@ class AccountFlagServiceTest {
     }
 
     @Test
-    fun `getAccountFlag returns first flag in list when multiple non-login flags exist`() = runTest {
+    fun `getAccountFlag returns first flag in list when multiple non-login flags exist`() = runTest(mainDispatcherRule.scheduler) {
         val first = AccountFlag(id = "f1", type = "type-a", trigger = "entry")
         val second = AccountFlag(id = "f2", type = "type-b", trigger = "entry")
         coEvery { accountFlagRepository.getAccountFlags() } returns listOf(first, second)
@@ -82,7 +82,7 @@ class AccountFlagServiceTest {
     }
 
     @Test
-    fun `getAccountFlag returns null and clears cache on repository exception`() = runTest {
+    fun `getAccountFlag returns null and clears cache on repository exception`() = runTest(mainDispatcherRule.scheduler) {
         // First populate the cache
         coEvery { accountFlagRepository.getAccountFlags() } returns listOf(loginFlag)
         service.getAccountFlag()
@@ -96,7 +96,7 @@ class AccountFlagServiceTest {
     }
 
     @Test
-    fun `getAccountFlag caches flag so checkAccountFlag can use it`() = runTest {
+    fun `getAccountFlag caches flag so checkAccountFlag can use it`() = runTest(mainDispatcherRule.scheduler) {
         coEvery { accountFlagRepository.getAccountFlags() } returns listOf(loginFlag)
         coEvery { accountFlagRepository.deleteAccountFlag(loginFlag.id) } returns true
 
@@ -111,14 +111,14 @@ class AccountFlagServiceTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `checkAccountFlag returns false when no flag has been loaded`() = runTest {
+    fun `checkAccountFlag returns false when no flag has been loaded`() = runTest(mainDispatcherRule.scheduler) {
         val result = service.checkAccountFlag("login")
 
         assertThat(result).isFalse()
     }
 
     @Test
-    fun `checkAccountFlag returns false on trigger mismatch`() = runTest {
+    fun `checkAccountFlag returns false on trigger mismatch`() = runTest(mainDispatcherRule.scheduler) {
         coEvery { accountFlagRepository.getAccountFlags() } returns listOf(loginFlag)
         service.getAccountFlag()
 
@@ -128,7 +128,7 @@ class AccountFlagServiceTest {
     }
 
     @Test
-    fun `checkAccountFlag for app-rate-ask deletes flag and returns true when deletion succeeds`() = runTest {
+    fun `checkAccountFlag for app-rate-ask deletes flag and returns true when deletion succeeds`() = runTest(mainDispatcherRule.scheduler) {
         coEvery { accountFlagRepository.getAccountFlags() } returns listOf(loginFlag)
         coEvery { accountFlagRepository.deleteAccountFlag(loginFlag.id) } returns true
         service.getAccountFlag()
@@ -140,7 +140,7 @@ class AccountFlagServiceTest {
     }
 
     @Test
-    fun `checkAccountFlag for app-rate-ask returns false when deletion fails`() = runTest {
+    fun `checkAccountFlag for app-rate-ask returns false when deletion fails`() = runTest(mainDispatcherRule.scheduler) {
         coEvery { accountFlagRepository.getAccountFlags() } returns listOf(loginFlag)
         coEvery { accountFlagRepository.deleteAccountFlag(loginFlag.id) } returns false
         service.getAccountFlag()
@@ -151,7 +151,7 @@ class AccountFlagServiceTest {
     }
 
     @Test
-    fun `checkAccountFlag returns false for unknown flag type`() = runTest {
+    fun `checkAccountFlag returns false for unknown flag type`() = runTest(mainDispatcherRule.scheduler) {
         coEvery { accountFlagRepository.getAccountFlags() } returns listOf(unknownFlag)
         service.getAccountFlag()
 
@@ -161,7 +161,7 @@ class AccountFlagServiceTest {
     }
 
     @Test
-    fun `checkAccountFlag returns false when flag type has extra words but first word is unknown`() = runTest {
+    fun `checkAccountFlag returns false when flag type has extra words but first word is unknown`() = runTest(mainDispatcherRule.scheduler) {
         val complexUnknown = AccountFlag(id = "f4", type = "unknown-flag-type login", trigger = "login")
         coEvery { accountFlagRepository.getAccountFlags() } returns listOf(complexUnknown)
         service.getAccountFlag()
@@ -172,7 +172,7 @@ class AccountFlagServiceTest {
     }
 
     @Test
-    fun `checkAccountFlag returns false on repository exception during delete`() = runTest {
+    fun `checkAccountFlag returns false on repository exception during delete`() = runTest(mainDispatcherRule.scheduler) {
         coEvery { accountFlagRepository.getAccountFlags() } returns listOf(loginFlag)
         coEvery { accountFlagRepository.deleteAccountFlag(any()) } throws RuntimeException("delete failed")
         service.getAccountFlag()
@@ -183,7 +183,7 @@ class AccountFlagServiceTest {
     }
 
     @Test
-    fun `checkAccountFlag clears cached flag after null-guard branch when firstFlag is null mid-execution`() = runTest {
+    fun `checkAccountFlag clears cached flag after null-guard branch when firstFlag is null mid-execution`() = runTest(mainDispatcherRule.scheduler) {
         // firstFlag starts null — exercises the early-return guard at the top
         val result = service.checkAccountFlag("login")
 
@@ -195,7 +195,7 @@ class AccountFlagServiceTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `deleteFlag returns true and clears cached flag when deletion succeeds`() = runTest {
+    fun `deleteFlag returns true and clears cached flag when deletion succeeds`() = runTest(mainDispatcherRule.scheduler) {
         coEvery { accountFlagRepository.getAccountFlags() } returns listOf(loginFlag)
         coEvery { accountFlagRepository.deleteAccountFlag(loginFlag.id) } returns true
         service.getAccountFlag() // populate cache
@@ -210,7 +210,7 @@ class AccountFlagServiceTest {
     }
 
     @Test
-    fun `deleteFlag returns false when repository returns false`() = runTest {
+    fun `deleteFlag returns false when repository returns false`() = runTest(mainDispatcherRule.scheduler) {
         coEvery { accountFlagRepository.deleteAccountFlag("flag-99") } returns false
 
         val result = service.deleteFlag("flag-99")
@@ -219,7 +219,7 @@ class AccountFlagServiceTest {
     }
 
     @Test
-    fun `deleteFlag returns false and clears cache on repository exception`() = runTest {
+    fun `deleteFlag returns false and clears cache on repository exception`() = runTest(mainDispatcherRule.scheduler) {
         coEvery { accountFlagRepository.getAccountFlags() } returns listOf(loginFlag)
         service.getAccountFlag() // populate cache
 
@@ -234,7 +234,7 @@ class AccountFlagServiceTest {
     }
 
     @Test
-    fun `deleteFlag passes correct flagId to repository`() = runTest {
+    fun `deleteFlag passes correct flagId to repository`() = runTest(mainDispatcherRule.scheduler) {
         val targetId = "specific-flag-id"
         coEvery { accountFlagRepository.deleteAccountFlag(targetId) } returns true
 

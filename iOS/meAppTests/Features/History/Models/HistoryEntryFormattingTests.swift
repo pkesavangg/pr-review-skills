@@ -1,8 +1,8 @@
 // Coverage target: 85% (Domain model extensions)
 
 import Foundation
-import Testing
 @testable import meApp
+import Testing
 
 @Suite(.serialized)
 @MainActor

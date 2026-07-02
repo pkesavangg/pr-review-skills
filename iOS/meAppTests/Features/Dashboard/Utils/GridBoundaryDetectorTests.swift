@@ -1,6 +1,6 @@
+@testable import meApp
 import Testing
 import UIKit
-@testable import meApp
 
 @MainActor
 private final class FixedContentSizeLayout: UICollectionViewLayout {

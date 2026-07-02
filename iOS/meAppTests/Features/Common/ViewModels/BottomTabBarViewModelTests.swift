@@ -5,8 +5,8 @@
 
 import Combine
 import Foundation
-import Testing
 @testable import meApp
+import Testing
 
 // MARK: - Suite
 
@@ -195,9 +195,16 @@ struct BottomTabBarViewModelTests {
         // showBabyReadingArrivalCard resolves babyService/entryService — so container timing is not
         // deterministic. Direct assignment pins resolution to these mocks regardless of pollution.
         let babyMock = MockBabyService()
-        babyMock.babies = [Baby(accountId: "test-account", name: "Baby A", deviceId: nil,
-                                birthday: nil, biologicalSex: nil, birthLengthInches: nil,
-                                birthWeightLbs: nil, birthWeightOz: nil)]
+        babyMock.babies = [Baby(
+            accountId: "test-account",
+            name: "Baby A",
+            deviceId: nil,
+            birthday: nil,
+            biologicalSex: nil,
+            birthLengthInches: nil,
+            birthWeightLbs: nil,
+            birthWeightOz: nil
+        )]
         sut.babyService = babyMock
         sut.entryService = entry
         // Pin notificationService too: the VM writes the toast here and the test reads it back,
@@ -236,6 +243,8 @@ struct BottomTabBarViewModelTests {
 // MARK: - SUT Factory
 
 @MainActor
+// Test factory return; labeled tuple is clearer than a one-off SUT struct.
+// swiftlint:disable:next large_tuple
 private func makeSUT() -> (
     BottomTabBarViewModel,
     MockBluetoothService,
@@ -287,16 +296,28 @@ enum BottomTabBarViewModelTestFixtures {
         EntryNotification(
             from: BathScaleOperationDTO(
                 accountId: "test-account",
-                bmr: nil, bmi: nil, bodyFat: nil, boneMass: nil,
+                bmr: nil,
+                bmi: nil,
+                bodyFat: nil,
+                boneMass: nil,
                 entryTimestamp: "2026-04-22T10:00:00Z",
                 entryType: EntryType.scale.rawValue,
-                impedance: nil, metabolicAge: nil, muscleMass: nil,
+                impedance: nil,
+                metabolicAge: nil,
+                muscleMass: nil,
                 operationType: "create",
-                proteinPercent: nil, pulse: nil, serverTimestamp: nil,
-                skeletalMusclePercent: nil, source: nil,
+                proteinPercent: nil,
+                pulse: nil,
+                serverTimestamp: nil,
+                skeletalMusclePercent: nil,
+                source: nil,
                 subcutaneousFatPercent: nil,
-                systolic: nil, diastolic: nil, meanArterial: nil,
-                unit: nil, visceralFatLevel: nil, water: nil,
+                systolic: nil,
+                diastolic: nil,
+                meanArterial: nil,
+                unit: nil,
+                visceralFatLevel: nil,
+                water: nil,
                 weight: Double(weight)
             )
         )
@@ -306,18 +327,28 @@ enum BottomTabBarViewModelTestFixtures {
         EntryNotification(
             from: BathScaleOperationDTO(
                 accountId: "test-account",
-                bmr: nil, bmi: nil, bodyFat: nil, boneMass: nil,
+                bmr: nil,
+                bmi: nil,
+                bodyFat: nil,
+                boneMass: nil,
                 entryTimestamp: "2026-04-22T10:01:00Z",
                 entryType: EntryType.bpm.rawValue,
-                impedance: nil, metabolicAge: nil, muscleMass: nil,
+                impedance: nil,
+                metabolicAge: nil,
+                muscleMass: nil,
                 operationType: "create",
-                proteinPercent: nil, pulse: nil, serverTimestamp: nil,
-                skeletalMusclePercent: nil, source: nil,
+                proteinPercent: nil,
+                pulse: nil,
+                serverTimestamp: nil,
+                skeletalMusclePercent: nil,
+                source: nil,
                 subcutaneousFatPercent: nil,
                 systolic: Double(systolic),
                 diastolic: Double(diastolic),
                 meanArterial: nil,
-                unit: nil, visceralFatLevel: nil, water: nil,
+                unit: nil,
+                visceralFatLevel: nil,
+                water: nil,
                 weight: nil
             )
         )
@@ -327,16 +358,28 @@ enum BottomTabBarViewModelTestFixtures {
         EntryNotification(
             from: BathScaleOperationDTO(
                 accountId: "test-account",
-                bmr: nil, bmi: nil, bodyFat: nil, boneMass: nil,
+                bmr: nil,
+                bmi: nil,
+                bodyFat: nil,
+                boneMass: nil,
                 entryTimestamp: "2026-04-22T10:02:00Z",
                 entryType: EntryType.baby.rawValue,
-                impedance: nil, metabolicAge: nil, muscleMass: nil,
+                impedance: nil,
+                metabolicAge: nil,
+                muscleMass: nil,
                 operationType: "create",
-                proteinPercent: nil, pulse: nil, serverTimestamp: nil,
-                skeletalMusclePercent: nil, source: nil,
+                proteinPercent: nil,
+                pulse: nil,
+                serverTimestamp: nil,
+                skeletalMusclePercent: nil,
+                source: nil,
                 subcutaneousFatPercent: nil,
-                systolic: nil, diastolic: nil, meanArterial: nil,
-                unit: nil, visceralFatLevel: nil, water: nil,
+                systolic: nil,
+                diastolic: nil,
+                meanArterial: nil,
+                unit: nil,
+                visceralFatLevel: nil,
+                water: nil,
                 weight: nil
             )
         )

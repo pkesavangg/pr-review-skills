@@ -10,7 +10,7 @@ import com.dmdbrands.gurus.weight.domain.model.common.WeightUnit
 import com.dmdbrands.gurus.weight.domain.services.BodyCompUpdateType
 import com.dmdbrands.gurus.weight.domain.services.IAccountService
 import com.dmdbrands.gurus.weight.domain.services.IBodyCompositionService
-import com.dmdbrands.gurus.weight.features.common.ScaleProfileConstants
+import com.dmdbrands.gurus.weight.features.common.DeviceProfileConstants
 import com.dmdbrands.gurus.weight.features.common.components.DateTimeValue
 import com.dmdbrands.gurus.weight.features.common.components.DialogType
 import com.dmdbrands.gurus.weight.features.common.components.HeightInput
@@ -322,7 +322,7 @@ class ProfileViewModel @Inject constructor(
       AppLog.d(TAG, "updateR4Profile - Error updating profile to scale: ${e.message}")
       result.complete(GGUserActionResponseType.EXCEPTION_ENCOUNTERED)
     }
-    return withTimeoutOrNull(ScaleProfileConstants.SCALE_PROFILE_UPDATE_TIMEOUT_MS) { result.await() }
+    return withTimeoutOrNull(DeviceProfileConstants.SCALE_PROFILE_UPDATE_TIMEOUT_MS) { result.await() }
       ?: run {
         AppLog.d(TAG, "updateR4Profile - Timeout or no callback from scale; dismissing loader")
         GGUserActionResponseType.EXCEPTION_ENCOUNTERED

@@ -1,6 +1,6 @@
 import Foundation
-import Testing
 @testable import meApp
+import Testing
 
 @Suite(.serialized)
 @MainActor
@@ -191,9 +191,8 @@ struct BabyDashboardChartSupportTests {
         let baby = makeBabyProfile()
         let result = BabyDashboardChartSupport.percentileSeries(
             for: baby,
-            operations: [],
-            convertDecigramsToDisplay: { Double($0) / 10000.0 }
-        )
+            operations: []
+        ) { Double($0) / 10000.0 }
         #expect(result.isEmpty)
     }
 
@@ -205,9 +204,8 @@ struct BabyDashboardChartSupportTests {
 
         let result = BabyDashboardChartSupport.percentileSeries(
             for: baby,
-            operations: operations,
-            convertDecigramsToDisplay: { Double($0) / 10000.0 }
-        )
+            operations: operations
+        ) { Double($0) / 10000.0 }
 
         #expect(!result.isEmpty)
         let seriesNames = Set(result.map(\.series))
@@ -223,9 +221,8 @@ struct BabyDashboardChartSupportTests {
 
         let result = BabyDashboardChartSupport.percentileSeries(
             for: baby,
-            operations: operations,
-            convertDecigramsToDisplay: { Double($0) / 10000.0 }
-        )
+            operations: operations
+        ) { Double($0) / 10000.0 }
 
         #expect(result.allSatisfy { BabyDashboardChartSupport.isPercentileSeries($0.series) })
     }
@@ -233,13 +230,14 @@ struct BabyDashboardChartSupportTests {
     @Test("percentileSeries spans the operation range")
     func percentileSeriesUsesOperationRange() {
         let baby = makeBabyProfile()
-        let operations = makeDailySummaries(count: 8, from: cal.date(byAdding: .day, value: -20, to: Date())!) // swiftlint:disable:this force_unwrapping
+        // swiftlint:disable:next force_unwrapping
+        let startDate = cal.date(byAdding: .day, value: -20, to: Date())!
+        let operations = makeDailySummaries(count: 8, from: startDate)
 
         let result = BabyDashboardChartSupport.percentileSeries(
             for: baby,
-            operations: operations,
-            convertDecigramsToDisplay: { Double($0) / 10000.0 }
-        )
+            operations: operations
+        ) { Double($0) / 10000.0 }
 
         // The WHO percentile reference grid is day-aligned and intentionally padded
         // (±8 days) beyond the operation range for smooth line continuity, so it spans
@@ -301,7 +299,9 @@ struct BabyDashboardChartSupportTests {
     @Test("heightPercentileSeries spans the operation range")
     func heightPercentileSeriesUsesOperationRange() {
         let baby = makeBabyProfile()
-        let operations = makeDailySummaries(count: 8, from: cal.date(byAdding: .day, value: -20, to: Date())!) // swiftlint:disable:this force_unwrapping
+        // swiftlint:disable:next force_unwrapping
+        let startDate = cal.date(byAdding: .day, value: -20, to: Date())!
+        let operations = makeDailySummaries(count: 8, from: startDate)
 
         let result = BabyDashboardChartSupport.heightPercentileSeries(
             for: baby,

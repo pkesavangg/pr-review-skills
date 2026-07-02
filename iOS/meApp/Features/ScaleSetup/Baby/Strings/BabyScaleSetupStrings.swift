@@ -71,7 +71,7 @@ struct BabyScaleSetupStrings {
         static let biologicalSexLabel = "Biological Sex"
         static let birthLengthLabel = "birth length"
         static let birthWeightLabel = "birth weight"
-        static let lbsUnit = "lb"
+        static let lbsUnit = "lbs"
         static let ozUnit = "oz"
         static let male = "Male"
         static let female = "Female"
@@ -106,6 +106,8 @@ struct BabyScaleSetupStrings {
         static let title = "Your Baby Has Been Added!"
         static let subtitle = "This helps personalize your baby's scale readings."
         static let addABaby = "ADD A BABY"
+        static let emptyTitle = "No babies added yet"
+        static let emptySubtitle = "You've removed all baby profiles. Add one to continue."
     }
 
     // MARK: - Done

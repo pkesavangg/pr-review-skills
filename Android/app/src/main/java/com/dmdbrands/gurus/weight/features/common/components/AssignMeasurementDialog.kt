@@ -10,10 +10,13 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -49,6 +52,12 @@ import java.time.LocalDate
 import java.time.Period
 import java.time.format.DateTimeFormatter
 
+/** Sentinel selection id for the "Assign to new baby" row (routes into the Add-a-Baby flow). */
+const val ASSIGN_NEW_BABY_ID = "__assign_new_baby__"
+
+/** Max height of the scrollable baby list before it scrolls, keeping the actions on-screen. */
+private val BABY_LIST_MAX_HEIGHT = 280.dp
+
 @Composable
 fun AssignMeasurementDialog(
     reading: String,
@@ -56,6 +65,7 @@ fun AssignMeasurementDialog(
     babies: List<BabyProfile>,
     preSelectedBabyId: String? = null,
     onAssign: (babyId: String) -> Unit,
+    onAssignNewBaby: () -> Unit = {},
     onDismiss: () -> Unit,
 ) {
     var selectedBabyId by remember { mutableStateOf(preSelectedBabyId ?: babies.firstOrNull()?.id) }
@@ -94,109 +104,150 @@ fun AssignMeasurementDialog(
                     horizontalAlignment = Alignment.CenterHorizontally,
                     verticalArrangement = Arrangement.spacedBy(MeTheme.spacing.xs),
                 ) {
-                    // Person icon — 70dp container, 40dp icon
-                    Box(
-                        modifier = Modifier
-                            .size(70.dp)
-                            .clip(CircleShape)
-                            .border(2.dp, colorScheme.textSubheading, CircleShape),
-                        contentAlignment = Alignment.Center,
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Person,
-                            contentDescription = null,
-                            tint = colorScheme.textSubheading,
-                            modifier = Modifier.size(40.dp),
-                        )
-                    }
-
-                    Spacer(modifier = Modifier.height(MeTheme.spacing.xs))
-
-                    // Title — heading4 (24sp Bold)
-                    Text(
-                        text = ReadingToastStrings.AssignModal.Title,
-                        style = MeTheme.typography.heading4,
-                        fontWeight = FontWeight.Bold,
-                        color = colorScheme.textHeading,
-                        textAlign = TextAlign.Center,
-                    )
-
-                    // Subtitle — body2 (16sp Regular)
-                    Text(
-                        text = ReadingToastStrings.AssignModal.Subtitle,
-                        style = MeTheme.typography.body2,
-                        color = colorScheme.textBody,
-                        textAlign = TextAlign.Center,
-                    )
-
-                    // Reading value — heading3 (36sp Bold) purple + subHeading2 units
-                    Text(
-                        text = rememberMeasurementText(
-                            text = "$reading · $timestamp",
-                            type = MeasurementType.BABY,
-                            valueStyle = MeTheme.typography.heading3,
-                        ),
-                        textAlign = TextAlign.Center,
-                    )
+                    AssignMeasurementHeader(reading = reading, timestamp = timestamp)
 
                     Spacer(modifier = Modifier.height(MeTheme.spacing.sm))
 
-                    // Baby list — 310dp wide rows
-                    Column(verticalArrangement = Arrangement.spacedBy(MeTheme.spacing.xs)) {
-                        babies.forEach { baby ->
-                            BabyRadioRow(
-                                baby = baby,
-                                selected = selectedBabyId == baby.id,
-                                onClick = { selectedBabyId = baby.id },
-                            )
-                        }
-                    }
+                    AssignMeasurementBabyList(
+                        babies = babies,
+                        selectedBabyId = selectedBabyId,
+                        onSelect = { selectedBabyId = it },
+                    )
 
                     Spacer(modifier = Modifier.height(MeTheme.spacing.md))
 
-                    // ASSIGN button — min 160dp, 40dp height, full round
-                    Card(
-                        shape = RoundedCornerShape(999.dp),
-                        colors = CardDefaults.cardColors(containerColor = colorScheme.textBody),
-                        onClick = { selectedBabyId?.let { onAssign(it) } },
-                        modifier = Modifier
-                            .height(40.dp)
-                            .widthIn(min = 160.dp),
-                    ) {
-                        Box(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .height(40.dp)
-                                .padding(horizontal = MeTheme.spacing.lg),
-                            contentAlignment = Alignment.Center,
-                        ) {
-                            Text(
-                                text = ReadingToastStrings.AssignModal.Assign,
-                                style = MeTheme.typography.button1,
-                                fontWeight = FontWeight.Bold,
-                                color = colorScheme.primaryBackground,
-                            )
-                        }
-                    }
-
-                    // DON'T ASSIGN — button1 (16sp Bold), tertiary color
-                    Box(
-                        modifier = Modifier
-                            .height(40.dp)
-                            .widthIn(min = 160.dp)
-                            .clickable { onDismiss() },
-                        contentAlignment = Alignment.Center,
-                    ) {
-                        Text(
-                            text = ReadingToastStrings.AssignModal.DontAssign,
-                            style = MeTheme.typography.button1,
-                            fontWeight = FontWeight.Bold,
-                            color = colorScheme.textSubheading,
-                        )
-                    }
+                    AssignMeasurementActions(
+                        // "Assign to new baby" selected → CTA becomes "ADD A BABY" → Add-a-Baby flow (MOB-598).
+                        assignLabel = if (selectedBabyId == ASSIGN_NEW_BABY_ID) ReadingToastStrings.AddBaby else ReadingToastStrings.AssignModal.Assign,
+                        onAssign = {
+                            if (selectedBabyId == ASSIGN_NEW_BABY_ID) {
+                                onAssignNewBaby()
+                            } else {
+                                selectedBabyId?.let { onAssign(it) }
+                            }
+                        },
+                        onDismiss = onDismiss,
+                    )
                 }
             }
         }
+    }
+}
+
+/** Person icon, title, subtitle and the measurement value at the top of the dialog. */
+@Composable
+private fun AssignMeasurementHeader(reading: String, timestamp: String) {
+    Box(
+        modifier = Modifier
+            .size(70.dp)
+            .clip(CircleShape)
+            .border(2.dp, colorScheme.textSubheading, CircleShape),
+        contentAlignment = Alignment.Center,
+    ) {
+        Icon(
+            imageVector = Icons.Default.Person,
+            contentDescription = null,
+            tint = colorScheme.textSubheading,
+            modifier = Modifier.size(40.dp),
+        )
+    }
+    Spacer(modifier = Modifier.height(MeTheme.spacing.xs))
+    Text(
+        text = ReadingToastStrings.AssignModal.Title,
+        style = MeTheme.typography.heading4,
+        fontWeight = FontWeight.Bold,
+        color = colorScheme.textHeading,
+        textAlign = TextAlign.Center,
+    )
+    Text(
+        text = ReadingToastStrings.AssignModal.Subtitle,
+        style = MeTheme.typography.body2,
+        color = colorScheme.textBody,
+        textAlign = TextAlign.Center,
+    )
+    Text(
+        text = rememberMeasurementText(
+            text = "$reading · $timestamp",
+            type = MeasurementType.BABY,
+            valueStyle = MeTheme.typography.heading3,
+        ),
+        textAlign = TextAlign.Center,
+    )
+}
+
+/**
+ * Scrollable list of baby rows plus the trailing "Assign to new baby" row. Scrolls past
+ * [BABY_LIST_MAX_HEIGHT] so the actions stay on-screen with many babies (MOB-598).
+ */
+@Composable
+private fun AssignMeasurementBabyList(
+    babies: List<BabyProfile>,
+    selectedBabyId: String?,
+    onSelect: (String) -> Unit,
+) {
+    Column(
+        modifier = Modifier
+            .heightIn(max = BABY_LIST_MAX_HEIGHT)
+            .verticalScroll(rememberScrollState()),
+        verticalArrangement = Arrangement.spacedBy(MeTheme.spacing.xs),
+    ) {
+        babies.forEach { baby ->
+            BabyRadioRow(
+                baby = baby,
+                selected = selectedBabyId == baby.id,
+                onClick = { onSelect(baby.id) },
+            )
+        }
+        AssignNewBabyRow(
+            selected = selectedBabyId == ASSIGN_NEW_BABY_ID,
+            onClick = { onSelect(ASSIGN_NEW_BABY_ID) },
+        )
+    }
+}
+
+/** Primary CTA ([assignLabel] — "ASSIGN" or "ADD A BABY") and the DON'T ASSIGN dismiss button. */
+@Composable
+private fun AssignMeasurementActions(
+    assignLabel: String,
+    onAssign: () -> Unit,
+    onDismiss: () -> Unit,
+) {
+    Card(
+        shape = RoundedCornerShape(999.dp),
+        colors = CardDefaults.cardColors(containerColor = colorScheme.textBody),
+        onClick = onAssign,
+        modifier = Modifier
+            .height(40.dp)
+            .widthIn(min = 160.dp),
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(40.dp)
+                .padding(horizontal = MeTheme.spacing.lg),
+            contentAlignment = Alignment.Center,
+        ) {
+            Text(
+                text = assignLabel,
+                style = MeTheme.typography.button1,
+                fontWeight = FontWeight.Bold,
+                color = colorScheme.primaryBackground,
+            )
+        }
+    }
+    Box(
+        modifier = Modifier
+            .height(40.dp)
+            .widthIn(min = 160.dp)
+            .clickable { onDismiss() },
+        contentAlignment = Alignment.Center,
+    ) {
+        Text(
+            text = ReadingToastStrings.AssignModal.DontAssign,
+            style = MeTheme.typography.button1,
+            fontWeight = FontWeight.Bold,
+            color = colorScheme.textSubheading,
+        )
     }
 }
 
@@ -243,6 +294,62 @@ private fun BabyRadioRow(
             }
         }
         // Radio — 24dp
+        AppRadioButton(
+            selected = selected,
+            onClick = onClick,
+            modifier = Modifier.size(24.dp),
+        )
+    }
+}
+
+/** Picker row that, when selected + ASSIGN, opens the Add-a-Baby flow instead of assigning. */
+@Composable
+private fun AssignNewBabyRow(
+    selected: Boolean,
+    onClick: () -> Unit,
+) {
+    Row(
+        modifier = Modifier
+            .width(310.dp)
+            .clip(RoundedCornerShape(MeTheme.borderRadius.md))
+            .background(colorScheme.secondaryBackground)
+            .border(1.dp, colorScheme.secondaryBackground, RoundedCornerShape(MeTheme.borderRadius.md))
+            .clickable { onClick() }
+            .padding(MeTheme.spacing.sm),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.SpaceBetween,
+    ) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(MeTheme.spacing.sm),
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(32.dp)
+                    .clip(CircleShape)
+                    .border(1.dp, colorScheme.textSubheading, CircleShape),
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Person,
+                    contentDescription = null,
+                    tint = colorScheme.textSubheading,
+                    modifier = Modifier.size(20.dp),
+                )
+            }
+            Column {
+                Text(
+                    text = ReadingToastStrings.AssignModal.AssignNewBaby,
+                    style = MeTheme.typography.body2,
+                    color = colorScheme.textBody,
+                )
+                Text(
+                    text = ReadingToastStrings.AssignModal.AssignNewBabySubtitle,
+                    style = MeTheme.typography.body3,
+                    color = colorScheme.textSubheading,
+                )
+            }
+        }
         AppRadioButton(
             selected = selected,
             onClick = onClick,

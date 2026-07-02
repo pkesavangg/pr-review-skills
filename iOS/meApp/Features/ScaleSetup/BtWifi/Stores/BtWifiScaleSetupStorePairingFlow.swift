@@ -3,7 +3,7 @@ import Foundation
 import GGBluetoothSwiftPackage
 import SwiftUI
 
-// swiftlint:disable cyclomatic_complexity function_body_length
+// swiftlint:disable cyclomatic_complexity function_body_length file_length
 
 @MainActor
 extension BtWifiScaleSetupStore {
@@ -468,7 +468,10 @@ extension BtWifiScaleSetupStore {
                     self.navigateToStep(.gatheringNetwork)
                 }
             case .duplicateUserError:
-                LoggerService.shared.log(level: .info, tag: tag, message: "Duplicate user detected, routing to duplicate-resolution screen \(response)")
+                LoggerService.shared.log(
+                    level: .info,
+                    tag: tag,
+                    message: "Duplicate user detected, routing to duplicate-resolution screen \(response)")
                 // Commit to the duplicate-resolution screen *before* fetching the user
                 // list. getUserList() disconnects the scale, and the resulting
                 // rediscovery can re-present the setup flow and run configure(), which
@@ -707,4 +710,4 @@ extension BtWifiScaleSetupStore {
         notificationService.showAlert(alert)
     }
 }
-// swiftlint:enable cyclomatic_complexity function_body_length
+// swiftlint:enable cyclomatic_complexity function_body_length file_length

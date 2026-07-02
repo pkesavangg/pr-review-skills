@@ -1,7 +1,7 @@
 import Combine
 import Foundation
-import Testing
 @testable import meApp
+import Testing
 
 @Suite(.serialized)
 @MainActor
@@ -211,7 +211,7 @@ struct AccountFlagServiceTests {
         let result = try await sut.checkAccountFlag(trigger: "login")
 
         #expect(result == true)
-        #expect(receivedEvent?.sku == "")
+        #expect(receivedEvent?.sku?.isEmpty == true)
         #expect(receivedEvent?.flagId == "flag-scale")
         _ = cancellable
     }
@@ -255,6 +255,8 @@ struct AccountFlagServiceTests {
         repo: MockAccountFlagRepositoryAPI? = nil,
         logger: MockLoggerService? = nil,
         appReviewHandler: MockAppReviewHandler? = nil
+        // Test factory return; labeled tuple is clearer than a one-off SUT struct.
+        // swiftlint:disable:next large_tuple
     ) -> (
         sut: AccountFlagService,
         repo: MockAccountFlagRepositoryAPI,

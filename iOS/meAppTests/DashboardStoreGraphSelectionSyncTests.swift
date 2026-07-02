@@ -1,6 +1,6 @@
 import Foundation
-import Testing
 @testable import meApp
+import Testing
 
 @Suite(.serialized)
 @MainActor
@@ -79,7 +79,7 @@ struct DashboardStoreGraphSelectionSyncTests {
                 wholeNumber: false,
                 fallbackValue: nil
             )
-            let actualBMI = store.metricsManager.state.metrics.first(where: { $0.label == DashboardStrings.bmi })?.value
+            let actualBMI = store.metricsManager.state.metrics.first { $0.label == DashboardStrings.bmi }?.value
             #expect(actualBMI == expectedBMI)
 
             store.state.ui.hasLoadedMetricValues = false
@@ -208,7 +208,11 @@ private func makeDate(_ year: Int, _ month: Int, _ day: Int) -> Date {
     components.year = year
     components.month = month
     components.day = day
-    return components.date!
+    guard let date = components.date else {
+        Issue.record("unexpected nil date from components")
+        return Date()
+    }
+    return date
 }
 
 private func makeSummary(

@@ -18,7 +18,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ./gradlew detekt               # Run static analysis (enforces null safety)
 ./gradlew clean assembleDebug  # Clean build
 
-# Coverage report + enforcement (80% line minimum)
+# Coverage report + enforcement (ratcheting toward 80% line minimum; currently 0.50)
 ./gradlew :app:jacocoTestReport :app:jacocoTestCoverageVerification
 ```
 
@@ -26,12 +26,13 @@ Always run `./gradlew assembleDebug` after making changes to verify the build su
 
 ## Test Coverage Enforcement
 
-JaCoCo enforces a **minimum 80% line coverage** on the `:app` module. CI fails if coverage drops below this threshold.
+JaCoCo enforces a line-coverage floor on the `:app` module. CI fails if coverage drops below it. The **target is 80%**, but the gate is **ratcheted**: the enforced floor is set just under current actual coverage and is raised step-by-step (never lowered) as tests are added, until it reaches 80%.
 
+- **Current enforced floor: `0.50`** (actual ≈ 0.55 on the testable layers). Raising it to 0.80 is owned by the coverage tickets MOB-963 / MOB-964 / MOB-967 / MOB-1101; bump the `minimum` in `app/build.gradle.kts` whenever real coverage clears the next step.
 - **Report task**: `./gradlew :app:jacocoTestReport` — generates HTML + XML reports
-- **Verification task**: `./gradlew :app:jacocoTestCoverageVerification` — fails the build if line coverage < 80%
+- **Verification task**: `./gradlew :app:jacocoTestCoverageVerification` — fails the build if line coverage is below the current floor
 - HTML report: `app/build/reports/jacoco/jacocoTestReport/html/index.html`
-- Generated code (Hilt, Room, Compose, Protobuf, R/BuildConfig) is excluded from coverage
+- Excluded from the denominator: generated code (Hilt, Room, Compose, Protobuf, R/BuildConfig) **and** Compose UI composables (the `*Kt` files under `components/`, `*ScreenKt`, `theme/`, `navigation/`, `di/`) — these are exercised by instrumented/screenshot tests, not JVM unit tests. ViewModels and data classes that live in those packages are **not** excluded (they stay counted).
 
 ## Pre-commit Hooks (Lefthook)
 

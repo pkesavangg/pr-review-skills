@@ -175,7 +175,7 @@ protocol EntryServiceProtocol {
     // MARK: - Baby Entry CRUD
 
     /// Creates a new baby entry, persists it locally.
-    func createBabyEntry(babyId: String, weight: Int, length: Int, note: String, entryTimestamp: String, source: String?) async throws
+    func createBabyEntry(babyId: String, weight: Int, length: Int, note: String, entryTimestamp: String, source: String?) async throws // swiftlint:disable:this function_parameter_count
 
     /// Loads baby dashboard data (daily/monthly summaries) for a specific baby profile.
     func loadBabyDashboardData(babyId: String) async

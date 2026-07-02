@@ -66,7 +66,9 @@ struct SwipeableModifier: ViewModifier {
     var trailingCornerRadius: CGFloat
 
     // MARK: - Configuration
-    private let swipeMinimumDistance: CGFloat = 20 // Increased to avoid conflicts with scrolling
+    // MOB-232: Reduced from 20 → 10 so the gesture fails faster on clearly vertical drags,
+    // letting the parent ScrollView take over without a perceptible delay.
+    private let swipeMinimumDistance: CGFloat = 10
     private let expandThreshold: CGFloat = 50
     private let rubberBandPower: CGFloat = 0.7
     private let animationDuration: CGFloat = 0.3

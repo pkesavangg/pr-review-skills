@@ -1,6 +1,6 @@
 import Foundation
-import Testing
 @testable import meApp
+import Testing
 
 extension DashboardStoreTests {
     @Suite("Computed Properties")
@@ -9,13 +9,13 @@ extension DashboardStoreTests {
 
     @Test("hasAnyEntries: returns false when data is empty")
     func hasAnyEntriesFalseWhenEmpty() {
-        let (store, _, _) = DashboardStoreTestSupport.makeSUT()
+        let store = DashboardStoreTestSupport.makeSUT().store
         #expect(store.hasAnyEntries == false)
     }
 
     @Test("hasAnyEntries: returns true when daily summaries exist")
     func hasAnyEntriesTrueWithData() {
-        let (store, _, _) = DashboardStoreTestSupport.makeSUT()
+        let store = DashboardStoreTestSupport.makeSUT().store
         store.dataManager.state.dailySummaries = [DashboardTestFixtures.makeSummary()]
 
         #expect(store.hasAnyEntries == true)
@@ -23,7 +23,7 @@ extension DashboardStoreTests {
 
     @Test("hasGoalSet: reflects goal state")
     func hasGoalSetReflectsState() {
-        let (store, _, _) = DashboardStoreTestSupport.makeSUT()
+        let store = DashboardStoreTestSupport.makeSUT().store
         #expect(store.hasGoalSet == false)
 
         store.goalManager.state.hasGoalSet = true
@@ -32,7 +32,7 @@ extension DashboardStoreTests {
 
     @Test("metricsToShow: returns empty when config not loaded")
     func metricsToShowEmptyWithoutConfig() {
-        let (store, _, _) = DashboardStoreTestSupport.makeSUT()
+        let store = DashboardStoreTestSupport.makeSUT().store
         store.state.ui.hasLoadedDashboardConfig = false
         store.metricsManager.state.metrics = [DashboardTestFixtures.makeMetricItem(label: "bmi")]
 
@@ -41,7 +41,7 @@ extension DashboardStoreTests {
 
     @Test("metricsToShow: returns metrics when config loaded")
     func metricsToShowWithConfig() {
-        let (store, _, _) = DashboardStoreTestSupport.makeSUT()
+        let store = DashboardStoreTestSupport.makeSUT().store
         store.state.ui.hasLoadedDashboardConfig = true
 
         #expect(store.metricsToShow.count == 12)
@@ -49,7 +49,7 @@ extension DashboardStoreTests {
 
     @Test("effectiveDashboardType: reflects metrics state")
     func effectiveDashboardTypeReflectsState() {
-        let (store, _, _) = DashboardStoreTestSupport.makeSUT()
+        let store = DashboardStoreTestSupport.makeSUT().store
 
         store.metricsManager.state.dashboardType = .dashboard4
         #expect(store.effectiveDashboardType == .dashboard4 || store.metricsManager.state.dashboardType == .dashboard4)
@@ -57,7 +57,7 @@ extension DashboardStoreTests {
 
     @Test("streakItemsToShow: returns empty when no streaks")
     func streakItemsToShowEmptyNoStreaks() {
-        let (store, _, _) = DashboardStoreTestSupport.makeSUT()
+        let store = DashboardStoreTestSupport.makeSUT().store
         store.streakManager.state.streakItems = []
 
         #expect(store.streakItemsToShow.isEmpty)
@@ -65,7 +65,7 @@ extension DashboardStoreTests {
 
     @Test("streakItemsToShow: filters removed streaks in non-edit mode")
     func streakItemsToShowFiltersRemoved() {
-        let (store, _, _) = DashboardStoreTestSupport.makeSUT()
+        let store = DashboardStoreTestSupport.makeSUT().store
 
         let items = [
             DashboardTestFixtures.makeMetricItem(label: "current"),
@@ -84,7 +84,7 @@ extension DashboardStoreTests {
 
     @Test("streakItemsToShow: shows all in edit mode with removed items last")
     func streakItemsToShowAllInEditMode() {
-        let (store, _, _) = DashboardStoreTestSupport.makeSUT()
+        let store = DashboardStoreTestSupport.makeSUT().store
 
         let items = [
             DashboardTestFixtures.makeMetricItem(label: "current"),
@@ -103,7 +103,7 @@ extension DashboardStoreTests {
 
     @Test("streakItemsToShow: returns all when progress not loaded yet")
     func streakItemsToShowAllWhenNotLoaded() {
-        let (store, _, _) = DashboardStoreTestSupport.makeSUT()
+        let store = DashboardStoreTestSupport.makeSUT().store
 
         let items = [
             DashboardTestFixtures.makeMetricItem(label: "current"),
@@ -119,7 +119,7 @@ extension DashboardStoreTests {
 
     @Test("isAnyItemBeingDragged: delegates to UIState")
     func isAnyItemBeingDraggedDelegates() {
-        let (store, _, _) = DashboardStoreTestSupport.makeSUT()
+        let store = DashboardStoreTestSupport.makeSUT().store
 
         #expect(store.isAnyItemBeingDragged == false)
 
@@ -129,19 +129,19 @@ extension DashboardStoreTests {
 
     @Test("isWeightlessModeEnabled: returns false when no account")
     func isWeightlessModeDisabledNoAccount() {
-        let (store, _, _) = DashboardStoreTestSupport.makeSUT()
+        let store = DashboardStoreTestSupport.makeSUT().store
         #expect(store.isWeightlessModeEnabled == false)
     }
 
     @Test("currentUnit: returns lb by default when no account")
     func currentUnitDefaultLb() {
-        let (store, _, _) = DashboardStoreTestSupport.makeSUT()
+        let store = DashboardStoreTestSupport.makeSUT().store
         #expect(store.currentUnit == .lb)
     }
 
     @Test("selectedBodyMetric: returns weight when no label selected")
     func selectedBodyMetricDefaultWeight() {
-        let (store, _, _) = DashboardStoreTestSupport.makeSUT()
+        let store = DashboardStoreTestSupport.makeSUT().store
         store.state.ui.selectedMetricLabel = nil
 
         #expect(store.selectedBodyMetric == .weight)
@@ -149,7 +149,7 @@ extension DashboardStoreTests {
 
     @Test("shouldShowGoalCardOrStreaks: true when goal card not removed")
     func shouldShowGoalCardOrStreaksTrueGoalNotRemoved() {
-        let (store, _, _) = DashboardStoreTestSupport.makeSUT()
+        let store = DashboardStoreTestSupport.makeSUT().store
         store.state.ui.isGoalCardRemoved = false
 
         #expect(store.shouldShowGoalCardOrStreaks == true)
@@ -157,7 +157,7 @@ extension DashboardStoreTests {
 
     @Test("shouldShowGoalCardOrStreaks: true when streaks visible")
     func shouldShowGoalCardOrStreaksTrueWithStreaks() {
-        let (store, _, _) = DashboardStoreTestSupport.makeSUT()
+        let store = DashboardStoreTestSupport.makeSUT().store
         store.state.ui.isGoalCardRemoved = true
 
         store.streakManager.state.streakItems = [DashboardTestFixtures.makeMetricItem(label: "current")]
@@ -168,7 +168,7 @@ extension DashboardStoreTests {
 
     @Test("shouldShowGoalCardOrStreaks: false when all removed and no streaks")
     func shouldShowGoalCardOrStreaksFalse() {
-        let (store, _, _) = DashboardStoreTestSupport.makeSUT()
+        let store = DashboardStoreTestSupport.makeSUT().store
         store.state.ui.isGoalCardRemoved = true
         store.streakManager.state.streakItems = []
 
@@ -177,7 +177,7 @@ extension DashboardStoreTests {
 
     @Test("hasBodyMetrics: false when metricsToShow is empty")
     func hasBodyMetricsFalseWhenEmpty() {
-        let (store, _, _) = DashboardStoreTestSupport.makeSUT()
+        let store = DashboardStoreTestSupport.makeSUT().store
         store.state.ui.hasLoadedDashboardConfig = false
 
         #expect(store.hasBodyMetrics == false)
@@ -185,7 +185,7 @@ extension DashboardStoreTests {
 
     @Test("shouldShowBodyMetrics: false when no dashboard config and no account")
     func shouldShowBodyMetricsFalseNoConfig() {
-        let (store, _, _) = DashboardStoreTestSupport.makeSUT()
+        let store = DashboardStoreTestSupport.makeSUT().store
         store.state.ui.hasLoadedDashboardConfig = false
 
         #expect(store.shouldShowBodyMetrics == false)
@@ -193,7 +193,7 @@ extension DashboardStoreTests {
 
     @Test("shouldShowBodyMetrics: delegates to hasBodyMetrics when config loaded")
     func shouldShowBodyMetricsWhenConfigLoaded() {
-        let (store, _, _) = DashboardStoreTestSupport.makeSUT()
+        let store = DashboardStoreTestSupport.makeSUT().store
         store.state.ui.hasLoadedDashboardConfig = true
         store.metricsManager.state.metrics = []
         store.metricsManager.state.activeMetricsCount = 0
@@ -203,7 +203,9 @@ extension DashboardStoreTests {
 
     @Test("shouldShowBodyMetricsSkeleton: true when config not loaded and should show")
     func shouldShowBodyMetricsSkeletonPreLoading() {
-        let (store, accountService, _) = DashboardStoreTestSupport.makeSUT()
+        let sutBundle = DashboardStoreTestSupport.makeSUT()
+        let store = sutBundle.store
+        let accountService = sutBundle.accountService
         accountService.activeAccount = DashboardStoreTestSupport.makeActiveAccount(
             dashboardMetrics: "bmi,bodyFat,muscleMass",
             dashboardType: "dashboard12"
@@ -216,7 +218,7 @@ extension DashboardStoreTests {
 
     @Test("shouldShowProgressMetricsSkeleton: true when progress not loaded")
     func shouldShowProgressMetricsSkeletonTrue() {
-        let (store, _, _) = DashboardStoreTestSupport.makeSUT()
+        let store = DashboardStoreTestSupport.makeSUT().store
         store.state.ui.hasLoadedProgressMetrics = false
 
         #expect(store.shouldShowProgressMetricsSkeleton == true)
@@ -224,7 +226,7 @@ extension DashboardStoreTests {
 
     @Test("shouldShowProgressMetricsSkeleton: false when progress loaded and no goal/streaks")
     func shouldShowProgressMetricsSkeletonFalse() {
-        let (store, _, _) = DashboardStoreTestSupport.makeSUT()
+        let store = DashboardStoreTestSupport.makeSUT().store
         store.state.ui.hasLoadedProgressMetrics = true
         store.state.ui.hasLoadedDashboardConfig = false
 
@@ -233,7 +235,7 @@ extension DashboardStoreTests {
 
     @Test("shouldShowGoalStreakSection: false when config not loaded")
     func shouldShowGoalStreakSectionFalseNoConfig() {
-        let (store, _, _) = DashboardStoreTestSupport.makeSUT()
+        let store = DashboardStoreTestSupport.makeSUT().store
         store.state.ui.hasLoadedDashboardConfig = false
 
         #expect(store.shouldShowGoalStreakSection == false)
@@ -241,7 +243,7 @@ extension DashboardStoreTests {
 
     @Test("shouldShowGoalStreakSection: true when config loaded and goal not removed")
     func shouldShowGoalStreakSectionTrueWithGoal() {
-        let (store, _, _) = DashboardStoreTestSupport.makeSUT()
+        let store = DashboardStoreTestSupport.makeSUT().store
         store.state.ui.hasLoadedDashboardConfig = true
         store.state.ui.isGoalCardRemoved = false
 
@@ -250,7 +252,7 @@ extension DashboardStoreTests {
 
     @Test("shouldShowStreakGrid: false when no visible streaks")
     func shouldShowStreakGridFalseNoStreaks() {
-        let (store, _, _) = DashboardStoreTestSupport.makeSUT()
+        let store = DashboardStoreTestSupport.makeSUT().store
         store.streakManager.state.streakItems = []
 
         #expect(store.shouldShowStreakGrid == false)
@@ -258,7 +260,7 @@ extension DashboardStoreTests {
 
     @Test("shouldShowStreakGrid: false when all streaks removed")
     func shouldShowStreakGridFalseAllRemoved() {
-        let (store, _, _) = DashboardStoreTestSupport.makeSUT()
+        let store = DashboardStoreTestSupport.makeSUT().store
 
         store.streakManager.state.streakItems = [DashboardTestFixtures.makeMetricItem(label: "current")]
         store.state.ui.hasLoadedProgressMetrics = true
@@ -269,7 +271,7 @@ extension DashboardStoreTests {
 
     @Test("shouldShowStreakGrid: true when visible streaks exist")
     func shouldShowStreakGridTrueWithStreaks() {
-        let (store, _, _) = DashboardStoreTestSupport.makeSUT()
+        let store = DashboardStoreTestSupport.makeSUT().store
 
         store.streakManager.state.streakItems = [DashboardTestFixtures.makeMetricItem(label: "current")]
         store.state.ui.hasLoadedProgressMetrics = true
@@ -280,7 +282,7 @@ extension DashboardStoreTests {
 
     @Test("shouldShowDivider: false when no body metrics and no progress")
     func shouldShowDividerFalse() {
-        let (store, _, _) = DashboardStoreTestSupport.makeSUT()
+        let store = DashboardStoreTestSupport.makeSUT().store
         store.state.ui.hasLoadedDashboardConfig = false
 
         #expect(store.shouldShowDivider == false)
@@ -288,7 +290,7 @@ extension DashboardStoreTests {
 
     @Test("shouldShowDivider: true when body metrics and progress content are both visible")
     func shouldShowDividerTrue() {
-        let (store, _, _) = DashboardStoreTestSupport.makeSUT()
+        let store = DashboardStoreTestSupport.makeSUT().store
         store.state.ui.hasLoadedDashboardConfig = true
         store.state.ui.hasLoadedMetricValues = true
         store.state.ui.hasLoadedProgressMetrics = true
@@ -303,13 +305,13 @@ extension DashboardStoreTests {
 
     @Test("hasBabyEntries: returns false when no baby profile is selected")
     func hasBabyEntriesFalseNoProfileSelected() {
-        let (store, _, _) = DashboardStoreTestSupport.makeSUT()
+        let store = DashboardStoreTestSupport.makeSUT().store
         #expect(store.hasBabyEntries == false)
     }
 
     @Test("hasBabyEntries: returns false when baby profile selected but no summaries loaded")
     func hasBabyEntriesFalseNoSummaries() {
-        let (store, _, _) = DashboardStoreTestSupport.makeSUT()
+        let store = DashboardStoreTestSupport.makeSUT().store
         let baby = BabyProfile(id: "baby-1", name: "Aria")
         store.selectProductItem(.baby(profile: baby))
 
@@ -334,13 +336,13 @@ extension DashboardStoreTests {
 
     @Test("allContentRemoved: false by default")
     func allContentRemovedFalseDefault() {
-        let (store, _, _) = DashboardStoreTestSupport.makeSUT()
+        let store = DashboardStoreTestSupport.makeSUT().store
         #expect(store.allContentRemoved == false)
     }
 
     @Test("allContentRemoved: true when all metrics, goal card, and streaks are removed")
     func allContentRemovedTrueWhenEverythingRemoved() {
-        let (store, _, _) = DashboardStoreTestSupport.makeSUT()
+        let store = DashboardStoreTestSupport.makeSUT().store
         store.state.ui.hasLoadedDashboardConfig = true
         store.state.ui.isEditMode = false
         store.state.ui.isGoalCardRemoved = true

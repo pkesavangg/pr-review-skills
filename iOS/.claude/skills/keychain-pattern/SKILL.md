@@ -73,8 +73,10 @@ UserDefaults.standard.set(token, forKey: "authToken") // FAIL
 // In Account model (SwiftData):
 @Model
 class Account {
-    @Transient var accessToken: String?  // Transient — not stored
-    @Transient var refreshToken: String? // Transient — not stored
+    // Persisted (NOT @Transient) so the one-time 5.0.3 → Keychain migration can read legacy
+    // values. Keychain is the source of truth; these are cleared on every save, never re-persisted.
+    var accessToken: String?
+    var refreshToken: String?
 }
 
 // Actual storage (Keychain):
@@ -96,7 +98,7 @@ try keychain.storeToken(accessToken, for: accountId, type: .access)
 let token = try keychain.retrieveToken(for: accountId, type: .access)
 ```
 
-**How tokens reach feature code:** `AccountService.updatePublishedState()` hydrates tokens from Keychain and stamps them onto `AccountSnapshot.accessToken` / `.refreshToken` / `.expiresAt` (`let` fields). Consumers read `accountService.activeAccount?.accessToken` directly — that read is a plain `String?` access on a `Sendable` struct, safe on any actor. The `Account` `@Model`'s `@Transient` token fields are internal to `AccountService` and never leave it.
+**How tokens reach feature code:** `AccountService.updatePublishedState()` hydrates tokens from Keychain and stamps them onto `AccountSnapshot.accessToken` / `.refreshToken` / `.expiresAt` (`let` fields). Consumers read `accountService.activeAccount?.accessToken` directly — that read is a plain `String?` access on a `Sendable` struct, safe on any actor. The `Account` `@Model`'s token fields are persisted columns (kept only for the one-time 5.0.3 migration, cleared on every save) and are internal to `AccountService` — they never leave it.
 
 ---
 
@@ -266,7 +268,7 @@ When reviewing code, check:
 **Scenario:** Account model stores tokens; need to migrate to Keychain
 
 **Migration checklist:**
-1. Add `@Transient` fields to Account model (preserves schema)
+1. Keep the token fields as **persisted** columns (do NOT mark `@Transient`) so the one-time migration can read legacy values; clear them on every save instead
 2. Create migration service that reads tokens from Account, writes to Keychain
 3. Mark Account token fields for deletion after migration
 4. Add rollback test: verify tokens accessible from Keychain
@@ -330,7 +332,7 @@ final class AccountMigrationService {
 - **`KvStorageService`** — `meApp/Data/Services/KvStorageService.swift` (non-sensitive only)
 
 ### Models
-- **`Account`** — `meApp/Domain/Models/DB/Account.swift` (@Transient token fields)
+- **`Account`** — `meApp/Domain/Models/DB/Account.swift` (persisted token fields, cleared on save; kept for 5.0.3 migration)
 - **`Entry`** — `meApp/Domain/Models/DB/Entry.swift` (health data in SwiftData)
 - **`DashboardSettings`** — `meApp/Domain/Models/DB/DashboardSettings.swift` (non-sensitive prefs)
 

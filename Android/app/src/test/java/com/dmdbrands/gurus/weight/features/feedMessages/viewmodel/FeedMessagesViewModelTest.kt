@@ -104,14 +104,14 @@ class FeedMessagesViewModelTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `init calls fetchFeedItems on feedService`() = runTest {
+    fun `init calls fetchFeedItems on feedService`() = runTest(mainDispatcherRule.scheduler) {
         advanceUntilIdle()
 
         coVerify { feedService.fetchFeedItems() }
     }
 
     @Test
-    fun `init subscribes to feedsChanged and updates state`() = runTest {
+    fun `init subscribes to feedsChanged and updates state`() = runTest(mainDispatcherRule.scheduler) {
         val feedItems = listOf(testFeedItem("1", "Item 1"), testFeedItem("2", "Item 2"))
 
         advanceUntilIdle()
@@ -124,7 +124,7 @@ class FeedMessagesViewModelTest {
     }
 
     @Test
-    fun `init subscribes to feedsChanged with empty list`() = runTest {
+    fun `init subscribes to feedsChanged with empty list`() = runTest(mainDispatcherRule.scheduler) {
         advanceUntilIdle()
         feedsChangedFlow.emit(emptyList())
         advanceUntilIdle()
@@ -214,7 +214,7 @@ class FeedMessagesViewModelTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `Refresh calls fetchFeedItems and sets refreshing state`() = runTest {
+    fun `Refresh calls fetchFeedItems and sets refreshing state`() = runTest(mainDispatcherRule.scheduler) {
         viewModel.handleIntent(FeedMessagesIntent.Refresh)
         advanceUntilIdle()
 
@@ -224,7 +224,7 @@ class FeedMessagesViewModelTest {
     }
 
     @Test
-    fun `Refresh sets refreshing false after completion`() = runTest {
+    fun `Refresh sets refreshing false after completion`() = runTest(mainDispatcherRule.scheduler) {
         viewModel.handleIntent(FeedMessagesIntent.Refresh)
         advanceUntilIdle()
 
@@ -232,7 +232,7 @@ class FeedMessagesViewModelTest {
     }
 
     @Test
-    fun `Refresh sets refreshing false on fetchFeedItems exception`() = runTest {
+    fun `Refresh sets refreshing false on fetchFeedItems exception`() = runTest(mainDispatcherRule.scheduler) {
         viewModel = createViewModel()
         advanceUntilIdle()
 
@@ -245,7 +245,7 @@ class FeedMessagesViewModelTest {
     }
 
     @Test
-    fun `Refresh sets error when fetchFeedItems fails`() = runTest {
+    fun `Refresh sets error when fetchFeedItems fails`() = runTest(mainDispatcherRule.scheduler) {
         // Allow init to succeed, then make subsequent calls fail
         var callCount = 0
         coEvery { feedService.fetchFeedItems() } answers {
@@ -266,7 +266,7 @@ class FeedMessagesViewModelTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `OnBackPress navigates back`() = runTest {
+    fun `OnBackPress navigates back`() = runTest(mainDispatcherRule.scheduler) {
         viewModel.handleIntent(FeedMessagesIntent.OnBackPress)
         advanceUntilIdle()
 
@@ -274,7 +274,7 @@ class FeedMessagesViewModelTest {
     }
 
     @Test
-    fun `OnBackPress when navigateBack throws does not crash`() = runTest {
+    fun `OnBackPress when navigateBack throws does not crash`() = runTest(mainDispatcherRule.scheduler) {
         coEvery { navigationService.navigateBack(any()) } throws RuntimeException(ERROR_FAIL)
 
         viewModel.handleIntent(FeedMessagesIntent.OnBackPress)
@@ -288,7 +288,7 @@ class FeedMessagesViewModelTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `OnSettingsPress navigates to FeedMessageSetting`() = runTest {
+    fun `OnSettingsPress navigates to FeedMessageSetting`() = runTest(mainDispatcherRule.scheduler) {
         viewModel.handleIntent(FeedMessagesIntent.OnSettingsPress)
         advanceUntilIdle()
 
@@ -296,7 +296,7 @@ class FeedMessagesViewModelTest {
     }
 
     @Test
-    fun `OnSettingsPress when navigation throws does not crash`() = runTest {
+    fun `OnSettingsPress when navigation throws does not crash`() = runTest(mainDispatcherRule.scheduler) {
         coEvery { navigationService.navigateTo(any(), any(), any()) } throws RuntimeException(ERROR_FAIL)
 
         viewModel.handleIntent(FeedMessagesIntent.OnSettingsPress)
@@ -310,7 +310,7 @@ class FeedMessagesViewModelTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `OnNavigateToFeedLanding sets selected feed item and navigates`() = runTest {
+    fun `OnNavigateToFeedLanding sets selected feed item and navigates`() = runTest(mainDispatcherRule.scheduler) {
         val feedItem = testFeedItem()
         viewModel.handleIntent(FeedMessagesIntent.OnNavigateToFeedLanding(feedItem))
         advanceUntilIdle()
@@ -320,7 +320,7 @@ class FeedMessagesViewModelTest {
     }
 
     @Test
-    fun `OnNavigateToFeedLanding when navigation throws does not crash`() = runTest {
+    fun `OnNavigateToFeedLanding when navigation throws does not crash`() = runTest(mainDispatcherRule.scheduler) {
         coEvery { navigationService.navigateTo(any(), any(), any()) } throws RuntimeException(ERROR_FAIL)
 
         viewModel.handleIntent(FeedMessagesIntent.OnNavigateToFeedLanding(testFeedItem()))
@@ -330,7 +330,7 @@ class FeedMessagesViewModelTest {
     }
 
     @Test
-    fun `OnNavigateToFeedLanding sets feed item before navigation`() = runTest {
+    fun `OnNavigateToFeedLanding sets feed item before navigation`() = runTest(mainDispatcherRule.scheduler) {
         val feedItem = testFeedItem()
         viewModel.handleIntent(FeedMessagesIntent.OnNavigateToFeedLanding(feedItem))
         advanceUntilIdle()
@@ -345,7 +345,7 @@ class FeedMessagesViewModelTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `Refresh triggers loadFeedMessages which calls fetchFeedItems`() = runTest {
+    fun `Refresh triggers loadFeedMessages which calls fetchFeedItems`() = runTest(mainDispatcherRule.scheduler) {
         viewModel.handleIntent(FeedMessagesIntent.Refresh)
         advanceUntilIdle()
 
@@ -354,7 +354,7 @@ class FeedMessagesViewModelTest {
     }
 
     @Test
-    fun `loadFeedMessages sets error when fetchFeedItems throws`() = runTest {
+    fun `loadFeedMessages sets error when fetchFeedItems throws`() = runTest(mainDispatcherRule.scheduler) {
         var callCount = 0
         coEvery { feedService.fetchFeedItems() } answers {
             callCount++
@@ -375,7 +375,7 @@ class FeedMessagesViewModelTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `OnSettingsPress navigates to FeedMessageSetting route`() = runTest {
+    fun `OnSettingsPress navigates to FeedMessageSetting route`() = runTest(mainDispatcherRule.scheduler) {
         viewModel.handleIntent(FeedMessagesIntent.OnSettingsPress)
         advanceUntilIdle()
 

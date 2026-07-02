@@ -3,11 +3,11 @@ import Foundation
 
 @MainActor
 enum DashboardStoreTestSupport {
-    typealias SUT = (
-        store: DashboardStore,
-        accountService: AccountService,
-        cacheManager: MockDashboardCacheManager
-    )
+    struct SUT {
+        let store: DashboardStore
+        let accountService: AccountService
+        let cacheManager: MockDashboardCacheManager
+    }
 
     static func makeSUT(
         lightweight: Bool = true,
@@ -47,7 +47,7 @@ enum DashboardStoreTestSupport {
             cacheManager: cacheManager
         )
 
-        return (store, deps.account, cacheManager)
+        return SUT(store: store, accountService: deps.account, cacheManager: cacheManager)
     }
 
     static func makeActiveAccount(

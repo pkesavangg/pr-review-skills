@@ -12,6 +12,7 @@ import com.dmdbrands.gurus.weight.domain.model.storage.entry.BabyEntry
 import com.dmdbrands.gurus.weight.domain.model.storage.entry.BpmEntry
 import com.dmdbrands.gurus.weight.domain.model.storage.entry.Entry
 import com.dmdbrands.gurus.weight.domain.model.storage.entry.ScaleEntry
+import com.dmdbrands.gurus.weight.domain.enums.ProductType
 import com.dmdbrands.gurus.weight.domain.repository.IDeviceService
 import com.dmdbrands.gurus.weight.domain.services.IAccountService
 import com.dmdbrands.gurus.weight.domain.services.IAppSyncService
@@ -19,6 +20,7 @@ import com.dmdbrands.gurus.weight.domain.services.IEntryService
 import com.dmdbrands.gurus.weight.features.common.components.DateTimeValue
 import com.dmdbrands.gurus.weight.features.common.helper.form.MultiFormGroup
 import com.dmdbrands.gurus.weight.features.common.model.DialogModel
+import com.dmdbrands.gurus.weight.features.common.model.ReadingToast
 import com.dmdbrands.gurus.weight.features.common.model.Toast
 import com.dmdbrands.gurus.weight.features.manualEntry.strings.EntryScreenStrings
 import com.dmdbrands.gurus.weight.testutil.TestFixtures
@@ -38,6 +40,7 @@ import com.dmdbrands.gurus.weight.domain.model.common.ProductSelection
 import com.dmdbrands.gurus.weight.domain.services.IProductSelectionManager
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
 import java.time.LocalDate
@@ -50,7 +53,6 @@ import org.junit.jupiter.api.extension.RegisterExtension
 class EntryViewModelTest {
 
     companion object {
-        private const val SUCCESS_TOAST_TITLE = "Success!"
         private const val ERROR_TOAST_TITLE = "Error saving new entry!"
         private const val NETWORK_ERROR = "Network error"
         private const val TEST_HEIGHT = 1700
@@ -103,6 +105,7 @@ class EntryViewModelTest {
             appSyncService = appSyncService,
             deviceService = deviceService,
             analyticsService = mockk(relaxed = true),
+            appScope = TestScope(mainDispatcherRule.dispatcher),
         ).initTestDependencies(
             navigationService = navigationService,
             dialogQueueService = dialogQueueService,
@@ -181,14 +184,14 @@ class EntryViewModelTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `Save calls entryService addEntry`() = runTest {
+    fun `Save calls entryService addEntry`() = runTest(mainDispatcherRule.scheduler) {
         viewModel.handleIntent(EntryIntent.Save)
         advanceUntilIdle()
         coVerify { entryService.addEntry(entry = any()) }
     }
 
     @Test
-    fun `Save with baby form saves one combined baby entry carrying weight and length`() = runTest {
+    fun `Save with baby form saves one combined baby entry carrying weight and length`() = runTest(mainDispatcherRule.scheduler) {
         val baby = ProductSelection.Baby(
             BabyProfile(id = "baby-1", name = "Timmy", birthdate = null, accountId = "acc-1"),
         )
@@ -217,7 +220,60 @@ class EntryViewModelTest {
     }
 
     @Test
-    fun `Save shows loader and dismisses it after success`() = runTest {
+    fun `Save baby weight for metric account shows saved-to-log card in kg`() = runTest(mainDispatcherRule.scheduler) {
+        val kgAccount = TestFixtures.anAccount(isActiveAccount = true, isLoggedIn = true)
+            .copy(weightUnit = WeightUnit.KG)
+        every { accountService.activeAccount } returns MutableStateFlow(kgAccount)
+        every { accountService.activeAccountFlow } returns flowOf(kgAccount)
+        every { productSelectionManager.selectedProduct } returns MutableStateFlow(babyProfile())
+        viewModel = createViewModel()
+
+        val form = MultiFormGroup.create(forms = BabyEntryForm.create())
+        form.forms.baby.controls.pounds.onValueChange("7")
+        form.forms.baby.controls.ounces.onValueChange("4")
+        viewModel.handleIntent(EntryIntent.UpdateActiveForm(ActiveEntryForm.Baby(form)))
+
+        val toasts = mutableListOf<Toast>()
+        every { dialogQueueService.showToast(capture(toasts)) } returns Unit
+        coEvery { entryService.addEntry(entry = any()) } returns Unit
+
+        viewModel.handleIntent(EntryIntent.Save)
+        advanceUntilIdle()
+
+        val dg = ConversionTools.convertLbOzToDecigrams(7, 4.0)
+        val expectedKg = ConversionTools.convertBabyWeightToDisplay(dg, source = null, isMetric = true)
+        val reading = toasts.filterIsInstance<Toast.Custom>()
+            .map { it.content }.filterIsInstance<ReadingToast>().single()
+        assertThat(reading.reading).isEqualTo(expectedKg)
+    }
+
+    @Test
+    fun `Save baby weight for imperial account shows saved-to-log card in lb-oz`() = runTest(mainDispatcherRule.scheduler) {
+        // Default active account is imperial (LB).
+        every { productSelectionManager.selectedProduct } returns MutableStateFlow(babyProfile())
+        viewModel = createViewModel()
+
+        val form = MultiFormGroup.create(forms = BabyEntryForm.create())
+        form.forms.baby.controls.pounds.onValueChange("7")
+        form.forms.baby.controls.ounces.onValueChange("4")
+        viewModel.handleIntent(EntryIntent.UpdateActiveForm(ActiveEntryForm.Baby(form)))
+
+        val toasts = mutableListOf<Toast>()
+        every { dialogQueueService.showToast(capture(toasts)) } returns Unit
+        coEvery { entryService.addEntry(entry = any()) } returns Unit
+
+        viewModel.handleIntent(EntryIntent.Save)
+        advanceUntilIdle()
+
+        val dg = ConversionTools.convertLbOzToDecigrams(7, 4.0)
+        val expectedLbOz = ConversionTools.convertBabyWeightToDisplay(dg, source = null, isMetric = false)
+        val reading = toasts.filterIsInstance<Toast.Custom>()
+            .map { it.content }.filterIsInstance<ReadingToast>().single()
+        assertThat(reading.reading).isEqualTo(expectedLbOz)
+    }
+
+    @Test
+    fun `Save shows loader and dismisses it after success`() = runTest(mainDispatcherRule.scheduler) {
         viewModel.handleIntent(EntryIntent.Save)
         advanceUntilIdle()
         verify { dialogQueueService.showLoader(message = any()) }
@@ -225,28 +281,37 @@ class EntryViewModelTest {
     }
 
     @Test
-    fun `Save shows success toast on success`() = runTest {
+    fun `Save shows saved-to-log reading card on success`() = runTest(mainDispatcherRule.scheduler) {
+        val toasts = mutableListOf<Toast>()
+        every { dialogQueueService.showToast(capture(toasts)) } returns Unit
+
         viewModel.handleIntent(EntryIntent.Save)
         advanceUntilIdle()
-        verify { dialogQueueService.showToast(match<Toast.Simple> { it.title == SUCCESS_TOAST_TITLE }) }
+
+        // Success now surfaces the rich "saved to your log" card (Figma 30456-24170), not a plain
+        // "Success!" toast — for a weight entry the card is a MY_WEIGHT ReadingToast.
+        val reading = toasts.filterIsInstance<Toast.Custom>()
+            .map { it.content }.filterIsInstance<ReadingToast>().single()
+        assertThat(reading.type).isEqualTo(ProductType.MY_WEIGHT)
+        assertThat(reading.savedToLog).isTrue()
     }
 
     @Test
-    fun `Save navigates back to Home on success`() = runTest {
+    fun `Save navigates back to Home on success`() = runTest(mainDispatcherRule.scheduler) {
         viewModel.handleIntent(EntryIntent.Save)
         advanceUntilIdle()
         coVerify { navigationService.navigateBack(AppRoute.Home) }
     }
 
     @Test
-    fun `Save clears appSync data on success`() = runTest {
+    fun `Save clears appSync data on success`() = runTest(mainDispatcherRule.scheduler) {
         viewModel.handleIntent(EntryIntent.Save)
         advanceUntilIdle()
         coVerify { appSyncService.setAppSyncDataForEditing(null) }
     }
 
     @Test
-    fun `Save calls deactivate on success`() = runTest {
+    fun `Save calls deactivate on success`() = runTest(mainDispatcherRule.scheduler) {
         viewModel.handleIntent(EntryIntent.Save)
         advanceUntilIdle()
         coVerify { navigationService.unregisterOnDeactivate(AppRoute.Main.Entry) }
@@ -257,7 +322,7 @@ class EntryViewModelTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `Save baby entry dated before birthdate shows toast and does not save`() = runTest {
+    fun `Save baby entry dated before birthdate shows toast and does not save`() = runTest(mainDispatcherRule.scheduler) {
         // Birthdate 2026-06-15; entry dated the day before → must be rejected.
         setUpBabyForm(birthdate = "2026-06-15", entryDate = "2026-06-14")
 
@@ -276,7 +341,7 @@ class EntryViewModelTest {
     }
 
     @Test
-    fun `Save baby entry dated on the exact birthday is allowed`() = runTest {
+    fun `Save baby entry dated on the exact birthday is allowed`() = runTest(mainDispatcherRule.scheduler) {
         // entryDay == birthDay → isBefore is false → save proceeds.
         setUpBabyForm(birthdate = "2026-06-15", entryDate = "2026-06-15")
 
@@ -292,7 +357,7 @@ class EntryViewModelTest {
     }
 
     @Test
-    fun `Save baby entry proceeds when birthdate is blank`() = runTest {
+    fun `Save baby entry proceeds when birthdate is blank`() = runTest(mainDispatcherRule.scheduler) {
         // Blank birthdate → isBeforeBirthdate returns false → never block on bad profile data.
         setUpBabyForm(birthdate = "", entryDate = "2020-01-01")
 
@@ -308,7 +373,7 @@ class EntryViewModelTest {
     }
 
     @Test
-    fun `Save baby entry proceeds when birthdate is unparseable`() = runTest {
+    fun `Save baby entry proceeds when birthdate is unparseable`() = runTest(mainDispatcherRule.scheduler) {
         // Unparseable birthdate → isBeforeBirthdate returns false → save proceeds.
         setUpBabyForm(birthdate = "not-a-date", entryDate = "2020-01-01")
 
@@ -351,7 +416,7 @@ class EntryViewModelTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `Save shows error toast when addEntry throws`() = runTest {
+    fun `Save shows error toast when addEntry throws`() = runTest(mainDispatcherRule.scheduler) {
         coEvery { entryService.addEntry(entry = any()) } throws RuntimeException(NETWORK_ERROR)
         viewModel.handleIntent(EntryIntent.Save)
         advanceUntilIdle()
@@ -359,7 +424,7 @@ class EntryViewModelTest {
     }
 
     @Test
-    fun `Save dismisses loader when addEntry throws`() = runTest {
+    fun `Save dismisses loader when addEntry throws`() = runTest(mainDispatcherRule.scheduler) {
         coEvery { entryService.addEntry(entry = any()) } throws RuntimeException("fail")
         viewModel.handleIntent(EntryIntent.Save)
         advanceUntilIdle()
@@ -367,7 +432,7 @@ class EntryViewModelTest {
     }
 
     @Test
-    fun `Save does not navigate back when addEntry throws`() = runTest {
+    fun `Save does not navigate back when addEntry throws`() = runTest(mainDispatcherRule.scheduler) {
         coEvery { entryService.addEntry(entry = any()) } throws RuntimeException("fail")
         viewModel.handleIntent(EntryIntent.Save)
         advanceUntilIdle()
@@ -379,7 +444,7 @@ class EntryViewModelTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `EarlyExit registers deactivation handler`() = runTest {
+    fun `EarlyExit registers deactivation handler`() = runTest(mainDispatcherRule.scheduler) {
         viewModel.handleIntent(EntryIntent.EarlyExit)
         advanceUntilIdle()
         coVerify { navigationService.registerOnDeactivate(AppRoute.Main.Entry, any()) }
@@ -390,7 +455,7 @@ class EntryViewModelTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `initDeactivate registers deactivation handler`() = runTest {
+    fun `initDeactivate registers deactivation handler`() = runTest(mainDispatcherRule.scheduler) {
         viewModel.initDeactivate { }
         advanceUntilIdle()
         coVerify { navigationService.registerOnDeactivate(AppRoute.Main.Entry, any()) }
@@ -401,7 +466,7 @@ class EntryViewModelTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `deactivate unregisters handler and clears appSync data`() = runTest {
+    fun `deactivate unregisters handler and clears appSync data`() = runTest(mainDispatcherRule.scheduler) {
         viewModel.deactivate()
         advanceUntilIdle()
         coVerify { navigationService.unregisterOnDeactivate(AppRoute.Main.Entry) }
@@ -409,7 +474,7 @@ class EntryViewModelTest {
     }
 
     @Test
-    fun `deactivate sets isMetricFieldsExpandedInitially to false`() = runTest {
+    fun `deactivate sets isMetricFieldsExpandedInitially to false`() = runTest(mainDispatcherRule.scheduler) {
         viewModel.handleIntent(EntryIntent.UpdateMetricFieldsExpandedStatus(true))
         assertThat(viewModel.state.value.isMetricFieldsExpandedInitially).isTrue()
 
@@ -423,7 +488,7 @@ class EntryViewModelTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `subscribes to activeAccountFlow and updates weightMode`() = runTest {
+    fun `subscribes to activeAccountFlow and updates weightMode`() = runTest(mainDispatcherRule.scheduler) {
         val account = TestFixtures.anAccount(isActiveAccount = true, isLoggedIn = true)
             .copy(weightUnit = WeightUnit.KG)
         every { accountService.activeAccount } returns MutableStateFlow(account)
@@ -440,7 +505,7 @@ class EntryViewModelTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `hasBluetoothWifiScale true sets DASHBOARD_12_METRICS`() = runTest {
+    fun `hasBluetoothWifiScale true sets DASHBOARD_12_METRICS`() = runTest(mainDispatcherRule.scheduler) {
         every { deviceService.hasBluetoothWifiScale } returns flowOf(true)
 
         viewModel = createViewModel()
@@ -450,7 +515,7 @@ class EntryViewModelTest {
     }
 
     @Test
-    fun `hasBluetoothWifiScale false sets DASHBOARD_4_METRICS`() = runTest {
+    fun `hasBluetoothWifiScale false sets DASHBOARD_4_METRICS`() = runTest(mainDispatcherRule.scheduler) {
         every { deviceService.hasBluetoothWifiScale } returns flowOf(false)
 
         viewModel = createViewModel()
@@ -464,7 +529,7 @@ class EntryViewModelTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `appSync data pre-fills form when scaleEntry emitted`() = runTest {
+    fun `appSync data pre-fills form when scaleEntry emitted`() = runTest(mainDispatcherRule.scheduler) {
         val scaleEntry = TestFixtures.weightEntry
         every { appSyncService.appSyncDataForEditing } returns MutableStateFlow(scaleEntry)
 
@@ -479,7 +544,7 @@ class EntryViewModelTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `UpdateOnRelaunch refreshes form when no appSync data`() = runTest {
+    fun `UpdateOnRelaunch refreshes form when no appSync data`() = runTest(mainDispatcherRule.scheduler) {
         val initialForm = viewModel.state.value.form
         viewModel.handleIntent(EntryIntent.UpdateOnRelaunch)
         advanceUntilIdle()
@@ -488,7 +553,7 @@ class EntryViewModelTest {
     }
 
     @Test
-    fun `UpdateOnRelaunch reads weight unit from accountService not stale state`() = runTest {
+    fun `UpdateOnRelaunch reads weight unit from accountService not stale state`() = runTest(mainDispatcherRule.scheduler) {
         val kgAccount = TestFixtures.anAccount(isActiveAccount = true, isLoggedIn = true)
             .copy(weightUnit = WeightUnit.KG)
         every { accountService.activeAccount } returns MutableStateFlow(kgAccount)
@@ -514,7 +579,7 @@ class EntryViewModelTest {
     }
 
     @Test
-    fun `UpdateOnRelaunch does not replace form when appSync data exists`() = runTest {
+    fun `UpdateOnRelaunch does not replace form when appSync data exists`() = runTest(mainDispatcherRule.scheduler) {
         val scaleEntry = TestFixtures.weightEntry
         every { appSyncService.appSyncDataForEditing } returns MutableStateFlow(scaleEntry)
 
@@ -533,7 +598,7 @@ class EntryViewModelTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `LoadAppSyncData creates form with scaleEntry data`() = runTest {
+    fun `LoadAppSyncData creates form with scaleEntry data`() = runTest(mainDispatcherRule.scheduler) {
         val scaleEntry = TestFixtures.weightEntry
         viewModel.handleIntent(EntryIntent.LoadAppSyncData(scaleEntry, height = TEST_HEIGHT))
         advanceUntilIdle()
@@ -547,14 +612,14 @@ class EntryViewModelTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `earlyExit calls Exit which registers deactivate handler`() = runTest {
+    fun `earlyExit calls Exit which registers deactivate handler`() = runTest(mainDispatcherRule.scheduler) {
         viewModel.earlyExit()
         advanceUntilIdle()
         coVerify { navigationService.registerOnDeactivate(AppRoute.Main.Entry, any()) }
     }
 
     @Test
-    fun `Exit registers deactivation handler`() = runTest {
+    fun `Exit registers deactivation handler`() = runTest(mainDispatcherRule.scheduler) {
         viewModel.Exit()
         advanceUntilIdle()
         coVerify { navigationService.registerOnDeactivate(AppRoute.Main.Entry, any()) }
@@ -565,14 +630,14 @@ class EntryViewModelTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `earlyExitToHome registers deactivation handler on Entry route`() = runTest {
+    fun `earlyExitToHome registers deactivation handler on Entry route`() = runTest(mainDispatcherRule.scheduler) {
         viewModel.earlyExitToHome()
         advanceUntilIdle()
         coVerify { navigationService.registerOnDeactivate(AppRoute.Main.Entry, any()) }
     }
 
     @Test
-    fun `EarlyExit intent triggers earlyExitToHome`() = runTest {
+    fun `EarlyExit intent triggers earlyExitToHome`() = runTest(mainDispatcherRule.scheduler) {
         viewModel.handleIntent(EntryIntent.EarlyExit)
         advanceUntilIdle()
         coVerify { navigationService.registerOnDeactivate(AppRoute.Main.Entry, any()) }
@@ -583,7 +648,7 @@ class EntryViewModelTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `Save logs manual entry created analytics event`() = runTest {
+    fun `Save logs manual entry created analytics event`() = runTest(mainDispatcherRule.scheduler) {
         viewModel.handleIntent(EntryIntent.Save)
         advanceUntilIdle()
         // analyticsService is relaxed, so logEvent should have been called
@@ -592,7 +657,7 @@ class EntryViewModelTest {
     }
 
     @Test
-    fun `Save returns early when activeAccount id is null`() = runTest {
+    fun `Save returns early when activeAccount id is null`() = runTest(mainDispatcherRule.scheduler) {
         every { accountService.activeAccount } returns MutableStateFlow(null)
         every { accountService.activeAccountFlow } returns flowOf(null)
         viewModel = createViewModel()
@@ -628,7 +693,7 @@ class EntryViewModelTest {
     }
 
     @Test
-    fun `Save with BP form computes mean arterial and persists bpm entry`() = runTest {
+    fun `Save with BP form computes mean arterial and persists bpm entry`() = runTest(mainDispatcherRule.scheduler) {
         selectBloodPressureForm(systolic = "120", diastolic = "80", pulse = "72")
         val captured = slot<Entry>()
         coEvery { entryService.addEntry(entry = capture(captured)) } returns Unit
@@ -645,7 +710,7 @@ class EntryViewModelTest {
     }
 
     @Test
-    fun `Save with BP form blank values default to zero`() = runTest {
+    fun `Save with BP form blank values default to zero`() = runTest(mainDispatcherRule.scheduler) {
         selectBloodPressureForm(systolic = "", diastolic = "abc", pulse = "")
         val captured = slot<Entry>()
         coEvery { entryService.addEntry(entry = capture(captured)) } returns Unit
@@ -661,7 +726,7 @@ class EntryViewModelTest {
     }
 
     @Test
-    fun `Save with BP form keeps note when provided`() = runTest {
+    fun `Save with BP form keeps note when provided`() = runTest(mainDispatcherRule.scheduler) {
         selectBloodPressureForm(notes = "after walk")
         val captured = slot<Entry>()
         coEvery { entryService.addEntry(entry = capture(captured)) } returns Unit
@@ -673,16 +738,23 @@ class EntryViewModelTest {
     }
 
     @Test
-    fun `Save with BP form shows success toast and navigates back`() = runTest {
+    fun `Save with BP form shows saved-to-log reading card and navigates back`() = runTest(mainDispatcherRule.scheduler) {
         selectBloodPressureForm()
+        val toasts = mutableListOf<Toast>()
+        every { dialogQueueService.showToast(capture(toasts)) } returns Unit
+
         viewModel.handleIntent(EntryIntent.Save)
         advanceUntilIdle()
-        verify { dialogQueueService.showToast(match<Toast.Simple> { it.title == SUCCESS_TOAST_TITLE }) }
+
+        val reading = toasts.filterIsInstance<Toast.Custom>()
+            .map { it.content }.filterIsInstance<ReadingToast>().single()
+        assertThat(reading.type).isEqualTo(ProductType.BLOOD_PRESSURE)
+        assertThat(reading.reading).isEqualTo("120/80")
         coVerify { navigationService.navigateBack(AppRoute.Home) }
     }
 
     @Test
-    fun `Save with BP form shows error toast when addEntry throws`() = runTest {
+    fun `Save with BP form shows error toast when addEntry throws`() = runTest(mainDispatcherRule.scheduler) {
         selectBloodPressureForm()
         coEvery { entryService.addEntry(entry = any()) } throws RuntimeException(NETWORK_ERROR)
 
@@ -694,7 +766,7 @@ class EntryViewModelTest {
     }
 
     @Test
-    fun `Save with BP form returns early when activeAccount id is null`() = runTest {
+    fun `Save with BP form returns early when activeAccount id is null`() = runTest(mainDispatcherRule.scheduler) {
         every { accountService.activeAccount } returns MutableStateFlow(null)
         every { accountService.activeAccountFlow } returns flowOf(null)
         selectBloodPressureForm()
@@ -713,7 +785,7 @@ class EntryViewModelTest {
         ProductSelection.Baby(BabyProfile(id = id, name = "Timmy", birthdate = null, accountId = "acc-1"))
 
     @Test
-    fun `Save with baby form but no profile selected does not persist`() = runTest {
+    fun `Save with baby form but no profile selected does not persist`() = runTest(mainDispatcherRule.scheduler) {
         // Active form is Baby, but the selected product is NOT a Baby → babyId is null.
         every { productSelectionManager.selectedProduct } returns
             MutableStateFlow(ProductSelection.MyWeight)
@@ -729,7 +801,7 @@ class EntryViewModelTest {
     }
 
     @Test
-    fun `Save with baby form returns early when activeAccount id is null`() = runTest {
+    fun `Save with baby form returns early when activeAccount id is null`() = runTest(mainDispatcherRule.scheduler) {
         every { accountService.activeAccount } returns MutableStateFlow(null)
         every { accountService.activeAccountFlow } returns flowOf(null)
         every { productSelectionManager.selectedProduct } returns MutableStateFlow(babyProfile())
@@ -746,7 +818,7 @@ class EntryViewModelTest {
     }
 
     @Test
-    fun `Save with baby form weight only sends single weight entry`() = runTest {
+    fun `Save with baby form weight only sends single weight entry`() = runTest(mainDispatcherRule.scheduler) {
         every { productSelectionManager.selectedProduct } returns MutableStateFlow(babyProfile())
         viewModel = createViewModel()
         val form = MultiFormGroup.create(forms = BabyEntryForm.create())
@@ -766,7 +838,7 @@ class EntryViewModelTest {
     }
 
     @Test
-    fun `Save with baby form length only sends single length entry`() = runTest {
+    fun `Save with baby form length only sends single length entry`() = runTest(mainDispatcherRule.scheduler) {
         every { productSelectionManager.selectedProduct } returns MutableStateFlow(babyProfile())
         viewModel = createViewModel()
         val form = MultiFormGroup.create(forms = BabyEntryForm.create())
@@ -785,7 +857,7 @@ class EntryViewModelTest {
     }
 
     @Test
-    fun `Save with baby form all zero values sends no entries`() = runTest {
+    fun `Save with baby form all zero values sends no entries`() = runTest(mainDispatcherRule.scheduler) {
         every { productSelectionManager.selectedProduct } returns MutableStateFlow(babyProfile())
         viewModel = createViewModel()
         val form = MultiFormGroup.create(forms = BabyEntryForm.create())
@@ -794,12 +866,12 @@ class EntryViewModelTest {
         viewModel.handleIntent(EntryIntent.Save)
         advanceUntilIdle()
 
-        // buildBabyEntries returns empty → forEach is a no-op
+        // buildBabyEntry returns null (no measure entered) → addEntry is never called
         coVerify(exactly = 0) { entryService.addEntry(entry = any()) }
     }
 
     @Test
-    fun `Save with baby form shows error toast when addEntry throws`() = runTest {
+    fun `Save with baby form shows error toast when addEntry throws`() = runTest(mainDispatcherRule.scheduler) {
         every { productSelectionManager.selectedProduct } returns MutableStateFlow(babyProfile())
         viewModel = createViewModel()
         val form = MultiFormGroup.create(forms = BabyEntryForm.create())
@@ -819,7 +891,7 @@ class EntryViewModelTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `observeProductSelection with BloodPressure sets BloodPressure active form`() = runTest {
+    fun `observeProductSelection with BloodPressure sets BloodPressure active form`() = runTest(mainDispatcherRule.scheduler) {
         every { productSelectionManager.selectedProduct } returns
             MutableStateFlow(ProductSelection.BloodPressure)
         viewModel = createViewModel()
@@ -831,7 +903,7 @@ class EntryViewModelTest {
     }
 
     @Test
-    fun `observeProductSelection with Baby sets Baby active form`() = runTest {
+    fun `observeProductSelection with Baby sets Baby active form`() = runTest(mainDispatcherRule.scheduler) {
         every { productSelectionManager.selectedProduct } returns MutableStateFlow(babyProfile())
         viewModel = createViewModel()
 
@@ -842,7 +914,7 @@ class EntryViewModelTest {
     }
 
     @Test
-    fun `observeProductSelection with MyWeight and no appSync builds weight form`() = runTest {
+    fun `observeProductSelection with MyWeight and no appSync builds weight form`() = runTest(mainDispatcherRule.scheduler) {
         every { productSelectionManager.selectedProduct } returns
             MutableStateFlow(ProductSelection.MyWeight)
         viewModel = createViewModel()
@@ -854,7 +926,7 @@ class EntryViewModelTest {
     }
 
     @Test
-    fun `observeProductSelection with MyWeight and appSync expands metrics`() = runTest {
+    fun `observeProductSelection with MyWeight and appSync expands metrics`() = runTest(mainDispatcherRule.scheduler) {
         every { appSyncService.appSyncDataForEditing } returns MutableStateFlow(TestFixtures.weightEntry)
         every { productSelectionManager.selectedProduct } returns
             MutableStateFlow(ProductSelection.MyWeight)
@@ -867,7 +939,7 @@ class EntryViewModelTest {
     }
 
     @Test
-    fun `observeProductSelection with BabyScale is a no-op`() = runTest {
+    fun `observeProductSelection with BabyScale is a no-op`() = runTest(mainDispatcherRule.scheduler) {
         every { productSelectionManager.selectedProduct } returns
             MutableStateFlow(ProductSelection.BabyScale)
         viewModel = createViewModel()
@@ -884,7 +956,7 @@ class EntryViewModelTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `UpdateOnRelaunch with BloodPressure product does not rebuild weight form`() = runTest {
+    fun `UpdateOnRelaunch with BloodPressure product does not rebuild weight form`() = runTest(mainDispatcherRule.scheduler) {
         every { productSelectionManager.selectedProduct } returns
             MutableStateFlow(ProductSelection.BloodPressure)
         viewModel = createViewModel()
@@ -903,7 +975,7 @@ class EntryViewModelTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `loadAppSyncData with null account uses null height and still loads`() = runTest {
+    fun `loadAppSyncData with null account uses null height and still loads`() = runTest(mainDispatcherRule.scheduler) {
         every { accountService.activeAccount } returns MutableStateFlow(null)
         every { accountService.activeAccountFlow } returns flowOf(null)
         val scaleEntry = TestFixtures.weightEntry
@@ -928,7 +1000,7 @@ class EntryViewModelTest {
     }
 
     @Test
-    fun `initDeactivate enqueues confirm dialog when form is dirty`() = runTest {
+    fun `initDeactivate enqueues confirm dialog when form is dirty`() = runTest(mainDispatcherRule.scheduler) {
         val handlerSlot = slot<suspend () -> Boolean>()
         coEvery {
             navigationService.registerOnDeactivate(eq(AppRoute.Main.Entry), capture(handlerSlot))
@@ -952,7 +1024,7 @@ class EntryViewModelTest {
     }
 
     @Test
-    fun `initDeactivate cancel callback resumes false`() = runTest {
+    fun `initDeactivate cancel callback resumes false`() = runTest(mainDispatcherRule.scheduler) {
         val handlerSlot = slot<suspend () -> Boolean>()
         coEvery {
             navigationService.registerOnDeactivate(eq(AppRoute.Main.Entry), capture(handlerSlot))
@@ -971,7 +1043,7 @@ class EntryViewModelTest {
     }
 
     @Test
-    fun `initDeactivate returns true immediately when form not dirty`() = runTest {
+    fun `initDeactivate returns true immediately when form not dirty`() = runTest(mainDispatcherRule.scheduler) {
         val handlerSlot = slot<suspend () -> Boolean>()
         coEvery {
             navigationService.registerOnDeactivate(eq(AppRoute.Main.Entry), capture(handlerSlot))
@@ -985,7 +1057,7 @@ class EntryViewModelTest {
     }
 
     @Test
-    fun `Exit enqueues confirm dialog and confirm callback deactivates`() = runTest {
+    fun `Exit enqueues confirm dialog and confirm callback deactivates`() = runTest(mainDispatcherRule.scheduler) {
         val handlerSlot = slot<suspend () -> Boolean>()
         coEvery {
             navigationService.registerOnDeactivate(eq(AppRoute.Main.Entry), capture(handlerSlot))
@@ -1005,7 +1077,7 @@ class EntryViewModelTest {
     }
 
     @Test
-    fun `Exit cancel callback resumes false`() = runTest {
+    fun `Exit cancel callback resumes false`() = runTest(mainDispatcherRule.scheduler) {
         val handlerSlot = slot<suspend () -> Boolean>()
         coEvery {
             navigationService.registerOnDeactivate(eq(AppRoute.Main.Entry), capture(handlerSlot))
@@ -1024,7 +1096,7 @@ class EntryViewModelTest {
     }
 
     @Test
-    fun `Exit returns true immediately when form not dirty`() = runTest {
+    fun `Exit returns true immediately when form not dirty`() = runTest(mainDispatcherRule.scheduler) {
         val handlerSlot = slot<suspend () -> Boolean>()
         coEvery {
             navigationService.registerOnDeactivate(eq(AppRoute.Main.Entry), capture(handlerSlot))

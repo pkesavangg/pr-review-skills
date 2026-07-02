@@ -14,7 +14,25 @@ class ReadingToastStringsTest {
   fun `title is product-specific for every type`() {
     assertThat(ReadingToastStrings.title(ProductType.MY_WEIGHT)).isEqualTo("New Weight Scale Reading Received")
     assertThat(ReadingToastStrings.title(ProductType.BLOOD_PRESSURE)).isEqualTo("New BPM Reading Received")
-    assertThat(ReadingToastStrings.title(ProductType.BABY)).isEqualTo("New Baby Scale Reading Received")
+    // Baby title aligned to design 24866 ("New Reading Received") — MOB-598.
+    assertThat(ReadingToastStrings.title(ProductType.BABY)).isEqualTo("New Reading Received")
+  }
+
+  @Test
+  fun `single-baby title embeds the upper-cased baby name`() {
+    assertThat(ReadingToastStrings.titleForBaby("Princy")).isEqualTo("New Reading Received for PRINCY")
+  }
+
+  @Test
+  fun `moreReadings pill copy includes the count`() {
+    assertThat(ReadingToastStrings.moreReadings(2)).isEqualTo("2 more readings received for this session")
+    assertThat(ReadingToastStrings.View).isEqualTo("VIEW")
+  }
+
+  @Test
+  fun `assign-to-new-baby row copy is exposed for the picker`() {
+    assertThat(ReadingToastStrings.AssignModal.AssignNewBaby).isEqualTo("Assign to new baby")
+    assertThat(ReadingToastStrings.AssignModal.AssignNewBabySubtitle).isEqualTo("create new baby profile")
   }
 
   @Test
