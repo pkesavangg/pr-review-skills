@@ -41,7 +41,8 @@ struct ChangePasswordScreen: View {
                     ) {
                         hideKeyboard()
                         settingsStore.savePassword(router: router)
-                    } },
+                    }
+                    .appAccessibility(id: AccessibilityID.changePasswordSaveButton) },
                 onLeadingTap: { settingsStore.handleChangePasswordExit(router: router) },
                 onTrailingTap: {},
                 canShowBorder: true

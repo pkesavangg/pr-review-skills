@@ -13,6 +13,15 @@ extension AccessibilityID {
     static let settingsRowActivityLevel = "settings_row_activity_level"
     static let settingsRowHeight = "settings_row_height"
     static let settingsRowLogOut = "settings_row_log_out"
+    static let settingsRowMyKids = "settings_row_my_kids"
+    static let settingsRowAppPermissions = "settings_row_app_permissions"
+    static let settingsRowMessages = "settings_row_messages"
+    static let settingsRowNotifications = "settings_row_notifications"
+    static let settingsRowAppearance = "settings_row_appearance"
+    static let settingsRowDefaultGraphView = "settings_row_default_graph_view"
+    static let settingsRowHelp = "settings_row_help"
+    static let settingsRowSwitchAccounts = "settings_row_switch_accounts"
+    static let settingsRowDeleteAccount = "settings_row_delete_account"
 
     // MARK: - Account Settings / Add Scale rows
     static let accountSettingsAddScalesRow = "account_settings_add_scales_row"
@@ -32,6 +41,7 @@ extension AccessibilityID {
     static let currentPasswordField = "current_password_field"
     static let newPasswordField = "new_password_field"
     static let confirmPasswordField = "confirm_password_field"
+    static let changePasswordSaveButton = "change_password_save_button"
 
     // MARK: - Goal Setting Screen
     static let goalWeightInput = "goal_weight_input"
