@@ -33,6 +33,12 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
 
     let tag = "EntryService"
 
+    /// `start` value used for a full sync (no prior sync timestamp). The unified
+    /// `GET /v3/entries/` only returns the complete history in sync mode when a `start`
+    /// is supplied; sending no `start` triggers a 20-row cursor page instead. Using the
+    /// epoch pulls every entry so History/Dashboard reflect the full server dataset.
+    private static let fullSyncStart = "1970-01-01T00:00:00Z"
+
     @Published var isSyncing: Bool = false
     @Published var lastSyncTime: Date?
     @Published var progress: ProgressSummary = .empty
@@ -1003,8 +1009,11 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
             }
 
             // Sync mode of the unified GET /v3/entries/ — all entries since the last sync.
+            // On a full sync (no prior timestamp) send the epoch so the server returns the
+            // entire history in sync mode rather than a partial 20-row cursor page.
+            let syncStart = lastSyncTimestamp ?? Self.fullSyncStart
             let remoteOps = try await remoteRepo.fetchEntries(
-                start: lastSyncTimestamp, cursor: nil, limit: nil, category: nil
+                start: syncStart, cursor: nil, limit: nil, category: nil
             )
             let hadMergedNewCreates = await mergeRemoteOperations(remoteOps.operations, accountId: accountId)
             let dashboardDataChanged = hadPushedCreates || hadMergedNewCreates
@@ -1183,8 +1192,11 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
                 lastSyncTimestamp = nil
             }
 
+            // Full sync (no prior timestamp) → epoch start so the server returns the entire
+            // history in sync mode instead of a partial 20-row cursor page.
+            let syncStart = lastSyncTimestamp ?? Self.fullSyncStart
             let remoteOps = try await remoteRepo.fetchEntries(
-                start: lastSyncTimestamp, cursor: nil, limit: nil, category: nil
+                start: syncStart, cursor: nil, limit: nil, category: nil
             )
             if !remoteOps.operations.isEmpty {
                 _ = await mergeRemoteOperations(remoteOps.operations, accountId: accountId)
@@ -1221,20 +1233,60 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
         // to health integrations after the merge. Pushing the overall "latest" entry alone is
         // insufficient when multiple Wi-Fi/R4 entries arrive in a single sync.
         var newlyCreatedOps: [BathScaleOperationDTO] = []
-        // Group operations by timestamp to determine final state for each timestamp
+        // Group operations by stable entry identity. Prefer the server-assigned entryId
+        // (unique per entry) so distinct entries that happen to share an `entryTimestamp`
+        // are NOT collapsed into one. Ops without a serverEntryId (legacy/local-only data)
+        // fall back to grouping by entryTimestamp, preserving the original behavior.
         let groupedOps = Dictionary(grouping: remoteOps) { op in
-            op.entryTimestamp ?? ""
+            op.serverEntryId ?? op.entryTimestamp ?? ""
         }
-        for (timestamp, ops) in groupedOps {
-            guard !timestamp.isEmpty else { continue }
+        for (groupKey, ops) in groupedOps {
+            guard !groupKey.isEmpty else { continue }
 
             // Sort operations by serverTimestamp to process in chronological order
             let sortedOps = ops.sorted {
                 ($0.serverTimestamp ?? "") < ($1.serverTimestamp ?? "")
             }
 
-            // Find the final operation for this timestamp (the latest one)
+            // Find the final operation for this group (the latest one)
             guard let finalOp = sortedOps.last else { continue }
+
+            // Server-identified entries: match the local row by serverEntryId so that
+            // distinct entries sharing an entryTimestamp remain independent. Each unique
+            // serverEntryId maps to exactly one local Entry.
+            if let serverEntryId = finalOp.serverEntryId {
+                let existing = try? await localRepo.fetchEntry(byServerEntryId: serverEntryId, forUserId: accountId)
+                if let localEntry = existing {
+                    let localServerTS = localEntry.serverTimestamp ?? ""
+                    let remoteServerTS = finalOp.serverTimestamp ?? ""
+                    let shouldApplyRemote = localServerTS.isEmpty || remoteServerTS > localServerTS
+
+                    if shouldApplyRemote {
+                        if finalOp.operationType == OperationType.delete.rawValue {
+                            try? await localRepo.deleteEntry(byId: localEntry.id.uuidString)
+                            try? await handleEntryDeleted(localEntry)
+                        } else {
+                            let updated = Entry(from: finalOp, accountId: accountId, isSynced: true)
+                            updated.id = localEntry.id
+                            try? await localRepo.updateEntry(updated)
+                        }
+                    } else if !localServerTS.isEmpty, !localEntry.isSynced {
+                        localEntry.isSynced = true
+                        try? await localRepo.updateEntry(localEntry)
+                    }
+                } else if finalOp.operationType == OperationType.create.rawValue {
+                    // No local entry for this server id — insert the new remote create.
+                    hadNewCreates = true
+                    newlyCreatedOps.append(finalOp)
+                    let newEntry = Entry(from: finalOp, accountId: accountId, isSynced: true)
+                    try? await localRepo.saveEntry(newEntry)
+                }
+                // Final op is a delete with no local entry: nothing to do.
+                continue
+            }
+
+            // Legacy path (no serverEntryId): key on entryTimestamp.
+            let timestamp = groupKey
 
             // Check if local entry exists with this timestamp
             // Normalize timestamp format variants to improve matching reliability

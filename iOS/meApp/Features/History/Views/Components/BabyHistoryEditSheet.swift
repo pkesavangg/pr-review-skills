@@ -7,6 +7,10 @@ import SwiftUI
 
 /// Bottom-sheet form for editing a baby history entry.
 /// Allows editing weight, length, date, and notes. Saves via delete-old + create-new.
+///
+/// Validation is driven by the shared `BabyEntryForm` (the same form used by manual
+/// baby entry) — not by ad-hoc inline rules and not by the BP sheet's validation.
+/// Only the visual styling follows `BPHistoryEditSheet`.
 struct BabyHistoryEditSheet: View {
     @Environment(\.appTheme) private var theme
     @Environment(\.dismiss) private var dismiss
@@ -14,17 +18,9 @@ struct BabyHistoryEditSheet: View {
 
     let entry: BabyHistoryEntry
 
-    // Imperial fields
-    @State private var lbsText: String
-    @State private var ozText: String
-    @State private var inchesText: String
-    // Metric fields
-    @State private var kgText: String
-    @State private var cmText: String
+    /// Shared baby entry form — owns the field values (incl. date/time), validators, and error strings.
+    @StateObject private var form: BabyEntryForm
 
-    @State private var notesText: String
-    @State private var entryDate: Date
-    @State private var entryTime: Date
     @State private var showDatePicker = false
     @State private var showTimePicker = false
     @State private var isSaving = false
@@ -32,68 +28,42 @@ struct BabyHistoryEditSheet: View {
 
     private let labels = InputFieldLabels.self
     private let lang = HistoryListStrings.self
-    private let entryLang = ManualEntryStrings.self
-
-    // Dirty flags — errors only appear after the user edits a field
-    @State private var kgDirty = false
-    @State private var lbsDirty = false
-    @State private var ozDirty = false
-    @State private var inchesDirty = false
-    @State private var cmDirty = false
 
     init(entry: BabyHistoryEntry) {
         self.entry = entry
         let parsed = DateTimeTools.parse(entry.entryTimestamp) ?? Date()
-        _lbsText = State(initialValue: "\(entry.weightLbs)")
-        _ozText = State(initialValue: String(format: "%.1f", entry.weightOz))
-        _kgText = State(initialValue: entry.weightKg > 0 ? String(format: "%.3f", entry.weightKg) : "")
-        _inchesText = State(initialValue: entry.lengthInches > 0 ? String(format: "%.1f", entry.lengthInches) : "")
-        _cmText = State(initialValue: entry.lengthCm > 0 ? String(format: "%.1f", entry.lengthCm) : "")
-        _notesText = State(initialValue: entry.notes ?? "")
-        _entryDate = State(initialValue: parsed)
-        _entryTime = State(initialValue: parsed)
+
+        // Seed the shared baby form from the entry. Zero weight/length seed as empty
+        // (matching the manual entry form's clear-zero behaviour) so the numeric
+        // validators don't flag a legitimate "0 oz" / absent-length value.
+        let babyForm = BabyEntryForm()
+        babyForm.kg.value = entry.weightKg > 0 ? String(format: "%.3f", entry.weightKg) : ""
+        babyForm.pounds.value = entry.weightLbs > 0 ? "\(entry.weightLbs)" : ""
+        babyForm.ounces.value = entry.weightOz > 0 ? String(format: "%.1f", entry.weightOz) : ""
+        babyForm.inches.value = entry.lengthInches > 0 ? String(format: "%.1f", entry.lengthInches) : ""
+        babyForm.cm.value = entry.lengthCm > 0 ? String(format: "%.1f", entry.lengthCm) : ""
+        babyForm.notes.value = entry.notes ?? ""
+        babyForm.date.value = parsed
+        babyForm.time.value = parsed
+        // Seeded from a saved (valid) entry — start pristine so validation errors only
+        // surface once the user actually edits a field.
+        [babyForm.kg, babyForm.pounds, babyForm.ounces, babyForm.inches, babyForm.cm, babyForm.notes]
+            .forEach { $0.markAsPristine() }
+
+        _form = StateObject(wrappedValue: babyForm)
     }
 
     private var isMetric: Bool { historyStore.isMetric }
 
-    // MARK: - Validation
+    // MARK: - Validation (driven by BabyEntryForm)
 
-    private var kgError: String? {
-        guard kgDirty else { return nil }
-        let val = Double(kgText) ?? 0
-        if val < 1.0 || val > 450.0 { return entryLang.invalidWeight }
-        return nil
-    }
-
-    private var weightImperialError: String? {
-        guard lbsDirty || ozDirty else { return nil }
-        let lbs = Int(lbsText) ?? 0
-        let oz = Double(ozText) ?? 0
-        if lbs > 999 || oz > 15.9 { return entryLang.invalidWeight }
-        return nil
-    }
-
-    private var lengthInchesError: String? {
-        guard inchesDirty, let val = Double(inchesText) else { return nil }
-        if val > 99.9 { return entryLang.invalidLength }
-        return nil
-    }
-
-    private var lengthCmError: String? {
-        guard cmDirty, let val = Double(cmText) else { return nil }
-        if val > 254.0 { return entryLang.invalidLength }
-        return nil
-    }
-
+    /// Weight is required; length is optional. Range checks come from the form's validators.
     private var isValid: Bool {
         if isMetric {
-            let kg = Double(kgText) ?? 0
-            return kg >= 1.0 && kg <= 450.0
+            return !form.kg.value.isEmpty && form.kg.isValid && form.cm.isValid
         } else {
-            let lbs = Int(lbsText) ?? 0
-            let oz = Double(ozText) ?? 0
-            guard lbs > 0 || oz > 0 else { return false }
-            return lbs <= 999 && oz <= 15.9
+            let hasWeight = !form.pounds.value.isEmpty || !form.ounces.value.isEmpty
+            return hasWeight && form.pounds.isValid && form.ounces.isValid && form.inches.isValid
         }
     }
 
@@ -107,42 +77,39 @@ struct BabyHistoryEditSheet: View {
                         config: TextInputConfig(
                             label: lang.kg,
                             inputType: .metric,
-                            errorMessage: kgError,
+                            errorMessage: form.weightErrorMetric,
                             focusField: .weight,
                             allowWholeNumbers: false,
                             decimalPlaces: 3
                         ),
-                        value: $kgText,
+                        value: $form.kg.value,
                         focusedField: $focusedField
                     ) { focusedField = .inches }
-                    .onChange(of: kgText) { _, _ in kgDirty = true }
 
                     MetricInputField(
                         config: TextInputConfig(
                             label: lang.cm,
                             inputType: .metric,
-                            errorMessage: lengthCmError,
+                            errorMessage: form.lengthErrorCm,
                             focusField: .inches,
                             allowWholeNumbers: false
                         ),
-                        value: $cmText,
+                        value: $form.cm.value,
                         focusedField: $focusedField
                     ) { focusedField = .notes }
-                    .onChange(of: cmText) { _, _ in cmDirty = true }
                 } else {
                     MetricInputField(
                         config: TextInputConfig(
                             label: lang.pounds,
                             inputType: .metric,
-                            errorMessage: weightImperialError,
+                            errorMessage: form.weightError,
                             focusField: .weight,
                             maxLength: 3,
                             allowWholeNumbers: true
                         ),
-                        value: $lbsText,
+                        value: $form.pounds.value,
                         focusedField: $focusedField
                     ) { focusedField = .ounces }
-                    .onChange(of: lbsText) { _, _ in lbsDirty = true }
 
                     MetricInputField(
                         config: TextInputConfig(
@@ -151,23 +118,21 @@ struct BabyHistoryEditSheet: View {
                             focusField: .ounces,
                             allowWholeNumbers: false
                         ),
-                        value: $ozText,
+                        value: $form.ounces.value,
                         focusedField: $focusedField
                     ) { focusedField = .inches }
-                    .onChange(of: ozText) { _, _ in ozDirty = true }
 
                     MetricInputField(
                         config: TextInputConfig(
                             label: lang.inches,
                             inputType: .metric,
-                            errorMessage: lengthInchesError,
+                            errorMessage: form.lengthError,
                             focusField: .inches,
                             allowWholeNumbers: false
                         ),
-                        value: $inchesText,
+                        value: $form.inches.value,
                         focusedField: $focusedField
                     ) { focusedField = .notes }
-                    .onChange(of: inchesText) { _, _ in inchesDirty = true }
                 }
 
                 AppInputField(
@@ -176,7 +141,7 @@ struct BabyHistoryEditSheet: View {
                         inputType: .notes,
                         focusField: .notes
                     ),
-                    value: $notesText,
+                    value: $form.notes.value,
                     focusedField: $focusedField
                 )
 
@@ -195,6 +160,8 @@ struct BabyHistoryEditSheet: View {
             }
             .padding(.spacingMD)
         }
+        .scrollDismissesKeyboard(.interactively)
+        .background(theme.backgroundSecondary.ignoresSafeArea())
         .presentationDetents([.large])
         .presentationDragIndicator(.visible)
     }
@@ -214,23 +181,24 @@ struct BabyHistoryEditSheet: View {
     }
 
     private var datePicker: some View {
-        VStack(alignment: .leading, spacing: .spacingXS) {
+        VStack(alignment: .leading, spacing: .spacingSM) {
             Text(labels.date)
-                .fontOpenSans(.heading4)
-                .foregroundColor(theme.textHeading)
+                .fontOpenSans(.subHeading1)
+                .foregroundColor(theme.textSubheading)
 
             HStack(spacing: .spacingSM) {
-                DateLabelView(date: entryDate, isSelected: showDatePicker) {
+                DateLabelView(date: form.date.value, isSelected: showDatePicker) {
                     toggleDatePicker()
                 }
-                TimeLabelView(time: entryTime, isSelected: showTimePicker) {
+                TimeLabelView(time: form.time.value, isSelected: showTimePicker) {
                     toggleTimePicker()
                 }
             }
+            .padding(.leading, 2)
 
             DatePickerView(
                 isPresented: $showDatePicker,
-                date: $entryDate,
+                date: $form.date.value,
                 startDate: Date(timeIntervalSince1970: 946684800),
                 endDate: Date()
             )
@@ -243,8 +211,8 @@ struct BabyHistoryEditSheet: View {
 
             TimePickerView(
                 isPresented: $showTimePicker,
-                time: $entryTime,
-                selectedDate: entryDate,
+                time: $form.time.value,
+                selectedDate: form.date.value,
                 endTime: Date()
             )
             .onChange(of: showTimePicker) { _, isPresented in
@@ -271,21 +239,21 @@ struct BabyHistoryEditSheet: View {
     }
 
     private func saveEntry() {
-        let timestamp = DateTimeTools.isoString(date: entryDate, time: entryTime, useUTC: true)
+        let timestamp = DateTimeTools.isoString(date: form.date.value, time: form.time.value, useUTC: true)
 
         let weightDecigrams: Int
         let lengthMm: Int
 
         if isMetric {
-            let kg = Double(kgText) ?? entry.weightKg
+            let kg = Double(form.kg.value) ?? entry.weightKg
             weightDecigrams = ConversionTools.convertBabyKgToDecigrams(kg)
-            let cm = Double(cmText) ?? entry.lengthCm
+            let cm = Double(form.cm.value) ?? entry.lengthCm
             lengthMm = cm > 0 ? ConversionTools.convertBabyCmToMm(cm) : 0
         } else {
-            let lbs = Int(lbsText) ?? entry.weightLbs
-            let oz = Double(ozText) ?? entry.weightOz
+            let lbs = Int(form.pounds.value) ?? entry.weightLbs
+            let oz = Double(form.ounces.value) ?? entry.weightOz
             weightDecigrams = ConversionTools.convertBabyLbsOzToDecigrams(lbs: lbs, oz: oz)
-            let inches = Double(inchesText) ?? entry.lengthInches
+            let inches = Double(form.inches.value) ?? entry.lengthInches
             lengthMm = inches > 0 ? ConversionTools.convertBabyInchesToMm(inches) : 0
         }
 
@@ -293,7 +261,7 @@ struct BabyHistoryEditSheet: View {
         Task {
             await historyStore.updateBabyEntry(
                 old: entry,
-                note: notesText,
+                note: form.notes.value,
                 weightDecigrams: weightDecigrams,
                 lengthMm: lengthMm,
                 entryTimestamp: timestamp

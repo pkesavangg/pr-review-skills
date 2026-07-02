@@ -73,6 +73,7 @@ extension Entry {
             accountId: accountId,
             entryTimestamp: entryTimestamp,
             serverTimestamp: serverTimestamp,
+            serverEntryId: serverEntryId,
             opTimestamp: opTimestamp,
             operationType: operationType,
             entryType: entryType ?? EntryType.scale.rawValue,

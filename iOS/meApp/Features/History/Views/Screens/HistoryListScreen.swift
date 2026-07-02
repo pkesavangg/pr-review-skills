@@ -20,11 +20,11 @@ struct HistoryListScreen: View {
     // iOS 17 fix: Prevent duplicate lifecycle calls
     @State private var hasAppeared = false
     @State private var lastTabCheck: BottomTab?
-    
+
     // Prevent multiple simultaneous navigation
     @State private var isNavigating = false
     @State private var navigationTask: Task<Void, Never>?
-    
+
     var body: some View {
       RoutingView(stack: $router.stack) {
           VStack(spacing: 0) {
@@ -80,7 +80,7 @@ struct HistoryListScreen: View {
           .onChange(of: tabViewModel.selectedTab) {
               guard tabViewModel.selectedTab != lastTabCheck else { return }
               lastTabCheck = tabViewModel.selectedTab
-              
+
               if tabViewModel.selectedTab == .history {
                   Task {
                       try? await Task.sleep(nanoseconds: 50_000_000) // 50ms
