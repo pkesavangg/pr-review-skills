@@ -379,7 +379,11 @@ final class HistoryStore: ObservableObject {
                 let result = try await self.entryService.getMonthsAll()
                 self.months = result
                 self.isEmptyState = result.isEmpty
-                self.logger.log(level: .info, tag: self.tag, message: "Loaded weight history months: count=\(result.count), isEmptyState=\(result.isEmpty)")
+                self.logger.log(
+                    level: .info,
+                    tag: self.tag,
+                    message: "Loaded weight history months: count=\(result.count), isEmptyState=\(result.isEmpty)"
+                )
             } catch {
                 self.logger.log(level: .error, tag: self.tag, message: "Failed to load history months: \(error.localizedDescription)")
                 self.months = []
