@@ -121,15 +121,14 @@ struct AssignBabyModalView: View {
                     text: isNewBabySelected ? lang.assignMeasurementAddBaby : lang.assignMeasurementAssign,
                     type: .filledPrimary,
                     size: .large,
-                    isDisabled: selectedBabyId.isEmpty,
-                    action: {
-                        if isNewBabySelected {
-                            onAddNewBaby()
-                        } else {
-                            onAssign(selectedBabyId)
-                        }
+                    isDisabled: selectedBabyId.isEmpty
+                ) {
+                    if isNewBabySelected {
+                        onAddNewBaby()
+                    } else {
+                        onAssign(selectedBabyId)
                     }
-                )
+                }
                 ButtonView(
                     text: lang.assignMeasurementDontAssign,
                     type: .textPrimary,

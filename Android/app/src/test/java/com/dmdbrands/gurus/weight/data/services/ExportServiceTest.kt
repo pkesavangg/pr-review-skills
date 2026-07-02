@@ -157,7 +157,7 @@ class ExportServiceTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `sendScaleLog collects device logs and sends to repository`() = runTest {
+    fun `sendScaleLog collects device logs and sends to repository`() = runTest(mainDispatcherRule.scheduler) {
         stubDeviceLogsCompleted(listOf(fakeDeviceLog))
         stubSendScaleLog()
 
@@ -167,7 +167,7 @@ class ExportServiceTest {
     }
 
     @Test
-    fun `sendScaleLog creates GGBTDevice with correct broadcastId`() = runTest {
+    fun `sendScaleLog creates GGBTDevice with correct broadcastId`() = runTest(mainDispatcherRule.scheduler) {
         val deviceSlot = slot<GGBTDevice>()
         every { deviceService.getDeviceLogs(capture(deviceSlot), any()) } answers {
             val callback = secondArg<(GGDeviceLogResponse) -> Unit>()
@@ -182,7 +182,7 @@ class ExportServiceTest {
     }
 
     @Test
-    fun `sendScaleLog builds log entries with mac address header`() = runTest {
+    fun `sendScaleLog builds log entries with mac address header`() = runTest(mainDispatcherRule.scheduler) {
         stubDeviceLogsCompleted(listOf(fakeDeviceLog))
         val logSlot = slot<List<LogEntry>>()
         coEvery { logRepository.sendScaleLog(capture(logSlot)) } returns Unit
@@ -195,7 +195,7 @@ class ExportServiceTest {
     }
 
     @Test
-    fun `sendScaleLog splits log text into individual lines`() = runTest {
+    fun `sendScaleLog splits log text into individual lines`() = runTest(mainDispatcherRule.scheduler) {
         stubDeviceLogsCompleted(listOf(fakeDeviceLog))
         val logSlot = slot<List<LogEntry>>()
         coEvery { logRepository.sendScaleLog(capture(logSlot)) } returns Unit
@@ -211,7 +211,7 @@ class ExportServiceTest {
     }
 
     @Test
-    fun `sendScaleLog handles multiple device logs`() = runTest {
+    fun `sendScaleLog handles multiple device logs`() = runTest(mainDispatcherRule.scheduler) {
         stubDeviceLogsCompleted(listOf(fakeDeviceLog, fakeDeviceLog2))
         val logSlot = slot<List<LogEntry>>()
         coEvery { logRepository.sendScaleLog(capture(logSlot)) } returns Unit
@@ -228,7 +228,7 @@ class ExportServiceTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `sendScaleLog still sends mac header when device logs are empty`() = runTest {
+    fun `sendScaleLog still sends mac header when device logs are empty`() = runTest(mainDispatcherRule.scheduler) {
         stubDeviceLogsCompleted(emptyList())
         val logSlot = slot<List<LogEntry>>()
         coEvery { logRepository.sendScaleLog(capture(logSlot)) } returns Unit
@@ -246,7 +246,7 @@ class ExportServiceTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `sendScaleLog ignores Fetching response and waits for Completed`() = runTest {
+    fun `sendScaleLog ignores Fetching response and waits for Completed`() = runTest(mainDispatcherRule.scheduler) {
         every { deviceService.getDeviceLogs(any(), any()) } answers {
             val callback = secondArg<(GGDeviceLogResponse) -> Unit>()
             // First emit Fetching, then Completed
@@ -265,7 +265,7 @@ class ExportServiceTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `sendScaleLog handles null log text as empty string`() = runTest {
+    fun `sendScaleLog handles null log text as empty string`() = runTest(mainDispatcherRule.scheduler) {
         val logWithNull = GGDeviceLog(macAddress = "11:22:33:44:55:66", log = null)
         stubDeviceLogsCompleted(listOf(logWithNull))
         val logSlot = slot<List<LogEntry>>()
@@ -280,7 +280,7 @@ class ExportServiceTest {
     }
 
     @Test
-    fun `sendScaleLog handles null macAddress as empty in header`() = runTest {
+    fun `sendScaleLog handles null macAddress as empty in header`() = runTest(mainDispatcherRule.scheduler) {
         val logWithNullMac = GGDeviceLog(macAddress = null, log = "data")
         stubDeviceLogsCompleted(listOf(logWithNullMac))
         val logSlot = slot<List<LogEntry>>()
@@ -296,14 +296,14 @@ class ExportServiceTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `sendScaleLog rethrows exception from deviceService`() = runTest {
+    fun `sendScaleLog rethrows exception from deviceService`() = runTest(mainDispatcherRule.scheduler) {
         every { deviceService.getDeviceLogs(any(), any()) } throws RuntimeException("BLE error")
 
         assertFailsWith<RuntimeException> { service.sendScaleLog("broadcast-123") }
     }
 
     @Test
-    fun `sendScaleLog rethrows exception from logRepository`() = runTest {
+    fun `sendScaleLog rethrows exception from logRepository`() = runTest(mainDispatcherRule.scheduler) {
         stubDeviceLogsCompleted(listOf(fakeDeviceLog))
         coEvery { logRepository.sendScaleLog(any()) } throws RuntimeException("Network error")
 
@@ -311,7 +311,7 @@ class ExportServiceTest {
     }
 
     @Test
-    fun `sendScaleLog logs error when exception occurs`() = runTest {
+    fun `sendScaleLog logs error when exception occurs`() = runTest(mainDispatcherRule.scheduler) {
         stubDeviceLogsCompleted(listOf(fakeDeviceLog))
         coEvery { logRepository.sendScaleLog(any()) } throws RuntimeException("Upload failed")
 
@@ -327,7 +327,7 @@ class ExportServiceTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `exportCsvToEmail calls dashboard4 API for dashboard_4_metrics account`() = runTest {
+    fun `exportCsvToEmail calls dashboard4 API for dashboard_4_metrics account`() = runTest(mainDispatcherRule.scheduler) {
         stubGetCurrentAccount(fakeAccount)
         stubExportDashboard4()
 
@@ -338,7 +338,7 @@ class ExportServiceTest {
     }
 
     @Test
-    fun `exportCsvToEmail passes UTC offset to dashboard4 API`() = runTest {
+    fun `exportCsvToEmail passes UTC offset to dashboard4 API`() = runTest(mainDispatcherRule.scheduler) {
         stubGetCurrentAccount(fakeAccount)
         val offsetSlot = slot<Int>()
         coEvery { exportAPI.exportCsvDashboard4(capture(offsetSlot)) } returns Unit
@@ -355,7 +355,7 @@ class ExportServiceTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `exportCsvToEmail calls dashboard12 API for dashboard_12_metrics account`() = runTest {
+    fun `exportCsvToEmail calls dashboard12 API for dashboard_12_metrics account`() = runTest(mainDispatcherRule.scheduler) {
         stubGetCurrentAccount(dashboard12Account)
         stubExportDashboard12()
 
@@ -366,7 +366,7 @@ class ExportServiceTest {
     }
 
     @Test
-    fun `exportCsvToEmail passes UTC offset to dashboard12 API`() = runTest {
+    fun `exportCsvToEmail passes UTC offset to dashboard12 API`() = runTest(mainDispatcherRule.scheduler) {
         stubGetCurrentAccount(dashboard12Account)
         val offsetSlot = slot<Int>()
         coEvery { exportAPI.exportCsvDashboard12(capture(offsetSlot)) } returns Unit
@@ -382,7 +382,7 @@ class ExportServiceTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `exportCsvToEmail uses dashboard4 when dashboardType is null`() = runTest {
+    fun `exportCsvToEmail uses dashboard4 when dashboardType is null`() = runTest(mainDispatcherRule.scheduler) {
         stubGetCurrentAccount(fakeAccount.copy(dashboardType = null))
         stubExportDashboard4()
 
@@ -393,7 +393,7 @@ class ExportServiceTest {
     }
 
     @Test
-    fun `exportCsvToEmail uses dashboard4 when dashboardType is unknown`() = runTest {
+    fun `exportCsvToEmail uses dashboard4 when dashboardType is unknown`() = runTest(mainDispatcherRule.scheduler) {
         stubGetCurrentAccount(fakeAccount.copy(dashboardType = "some_other_type"))
         stubExportDashboard4()
 
@@ -403,7 +403,7 @@ class ExportServiceTest {
     }
 
     @Test
-    fun `exportCsvToEmail matches dashboard12 case-insensitively`() = runTest {
+    fun `exportCsvToEmail matches dashboard12 case-insensitively`() = runTest(mainDispatcherRule.scheduler) {
         stubGetCurrentAccount(fakeAccount.copy(dashboardType = "DASHBOARD_12_METRICS"))
         stubExportDashboard12()
 
@@ -417,14 +417,14 @@ class ExportServiceTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `exportCsvToEmail throws when no current account`() = runTest {
+    fun `exportCsvToEmail throws when no current account`() = runTest(mainDispatcherRule.scheduler) {
         stubGetCurrentAccount(null)
 
         assertFailsWith<IllegalStateException> { service.exportCsvToEmail() }
     }
 
     @Test
-    fun `exportCsvToEmail throws with descriptive message when no account`() = runTest {
+    fun `exportCsvToEmail throws with descriptive message when no account`() = runTest(mainDispatcherRule.scheduler) {
         stubGetCurrentAccount(null)
 
         val exception = assertFailsWith<IllegalStateException> { service.exportCsvToEmail() }
@@ -436,7 +436,7 @@ class ExportServiceTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `exportCsvToEmail rethrows HttpException from API`() = runTest {
+    fun `exportCsvToEmail rethrows HttpException from API`() = runTest(mainDispatcherRule.scheduler) {
         stubGetCurrentAccount(fakeAccount)
         coEvery { exportAPI.exportCsvDashboard4(any()) } throws httpException(500)
 
@@ -444,7 +444,7 @@ class ExportServiceTest {
     }
 
     @Test
-    fun `exportCsvToEmail rethrows generic exception from API`() = runTest {
+    fun `exportCsvToEmail rethrows generic exception from API`() = runTest(mainDispatcherRule.scheduler) {
         stubGetCurrentAccount(fakeAccount)
         coEvery { exportAPI.exportCsvDashboard4(any()) } throws RuntimeException("Network fail")
 
@@ -452,7 +452,7 @@ class ExportServiceTest {
     }
 
     @Test
-    fun `exportCsvToEmail logs error on exception`() = runTest {
+    fun `exportCsvToEmail logs error on exception`() = runTest(mainDispatcherRule.scheduler) {
         stubGetCurrentAccount(fakeAccount)
         coEvery { exportAPI.exportCsvDashboard4(any()) } throws RuntimeException("fail")
 
@@ -468,7 +468,7 @@ class ExportServiceTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `exportCsvWithPrompt calls exportCsvToEmail then shows success toast`() = runTest {
+    fun `exportCsvWithPrompt calls exportCsvToEmail then shows success toast`() = runTest(mainDispatcherRule.scheduler) {
         stubGetCurrentAccount(fakeAccount)
         stubExportDashboard4()
 
@@ -483,7 +483,7 @@ class ExportServiceTest {
     }
 
     @Test
-    fun `exportCsvWithPrompt logs success`() = runTest {
+    fun `exportCsvWithPrompt logs success`() = runTest(mainDispatcherRule.scheduler) {
         stubGetCurrentAccount(fakeAccount)
         stubExportDashboard4()
 
@@ -497,7 +497,7 @@ class ExportServiceTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `exportCsvWithPrompt shows no-connection toast on code 0`() = runTest {
+    fun `exportCsvWithPrompt shows no-connection toast on code 0`() = runTest(mainDispatcherRule.scheduler) {
         stubGetCurrentAccount(fakeAccount)
         coEvery { exportAPI.exportCsvDashboard4(any()) } throws httpException(
             HttpErrorConfig.ResponseCode.NO_INTERNET_CONNECTION
@@ -515,7 +515,7 @@ class ExportServiceTest {
     }
 
     @Test
-    fun `exportCsvWithPrompt shows server-error toast on code 500`() = runTest {
+    fun `exportCsvWithPrompt shows server-error toast on code 500`() = runTest(mainDispatcherRule.scheduler) {
         stubGetCurrentAccount(fakeAccount)
         coEvery { exportAPI.exportCsvDashboard4(any()) } throws httpException(
             HttpErrorConfig.ResponseCode.INTERNAL_SERVER_ERROR
@@ -533,7 +533,7 @@ class ExportServiceTest {
     }
 
     @Test
-    fun `exportCsvWithPrompt shows unauthorized toast on code 401`() = runTest {
+    fun `exportCsvWithPrompt shows unauthorized toast on code 401`() = runTest(mainDispatcherRule.scheduler) {
         stubGetCurrentAccount(fakeAccount)
         coEvery { exportAPI.exportCsvDashboard4(any()) } throws httpException(
             HttpErrorConfig.ResponseCode.UNAUTHORIZED
@@ -551,7 +551,7 @@ class ExportServiceTest {
     }
 
     @Test
-    fun `exportCsvWithPrompt shows generic toast on unknown HTTP code`() = runTest {
+    fun `exportCsvWithPrompt shows generic toast on unknown HTTP code`() = runTest(mainDispatcherRule.scheduler) {
         stubGetCurrentAccount(fakeAccount)
         coEvery { exportAPI.exportCsvDashboard4(any()) } throws httpException(422)
 
@@ -567,7 +567,7 @@ class ExportServiceTest {
     }
 
     @Test
-    fun `exportCsvWithPrompt rethrows HttpException after showing toast`() = runTest {
+    fun `exportCsvWithPrompt rethrows HttpException after showing toast`() = runTest(mainDispatcherRule.scheduler) {
         stubGetCurrentAccount(fakeAccount)
         coEvery { exportAPI.exportCsvDashboard4(any()) } throws httpException(500)
 
@@ -575,7 +575,7 @@ class ExportServiceTest {
     }
 
     @Test
-    fun `exportCsvWithPrompt logs error on HttpException`() = runTest {
+    fun `exportCsvWithPrompt logs error on HttpException`() = runTest(mainDispatcherRule.scheduler) {
         stubGetCurrentAccount(fakeAccount)
         coEvery { exportAPI.exportCsvDashboard4(any()) } throws httpException(500)
 
@@ -651,7 +651,7 @@ class ExportServiceTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `sendScaleLog uses first device log mac address for header`() = runTest {
+    fun `sendScaleLog uses first device log mac address for header`() = runTest(mainDispatcherRule.scheduler) {
         val log1 = GGDeviceLog(macAddress = "FIRST:MAC", log = "data1")
         val log2 = GGDeviceLog(macAddress = "SECOND:MAC", log = "data2")
         stubDeviceLogsCompleted(listOf(log1, log2))
@@ -664,7 +664,7 @@ class ExportServiceTest {
     }
 
     @Test
-    fun `sendScaleLog all log entries have empty time field`() = runTest {
+    fun `sendScaleLog all log entries have empty time field`() = runTest(mainDispatcherRule.scheduler) {
         stubDeviceLogsCompleted(listOf(fakeDeviceLog))
         val logSlot = slot<List<LogEntry>>()
         coEvery { logRepository.sendScaleLog(capture(logSlot)) } returns Unit
@@ -681,7 +681,7 @@ class ExportServiceTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `getUtcOffset returns value within valid UTC offset range`() = runTest {
+    fun `getUtcOffset returns value within valid UTC offset range`() = runTest(mainDispatcherRule.scheduler) {
         stubGetCurrentAccount(fakeAccount)
         val offsetSlot = slot<Int>()
         coEvery { exportAPI.exportCsvDashboard4(capture(offsetSlot)) } returns Unit
@@ -695,7 +695,7 @@ class ExportServiceTest {
     }
 
     @Test
-    fun `getUtcOffset is consistent across consecutive calls`() = runTest {
+    fun `getUtcOffset is consistent across consecutive calls`() = runTest(mainDispatcherRule.scheduler) {
         stubGetCurrentAccount(fakeAccount)
         val offsets = mutableListOf<Int>()
         coEvery { exportAPI.exportCsvDashboard4(capture(offsets)) } returns Unit
@@ -712,7 +712,7 @@ class ExportServiceTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `isDashboard12 returns false for null dashboardType`() = runTest {
+    fun `isDashboard12 returns false for null dashboardType`() = runTest(mainDispatcherRule.scheduler) {
         stubGetCurrentAccount(fakeAccount.copy(dashboardType = null))
         stubExportDashboard4()
 
@@ -723,7 +723,7 @@ class ExportServiceTest {
     }
 
     @Test
-    fun `isDashboard12 returns true for exact dashboard_12_metrics string`() = runTest {
+    fun `isDashboard12 returns true for exact dashboard_12_metrics string`() = runTest(mainDispatcherRule.scheduler) {
         stubGetCurrentAccount(fakeAccount.copy(dashboardType = "dashboard_12_metrics"))
         stubExportDashboard12()
 
@@ -733,7 +733,7 @@ class ExportServiceTest {
     }
 
     @Test
-    fun `isDashboard12 matches case-insensitively for mixed case`() = runTest {
+    fun `isDashboard12 matches case-insensitively for mixed case`() = runTest(mainDispatcherRule.scheduler) {
         stubGetCurrentAccount(fakeAccount.copy(dashboardType = "Dashboard_12_Metrics"))
         stubExportDashboard12()
 
@@ -743,7 +743,7 @@ class ExportServiceTest {
     }
 
     @Test
-    fun `isDashboard12 returns false for empty dashboardType`() = runTest {
+    fun `isDashboard12 returns false for empty dashboardType`() = runTest(mainDispatcherRule.scheduler) {
         stubGetCurrentAccount(fakeAccount.copy(dashboardType = ""))
         stubExportDashboard4()
 
@@ -757,7 +757,7 @@ class ExportServiceTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `sendScaleLog with single device log having single line produces two entries`() = runTest {
+    fun `sendScaleLog with single device log having single line produces two entries`() = runTest(mainDispatcherRule.scheduler) {
         val singleLineLog = GGDeviceLog(macAddress = "AB:CD:EF", log = "SingleLine")
         stubDeviceLogsCompleted(listOf(singleLineLog))
         val logSlot = slot<List<LogEntry>>()
@@ -773,7 +773,7 @@ class ExportServiceTest {
     }
 
     @Test
-    fun `sendScaleLog with device log having trailing newline includes empty last line`() = runTest {
+    fun `sendScaleLog with device log having trailing newline includes empty last line`() = runTest(mainDispatcherRule.scheduler) {
         val trailingNewline = GGDeviceLog(macAddress = "AB:CD:EF", log = "Line1\n")
         stubDeviceLogsCompleted(listOf(trailingNewline))
         val logSlot = slot<List<LogEntry>>()
@@ -793,7 +793,7 @@ class ExportServiceTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `showExportSuccessToast shows toast with ExportStrings SuccessMessage`() = runTest {
+    fun `showExportSuccessToast shows toast with ExportStrings SuccessMessage`() = runTest(mainDispatcherRule.scheduler) {
         stubGetCurrentAccount(fakeAccount)
         stubExportDashboard4()
 
@@ -807,7 +807,7 @@ class ExportServiceTest {
     }
 
     @Test
-    fun `showExportSuccessToast is not called when export throws`() = runTest {
+    fun `showExportSuccessToast is not called when export throws`() = runTest(mainDispatcherRule.scheduler) {
         stubGetCurrentAccount(fakeAccount)
         coEvery { exportAPI.exportCsvDashboard4(any()) } throws httpException(500)
 

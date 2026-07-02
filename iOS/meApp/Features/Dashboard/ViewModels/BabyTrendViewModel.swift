@@ -205,21 +205,36 @@ final class BabyTrendViewModel {
         }
         switch units {
         case .metric:
-            return BabyWeightDisplay(primary: String(format: "%.3f", weight), primaryUnit: BabyDashboardStrings.kg, secondary: nil, secondaryUnit: nil)
+            return BabyWeightDisplay(
+                primary: String(format: "%.3f", weight),
+                primaryUnit: BabyDashboardStrings.kg,
+                secondary: nil,
+                secondaryUnit: nil
+            )
         case .imperialLbDecimal:
-            return BabyWeightDisplay(primary: String(format: "%.1f", weight), primaryUnit: BabyDashboardStrings.lb, secondary: nil, secondaryUnit: nil)
+            return BabyWeightDisplay(
+                primary: String(format: "%.1f", weight),
+                primaryUnit: BabyDashboardStrings.lb,
+                secondary: nil,
+                secondaryUnit: nil
+            )
         case .imperialLbOz:
             var wholeLbs = Int(weight)
             let rawOz = (weight - Double(wholeLbs)) * 16.0
             let roundedOz = (rawOz * 10).rounded() / 10
             var remainingOz = roundedOz
             if roundedOz >= 16.0 { wholeLbs += 1; remainingOz = 0.0 }
-            return BabyWeightDisplay(primary: "\(wholeLbs)", primaryUnit: BabyDashboardStrings.lbs, secondary: String(format: "%.1f", remainingOz), secondaryUnit: BabyDashboardStrings.oz)
+            return BabyWeightDisplay(
+                primary: "\(wholeLbs)",
+                primaryUnit: BabyDashboardStrings.lbs,
+                secondary: String(format: "%.1f", remainingOz),
+                secondaryUnit: BabyDashboardStrings.oz
+            )
         }
     }
 
     private func heightDisplayText(for height: Double) -> String {
-        height > 0 ? String(format: "%.1f", height) : "--.-"
+        height > 0 ? String(format: "%.1f", height) : "0.0"
     }
 
     private func percentileText(_ percentile: Int?) -> String {

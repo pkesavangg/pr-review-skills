@@ -160,7 +160,7 @@ class DeviceInfoServiceTest {
   }
 
   @Test
-  fun `getDeviceInfo returns updated fcmToken after updateDeviceInfo`() = runTest {
+  fun `getDeviceInfo returns updated fcmToken after updateDeviceInfo`() = runTest(mainDispatcherRule.scheduler) {
     coEvery { appRepository.getFcmToken() } returns "test-fcm-token"
     coEvery { deviceInfoRepository.updateDeviceInfo(any()) } returns Response.success(Unit)
     coEvery { accountRepository.getActiveAccount() } returns flowOf(null)
@@ -176,7 +176,7 @@ class DeviceInfoServiceTest {
   // -------------------------------------------------------------------------
 
   @Test
-  fun `getFcmToken returns token from appRepository`() = runTest {
+  fun `getFcmToken returns token from appRepository`() = runTest(mainDispatcherRule.scheduler) {
     coEvery { appRepository.getFcmToken() } returns "stored-token"
     val service = createService()
 
@@ -184,7 +184,7 @@ class DeviceInfoServiceTest {
   }
 
   @Test
-  fun `getFcmToken returns empty string on exception`() = runTest {
+  fun `getFcmToken returns empty string on exception`() = runTest(mainDispatcherRule.scheduler) {
     coEvery { appRepository.getFcmToken() } throws RuntimeException("DataStore error")
     val service = createService()
 
@@ -192,7 +192,7 @@ class DeviceInfoServiceTest {
   }
 
   @Test
-  fun `getFcmToken returns empty string when repository returns empty`() = runTest {
+  fun `getFcmToken returns empty string when repository returns empty`() = runTest(mainDispatcherRule.scheduler) {
     coEvery { appRepository.getFcmToken() } returns ""
     val service = createService()
 
@@ -204,7 +204,7 @@ class DeviceInfoServiceTest {
   // -------------------------------------------------------------------------
 
   @Test
-  fun `updateDeviceInfo constructs DeviceInfo with all correct fields and token`() = runTest {
+  fun `updateDeviceInfo constructs DeviceInfo with all correct fields and token`() = runTest(mainDispatcherRule.scheduler) {
     coEvery { appRepository.getFcmToken() } returns "token-abc"
     coEvery { deviceInfoRepository.updateDeviceInfo(any()) } returns Response.success(Unit)
     coEvery { accountRepository.getActiveAccount() } returns flowOf(null)
@@ -226,7 +226,7 @@ class DeviceInfoServiceTest {
   }
 
   @Test
-  fun `updateDeviceInfo updates active account FCM token when account exists`() = runTest {
+  fun `updateDeviceInfo updates active account FCM token when account exists`() = runTest(mainDispatcherRule.scheduler) {
     val fakeAccount = mockk<Account> { every { id } returns "acc-123" }
     coEvery { appRepository.getFcmToken() } returns "my-token"
     coEvery { deviceInfoRepository.updateDeviceInfo(any()) } returns Response.success(Unit)
@@ -242,7 +242,7 @@ class DeviceInfoServiceTest {
   }
 
   @Test
-  fun `updateDeviceInfo skips account update when no active account`() = runTest {
+  fun `updateDeviceInfo skips account update when no active account`() = runTest(mainDispatcherRule.scheduler) {
     coEvery { appRepository.getFcmToken() } returns "my-token"
     coEvery { deviceInfoRepository.updateDeviceInfo(any()) } returns Response.success(Unit)
     coEvery { accountRepository.getActiveAccount() } returns flowOf(null)
@@ -258,7 +258,7 @@ class DeviceInfoServiceTest {
   // -------------------------------------------------------------------------
 
   @Test
-  fun `updateDeviceInfo fetches from Firebase and persists when DataStore token is blank`() = runTest {
+  fun `updateDeviceInfo fetches from Firebase and persists when DataStore token is blank`() = runTest(mainDispatcherRule.scheduler) {
     coEvery { appRepository.getFcmToken() } returns ""
     coEvery { FcmTokenUtil.getCurrentToken() } returns "firebase-token"
     coEvery { appRepository.setFcmToken(any()) } just Runs
@@ -276,7 +276,7 @@ class DeviceInfoServiceTest {
   }
 
   @Test
-  fun `updateDeviceInfo handles Firebase fetch failure gracefully`() = runTest {
+  fun `updateDeviceInfo handles Firebase fetch failure gracefully`() = runTest(mainDispatcherRule.scheduler) {
     coEvery { appRepository.getFcmToken() } returns ""
     coEvery { FcmTokenUtil.getCurrentToken() } throws RuntimeException("Firebase error")
     coEvery { deviceInfoRepository.updateDeviceInfo(any()) } returns Response.success(Unit)
@@ -291,7 +291,7 @@ class DeviceInfoServiceTest {
   }
 
   @Test
-  fun `updateDeviceInfo skips Firebase fetch when DataStore token is non-blank`() = runTest {
+  fun `updateDeviceInfo skips Firebase fetch when DataStore token is non-blank`() = runTest(mainDispatcherRule.scheduler) {
     coEvery { appRepository.getFcmToken() } returns "existing-token"
     coEvery { deviceInfoRepository.updateDeviceInfo(any()) } returns Response.success(Unit)
     coEvery { accountRepository.getActiveAccount() } returns flowOf(null)
@@ -303,7 +303,7 @@ class DeviceInfoServiceTest {
   }
 
   @Test
-  fun `updateDeviceInfo skips setFcmToken when Firebase returns blank token`() = runTest {
+  fun `updateDeviceInfo skips setFcmToken when Firebase returns blank token`() = runTest(mainDispatcherRule.scheduler) {
     coEvery { appRepository.getFcmToken() } returns ""
     coEvery { FcmTokenUtil.getCurrentToken() } returns ""
     coEvery { deviceInfoRepository.updateDeviceInfo(any()) } returns Response.success(Unit)
@@ -320,7 +320,7 @@ class DeviceInfoServiceTest {
   // -------------------------------------------------------------------------
 
   @Test
-  fun `updateDeviceInfo catches exception from deviceInfoRepository`() = runTest {
+  fun `updateDeviceInfo catches exception from deviceInfoRepository`() = runTest(mainDispatcherRule.scheduler) {
     coEvery { appRepository.getFcmToken() } returns "token"
     coEvery { deviceInfoRepository.updateDeviceInfo(any()) } throws RuntimeException("API error")
     val service = createService()
@@ -329,7 +329,7 @@ class DeviceInfoServiceTest {
   }
 
   @Test
-  fun `updateDeviceInfo catches exception from accountRepository`() = runTest {
+  fun `updateDeviceInfo catches exception from accountRepository`() = runTest(mainDispatcherRule.scheduler) {
     coEvery { appRepository.getFcmToken() } returns "token"
     coEvery { deviceInfoRepository.updateDeviceInfo(any()) } returns Response.success(Unit)
     coEvery { accountRepository.getActiveAccount() } throws RuntimeException("DB error")
@@ -343,7 +343,7 @@ class DeviceInfoServiceTest {
   // -------------------------------------------------------------------------
 
   @Test
-  fun `updateLocalIntegrationInfo calls integrationRepository updateLocalAccount`() = runTest {
+  fun `updateLocalIntegrationInfo calls integrationRepository updateLocalAccount`() = runTest(mainDispatcherRule.scheduler) {
     val service = createService()
 
     service.updateLocalIntegrationInfo()
@@ -376,7 +376,7 @@ class DeviceInfoServiceTest {
   // -------------------------------------------------------------------------
 
   @Test
-  fun `network available triggers all four sync steps`() = runTest {
+  fun `network available triggers all four sync steps`() = runTest(mainDispatcherRule.scheduler) {
     createService()
     Thread.sleep(collectorStartDelayMs)
 
@@ -389,7 +389,7 @@ class DeviceInfoServiceTest {
   }
 
   @Test
-  fun `network available does not show network error toast`() = runTest {
+  fun `network available does not show network error toast`() = runTest(mainDispatcherRule.scheduler) {
     createService()
     Thread.sleep(collectorStartDelayMs)
 
@@ -404,7 +404,7 @@ class DeviceInfoServiceTest {
   // -------------------------------------------------------------------------
 
   @Test
-  fun `network unavailable shows error after debounce when still offline and foreground`() = runTest {
+  fun `network unavailable shows error after debounce when still offline and foreground`() = runTest(mainDispatcherRule.scheduler) {
     setupForegroundMock(Lifecycle.State.RESUMED)
     every { connectivityObserver.getCurrentNetworkState() } returns onlineState
     createService()
@@ -421,7 +421,7 @@ class DeviceInfoServiceTest {
   }
 
   @Test
-  fun `network unavailable does not show error when network recovers during debounce`() = runTest {
+  fun `network unavailable does not show error when network recovers during debounce`() = runTest(mainDispatcherRule.scheduler) {
     setupForegroundMock(Lifecycle.State.RESUMED)
     every { connectivityObserver.getCurrentNetworkState() } returns onlineState
     createService()
@@ -436,7 +436,7 @@ class DeviceInfoServiceTest {
   }
 
   @Test
-  fun `network unavailable does not show error when app is in background`() = runTest {
+  fun `network unavailable does not show error when app is in background`() = runTest(mainDispatcherRule.scheduler) {
     setupForegroundMock(Lifecycle.State.CREATED)
     every { connectivityObserver.getCurrentNetworkState() } returns onlineState
     createService()
@@ -454,7 +454,7 @@ class DeviceInfoServiceTest {
   // -------------------------------------------------------------------------
 
   @Test
-  fun `online sync continues when offlineSync fails`() = runTest {
+  fun `online sync continues when offlineSync fails`() = runTest(mainDispatcherRule.scheduler) {
     coEvery { offlineHandlerService.handleOfflineSync() } throws RuntimeException("offline sync error")
     createService()
     Thread.sleep(collectorStartDelayMs)
@@ -467,7 +467,7 @@ class DeviceInfoServiceTest {
   }
 
   @Test
-  fun `online sync continues when entrySync fails`() = runTest {
+  fun `online sync continues when entrySync fails`() = runTest(mainDispatcherRule.scheduler) {
     coEvery { entryService.syncOperations() } throws RuntimeException("entry sync error")
     createService()
     Thread.sleep(collectorStartDelayMs)
@@ -480,7 +480,7 @@ class DeviceInfoServiceTest {
   }
 
   @Test
-  fun `online sync continues when healthConnect sync fails`() = runTest {
+  fun `online sync continues when healthConnect sync fails`() = runTest(mainDispatcherRule.scheduler) {
     coEvery { healthConnectRepository.syncIntegration() } throws RuntimeException("HC sync error")
     createService()
     Thread.sleep(collectorStartDelayMs)
@@ -493,7 +493,7 @@ class DeviceInfoServiceTest {
   }
 
   @Test
-  fun `online sync continues when integration update fails`() = runTest {
+  fun `online sync continues when integration update fails`() = runTest(mainDispatcherRule.scheduler) {
     coEvery { integrationRepository.updateLocalAccount() } throws RuntimeException("integration error")
     createService()
     Thread.sleep(collectorStartDelayMs)
@@ -510,7 +510,7 @@ class DeviceInfoServiceTest {
   // -------------------------------------------------------------------------
 
   @Test
-  fun `sync guard prevents concurrent execution`() = runTest {
+  fun `sync guard prevents concurrent execution`() = runTest(mainDispatcherRule.scheduler) {
     coEvery { offlineHandlerService.handleOfflineSync() } coAnswers {
       Thread.sleep(1000)
     }
@@ -526,7 +526,7 @@ class DeviceInfoServiceTest {
   }
 
   @Test
-  fun `sync guard is released after completion allowing subsequent sync`() = runTest {
+  fun `sync guard is released after completion allowing subsequent sync`() = runTest(mainDispatcherRule.scheduler) {
     createService()
     Thread.sleep(collectorStartDelayMs)
 
@@ -573,7 +573,7 @@ class DeviceInfoServiceTest {
   // -------------------------------------------------------------------------
 
   @Test
-  fun `runOnlineSyncOnce completes successfully when all steps succeed`() = runTest {
+  fun `runOnlineSyncOnce completes successfully when all steps succeed`() = runTest(mainDispatcherRule.scheduler) {
     createService()
     Thread.sleep(collectorStartDelayMs)
 
@@ -586,7 +586,7 @@ class DeviceInfoServiceTest {
   }
 
   @Test
-  fun `runOnlineSyncOnce releases guard even when all steps fail`() = runTest {
+  fun `runOnlineSyncOnce releases guard even when all steps fail`() = runTest(mainDispatcherRule.scheduler) {
     coEvery { offlineHandlerService.handleOfflineSync() } throws RuntimeException("err1")
     coEvery { entryService.syncOperations() } throws RuntimeException("err2")
     coEvery { healthConnectRepository.syncIntegration() } throws RuntimeException("err3")

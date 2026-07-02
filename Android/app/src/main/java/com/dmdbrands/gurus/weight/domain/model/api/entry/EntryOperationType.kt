@@ -2,9 +2,9 @@ package com.dmdbrands.gurus.weight.domain.model.api.entry
 
 /**
  * Operation type for a unified entry payload. The wire value is lowercase
- * (`create`/`delete`), matching the legacy `ScaleApiEntry.operationType` encoding
+ * (`create`/`edit`/`delete`), matching the legacy `ScaleApiEntry.operationType` encoding
  * (`EntryEntity.operationType` is stored uppercase via the local `OperationType`
- * enum and lowercased on the way out).
+ * enum and lowercased on the way out). `edit` is baby-only (§2.16).
  *
  * @property value The string value used in the API payload.
  */
@@ -12,6 +12,7 @@ enum class EntryOperationType(
     val value: String,
 ) {
     CREATE("create"),
+    EDIT("edit"),
     DELETE("delete");
 
     companion object {

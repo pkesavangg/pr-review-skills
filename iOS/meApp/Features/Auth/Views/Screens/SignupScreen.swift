@@ -41,6 +41,8 @@ struct SignupScreen: View {
                     babies: signupStore.babies.map {
                         BabyListItem(id: $0.id, accountID: $0.id.uuidString, name: $0.name)
                     },
+                    emptyTitle: SignupStrings.BabyListStep.emptyTitle,
+                    emptySubtitle: SignupStrings.BabyListStep.emptySubtitle,
                     onTapBaby: { signupStore.editBaby(at: $0) },
                     onEditBaby: { signupStore.editBaby(at: $0) },
                     onDeleteBaby: { signupStore.confirmDeleteBaby(at: $0) },

@@ -44,11 +44,7 @@ object BabySignupStrings {
     const val unitCm = "cm"
     const val unitNote = "Note: The selected weight unit determines the length unit automatically."
 
-    // Sex selection modal
-    const val selectSexTitle = "Biological Sex"
-    const val male = "Male"
-    const val female = "Female"
-    const val other = "Other"
+    // Sex selection modal options/title are shared via BiologicalSexOptions.
 
     // Buttons
     const val addABabyButton = "ADD A BABY"

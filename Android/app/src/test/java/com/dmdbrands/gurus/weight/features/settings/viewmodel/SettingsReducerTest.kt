@@ -279,6 +279,56 @@ class SettingsReducerTest {
         assertThat(state.isMyKidsEnabled).isFalse()
     }
 
+    // --- showUnitType: hidden only for blood-pressure (Balance Health) only accounts ---
+
+    @Test
+    fun `showUnitType is true for weight-only account`() {
+        val account = fakeAccount.copy(productTypes = listOf("weight"))
+        assertThat(SettingsState(account = account).showUnitType).isTrue()
+    }
+
+    @Test
+    fun `showUnitType is true for baby-only account`() {
+        val account = fakeAccount.copy(productTypes = listOf("baby"))
+        assertThat(SettingsState(account = account).showUnitType).isTrue()
+    }
+
+    @Test
+    fun `showUnitType is false for blood-pressure only account`() {
+        val account = fakeAccount.copy(productTypes = listOf("blood_pressure"))
+        assertThat(SettingsState(account = account).showUnitType).isFalse()
+    }
+
+    @Test
+    fun `showUnitType is true when account is null (default)`() {
+        assertThat(SettingsState(account = null).showUnitType).isTrue()
+    }
+
+    // --- showIntegrations: hidden only for baby-scale only accounts ---
+
+    @Test
+    fun `showIntegrations is true for weight-only account`() {
+        val account = fakeAccount.copy(productTypes = listOf("weight"))
+        assertThat(SettingsState(account = account).showIntegrations).isTrue()
+    }
+
+    @Test
+    fun `showIntegrations is true for blood-pressure only account`() {
+        val account = fakeAccount.copy(productTypes = listOf("blood_pressure"))
+        assertThat(SettingsState(account = account).showIntegrations).isTrue()
+    }
+
+    @Test
+    fun `showIntegrations is false for baby-only account`() {
+        val account = fakeAccount.copy(productTypes = listOf("baby"))
+        assertThat(SettingsState(account = account).showIntegrations).isFalse()
+    }
+
+    @Test
+    fun `showIntegrations is true when account is null (default)`() {
+        assertThat(SettingsState(account = null).showIntegrations).isTrue()
+    }
+
     @Test
     fun `side-effect and modal intents return null`() {
         val state = SettingsState()

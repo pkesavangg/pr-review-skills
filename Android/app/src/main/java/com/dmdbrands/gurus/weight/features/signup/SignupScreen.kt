@@ -120,17 +120,19 @@ fun SignupScreenContent(
         Column(
             modifier = Modifier.fillMaxSize(),
         ) {
-            AppLinearProgressIndicator(
-                progress = state.progress,
-                modifier =
-                    Modifier
-                        .padding(
-                            bottom = MeTheme.spacing.md,
-                            top = MeTheme.spacing.sm,
-                            start = MeTheme.spacing.sm,
-                            end = MeTheme.spacing.sm,
-                        ).height(MeTheme.spacing.xs),
-            )
+            if (state.showProgressBar) {
+                AppLinearProgressIndicator(
+                    progress = state.progress,
+                    modifier =
+                        Modifier
+                            .padding(
+                                bottom = MeTheme.spacing.md,
+                                top = MeTheme.spacing.sm,
+                                start = MeTheme.spacing.sm,
+                                end = MeTheme.spacing.sm,
+                            ).height(MeTheme.spacing.xs),
+                )
+            }
             CompositionLocalProvider(LocalCardAlignment provides cardAlignment) {
                 SignupPager(
                     pagerState = pagerState,

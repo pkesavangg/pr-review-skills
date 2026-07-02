@@ -29,7 +29,7 @@ final class MockEntryRepository: EntryRepositoryProtocol {
     private(set) var lastDeletedEntryId: String?
 
     func fetchEntry(byId id: String) async throws -> Entry? {
-        entries.first(where: { $0.id.uuidString == id })
+        entries.first { $0.id.uuidString == id }
     }
 
     func fetchAllEntries() async throws -> [Entry] {
@@ -40,7 +40,7 @@ final class MockEntryRepository: EntryRepositoryProtocol {
         saveEntryCalls += 1
         lastSavedEntry = entry
         if let saveEntryError { throw saveEntryError }
-        entries.removeAll(where: { $0.id == entry.id })
+        entries.removeAll { $0.id == entry.id }
         entries.append(entry)
     }
 
@@ -48,7 +48,7 @@ final class MockEntryRepository: EntryRepositoryProtocol {
         updateEntryCalls += 1
         lastUpdatedEntry = entry
         if let updateEntryError { throw updateEntryError }
-        entries.removeAll(where: { $0.id == entry.id })
+        entries.removeAll { $0.id == entry.id }
         entries.append(entry)
     }
 
@@ -73,7 +73,7 @@ final class MockEntryRepository: EntryRepositoryProtocol {
         deleteEntryCalls += 1
         lastDeletedEntryId = id
         if let deleteEntryError { throw deleteEntryError }
-        entries.removeAll(where: { $0.id.uuidString == id })
+        entries.removeAll { $0.id.uuidString == id }
     }
 
     func deleteAllEntries() async throws {
@@ -87,6 +87,10 @@ final class MockEntryRepository: EntryRepositoryProtocol {
 
     func fetchEntriesOfTimestamp(forUserId userId: String, timestamp: String) async throws -> [Entry] {
         entries.filter { $0.accountId == userId && $0.entryTimestamp == timestamp }
+    }
+
+    func fetchEntry(byServerEntryId serverEntryId: String, forUserId userId: String) async throws -> Entry? {
+        entries.first { $0.accountId == userId && $0.serverEntryId == serverEntryId }
     }
 
     func fetchEntries(forMonth month: String, userId: String) async throws -> [Entry] {
@@ -112,8 +116,7 @@ final class MockEntryRepository: EntryRepositoryProtocol {
         if let fetchLatestEntryError { throw fetchLatestEntryError }
         return entries
             .filter { $0.accountId == userId }
-            .sorted { $0.entryTimestamp > $1.entryTimestamp }
-            .first
+            .max { $0.entryTimestamp < $1.entryTimestamp }
     }
 
     func fetchEntries(lastNDays: Int, userId: String) async throws -> [Entry] {
@@ -133,8 +136,7 @@ final class MockEntryRepository: EntryRepositoryProtocol {
     func fetchOldestEntry(forUserId userId: String) async throws -> Entry? {
         entries
             .filter { $0.accountId == userId }
-            .sorted { $0.entryTimestamp < $1.entryTimestamp }
-            .first
+            .min { $0.entryTimestamp < $1.entryTimestamp }
     }
 
     func checkEntryTimestampExists(forUserId userId: String, entryTimestamp: String) async throws -> Bool {
@@ -167,7 +169,7 @@ final class MockEntryRepository: EntryRepositoryProtocol {
 
     func syncEntries(newEntries: [Entry]) async throws {
         for entry in newEntries {
-            entries.removeAll(where: { $0.id == entry.id })
+            entries.removeAll { $0.id == entry.id }
             entries.append(entry)
         }
     }

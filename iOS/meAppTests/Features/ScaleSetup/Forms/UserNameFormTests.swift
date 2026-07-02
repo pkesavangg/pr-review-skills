@@ -3,8 +3,8 @@
 //  meAppTests
 //
 
-import Testing
 @testable import meApp
+import Testing
 
 @Suite("UserNameForm", .serialized)
 @MainActor
@@ -15,7 +15,7 @@ struct UserNameFormTests {
     @Test("initial displayName value is empty")
     func initialDisplayNameEmpty() {
         let form = UserNameForm()
-        #expect(form.displayName.value == "")
+        #expect(form.displayName.value.isEmpty)
     }
 
     @Test("initial form is invalid because displayName is required")
@@ -201,7 +201,7 @@ struct UserNameFormTests {
         let form = UserNameForm()
         form.setDisplayName("Alice")
         form.reset()
-        #expect(form.displayName.value == "")
+        #expect(form.displayName.value.isEmpty)
     }
 
     // MARK: - updateUserList

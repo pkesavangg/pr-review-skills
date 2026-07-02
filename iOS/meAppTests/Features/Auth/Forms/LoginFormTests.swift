@@ -1,14 +1,14 @@
 import Combine
-import Testing
 @testable import meApp
+import Testing
 
 struct LoginFormTests {
     @Test("initial state")
     func initialState() {
         let form = LoginForm()
 
-        #expect(form.email.value == "")
-        #expect(form.password.value == "")
+        #expect(form.email.value.isEmpty)
+        #expect(form.password.value.isEmpty)
         #expect(form.isValid == false)
         #expect(form.email.isTouched == false)
         #expect(form.password.isTouched == false)

@@ -29,6 +29,10 @@ struct EntrySnapshot: Equatable, Sendable, Identifiable {
     let accountId: String
     let entryTimestamp: String
     let serverTimestamp: String?
+    /// Server-assigned entry identifier. Stable identity used to dedup History rows
+    /// so distinct entries sharing an `entryTimestamp` are not collapsed. Nil for
+    /// local-only entries not yet synced.
+    let serverEntryId: String?
     let opTimestamp: String?
     let operationType: String
     let entryType: String

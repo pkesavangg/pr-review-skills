@@ -93,7 +93,7 @@ class ProfileViewModelTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `LoadProfile populates form with account data`() = runTest {
+    fun `LoadProfile populates form with account data`() = runTest(mainDispatcherRule.scheduler) {
         advanceUntilIdle()
 
         val state = viewModel.state.value
@@ -110,7 +110,7 @@ class ProfileViewModelTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `LoadProfile sets error when no current account`() = runTest {
+    fun `LoadProfile sets error when no current account`() = runTest(mainDispatcherRule.scheduler) {
         coEvery { accountService.getCurrentAccount() } returns null
 
         viewModel = ProfileViewModel(
@@ -133,7 +133,7 @@ class ProfileViewModelTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `LoadProfile sets error when exception thrown`() = runTest {
+    fun `LoadProfile sets error when exception thrown`() = runTest(mainDispatcherRule.scheduler) {
         coEvery { accountService.getCurrentAccount() } throws RuntimeException("Network error")
 
         viewModel = ProfileViewModel(
@@ -156,7 +156,7 @@ class ProfileViewModelTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `Submit with invalid form dismisses loader and sets validation error`() = runTest {
+    fun `Submit with invalid form dismisses loader and sets validation error`() = runTest(mainDispatcherRule.scheduler) {
         advanceUntilIdle()
 
         // Clear required fields to make form invalid
@@ -176,7 +176,7 @@ class ProfileViewModelTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `Submit with valid form calls updateProfile and navigates back`() = runTest {
+    fun `Submit with valid form calls updateProfile and navigates back`() = runTest(mainDispatcherRule.scheduler) {
         advanceUntilIdle()
 
         coEvery { accountService.updateProfile(any(), any(), showToast = any()) } returns Unit
@@ -189,7 +189,7 @@ class ProfileViewModelTest {
     }
 
     @Test
-    fun `Submit success shows and dismisses loader`() = runTest {
+    fun `Submit success shows and dismisses loader`() = runTest(mainDispatcherRule.scheduler) {
         advanceUntilIdle()
 
         coEvery { accountService.updateProfile(any(), any(), showToast = any()) } returns Unit
@@ -202,7 +202,7 @@ class ProfileViewModelTest {
     }
 
     @Test
-    fun `Submit success clears error and loading state`() = runTest {
+    fun `Submit success clears error and loading state`() = runTest(mainDispatcherRule.scheduler) {
         advanceUntilIdle()
 
         coEvery { accountService.updateProfile(any(), any(), showToast = any()) } returns Unit
@@ -220,7 +220,7 @@ class ProfileViewModelTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `Submit sets error when updateProfile throws`() = runTest {
+    fun `Submit sets error when updateProfile throws`() = runTest(mainDispatcherRule.scheduler) {
         advanceUntilIdle()
 
         coEvery { accountService.updateProfile(any(), any(), showToast = any()) } throws RuntimeException("API error")
@@ -233,7 +233,7 @@ class ProfileViewModelTest {
     }
 
     @Test
-    fun `Submit dismisses loader even when exception occurs`() = runTest {
+    fun `Submit dismisses loader even when exception occurs`() = runTest(mainDispatcherRule.scheduler) {
         advanceUntilIdle()
 
         coEvery { accountService.updateProfile(any(), any(), showToast = any()) } throws RuntimeException("fail")
@@ -250,7 +250,7 @@ class ProfileViewModelTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `Submit returns early when getCurrentAccount returns null during submit`() = runTest {
+    fun `Submit returns early when getCurrentAccount returns null during submit`() = runTest(mainDispatcherRule.scheduler) {
         advanceUntilIdle()
 
         // After initial load succeeds, change mock to return null for submit flow
@@ -267,7 +267,7 @@ class ProfileViewModelTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `OnRequestBack with no changes navigates back directly`() = runTest {
+    fun `OnRequestBack with no changes navigates back directly`() = runTest(mainDispatcherRule.scheduler) {
         advanceUntilIdle()
 
         // Form is loaded with initial data, not dirty
@@ -283,7 +283,7 @@ class ProfileViewModelTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `OnRequestBack with changes enqueues confirm dialog`() = runTest {
+    fun `OnRequestBack with changes enqueues confirm dialog`() = runTest(mainDispatcherRule.scheduler) {
         advanceUntilIdle()
 
         // Make the form dirty by changing a field
@@ -295,7 +295,7 @@ class ProfileViewModelTest {
     }
 
     @Test
-    fun `OnRequestBack confirm callback navigates back and dismisses dialog`() = runTest {
+    fun `OnRequestBack confirm callback navigates back and dismisses dialog`() = runTest(mainDispatcherRule.scheduler) {
         advanceUntilIdle()
 
         val dialogSlot = slot<DialogModel.Confirm>()
@@ -311,7 +311,7 @@ class ProfileViewModelTest {
     }
 
     @Test
-    fun `OnRequestBack cancel callback dismisses dialog without navigating`() = runTest {
+    fun `OnRequestBack cancel callback dismisses dialog without navigating`() = runTest(mainDispatcherRule.scheduler) {
         advanceUntilIdle()
 
         val dialogSlot = slot<DialogModel.Confirm>()
@@ -356,7 +356,7 @@ class ProfileViewModelTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `UpdateForm intent replaces the form in state`() = runTest {
+    fun `UpdateForm intent replaces the form in state`() = runTest(mainDispatcherRule.scheduler) {
         advanceUntilIdle()
 
         val newForm = viewModel.state.value.form
@@ -387,7 +387,7 @@ class ProfileViewModelTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `Submit with updateProfile callback invoked covers lambda`() = runTest {
+    fun `Submit with updateProfile callback invoked covers lambda`() = runTest(mainDispatcherRule.scheduler) {
         coEvery { accountService.updateProfile(any()) } returns mockk(relaxed = true)
         coEvery { ggDeviceService.updateProfile(any(), any()) } answers {
             val callback = secondArg<(com.dmdbrands.library.ggbluetooth.enums.GGUserActionResponseType) -> Unit>()
@@ -401,7 +401,7 @@ class ProfileViewModelTest {
     }
 
     @Test
-    fun `Submit with updateProfile throwing exception handles gracefully`() = runTest {
+    fun `Submit with updateProfile throwing exception handles gracefully`() = runTest(mainDispatcherRule.scheduler) {
         coEvery { accountService.updateProfile(any()) } returns mockk(relaxed = true)
         coEvery { ggDeviceService.updateProfile(any(), any()) } throws RuntimeException("BLE error")
 
@@ -416,7 +416,7 @@ class ProfileViewModelTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `Submit calls updateProfile with correct request fields`() = runTest {
+    fun `Submit calls updateProfile with correct request fields`() = runTest(mainDispatcherRule.scheduler) {
         advanceUntilIdle()
 
         coEvery { accountService.updateProfile(any(), any(), showToast = any()) } returns Unit
@@ -432,7 +432,7 @@ class ProfileViewModelTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `Success intent via handleIntent does not crash`() = runTest {
+    fun `Success intent via handleIntent does not crash`() = runTest(mainDispatcherRule.scheduler) {
         advanceUntilIdle()
 
         viewModel.handleIntent(ProfileIntent.Success)
@@ -448,7 +448,7 @@ class ProfileViewModelTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `LoadProfile populates gender and height in form`() = runTest {
+    fun `LoadProfile populates gender and height in form`() = runTest(mainDispatcherRule.scheduler) {
         advanceUntilIdle()
 
         val state = viewModel.state.value
@@ -457,7 +457,7 @@ class ProfileViewModelTest {
     }
 
     @Test
-    fun `changing gender via form control makes form dirty`() = runTest {
+    fun `changing gender via form control makes form dirty`() = runTest(mainDispatcherRule.scheduler) {
         advanceUntilIdle()
 
         assertThat(viewModel.state.value.form.isDirty).isFalse()
@@ -467,7 +467,7 @@ class ProfileViewModelTest {
     }
 
     @Test
-    fun `changing height via form control makes form dirty`() = runTest {
+    fun `changing height via form control makes form dirty`() = runTest(mainDispatcherRule.scheduler) {
         advanceUntilIdle()
 
         assertThat(viewModel.state.value.form.isDirty).isFalse()
@@ -477,7 +477,7 @@ class ProfileViewModelTest {
     }
 
     @Test
-    fun `ShowBiologicalSexModal enqueues dialog`() = runTest {
+    fun `ShowBiologicalSexModal enqueues dialog`() = runTest(mainDispatcherRule.scheduler) {
         advanceUntilIdle()
 
         viewModel.handleIntent(ProfileIntent.ShowBiologicalSexModal)
@@ -486,7 +486,7 @@ class ProfileViewModelTest {
     }
 
     @Test
-    fun `ShowHeightModal enqueues dialog`() = runTest {
+    fun `ShowHeightModal enqueues dialog`() = runTest(mainDispatcherRule.scheduler) {
         advanceUntilIdle()
 
         viewModel.handleIntent(ProfileIntent.ShowHeightModal)
@@ -495,7 +495,7 @@ class ProfileViewModelTest {
     }
 
     @Test
-    fun `Success after error clears error state`() = runTest {
+    fun `Success after error clears error state`() = runTest(mainDispatcherRule.scheduler) {
         advanceUntilIdle()
 
         viewModel.handleIntent(ProfileIntent.Error("previous error"))
@@ -510,7 +510,7 @@ class ProfileViewModelTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `Submit still updates R4 scale profile when body composition update throws`() = runTest {
+    fun `Submit still updates R4 scale profile when body composition update throws`() = runTest(mainDispatcherRule.scheduler) {
         advanceUntilIdle()
 
         coEvery { accountService.updateProfile(any(), any(), showToast = any()) } returns Unit
@@ -535,7 +535,7 @@ class ProfileViewModelTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `Submit navigates back after successful profile update`() = runTest {
+    fun `Submit navigates back after successful profile update`() = runTest(mainDispatcherRule.scheduler) {
         advanceUntilIdle()
 
         coEvery { accountService.updateProfile(any(), any(), showToast = any()) } returns Unit

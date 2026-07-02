@@ -18,8 +18,11 @@ import io.mockk.impl.annotations.MockK
 import io.mockk.mockk
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.test.runTest
-import org.junit.Before
-import org.junit.Test
+import okhttp3.MediaType.Companion.toMediaTypeOrNull
+import okhttp3.ResponseBody.Companion.toResponseBody
+import org.junit.jupiter.api.BeforeEach
+import org.junit.jupiter.api.Test
+import retrofit2.Response
 import kotlin.test.assertFailsWith
 import java.io.IOException
 
@@ -51,7 +54,7 @@ class IntegrationRepositoryTest {
         every { id } returns ACCOUNT_ID
     }
 
-    @Before
+    @BeforeEach
     fun setUp() {
         MockKAnnotations.init(this)
         // Required before construction — init block launches a coroutine that calls these
@@ -208,5 +211,30 @@ class IntegrationRepositoryTest {
     @Test
     fun `integrationsFromServer StateFlow has default value`() {
         assertThat(repository.integrationsFromServer.value.isFitbitOn).isFalse()
+    }
+
+    // -----------------------------------------------------------------------
+    // requestIntegration
+    // -----------------------------------------------------------------------
+
+    @Test
+    fun `requestIntegration delegates to integrationAPI and returns response`() = runTest {
+        val body = mapOf("provider" to PROVIDER_FITBIT)
+        val response = Response.success("ok".toResponseBody("text/plain".toMediaTypeOrNull()))
+        coEvery { integrationAPI.requestIntegration(body) } returns response
+
+        val result = repository.requestIntegration(body)
+
+        assertThat(result).isEqualTo(response)
+        coVerify { integrationAPI.requestIntegration(body) }
+    }
+
+    @Test
+    fun `requestIntegration rethrows exception when API fails`() = runTest {
+        coEvery { integrationAPI.requestIntegration(any()) } throws IOException("Network error")
+
+        assertFailsWith<IOException> {
+            repository.requestIntegration(mapOf("provider" to PROVIDER_FITBIT))
+        }
     }
 }

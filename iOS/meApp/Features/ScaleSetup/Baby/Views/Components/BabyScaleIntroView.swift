@@ -12,37 +12,41 @@ struct BabyScaleIntroView: View {
     private let lang = BabyScaleSetupStrings.self
 
     var body: some View {
-        ScrollView {
-            VStack(spacing: .spacingLG) {
-                VStack(spacing: .spacingXS) {
-                    Image(scale.imgPath)
-                        .resizable()
-                        .scaledToFit()
-                        .frame(width: 180, height: 180)
-                        .cornerRadius(.radiusLG)
-                        .themeDropShadow()
-                        .padding(.bottom, .spacingLG)
-                        .accessibilityHidden(true)
+        // Vertically centre the device-info content to match the Weight Gurus setup layout (MOB-287).
+        GeometryReader { geometry in
+            ScrollView {
+                VStack(spacing: .spacingLG) {
+                    VStack(spacing: .spacingXS) {
+                        Image(scale.imgPath)
+                            .resizable()
+                            .scaledToFit()
+                            .frame(width: 180, height: 180)
+                            .cornerRadius(.radiusLG)
+                            .themeDropShadow()
+                            .padding(.bottom, .spacingLG)
+                            .accessibilityHidden(true)
 
-                    Text(ScaleSetupStrings.modelTitle(scale.sku))
-                        .fontOpenSans(.heading4)
-                        .fontWeight(.bold)
-                        .foregroundColor(theme.textHeading)
+                        Text(ScaleSetupStrings.modelTitle(scale.sku))
+                            .fontOpenSans(.heading4)
+                            .fontWeight(.bold)
+                            .foregroundColor(theme.textHeading)
 
-                    Text(lang.Intro.smartBabyScale)
+                        Text(lang.Intro.smartBabyScale)
+                            .fontOpenSans(.body2)
+                            .foregroundColor(theme.textBody)
+                    }
+                    .accessibilityElement(children: .combine)
+                    .frame(maxWidth: .infinity)
+
+                    Text(lang.Intro.troubleSettingUp)
                         .fontOpenSans(.body2)
+                        .multilineTextAlignment(.leading)
                         .foregroundColor(theme.textBody)
+                        .frame(maxWidth: .infinity, alignment: .leading)
                 }
-                .accessibilityElement(children: .combine)
                 .frame(maxWidth: .infinity)
-
-                Text(lang.Intro.troubleSettingUp)
-                    .fontOpenSans(.body2)
-                    .multilineTextAlignment(.leading)
-                    .foregroundColor(theme.textBody)
-                    .frame(maxWidth: .infinity, alignment: .leading)
+                .frame(minHeight: geometry.size.height, alignment: .center)
             }
-            .padding(.top, .spacingLG)
         }
     }
 }

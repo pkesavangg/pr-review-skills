@@ -90,13 +90,13 @@ class MyAccountsViewModelTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `init calls emitNavigateToMyAccounts`() = runTest {
+    fun `init calls emitNavigateToMyAccounts`() = runTest(mainDispatcherRule.scheduler) {
         advanceUntilIdle()
         coVerify { accountService.emitNavigateToMyAccounts() }
     }
 
     @Test
-    fun `init subscribes to loggedInAccountsFlow and sets accounts`() = runTest {
+    fun `init subscribes to loggedInAccountsFlow and sets accounts`() = runTest(mainDispatcherRule.scheduler) {
         val accounts = listOf(TestFixtures.activeAccount, TestFixtures.secondaryAccount)
         every { accountService.loggedInAccountsFlow } returns flowOf(accounts)
         every { accountService.hasReachedMaxAccounts } returns flowOf(false)
@@ -109,7 +109,7 @@ class MyAccountsViewModelTest {
     }
 
     @Test
-    fun `init sets hasReachedMaxAccounts from service`() = runTest {
+    fun `init sets hasReachedMaxAccounts from service`() = runTest(mainDispatcherRule.scheduler) {
         every { accountService.loggedInAccountsFlow } returns flowOf(listOf(TestFixtures.activeAccount))
         every { accountService.hasReachedMaxAccounts } returns flowOf(true)
 
@@ -136,7 +136,7 @@ class MyAccountsViewModelTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `SelectAccount with inactive account calls switchAccount`() = runTest {
+    fun `SelectAccount with inactive account calls switchAccount`() = runTest(mainDispatcherRule.scheduler) {
         coEvery { accountService.switchAccount(any(), any()) } returns true
 
         viewModel.handleIntent(MyAccountsIntent.SelectAccount(TestFixtures.secondaryAccount))
@@ -146,7 +146,7 @@ class MyAccountsViewModelTest {
     }
 
     @Test
-    fun `SelectAccount with successful switch calls reInitialize`() = runTest {
+    fun `SelectAccount with successful switch calls reInitialize`() = runTest(mainDispatcherRule.scheduler) {
         coEvery { accountService.switchAccount(any(), any()) } returns true
 
         viewModel.handleIntent(MyAccountsIntent.SelectAccount(TestFixtures.secondaryAccount))
@@ -156,7 +156,7 @@ class MyAccountsViewModelTest {
     }
 
     @Test
-    fun `SelectAccount with failed switch does not call reInitialize`() = runTest {
+    fun `SelectAccount with failed switch does not call reInitialize`() = runTest(mainDispatcherRule.scheduler) {
         coEvery { accountService.switchAccount(any(), any()) } returns false
 
         viewModel.handleIntent(MyAccountsIntent.SelectAccount(TestFixtures.secondaryAccount))
@@ -166,7 +166,7 @@ class MyAccountsViewModelTest {
     }
 
     @Test
-    fun `SelectAccount with active account does not call switchAccount`() = runTest {
+    fun `SelectAccount with active account does not call switchAccount`() = runTest(mainDispatcherRule.scheduler) {
         viewModel.handleIntent(MyAccountsIntent.SelectAccount(TestFixtures.activeAccount))
         advanceUntilIdle()
 
@@ -174,7 +174,7 @@ class MyAccountsViewModelTest {
     }
 
     @Test
-    fun `SelectAccount when switchAccount throws does not crash`() = runTest {
+    fun `SelectAccount when switchAccount throws does not crash`() = runTest(mainDispatcherRule.scheduler) {
         coEvery { accountService.switchAccount(any(), any()) } throws RuntimeException(ERROR_FAIL)
 
         viewModel.handleIntent(MyAccountsIntent.SelectAccount(TestFixtures.secondaryAccount))
@@ -188,7 +188,7 @@ class MyAccountsViewModelTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `LoginToAccount navigates to Login when limit not reached`() = runTest {
+    fun `LoginToAccount navigates to Login when limit not reached`() = runTest(mainDispatcherRule.scheduler) {
         val account = TestFixtures.secondaryAccount
         viewModel.handleIntent(MyAccountsIntent.LoginToAccount(account))
         advanceUntilIdle()
@@ -197,7 +197,7 @@ class MyAccountsViewModelTest {
     }
 
     @Test
-    fun `LoginToAccount with null account navigates to Login with null email`() = runTest {
+    fun `LoginToAccount with null account navigates to Login with null email`() = runTest(mainDispatcherRule.scheduler) {
         viewModel.handleIntent(MyAccountsIntent.LoginToAccount(null))
         advanceUntilIdle()
 
@@ -205,7 +205,7 @@ class MyAccountsViewModelTest {
     }
 
     @Test
-    fun `LoginToAccount when max reached shows max account alert`() = runTest {
+    fun `LoginToAccount when max reached shows max account alert`() = runTest(mainDispatcherRule.scheduler) {
         viewModel.handleIntent(MyAccountsIntent.SetAccounts(emptyList(), true))
         viewModel.handleIntent(MyAccountsIntent.LoginToAccount(TestFixtures.secondaryAccount))
         advanceUntilIdle()
@@ -219,7 +219,7 @@ class MyAccountsViewModelTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `CreateAccount navigates to Signup when limit not reached`() = runTest {
+    fun `CreateAccount navigates to Signup when limit not reached`() = runTest(mainDispatcherRule.scheduler) {
         viewModel.handleIntent(MyAccountsIntent.CreateAccount)
         advanceUntilIdle()
 
@@ -227,7 +227,7 @@ class MyAccountsViewModelTest {
     }
 
     @Test
-    fun `CreateAccount when max reached shows max account alert`() = runTest {
+    fun `CreateAccount when max reached shows max account alert`() = runTest(mainDispatcherRule.scheduler) {
         viewModel.handleIntent(MyAccountsIntent.SetAccounts(emptyList(), true))
         viewModel.handleIntent(MyAccountsIntent.CreateAccount)
         advanceUntilIdle()
@@ -259,7 +259,7 @@ class MyAccountsViewModelTest {
     }
 
     @Test
-    fun `RequestRemoveAccount confirm callback calls logout`() = runTest {
+    fun `RequestRemoveAccount confirm callback calls logout`() = runTest(mainDispatcherRule.scheduler) {
         val dialogSlot = slot<DialogModel.Confirm>()
         every { dialogQueueService.enqueue(capture(dialogSlot)) } returns Unit
 
@@ -276,7 +276,7 @@ class MyAccountsViewModelTest {
     }
 
     @Test
-    fun `RequestRemoveAccount confirm shows and dismisses loader`() = runTest {
+    fun `RequestRemoveAccount confirm shows and dismisses loader`() = runTest(mainDispatcherRule.scheduler) {
         val dialogSlot = slot<DialogModel.Confirm>()
         every { dialogQueueService.enqueue(capture(dialogSlot)) } returns Unit
 
@@ -289,7 +289,7 @@ class MyAccountsViewModelTest {
     }
 
     @Test
-    fun `RequestRemoveAccount confirm dismisses loader on exception`() = runTest {
+    fun `RequestRemoveAccount confirm dismisses loader on exception`() = runTest(mainDispatcherRule.scheduler) {
         coEvery { accountService.logout(any(), any()) } throws RuntimeException(ERROR_FAIL)
         val dialogSlot = slot<DialogModel.Confirm>()
         every { dialogQueueService.enqueue(capture(dialogSlot)) } returns Unit
@@ -324,7 +324,7 @@ class MyAccountsViewModelTest {
     }
 
     @Test
-    fun `RequestRemoveAccount with no accountToRemove does not call logout`() = runTest {
+    fun `RequestRemoveAccount with no accountToRemove does not call logout`() = runTest(mainDispatcherRule.scheduler) {
         // Directly trigger onRemoveAccount via confirm without setting accountToRemove
         // accountToRemove is null by default, so the let block is skipped
         val dialogSlot = slot<DialogModel.Confirm>()
@@ -346,7 +346,7 @@ class MyAccountsViewModelTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `onNavigateBack calls emitNavigateBackFromMyAccounts`() = runTest {
+    fun `onNavigateBack calls emitNavigateBackFromMyAccounts`() = runTest(mainDispatcherRule.scheduler) {
         viewModel.onNavigateBack()
         advanceUntilIdle()
         coVerify { accountService.emitNavigateBackFromMyAccounts() }
@@ -357,7 +357,7 @@ class MyAccountsViewModelTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `LoginToAccount with non-null account passes email to Login route`() = runTest {
+    fun `LoginToAccount with non-null account passes email to Login route`() = runTest(mainDispatcherRule.scheduler) {
         val account = TestFixtures.secondaryAccount
         viewModel.handleIntent(MyAccountsIntent.LoginToAccount(account))
         advanceUntilIdle()
@@ -366,7 +366,7 @@ class MyAccountsViewModelTest {
     }
 
     @Test
-    fun `LoginToAccount checks max accounts before navigating`() = runTest {
+    fun `LoginToAccount checks max accounts before navigating`() = runTest(mainDispatcherRule.scheduler) {
         // Set max accounts reached
         viewModel.handleIntent(MyAccountsIntent.SetAccounts(emptyList(), true))
 
@@ -382,7 +382,7 @@ class MyAccountsViewModelTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `CreateAccount navigates to Signup route`() = runTest {
+    fun `CreateAccount navigates to Signup route`() = runTest(mainDispatcherRule.scheduler) {
         viewModel.handleIntent(MyAccountsIntent.CreateAccount)
         advanceUntilIdle()
 
@@ -390,7 +390,7 @@ class MyAccountsViewModelTest {
     }
 
     @Test
-    fun `CreateAccount checks max accounts before navigating`() = runTest {
+    fun `CreateAccount checks max accounts before navigating`() = runTest(mainDispatcherRule.scheduler) {
         viewModel.handleIntent(MyAccountsIntent.SetAccounts(emptyList(), true))
 
         viewModel.handleIntent(MyAccountsIntent.CreateAccount)
@@ -405,7 +405,7 @@ class MyAccountsViewModelTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `SelectAccount with active account is no-op`() = runTest {
+    fun `SelectAccount with active account is no-op`() = runTest(mainDispatcherRule.scheduler) {
         viewModel.handleIntent(MyAccountsIntent.SelectAccount(TestFixtures.activeAccount))
         advanceUntilIdle()
 
@@ -414,7 +414,7 @@ class MyAccountsViewModelTest {
     }
 
     @Test
-    fun `SelectAccount with inactive account calls switchAccount with showLoader true`() = runTest {
+    fun `SelectAccount with inactive account calls switchAccount with showLoader true`() = runTest(mainDispatcherRule.scheduler) {
         coEvery { accountService.switchAccount(any(), any()) } returns true
 
         viewModel.handleIntent(MyAccountsIntent.SelectAccount(TestFixtures.secondaryAccount))

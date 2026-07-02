@@ -53,7 +53,8 @@ extension BluetoothService {
                     logger.log(
                         level: .error,
                         tag: tag,
-                        message: "productTypes update non-fatal — BPM pairing succeeded. accountId=\(snapshot.accountId) error=\(error.localizedDescription)"
+                        message: "productTypes update non-fatal — BPM pairing succeeded. " +
+                            "accountId=\(snapshot.accountId) error=\(error.localizedDescription)"
                     )
                 }
             }

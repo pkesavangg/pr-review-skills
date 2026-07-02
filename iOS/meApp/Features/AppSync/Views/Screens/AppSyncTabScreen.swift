@@ -54,9 +54,12 @@ struct AppSyncTabScreen: View {
             } else {
                 isScannerReady = false
             }
-            withAnimation {
-                tabViewModel.showTabBar = newValue != .appsync
-            }
+            // MOB-211 / MOB-194: toggle the tab bar instantly rather than inside
+            // `withAnimation`. Animating this drove an insert/remove transition on the
+            // conditionally-rendered footer, fading it in/out (~1s dim) when opening or
+            // closing the camera. After a scan it also competed with the success modal's
+            // own transition, so the modal appeared late while the footer stayed hidden.
+            tabViewModel.showTabBar = newValue != .appsync
         }
     }
 }

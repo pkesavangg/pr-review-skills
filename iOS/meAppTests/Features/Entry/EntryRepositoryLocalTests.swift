@@ -1,6 +1,6 @@
 import Foundation
-import Testing
 @testable import meApp
+import Testing
 
 @Suite(.serialized)
 @MainActor
@@ -217,7 +217,7 @@ struct EntryRepositoryLocalTests {
         try await sut.setLastSyncTimestamp(accountId: "acct-1", timestamp: "")
         let result = try await sut.getLastSyncTimestamp(accountId: "acct-1")
 
-        #expect(result == "")
+        #expect(result?.isEmpty == true)
     }
 
     @Test("handles accountId with special characters")

@@ -5,8 +5,8 @@
 
 import Combine
 import Foundation
-import Testing
 @testable import meApp
+import Testing
 
 struct BabyProfileSetupFormTests {
 
@@ -16,11 +16,11 @@ struct BabyProfileSetupFormTests {
     func initialState() {
         let form = BabyProfileSetupForm()
 
-        #expect(form.name.value == "")
-        #expect(form.biologicalSex.value == "")
-        #expect(form.birthLengthInches.value == "")
-        #expect(form.birthWeightLbs.value == "")
-        #expect(form.birthWeightOz.value == "")
+        #expect(form.name.value.isEmpty)
+        #expect(form.biologicalSex.value.isEmpty)
+        #expect(form.birthLengthInches.value.isEmpty)
+        #expect(form.birthWeightLbs.value.isEmpty)
+        #expect(form.birthWeightOz.value.isEmpty)
         #expect(form.isProfileValid == false)
     }
 
@@ -57,20 +57,20 @@ struct BabyProfileSetupFormTests {
     // MARK: - Birthday Validation
 
     @Test("getBirthdayError: returns future date error for tomorrow")
-    func birthdayFutureDate() {
+    func birthdayFutureDate() throws {
         let form = BabyProfileSetupForm()
 
-        let tomorrow = Calendar.current.date(byAdding: .day, value: 1, to: Date())!
+        let tomorrow = try #require(Calendar.current.date(byAdding: .day, value: 1, to: Date()))
         form.birthday.value = tomorrow
 
         #expect(form.getBirthdayError() == ProfileFormTestText.futureDate)
     }
 
     @Test("getBirthdayError: returns nil for past date")
-    func birthdayPastDate() {
+    func birthdayPastDate() throws {
         let form = BabyProfileSetupForm()
 
-        let yesterday = Calendar.current.date(byAdding: .day, value: -1, to: Date())!
+        let yesterday = try #require(Calendar.current.date(byAdding: .day, value: -1, to: Date()))
         form.birthday.value = yesterday
 
         #expect(form.getBirthdayError() == nil)
@@ -363,11 +363,11 @@ struct BabyProfileSetupFormTests {
 
         form.reset()
 
-        #expect(form.name.value == "")
-        #expect(form.biologicalSex.value == "")
-        #expect(form.birthWeightLbs.value == "")
-        #expect(form.birthWeightOz.value == "")
-        #expect(form.birthLengthInches.value == "")
+        #expect(form.name.value.isEmpty)
+        #expect(form.biologicalSex.value.isEmpty)
+        #expect(form.birthWeightLbs.value.isEmpty)
+        #expect(form.birthWeightOz.value.isEmpty)
+        #expect(form.birthLengthInches.value.isEmpty)
         #expect(form.name.isPristine == true)
         #expect(form.biologicalSex.isPristine == true)
     }

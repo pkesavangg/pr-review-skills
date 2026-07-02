@@ -1,21 +1,32 @@
- import Foundation
-import Testing
+import Foundation
 @testable import meApp
+import Testing
 
 // MARK: - Test Helpers
+
+private struct MonthSectionViewModelTestsSUT {
+    let sut: MonthSectionViewModel
+    let store: DashboardStore?
+    let cacheManager: MockDashboardCacheManager?
+}
 
 @MainActor
 private func makeSUT(
     configureStore: Bool = true,
     summaries: [BathScaleWeightSummary] = [],
     scrollPosition: Date? = nil
-) -> (sut: MonthSectionViewModel, store: DashboardStore?, cacheManager: MockDashboardCacheManager?) {
+) -> MonthSectionViewModelTestsSUT {
     let vm = MonthSectionViewModel()
-    guard configureStore else { return (vm, nil, nil) }
+    guard configureStore else {
+        return MonthSectionViewModelTestsSUT(sut: vm, store: nil, cacheManager: nil)
+    }
     let scrollPosition = scrollPosition ?? makeDate(year: 2026, month: 3, day: 15, hour: 12)
 
     TestDependencyContainer.reset()
-    let (store, accountService, cacheManager) = DashboardStoreTestSupport.makeSUT()
+    let sutBundle = DashboardStoreTestSupport.makeSUT()
+    let store = sutBundle.store
+    let accountService = sutBundle.accountService
+    let cacheManager = sutBundle.cacheManager
     let account = DashboardStoreTestSupport.makeActiveAccount()
     accountService.activeAccount = account
     store.state.graph.selectedPeriod = .month
@@ -31,7 +42,7 @@ private func makeSUT(
     }
 
     vm.configure(with: store)
-    return (vm, store, cacheManager)
+    return MonthSectionViewModelTestsSUT(sut: vm, store: store, cacheManager: cacheManager)
 }
 
 @MainActor
@@ -43,7 +54,11 @@ private func makeDate(year: Int = 2026, month: Int = 3, day: Int = 1, hour: Int 
     comps.hour = hour
     comps.minute = 0
     comps.second = 0
-    return Calendar.current.date(from: comps)!
+    guard let date = Calendar.current.date(from: comps) else {
+        Issue.record("unexpected nil date from components")
+        return Date()
+    }
+    return date
 }
 
 @MainActor
@@ -117,12 +132,12 @@ struct MonthSectionViewModelTests {
     }
 
     @Test("plotXDate preserves day for late evening input")
-    func plotXDateLateEvening() {
+    func plotXDateLateEvening() throws {
         let vm = MonthSectionViewModel()
         var comps = DateComponents()
         comps.year = 2026; comps.month = 3; comps.day = 15
         comps.hour = 22; comps.minute = 30
-        let evening = Calendar.current.date(from: comps)!
+        let evening = try #require(Calendar.current.date(from: comps))
         let result = vm.plotXDate(for: evening)
         let calendar = Calendar.current
         #expect(calendar.component(.hour, from: result) == 12)
@@ -143,7 +158,7 @@ struct MonthSectionViewModelTests {
 
     @Test("handleChartSelection with nil date does nothing")
     func handleChartSelectionNilDate() {
-        let (sut, _, _) = makeSUT()
+        let sut = makeSUT().sut
         sut.selectedDate = Date()
         sut.showCrosshair = true
         sut.handleChartSelection(at: nil)
@@ -152,14 +167,14 @@ struct MonthSectionViewModelTests {
 
     @Test("handleChartSelection with no store does nothing")
     func handleChartSelectionNoStore() {
-        let (sut, _, _) = makeSUT(configureStore: false)
+        let sut = makeSUT(configureStore: false).sut
         sut.handleChartSelection(at: Date())
         #expect(sut.selectedDate == nil)
     }
 
     @Test("handleChartSelection with no data hides crosshair")
     func handleChartSelectionNoData() {
-        let (sut, _, _) = makeSUT()
+        let sut = makeSUT().sut
         sut.handleChartSelection(at: Date())
         #expect(sut.selectedDate == nil)
         #expect(sut.showCrosshair == false)
@@ -168,7 +183,7 @@ struct MonthSectionViewModelTests {
     @Test("handleChartSelection within data range shows crosshair")
     func handleChartSelectionWithinRange() {
         let summaries = makeMonthSummaries(startDay: 1, count: 15)
-        let (sut, _, _) = makeSUT(summaries: summaries)
+        let sut = makeSUT(summaries: summaries).sut
 
         let mid = makeDate(year: 2026, month: 3, day: 8, hour: 14)
         sut.handleChartSelection(at: mid)
@@ -180,7 +195,7 @@ struct MonthSectionViewModelTests {
     @Test("handleChartSelection far outside data range hides crosshair")
     func handleChartSelectionFarOutsideRange() {
         let summaries = makeMonthSummaries(startDay: 1, count: 10)
-        let (sut, _, _) = makeSUT(summaries: summaries)
+        let sut = makeSUT(summaries: summaries).sut
 
         let farFuture = makeDate(year: 2027, month: 6, day: 1)
         sut.handleChartSelection(at: farFuture)
@@ -192,7 +207,7 @@ struct MonthSectionViewModelTests {
     @Test("handleChartSelection selects nearest point within section")
     func handleChartSelectionNearestInSection() {
         let summaries = makeMonthSummaries(startDay: 1, count: 15)
-        let (sut, _, _) = makeSUT(summaries: summaries)
+        let sut = makeSUT(summaries: summaries).sut
 
         // Touch near day 5
         let nearDay5 = makeDate(year: 2026, month: 3, day: 5, hour: 10)
@@ -205,7 +220,7 @@ struct MonthSectionViewModelTests {
     @Test("handleChartSelection before first data point hides crosshair")
     func handleChartSelectionBeforeFirst() {
         let summaries = makeMonthSummaries(startDay: 5, count: 10)
-        let (sut, _, _) = makeSUT(summaries: summaries)
+        let sut = makeSUT(summaries: summaries).sut
 
         let beforeFirst = makeDate(year: 2026, month: 2, day: 1)
         sut.handleChartSelection(at: beforeFirst)
@@ -217,13 +232,13 @@ struct MonthSectionViewModelTests {
 
     @Test("chartOperations empty initially")
     func chartOperationsEmpty() {
-        let (sut, _, _) = makeSUT()
+        let sut = makeSUT().sut
         #expect(sut.chartOperations.isEmpty)
     }
 
     @Test("xAxisValues fallback returns values for month")
     func xAxisValuesFallbackNonEmpty() {
-        let (sut, _, _) = makeSUT()
+        let sut = makeSUT().sut
         let values = sut.xAxisValues
         // Month fallback generates Sunday ticks
         #expect(!values.isEmpty)
@@ -241,7 +256,7 @@ struct MonthSectionViewModelTests {
                 weight: 1800
             )
         ]
-        let (sut, _, _) = makeSUT(summaries: summaries)
+        let sut = makeSUT(summaries: summaries).sut
 
         sut.handleChartSelection(at: makeDate(year: 2026, month: 3, day: 10, hour: 12))
         #expect(sut.showCrosshair == true)
@@ -255,7 +270,7 @@ struct MonthSectionViewModelTests {
         let early = makeMonthSummaries(startDay: 1, count: 3)
         let late = makeMonthSummaries(startDay: 16, count: 3)
         let summaries = early + late
-        let (sut, _, _) = makeSUT(summaries: summaries)
+        let sut = makeSUT(summaries: summaries).sut
 
         // Select in the gap area (Mar 10) — no points exist in the Mar 8..<Mar 15 section.
         let gapDate = makeDate(year: 2026, month: 3, day: 10, hour: 12)
@@ -269,7 +284,7 @@ struct MonthSectionViewModelTests {
     @Test("Selection in phantom section after the last point hides crosshair")
     func selectionInPhantomSectionAfterLastPointHidesCrosshair() {
         let summaries = makeMonthSummaries(startDay: 1, count: 12)
-        let (sut, _, _) = makeSUT(summaries: summaries)
+        let sut = makeSUT(summaries: summaries).sut
 
         sut.handleChartSelection(at: localNoon(day: 15))
 
@@ -293,7 +308,7 @@ struct MonthSectionViewModelTests {
                 weight: 1810
             )
         ]
-        let (sut, _, _) = makeSUT(summaries: summaries)
+        let sut = makeSUT(summaries: summaries).sut
 
         sut.handleChartSelection(at: localNoon(day: 4))
 
@@ -304,7 +319,7 @@ struct MonthSectionViewModelTests {
     @Test("Selection near a point chooses the nearest plotted day instead of the section start")
     func selectionPrefersNearestPointOverSectionStart() {
         let summaries = makeMonthSummaries(startDay: 1, count: 10)
-        let (sut, _, _) = makeSUT(summaries: summaries)
+        let sut = makeSUT(summaries: summaries).sut
 
         sut.handleChartSelection(at: makeDate(year: 2026, month: 3, day: 5, hour: 10))
 
@@ -316,7 +331,7 @@ struct MonthSectionViewModelTests {
 
     @Test("handleScrollStart clears selection")
     func handleScrollStartClearsSelection() {
-        let (sut, _, _) = makeSUT()
+        let sut = makeSUT().sut
         sut.selectedDate = Date()
         sut.showCrosshair = true
 
@@ -328,7 +343,7 @@ struct MonthSectionViewModelTests {
 
     @Test("handleScrollEnd resets isScrolling")
     func handleScrollEndResets() {
-        let (sut, _, _) = makeSUT()
+        let sut = makeSUT().sut
         sut.isScrolling = true
         sut.handleScrollEnd()
         #expect(sut.isScrolling == false)
@@ -339,7 +354,7 @@ struct MonthSectionViewModelTests {
     @Test("clearSelection after selection clears all state")
     func clearSelectionAfterSelection() {
         let summaries = makeMonthSummaries(startDay: 1, count: 15)
-        let (sut, _, _) = makeSUT(summaries: summaries)
+        let sut = makeSUT(summaries: summaries).sut
 
         sut.handleChartSelection(at: makeDate(year: 2026, month: 3, day: 5))
         sut.clearSelection()
@@ -352,7 +367,7 @@ struct MonthSectionViewModelTests {
     @Test("Multiple selections keep last value")
     func multipleSelectionsKeepLast() {
         let summaries = makeMonthSummaries(startDay: 1, count: 20)
-        let (sut, _, _) = makeSUT(summaries: summaries)
+        let sut = makeSUT(summaries: summaries).sut
 
         sut.handleChartSelection(at: makeDate(year: 2026, month: 3, day: 3))
         sut.handleChartSelection(at: makeDate(year: 2026, month: 3, day: 15))
@@ -365,34 +380,34 @@ struct MonthSectionViewModelTests {
         let vm = MonthSectionViewModel()
         let domain = vm.fallbackXAxisDomain()
         #expect(domain != nil)
-        if let d = domain {
-            #expect(d.lowerBound < d.upperBound)
+        if let range = domain {
+            #expect(range.lowerBound < range.upperBound)
         }
     }
 
     @Test("shouldShowSolidLine returns true on 1st of month")
-    func shouldShowSolidLineMonthFirst() {
+    func shouldShowSolidLineMonthFirst() throws {
         let vm = MonthSectionViewModel()
         let calendar = Calendar.current
         var comps = calendar.dateComponents([.year, .month], from: Date())
         comps.day = 1
-        let first = calendar.date(from: comps)!
+        let first = try #require(calendar.date(from: comps))
         #expect(vm.shouldShowSolidLine(for: first) == true)
     }
 
     @Test("shouldShowSolidLine returns false on 15th of month")
-    func shouldShowSolidLineMonth15th() {
+    func shouldShowSolidLineMonth15th() throws {
         let vm = MonthSectionViewModel()
         let calendar = Calendar.current
         var comps = calendar.dateComponents([.year, .month], from: Date())
         comps.day = 15
-        let mid = calendar.date(from: comps)!
+        let mid = try #require(calendar.date(from: comps))
         #expect(vm.shouldShowSolidLine(for: mid) == false)
     }
 
     @Test("shouldAnimateChartData is false with no data")
     func shouldAnimateChartDataNoData() {
-        let (sut, _, _) = makeSUT()
+        let sut = makeSUT().sut
         #expect(sut.shouldAnimateChartData == false)
     }
 
@@ -412,7 +427,7 @@ struct MonthSectionViewModelTests {
 
     @Test("handleScrollPositionChange with nil does nothing")
     func handleScrollPositionChangeNil() {
-        let (sut, _, _) = makeSUT()
+        let sut = makeSUT().sut
         let original = sut.scrollPosition
         sut.handleScrollPositionChange(nil)
         #expect(sut.scrollPosition == original)
@@ -421,7 +436,7 @@ struct MonthSectionViewModelTests {
     @Test("Selection with right-edge slack near last point still selects")
     func selectionWithRightSlack() {
         let summaries = makeMonthSummaries(startDay: 1, count: 10)
-        let (sut, _, _) = makeSUT(summaries: summaries)
+        let sut = makeSUT(summaries: summaries).sut
 
         // Touch just past the last point (within slack)
         let nearLast = makeDate(year: 2026, month: 3, day: 10, hour: 18)
@@ -451,7 +466,7 @@ struct MonthSectionViewModelTests {
                 weight: 1810
             )
         ]
-        let (sut, _, _) = makeSUT(summaries: summaries)
+        let sut = makeSUT(summaries: summaries).sut
 
         // Equidistant between tick Mar 1 noon and data Mar 3 noon
         sut.handleChartSelection(at: localNoon(day: 2))
@@ -478,7 +493,7 @@ struct MonthSectionViewModelTests {
                 weight: 1810
             )
         ]
-        let (sut, _, _) = makeSUT(summaries: summaries)
+        let sut = makeSUT(summaries: summaries).sut
 
         // Touch very close to Mar 3 data point
         sut.handleChartSelection(at: makeDate(year: 2026, month: 3, day: 3, hour: 6))
@@ -505,7 +520,7 @@ struct MonthSectionViewModelTests {
                 weight: 1810
             )
         ]
-        let (sut, _, _) = makeSUT(summaries: summaries)
+        let sut = makeSUT(summaries: summaries).sut
 
         // Touch very close to the Mar 1 grid tick
         sut.handleChartSelection(at: makeDate(year: 2026, month: 3, day: 1, hour: 18))

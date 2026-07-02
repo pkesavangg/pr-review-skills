@@ -82,7 +82,7 @@ class MetricInfoViewModelTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `initial state loads metric info from constructor`() = runTest {
+    fun `initial state loads metric info from constructor`() = runTest(mainDispatcherRule.scheduler) {
         viewModel = createViewModel()
         advanceUntilIdle()
 
@@ -90,7 +90,7 @@ class MetricInfoViewModelTest {
     }
 
     @Test
-    fun `initial state loads dashboard type from account`() = runTest {
+    fun `initial state loads dashboard type from account`() = runTest(mainDispatcherRule.scheduler) {
         viewModel = createViewModel()
         advanceUntilIdle()
 
@@ -102,7 +102,7 @@ class MetricInfoViewModelTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `SelectSegment with valid key updates stat and selectedIndex`() = runTest {
+    fun `SelectSegment with valid key updates stat and selectedIndex`() = runTest(mainDispatcherRule.scheduler) {
         viewModel = createViewModel(key = MetricKey.WEIGHT)
         advanceUntilIdle()
 
@@ -117,7 +117,7 @@ class MetricInfoViewModelTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `OpenResource opens in-app browser`() = runTest {
+    fun `OpenResource opens in-app browser`() = runTest(mainDispatcherRule.scheduler) {
         viewModel = createViewModel()
         advanceUntilIdle()
 
@@ -132,7 +132,7 @@ class MetricInfoViewModelTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `UpdateScaleMode with no R4 scales does not navigate`() = runTest {
+    fun `UpdateScaleMode with no R4 scales does not navigate`() = runTest(mainDispatcherRule.scheduler) {
         every { deviceService.pairedScales } returns MutableStateFlow(emptyList())
 
         viewModel = createViewModel()
@@ -149,7 +149,7 @@ class MetricInfoViewModelTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `heart rate status updates from paired scales`() = runTest {
+    fun `heart rate status updates from paired scales`() = runTest(mainDispatcherRule.scheduler) {
         every { deviceService.pairedScales } returns MutableStateFlow(emptyList())
 
         viewModel = createViewModel()
@@ -163,7 +163,7 @@ class MetricInfoViewModelTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `SetSelectedIndex updates stat for valid index`() = runTest {
+    fun `SetSelectedIndex updates stat for valid index`() = runTest(mainDispatcherRule.scheduler) {
         viewModel = createViewModel(key = MetricKey.WEIGHT)
         advanceUntilIdle()
 
@@ -178,7 +178,7 @@ class MetricInfoViewModelTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `SetDashboardType updates dashboardType in state`() = runTest {
+    fun `SetDashboardType updates dashboardType in state`() = runTest(mainDispatcherRule.scheduler) {
         viewModel = createViewModel()
         advanceUntilIdle()
 
@@ -193,7 +193,7 @@ class MetricInfoViewModelTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `init handles account repository error gracefully`() = runTest {
+    fun `init handles account repository error gracefully`() = runTest(mainDispatcherRule.scheduler) {
         every { accountRepository.getActiveAccount() } returns flowOf(null)
 
         viewModel = createViewModel()

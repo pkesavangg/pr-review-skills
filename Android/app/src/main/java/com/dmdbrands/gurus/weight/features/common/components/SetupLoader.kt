@@ -28,7 +28,8 @@ import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
-import com.dmdbrands.gurus.weight.features.ScaleSetup.modal.ConnectionState
+import com.dmdbrands.gurus.weight.core.power.isPowerSaveMode
+import com.dmdbrands.gurus.weight.features.DeviceSetup.modal.ConnectionState
 import com.dmdbrands.gurus.weight.features.common.components.strings.SetupLoaderStrings
 import com.dmdbrands.gurus.weight.resources.AppIcons
 import com.dmdbrands.gurus.weight.theme.MeAppTheme
@@ -120,7 +121,9 @@ fun SetupLoader(
   modifier: Modifier = Modifier
 ) {
   val display = connectionState.toLoaderDisplay()
-  val crossfadeMs = if (isReduceMotionEnabled()) 0 else SetupLoaderTimings.CROSSFADE_MS
+  val powerSave = isPowerSaveMode()
+  // Snap crossfades (no tween) when reduce-motion is set or Power Saving Mode is on (MOB-226).
+  val crossfadeMs = if (isReduceMotionEnabled() || powerSave) 0 else SetupLoaderTimings.CROSSFADE_MS
 
   // Animate the outer dots' color over the same window as the middle-dot
   // crossfade so the whole loader transitions as a single visual gesture
@@ -134,8 +137,11 @@ fun SetupLoader(
   // Custom animation state for uniform timing
   var animationProgress by remember { mutableStateOf(0f) }
 
-  LaunchedEffect(display) {
-    if (display == LoaderDisplay.Loading) {
+  LaunchedEffect(display, powerSave) {
+    // Under Power Saving Mode the OS throttles this 50fps loop, so it stutters while stealing
+    // cycles from touch/scroll. Hold a static frame instead. Success/Failed are unaffected —
+    // they render static icons keyed on [display], so setup still advances normally (MOB-226).
+    if (display == LoaderDisplay.Loading && !powerSave) {
       // Reset progress on each entry into Loading so the dot phase starts from
       // a known position after a Failed → Loading retry, rather than resuming
       // from a frozen mid-cycle value.
@@ -144,6 +150,8 @@ fun SetupLoader(
         animationProgress = (animationProgress + 0.06f) % 5f
         delay(20) // 20ms per frame = 50fps, 1.67 seconds total cycle
       }
+    } else {
+      animationProgress = 0f
     }
   }
 

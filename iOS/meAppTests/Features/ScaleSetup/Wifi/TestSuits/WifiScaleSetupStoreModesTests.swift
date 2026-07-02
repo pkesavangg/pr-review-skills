@@ -1,6 +1,6 @@
 import Foundation
-import Testing
 @testable import meApp
+import Testing
 
 extension WifiScaleSetupStoreTests {
     @Suite("Modes And Progression")

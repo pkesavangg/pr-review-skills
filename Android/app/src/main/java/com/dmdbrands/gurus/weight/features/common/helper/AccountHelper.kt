@@ -33,7 +33,7 @@ object AccountHelper {
 
     // Convert to target unit if needed (stored weight is always in LB tenths)
     val convertedWeight = if (targetUnit == WeightUnit.KG) {
-      baseWeight / 2.20462
+      ConversionTools.lbsToKg(baseWeight)
     } else {
       baseWeight
     }
@@ -42,11 +42,12 @@ object AccountHelper {
   }
 
   /**
-   * Checks if the account uses metric units.
+   * Checks if the account uses metric units. Delegates to the canonical
+   * [Account.isMetric] so there is a single source of truth.
    *
    * @return true if metric (kg), false if imperial (lbs)
    */
-  fun Account.isMetricUnit(): Boolean = this.weightUnit == WeightUnit.KG
+  fun Account.isMetricUnit(): Boolean = this.isMetric
 
   /**
    * Formats weight for display with appropriate unit.

@@ -1,7 +1,7 @@
 import Combine
 import Foundation
-import Testing
 @testable import meApp
+import Testing
 
 @Suite(.serialized)
 @MainActor
@@ -163,7 +163,7 @@ struct MultiDeviceSnapshotViewModelTests {
         let result = sut.snapshotItems(from: items, selectedItem: .baby(profile: absentBaby))
 
         let babyIds = result.compactMap { item -> String? in
-            if case .baby(let p) = item { return p.id }
+            if case .baby(let profile) = item { return profile.id }
             return nil
         }
         #expect(babyIds == ["b1"])
@@ -271,6 +271,7 @@ struct MultiDeviceSnapshotViewModelTests {
         #expect(entryService.babyDailySummariesByProfile[baby2.id] != nil)
     }
 
+    // swiftlint:disable:next todo
     // TODO: MA-XXXX — Test needs MockEntryService; concrete EntryService lacks call tracking properties.
     // @Test("loadSnapshots skips duplicate work for the same available item signature")
     // func loadSnapshotsSkipsDuplicateSignature() async { ... }

@@ -15,7 +15,7 @@ import com.dmdbrands.gurus.weight.domain.model.storage.toDeviceDetails
 import com.dmdbrands.gurus.weight.domain.model.storage.toDeviceDomainModel
 import com.dmdbrands.gurus.weight.core.shared.utilities.logging.AppLog
 import com.dmdbrands.gurus.weight.domain.repository.IDeviceRepository
-import com.dmdbrands.gurus.weight.features.common.helper.ScaleDataHelper
+import com.dmdbrands.gurus.weight.features.common.helper.DeviceDataHelper
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.map
@@ -60,10 +60,14 @@ constructor(
     deviceDao.updateDevice(device.toDeviceDetails(accountId))
   }
 
+  override suspend fun updateDeviceBroadcastId(deviceId: String, broadcastId: String, accountId: String) {
+    deviceDao.updateBroadcastId(deviceId, broadcastId, accountId)
+  }
+
   override suspend fun repairDeviceTypesFromSku(): Int {
     var repaired = 0
     deviceDao.getAllDevicesList().forEach { device ->
-      val expectedType = ScaleDataHelper.findScaleInfoBySku(device.sku)?.setupType?.value ?: return@forEach
+      val expectedType = DeviceDataHelper.findScaleInfoBySku(device.sku)?.setupType?.value ?: return@forEach
       if (device.deviceType != expectedType || device.protocolType != expectedType) {
         deviceDao.updateDevice(device.copy(deviceType = expectedType, protocolType = expectedType))
         repaired++
@@ -154,7 +158,10 @@ constructor(
   // API operations
   override suspend fun getDevicesFromApi(accountId: String): List<Device> {
     AppLog.d(TAG, "Fetching devices from API for account: $accountId")
-    val response = deviceApi.getPairedScales()
+    // Me App 2.0 reads from the UNIFIED GET /v3/paired-device/ (§2.4) — the legacy
+    // GET /v3/paired-scale/ is "old app only" per the API spec. This matches the unified
+    // POST /v3/paired-device/ used to register devices (MOB-378/MOB-598). null = all deviceTypes.
+    val response = deviceApi.getPairedDevices(null)
     if (response.isSuccessful) {
       val apiModels = response.body() ?: emptyList<DeviceApiModel>()
       AppLog.i(TAG, "Fetched ${apiModels.size} device(s) from API")
