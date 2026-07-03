@@ -25,7 +25,9 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import com.dmdbrands.gurus.weight.features.common.components.BabyEmptyContent
 import com.dmdbrands.gurus.weight.features.common.components.SegmentButtonGroup
+import com.dmdbrands.gurus.weight.features.common.components.strings.BabyEmptyStateStrings
 import com.dmdbrands.gurus.weight.features.common.enums.GraphSegment
 import com.dmdbrands.gurus.weight.features.common.strings.ChartHeaderStrings
 import com.dmdbrands.gurus.weight.features.dashboard.snapshot.components.SnapshotColors
@@ -37,16 +39,16 @@ import com.dmdbrands.gurus.weight.theme.MeTheme
 
 /**
  * Empty dashboard shown when the account owns the baby product but has no baby profile yet.
- * Renders the exact baby "no entries" first-run layout (zero value + Weight/Height toggle +
- * static grid + period tabs + connect-device CTA) — identical to a real baby's empty state,
- * just surfaced under the "Baby Scale" title. (MOB-592)
+ * Renders the baby "no entries" layout (zero value + Weight/Height toggle + static grid +
+ * period tabs) followed by the "No babies added yet" / ADD A BABY card, since a profile —
+ * not a device — is the blocker in this state. (MOB-592, MOB-1246)
  *
  * Everything here is static (no ViewModel/data): the metric toggle switches the grid range
  * and the period tabs only toggle their own selection since there is nothing to plot.
  */
 @Composable
 fun BabyScaleEmptyDashboard(
-  onConnectDevice: () -> Unit,
+  onAddBaby: () -> Unit,
   modifier: Modifier = Modifier,
 ) {
   var metric by remember { mutableStateOf(BabyMetric.WEIGHT) }
@@ -99,7 +101,13 @@ fun BabyScaleEmptyDashboard(
       Spacer(modifier = Modifier.height(MeTheme.spacing.sm))
     }
 
-    EmptyMetric(onConnectScaleClick = onConnectDevice)
+    BabyEmptyContent(
+      onAddBaby = onAddBaby,
+      description = BabyEmptyStateStrings.SnapshotDescription,
+      modifier = Modifier
+        .fillMaxWidth()
+        .padding(horizontal = MeTheme.spacing.sm, vertical = MeTheme.spacing.lg),
+    )
   }
 }
 
@@ -159,6 +167,6 @@ private fun BabyMetricToggle(selected: BabyMetric, onSelect: (BabyMetric) -> Uni
 @Composable
 private fun BabyScaleEmptyDashboardPreview() {
   MeAppTheme {
-    BabyScaleEmptyDashboard(onConnectDevice = {})
+    BabyScaleEmptyDashboard(onAddBaby = {})
   }
 }

@@ -279,7 +279,34 @@ class SettingsReducerTest {
         assertThat(state.isMyKidsEnabled).isFalse()
     }
 
-    // --- showUnitType: hidden only for blood-pressure (Balance Health) only accounts ---
+    // --- isMyWeightEnabled: My Weight section editable only when the account owns the
+    // weight product (productTypes). NOT keyed off hasWeightScale — a baby scale can inflate
+    // that device flag and would otherwise falsely unlock My Weight for a baby/BP account. (MOB-1175) ---
+
+    @Test
+    fun `isMyWeightEnabled is true when productTypes contains weight`() {
+        val account = fakeAccount.copy(productTypes = listOf("weight", "baby"))
+        val state = SettingsState(hasWeightScale = false, account = account)
+
+        assertThat(state.isMyWeightEnabled).isTrue()
+    }
+
+    @Test
+    fun `isMyWeightEnabled is false for baby and BP account even when hasWeightScale is true`() {
+        // Regression guard: a baby scale surfacing as a weight-scale device sets hasWeightScale
+        // true, but the account owns baby + blood_pressure only, so My Weight must stay locked.
+        val account = fakeAccount.copy(productTypes = listOf("baby", "blood_pressure"))
+        val state = SettingsState(hasWeightScale = true, account = account)
+
+        assertThat(state.isMyWeightEnabled).isFalse()
+    }
+
+    @Test
+    fun `isMyWeightEnabled is false when account is null`() {
+        assertThat(SettingsState(hasWeightScale = true, account = null).isMyWeightEnabled).isFalse()
+    }
+
+    // --- showUnitType: always shown now; BP-only sees it locked, not hidden (MOB-1175) ---
 
     @Test
     fun `showUnitType is true for weight-only account`() {
@@ -294,9 +321,9 @@ class SettingsReducerTest {
     }
 
     @Test
-    fun `showUnitType is false for blood-pressure only account`() {
+    fun `showUnitType is true for blood-pressure only account (shown locked)`() {
         val account = fakeAccount.copy(productTypes = listOf("blood_pressure"))
-        assertThat(SettingsState(account = account).showUnitType).isFalse()
+        assertThat(SettingsState(account = account).showUnitType).isTrue()
     }
 
     @Test

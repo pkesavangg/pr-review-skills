@@ -130,6 +130,27 @@ class DeviceHelperTest {
         assertThat(DeviceHelper.primarySku("0375")).isEqualTo("0375")
     }
 
+    // ── isA6BpmSku — A6 (lcbt) monitor detection ──
+
+    @Test
+    fun `isA6BpmSku is true for A6 primary and alternate SKUs`() {
+        assertThat(DeviceHelper.isA6BpmSku(SKU_0661)).isTrue()
+        assertThat(DeviceHelper.isA6BpmSku(SKU_0663)).isTrue()
+        assertThat(DeviceHelper.isA6BpmSku(SKU_0665)).isTrue() // alternate → 0663
+        assertThat(DeviceHelper.isA6BpmSku(SKU_0667)).isTrue() // alternate → 0661
+    }
+
+    @Test
+    fun `isA6BpmSku is false for A3 monitors, baby, weight and null`() {
+        assertThat(DeviceHelper.isA6BpmSku(SKU_0603)).isFalse()
+        assertThat(DeviceHelper.isA6BpmSku(SKU_0604)).isFalse()
+        assertThat(DeviceHelper.isA6BpmSku(SKU_0634)).isFalse()
+        assertThat(DeviceHelper.isA6BpmSku(SKU_0636)).isFalse()
+        assertThat(DeviceHelper.isA6BpmSku(SKU_0220)).isFalse()
+        assertThat(DeviceHelper.isA6BpmSku("0375")).isFalse()
+        assertThat(DeviceHelper.isA6BpmSku(null)).isFalse()
+    }
+
     // ── babyScaleListModelLabel — grouped baby pair label ──
 
     @Test

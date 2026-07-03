@@ -127,10 +127,12 @@ fun DashboardScreen() {
           product = product,
           goal = state.goal,
           scrollToTopSignal = state.resetSignal,
+          // Goal set → goal-anchored range + goal badge; no goal → a default range so the Y axis
+          // still shows (consistent with BP/Baby) instead of a bare, axis-less grid.
           emptyRange = EmptyGraphDefaults.weightGoal(
             goalDisplay = state.goal?.goalWeight,
             isKg = state.weightUnit == WeightUnit.KG,
-          ),
+          ) ?: EmptyGraphDefaults.weightDefault(isKg = state.weightUnit == WeightUnit.KG),
           onRefresh = { vm.handleIntent(WeightDashboardIntent.Refresh) },
           createFallbackEntry = { ts, yValues, seg ->
             val y = yValues.firstOrNull() ?: return@DashboardPage null
@@ -228,12 +230,12 @@ fun DashboardScreen() {
       }
 
       is ProductSelection.BabyScale -> {
-        // Owns the baby product but no baby profile yet: show the exact baby empty
-        // dashboard (zero value + W/H toggle + grid + tabs + connect-device CTA),
-        // surfaced under the "Baby Scale" title. The CTA routes to add-a-baby since a
-        // profile is required before any entry can be collected. (MOB-592)
+        // Owns the baby product but no baby profile yet: show the baby empty dashboard
+        // (zero value + W/H toggle + grid + tabs) followed by the "No babies added yet"
+        // ADD A BABY card, surfaced under the "Baby Scale" title. A profile — not a
+        // device — is the blocker here, so the CTA routes to add-a-baby. (MOB-592, MOB-1246)
         BabyScaleEmptyDashboard(
-          onConnectDevice = {
+          onAddBaby = {
             scope.launch {
               navBackStack.addRoute(AppRoute.AccountSettings.AddBaby())
             }

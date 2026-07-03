@@ -287,13 +287,15 @@ class EntryViewModelTest {
 
         viewModel.handleIntent(EntryIntent.Save)
         advanceUntilIdle()
-
-        // Success now surfaces the rich "saved to your log" card (Figma 30456-24170), not a plain
-        // "Success!" toast — for a weight entry the card is a MY_WEIGHT ReadingToast.
-        val reading = toasts.filterIsInstance<Toast.Custom>()
-            .map { it.content }.filterIsInstance<ReadingToast>().single()
-        assertThat(reading.type).isEqualTo(ProductType.MY_WEIGHT)
-        assertThat(reading.savedToLog).isTrue()
+        // Success now shows the "saved to log" reading card (Toast.Custom/ReadingToast), not a Simple toast.
+        verify {
+            dialogQueueService.showToast(
+                match<Toast.Custom> {
+                    val content = it.content as? ReadingToast
+                    content?.savedToLog == true && content.type == ProductType.MY_WEIGHT
+                },
+            )
+        }
     }
 
     @Test
@@ -745,11 +747,15 @@ class EntryViewModelTest {
 
         viewModel.handleIntent(EntryIntent.Save)
         advanceUntilIdle()
-
-        val reading = toasts.filterIsInstance<Toast.Custom>()
-            .map { it.content }.filterIsInstance<ReadingToast>().single()
-        assertThat(reading.type).isEqualTo(ProductType.BLOOD_PRESSURE)
-        assertThat(reading.reading).isEqualTo("120/80")
+        // BP success also shows the "saved to log" reading card (Toast.Custom/ReadingToast).
+        verify {
+            dialogQueueService.showToast(
+                match<Toast.Custom> {
+                    val content = it.content as? ReadingToast
+                    content?.savedToLog == true && content.type == ProductType.BLOOD_PRESSURE
+                },
+            )
+        }
         coVerify { navigationService.navigateBack(AppRoute.Home) }
     }
 

@@ -61,6 +61,12 @@ object DeviceHelper {
   /** Returns `true` when [sku] is non-null and identifies a Blood Pressure Monitor; `false` when [sku] is null. */
   fun isBpmDevice(sku: String?): Boolean = sku != null && sku in BPM_SKUS
 
+  /** A6-protocol BPM monitor primary SKUs (lcbt). */
+  val A6_BPM_SKUS: Set<String> = setOf(SKU_0661, SKU_0663)
+
+  /** Returns `true` when [sku] identifies an A6 (lcbt) blood-pressure monitor. */
+  fun isA6BpmSku(sku: String?): Boolean = sku != null && primaryBpmSku(sku) in A6_BPM_SKUS
+
   /**
    * Single source of truth mapping a device [sku] to the account [ProductType] it belongs to.
    * Baby scales → [ProductType.BABY], BP monitors → [ProductType.BLOOD_PRESSURE], everything else

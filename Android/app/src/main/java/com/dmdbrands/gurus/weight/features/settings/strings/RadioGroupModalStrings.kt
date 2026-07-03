@@ -39,13 +39,20 @@ object RadioGroupModalStrings {
 
     // Unit Type Options
     object UnitType {
-        const val Imperial = "lbs / ft"
-        const val Metric = "kg / cm"
-        const val ImperialBaby = "lbs & oz / in"
+        // Canonical labels (MOB-667 / MOB-1250): "&" separates weight from length,
+        // singular "lb", compound weight hyphenated "lb-oz", adult height "ft" vs baby "in".
+        const val Imperial = "lb & ft"
+        const val Metric = "kg & cm"
+        const val ImperialBaby = "lb-oz & in"
 
         // Per-product section headers used by the sectioned Unit Type modal.
         const val MyWeightSection = "My Weight"
         const val MyKidsSection = "My Kids"
+
+        // Inline unlock messages shown when a section is locked because the account
+        // lacks the relevant product. (MOB-1175)
+        const val MyWeightLockedMessage = "Add a weight scale to configure this unit."
+        const val MyKidsLockedMessage = "Add a baby scale or baby profile to configure this unit."
     }
 
     // Notification Options (following Angular pattern)

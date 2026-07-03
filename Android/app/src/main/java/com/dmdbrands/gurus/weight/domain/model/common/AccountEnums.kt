@@ -14,15 +14,19 @@ enum class WeightUnit(
   val label: String,
   val unit: String,
   /**
-   * My Kids (baby) variant of [unit]. Baby height is always inches, so the
-   * imperial label stays "/ in" here even though adult My Weight uses "/ ft".
-   * For metric and lbs & oz it matches [unit].
+   * My Kids (baby) variant of [unit]. Baby length is always inches, so the
+   * imperial label reads "& in" here even though adult My Weight uses "& ft".
+   * For metric and lb-oz it matches [unit]. (MOB-1250)
    */
   val babyUnit: String,
 ) {
-  KG("kg", "kg", "kg / cm", "kg / cm"),
-  LB("lb", "lbs", "lbs / ft", "lbs / in"),
-  LB_OZ("lb_oz", "lbs & oz", "lbs & oz / in", "lbs & oz / in"),
+  // [unit]/[babyUnit] are the Unit Type dialog labels (canonical set, MOB-667/MOB-1250):
+  // "&" separates weight from length; the compound weight stays hyphenated ("lb-oz");
+  // weight is singular "lb"; adult height is "ft" (My Weight), baby length is "in" (My Kids).
+  // [label] is the short value-suffix used next to weights elsewhere — do NOT change here.
+  KG("kg", "kg", "kg & cm", "kg & cm"),
+  LB("lb", "lbs", "lb & ft", "lb & in"),
+  LB_OZ("lb_oz", "lbs & oz", "lb-oz & in", "lb-oz & in"),
   ;
 
   companion object {

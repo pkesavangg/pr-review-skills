@@ -383,6 +383,20 @@ class HistoryDetailViewModelTest {
     }
 
     @Test
+    fun `DeleteEntry routes a baby entry through entryService deleteEntry`() = runTest {
+        // Baby (and BP) history rows now expose swipe-to-delete, dispatching the same generic
+        // DeleteEntry intent — the service maps them to the unified operationType=delete. (§2.16)
+        viewModel = createViewModel()
+        advanceUntilIdle()
+
+        val babyEntry = aBabyEntry(id = 9L, weightDecigrams = 30000)
+        viewModel.handleIntent(HistoryDetailIntent.DeleteEntry(babyEntry))
+        advanceUntilIdle()
+
+        coVerify { entryService.deleteEntry(babyEntry) }
+    }
+
+    @Test
     fun `DeleteEntry also deletes from Health Connect`() = runTest {
         viewModel = createViewModel()
         advanceUntilIdle()

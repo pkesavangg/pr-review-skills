@@ -139,7 +139,8 @@ fun SettingsScreenContent(
         title = SettingsScreenStrings.App,
         items =
           buildList {
-            // Hidden for Balance Health (blood-pressure) only accounts — BP has no unit.
+            // Always shown (MOB-1175): even BP-only accounts see it, with both
+            // sections locked to the default unit + an unlock message inside the dialog.
             if (state.showUnitType) {
               add(
                 SettingsItem(

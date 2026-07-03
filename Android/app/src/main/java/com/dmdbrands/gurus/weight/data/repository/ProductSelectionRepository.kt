@@ -85,8 +85,12 @@ class ProductSelectionRepository @Inject constructor(
             )
         }
 
+    // A paired BPM is stored with its setup type ("bpmBluetooth" for A3, "bpmA6Bluetooth" for A6) —
+    // NOT the API product category "BPM", which was never a stored deviceType, so the old query
+    // always returned empty. Match both connection variants. (baby/BPM reconnect fix)
     override suspend fun hasBpmDevice(accountId: String): Boolean =
-        deviceDao.getDevicesByTypeWithAccount("BPM", accountId).first().isNotEmpty()
+        deviceDao.getDevicesByTypeWithAccount(DeviceSetupType.BpmBluetooth.value, accountId).first().isNotEmpty() ||
+            deviceDao.getDevicesByTypeWithAccount(DeviceSetupType.BpmA6Bluetooth.value, accountId).first().isNotEmpty()
 
     override suspend fun hasBabyScaleDevice(accountId: String): Boolean =
         deviceDao.getDevicesByTypeWithAccount(DeviceSetupType.BabyScale.value, accountId).first().isNotEmpty()
