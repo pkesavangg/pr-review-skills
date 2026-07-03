@@ -90,7 +90,7 @@ fun <T> AppSectionedRadioGroupModal(
     Box(
       modifier = Modifier
         .fillMaxSize()
-        .background(MeTheme.colorScheme.glow),
+        .background(MeTheme.colorScheme.overlay),
     ) {
       Box(modifier = Modifier.align(Alignment.Center)) {
         BaseModal(
@@ -158,6 +158,12 @@ private fun <T> SectionedRadioGroupContent(
           if (section.enabled) currentSelections[section.key] = selected
         },
         groupLabel = section.label,
+        // Active section header uses the heading colour; a locked section is greyed. (MOB-1256)
+        groupLabelColor = if (section.enabled) {
+          MeTheme.colorScheme.textHeading
+        } else {
+          MeTheme.colorScheme.textSubheading
+        },
         modifier = Modifier.fillMaxWidth(),
       )
       if (!section.enabled && section.lockedMessage != null) {
