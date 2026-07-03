@@ -33,8 +33,7 @@ struct HistoryEntryItem: View {
             weightUnit: weightUnit,
             weightless: weightlessSettings
         )
-        let displayValue = ConversionTools.convertStoredToDisplay(Int(entry.scaleEntry?.weight ?? 0), isMetric: weightUnit == .kg)
-        let unitLabel = WeightValueConvertor.unitForDisplay(value: displayValue, unit: weightUnit)
+        let unitLabel = WeightValueConvertor.unitForDisplay(unit: weightUnit)
         return "\(day), \(time), \(weightVal) \(unitLabel)"
     }
 
@@ -86,10 +85,7 @@ struct HistoryEntryItem: View {
                         .minimumScaleFactor(0.8)
                         .allowsTightening(true)
 
-                    Text(WeightValueConvertor.unitForDisplay(
-                        value: ConversionTools.convertStoredToDisplay(Int(entry.scaleEntry?.weight ?? 0), isMetric: weightUnit == .kg),
-                        unit: weightUnit
-                    ))
+                    Text(WeightValueConvertor.unitForDisplay(unit: weightUnit))
                         .fontOpenSans(.body2)
                         .foregroundStyle(isExpanded ? theme.actionInverseSecondary : theme.textSubheading)
                         .lineLimit(1)

@@ -61,10 +61,10 @@ struct DashboardStrings {
         if streak >= 1000 { return " d" }
         return streak == 1 ? " day" : " days"
     }
-    static let lbsWeek = "lbs/week"
-    static let lbsMonth = "lbs/month"
-    static let lbsYear = "lbs/year"
-    static let lbsTotal = "lbs/total"
+    static let lbsWeek = "lb/week"
+    static let lbsMonth = "lb/month"
+    static let lbsYear = "lb/year"
+    static let lbsTotal = "lb/total"
 
     // Goal Card/Progress strings
     static let goalTypeLabel = "Goal Type: %@"

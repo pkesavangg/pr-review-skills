@@ -226,7 +226,7 @@ final class BabyTrendViewModel {
             if roundedOz >= 16.0 { wholeLbs += 1; remainingOz = 0.0 }
             return BabyWeightDisplay(
                 primary: "\(wholeLbs)",
-                primaryUnit: BabyDashboardStrings.lbs,
+                primaryUnit: BabyDashboardStrings.lb,
                 secondary: String(format: "%.1f", remainingOz),
                 secondaryUnit: BabyDashboardStrings.oz
             )

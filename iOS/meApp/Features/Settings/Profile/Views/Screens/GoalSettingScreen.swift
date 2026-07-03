@@ -10,18 +10,18 @@ struct GoalSettingScreen: View {
     @EnvironmentObject private var settingsStore: SettingsStore
     @EnvironmentObject private var router: Router<SettingsRoute>
     @Environment(\.registerTabDeactivationHandler) private var registerDeactivation
-    
+
     @State private var focusedField: FocusField?
-    
+
     private let strings = GoalStrings.self
     private let commonLang = CommonStrings.self
     private let labels = InputFieldLabels.self
-    
+
     // Helpers
     private var weightUnit: WeightUnit {
         settingsStore.activeAccount?.weightUnit ?? .lb
     }
-    
+
     var body: some View {
         VStack(spacing: 0) {
             // Header
@@ -44,7 +44,7 @@ struct GoalSettingScreen: View {
                 onTrailingTap: {},
                 canShowBorder: true
             )
-            
+
             ScrollView(.vertical, showsIndicators: false) {
                 VStack(alignment: .leading, spacing: .spacingMD) {
                     VStack(alignment: .leading, spacing: .spacingXS) {
@@ -73,13 +73,13 @@ struct GoalSettingScreen: View {
                         settingsStore.handleGoalTypeChange(settingsStore.selectedSegment)
                     }
                     .padding(.horizontal, .spacing2XL)
-                    
+
                     VStack(spacing: 4) {
                         // Current Weight Input (hidden for maintain)
                         if settingsStore.selectedSegment == .loseGain {
                             MetricInputField(
                                 config: TextInputConfig(
-                                    label: labels.startingWeightLabel(weightUnit == .kg),
+                                    label: labels.startingWeight,
                                     placeholder: "0.0",
                                     inputType: .metric,
                                     errorMessage: settingsStore.goalForm.getError(
@@ -88,7 +88,8 @@ struct GoalSettingScreen: View {
                                     ),
                                     focusField: .currentWeight,
                                     maxLength: 4,
-                                    maxValue: 999.9
+                                    maxValue: 999.9,
+                                    trailingLabel: labels.weightUnitSuffix(weightUnit == .kg)
                                 ),
                                 value: $settingsStore.goalForm.currentWeight.value,
                                 focusedField: $focusedField,
@@ -100,17 +101,19 @@ struct GoalSettingScreen: View {
                                 handleFieldValueChange(.currentWeight, newValue: newValue)
                             }
                         }
-                        
+
                         // Goal Weight Input
                         MetricInputField(
                             config: TextInputConfig(
-                                label: labels.goalWeightLabel(weightUnit == .kg),
+                                label: labels.goalWeight,
                                 placeholder: "0.0",
                                 inputType: .metric,
                                 errorMessage: settingsStore.goalForm.getError(for: settingsStore.goalForm.goalWeight, isMetric: weightUnit == .kg),
                                 focusField: .goalWeight,
                                 maxLength: 4,
-                                maxValue: 999.9
+                                maxValue: 999.9,
+                                // Canonical rule (MOB-1170): label on the left, unit suffix pinned to the right edge.
+                                trailingLabel: labels.weightUnitSuffix(weightUnit == .kg)
                             ),
                             value: $settingsStore.goalForm.goalWeight.value,
                             focusedField: $focusedField,
@@ -146,14 +149,14 @@ struct GoalSettingScreen: View {
             // Sync the selected segment with the current goal type value
             let currentSegment = GoalTypeSegment.fromGoalType(settingsStore.goalForm.goalType.value)
             settingsStore.selectedSegment = currentSegment
-            
+
             registerDeactivation {
                 // Allow immediate tab switch when no changes.
                 if !settingsStore.goalForm.isDirty {
                     router.navigateBack()
                     return true
                 }
-                
+
                 let confirmed = await settingsStore.confirmDiscardGoalChanges()
                 if confirmed {
                     Task { @MainActor in
@@ -175,7 +178,7 @@ struct GoalSettingScreen: View {
         }
         .navigationBarHidden(true)
     }
-    
+
     // MARK: - Current Goal Card
     @ViewBuilder
     private func currentGoalCard() -> some View {
@@ -204,25 +207,25 @@ struct GoalSettingScreen: View {
             }
         }
     }
-    
+
     private func formatDisplayWeight(_ stored: Double) -> String {
         let intVal = Int(stored)
         let display = weightUnit == .kg ? ConversionTools.convertStoredToKg(intVal) : ConversionTools.convertStoredToLbs(intVal)
         return String(format: "%.1f %@", display, weightUnit.rawValue)
     }
-    
+
     /// Handles field value changes by marking as touched when editing
     /// FormControl automatically marks as dirty and validates when value changes
     private func handleFieldValueChange(_ field: FocusField, newValue: String) {
         guard focusedField == field else { return }
-        
+
         if field == .currentWeight {
             settingsStore.goalForm.currentWeight.markAsTouched()
         } else if field == .goalWeight {
             settingsStore.goalForm.goalWeight.markAsTouched()
         }
     }
-    
+
     /// Dismisses keyboard and marks current field as touched
     private func dismissKeyboardAndTouchField() {
         if let field = focusedField {

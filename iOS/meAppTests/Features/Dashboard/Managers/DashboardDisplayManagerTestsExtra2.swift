@@ -123,7 +123,7 @@ extension DashboardDisplayManagerTests {
         #expect(store.displayManager.displayWeight == nil)
         #expect(
             store.displayManager.displayUnitText ==
-            WeightValueConvertor.unitForDisplay(value: store.displayManager.getCurrentAverageWeight(), unit: .lb)
+            WeightValueConvertor.unitForDisplay(unit: .lb)
         )
     }
 

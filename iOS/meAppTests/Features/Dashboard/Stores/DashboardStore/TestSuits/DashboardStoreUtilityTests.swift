@@ -237,7 +237,7 @@ extension DashboardStoreTests {
     @Test("currentUnitText: defaults to lbs when there is no active account")
     func currentUnitTextDefaultsToLbs() {
         let store = DashboardStoreTestSupport.makeSUT().store
-        #expect(store.currentUnitText == "lbs")
+        #expect(store.currentUnitText == "lb")
     }
 
     @Test("current unit properties: reflect active account settings")

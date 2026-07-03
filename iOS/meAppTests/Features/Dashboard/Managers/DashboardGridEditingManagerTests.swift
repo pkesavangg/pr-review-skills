@@ -124,7 +124,7 @@ struct DashboardGridEditingManagerTests {
         [
             DashboardTestFixtures.makeMetricItem(label: DashboardStrings.currentStreak),
             DashboardTestFixtures.makeMetricItem(label: DashboardStrings.longestStreak),
-            DashboardTestFixtures.makeMetricItem(label: "lbs/week")
+            DashboardTestFixtures.makeMetricItem(label: "lb/week")
         ]
     }
 
@@ -151,7 +151,7 @@ struct DashboardGridEditingManagerTests {
         let refreshed = [
             DashboardTestFixtures.makeMetricItem(label: DashboardStrings.currentStreak),
             DashboardTestFixtures.makeMetricItem(label: DashboardStrings.longestStreak),
-            DashboardTestFixtures.makeMetricItem(label: "lbs/month")
+            DashboardTestFixtures.makeMetricItem(label: "lb/month")
         ]
         store.streakManager.state.streakItems = refreshed
 
@@ -173,8 +173,8 @@ struct DashboardGridEditingManagerTests {
         let streaks = [
             DashboardTestFixtures.makeMetricItem(label: DashboardStrings.currentStreak),
             DashboardTestFixtures.makeMetricItem(label: DashboardStrings.longestStreak),
-            DashboardTestFixtures.makeMetricItem(label: "lbs/week"),
-            DashboardTestFixtures.makeMetricItem(label: "lbs/month")
+            DashboardTestFixtures.makeMetricItem(label: "lb/week"),
+            DashboardTestFixtures.makeMetricItem(label: "lb/month")
         ]
         configureStore(store, metrics: makeDefaultMetrics(), streaks: streaks)
         store.state.ui.streakGridOrder = []
@@ -198,10 +198,10 @@ struct DashboardGridEditingManagerTests {
         let streaks = [
             DashboardTestFixtures.makeMetricItem(label: DashboardStrings.currentStreak),
             DashboardTestFixtures.makeMetricItem(label: DashboardStrings.longestStreak),
-            DashboardTestFixtures.makeMetricItem(label: "lbs/week"),
-            DashboardTestFixtures.makeMetricItem(label: "lbs/month"),
-            DashboardTestFixtures.makeMetricItem(label: "lbs/year"),
-            DashboardTestFixtures.makeMetricItem(label: "lbs/total")
+            DashboardTestFixtures.makeMetricItem(label: "lb/week"),
+            DashboardTestFixtures.makeMetricItem(label: "lb/month"),
+            DashboardTestFixtures.makeMetricItem(label: "lb/year"),
+            DashboardTestFixtures.makeMetricItem(label: "lb/total")
         ]
         configureStore(store, metrics: makeDefaultMetrics(), streaks: streaks)
         store.accountService.activeAccount = nil
@@ -309,7 +309,7 @@ struct DashboardGridEditingManagerTests {
         store.gridEditingManager.syncRemovalStateFromStreakManager()
 
         #expect(store.state.ui.removedMetrics == Set([DashboardStrings.bodyFat, DashboardStrings.water]))
-        #expect(store.state.ui.removedStreaks == Set(["lbs/week"]))
+        #expect(store.state.ui.removedStreaks == Set(["lb/week"]))
 
         store.metricsManager.state.activeMetricsCount = 2
         store.gridEditingManager.debouncedSyncRemovalState()
@@ -380,7 +380,7 @@ struct DashboardGridEditingManagerTests {
 
         #expect(streakLabels(in: store) == [
             DashboardStrings.longestStreak,
-            "lbs/week",
+            "lb/week",
             DashboardStrings.currentStreak
         ])
     }

@@ -207,7 +207,9 @@ struct AppInputField: View {
         )
         .focused($fieldIsFocused)
         .padding(.leading, .spacingSM)
-        .accessibilityLabel(config.label)
+        // Fold the trailing unit suffix (e.g. "lb"/"kg") into the a11y label so VoiceOver
+        // users editing the field can still tell which unit the value is in (MOB-1170).
+        .accessibilityLabel([config.label, config.trailingLabel].compactMap { $0 }.joined(separator: " "))
     }
 
     // Disabled fields use the secondary-disabled fill per Figma; enabled fields keep the primary background.

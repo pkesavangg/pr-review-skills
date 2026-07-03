@@ -87,7 +87,7 @@ extension SettingsStoreTests {
             let (store, _, _, _, _) = SettingsStoreTestFixtures.makeSUT(accountService: accountService)
             let display = ConversionTools.convertStoredToKg(1550)
             let expected = "\(CommonStrings.on) - \(String(format: "%.1f", display)) "
-                + "\(WeightValueConvertor.unitForDisplay(value: display, unit: .kg))"
+                + "\(WeightValueConvertor.unitForDisplay(unit: .kg))"
 
             #expect(store.weightlessText == expected)
         }

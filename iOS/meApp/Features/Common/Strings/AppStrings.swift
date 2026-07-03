@@ -31,8 +31,8 @@ struct CommonStrings {
     static let optional = "optional"
     static let connectScale = "Connect Scale"
     static let unitKgCm = "kg & cm"
-    static let unitLbsFeet = "lbs & ft"
-    static let pickerLbs = "lbs & feet"
+    static let unitLbsFeet = "lb & ft"
+    static let pickerLbs = "lb & feet"
     static let on = "On"
     static let off = "Off"
     static let dark = "Dark"
@@ -268,9 +268,9 @@ struct FormErrorMessages {
     static let passwordMatch = "both passwords must match"
     static let valueShouldNotBeEqual = "value should not be equal to starting weight"
     static let minWeightKg = "value should be greater than 0 kg"
-    static let minWeightLb = "value should be greater than 0 lbs"
+    static let minWeightLb = "value should be greater than 0 lb"
     static let maxWeightKg = "value should be less than 450 kg"
-    static let maxWeightLb = "value should be less than 999 lbs"
+    static let maxWeightLb = "value should be less than 999 lb"
     static let minValue = "value should be greater than 0"
     static let maxValue99 = "value should be less than 99"
     static let maxValue = { (value: Int) in "value should be less than \(value)" }
@@ -298,29 +298,18 @@ struct InputFieldLabels {
     static let currentPassword = "current password"
     static let height = "height"
     static let startingWeight = "starting weight"
-    static let startingWeightLabel: (Bool) -> String = { isKg in
-        return isKg ? "starting weight (kg)" : "starting weight (lbs)"
-    }
-    static let goalWeightLabel: (Bool) -> String = { isKg in
-        return isKg ? "goal weight (kg)" : "goal weight (lbs)"
-    }
     static let goalWeight = "goal weight"
     static let useMetric = "Use Metric Units"
-    /// Unit suffix shown on the right of a unit-value input field, e.g. "(kg)" / "(lbs)".
+    /// Unit suffix shown on the right of a unit-value input field, e.g. "(kg)" / "(lb)".
     static let weightUnitSuffix: (Bool) -> String = { isKg in
-        return isKg ? "(kg)" : "(lbs)"
+        return isKg ? "(kg)" : "(lb)"
     }
     static let zipCode = "zipcode"
     static let birthday = "birthday"
-    static let weightLabel: (Bool) -> String = { isKg in
-        return isKg ? "weight (kg)" : "weight (lbs)"
-    }
-    /// Plain "weight" placeholder for fields that show the unit as a fixed trailing
-    /// suffix (`weightUnitSuffix`) on the right rather than baked into the label.
+    /// Plain "weight" label for fields that show the unit as a fixed trailing
+    /// suffix (`weightUnitSuffix`) on the right rather than baked into the label (MOB-1170).
     static let weight = "weight"
-    static let weightLessLabel: (Bool) -> String = { isKg in
-        return isKg ? "weightless weight (kg)" : "weightless weight (lbs)"
-    }
+    static let weightLess = "weightless weight"
     static let date = "Date"
     static let bmi = "bmi"
     static let bodyFat = "body fat (%)"

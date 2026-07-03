@@ -48,7 +48,7 @@ struct GoalStepView: View {
                                 focusField: .currentWeight,
                                 maxLength: 4,
                                 maxValue: 999.9,
-                                trailingLabel: signupStore.signupForm.useMetric.value ? "(kg)" : "(lbs)"
+                                trailingLabel: signupStore.signupForm.useMetric.value ? "(kg)" : "(lb)"
                             ),
                             value: $signupStore.signupForm.currentWeight.value,
                             focusedField: $focusedField,
@@ -78,7 +78,7 @@ struct GoalStepView: View {
                             focusField: .goalWeight,
                             maxLength: 4,
                             maxValue: 999.9,
-                            trailingLabel: signupStore.signupForm.useMetric.value ? "(kg)" : "(lbs)"
+                            trailingLabel: signupStore.signupForm.useMetric.value ? "(kg)" : "(lb)"
                         ),
                         value: $signupStore.signupForm.goalWeight.value,
                         focusedField: $focusedField,
