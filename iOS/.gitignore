@@ -64,6 +64,10 @@ Package.resolved
 # Swift Package Manager
 .swiftpm/
 
+# Xcode-resolved SPM dependency cache (checkouts/artifacts/repositories/prebuilts).
+# Regenerated on every build; never committed.
+SourcePackages/
+
 # Xcode Patch
 *.xcodeproj/*/project.xcworkspace/xcuserdata/
 *.xcodeproj/xcuserdata/

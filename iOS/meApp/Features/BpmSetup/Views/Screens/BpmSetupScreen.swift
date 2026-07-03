@@ -42,6 +42,7 @@ struct BpmSetupScreen: View {
                     AppIconView(icon: AppAssets.xmarkSmall, size: IconSize(width: 24, height: 24))
                         .foregroundColor(theme.statusIconPrimary)
                         .accessibilityLabel(BpmSetupStrings.A11y.closeButtonLabel)
+                        .appAccessibility(id: AccessibilityID.bpmSetupCloseButton)
                 },
                 trailingContent: {
                     Button {
@@ -52,6 +53,7 @@ struct BpmSetupScreen: View {
                     }
                     .accessibilityLabel(BpmSetupStrings.A11y.helpButtonLabel)
                     .accessibilityHint(BpmSetupStrings.A11y.helpButtonHint)
+                    .appAccessibility(id: AccessibilityID.bpmSetupHelpButton)
                 },
                 onLeadingTap: { setupStore.handleExit() },
                 onTrailingTap: {},
@@ -85,6 +87,7 @@ struct BpmSetupScreen: View {
         }
         .navigationBarBackButtonHidden(true)
         .background(theme.backgroundSecondary)
+        .screenAccessibilityRoot(AccessibilityID.bpmSetupScreenRoot)
     }
 
     private var footerButtons: some View {
@@ -102,6 +105,7 @@ struct BpmSetupScreen: View {
                 withAnimation { hideKeyboard() }
                 setupStore.moveToPreviousStep()
             }
+            .appAccessibility(id: AccessibilityID.bpmSetupBackButton)
 
             Spacer()
 
@@ -116,6 +120,7 @@ struct BpmSetupScreen: View {
                 withAnimation { hideKeyboard() }
                 setupStore.moveToNextStep()
             }
+            .appAccessibility(id: AccessibilityID.bpmSetupNextButton)
         }
     }
 }

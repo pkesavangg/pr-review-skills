@@ -29,7 +29,8 @@ struct BloodPressureEntryView: View {
                         allowWholeNumbers: true
                     ),
                     value: $entryStore.bpForm.systolic.value,
-                    focusedField: $focusedField
+                    focusedField: $focusedField,
+                    accessibilityIdentifier: AccessibilityID.bpSystolicField
                 ) {
                     focusedField = .diastolic
                 }
@@ -45,7 +46,8 @@ struct BloodPressureEntryView: View {
                         allowWholeNumbers: true
                     ),
                     value: $entryStore.bpForm.diastolic.value,
-                    focusedField: $focusedField
+                    focusedField: $focusedField,
+                    accessibilityIdentifier: AccessibilityID.bpDiastolicField
                 ) {
                     focusedField = .pulse
                 }
@@ -61,7 +63,8 @@ struct BloodPressureEntryView: View {
                         allowWholeNumbers: true
                     ),
                     value: $entryStore.bpForm.pulse.value,
-                    focusedField: $focusedField
+                    focusedField: $focusedField,
+                    accessibilityIdentifier: AccessibilityID.bpPulseField
                 ) {
                     focusedField = .notes
                 }
@@ -142,6 +145,7 @@ struct BloodPressureEntryView: View {
                     onSaveCompleted?()
                 }
             }
+            .appAccessibility(id: AccessibilityID.bpSaveButton)
         }
     }
 

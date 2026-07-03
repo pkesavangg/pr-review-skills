@@ -3,11 +3,11 @@ import XCTest
 struct LoginPage {
     let app: XCUIApplication
 
-    var root: XCUIElement { app.otherElements[UIAccessibilityID.loginScreenRoot] }
-    var emailField: XCUIElement { app.textFields[UIAccessibilityID.loginEmailField] }
-    var passwordField: XCUIElement { app.secureTextFields[UIAccessibilityID.loginPasswordField] }
-    var submitButton: XCUIElement { app.buttons[UIAccessibilityID.loginSubmitButton] }
-    var forgotPasswordButton: XCUIElement { app.buttons[UIAccessibilityID.loginForgotPasswordButton] }
+    var root: XCUIElement { app.otherElements[AccessibilityID.loginScreenRoot] }
+    var emailField: XCUIElement { app.textFields[AccessibilityID.loginEmailField] }
+    var passwordField: XCUIElement { app.secureTextFields[AccessibilityID.loginPasswordField] }
+    var submitButton: XCUIElement { app.buttons[AccessibilityID.loginSubmitButton] }
+    var forgotPasswordButton: XCUIElement { app.buttons[AccessibilityID.loginForgotPasswordButton] }
 
     func login(email: String, password: String) {
         emailField.tap()
