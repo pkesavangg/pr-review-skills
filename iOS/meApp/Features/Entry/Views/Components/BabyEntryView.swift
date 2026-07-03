@@ -32,7 +32,8 @@ struct BabyEntryView: View {
                                 decimalPlaces: 3
                             ),
                             value: $entryStore.babyForm.kg.value,
-                            focusedField: $focusedField
+                            focusedField: $focusedField,
+                            accessibilityIdentifier: AccessibilityID.babyWeightField
                         ) {
                             focusedField = .inches
                         }
@@ -47,7 +48,8 @@ struct BabyEntryView: View {
                                 decimalPlaces: 3
                             ),
                             value: $entryStore.babyForm.lb.value,
-                            focusedField: $focusedField
+                            focusedField: $focusedField,
+                            accessibilityIdentifier: AccessibilityID.babyWeightField
                         ) {
                             focusedField = .inches
                         }
@@ -62,7 +64,8 @@ struct BabyEntryView: View {
                                     allowWholeNumbers: true
                                 ),
                                 value: $entryStore.babyForm.pounds.value,
-                                focusedField: $focusedField
+                                focusedField: $focusedField,
+                                accessibilityIdentifier: AccessibilityID.babyWeightField
                             ) {
                                 focusedField = .ounces
                             }
@@ -105,7 +108,8 @@ struct BabyEntryView: View {
                             clearZeroValue: true
                         ),
                         value: $entryStore.babyForm.inches.value,
-                        focusedField: $focusedField
+                        focusedField: $focusedField,
+                        accessibilityIdentifier: AccessibilityID.babyLengthField
                     ) {
                         focusedField = .notes
                     }
@@ -120,7 +124,8 @@ struct BabyEntryView: View {
                             clearZeroValue: true
                         ),
                         value: $entryStore.babyForm.cm.value,
-                        focusedField: $focusedField
+                        focusedField: $focusedField,
+                        accessibilityIdentifier: AccessibilityID.babyLengthField
                     ) {
                         focusedField = .notes
                     }
@@ -202,6 +207,7 @@ struct BabyEntryView: View {
                     onSaveCompleted?()
                 }
             }
+            .appAccessibility(id: AccessibilityID.babySaveButton)
         }
     }
 
