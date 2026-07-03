@@ -64,15 +64,6 @@ struct UnitSelectionToggle: View {
     }
 }
 
-// MARK: - View helpers
-
-private extension View {
-    @ViewBuilder
-    func accessibilityIdentifierIfPresent(_ id: String?) -> some View {
-        if let id { accessibilityIdentifier(id) } else { self }
-    }
-}
-
 // MARK: - Preview
 #Preview {
     struct PreviewWrapper: View {
