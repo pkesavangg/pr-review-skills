@@ -41,7 +41,7 @@ struct IntegrationsScreen: View {
                                 item: item
                             ) { store.selectIntegration(item: item) }
                             .listRowInsets()
-                            .accessibilityIdentifier(AccessibilityID.integrationRow + "_" + "\(item.type)")
+                            .accessibilityIdentifier(AccessibilityID.integrationRow + "_" + item.type.snakeKey)
                         }
                     }
                 }
@@ -50,7 +50,7 @@ struct IntegrationsScreen: View {
                 Section(header: SectionHeader(title: IntegrationsStrings.weightScalesAndBpmSectionTitle, fontStyle: .label1)) {
                     HealthKitIntegrationListItemView()
                         .listRowInsets()
-                        .accessibilityIdentifier(AccessibilityID.integrationRow + "_apple_health")
+                        .accessibilityIdentifier(AccessibilityID.integrationRow + "_" + IntegrationItemType.appleHealth.snakeKey)
                 }
 
                 // Request new integration — sits just below the list sections
