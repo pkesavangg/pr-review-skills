@@ -23,8 +23,10 @@ import com.dmdbrands.gurus.weight.domain.model.storage.Account.Account
 import com.dmdbrands.gurus.weight.domain.model.storage.BLEStatus
 import com.dmdbrands.gurus.weight.domain.model.storage.Device
 import com.dmdbrands.gurus.weight.core.shared.utilities.ConversionTools
+import com.dmdbrands.gurus.weight.core.shared.utilities.DateTimeConverter
 import com.dmdbrands.gurus.weight.data.services.OperationType
 import com.dmdbrands.gurus.weight.data.storage.db.entity.entry.BabyEntryEntity
+import com.dmdbrands.gurus.weight.domain.enums.BabyEntryType
 import com.dmdbrands.gurus.weight.domain.model.common.BabyProfile
 import com.dmdbrands.gurus.weight.domain.model.storage.entry.BabyEntry
 import com.dmdbrands.gurus.weight.domain.model.storage.entry.Entry
@@ -41,17 +43,17 @@ import com.dmdbrands.gurus.weight.domain.services.IDeviceInfoService
 import com.dmdbrands.gurus.weight.domain.services.IEntryService
 import com.dmdbrands.gurus.weight.domain.services.IEntryReadService
 import com.dmdbrands.gurus.weight.domain.services.IFeedService
-import com.dmdbrands.gurus.weight.features.ScaleMetricsSetting.Helper.ScaleMetricsHelper
-import com.dmdbrands.gurus.weight.features.ScaleSetup.enums.BabyScaleSetupStep
-import com.dmdbrands.gurus.weight.features.ScaleSetup.enums.BtWifiSetupStep
-import com.dmdbrands.gurus.weight.features.ScaleSetup.enums.LcbtScaleSetupStep
-import com.dmdbrands.gurus.weight.features.ScaleSetup.enums.MonitorSetupStepHelper
+import com.dmdbrands.gurus.weight.features.DeviceMetricsSetting.Helper.DeviceMetricsHelper
+import com.dmdbrands.gurus.weight.features.DeviceSetup.enums.BabyScaleSetupStep
+import com.dmdbrands.gurus.weight.features.DeviceSetup.enums.BtWifiSetupStep
+import com.dmdbrands.gurus.weight.features.DeviceSetup.enums.LcbtScaleSetupStep
+import com.dmdbrands.gurus.weight.features.DeviceSetup.enums.MonitorSetupStepHelper
 import com.dmdbrands.gurus.weight.features.appPermissions.helper.AppPermissionsHelper
-import com.dmdbrands.gurus.weight.features.common.enums.ScaleSetupType
+import com.dmdbrands.gurus.weight.features.common.enums.DeviceSetupType
 import com.dmdbrands.gurus.weight.features.common.helper.DeviceHelper
 import com.dmdbrands.gurus.weight.features.common.helper.DeviceHelper.SKU_0412
 import com.dmdbrands.gurus.weight.features.common.helper.DeviceHelper.getSKU
-import com.dmdbrands.gurus.weight.features.common.helper.ScaleDataHelper
+import com.dmdbrands.gurus.weight.features.common.helper.DeviceDataHelper
 import com.dmdbrands.gurus.weight.features.common.components.DialogType
 import com.dmdbrands.gurus.weight.features.common.model.DialogModel
 import com.dmdbrands.gurus.weight.features.common.model.ReadingToast
@@ -74,6 +76,7 @@ import com.dmdbrands.library.ggbluetooth.model.GGBTUser
 import com.dmdbrands.library.ggbluetooth.model.GGDeviceDetail
 import com.dmdbrands.library.ggbluetooth.model.GGEntry
 import com.dmdbrands.library.ggbluetooth.model.GGScaleEntry
+import com.dmdbrands.library.ggbluetooth.model.GGWeightEntry
 import com.dmdbrands.library.ggbluetooth.model.GGScanResponse
 import com.greatergoods.blewrapper.GGCacheDevice
 import com.greatergoods.blewrapper.GGDeviceService
@@ -263,11 +266,11 @@ constructor(
       // Clear all dialogs including IAM modal to ensure it's dismissed when connecting to scale
       dialogQueueService.clear()
       val localSku = sku ?: return@launch
-      val scaleInfo = ScaleDataHelper.findScaleInfoBySku(localSku)
+      val scaleInfo = DeviceDataHelper.findScaleInfoBySku(localSku)
       when {
         localSku == SKU_0412 -> {
           navigationService.navigateTo(
-            AppRoute.ScaleSetup.BtWifiScaleSetup(
+            AppRoute.DeviceSetup.BtWifiScaleSetup(
               SKU_0412,
               BtWifiSetupStep.CONNECTING_BLUETOOTH,
               discoveredBroadcastId,
@@ -276,7 +279,7 @@ constructor(
         }
         DeviceHelper.isBabyScale(localSku) -> {
           navigationService.navigateTo(
-            AppRoute.ScaleSetup.BabyScaleSetup(
+            AppRoute.DeviceSetup.BabyScaleSetup(
               sku = localSku,
               initialStep = BabyScaleSetupStep.WAKEUP,
               broadcastId = discoveredBroadcastId,
@@ -286,12 +289,12 @@ constructor(
         }
         DeviceHelper.isBpmDevice(localSku) -> {
           navigationService.navigateTo(
-            AppRoute.ScaleSetup.BpmSetup(sku = localSku),
+            AppRoute.DeviceSetup.BpmSetup(sku = localSku),
           )
         }
         else -> {
           navigationService.navigateTo(
-            AppRoute.ScaleSetup.LcbtScaleSetup(
+            AppRoute.DeviceSetup.LcbtScaleSetup(
               localSku,
               discoveredBroadcastId,
               LcbtScaleSetupStep.CONNECTING_BLUETOOTH,
@@ -531,12 +534,12 @@ constructor(
               val pairedScales = deviceService.pairedScales.first()
               AppLog.d(TAG, "Paired scales: $pairedScales")
               val hasBtWifiScales = pairedScales.isNotEmpty() && pairedScales.any { savedScale ->
-                val scaleInfo = ScaleDataHelper.findScaleInfoBySku(savedScale.getSKU())
+                val scaleInfo = DeviceDataHelper.findScaleInfoBySku(savedScale.getSKU())
                 scaleInfo?.setupType in listOf(
-                  ScaleSetupType.BtWifiR4,
-                  ScaleSetupType.Lcbt,
-                  ScaleSetupType.EspTouchWifi,
-                  ScaleSetupType.Wifi,
+                  DeviceSetupType.BtWifiR4,
+                  DeviceSetupType.Lcbt,
+                  DeviceSetupType.EspTouchWifi,
+                  DeviceSetupType.Wifi,
                 )
               }
               val canRequestNotifPermission = AppPermissionsHelper
@@ -620,21 +623,72 @@ constructor(
 
 
   private fun handleEntryResponse(entryResponse: GGScanResponse.Entry) {
+    val data = entryResponse.data
+    val scaleEntries = data.filterIsInstance<GGScaleEntry>()
+    val bpmEntries = data.filterIsInstance<GGBPMEntry>()
+    // Weight-only devices (baby scale + weight-only scales) emit GGWeightEntry, which carries
+    // no body composition — distinct from the body-scale GGScaleEntry (MOB-598).
+    val weightEntries = data.filterIsInstance<GGWeightEntry>()
+
+    // Confirms the scale actually emitted a reading and which GGEntry subtype reached the app —
+    // the missing log when a baby reading "doesn't sync" (it never arrived / wasn't a handled type).
+    AppLog.i(
+      TAG,
+      "handleEntryResponse type=${entryResponse.type} total=${data.size} " +
+        "scale=${scaleEntries.size} bpm=${bpmEntries.size} weight=${weightEntries.size} " +
+        "subtypes=${data.map { it.javaClass.simpleName }}",
+    )
+
     when (entryResponse.type) {
       GGScanResponseType.SINGLE_ENTRY, GGScanResponseType.MULTI_ENTRIES -> {
-        val scaleEntries = entryResponse.data.filterIsInstance<GGScaleEntry>()
-        val bpmEntries = entryResponse.data.filterIsInstance<GGBPMEntry>()
         if (scaleEntries.isNotEmpty()) {
           saveEntry(scaleEntries)
         }
         if (bpmEntries.isNotEmpty()) {
           saveBpmEntry(bpmEntries)
         }
+        // Route weight-only readings through the same save/assign path by representing each
+        // as a weight-only scale entry. saveEntry's SKU check then sends a baby-scale reading
+        // into the assign-to-baby flow; only the weight is used downstream (MOB-598).
+        if (weightEntries.isNotEmpty()) {
+          saveEntry(weightEntries.map { it.toWeightOnlyScaleEntry() })
+        }
       }
 
-      else -> null
+      else ->
+        AppLog.w(TAG, "handleEntryResponse: unhandled entry type=${entryResponse.type}")
     }
   }
+
+  /**
+   * Represents a weight-only [GGWeightEntry] (baby scale / weight-only scale) as a body-scale
+   * [GGScaleEntry] with zeroed body-composition so it can flow through the shared [saveEntry]
+   * path. Only the weight is meaningful; the baby-assignment flow (and `toBabyEntry`) reads the
+   * weight alone, so the zeroed metrics are never persisted (MOB-598).
+   */
+  private fun GGWeightEntry.toWeightOnlyScaleEntry(): GGScaleEntry = GGScaleEntry(
+    bmi = 0f,
+    bmr = 0,
+    bodyFat = 0f,
+    water = 0f,
+    boneMass = 0f,
+    metabolicAge = 0,
+    muscleMass = 0f,
+    proteinPercent = 0f,
+    skeletalMusclePercent = 0f,
+    subcutaneousFatPercent = 0f,
+    unit = unit,
+    visceralFatLevel = 0,
+    weight = weight,
+    weightInKg = weightInKg ?: weight,
+    date = date,
+    impedance = 0f,
+    pulse = 0,
+    broadcastId = broadcastId,
+    broadcastIdString = broadcastIdString,
+    protocolType = protocolType,
+    operationType = operationType,
+  )
 
   private fun saveBpmEntry(ggEntries: List<GGBPMEntry>) {
     saveBluetoothEntries(ggEntries) { accountId, deviceId ->
@@ -650,7 +704,13 @@ constructor(
       if (ggEntries.isEmpty()) return@launch
       val accountId = currentAccountId ?: return@launch
       val isSetupInProgress = deviceService.isSetupInProgress()
-      val device = deviceService.getScaleByBroadcastId(ggEntries.first().broadcastId, accountId)
+      val broadcastId = ggEntries.first().broadcastId
+      // A device synced from GET /v3/paired-device carries no broadcastId (the server omits it),
+      // so a live monitor reading can't match it and the entry was silently dropped. Heal: attribute
+      // the reading to the single paired BPM device and backfill its broadcastId so it syncs now and
+      // future readings resolve directly. (MOB-596)
+      val device = deviceService.getScaleByBroadcastId(broadcastId, accountId)
+        ?: deviceService.healBpmDeviceBroadcastId(broadcastId, accountId)
 
       if (device == null && !isSetupInProgress) return@launch
 
@@ -706,7 +766,7 @@ constructor(
             val isSetupInProgress = deviceService.isSetupInProgress()
             val isOnMainScreen = currentRoute is AppRoute.Home || currentRoute is AppRoute.Main.Dashboard
 
-            if (isOnMainScreen && currentRoute !is AppRoute.ScaleSetup && !isSetupInProgress) {
+            if (isOnMainScreen && currentRoute !is AppRoute.DeviceSetup && !isSetupInProgress) {
               // Check if device is in skipDevices list
               val isSkipped =
                 data.broadcastId?.let { bluetoothPreferencesService.containsSkipDevice(it) } == true ||
@@ -745,7 +805,7 @@ constructor(
                   deviceSku == SKU_0412 -> customizeDevice(data)
                   DeviceHelper.isBabyScale(deviceSku) -> Device(
                     device = data,
-                    deviceType = ScaleSetupType.BabyScale.value,
+                    deviceType = DeviceSetupType.BabyScale.value,
                     sku = deviceSku,
                   )
                   DeviceHelper.isBpmDevice(deviceSku) -> Device(
@@ -755,7 +815,7 @@ constructor(
                   )
                   else -> Device(
                     device = data,
-                    deviceType = ScaleSetupType.Lcbt.value,
+                    deviceType = DeviceSetupType.Lcbt.value,
                     sku = deviceSku,
                   )
                 }
@@ -821,7 +881,7 @@ constructor(
         GGScanResponseType.DEVICE_MEMORY_FULL -> {
           val currentRoute = navigationService.getCurrentRoute()
           val isOnAuthScreen = currentRoute is AppRoute.Auth
-          if (currentRoute !is AppRoute.ScaleSetup && isKnownScale && !isOnAuthScreen) {
+          if (currentRoute !is AppRoute.DeviceSetup && isKnownScale && !isOnAuthScreen) {
             dialogQueueService.showDialog(
               ReconnectScale.getMaxUserAlert(
                 onConfirm = {
@@ -840,7 +900,7 @@ constructor(
                         viewModelScope.launch {
                           dialogQueueService.dismissLoader()
                           navigationService.navigateTo(
-                            AppRoute.ScaleSetup.BtWifiScaleSetup(
+                            AppRoute.DeviceSetup.BtWifiScaleSetup(
                               sku = data.getSKU().orEmpty(),
                               initialStep = BtWifiSetupStep.USER_LIMIT_REACHED,
                               broadcastId = data.broadcastId,
@@ -869,7 +929,7 @@ constructor(
           try {
             val currentRoute = navigationService.getCurrentRoute()
             val isOnAuthScreen = currentRoute is AppRoute.Auth
-            if (currentRoute !is AppRoute.ScaleSetup && !isOnAuthScreen) {
+            if (currentRoute !is AppRoute.DeviceSetup && !isOnAuthScreen) {
               dialogQueueService.showDialog(
                 ReconnectScale.getDuplicateUserAlert(
                   onConfirm = {
@@ -892,7 +952,7 @@ constructor(
                           viewModelScope.launch {
                             ggDeviceService.addCacheDevice(data.broadcastId, device)
                             navigationService.navigateTo(
-                              AppRoute.ScaleSetup.BtWifiScaleSetup(
+                              AppRoute.DeviceSetup.BtWifiScaleSetup(
                                 data.getSKU().orEmpty(),
                                 BtWifiSetupStep.CONNECTING_BLUETOOTH,
                                 data.broadcastId,
@@ -929,9 +989,9 @@ constructor(
       token = token,
     )
     return device.copy(
-      deviceType = ScaleSetupType.BtWifiR4.value,
+      deviceType = DeviceSetupType.BtWifiR4.value,
       sku = "0412",
-      preferences = ScaleMetricsHelper.getDefaultPreference(username, device.id),
+      preferences = DeviceMetricsHelper.getDefaultPreference(username, device.id),
     )
   }
 
@@ -994,60 +1054,99 @@ constructor(
             else -> ProductType.MY_WEIGHT
           }
         } ?: ProductType.MY_WEIGHT
+        showReadingToast(entry, readingType, sourceSku = device?.sku)
+      }
+    }
+  }
 
-        val firstEntry = entry.firstOrNull() ?: return@launch
-        val reading = formatReadingForDisplay(firstEntry, readingType)
+  /**
+   * Shows the post-reading toast (Save/Discard, or the baby assign flow) for [entry]. Extracted
+   * from [saveEntry] so it can be reused. [sourceSku]
+   * is the originating device SKU (null for synthesized/debug readings).
+   */
+  private fun showReadingToast(
+    entry: List<ScaleEntry>,
+    readingType: ProductType,
+    sourceSku: String?,
+  ) {
+    // Show the latest reading in the card; any extra buffered readings (taken while
+    // disconnected) surface as a "+N more… VIEW" count pill (MOB-598).
+    val latestEntry = entry.maxByOrNull { it.entry.entryTimestamp } ?: return
+    val reading = formatReadingForDisplay(latestEntry, readingType)
+    val additionalCount = (entry.size - 1).coerceAtLeast(0)
 
-        // A baby scale reading with no baby profile has nowhere to be saved —
-        // surface an "ADD A BABY" CTA instead of the assign flow (MOB-426).
-        val hasNoBabyProfile = readingType == ProductType.BABY &&
-          productSelectionManager.availableProducts.value
-            .filterIsInstance<ProductSelection.Baby>()
-            .isEmpty()
+    // Snapshot of baby profiles at arrival — drives the single-baby card and timeout auto-assign.
+    val babiesAtArrival = if (readingType == ProductType.BABY) availableBabyProfiles() else emptyList()
+    val singleBabyName = babiesAtArrival.singleOrNull()?.name
 
-        dialogQueueService.showToast(
-          Toast.Custom(
-            ReadingToast(
-              reading = reading,
-              type = readingType,
-              timestamp = "Just now",
-              noBabyProfile = hasNoBabyProfile,
-              primaryAction = {
-                if (hasNoBabyProfile) {
-                  viewModelScope.launch {
-                    navigationService.navigateTo(AppRoute.AccountSettings.AddBaby())
-                  }
-                } else if (readingType == ProductType.BABY) {
-                  val babies = availableBabyProfiles()
-                  if (babies.size == 1) {
-                    // Single baby — skip the picker and assign straight to that baby (MOB-428).
-                    viewModelScope.launch {
-                      assignReadingToBaby(reading, entry, babies.first().id, babies, emptyList())
-                    }
-                  } else {
-                    showAssignMeasurementDialog(reading, entry)
-                  }
-                } else {
-                  viewModelScope.launch {
-                    try {
-                      entryService.addEntry(entry)
-                      checkAccountFlags("entry")
-                      AppLog.i(TAG, "Entry saved via reading toast")
-                    } catch (e: Exception) {
-                      AppLog.e(TAG, "Error saving entry from toast", e)
-                    }
-                  }
+    // A baby scale reading with no baby profile has nowhere to be saved —
+    // surface an "ADD A BABY" CTA instead of the assign flow (MOB-426).
+    val hasNoBabyProfile = readingType == ProductType.BABY && babiesAtArrival.isEmpty()
+
+    // Multi-baby readings auto-assign to the last-assigned baby on timeout, if it still
+    // exists; single-baby/no-baby readings have no auto-assign target (MOB-598).
+    val autoAssignBabyId = lastAssignedBabyId
+      ?.takeIf { readingType == ProductType.BABY && babiesAtArrival.size > 1 }
+      ?.takeIf { id -> babiesAtArrival.any { it.id == id } }
+
+    dialogQueueService.showToast(
+      Toast.Custom(
+        ReadingToast(
+          reading = reading,
+          type = readingType,
+          timestamp = "Just now",
+          noBabyProfile = hasNoBabyProfile,
+          assignTargetName = singleBabyName,
+          additionalCount = additionalCount,
+          primaryAction = {
+            if (hasNoBabyProfile) {
+              viewModelScope.launch {
+                navigationService.navigateTo(AppRoute.AccountSettings.AddBaby())
+              }
+            } else if (readingType == ProductType.BABY) {
+              if (babiesAtArrival.size == 1) {
+                // Single baby — SAVE persists straight to that baby (no picker) (MOB-598).
+                viewModelScope.launch {
+                  assignReadingToBaby(reading, entry, babiesAtArrival.first().id, babiesAtArrival, emptyList(), sourceSku)
                 }
-              },
-              secondaryAction = {
-                // The reading is only persisted on Save/Assign, so discarding an unsynced
-                // reading just dismisses the card — nothing was written (MOB-428).
-                dialogQueueService.dismissToast()
-                AppLog.i(TAG, "Entry discarded via reading toast")
-              },
-            ),
-          ),
-        )
+              } else {
+                showAssignMeasurementDialog(reading, entry, sourceSku = sourceSku)
+              }
+            } else {
+              saveEntryFromToast(entry)
+            }
+          },
+          secondaryAction = {
+            // The reading is only persisted on Save/Assign, so discarding an unsynced
+            // reading just dismisses the card — nothing was written (MOB-428).
+            dialogQueueService.dismissToast()
+            AppLog.i(TAG, "Entry discarded via reading toast")
+          },
+          onView = {
+            // "VIEW" opens History so all buffered readings can be seen (MOB-598).
+            viewModelScope.launch { navigationService.navigateTo(AppRoute.Main.History) }
+          },
+          onTimeout = autoAssignBabyId?.let { babyId ->
+            {
+              viewModelScope.launch {
+                assignReadingToBaby(reading, entry, babyId, babiesAtArrival, emptyList(), sourceSku)
+              }
+            }
+          },
+        ),
+      ),
+    )
+  }
+
+  /** Saves a non-baby reading straight from the reading toast's SAVE action. */
+  private fun saveEntryFromToast(entry: List<ScaleEntry>) {
+    viewModelScope.launch {
+      try {
+        entryService.addEntry(entry)
+        checkAccountFlags("entry")
+        AppLog.i(TAG, "Entry saved via reading toast")
+      } catch (e: Exception) {
+        AppLog.e(TAG, "Error saving entry from toast", e)
       }
     }
   }
@@ -1056,6 +1155,9 @@ constructor(
     productSelectionManager.availableProducts.value
       .filterIsInstance<ProductSelection.Baby>()
       .map { it.profile }
+
+  /** Most-recently-assigned baby; the timeout auto-assign target for multi-baby readings (MOB-598). */
+  private var lastAssignedBabyId: String? = null
 
   /**
    * Shows the baby picker. On confirm, assigns the reading to the chosen baby.
@@ -1067,6 +1169,7 @@ constructor(
     entry: List<ScaleEntry>,
     preSelectedBabyId: String? = null,
     previousEntryIds: List<Long> = emptyList(),
+    sourceSku: String? = null,
   ) {
     val babies = availableBabyProfiles()
     dialogQueueService.showDialog(
@@ -1077,11 +1180,13 @@ constructor(
           put("reading", reading)
           put("timestamp", "Just now")
           preSelectedBabyId?.let { put("preSelectedBabyId", it) }
+          // "Assign to new baby" row → leave the picker for the Add-a-Baby flow (MOB-598).
+          put("onAssignNewBaby", { viewModelScope.launch { navigationService.navigateTo(AppRoute.AccountSettings.AddBaby()) } })
         },
         onConfirm = { result ->
           val babyId = result as? String ?: return@Custom
           viewModelScope.launch {
-            assignReadingToBaby(reading, entry, babyId, babies, previousEntryIds)
+            assignReadingToBaby(reading, entry, babyId, babies, previousEntryIds, sourceSku)
           }
         },
         dismissOnBackPress = true,
@@ -1091,9 +1196,9 @@ constructor(
   }
 
   /**
-   * Persists the reading to the selected baby (local-only — MOB-428) and surfaces the
-   * post-assignment card with a Reassign affordance. When reassigning, the entries from the
-   * previously chosen baby are deleted first so the reading lands on exactly one baby.
+   * Persists the reading to the selected baby (synced to /v3/entries, category=baby — §2.16) and
+   * surfaces the post-assignment card with a Reassign affordance. When reassigning, the entries
+   * from the previously chosen baby are deleted first so the reading lands on exactly one baby.
    */
   private suspend fun assignReadingToBaby(
     reading: String,
@@ -1101,6 +1206,7 @@ constructor(
     babyId: String,
     babies: List<BabyProfile>,
     previousEntryIds: List<Long>,
+    sourceSku: String? = null,
   ) {
     try {
       val accountId = currentAccountId ?: return
@@ -1108,30 +1214,44 @@ constructor(
       // DB-insert exception. Bail before touching the previous baby's entries or claiming success,
       // so a failed write never surfaces as "Reading assigned to X" (and a later Reassign never
       // deletes a bogus -1 id, which would leave a duplicate behind).
-      val savedIds = entry.map { entryService.addBabyEntry(it.toBabyEntry(babyId, accountId)) }
-      if (savedIds.any { it <= 0L }) {
+      // One batched insert + a SINGLE server sync for all buffered readings (not one full sync per
+      // reading) — assigning K readings is one round-trip. (MOB-598 PR #2130)
+      val savedIds = entryService.addBabyEntries(entry.map { it.toBabyEntry(babyId, accountId, sourceSku) })
+      if (savedIds.size != entry.size || savedIds.any { it <= 0L }) {
         AppLog.e(TAG, "Baby entry save failed for $babyId (savedIds=$savedIds)")
         dialogQueueService.showToast(Toast.Simple(message = ReadingToastStrings.SaveFailed))
         return
       }
       // Save succeeded — now it's safe to remove the entries from the previously chosen baby.
-      previousEntryIds.forEach { entryService.deleteBabyEntryLocally(it) }
+      // deleteBabyEntry syncs the deletion to the server (operationType=delete), so a reassign
+      // never leaves the reading on both babies locally or server-side.
+      previousEntryIds.forEach { entryService.deleteBabyEntry(it) }
+      // Remember the target so a later multi-baby reading can auto-assign here on timeout (MOB-598).
+      lastAssignedBabyId = babyId
       checkAccountFlags("entry")
       AppLog.i(TAG, "Baby entry assigned to $babyId")
       babies.firstOrNull { it.id == babyId }?.let { baby ->
-        showBabyAssignedToast(reading, entry, baby, savedIds)
+        // No other baby in this snapshot → the post-assign card offers "Assign to new baby".
+        val noOtherBaby = babies.none { it.id != babyId }
+        showBabyAssignedToast(reading, entry, baby, savedIds, sourceSku, noOtherBaby)
       }
     } catch (e: Exception) {
       AppLog.e(TAG, "Error saving baby entry", e)
     }
   }
 
-  /** Post-assignment card ("Reading assigned to X") whose Reassign re-opens the picker. */
+  /**
+   * Post-assignment card ("Reading assigned to X"). Its action re-opens the picker for Reassign,
+   * or — when this is the only baby, so there's nothing to reassign to — becomes "Assign to new
+   * baby" and routes into the Add-a-Baby flow (MOB-598).
+   */
   private fun showBabyAssignedToast(
     reading: String,
     entry: List<ScaleEntry>,
     baby: BabyProfile,
     savedIds: List<Long>,
+    sourceSku: String? = null,
+    noOtherBaby: Boolean = false,
   ) {
     dialogQueueService.showToast(
       Toast.Custom(
@@ -1140,14 +1260,20 @@ constructor(
           type = ProductType.BABY,
           timestamp = "Just now",
           assignedTo = baby.name,
+          assignToNewBaby = noOtherBaby,
           primaryAction = {
             dialogQueueService.dismissToast()
-            showAssignMeasurementDialog(
-              reading = reading,
-              entry = entry,
-              preSelectedBabyId = baby.id,
-              previousEntryIds = savedIds,
-            )
+            if (noOtherBaby) {
+              viewModelScope.launch { navigationService.navigateTo(AppRoute.AccountSettings.AddBaby()) }
+            } else {
+              showAssignMeasurementDialog(
+                reading = reading,
+                entry = entry,
+                preSelectedBabyId = baby.id,
+                previousEntryIds = savedIds,
+                sourceSku = sourceSku,
+              )
+            }
           },
         ),
       ),
@@ -1155,25 +1281,33 @@ constructor(
   }
 
   /**
-   * Builds a local [BabyEntry] from an incoming scale reading. The reading weight is stored
+   * Builds a [BabyEntry] from an incoming scale reading. The reading weight is stored
    * in tenths-of-lb; the baby graph reads decigrams, so convert lb → decigrams to keep
-   * storage and display consistent. Marked CREATE; [IEntryService.addBabyEntry] persists it
-   * locally without queuing it for sync (MOB-428).
+   * storage and display consistent. [entryType] is `weight` and [source] is the originating
+   * scale SKU (e.g. "0220"), so [BabyEntry.toUnifiedRequest] POSTs it to /v3/entries/ as a
+   * baby-weight reading. Marked CREATE/unsynced; [IEntryService.addBabyEntry] persists and
+   * syncs it (§2.16).
    */
-  private fun ScaleEntry.toBabyEntry(babyId: String, accountId: String): BabyEntry {
+  private fun ScaleEntry.toBabyEntry(babyId: String, accountId: String, sourceSku: String?): BabyEntry {
     val lbs = ConversionTools.convertStoredToLbs(scale.scaleEntry.weight)
     return BabyEntry(
       entry = entry.copy(
         id = 0L,
         accountId = accountId,
+        // The baby scale's RTC is unreliable (reports ~1974/1980), which otherwise plotted the
+        // reading decades in the past on the graph. A live weigh happens now, so stamp it with
+        // the device time — same approach as the BPM live reading (MOB-598).
+        entryTimestamp = DateTimeConverter.timestampToIso(System.currentTimeMillis()),
         operationType = OperationType.CREATE.name,
-        isSynced = true,
+        isSynced = false,
       ),
       babyEntry = BabyEntryEntity(
         id = 0L,
         babyId = babyId,
         babyWeightDecigrams = ConversionTools.convertLbToDecigrams(lbs),
         entryNote = scale.scaleEntry.note,
+        entryType = BabyEntryType.WEIGHT.value,
+        source = sourceSku,
       ),
     )
   }
@@ -1183,10 +1317,12 @@ constructor(
     val unit = entry.entry.unit
     return when (type) {
       ProductType.BABY -> {
-        val totalOz = weight / 10.0 * 0.035274 * 16 // decigrams → oz approximation
-        val lbs = (totalOz / 16).toInt()
-        val oz = totalOz % 16
-        "$lbs ${unit.label} ${formatWeightValue(oz)} oz"
+        // Normalise the native deci-pound reading to the canonical decigrams, then let the
+        // shared SKU-aware converter do the lb/oz split — no bespoke oz math, no unit.label
+        // (which is "lbs"/"lbs & oz" and wrong here). Always "<lb> lb <oz> oz".
+        val decigrams = ConversionTools.convertLbToDecigrams(weight / 10.0)
+        val (lbs, oz) = ConversionTools.convertBabyWeightToLbOz(decigrams, entry.scale.scaleEntry.source)
+        "$lbs lb ${formatWeightValue(oz)} oz"
       }
       ProductType.BLOOD_PRESSURE -> {
         // Weight field stores systolic for BPM protocol entries

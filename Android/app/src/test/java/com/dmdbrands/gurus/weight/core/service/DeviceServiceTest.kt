@@ -4,6 +4,7 @@ import app.cash.turbine.test
 import com.dmdbrands.gurus.weight.core.network.interfaces.IConnectivityObserver
 import com.dmdbrands.gurus.weight.core.network.utility.NetworkState
 import com.dmdbrands.gurus.weight.core.rules.MainDispatcherRule
+import javax.inject.Provider
 import kotlinx.coroutines.test.TestScope
 import com.dmdbrands.gurus.weight.domain.interfaces.IDialogQueueService
 import com.dmdbrands.gurus.weight.domain.model.api.device.R4ScalePreferenceApiModel
@@ -11,7 +12,7 @@ import com.dmdbrands.gurus.weight.domain.model.storage.BLEStatus
 import com.dmdbrands.gurus.weight.domain.model.storage.Device
 import com.dmdbrands.gurus.weight.domain.model.storage.Preferences
 import com.dmdbrands.gurus.weight.domain.repository.IDeviceRepository
-import com.dmdbrands.gurus.weight.features.common.enums.ScaleSetupType
+import com.dmdbrands.gurus.weight.features.common.enums.DeviceSetupType
 import com.dmdbrands.gurus.weight.features.common.model.DialogModel
 import com.dmdbrands.library.ggbluetooth.model.GGDeviceDetail
 import com.google.common.truth.Truth.assertThat
@@ -81,6 +82,7 @@ class DeviceServiceTest {
         hasServerID: Boolean = true,
         deviceType: String? = null,
         preferences: Preferences? = null,
+        sku: String? = null,
     ): Device {
         val detail: GGDeviceDetail = mockk(relaxed = true)
         every { detail.macAddress } returns mac
@@ -96,7 +98,19 @@ class DeviceServiceTest {
             hasServerID = hasServerID,
             deviceType = deviceType,
             preferences = preferences,
+            sku = sku,
         )
+    }
+
+    /** A paired BPM device whose [GGDeviceDetail.broadcastIdString] is explicitly stubbed, for heal tests. */
+    private fun fakeBpmDevice(id: String, mac: String, sku: String, broadcastId: String?): Device {
+        val detail: GGDeviceDetail = mockk(relaxed = true)
+        every { detail.macAddress } returns mac
+        every { detail.isWifiConfigured } returns false
+        every { detail.wifiMacAddress } returns null
+        every { detail.impedanceSwitchState } returns null
+        every { detail.broadcastIdString } returns broadcastId
+        return Device(id = id, device = detail, isSynced = true, hasServerID = true, sku = sku)
     }
 
     @BeforeEach
@@ -108,7 +122,7 @@ class DeviceServiceTest {
         every { deviceRepository.getDeviceByBroadcastId(any(), any()) } returns flowOf(null)
         every { deviceRepository.getDeviceByMac(any(), any()) } returns flowOf(null)
         coEvery { deviceRepository.getDevicesFromApi(any()) } returns emptyList()
-        coEvery { deviceRepository.saveDeviceToApi(any(), any()) } answers { firstArg<Device>().copy(isSynced = true) }
+        coEvery { deviceRepository.createPairedDevice(any(), any()) } answers { firstArg<Device>().copy(isSynced = true) }
         coEvery { deviceRepository.saveDeviceToDb(any(), any()) } just Runs
         coEvery { deviceRepository.deleteAllDevicesForAccount(any()) } just Runs
         coEvery { deviceRepository.deleteDeviceFromDb(any()) } just Runs
@@ -127,6 +141,7 @@ class DeviceServiceTest {
             appNavigationService,
             context,
             appScope = TestScope(mainDispatcherRule.dispatcher),
+            productSelectionManager = Provider { mockk(relaxed = true) },
         )
     }
 
@@ -409,7 +424,7 @@ class DeviceServiceTest {
 
     @Test
     fun `hasWeightScale emits true when a weight scale is paired`() = runTest(mainDispatcherRule.scheduler) {
-        val scale = fakeDevice(deviceType = ScaleSetupType.Bluetooth.value)
+        val scale = fakeDevice(deviceType = DeviceSetupType.Bluetooth.value)
         every { deviceRepository.getDevices(accountId, any()) } returns flowOf(listOf(scale))
         service.setAccountId(accountId)
         Thread.sleep(2000) // fetchScales runs on IO
@@ -419,7 +434,7 @@ class DeviceServiceTest {
 
     @Test
     fun `hasWeightScale emits false when only a BPM device is paired`() = runTest(mainDispatcherRule.scheduler) {
-        val bpm = fakeDevice(deviceType = ScaleSetupType.BpmBluetooth.value)
+        val bpm = fakeDevice(deviceType = DeviceSetupType.BpmBluetooth.value)
         every { deviceRepository.getDevices(accountId, any()) } returns flowOf(listOf(bpm))
         service.setAccountId(accountId)
         Thread.sleep(2000) // fetchScales runs on IO
@@ -433,7 +448,7 @@ class DeviceServiceTest {
 
     @Test
     fun `getScalesByType returns empty list when no scales match`() = runTest(mainDispatcherRule.scheduler) {
-        val result = service.getScalesByType(ScaleSetupType.BtWifiR4.value)
+        val result = service.getScalesByType(DeviceSetupType.BtWifiR4.value)
         assertThat(result).isEmpty()
     }
 
@@ -652,11 +667,11 @@ class DeviceServiceTest {
         val unsyncedDevice = fakeDevice(id = "local-1", isSynced = false, isDeleted = false, preferences = null)
         val savedDevice = unsyncedDevice.copy(isSynced = true)
         every { deviceRepository.getDevices(accountId, false) } returns flowOf(listOf(unsyncedDevice))
-        coEvery { deviceRepository.saveDeviceToApi(any(), accountId) } returns savedDevice
+        coEvery { deviceRepository.createPairedDevice(any(), accountId) } returns savedDevice
         service.setAccountId(accountId)
         advanceUntilIdle()
 
-        coVerify { deviceRepository.saveDeviceToApi(any(), accountId) }
+        coVerify { deviceRepository.createPairedDevice(any(), accountId) }
     }
 
     @Test
@@ -665,12 +680,12 @@ class DeviceServiceTest {
         val r4Device = fakeDevice(
             id = "r4-1",
             isSynced = false,
-            deviceType = ScaleSetupType.BtWifiR4.value,
+            deviceType = DeviceSetupType.BtWifiR4.value,
             preferences = prefs,
         )
         val savedDevice = r4Device.copy(isSynced = true)
         every { deviceRepository.getDevices(accountId, false) } returns flowOf(listOf(r4Device))
-        coEvery { deviceRepository.saveDeviceToApi(any(), accountId) } returns savedDevice
+        coEvery { deviceRepository.createPairedDevice(any(), accountId) } returns savedDevice
         service.setAccountId(accountId)
         advanceUntilIdle()
 
@@ -683,12 +698,12 @@ class DeviceServiceTest {
         val r4Device = fakeDevice(
             id = "r4-err",
             isSynced = false,
-            deviceType = ScaleSetupType.BtWifiR4.value,
+            deviceType = DeviceSetupType.BtWifiR4.value,
             preferences = prefs,
         )
         val savedDevice = r4Device.copy(isSynced = true)
         every { deviceRepository.getDevices(accountId, false) } returns flowOf(listOf(r4Device))
-        coEvery { deviceRepository.saveDeviceToApi(any(), accountId) } returns savedDevice
+        coEvery { deviceRepository.createPairedDevice(any(), accountId) } returns savedDevice
         coEvery { deviceRepository.saveScalePreferencesToApi(any()) } throws RuntimeException("pref sync failed")
         service.setAccountId(accountId)
         advanceUntilIdle()
@@ -703,7 +718,7 @@ class DeviceServiceTest {
         val localDevice = fakeDevice(id = "temp-local", isSynced = false)
         val serverDevice = fakeDevice(id = "server-assigned")
         every { deviceRepository.getDevices(accountId, false) } returns flowOf(listOf(localDevice))
-        coEvery { deviceRepository.saveDeviceToApi(any(), accountId) } returns serverDevice
+        coEvery { deviceRepository.createPairedDevice(any(), accountId) } returns serverDevice
         service.setAccountId(accountId)
         advanceUntilIdle()
 
@@ -714,12 +729,12 @@ class DeviceServiceTest {
     fun `syncDevices handles individual device sync exception gracefully`() = runTest(mainDispatcherRule.scheduler) {
         val badDevice = fakeDevice(id = "bad-1", isSynced = false)
         every { deviceRepository.getDevices(accountId, false) } returns flowOf(listOf(badDevice))
-        coEvery { deviceRepository.saveDeviceToApi(any(), accountId) } throws RuntimeException("API failure")
+        coEvery { deviceRepository.createPairedDevice(any(), accountId) } throws RuntimeException("API failure")
         service.setAccountId(accountId)
         advanceUntilIdle()
 
         // Should not crash
-        coVerify { deviceRepository.saveDeviceToApi(any(), accountId) }
+        coVerify { deviceRepository.createPairedDevice(any(), accountId) }
     }
 
     @Test
@@ -793,7 +808,7 @@ class DeviceServiceTest {
         service.setAccountId(accountId)
         val device = fakeDevice(id = "new-1")
         val savedDevice = device.copy(id = "server-1", isSynced = true)
-        coEvery { deviceRepository.saveDeviceToApi(any(), any()) } returns savedDevice
+        coEvery { deviceRepository.createPairedDevice(any(), any()) } returns savedDevice
 
         val result = service.saveScale(device)
 
@@ -804,7 +819,7 @@ class DeviceServiceTest {
     fun `saveScale returns null on API exception (offline path)`() = runTest(mainDispatcherRule.scheduler) {
         service.setAccountId(accountId)
         val device = fakeDevice(id = "offline-1")
-        coEvery { deviceRepository.saveDeviceToApi(any(), any()) } throws RuntimeException("no network")
+        coEvery { deviceRepository.createPairedDevice(any(), any()) } throws RuntimeException("no network")
 
         val result = service.saveScale(device)
 
@@ -817,7 +832,7 @@ class DeviceServiceTest {
         val prefs = fakePreferences
         val device = fakeDevice(id = "pref-1", preferences = prefs)
         val savedDevice = device.copy(isSynced = true)
-        coEvery { deviceRepository.saveDeviceToApi(any(), any()) } returns savedDevice
+        coEvery { deviceRepository.createPairedDevice(any(), any()) } returns savedDevice
 
         service.saveScale(device)
 
@@ -1169,5 +1184,64 @@ class DeviceServiceTest {
         val result = service.updateScalePreferencesByMac("unknown:mac", fakeR4Preferences)
 
         assertThat(result).isFalse()
+    }
+
+    // -------------------------------------------------------------------------
+    // healBpmDeviceBroadcastId — attribute a monitor reading to a paired BPM
+    // device only when exactly one un-identified candidate exists (MOB-596)
+    // -------------------------------------------------------------------------
+
+    private suspend fun populatePairedScales(devices: List<Device>) {
+        every { deviceRepository.getDevices(accountId, any()) } returns flowOf(devices)
+        service.setAccountId(accountId)
+        Thread.sleep(2000) // fetchScales runs on Dispatchers.IO; wait for _pairedScales to populate
+    }
+
+    @Test
+    fun `healBpmDeviceBroadcastId returns null when there are no un-identified BPM devices`() = runTest {
+        // Only an already-identified BPM device (has a broadcastId) — nothing to heal.
+        populatePairedScales(
+            listOf(fakeBpmDevice(id = "bpm-identified", mac = "AA:AA:AA:AA:AA:AA", sku = "0663", broadcastId = "AB:CD:EF:01:02:03")),
+        )
+
+        val result = service.healBpmDeviceBroadcastId("11:22:33:44:55:66", accountId)
+
+        assertThat(result).isNull()
+        coVerify(exactly = 0) { deviceRepository.updateDeviceBroadcastId(any(), any(), any()) }
+    }
+
+    @Test
+    fun `healBpmDeviceBroadcastId heals the single un-identified BPM device`() = runTest {
+        val broadcastId = "11:22:33:44:55:66"
+        val healed = fakeBpmDevice(id = "bpm-unidentified", mac = "AA:AA:AA:AA:AA:AA", sku = "0663", broadcastId = broadcastId)
+        coEvery { deviceRepository.updateDeviceBroadcastId(any(), any(), any()) } just Runs
+        every { deviceRepository.getDeviceByBroadcastId(broadcastId, accountId) } returns flowOf(healed)
+
+        populatePairedScales(
+            listOf(fakeBpmDevice(id = "bpm-unidentified", mac = "AA:AA:AA:AA:AA:AA", sku = "0663", broadcastId = null)),
+        )
+
+        val result = service.healBpmDeviceBroadcastId(broadcastId, accountId)
+
+        assertThat(result?.id).isEqualTo("bpm-unidentified")
+        coVerify(exactly = 1) {
+            deviceRepository.updateDeviceBroadcastId("bpm-unidentified", broadcastId, accountId)
+        }
+    }
+
+    @Test
+    fun `healBpmDeviceBroadcastId returns null when multiple un-identified BPM devices are ambiguous`() = runTest {
+        // Two un-identified BPM devices → ambiguous attribution → bail without writing.
+        populatePairedScales(
+            listOf(
+                fakeBpmDevice(id = "bpm-1", mac = "AA:AA:AA:AA:AA:AA", sku = "0663", broadcastId = null),
+                fakeBpmDevice(id = "bpm-2", mac = "BB:BB:BB:BB:BB:BB", sku = "0661", broadcastId = null),
+            ),
+        )
+
+        val result = service.healBpmDeviceBroadcastId("11:22:33:44:55:66", accountId)
+
+        assertThat(result).isNull()
+        coVerify(exactly = 0) { deviceRepository.updateDeviceBroadcastId(any(), any(), any()) }
     }
 }

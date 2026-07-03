@@ -9,6 +9,7 @@ import com.dmdbrands.gurus.weight.domain.model.common.ProductSelection
 import com.dmdbrands.gurus.weight.domain.model.storage.entry.PeriodBabySummary
 import com.dmdbrands.gurus.weight.domain.model.storage.entry.PeriodBpmSummary
 import com.dmdbrands.gurus.weight.domain.model.storage.entry.WeightSnapshotPoint
+import com.dmdbrands.gurus.weight.domain.repository.IAccountRepository
 import com.dmdbrands.gurus.weight.domain.services.IAccountService
 import com.dmdbrands.gurus.weight.domain.services.IEntryReadService
 import com.dmdbrands.gurus.weight.features.common.enums.GraphSegment
@@ -21,6 +22,9 @@ import com.dmdbrands.gurus.weight.features.manualEntry.helper.EntryHelper.format
 import com.patrykandpatrick.vico.compose.cartesian.data.CartesianChartModelProducer
 import com.patrykandpatrick.vico.compose.cartesian.data.lineSeries
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
@@ -34,6 +38,7 @@ class DashboardSnapshotViewModel @Inject constructor(
   @dagger.hilt.android.qualifiers.ApplicationContext private val context: Context,
   private val entryReadService: IEntryReadService,
   private val accountService: IAccountService,
+  private val accountRepository: IAccountRepository,
 ) : BaseIntentViewModel<DashboardSnapshotState, DashboardSnapshotIntent>(
   DashboardSnapshotReducer(),
 ) {
@@ -42,11 +47,49 @@ class DashboardSnapshotViewModel @Inject constructor(
   val bpModelProducer = CartesianChartModelProducer()
   val babyModelProducers = java.util.concurrent.ConcurrentHashMap<String, CartesianChartModelProducer>()
 
+  // Products to render in the snapshot. Same as availableProducts EXCEPT the per-baby cards are
+  // collapsed to a SINGLE card for the last-active baby — the snapshot is one-card-per-product, not
+  // one-per-baby. The full baby list still lives in availableProducts (picker / My Kids). (MOB-598)
+  private val _snapshotProducts = MutableStateFlow<List<ProductSelection>>(listOf(ProductSelection.MyWeight))
+  val snapshotProducts: StateFlow<List<ProductSelection>> = _snapshotProducts.asStateFlow()
+
   override fun provideInitialState() = DashboardSnapshotState(isLoading = true)
 
   override fun onDependenciesReady() {
     observeWeightUnit()
+    observeSnapshotProducts()
     loadAllGraphs()
+  }
+
+  /**
+   * Mirrors [IProductSelectionManager.availableProducts] into [snapshotProducts], collapsing all
+   * baby profiles down to one card for the active baby (so multiple kids don't render as
+   * double/triple baby cards). Falls back to the first baby when no active id is set; leaves the
+   * empty "Baby Scale" card untouched (baby product owned, no profile yet). (MOB-598)
+   */
+  private fun observeSnapshotProducts() {
+    viewModelScope.launch {
+      productSelectionManager.availableProducts.collect { products ->
+        _snapshotProducts.value = collapseBabiesToActive(products, accountRepository.getActiveBabyId())
+      }
+    }
+  }
+
+  private fun collapseBabiesToActive(
+    products: List<ProductSelection>,
+    activeBabyId: String?,
+  ): List<ProductSelection> {
+    val babies = products.filterIsInstance<ProductSelection.Baby>()
+    if (babies.size <= 1) return products
+    val active = babies.firstOrNull { it.profile.id == activeBabyId } ?: babies.first()
+    var babyEmitted = false
+    return products.mapNotNull { product ->
+      if (product is ProductSelection.Baby) {
+        if (babyEmitted) null else active.also { babyEmitted = true }
+      } else {
+        product
+      }
+    }
   }
 
   private fun observeWeightUnit() {

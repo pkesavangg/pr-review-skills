@@ -29,7 +29,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import com.dmdbrands.gurus.weight.core.power.isPowerSaveMode
-import com.dmdbrands.gurus.weight.features.ScaleSetup.modal.ConnectionState
+import com.dmdbrands.gurus.weight.features.DeviceSetup.modal.ConnectionState
 import com.dmdbrands.gurus.weight.features.common.components.strings.SetupLoaderStrings
 import com.dmdbrands.gurus.weight.resources.AppIcons
 import com.dmdbrands.gurus.weight.theme.MeAppTheme

@@ -4,14 +4,14 @@ import com.dmdbrands.gurus.weight.core.network.interfaces.IConnectivityObserver
 import com.dmdbrands.gurus.weight.core.rules.MainDispatcherRule
 import com.dmdbrands.gurus.weight.domain.interfaces.IDialogUtility
 import com.dmdbrands.gurus.weight.domain.repository.IDeviceService
-import com.dmdbrands.gurus.weight.features.ScaleSetup.enums.MonitorSetupStep
-import com.dmdbrands.gurus.weight.features.ScaleSetup.enums.MonitorSetupStepHelper
-import com.dmdbrands.gurus.weight.features.ScaleSetup.modal.ConnectionState
-import com.dmdbrands.gurus.weight.features.ScaleSetup.modal.SetupInitData
-import com.dmdbrands.gurus.weight.features.ScaleSetup.reducer.MonitorSetupIntent
-import com.dmdbrands.gurus.weight.features.ScaleSetup.reducer.ScaleSetupIntent
-import com.dmdbrands.gurus.weight.features.ScaleSetup.viewmodel.BLESetupDependencies
-import com.dmdbrands.gurus.weight.features.ScaleSetup.viewmodel.MonitorSetupViewModel
+import com.dmdbrands.gurus.weight.features.DeviceSetup.enums.MonitorSetupStep
+import com.dmdbrands.gurus.weight.features.DeviceSetup.enums.MonitorSetupStepHelper
+import com.dmdbrands.gurus.weight.features.DeviceSetup.modal.ConnectionState
+import com.dmdbrands.gurus.weight.features.DeviceSetup.modal.SetupInitData
+import com.dmdbrands.gurus.weight.features.DeviceSetup.reducer.MonitorSetupIntent
+import com.dmdbrands.gurus.weight.features.DeviceSetup.reducer.DeviceSetupIntent
+import com.dmdbrands.gurus.weight.features.DeviceSetup.viewmodel.BLESetupDependencies
+import com.dmdbrands.gurus.weight.features.DeviceSetup.viewmodel.MonitorSetupViewModel
 import com.dmdbrands.gurus.weight.features.common.model.DialogModel
 import com.dmdbrands.gurus.weight.testutil.initTestDependencies
 import com.google.common.truth.Truth.assertThat
@@ -32,7 +32,7 @@ import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.RegisterExtension
 
 /**
- * Unit tests for [com.dmdbrands.gurus.weight.features.ScaleSetup.viewmodel.MonitorSetupViewModel].
+ * Unit tests for [com.dmdbrands.gurus.weight.features.DeviceSetup.viewmodel.MonitorSetupViewModel].
  *
  * Hardware-centric ViewModel — targets ~50% coverage focusing on
  * state management, reducer intents, step navigation, and button logic.
@@ -162,33 +162,33 @@ class MonitorSetupViewModelTest {
 
   @Test
   fun `SetNewStep changes current step`() {
-    viewModel.handleIntent(ScaleSetupIntent.SetNewStep(MonitorSetupStep.PERMISSIONS))
+    viewModel.handleIntent(DeviceSetupIntent.SetNewStep(MonitorSetupStep.PERMISSIONS))
     assertThat(viewModel.state.value.step).isEqualTo(MonitorSetupStep.PERMISSIONS)
   }
 
   @Test
   fun `AlterConnectionState updates connection state`() {
-    viewModel.handleIntent(ScaleSetupIntent.AlterConnectionState(ConnectionState.Success))
+    viewModel.handleIntent(DeviceSetupIntent.AlterConnectionState(ConnectionState.Success))
     assertThat(viewModel.state.value.scaleSetupState.setupState.connectionState)
       .isEqualTo(ConnectionState.Success)
   }
 
   @Test
   fun `BackEnabled updates backEnabled flag`() {
-    viewModel.handleIntent(ScaleSetupIntent.BackEnabled(true))
+    viewModel.handleIntent(DeviceSetupIntent.BackEnabled(true))
     assertThat(viewModel.state.value.backEnabled).isTrue()
   }
 
   @Test
   fun `NextEnabled updates nextEnabled flag`() {
-    viewModel.handleIntent(ScaleSetupIntent.NextEnabled(false))
+    viewModel.handleIntent(DeviceSetupIntent.NextEnabled(false))
     assertThat(viewModel.state.value.nextEnabled).isFalse()
   }
 
   @Test
   fun `SetPermissions updates permissions map`() {
     val perms = mutableMapOf("bluetooth_switch" to "enabled")
-    viewModel.handleIntent(ScaleSetupIntent.SetPermissions(perms))
+    viewModel.handleIntent(DeviceSetupIntent.SetPermissions(perms))
     assertThat(viewModel.state.value.permissions).isEqualTo(perms)
   }
 
@@ -205,7 +205,7 @@ class MonitorSetupViewModelTest {
   @Test
   fun `handleButtonChanges disables back for MONITOR_NICKNAME step`() {
     advanceScheduler()
-    viewModel.handleIntent(ScaleSetupIntent.SetNewStep(MonitorSetupStep.MONITOR_NICKNAME))
+    viewModel.handleIntent(DeviceSetupIntent.SetNewStep(MonitorSetupStep.MONITOR_NICKNAME))
     advanceScheduler()
     advanceScheduler()
     assertThat(viewModel.state.value.backEnabled).isFalse()
@@ -214,7 +214,7 @@ class MonitorSetupViewModelTest {
   @Test
   fun `handleButtonChanges enables back for PERMISSIONS step`() {
     advanceScheduler()
-    viewModel.handleIntent(ScaleSetupIntent.SetNewStep(MonitorSetupStep.PERMISSIONS))
+    viewModel.handleIntent(DeviceSetupIntent.SetNewStep(MonitorSetupStep.PERMISSIONS))
     advanceScheduler()
     advanceScheduler()
     assertThat(viewModel.state.value.backEnabled).isTrue()
@@ -223,7 +223,7 @@ class MonitorSetupViewModelTest {
   @Test
   fun `handleButtonChanges disables next for MONITOR_PAIRING step`() {
     advanceScheduler()
-    viewModel.handleIntent(ScaleSetupIntent.SetNewStep(MonitorSetupStep.MONITOR_PAIRING))
+    viewModel.handleIntent(DeviceSetupIntent.SetNewStep(MonitorSetupStep.MONITOR_PAIRING))
     advanceScheduler()
     advanceScheduler()
     assertThat(viewModel.state.value.nextEnabled).isFalse()
@@ -232,7 +232,7 @@ class MonitorSetupViewModelTest {
   @Test
   fun `handleButtonChanges enables next for USER_SELECTION when user has default value`() {
     advanceScheduler()
-    viewModel.handleIntent(ScaleSetupIntent.SetNewStep(MonitorSetupStep.USER_SELECTION))
+    viewModel.handleIntent(DeviceSetupIntent.SetNewStep(MonitorSetupStep.USER_SELECTION))
     advanceScheduler()
     advanceScheduler()
     // Init pre-sets selectedUser to "1" for numeric SKU, so next is enabled
@@ -243,7 +243,7 @@ class MonitorSetupViewModelTest {
   fun `handleButtonChanges enables next for USER_SELECTION when user is set`() {
     advanceScheduler()
     viewModel.handleIntent(MonitorSetupIntent.SetSelectedUser("1"))
-    viewModel.handleIntent(ScaleSetupIntent.SetNewStep(MonitorSetupStep.USER_SELECTION))
+    viewModel.handleIntent(DeviceSetupIntent.SetNewStep(MonitorSetupStep.USER_SELECTION))
     advanceScheduler()
     advanceScheduler()
     assertThat(viewModel.state.value.nextEnabled).isTrue()
@@ -253,7 +253,7 @@ class MonitorSetupViewModelTest {
   fun `handleButtonChanges disables next for MONITOR_NICKNAME when nickname is blank`() {
     advanceScheduler()
     viewModel.handleIntent(MonitorSetupIntent.SetMonitorNickname(""))
-    viewModel.handleIntent(ScaleSetupIntent.SetNewStep(MonitorSetupStep.MONITOR_NICKNAME))
+    viewModel.handleIntent(DeviceSetupIntent.SetNewStep(MonitorSetupStep.MONITOR_NICKNAME))
     advanceScheduler()
     advanceScheduler()
     assertThat(viewModel.state.value.nextEnabled).isFalse()
@@ -263,7 +263,7 @@ class MonitorSetupViewModelTest {
   fun `handleButtonChanges enables next for MONITOR_NICKNAME when nickname is set`() {
     advanceScheduler()
     viewModel.handleIntent(MonitorSetupIntent.SetMonitorNickname("My BPM"))
-    viewModel.handleIntent(ScaleSetupIntent.SetNewStep(MonitorSetupStep.MONITOR_NICKNAME))
+    viewModel.handleIntent(DeviceSetupIntent.SetNewStep(MonitorSetupStep.MONITOR_NICKNAME))
     advanceScheduler()
     advanceScheduler()
     assertThat(viewModel.state.value.nextEnabled).isTrue()
@@ -276,16 +276,16 @@ class MonitorSetupViewModelTest {
   @Test
   fun `onBack from first step navigates away`() {
     advanceScheduler()
-    viewModel.handleIntent(ScaleSetupIntent.Back)
+    viewModel.handleIntent(DeviceSetupIntent.Back)
     advanceScheduler()
     coVerify { viewModel.navigationService.navigateTo(any()) }
   }
 
   @Test
   fun `onBack from PERMISSIONS goes to previous step`() {
-    viewModel.handleIntent(ScaleSetupIntent.SetNewStep(MonitorSetupStep.PERMISSIONS))
+    viewModel.handleIntent(DeviceSetupIntent.SetNewStep(MonitorSetupStep.PERMISSIONS))
     advanceScheduler()
-    viewModel.handleIntent(ScaleSetupIntent.Back)
+    viewModel.handleIntent(DeviceSetupIntent.Back)
     advanceScheduler()
     assertThat(viewModel.state.value.step).isEqualTo(MonitorSetupStep.MONITOR_DETAIL)
   }
@@ -293,9 +293,9 @@ class MonitorSetupViewModelTest {
   @Test
   fun `onBack from USER_SELECTION with permission goes to MONITOR_DETAIL`() {
     viewModel.isPermissionGranted = true
-    viewModel.handleIntent(ScaleSetupIntent.SetNewStep(MonitorSetupStep.USER_SELECTION))
+    viewModel.handleIntent(DeviceSetupIntent.SetNewStep(MonitorSetupStep.USER_SELECTION))
     advanceScheduler()
-    viewModel.handleIntent(ScaleSetupIntent.Back)
+    viewModel.handleIntent(DeviceSetupIntent.Back)
     advanceScheduler()
     assertThat(viewModel.state.value.step).isEqualTo(MonitorSetupStep.MONITOR_DETAIL)
   }
@@ -303,7 +303,7 @@ class MonitorSetupViewModelTest {
   @Test
   fun `onSkip delegates to onNext`() {
     advanceScheduler()
-    viewModel.handleIntent(ScaleSetupIntent.Skip)
+    viewModel.handleIntent(DeviceSetupIntent.Skip)
     advanceScheduler()
     assertThat(viewModel.state.value.step).isNotEqualTo(MonitorSetupStep.MONITOR_DETAIL)
   }
@@ -315,7 +315,7 @@ class MonitorSetupViewModelTest {
   @Test
   fun `ExitSetup with finished true does not show confirmation dialog`() {
     advanceScheduler()
-    viewModel.handleIntent(ScaleSetupIntent.ExitSetup(isSetupFinished = true))
+    viewModel.handleIntent(DeviceSetupIntent.ExitSetup(isSetupFinished = true))
     advanceScheduler()
     verify(exactly = 0) { viewModel.dialogQueueService.enqueue(any<DialogModel.Confirm>()) }
   }
@@ -323,7 +323,7 @@ class MonitorSetupViewModelTest {
   @Test
   fun `ExitSetup with finished false shows confirmation dialog`() {
     advanceScheduler()
-    viewModel.handleIntent(ScaleSetupIntent.ExitSetup(isSetupFinished = false))
+    viewModel.handleIntent(DeviceSetupIntent.ExitSetup(isSetupFinished = false))
     advanceScheduler()
     verify { viewModel.dialogQueueService.enqueue(any<DialogModel.Confirm>()) }
   }
@@ -335,7 +335,7 @@ class MonitorSetupViewModelTest {
   @Test
   fun `OpenHelp enqueues custom dialog`() {
     advanceScheduler()
-    viewModel.handleIntent(ScaleSetupIntent.OpenHelp)
+    viewModel.handleIntent(DeviceSetupIntent.OpenHelp)
     advanceScheduler()
     verify { viewModel.dialogQueueService.enqueue(any<DialogModel.Custom>()) }
   }
@@ -377,31 +377,31 @@ class MonitorSetupViewModelTest {
 
   @Test
   fun `TryAgain on non-retry step does not crash`() {
-    viewModel.handleIntent(ScaleSetupIntent.SetNewStep(MonitorSetupStep.PERMISSIONS))
+    viewModel.handleIntent(DeviceSetupIntent.SetNewStep(MonitorSetupStep.PERMISSIONS))
     advanceScheduler()
-    viewModel.handleIntent(ScaleSetupIntent.TryAgain)
+    viewModel.handleIntent(DeviceSetupIntent.TryAgain)
     advanceScheduler()
     assertThat(viewModel.state.value.step).isEqualTo(MonitorSetupStep.PERMISSIONS)
   }
 
   // -------------------------------------------------------------------------
-  // A6 companion-scale step is instruction-only by design
+  // A6 companion scale is paired separately (not in the wizard)
   // -------------------------------------------------------------------------
   //
   // Companion scale BLE pairing is intentionally NOT performed inside the BPM
-  // wizard. Users pair the companion scale via the standard Add-Scale flow.
-  // This contract test ensures SCALE_PAIRING_INSTRUCTION never triggers any
-  // BLE scan / observe / pair calls for the A6 SKUs (0661, 0663). Do not
-  // remove without a product-design change.
+  // wizard — users pair the companion scale via the standard Add-Device flow,
+  // so the A6 flow carries no in-wizard scale step. This contract test ensures
+  // the post-pairing SUCCESS_SCREEN never triggers any BLE scan / pair calls
+  // for the A6 SKUs (0661, 0663). (MOB-596)
 
   @Test
-  fun `SCALE_PAIRING_INSTRUCTION on A6 0661 never triggers BLE`() {
-    verifyInstructionStepDoesNotTriggerBle("0661")
+  fun `SUCCESS_SCREEN on A6 0661 never triggers BLE`() {
+    verifySuccessStepDoesNotTriggerBle("0661")
   }
 
   @Test
-  fun `SCALE_PAIRING_INSTRUCTION on A6 0663 never triggers BLE`() {
-    verifyInstructionStepDoesNotTriggerBle("0663")
+  fun `SUCCESS_SCREEN on A6 0663 never triggers BLE`() {
+    verifySuccessStepDoesNotTriggerBle("0663")
   }
 
   private fun createA6ViewModel(sku: String): MonitorSetupViewModel {
@@ -422,26 +422,26 @@ class MonitorSetupViewModelTest {
     ).initTestDependencies()
   }
 
-  private fun verifyInstructionStepDoesNotTriggerBle(sku: String) {
+  private fun verifySuccessStepDoesNotTriggerBle(sku: String) {
     val a6ViewModel = createA6ViewModel(sku)
 
     // Positive contrast: MONITOR_PAIRING MUST trigger a BLE scan. If this
     // never fires, the test infra is broken and the negative assertions
     // below would pass vacuously.
     a6ViewModel.handleIntent(
-      ScaleSetupIntent.SetNewStep(MonitorSetupStep.MONITOR_PAIRING),
+      DeviceSetupIntent.SetNewStep(MonitorSetupStep.MONITOR_PAIRING),
     )
     advanceScheduler()
     verify(atLeast = 1) { ggDeviceService.scanForPairing() }
 
-    // Reset call counts and assert SCALE_PAIRING_INSTRUCTION + TryAgain
+    // Reset call counts and assert the post-pairing SUCCESS_SCREEN + TryAgain
     // produce zero BLE scan / pair calls.
     clearMocks(ggDeviceService, answers = false)
     a6ViewModel.handleIntent(
-      ScaleSetupIntent.SetNewStep(MonitorSetupStep.SCALE_PAIRING_INSTRUCTION),
+      DeviceSetupIntent.SetNewStep(MonitorSetupStep.SUCCESS_SCREEN),
     )
     advanceScheduler()
-    a6ViewModel.handleIntent(ScaleSetupIntent.TryAgain)
+    a6ViewModel.handleIntent(DeviceSetupIntent.TryAgain)
     advanceScheduler()
 
     verify(exactly = 0) { ggDeviceService.scanForPairing() }
@@ -453,20 +453,23 @@ class MonitorSetupViewModelTest {
   // -------------------------------------------------------------------------
 
   @Test
-  fun `A6 0661 step list contains SCALE_INTRO and SCALE_PAIRING_INSTRUCTION`() {
+  fun `A6 0661 step list has no MONITOR_OFF and goes SUCCESS_SCREEN to INSTRUCTION_CUFF`() {
     val a6ViewModel = createA6ViewModel("0661")
     val steps = a6ViewModel.state.value.steps.toList()
-    assertThat(steps).contains(MonitorSetupStep.SCALE_INTRO)
-    assertThat(steps).contains(MonitorSetupStep.SCALE_PAIRING_INSTRUCTION)
+    assertThat(steps).doesNotContain(MonitorSetupStep.MONITOR_OFF)
+    val successIndex = steps.indexOf(MonitorSetupStep.SUCCESS_SCREEN)
+    assertThat(successIndex).isAtLeast(0)
+    assertThat(steps[successIndex + 1]).isEqualTo(MonitorSetupStep.INSTRUCTION_CUFF)
   }
 
   @Test
-  fun `A6 0663 step list contains SCALE_INTRO, SCALE_PAIRING_INSTRUCTION, and MONITOR_OFF`() {
+  fun `A6 0663 step list contains MONITOR_OFF and goes SUCCESS_SCREEN to INSTRUCTION_CUFF`() {
     val a6ViewModel = createA6ViewModel("0663")
     val steps = a6ViewModel.state.value.steps.toList()
-    assertThat(steps).contains(MonitorSetupStep.SCALE_INTRO)
-    assertThat(steps).contains(MonitorSetupStep.SCALE_PAIRING_INSTRUCTION)
     assertThat(steps).contains(MonitorSetupStep.MONITOR_OFF)
+    val successIndex = steps.indexOf(MonitorSetupStep.SUCCESS_SCREEN)
+    assertThat(successIndex).isAtLeast(0)
+    assertThat(steps[successIndex + 1]).isEqualTo(MonitorSetupStep.INSTRUCTION_CUFF)
   }
 
   @Test
@@ -474,15 +477,5 @@ class MonitorSetupViewModelTest {
     val a6ViewModel = createA6ViewModel("0661")
     assertThat(a6ViewModel.state.value.selectedUser).isEqualTo("A")
     assertThat(a6ViewModel.state.value.hasNumericUsers).isFalse()
-  }
-
-  @Test
-  fun `A6 step list orders SCALE_INTRO immediately before SCALE_PAIRING_INSTRUCTION`() {
-    val a6ViewModel = createA6ViewModel("0661")
-    val steps = a6ViewModel.state.value.steps.toList()
-    val introIndex = steps.indexOf(MonitorSetupStep.SCALE_INTRO)
-    val instructionIndex = steps.indexOf(MonitorSetupStep.SCALE_PAIRING_INSTRUCTION)
-    assertThat(introIndex).isAtLeast(0)
-    assertThat(instructionIndex).isEqualTo(introIndex + 1)
   }
 }

@@ -344,8 +344,18 @@ final class DashboardLifecycleManager: DashboardLifecycleManaging { // swiftlint
         }
     }
 
+    // swiftlint:disable:next function_body_length
     private func performEntryLifecycleChange() {
         guard let stateProvider else { return }
+
+        // Baby summaries are published by EntryService only via an explicit reload — unlike
+        // weight summaries, they are not refreshed by the entry CRUD path. So after a baby
+        // entry add/delete (e.g. clearing all baby history), reload the baby dashboard data
+        // before recalculating so the chart and headline reflect the change immediately.
+        if stateProvider.isBabySelection,
+           let babyId = (stateProvider as? DashboardStore)?.selectedBabyProfile?.id {
+            reloadBabyDashboardDataThenRefresh(babyId: babyId)
+        }
 
         loadLatestEntryData()
         loadGoalCardData()
@@ -404,6 +414,22 @@ final class DashboardLifecycleManager: DashboardLifecycleManaging { // swiftlint
         Task { @MainActor in
             try? await Task.sleep(nanoseconds: 150_000_000)
             self.chartManager.updateYAxisCache(force: false)
+        }
+    }
+
+    /// Reloads the selected baby's dashboard summaries from SwiftData, then invalidates the
+    /// continuous-operations cache and recalculates the chart so a baby entry add/delete
+    /// (notably deleting all baby history) reflects on the dashboard right away.
+    private func reloadBabyDashboardDataThenRefresh(babyId: String) {
+        Task { @MainActor [weak self] in
+            guard let self else { return }
+            await self.entryService.loadBabyDashboardData(babyId: babyId)
+            guard let stateProvider = self.stateProvider else { return }
+            self.cacheManager.invalidateContinuousOperationsCache()
+            self.chartManager.forceCompleteRecalculationAfterScrollPosition()
+            self.displayManager.updateMetricsForCurrentView()
+            self.chartManager.updateYAxisCache(force: true)
+            stateProvider.scheduleUIUpdate()
         }
     }
 

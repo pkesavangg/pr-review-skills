@@ -95,10 +95,15 @@ fun BabyDayHistoryItem(
         }
     }
 
-    // Build percentile text: "6 th"
+    // Build percentile text: "6 th". Computed at read time from the baby's CDC growth
+    // tables (null for "private" sex or age outside the tables → shows "--").
     val percentText = buildAnnotatedString {
-        // Percentile not stored in BabyEntryEntity yet
-        withStyle(boldStyle) { append("--") }
+        if (item.percentile != null) {
+            withStyle(boldStyle) { append("${item.percentile}") }
+            withStyle(unitStyle) { append(" th") }
+        } else {
+            withStyle(boldStyle) { append("--") }
+        }
     }
 
     // TalkBack: read the baby entry as one announcement with an expand/collapse state, e.g.
@@ -183,33 +188,37 @@ fun BabyDayHistoryItem(
             )
         }
 
-        // Expandable note — shows the saved note or an add-note prompt, plus an edit pencil.
+        // Expandable note — shows the saved note or an add-note prompt. The trailing icon is a
+        // "+" when no note exists (add) and the boxed pencil once a note is present (edit) (MOB-1163).
         AnimatedVisibility(visible = isExpanded) {
             Column(
                 modifier = Modifier.padding(
                     start = MeTheme.spacing.sm,
                     end = MeTheme.spacing.sm,
+                    top = MeTheme.spacing.sm,
                     bottom = MeTheme.spacing.sm,
                 ),
             ) {
-                HorizontalDivider(
-                    thickness = MeTheme.spacing.x6s,
-                    color = MeTheme.colorScheme.utility,
-                    modifier = Modifier.padding(bottom = MeTheme.spacing.sm),
-                )
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     verticalAlignment = Alignment.CenterVertically,
+                    // Empty state centres the placeholder + "+" affordance; an existing note stays
+                    // left-aligned with the pencil pinned to the end (MOB-1163).
+                    horizontalArrangement = if (hasNote) Arrangement.Start else Arrangement.Center,
                 ) {
                     Text(
                         text = if (hasNote) item.entryNote.orEmpty() else HistoryItemStrings.NoNoteYet,
                         style = MeTheme.typography.subHeading2,
                         color = if (hasNote) MeTheme.colorScheme.textBody else MeTheme.colorScheme.textSubheading,
-                        modifier = Modifier.weight(1f),
+                        modifier = if (hasNote) Modifier.weight(1f) else Modifier,
                     )
                     AppIcon(
-                        id = AppIcons.Default.EditPencil,
-                        contentDescription = HistoryItemStrings.EditNoteContentDescription,
+                        id = if (hasNote) AppIcons.Default.EditPencil else AppIcons.Default.Plus,
+                        contentDescription = if (hasNote) {
+                            HistoryItemStrings.EditNoteContentDescription
+                        } else {
+                            HistoryItemStrings.AddNoteContentDescription
+                        },
                         onClick = { onEditEntry() },
                         modifier = Modifier.padding(start = MeTheme.spacing.sm),
                     )

@@ -379,6 +379,11 @@ final class HistoryStore: ObservableObject {
                 let result = try await self.entryService.getMonthsAll()
                 self.months = result
                 self.isEmptyState = result.isEmpty
+                self.logger.log(
+                    level: .info,
+                    tag: self.tag,
+                    message: "Loaded weight history months: count=\(result.count), isEmptyState=\(result.isEmpty)"
+                )
             } catch {
                 self.logger.log(level: .error, tag: self.tag, message: "Failed to load history months: \(error.localizedDescription)")
                 self.months = []
@@ -396,13 +401,16 @@ final class HistoryStore: ObservableObject {
             let fetched = try await entryService.fetchEntrySnapshots(forMonth: selectedMonth.id)
 
             // UI-level deduplication:
-            // Group by entryTimestamp and keep the latest operation by serverTimestamp.
-            let grouped = Dictionary(grouping: fetched) { $0.entryTimestamp }
-            let latestPerTimestamp: [EntrySnapshot] = grouped.compactMap { _, values in
+            // Group by entry identity (serverEntryId when present, else the unique local id)
+            // and keep the latest operation by serverTimestamp. Keying on entry identity —
+            // NOT entryTimestamp — ensures distinct entries that share an entryTimestamp are
+            // each shown, while multiple operations of the same entry still collapse to one.
+            let grouped = Dictionary(grouping: fetched) { $0.serverEntryId ?? $0.id.uuidString }
+            let latestPerEntry: [EntrySnapshot] = grouped.compactMap { _, values in
                 values.max { ($0.serverTimestamp ?? "") < ($1.serverTimestamp ?? "") }
             }
             // Show only final creates; hide deletes
-            let visible = latestPerTimestamp.filter { $0.operationType == OperationType.create.rawValue }
+            let visible = latestPerEntry.filter { $0.operationType == OperationType.create.rawValue }
             // Sort newest first by entryTimestamp
             let pairs = visible.map { entry -> (EntrySnapshot, Int64) in
                 (entry, DateTimeTools.getTimestamp(entry.entryTimestamp))

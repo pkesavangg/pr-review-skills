@@ -59,8 +59,6 @@
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
 				DashboardStoreGraphSelectionSyncTests.swift,
-				Features/ScaleSetup/Mocks/MockScaleSetupBluetoothService.swift,
-				Features/ScaleSetup/Mocks/MockScaleSetupScaleService.swift,
 				Features/Bluetooth/BluetoothServiceScanEventPipelineTests.swift,
 				Features/Dashboard/DashboardStoreCoverageTests.swift,
 				Features/Scale/DeviceTypeServerValueTests.swift,
@@ -75,6 +73,8 @@
 				Features/Scale/ScaleSettingsStoreTests.swift,
 				Features/Scale/ScaleStoreTests.swift,
 				Features/Scale/UsersViewModelTests.swift,
+				Features/ScaleSetup/Mocks/MockScaleSetupBluetoothService.swift,
+				Features/ScaleSetup/Mocks/MockScaleSetupScaleService.swift,
 			);
 			target = 105A1FAB2DE585BA00FBB764 /* meAppTests */;
 		};
@@ -434,7 +434,7 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_ENTITLEMENTS = meApp/meApp.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1;
+				CURRENT_PROJECT_VERSION = 3;
 				DEVELOPMENT_ASSET_PATHS = "\"meApp/Preview Content\"";
 				DEVELOPMENT_TEAM = PX369MG78T;
 				ENABLE_PREVIEWS = YES;
@@ -575,7 +575,7 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_ENTITLEMENTS = meApp/meApp_Release.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1;
+				CURRENT_PROJECT_VERSION = 3;
 				DEVELOPMENT_ASSET_PATHS = "\"meApp/Preview Content\"";
 				DEVELOPMENT_TEAM = PX369MG78T;
 				ENABLE_PREVIEWS = YES;

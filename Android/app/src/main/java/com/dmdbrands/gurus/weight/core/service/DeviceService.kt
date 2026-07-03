@@ -10,8 +10,11 @@ import com.dmdbrands.gurus.weight.domain.model.storage.Device
 import com.dmdbrands.gurus.weight.domain.model.storage.toGGBTDevice
 import com.dmdbrands.gurus.weight.domain.repository.IDeviceRepository
 import com.dmdbrands.gurus.weight.domain.repository.IDeviceService
-import com.dmdbrands.gurus.weight.features.ScaleSetup.strings.ScaleSetupStrings
-import com.dmdbrands.gurus.weight.features.common.enums.ScaleSetupType
+import com.dmdbrands.gurus.weight.domain.services.IProductSelectionManager
+import javax.inject.Provider
+import com.dmdbrands.gurus.weight.features.DeviceSetup.strings.DeviceSetupStrings
+import com.dmdbrands.gurus.weight.features.common.enums.DeviceSetupType
+import com.dmdbrands.gurus.weight.features.common.helper.DeviceHelper
 import com.dmdbrands.gurus.weight.features.common.model.DialogModel
 import com.dmdbrands.gurus.weight.core.di.ApplicationScope
 import com.dmdbrands.library.ggbluetooth.model.GGBTDevice
@@ -50,6 +53,8 @@ constructor(
   appNavigationService: IAppNavigationService,
   @ApplicationContext private val context: Context,
   @ApplicationScope private val appScope: CoroutineScope,
+  // Provider to avoid a construction-time DI cycle (product manager → account → device).
+  private val productSelectionManager: Provider<IProductSelectionManager>,
 ) : BaseService(connectivityObserver, dialogQueueService, appNavigationService), IDeviceService {
   companion object {
     /** Minimum gap between two foreground-triggered device refreshes, to dedupe lifecycle jitter. (MOB-1201) */
@@ -71,12 +76,12 @@ constructor(
 
   override val hasBluetoothWifiScale: Flow<Boolean>
     get() = _pairedScales.map { devices ->
-      devices.any { device -> device.deviceType == ScaleSetupType.BtWifiR4.value }
+      devices.any { device -> device.deviceType == DeviceSetupType.BtWifiR4.value }
     }
 
   override val hasWeightScale: Flow<Boolean>
     get() = _pairedScales.map { devices ->
-      devices.any { device -> ScaleSetupType.isWeightScale(device.deviceType) }
+      devices.any { device -> DeviceSetupType.isWeightScale(device.deviceType) }
     }
 
   override val isWeightOnlyModeAlertShown = MutableStateFlow(false)
@@ -346,11 +351,14 @@ constructor(
       // 4. Sync new/updated devices
       for (device in devicesToSync) {
         try {
-          var savedDevice = deviceRepository.saveDeviceToApi(device, accountId)
+          // Save via the unified POST /v3/paired-device/ (§2.3) — the legacy /v3/paired-scale/
+          // POST is rejected (400) on the 2.0 backend, and paired-device is required for
+          // baby/BPM device types (MOB-598).
+          var savedDevice = deviceRepository.createPairedDevice(device, accountId)
           savedDevice = savedDevice.copy(isSynced = true)
 
           // Sync preference if needed
-          if (savedDevice.deviceType == ScaleSetupType.BtWifiR4.value && savedDevice.preferences != null) {
+          if (savedDevice.deviceType == DeviceSetupType.BtWifiR4.value && savedDevice.preferences != null) {
             try {
               val updatedPref = savedDevice.preferences.copy(
                 isSynced = true,
@@ -424,6 +432,12 @@ constructor(
             isSynced = true,
             device = apiDev.device?.copy(
               macAddress = localMatch.device?.macAddress ?: apiDev.device?.macAddress ?: "",
+              // Preserve the locally-paired broadcastId/password: the unified GET /v3/paired-device/
+              // (§2.4) omits them, so the API copy would be null and break the broadcastId match
+              // that routes a scale reading to its device (MOB-598).
+              broadcastId = apiDev.device?.broadcastId ?: localMatch.device?.broadcastId,
+              broadcastIdString = apiDev.device?.broadcastIdString ?: localMatch.device?.broadcastIdString,
+              password = apiDev.device?.password ?: localMatch.device?.password,
               isWifiConfigured = localMatch.device?.isWifiConfigured ?: apiDev.device?.isWifiConfigured ?: false,
             ),
           )
@@ -431,7 +445,12 @@ constructor(
           apiDev.copy(isSynced = true)
         }
       }
-      mergeSyncedWithUnsyncedById(syncedList, unsyncedDevices)
+      // Keep locally-synced devices the API didn't return (backend returns empty, or a device
+      // saved via paired-device isn't echoed by this GET) so a paired device never disappears
+      // from the local list and its readings keep matching (MOB-598).
+      val apiIds = syncedList.map { it.id }.toSet()
+      val localOnlySynced = syncedDevicesToStore.filter { it.id !in apiIds }
+      mergeSyncedWithUnsyncedById(syncedList + localOnlySynced, unsyncedDevices)
     } catch (e: Exception) {
       AppLog.e(tag, "Error fetching devices from API $e", )
       // Use syncedDevicesToStore (contains both already synced and newly synced devices) as fallback
@@ -471,8 +490,9 @@ constructor(
 
 
     return try {
-      // Attempt API save (online path). If offline, this throws and we fall back.
-      val savedDevice = deviceRepository.saveDeviceToApi(updatedDevice, currentAccountId ?: "")
+      // Attempt API save (online path) via the unified POST /v3/paired-device/ (§2.3).
+      // If offline, this throws and we fall back.
+      val savedDevice = deviceRepository.createPairedDevice(updatedDevice, currentAccountId ?: "")
       if (updatedPrefs?.toR4ScalePreferenceApiModel() != null) {
         deviceRepository.saveScalePreferencesToApi(
           updatedPrefs.toR4ScalePreferenceApiModel().copy(
@@ -490,6 +510,12 @@ constructor(
         AppLog.d(tag, "saveScale (via syncDevices): ${adjusted.id}")
       } catch (e: Exception) {
         AppLog.e(tag, "saveScale syncDevices failed", e)
+      }
+      // Register the paired device's product on the account from its SKU so productTypes reflects
+      // this device globally (dashboard, My Kids). Canonical SKU→product via DeviceHelper;
+      // addProduct de-dupes and persistProductForSetup is best-effort. (MOB-596)
+      device.sku?.let { sku ->
+        productSelectionManager.get().persistProductForSetup(DeviceHelper.productTypeForSku(sku))
       }
       adjusted
     } catch (e: Exception) {
@@ -640,6 +666,28 @@ constructor(
       null
     }
 
+  override suspend fun healBpmDeviceBroadcastId(broadcastId: String, accountId: String): Device? =
+    try {
+      // Only safe to attribute a monitor reading when there's exactly one paired BPM device still
+      // missing a broadcastId (the server-synced state). Multiple → ambiguous, so bail.
+      val candidate = _pairedScales.value.singleOrNull { device ->
+        !device.isDeleted &&
+          DeviceHelper.isBpmDevice(device.sku.orEmpty()) &&
+          device.device?.broadcastIdString.isNullOrBlank()
+      }
+      if (candidate == null) {
+        AppLog.w(tag, "healBpmDeviceBroadcastId: no single un-identified BPM device to heal")
+        null
+      } else {
+        deviceRepository.updateDeviceBroadcastId(candidate.id, broadcastId, accountId)
+        AppLog.i(tag, "Healed BPM device ${candidate.id} with broadcastId=$broadcastId")
+        deviceRepository.getDeviceByBroadcastId(broadcastId, accountId).first()
+      }
+    } catch (e: Exception) {
+      AppLog.e(tag, "Error healing BPM device broadcastId", e)
+      null
+    }
+
   /**
    * Get a scale by MAC address.
    *
@@ -689,10 +737,10 @@ constructor(
   ) {
     dialogQueueService.showDialog(
       DialogModel.Confirm(
-        title = ScaleSetupStrings.WeightOnlyModeAlertDismiss.Title,
-        message = ScaleSetupStrings.WeightOnlyModeAlertDismiss.Message,
-        confirmText = ScaleSetupStrings.WeightOnlyModeAlertDismiss.Dismiss,
-        cancelText = ScaleSetupStrings.WeightOnlyModeAlertDismiss.Cancel,
+        title = DeviceSetupStrings.WeightOnlyModeAlertDismiss.Title,
+        message = DeviceSetupStrings.WeightOnlyModeAlertDismiss.Message,
+        confirmText = DeviceSetupStrings.WeightOnlyModeAlertDismiss.Dismiss,
+        cancelText = DeviceSetupStrings.WeightOnlyModeAlertDismiss.Cancel,
         onConfirm = {
           updateWeightOnlyModeAlertShown(true)
           onConfirm.invoke()

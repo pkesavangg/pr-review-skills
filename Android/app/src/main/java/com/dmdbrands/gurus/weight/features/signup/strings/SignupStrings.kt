@@ -34,8 +34,8 @@ object SignupStrings {
   const val goalStepUseMetric = "Use Metric Units"
   const val weightUnitLbs = "lbs"
   const val weightUnitKg = "kg"
-  const val heightUnitFtIn = "Ft / In"
-  const val heightUnitCm = "CM"
+  const val heightUnitFtIn = "ft / in"
+  const val heightUnitCm = "cm"
 
   // Goal step weight labels (unit shown as trailing overlay)
   const val goalStepCurrentWeightLabel = "starting weight"
@@ -72,8 +72,13 @@ object SignupStrings {
   const val nextButton = "NEXT"
   const val completeButton = "CREATE"
 
-  // Loader message
+  // Loader message — account-creation pass only.
   const val LoaderMessage = "Creating your account..."
+
+  // Generic loader for subsequent passes (connect-another-device loop, error
+  // retry) where the account already exists — "Creating your account..." would
+  // be misleading there.
+  const val LoadingMessage = "Loading..."
 
   // Exit confirmation dialog
   const val ExitConfirmTitle = "Confirm"

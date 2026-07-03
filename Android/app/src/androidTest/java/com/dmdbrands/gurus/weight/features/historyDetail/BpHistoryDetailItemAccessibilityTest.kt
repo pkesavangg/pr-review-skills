@@ -3,12 +3,14 @@ package com.dmdbrands.gurus.weight.features.historyDetail
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.assert
+import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
 import com.dmdbrands.gurus.weight.data.storage.db.entity.entry.BpmEntryEntity
 import com.dmdbrands.gurus.weight.data.storage.db.entity.entry.EntryEntity
 import com.dmdbrands.gurus.weight.domain.model.common.WeightUnit
 import com.dmdbrands.gurus.weight.domain.model.storage.entry.BpmEntry
+import com.dmdbrands.gurus.weight.features.history.strings.HistoryItemStrings
 import com.dmdbrands.gurus.weight.features.historyDetail.components.BpHistoryDetailItem
 import com.dmdbrands.gurus.weight.features.historyDetail.strings.HistoryDetailScreenStrings
 import com.dmdbrands.gurus.weight.theme.MeAppTheme
@@ -24,7 +26,7 @@ class BpHistoryDetailItemAccessibilityTest {
     @get:Rule
     val composeTestRule = createComposeRule()
 
-    private fun bpmEntry() = BpmEntry(
+    private fun bpmEntry(note: String? = null) = BpmEntry(
         entry = EntryEntity(
             id = 1,
             accountId = "acct",
@@ -44,7 +46,7 @@ class BpHistoryDetailItemAccessibilityTest {
             diastolic = 80,
             pulse = 60,
             meanArterial = "93",
-            note = null,
+            note = note,
         ),
     )
 
@@ -104,5 +106,45 @@ class BpHistoryDetailItemAccessibilityTest {
                     HistoryDetailScreenStrings.accExpandedState,
                 ),
             )
+    }
+
+    @Test
+    fun bpDetailRow_noNote_showsAddAffordance() {
+        composeTestRule.setContent {
+            MeAppTheme {
+                BpHistoryDetailItem(
+                    entry = bpmEntry(note = null),
+                    dateDisplay = "Jun 19",
+                    timeDisplay = "6:30 AM",
+                    isExpanded = true,
+                    onToggle = {},
+                )
+            }
+        }
+
+        // Empty-state shows the "+" affordance with an "add note" description (MOB-1163).
+        composeTestRule
+            .onNodeWithContentDescription(HistoryItemStrings.AddNoteContentDescription)
+            .assertIsDisplayed()
+    }
+
+    @Test
+    fun bpDetailRow_withNote_showsEditAffordance() {
+        composeTestRule.setContent {
+            MeAppTheme {
+                BpHistoryDetailItem(
+                    entry = bpmEntry(note = "felt good"),
+                    dateDisplay = "Jun 19",
+                    timeDisplay = "6:30 AM",
+                    isExpanded = true,
+                    onToggle = {},
+                )
+            }
+        }
+
+        // With a note present the boxed pencil (edit) affordance is shown (MOB-1163).
+        composeTestRule
+            .onNodeWithContentDescription(HistoryItemStrings.EditNoteContentDescription)
+            .assertIsDisplayed()
     }
 }
