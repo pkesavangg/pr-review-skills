@@ -263,8 +263,7 @@ final class DashboardDisplayManager: DashboardDisplayManaging {
 
     var displayUnitText: String {
         let unit: WeightUnit = accountService.activeAccount?.weightUnit ?? .lb
-        let displayValue = displayWeight ?? getCurrentAverageWeight()
-        return WeightValueConvertor.unitForDisplay(value: displayValue, unit: unit)
+        return WeightValueConvertor.unitForDisplay(unit: unit)
     }
 
     func updateVisibleDataAfterScroll() {

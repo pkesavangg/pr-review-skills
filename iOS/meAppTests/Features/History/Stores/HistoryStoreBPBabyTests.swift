@@ -438,7 +438,7 @@ struct HistoryStoreBPBabyTests {
         sut.store.selectBabyDay(day)
         let done = await waitUntil { !sut.store.babyEntries.isEmpty }
         #expect(done == true)
-        #expect(sut.store.babyEntries.first?.weightDisplay.contains(HistoryListStrings.lbs) == true)
+        #expect(sut.store.babyEntries.first?.weightDisplay.contains(HistoryListStrings.lb) == true)
     }
 
     @Test("loadMonths imperial lb-decimal formats baby weight in decimal pounds")

@@ -396,7 +396,7 @@ struct DashboardDisplayManagerTests {
         store.graphManager.state.selectedPoint = daily[0]
         DashboardManagerTestSupport.syncStoreGraphState(store)
 
-        let expected = WeightValueConvertor.unitForDisplay(value: 180.0, unit: .lb)
+        let expected = WeightValueConvertor.unitForDisplay(unit: .lb)
 
         #expect(store.displayManager.displayUnitText == expected)
     }

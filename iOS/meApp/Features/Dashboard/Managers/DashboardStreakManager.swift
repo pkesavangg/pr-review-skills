@@ -88,10 +88,7 @@ class DashboardStreakManager: ObservableObject, DashboardStreakManaging {
 
         // Weekly change
         let weeklyValue = Double(progress.week)
-        let weeklyDisplay = weightUnit == .kg
-            ? ConversionTools.convertStoredToKg(weeklyValue)
-            : ConversionTools.convertStoredToLbs(weeklyValue)
-        let weeklyUnitLabel = WeightValueConvertor.unitForDisplay(value: abs(weeklyDisplay), unit: weightUnit)
+        let weeklyUnitLabel = WeightValueConvertor.unitForDisplay(unit: weightUnit)
         updatedStreakItems.append(MetricItem(
             value: formatWeightChange(weeklyValue, unit: weightUnit.rawValue),
             label: "\(weeklyUnitLabel)/week",
@@ -102,10 +99,7 @@ class DashboardStreakManager: ObservableObject, DashboardStreakManaging {
 
         // Monthly change
         let monthlyValue = Double(progress.month)
-        let monthlyDisplay = weightUnit == .kg
-            ? ConversionTools.convertStoredToKg(monthlyValue)
-            : ConversionTools.convertStoredToLbs(monthlyValue)
-        let monthlyUnitLabel = WeightValueConvertor.unitForDisplay(value: abs(monthlyDisplay), unit: weightUnit)
+        let monthlyUnitLabel = WeightValueConvertor.unitForDisplay(unit: weightUnit)
         updatedStreakItems.append(MetricItem(
             value: formatWeightChange(monthlyValue, unit: weightUnit.rawValue),
             label: "\(monthlyUnitLabel)/month",
@@ -116,10 +110,7 @@ class DashboardStreakManager: ObservableObject, DashboardStreakManaging {
 
         // Yearly change
         let yearlyValue = Double(progress.year)
-        let yearlyDisplay = weightUnit == .kg
-            ? ConversionTools.convertStoredToKg(yearlyValue)
-            : ConversionTools.convertStoredToLbs(yearlyValue)
-        let yearlyUnitLabel = WeightValueConvertor.unitForDisplay(value: abs(yearlyDisplay), unit: weightUnit)
+        let yearlyUnitLabel = WeightValueConvertor.unitForDisplay(unit: weightUnit)
         updatedStreakItems.append(MetricItem(
             value: formatWeightChange(yearlyValue, unit: weightUnit.rawValue),
             label: "\(yearlyUnitLabel)/year",
@@ -130,10 +121,7 @@ class DashboardStreakManager: ObservableObject, DashboardStreakManaging {
 
         // Total change
         let totalValue = Double(progress.total ?? 0)
-        let totalDisplay = weightUnit == .kg
-            ? ConversionTools.convertStoredToKg(totalValue)
-            : ConversionTools.convertStoredToLbs(totalValue)
-        let totalUnitLabel = WeightValueConvertor.unitForDisplay(value: abs(totalDisplay), unit: weightUnit)
+        let totalUnitLabel = WeightValueConvertor.unitForDisplay(unit: weightUnit)
         updatedStreakItems.append(MetricItem(
             value: formatWeightChange(totalValue, unit: weightUnit.rawValue),
             label: "\(totalUnitLabel)/total",

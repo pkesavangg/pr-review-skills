@@ -493,7 +493,7 @@ class SettingsStore: ObservableObject {
             : ConversionTools.convertStoredToLbs(Int(storedWeight))
 
         let formattedValue = String(format: "%.1f", display)
-        let unitLabel = WeightValueConvertor.unitForDisplay(value: display, unit: unit)
+        let unitLabel = WeightValueConvertor.unitForDisplay(unit: unit)
         let result = "\(commonLang.on) - \(formattedValue) \(unitLabel)"
         return result
     }

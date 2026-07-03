@@ -2,11 +2,9 @@ import Foundation
 
 struct WeightValueConvertor {
     /// Returns the correct unit abbreviation for a displayed weight value.
-    /// - Parameters:
-    ///   - value: Display value in the provided unit (already converted for display, not stored tenths).
-    ///   - unit: Target unit for display.
+    /// - Parameter unit: Target unit for display.
     /// - Returns: "kg" for metric, "lb" for imperial (the "lb" symbol is not pluralized).
-    static func unitForDisplay(value: Double, unit: WeightUnit) -> String {
+    static func unitForDisplay(unit: WeightUnit) -> String {
         return unit == .kg ? "kg" : "lb"
     }
     /// Converts and formats a weight value, optionally applying weightless mode and showing plus symbol
