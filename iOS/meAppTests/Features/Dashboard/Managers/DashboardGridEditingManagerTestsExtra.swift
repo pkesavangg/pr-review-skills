@@ -220,7 +220,10 @@ extension DashboardGridEditingManagerTests {
         store.gridEditingManager.updateGoalCardPosition(1)
         store.lifecycleManager.saveChanges()
 
-        await DashboardTestFixtures.waitUntil(timeoutNanoseconds: 2_000_000_000) {
+        // The save chain runs through AccountService + mock repos asynchronously; 2s was tight
+        // enough to time out under load on the CI runner (passed locally, flaked on CI). 5s keeps
+        // the assertion meaningful without being flaky on a busy machine.
+        await DashboardTestFixtures.waitUntil(timeoutNanoseconds: 5_000_000_000) {
             store.state.ui.isEditMode == false &&
                 store.editSessionManager.hasSnapshot == false &&
                 apiRepo.lastPatchDashboardMetrics == ["water", "bmi"] &&

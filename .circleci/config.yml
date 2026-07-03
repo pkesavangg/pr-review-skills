@@ -275,6 +275,12 @@ jobs:
           # meApp` with "module 'meApp' was not compiled for testing". Dev is the project's debug
           # config (ENABLE_TESTABILITY=YES) — the same config the build job uses. The project has
           # no "Debug" config, only Dev/Production.
+          #
+          # Ad-hoc signing (CODE_SIGN_IDENTITY="-" + CODE_SIGNING_ALLOWED=YES) is required for the
+          # test action: with signing disabled the test host has no application-identifier
+          # entitlement, so every Keychain SecItem call returns errSecMissingEntitlement (-34018)
+          # and all KeychainServiceTests fail. Ad-hoc signing on the simulator applies the app's
+          # entitlements (no provisioning profile needed) so the default keychain access group works.
           command: |
             xcrun simctl boot "iPhone 16" || true
             xcodebuild test \
@@ -288,9 +294,9 @@ jobs:
               -clonedSourcePackagesDirPath SourcePackages \
               -enableCodeCoverage YES \
               -resultBundlePath TestResults.xcresult \
-              CODE_SIGN_IDENTITY="" \
+              CODE_SIGN_IDENTITY="-" \
               CODE_SIGNING_REQUIRED=NO \
-              CODE_SIGNING_ALLOWED=NO \
+              CODE_SIGNING_ALLOWED=YES \
               ENABLE_USER_SCRIPT_SANDBOXING=NO
       - run:
           name: Check coverage threshold (80% on the app target)

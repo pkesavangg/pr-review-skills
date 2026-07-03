@@ -580,40 +580,44 @@ struct AccountRepositoryTests {
         }
     }
 
-    // MARK: - Token persistence invariant (willSave defense-in-depth)
+    // MARK: - Token persistence invariant (Keychain-only tokens)
 
-    @Test("willSave clears token columns on a direct context.save(), so tokens never reach disk")
+    // The repository clears the token columns before every save (`saveClearingTokens`), so auth
+    // tokens set on the model never reach the unencrypted on-disk store. This is the real
+    // enforcement — the `Account.willSave()` hook cannot do it, because SwiftData does not fold a
+    // model's own willSave-time mutations into the in-flight save.
+
+    @Test("saveAccount does not persist token columns to the on-disk store")
     func tokenColumnsClearedOnDirectContextSave() async throws {
         let container = try makeContainer()
-        let writeContext = ModelContext(container)
+        let sut = AccountRepository(context: ModelContext(container))
         let account = makeAccount(id: "acct-token")
-        writeContext.insert(account)
 
-        // Any non-wrapper writer that sets live tokens then saves the context directly.
+        // A writer that sets live tokens on the model, then persists through the repository.
         // swiftlint:disable:next no_hardcoded_credentials
         account.accessToken = "live-access"
         account.refreshToken = "live-refresh"
         account.expiresAt = "2099-01-01T00:00:00Z"
-        try writeContext.save()
+        try await sut.saveAccount(account)
 
         // Read back from a fresh context to assert what actually landed on disk.
         let readContext = ModelContext(container)
         let persisted = try #require(try readContext.fetch(FetchDescriptor<Account>()).first)
+        #expect(persisted.accountId == "acct-token")
         #expect(persisted.accessToken == nil)
         #expect(persisted.refreshToken == nil)
         #expect(persisted.expiresAt == nil)
     }
 
-    @Test("activateAccount does not persist tokens set on the model (willSave clears them)")
+    @Test("activateAccount does not persist tokens set on the model")
     func activateAccountDoesNotPersistTokens() async throws {
         let container = try makeContainer()
-        let writeContext = ModelContext(container)
-        let sut = AccountRepository(context: writeContext)
+        let sut = AccountRepository(context: ModelContext(container))
         let account = makeAccount(id: "acct-1", isActive: false)
         try await sut.saveAccount(account)
 
-        // activateAccount calls context.save() directly — the exact non-wrapper path that
-        // previously risked flushing live tokens to the unencrypted store.
+        // activateAccount calls context.save() directly — the non-wrapper path that must still
+        // clear tokens before they reach the unencrypted store.
         // swiftlint:disable:next no_hardcoded_credentials
         account.accessToken = "live-access"
         account.refreshToken = "live-refresh"
