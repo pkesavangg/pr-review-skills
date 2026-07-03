@@ -84,6 +84,7 @@ struct ScaleDiscoveredSheetView: View {
                     action: onConnect
                 )
                 .accessibilityHint(ScaleSetupStrings.A11y.connectButtonHint)
+                .appAccessibility(id: AccessibilityID.scaleDiscoveredConnectButton)
                 .padding(.bottom, .spacingMD)
             }
         }
