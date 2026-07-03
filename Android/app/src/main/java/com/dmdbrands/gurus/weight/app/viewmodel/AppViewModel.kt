@@ -1104,10 +1104,15 @@ class AppViewModel
         // Get user height for BMI calculation
         val activeAccount = accountService.activeAccountFlow.first()
         val userHeight = activeAccount?.height
+        // Store the reading in the My Weight (adult) unit preference — account.isMetric is
+        // weightUnit == KG. NOT measurementUnits, which is the baby-scale unit. So an A6/0382
+        // reading (always broadcast in kg) is saved as the lb value the scale displays for
+        // imperial (lb) accounts, and as kg for metric accounts. (MOB-872)
+        val isMetric = activeAccount?.isMetric == true
 
         val entry =
           ggEntry.map { ggScaleEntry ->
-            val scaleEntry = ggScaleEntry.toScaleEntry(accountId, device?.id ?: "")
+            val scaleEntry = ggScaleEntry.toScaleEntry(accountId, device?.id ?: "", isMetric)
 
             // Check if BMI is 0.0 or null and calculate it if user height is available
             if ((scaleEntry.scale.scaleEntry.bmi == null || scaleEntry.scale.scaleEntry.bmi == 0.0) &&
