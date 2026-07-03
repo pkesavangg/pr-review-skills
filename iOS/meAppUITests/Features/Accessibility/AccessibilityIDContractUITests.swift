@@ -42,6 +42,27 @@ final class AccessibilityIDContractUITests: XCTestCase {
 
         assertResolvesToOne(AccessibilityID.landingScreenRoot, "root must be the container only, not stamped on siblings")
         assertResolvesToOne(AccessibilityID.landingLogInButton)
+        assertResolvesToOne(AccessibilityID.landingSignUpButton)
+    }
+
+    // MARK: - Signup wizard (the name step is reachable pre-auth from Landing)
+
+    @MainActor
+    func testSignupNameStepIDsResolveUniquely() throws {
+        app.launchForUITest(scenario: .loggedOut)
+
+        let landing = LandingPage(app: app)
+        XCTAssertTrue(landing.root.waitForExistence(timeout: 5))
+        app.buttons[AccessibilityID.landingSignUpButton].tap()
+
+        let firstName = app.textFields[AccessibilityID.signupFirstNameField]
+        XCTAssertTrue(firstName.waitForExistence(timeout: 5))
+
+        assertResolvesToOne(AccessibilityID.signupFirstNameField)
+        assertResolvesToOne(AccessibilityID.signupLastNameField)
+        assertResolvesToOne(AccessibilityID.signupCloseButton)
+        assertResolvesToOne(AccessibilityID.signupHelpButton)
+        assertResolvesToOne(AccessibilityID.signupNextButton)
     }
 
     // MARK: - Login (the MOB-1132 pilot surface)

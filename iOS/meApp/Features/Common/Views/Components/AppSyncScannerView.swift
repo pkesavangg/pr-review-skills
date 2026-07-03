@@ -39,6 +39,7 @@ public struct AppSyncScannerView: View {
         )
         .background(Color.black)
         .ignoresSafeArea()
+        .screenAccessibilityRoot(AccessibilityID.appSyncScannerRoot)
     }
 }
 

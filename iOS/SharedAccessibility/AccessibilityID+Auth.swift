@@ -21,6 +21,29 @@ extension AccessibilityID {
     // Clear / visibility-toggle ids are derived from the field id in AppInputField/BaseInputField:
     //   "<field_id>_clear_button" and "<field_id>_visibility_toggle".
 
-    // MARK: - Signup Screen (Name Step — first screen shown after tapping Sign Up)
+    // MARK: - Signup wizard — fields
     static let signupFirstNameField = "signup_first_name_field"
+    static let signupLastNameField = "signup_last_name_field"
+    static let signupEmailField = "signup_email_field"
+    static let signupPasswordField = "signup_password_field"
+    static let signupConfirmPasswordField = "signup_confirm_password_field"
+    static let signupZipcodeField = "signup_zipcode_field"
+
+    // MARK: - Signup wizard — navbar & footer actions
+    static let signupCloseButton = "signup_close_button"
+    static let signupHelpButton = "signup_help_button"
+    static let signupBackButton = "signup_back_button"
+    static let signupNextButton = "signup_next_button"
+    static let signupCreateAccountButton = "signup_create_account_button"
+    static let signupSkipButton = "signup_skip_button"
+    static let signupFinishButton = "signup_finish_button"
+    static let signupConnectAnotherDeviceButton = "signup_connect_another_device_button"
+    static let signupAddDeviceButton = "signup_add_device_button"
+    static let signupDoneButton = "signup_done_button"
+    static let signupTryAgainButton = "signup_try_again_button"
+
+    // MARK: - Landing saved-account tiles (list — id is suffixed with the accountID per row)
+    static let accountCardRow = "account_card_row"
+    static let accountCardDeleteButton = "account_card_delete_button"
+    static let accountCardLogInButton = "account_card_log_in_button"
 }

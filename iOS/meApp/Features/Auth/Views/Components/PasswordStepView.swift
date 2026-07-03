@@ -31,6 +31,7 @@ struct PasswordStepView: View {
                     ),
                     value: $signupStore.signupForm.password.value,
                     focusedField: $focusedField,
+                    accessibilityIdentifier: AccessibilityID.signupPasswordField,
                     onCommit: {
                         signupStore.touchAndValidate(field: .password)
                         focusedField = .confirmPassword // Move focus to confirm password field
@@ -49,6 +50,7 @@ struct PasswordStepView: View {
                     ),
                     value: $signupStore.signupForm.confirmPassword.value,
                     focusedField: $focusedField,
+                    accessibilityIdentifier: AccessibilityID.signupConfirmPasswordField,
                     onCommit: {
                         signupStore.touchAndValidate(field: .confirmPassword)
                         focusedField = .zipCode // Move focus to zip code field
@@ -67,6 +69,7 @@ struct PasswordStepView: View {
                     ),
                     value: $signupStore.signupForm.zipcode.value,
                     focusedField: $focusedField,
+                    accessibilityIdentifier: AccessibilityID.signupZipcodeField,
                     onCommit: {
                         signupStore.touchAndValidate(field: .zipCode)
                         focusedField = nil // Clear focus

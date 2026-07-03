@@ -84,6 +84,7 @@ struct MultiDeviceSnapshotView: View {
                 ) {
                     onSelectItem(item)
                 }
+                .accessibilityIdentifier(AccessibilityID.babyCard)
             }
         }
     }
