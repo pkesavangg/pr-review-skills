@@ -104,7 +104,7 @@ struct BaseInputField: View {
                     .disabled(isDisabled)
             }
         }
-        .accessibilityIdentifier(accessibilityIdentifier ?? "")
+        .accessibilityIdentifierIfPresent(accessibilityIdentifier)
         .id("\(fieldType)-\(themeRefreshId)")
         .font(.custom("OpenSans-Regular", size: CustomTextStyle.body2.size))
         .padding(.top, (isFocused || !value.isEmpty) ? focusedTopPadding : 0)
@@ -150,8 +150,8 @@ struct BaseInputField: View {
                             .foregroundColor(theme.statusIconPrimary)
                     })
                     .padding(.trailing, .spacingXS)
-                    .accessibilityIdentifier(accessibilityIdentifier.map { "\($0)_visibility_toggle" } ?? "")
-                    .accessibilityLabel(isSecureTextVisible ? "Hide password" : "Show password")
+                    .accessibilityIdentifierIfPresent(accessibilityIdentifier.map { "\($0)_visibility_toggle" })
+                    .accessibilityLabel(isSecureTextVisible ? InputFieldLabels.A11y.hidePassword : InputFieldLabels.A11y.showPassword)
                 }
             }
         )
