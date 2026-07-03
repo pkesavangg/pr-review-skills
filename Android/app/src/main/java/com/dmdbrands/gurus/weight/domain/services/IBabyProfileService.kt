@@ -7,7 +7,9 @@ interface IBabyProfileService {
 
     fun observeAll(): Flow<List<BabyProfile>>
 
-    suspend fun save(profile: BabyProfile)
+    /** Creates the baby (server + local mirror) and returns the persisted profile,
+     * which carries the server-assigned id. */
+    suspend fun save(profile: BabyProfile): BabyProfile
 
     suspend fun update(profile: BabyProfile)
 

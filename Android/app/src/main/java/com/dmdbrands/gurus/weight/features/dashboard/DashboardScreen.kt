@@ -127,10 +127,12 @@ fun DashboardScreen() {
           product = product,
           goal = state.goal,
           scrollToTopSignal = state.resetSignal,
+          // Goal set → goal-anchored range + goal badge; no goal → a default range so the Y axis
+          // still shows (consistent with BP/Baby) instead of a bare, axis-less grid.
           emptyRange = EmptyGraphDefaults.weightGoal(
             goalDisplay = state.goal?.goalWeight,
             isKg = state.weightUnit == WeightUnit.KG,
-          ),
+          ) ?: EmptyGraphDefaults.weightDefault(isKg = state.weightUnit == WeightUnit.KG),
           onRefresh = { vm.handleIntent(WeightDashboardIntent.Refresh) },
           createFallbackEntry = { ts, yValues, seg ->
             val y = yValues.firstOrNull() ?: return@DashboardPage null
@@ -185,7 +187,12 @@ fun DashboardScreen() {
 
       is ProductSelection.Baby -> {
         val babyProduct = product as ProductSelection.Baby
+        // Key by baby id so switching babies returns a distinct VM (subscribed to that baby's
+        // babyId-filtered graph data) instead of reusing the first baby's instance — without a
+        // key, hiltViewModel caches one instance per composition and ignores creationCallback on
+        // subsequent babies, so every baby showed the first baby's entries. (MOB-598)
         val vm: BabyDashboardViewModel = hiltViewModel(
+          key = "baby:${babyProduct.profile.id}",
           creationCallback = { factory: BabyDashboardViewModel.Factory -> factory.create(babyProduct) },
         )
         val state by vm.state.collectAsStateWithLifecycle()

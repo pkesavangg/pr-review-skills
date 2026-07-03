@@ -165,12 +165,13 @@ class WeightDashboardViewModel @Inject constructor(
 
     viewModelScope.launch(Dispatchers.Main) {
       producer.runTransaction(animate = false) {
+        // No 0.0 placeholder line when there's no data — an empty transaction yields an empty chart
+        // model, and the empty state is shown by EmptyDashboardGraph (via isEmptyGraph). Pushing a
+        // (0.0, 0.0) point previously drew a spurious baseline at zero. (mirrors pushSeriesToProducer)
         if (primarySeries.isNotEmpty()) {
           lineSeries {
             primarySeries.forEach { s -> series(x = s.xValues, y = s.yValues) }
           }
-        } else {
-          lineSeries { series(listOf(0.0), listOf(0.0)) }
         }
         if (secondaryGraphLine != null && secondaryGraphLine.points.isNotEmpty()) {
           val pairs = secondaryGraphLine.points.mapNotNull { point ->

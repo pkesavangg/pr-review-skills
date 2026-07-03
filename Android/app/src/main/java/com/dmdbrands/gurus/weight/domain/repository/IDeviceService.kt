@@ -148,13 +148,29 @@ interface IDeviceService {
   suspend fun getScaleByBroadcastId(broadcastId: String, accountId: String): Device?
 
   /**
+   * Resolves the paired row for a specific monitor + user slot (broadcastId + userNumber), so a
+   * live reading is attributed to the correct user when a monitor is paired under multiple slots.
+   */
+  suspend fun getScaleByBroadcastIdAndUser(broadcastId: String, userNumber: Int, accountId: String): Device?
+
+  /**
    * Heals the single paired BPM device that has no broadcastId by backfilling it from a live
    * reading, then returns it. Devices loaded from GET /v3/paired-device carry no broadcastId, so a
    * monitor reading can't match by id — this attributes it to the lone BPM device so it syncs and
    * future readings resolve. Returns null unless there's exactly one un-identified BPM device.
    * (MOB-596)
    */
-  suspend fun healBpmDeviceBroadcastId(broadcastId: String, accountId: String): Device?
+  suspend fun healBpmDeviceBroadcastId(broadcastId: String, accountId: String, protocolType: String? = null): Device?
+
+  /**
+   * Baby-scale analog of [healBpmDeviceBroadcastId]. A baby scale saved without a broadcastId (or
+   * synced from the server, which omits it) can't be matched by a live reading's id — so the reading
+   * is misclassified as a weight reading. This attributes the reading to the lone paired baby scale
+   * (matched by SKU, not the missing id) and backfills its broadcastId, so the reading routes to the
+   * baby-assign flow and future readings resolve directly. Returns null unless there's exactly one
+   * un-identified baby-scale device. (baby-scale reconnect fix)
+   */
+  suspend fun healBabyScaleBroadcastId(broadcastId: String, accountId: String): Device?
 
   /**
    * Get a scale by MAC address.

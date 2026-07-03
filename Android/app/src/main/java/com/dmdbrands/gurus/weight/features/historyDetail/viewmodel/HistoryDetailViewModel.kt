@@ -126,6 +126,7 @@ class HistoryDetailViewModel @AssistedInject constructor(
 
     private fun saveBabyEdit(intent: HistoryDetailIntent.SaveBabyEdit) {
         viewModelScope.launch {
+            dialogQueueService.showLoader(HistoryDetailScreenStrings.SaveLoaderMessage)
             try {
                 val original = intent.entry
                 val updatedBabyEntry = original.babyEntry.copy(
@@ -175,12 +176,15 @@ class HistoryDetailViewModel @AssistedInject constructor(
                 dialogQueueService.showToast(
                     Toast.Simple(title = null, message = HistoryDetailScreenStrings.NoteSaveError),
                 )
+            } finally {
+                dialogQueueService.dismissLoader()
             }
         }
     }
 
     private fun saveNote(entry: Entry, note: String) {
         viewModelScope.launch {
+            dialogQueueService.showLoader(HistoryDetailScreenStrings.SaveLoaderMessage)
             try {
                 entryService.updateNote(entry, note.ifBlank { null })
                 handleIntent(HistoryDetailIntent.DismissNoteEditor)
@@ -192,6 +196,8 @@ class HistoryDetailViewModel @AssistedInject constructor(
                 dialogQueueService.showToast(
                     Toast.Simple(title = null, message = HistoryDetailScreenStrings.NoteSaveError),
                 )
+            } finally {
+                dialogQueueService.dismissLoader()
             }
         }
     }

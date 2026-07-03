@@ -67,6 +67,13 @@ object EmptyGraphDefaults {
     val min = kotlin.math.floor(goalDisplay / step) * step
     return EmptyGraphRange(yMin = min, yMax = min + 3 * step, yStep = step, goalValue = goalDisplay)
   }
+
+  /**
+   * Default weight range for the detail-dashboard empty grid when no goal is set, so the Y axis is
+   * still drawn — matching the BP / Baby empty grids instead of the bare, axis-less grid.
+   */
+  fun weightDefault(isKg: Boolean): EmptyGraphRange =
+    if (isKg) EmptyGraphRange(40.0, 120.0, 20.0) else EmptyGraphRange(100.0, 250.0, 50.0)
 }
 
 /**

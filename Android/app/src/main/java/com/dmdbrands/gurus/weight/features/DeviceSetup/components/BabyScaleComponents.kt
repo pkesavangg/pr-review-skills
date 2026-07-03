@@ -152,6 +152,46 @@ fun PairedSuccessContent(
   }
 }
 
+/**
+ * Final "You're Done!" step — green checkmark confirming setup is complete.
+ */
+@Composable
+fun SetupFinishedContent(
+  modifier: Modifier = Modifier,
+) {
+  Column(
+    modifier = modifier
+      .fillMaxSize()
+      .padding(vertical = spacing.md, horizontal = spacing.sm),
+    horizontalAlignment = Alignment.CenterHorizontally,
+  ) {
+    AppText(
+      text = BabyScaleSetupStrings.SetupComplete.Title,
+      textType = TextType.Title,
+      // TalkBack: step title is the heading.
+      modifier = Modifier
+        .fillMaxWidth()
+        .semantics { heading() },
+    )
+    Spacer(modifier = Modifier.height(spacing.xs))
+    AppText(
+      text = BabyScaleSetupStrings.SetupComplete.Subtitle,
+      textType = TextType.Body,
+      modifier = Modifier.fillMaxWidth(),
+    )
+    Box(
+      modifier = Modifier.fillMaxSize(),
+      contentAlignment = Alignment.Center,
+    ) {
+      Image(
+        painter = painterResource(id = AppIcons.Setup.BabyScalePairedCheck),
+        contentDescription = BabyScaleSetupStrings.accDoneImage,
+        modifier = Modifier.size(DeviceImageDefaults.size(DeviceImageSize.Large)),
+      )
+    }
+  }
+}
+
 /** White card TextField — used for read-only fields (e.g. sex selector) where no keyboard appears. */
 @Composable
 private fun CardTextField(

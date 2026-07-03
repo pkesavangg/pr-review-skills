@@ -3,9 +3,12 @@ package com.dmdbrands.gurus.weight.features.common.strings
 import com.dmdbrands.gurus.weight.domain.enums.ProductType
 
 object ReadingToastStrings {
+    // Figma 30295-24793 / 30295-25144: the arrival card title is the generic "New Reading Received"
+    // for every product (the value + its product color convey the type). Single-baby uses
+    // [titleForBaby].
     fun title(type: ProductType): String = when (type) {
-        ProductType.MY_WEIGHT -> "New Weight Scale Reading Received"
-        ProductType.BLOOD_PRESSURE -> "New BPM Reading Received"
+        ProductType.MY_WEIGHT -> "New Reading Received"
+        ProductType.BLOOD_PRESSURE -> "New Reading Received"
         ProductType.BABY -> "New Reading Received"
     }
 
@@ -35,8 +38,10 @@ object ReadingToastStrings {
     fun moreReadings(count: Int): String = "$count more readings received for this session"
     const val View = "VIEW"
 
-    /** Shown when a baby scale reading arrives but no baby profile exists to save it to. */
+    /** Shown when a baby scale reading arrives but no baby profile exists to save it to (Figma 30295-25144). */
     const val NoBabyTitle = "New Reading Received"
+    // Short per Figma 30295-25144; the longer "…discarded and won't appear in History" copy is a
+    // design annotation/note, not the visible subtitle.
     const val NoBabySubtitle = "Add a baby to save this reading."
     const val AddBaby = "ADD A BABY"
     const val Discard = "DISCARD"

@@ -28,10 +28,14 @@ class BabyProfileRepository @Inject constructor(
             entities.map { it.toDomain() }
         }
 
-    override suspend fun save(profile: BabyProfile) {
+    override suspend fun save(profile: BabyProfile): BabyProfile {
         try {
             val response = babyApi.createBaby(profile.toRequest())
-            babyProfileDao.insert(response.toDomain(profile.accountId).toEntity())
+            // The server assigns its own id (the client-provided id is not sent), so the persisted
+            // profile — not the input — is the source of truth for the baby's id.
+            val persisted = response.toDomain(profile.accountId)
+            babyProfileDao.insert(persisted.toEntity())
+            return persisted
         } catch (e: Exception) {
             AppLog.e(TAG, "Failed to create baby profile", e)
             throw e

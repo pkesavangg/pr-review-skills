@@ -7,6 +7,7 @@ import com.dmdbrands.gurus.weight.core.shared.utilities.logging.AppLog
 import com.dmdbrands.gurus.weight.domain.enums.BabySex
 import com.dmdbrands.gurus.weight.domain.enums.ProductType
 import com.dmdbrands.gurus.weight.domain.model.common.BabyProfile as DomainBabyProfile
+import com.dmdbrands.gurus.weight.domain.model.common.ProductSelection
 import com.dmdbrands.gurus.weight.domain.model.storage.Device
 import com.dmdbrands.gurus.weight.domain.repository.IAccountRepository
 import com.dmdbrands.gurus.weight.domain.services.IBabyProfileService
@@ -67,9 +68,19 @@ constructor(
     return BabyScaleSetupState()
   }
 
-  // Baby setup leaves the active product unchanged (no baby profile is bound at setup time), but
-  // pairing the scale must still add "baby" to productTypes so "My Kids" enables. (MOB-686)
+  // Pairing the scale always adds "baby" to productTypes so "My Kids" enables, even when the
+  // baby-profile step is skipped. (MOB-686)
   override fun productToRegisterAfterSetup(): ProductType = ProductType.BABY
+
+  // The most recently added baby in this session, captured on persist. Drives the post-setup
+  // product switch so the dashboard opens on the newly-added baby. Null when the baby-profile
+  // step was skipped (no baby created), which leaves the active product unchanged.
+  private var lastPersistedBaby: DomainBabyProfile? = null
+
+  // Switch the dashboard to the just-added baby after setup (MOB-422 auto-switch): selects that
+  // baby's product view and turns snapshot mode off. Null (skip flow) leaves the product unchanged.
+  override fun productSelectionAfterSetup(): ProductSelection? =
+    lastPersistedBaby?.let { ProductSelection.Baby(it) }
 
   init {
     lazyInit()
@@ -125,15 +136,22 @@ constructor(
 
   override suspend fun onSetupFinished() {
     AppLog.d(TAG, "Setup finished — saving scale with final nickname: ${state.value.nickname}")
-    val saved = saveScale()
-    if (!saved) {
-      AppLog.w(TAG, "Scale save failed during setup finish")
-    }
-    // After the scale is saved, upload the baby profiles added on BABY_LIST to the server
-    // (POST /v3/baby/, which also auto-adds "baby" to productTypes). Skipped when the user
-    // chose to skip the baby-profile step — see [showSkipBabyProfileDialog]. (MOB-596)
-    if (shouldUploadBabyProfiles) {
-      persistBabyProfiles()
+    // Show a loader while the scale (and any baby profiles) persist so the screen isn't
+    // interactive before the flow navigates back.
+    dialogQueueService.showLoader(BabyScaleSetupStrings.savingLoader)
+    try {
+      val saved = saveScale()
+      if (!saved) {
+        AppLog.w(TAG, "Scale save failed during setup finish")
+      }
+      // After the scale is saved, upload the baby profiles added on BABY_LIST to the server
+      // (POST /v3/baby/, which also auto-adds "baby" to productTypes). Skipped when the user
+      // chose to skip the baby-profile step — see [showSkipBabyProfileDialog]. (MOB-596)
+      if (shouldUploadBabyProfiles) {
+        persistBabyProfiles()
+      }
+    } finally {
+      dialogQueueService.dismissLoader()
     }
   }
 
@@ -155,15 +173,29 @@ constructor(
       return
     }
     var savedCount = 0
+    var lastSaved: DomainBabyProfile? = null
     profiles.forEach { profile ->
       try {
-        babyProfileService.save(profile.toDomain(accountId))
+        // save() returns the persisted profile with the server-assigned id.
+        val saved = babyProfileService.save(profile.toDomain(accountId))
+        lastSaved = saved
         savedCount++
       } catch (e: Exception) {
         AppLog.e(TAG, "Failed to persist baby profile during baby-scale setup: ${profile.id}", e)
       }
     }
     AppLog.d(TAG, "Persisted $savedCount/${profiles.size} baby profiles to server")
+
+    // The last baby added in this setup session becomes the active baby (the one the dashboard
+    // shows) and the active product view — the latter is applied post-setup via
+    // [productSelectionAfterSetup]. Refresh available products so the new baby surfaces without an
+    // app restart (productTypes may already include "baby", in which case the reactive account
+    // observer won't re-emit on its own).
+    lastSaved?.let { saved ->
+      lastPersistedBaby = saved
+      accountRepository.setActiveBabyId(accountId, saved.id)
+      productSelectionManager.loadAvailableProducts(accountId)
+    }
   }
 
   /**
@@ -207,10 +239,10 @@ constructor(
   }
 
   override fun onSkip() {
-    // On the baby-profile steps, skipping confirms via the "Skip Baby Profile?" dialog and
-    // finishes setup (MOB-440). Other steps fall through to the normal next-step advance.
+    // On the baby-profile form, skipping confirms via the "Skip Baby Profile?" dialog and
+    // finishes setup (MOB-440). "You're Paired!" (PAIRED_SUCCESS) has no SKIP button by design,
+    // so all other steps fall through to the normal next-step advance.
     when (state.value.step) {
-      BabyScaleSetupStep.PAIRED_SUCCESS,
       BabyScaleSetupStep.BABY_PROFILE_FORM -> showSkipBabyProfileDialog()
       else -> onNext()
     }
@@ -269,6 +301,25 @@ constructor(
         viewModelScope.launch {
           try {
             AppLog.d(TAG, "Baby scale device found: ${data.deviceName}")
+            // Block re-pairing a scale that's already paired to this account (Figma 33013-205573):
+            // show the "Scale Already Connected" alert and exit instead of adding a duplicate.
+            if (deviceService.scaleExistsByMac(data.macAddress)) {
+              AppLog.w(TAG, "Baby scale already paired for this account: ${data.macAddress}")
+              clearBluetoothTimeout()
+              stopObservingDevices()
+              dialogQueueService.showDialog(
+                DialogModel.Alert(
+                  title = BabyScaleSetupStrings.AlreadyPaired.Title,
+                  message = BabyScaleSetupStrings.AlreadyPaired.Message,
+                  dismissText = BabyScaleSetupStrings.AlreadyPaired.Exit,
+                  onDismiss = {
+                    handleIntent(DeviceSetupIntent.ExitSetup(true))
+                    dialogQueueService.dismissCurrent()
+                  },
+                ),
+              )
+              return@launch
+            }
             discoveredScale = Device(
               device = data,
               deviceType = DeviceSetupType.BabyScale.value,
