@@ -411,11 +411,7 @@ class IntegrationStore: ObservableObject {
     }
 
     private func integrationProviderKey(_ type: IntegrationItemType) -> String {
-        switch type {
-        case .appleHealth: return "apple_health"
-        case .fitbit: return "fitbit"
-        case .myFitnessPal: return "my_fitness_pal"
-        }
+        type.snakeKey
     }
 
     // MARK: - Request New Integration

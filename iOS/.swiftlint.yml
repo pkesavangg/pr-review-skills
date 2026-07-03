@@ -240,7 +240,7 @@ custom_rules:
     message: "Do not put a screen-root id on a container via a bare .accessibilityIdentifier — it propagates onto child controls and overrides their ids (MOB-1132). Use .screenAccessibilityRoot(_:) instead."
     severity: error
     excluded:
-      - "meApp/Core/Extensions/View + Extension.swift"
+      - 'meApp/Core/Extensions/View \+ Extension\.swift'
 
   accessibility_identifier_string_literal:
     name: "accessibilityIdentifier should use an AccessibilityID constant"
@@ -248,4 +248,4 @@ custom_rules:
     message: "Tag controls with an AccessibilityID constant via .appAccessibility(id:) — not an inline string literal — so the app and meAppUITests share one id source (MOB-1133)."
     severity: warning
     excluded:
-      - "meApp/Core/Extensions/View + Extension.swift"
+      - 'meApp/Core/Extensions/View \+ Extension\.swift'
