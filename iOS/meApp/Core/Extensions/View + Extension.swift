@@ -74,3 +74,22 @@ public extension View {
         }
     }
 }
+
+// MARK: - Optional automation identifier
+public extension View {
+    /// Applies an accessibility identifier **only when a non-nil id is provided**.
+    ///
+    /// Shared components (input fields, nav-bar header) accept an *optional* automation id so
+    /// screens that don't opt into automation pass `nil`. Applying
+    /// `.accessibilityIdentifier(id ?? "")` in that case stamps an **empty** identifier onto the
+    /// control, polluting the accessibility tree of every un-opted screen (MOB-1132). Gating the
+    /// modifier means no identifier is applied when `identifier` is `nil`.
+    @ViewBuilder
+    func accessibilityIdentifierIfPresent(_ identifier: String?) -> some View {
+        if let identifier {
+            self.accessibilityIdentifier(identifier)
+        } else {
+            self
+        }
+    }
+}
