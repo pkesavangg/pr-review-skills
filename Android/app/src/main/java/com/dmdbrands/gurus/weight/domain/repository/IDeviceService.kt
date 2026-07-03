@@ -54,6 +54,25 @@ interface IDeviceService {
   )
 
   /**
+   * Passively re-pull paired devices when the app returns to the foreground so that
+   * devices paired on another platform (e.g. iOS) appear without an app restart. (MOB-1201)
+   *
+   * Fire-and-forget and safe to call on every foreground transition: it no-ops when no
+   * account is set, when the network is unavailable, on the initial cold-start foreground
+   * (already synced by the loading flow), and when called again within a short throttle window.
+   */
+  fun onAppForegrounded()
+
+  /**
+   * On-demand re-pull of paired devices, triggered when the user opens the My Devices screen,
+   * so the list always reflects the latest server state (e.g. a scale paired on another phone)
+   * without an app restart. (MOB-1201)
+   *
+   * Fire-and-forget; no-ops when no account is set or the network is unavailable.
+   */
+  fun refreshPairedDevices()
+
+  /**
    * Save a new scale or update an existing one.
    * If the scale is not synced, it will be marked as temporary and synced later.
    *

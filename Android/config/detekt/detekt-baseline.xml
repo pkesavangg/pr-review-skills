@@ -104,7 +104,7 @@
     <ID>LongMethod:DeviceModeSettings.kt$@Composable fun DeviceModeSettingsScreen( isAllBodyMetrics: Boolean, isHeartRateOn: Boolean, onModeSelected: (Boolean) -&gt; Unit, onHeartRateToggle: (Boolean) -&gt; Unit, onBioimpedanceClick: () -&gt; Unit, )</ID>
     <ID>LongMethod:DeviceModeViewModel.kt$DeviceModeViewModel$private fun saveModeSettings()</ID>
     <ID>LongMethod:DevicePairingManager.kt$DevicePairingManager$override fun connectToBluetooth()</ID>
-    <ID>LongMethod:DeviceService.kt$DeviceService$override suspend fun syncDevices(tempDevice: Device?)</ID>
+    <ID>LongMethod:DeviceService.kt$DeviceService$private suspend fun syncDevicesInternal( tempDevice: Device? )</ID>
     <ID>LongMethod:DeviceSetupLoader.kt$@Composable fun DeviceSetupLoader( connectionState: ConnectionState? = null, modifier: Modifier = Modifier, scaleImageSku: String? = null, title: String? = null, subtitle: String? = null, errorCode: String? = null, showIndicationOnly: Boolean = false, setupImage: Int? = null, isGifImage: Boolean = false, indicatorIcon: LoaderIconType = LoaderIconType.Bluetooth, primaryButtonText: String = DeviceSetupStrings.SetupButtons.TryAgain, secondaryButtonText: String = DeviceSetupStrings.SetupButtons.Support, contentButtonText: String? = null, primaryButtonClick: (() -&gt; Unit)? = null, secondaryButtonClick: (() -&gt; Unit)? = null, contentButtonClick: (() -&gt; Unit)? = null )</ID>
     <ID>LongMethod:DeviceUserList.kt$@Composable fun DeviceUserList( modifier: Modifier = Modifier, userList: List&lt;GGBTUser&gt; = emptyList(), title: String? = null, subtitle: String? = null, userFormControl: FormControl&lt;String&gt;? = null, onDeleteUser: (GGBTUser) -&gt; Unit, )</ID>
     <ID>LongMethod:DialogHost.kt$@Composable fun DialogHost()</ID>
