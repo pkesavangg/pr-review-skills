@@ -12,6 +12,11 @@ import SwiftUI
 enum BottomTab: String, CaseIterable {
     case dash, entry, history, settings, appsync
 
+    /// Stable automation id for the tab's bottom-bar item, e.g. `tab_bar_item_dash`.
+    var accessibilityIdentifier: String {
+        AccessibilityID.tabBarItem + "_" + rawValue
+    }
+
     var label: String {
         switch self {
         case .dash: return CommonStrings.dash
