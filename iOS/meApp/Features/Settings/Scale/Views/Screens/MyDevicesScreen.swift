@@ -280,7 +280,7 @@ struct MyDevicesScreen: View {
                                 },
                                 scaleType: scaleType
                             )
-                            .accessibilityIdentifier(AccessibilityID.deviceRow + "_" + (scale.sku ?? "unknown"))
+                            .accessibilityIdentifier(AccessibilityID.deviceRow + "_" + (scale.sku ?? scale.id))
 
                             Divider()
                         }
