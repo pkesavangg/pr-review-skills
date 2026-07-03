@@ -131,7 +131,6 @@ struct HistoryListScreen: View {
                 LazyVStack(spacing: 0) {
                     ForEach(store.months, id: \.id) { month in
                         MonthSummaryItem(month: month)
-                            .accessibilityElement(children: .combine)
                             .accessibilityIdentifier(AccessibilityID.historyMonthRow)
                             .contentShape(Rectangle())
                             .onTapGesture {
