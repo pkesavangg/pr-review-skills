@@ -299,7 +299,7 @@ jobs:
               CODE_SIGNING_ALLOWED=YES \
               ENABLE_USER_SCRIPT_SANDBOXING=NO
       - run:
-          name: Check coverage threshold (72% on testable layers; UI layer excluded)
+          name: Check coverage threshold (80% on testable layers; UI layer excluded)
           working_directory: iOS
           command: |
             xcrun xccov view --report --json TestResults.xcresult > coverage.json
@@ -327,9 +327,10 @@ jobs:
             cov = (covered / executable) if executable else (target['lineCoverage'] if target else d.get('lineCoverage', 0))
             print(f'{cov*100:.1f}')
             ")
-            # Interim floor while unit-test coverage of the testable layers is climbed back toward
-            # 80% (Data/Services and ViewModels are the current gaps — tracked in a follow-up MOB).
-            THRESHOLD=72
+            # 80% is the CLAUDE.md coverage target for the testable layers. Non-UI coverage is
+            # currently ~74.5%; this gate stays red until the gap is closed (Data/Services ~73%
+            # and ViewModels ~57% are the shortfalls), so the shortage is visible and enforced.
+            THRESHOLD=80
             echo "Non-UI line coverage: ${COVERAGE}% (UI layer excluded per CLAUDE.md; threshold ${THRESHOLD}%)"
             if (( $(echo "$COVERAGE < $THRESHOLD" | bc -l) )); then
               echo "ERROR: Coverage ${COVERAGE}% is below the ${THRESHOLD}% threshold."
