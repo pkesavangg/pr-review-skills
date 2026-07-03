@@ -442,19 +442,15 @@ constructor(
       AppLog.d(TAG, "Baby Scale pass — no baby profiles to persist")
       return
     }
-    var savedCount = 0
+    // Any save failure propagates so runDeviceProfile routes to the terminal ERROR
+    // screen rather than silently advancing to the success screen.
     var lastSavedBabyId: String? = null
     babies.forEach { baby ->
-      try {
-        // save() returns the persisted profile with the server-assigned id.
-        val saved = babyProfileService.save(baby.toDomain(account.id))
-        lastSavedBabyId = saved.id
-        savedCount++
-      } catch (e: Exception) {
-        AppLog.e(TAG, "Failed to persist baby profile during signup: ${baby.id}", e)
-      }
+      // save() returns the persisted profile with the server-assigned id.
+      val saved = babyProfileService.save(baby.toDomain(account.id))
+      lastSavedBabyId = saved.id
     }
-    AppLog.d(TAG, "Persisted $savedCount/${babies.size} baby profiles to server")
+    AppLog.d(TAG, "Persisted ${babies.size} baby profiles to server")
 
     // The last baby added during signup becomes the active baby (the one the dashboard
     // shows). The Loading screen reloads available products next, so this surfaces without

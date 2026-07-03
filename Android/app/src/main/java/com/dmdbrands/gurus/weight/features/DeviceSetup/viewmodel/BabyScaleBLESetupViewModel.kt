@@ -239,10 +239,10 @@ constructor(
   }
 
   override fun onSkip() {
-    // On the baby-profile steps, skipping confirms via the "Skip Baby Profile?" dialog and
-    // finishes setup (MOB-440). Other steps fall through to the normal next-step advance.
+    // On the baby-profile form, skipping confirms via the "Skip Baby Profile?" dialog and
+    // finishes setup (MOB-440). "You're Paired!" (PAIRED_SUCCESS) has no SKIP button by design,
+    // so all other steps fall through to the normal next-step advance.
     when (state.value.step) {
-      BabyScaleSetupStep.PAIRED_SUCCESS,
       BabyScaleSetupStep.BABY_PROFILE_FORM -> showSkipBabyProfileDialog()
       else -> onNext()
     }
