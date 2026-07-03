@@ -46,14 +46,19 @@ fun BabyDayHistoryList(
         },
     ) { item ->
         val id = item.entry.id
-        BabyDayHistoryItem(
-            item = item,
-            isMetric = isMetric,
-            isExpanded = expandedIds.contains(id),
-            onToggleExpand = {
-                if (expandedIds.contains(id)) expandedIds.remove(id) else expandedIds.add(id)
-            },
-            onEditEntry = { onEditEntry(item) },
-        )
+        // Wrap the row in Swipeable so it reveals the Delete trailingAction on left-swipe
+        // (mirrors the weight/BP lists). Without this the swipe layer has no content and the
+        // list renders its "No Swipeable content defined" fallback.
+        Swipeable {
+            BabyDayHistoryItem(
+                item = item,
+                isMetric = isMetric,
+                isExpanded = expandedIds.contains(id),
+                onToggleExpand = {
+                    if (expandedIds.contains(id)) expandedIds.remove(id) else expandedIds.add(id)
+                },
+                onEditEntry = { onEditEntry(item) },
+            )
+        }
     }
 }
