@@ -75,6 +75,7 @@ struct HistoryListScreen: View {
               }
           }
           .background(theme.backgroundSecondary)
+          .screenAccessibilityRoot(AccessibilityID.historyScreenRoot)
           .onChange(of: tabViewModel.selectedTab) {
               guard tabViewModel.selectedTab != lastTabCheck else { return }
               lastTabCheck = tabViewModel.selectedTab
@@ -128,6 +129,7 @@ struct HistoryListScreen: View {
                 LazyVStack(spacing: 0) {
                     ForEach(store.months, id: \.id) { month in
                         MonthSummaryItem(month: month)
+                            .accessibilityIdentifier(AccessibilityID.historyMonthRow)
                             .contentShape(Rectangle())
                             .onTapGesture {
                                 guard !isNavigating else { return }

@@ -42,6 +42,7 @@ struct WeightlessScreen: View {
                         settingsStore.saveWeightless(router: router)
                         withAnimation { hideKeyboard() }
                     }
+                    .appAccessibility(id: AccessibilityID.weightlessSaveButton)
                 },
                 onLeadingTap: { settingsStore.handleWeightlessExit(router: router) },
                 onTrailingTap: {},
@@ -63,6 +64,7 @@ struct WeightlessScreen: View {
                             isOn: $settingsStore.weightlessForm.isOn.value,
                             text: "\(strings.modeLabel): \(settingsStore.weightlessForm.isOn.value ? commonLang.on : commonLang.off)"
                         )
+                        .appAccessibility(id: AccessibilityID.weightlessToggle)
                     }
                     .padding(.vertical, .spacingSM)
 
@@ -84,6 +86,7 @@ struct WeightlessScreen: View {
                         focusedField = nil
                     }
                     .disabled(!settingsStore.weightlessForm.isOn.value)
+                    .appAccessibility(id: AccessibilityID.weightlessField)
                 }
                 .padding(.horizontal, .spacingSM)
                 .padding(.top, .spacingMD)
@@ -128,6 +131,7 @@ struct WeightlessScreen: View {
             }
         }
         .navigationBarHidden(true)
+        .screenAccessibilityRoot(AccessibilityID.weightlessScreenRoot)
     }
 }
 
