@@ -59,7 +59,7 @@ struct NavbarHeaderView<Leading: View, Trailing: View>: View {
                         leadingContent()
                             .foregroundColor(theme.actionPrimary)
                     })
-                    .accessibilityIdentifier(leadingAccessibilityID ?? "")
+                    .accessibilityIdentifierIfPresent(leadingAccessibilityID)
                 }
 
                 Spacer()
