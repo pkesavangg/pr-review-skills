@@ -29,14 +29,12 @@ struct HistoryListScreen: View {
       RoutingView(stack: $router.stack) {
           VStack(spacing: 0) {
               NavbarHeaderView<EmptyView, AnyView>(
-                  title: productTypeStore.availableItems.count > 1
-                      ? productTypeStore.selectedItem.historyTitle
-                      : HistoryListStrings.title,
-                  // Color the title per active product (weight/BP/baby) when the selector is
-                  // shown so a baby name uses the baby accent, not the weight-scale color.
-                  titleColor: productTypeStore.availableItems.count > 1
-                      ? theme.productAccentColor(for: productTypeStore.selectedItem.entryType)
-                      : theme.brandWgPrimary,
+                  // Per Me.Health 2.0: always show the product-specific history title
+                  // (Weight History / Blood Pressure / baby name), tinted by product
+                  // (weight → blue, BP → green, baby → purple). The chevron/selector
+                  // only appears when more than one product is available to switch between.
+                  title: productTypeStore.selectedItem.historyTitle,
+                  titleColor: theme.productAccentColor(for: productTypeStore.selectedItem.entryType),
                   trailingContent: {
                       AnyView(
                           Button {

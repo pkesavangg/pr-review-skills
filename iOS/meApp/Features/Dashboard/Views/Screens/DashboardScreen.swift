@@ -91,7 +91,11 @@ struct DashboardScreen: View {
                 isInProductDashboard = false
             }
         }
-        .ignoresSafeArea(.all, edges: canShowSnapshotOverview ? .bottom : .all)
+        // Snapshot overview: full-bleed only at the bottom so the WG logo sits below the
+        // status bar. Product dashboard: keep horizontal full-bleed for the graph but respect
+        // the top safe area, otherwise navbarHeader() (the product-tinted title) slides under
+        // the status bar/notch and the title is hidden (MOB-1377).
+        .ignoresSafeArea(.all, edges: canShowSnapshotOverview ? .bottom : [.horizontal, .bottom])
         .background(theme.backgroundSecondary)
         .sheet(item: $selectedEntry) { entry in
             RefetchedEntryWrapper(entryId: entry.id, selectedMetric: selectedMetric ?? .bmi, dashboardStore: store)
@@ -203,7 +207,8 @@ struct DashboardScreen: View {
             onTitleTap: showProductSelector ? {
                 isProductTypeSelectorPresented = true
             } : nil,
-            canShowBorder: false,
+            // Per mock: a bottom border/divider sits under the product title header.
+            canShowBorder: showTitle,
             canShowTitleChevron: showProductSelector
         )
         .sheet(isPresented: $isProductTypeSelectorPresented) {
