@@ -13,6 +13,17 @@ enum IntegrationItemType: CaseIterable {
     case fitbit
     case myFitnessPal
 
+    /// snake_case provider key used for accessibility identifiers and logging.
+    /// Must stay byte-identical to the Android `Modifier.testTag` suffix so a
+    /// single Appium selector resolves on both platforms (SharedAccessibility rule 3).
+    var snakeKey: String {
+        switch self {
+        case .appleHealth:  return "apple_health"
+        case .fitbit:       return "fitbit"
+        case .myFitnessPal: return "my_fitness_pal"
+        }
+    }
+
     /// Localized display name for UI.
     var displayName: String {
         switch self {
