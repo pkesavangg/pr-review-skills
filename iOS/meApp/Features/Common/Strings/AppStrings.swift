@@ -338,6 +338,15 @@ struct InputFieldLabels {
     static let babyBirthLength = "birth length"
     static let babyBirthWeight = "birth weight"
     static let biologicalSex = "Biological sex"
+
+    /// VoiceOver accessibility labels for input-field controls (distinct from the field
+    /// placeholder labels above). Centralised so shared input components don't inline raw
+    /// English string literals (MOB-1132).
+    struct A11y {
+        static let clearButton = "Clear"
+        static let showPassword = "Show password"
+        static let hidePassword = "Hide password"
+    }
 }
 
 // Constants for Alert strings used in the app
