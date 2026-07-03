@@ -56,9 +56,16 @@ extension AccessibilityID {
     static let deviceRow = "device_row" // suffixed with the device SKU per row
 
     // MARK: - Goal Setting Screen
+    static let goalSettingScreenRoot = "goal_setting_screen_root"
     static let goalWeightInput = "goal_weight_input"
     static let startingWeightInput = "starting_weight_input"
     static let goalSaveButton = "goal_save_button"
     static let goalMaintainTab = "goal_maintain_tab"
     static let goalLoseGainTab = "goal_lose_gain_tab"
+
+    // MARK: - Weightless Screen
+    static let weightlessScreenRoot = "weightless_screen_root"
+    static let weightlessToggle = "weightless_toggle"
+    static let weightlessSaveButton = "weightless_save_button"
+    static let weightlessField = "weightless_field"
 }

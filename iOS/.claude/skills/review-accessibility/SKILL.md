@@ -57,11 +57,22 @@ For each view file, read it and check:
 
 ---
 
-### 4 — Check accessibilityIdentifier for UI Test Targeting
+### 4 — Check accessibilityIdentifier for UI-test automation (MOB-1131 convention)
 
-If the view is tested (or will be tested) by `meAppUITests`:
-- Confirm interactive elements use `.accessibilityIdentifier("...")` so tests can target them
-- Flag any interactive elements in tested views that lack identifiers
+Automation locates controls by `accessibilityIdentifier`. Enforce the project convention
+(full guide: [`iOS/docs/accessibility-identifiers-guide.md`](../../docs/accessibility-identifiers-guide.md)):
+
+- **Every new/changed interactive control** — `Button`, `TextField`/`SecureField`, `Toggle`,
+  tappable row (`.onTapGesture`), tab item — must carry a stable id via **`.appAccessibility(id:)`**,
+  from an `AccessibilityID` constant declared in `SharedAccessibility/AccessibilityID+<Module>.swift`
+  (snake_case, mirrored to the Android `Modifier.testTag`). Flag a control that has **no id**, or
+  one that uses an **inline string literal** instead of an `AccessibilityID` constant.
+- **Screen / container roots** must use **`.screenAccessibilityRoot(_:)`**, never a bare
+  `.accessibilityIdentifier(...)` on a body/root container — a bare id there propagates onto child
+  controls and overrides their ids (MOB-1132; the SwiftLint rule `accessibility_id_on_screen_root`
+  also blocks it). Flag a bare screen-root id on a container as a **FAIL**.
+- Ids must live in the module's `SharedAccessibility/AccessibilityID+<Module>.swift` (single source
+  compiled into both `meApp` and `meAppUITests`) — not a per-test duplicate.
 
 ---
 
@@ -102,7 +113,7 @@ If the caller passes `--fix` or this skill is invoked after a review that found 
 
 1. For each missing `.accessibilityLabel` — add the label using the element's visible text or a descriptive string
 2. For each missing `.accessibilityHidden(true)` on decorative elements — add it
-3. For each missing `.accessibilityIdentifier` on interactive elements in UI-tested views — add the identifier and register it in `AccessibilityIdentifiers.swift`
+3. For each missing id on an interactive control — add `.appAccessibility(id: AccessibilityID.…)` and declare the constant in the module's `SharedAccessibility/AccessibilityID+<Module>.swift`. For a screen-root container, use `.screenAccessibilityRoot(_:)` instead of a bare `.accessibilityIdentifier(...)`.
 4. For each fixed font size — replace with the nearest semantic font equivalent
 5. For each fixed-height text frame — change to `minHeight`
 

@@ -129,6 +129,7 @@ struct GoalSettingScreen: View {
             .scrollDismissesKeyboard(.interactively)
         }
         .background(theme.backgroundSecondary.ignoresSafeArea())
+        .screenAccessibilityRoot(AccessibilityID.goalSettingScreenRoot)
         .onChange(of: focusedField) { oldValue, newValue in
             // When focus changes away from a field, mark it as touched and validate
             if let oldField = oldValue, oldField != newValue {
