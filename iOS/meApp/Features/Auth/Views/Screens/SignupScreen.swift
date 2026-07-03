@@ -203,6 +203,7 @@ struct SignupScreen: View {
                         withAnimation { signupStore.moveToNextStep() }
                     }
                     .padding(.trailing, .spacingSM)
+                    .appAccessibility(id: AccessibilityID.signupAddDeviceButton)
                 }
                 .padding(.vertical, .spacingSM)
 
