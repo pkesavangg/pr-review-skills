@@ -17,7 +17,6 @@ struct GridUIKitInteractionManagerTests {
         let collectionView = CustomCollectionView(frame: CGRect(x: 0, y: 0, width: 200, height: 120), collectionViewLayout: layout)
 
         collectionView.backgroundColor = .red
-        collectionView.hideDragPlatter = false
         collectionView.clipsToBounds = true
         collectionView.layer.masksToBounds = true
         collectionView.allowsSelection = true
@@ -29,7 +28,6 @@ struct GridUIKitInteractionManagerTests {
         GridUIKitInteractionManager.applyCommonCollectionViewConfiguration(collectionView)
 
         #expect(collectionView.backgroundColor == .clear)
-        #expect(collectionView.hideDragPlatter == true)
         #expect(collectionView.reorderingCadence == .immediate)
         #expect(collectionView.clipsToBounds == false)
         #expect(collectionView.layer.masksToBounds == false)

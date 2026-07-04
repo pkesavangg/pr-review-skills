@@ -104,13 +104,17 @@ enum AccountTestFixtures {
         firstName: String = "First",
         isLoggedIn: Bool = true,
         isActive: Bool = false,
-        isSynced: Bool = true
+        isSynced: Bool = true,
+        productTypes: [String]? = nil
     ) -> Account {
         let account = Account(from: makeAccountDTO(id: id, email: email, firstName: firstName))
         account.isLoggedIn = isLoggedIn
         account.isActiveAccount = isActive
         account.isSynced = isSynced
         account.expiresAt = "2099-01-01T00:00:00Z"
+        if let productTypes {
+            account.productTypes = productTypes
+        }
         return account
     }
 
