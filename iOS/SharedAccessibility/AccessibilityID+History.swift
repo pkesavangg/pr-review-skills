@@ -10,4 +10,8 @@ extension AccessibilityID {
     static let historyMonthRow = "history_month_row"
     static let historyDeleteButton = "history_delete_button"
     static let historyDownloadButton = "history_download_button"
+
+    // MARK: - Empty-state CTAs (MOB-1220)
+    static let emptyStatePrimaryButton = "empty_state_primary_button"
+    static let emptyStateSecondaryButton = "empty_state_secondary_button"
 }
