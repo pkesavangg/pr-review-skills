@@ -69,7 +69,7 @@ object LoaderDefaults {
 
     val baseDotConfig: LoaderConfig.Dot
         @Composable get() = LoaderConfig.Dot(
-            color = Color(0xFF2C2827),
+            color = MeTheme.colorScheme.textHeading,
             minRadius = 6f,
             maxRadius = 12f,
             durationMillis = 700,
@@ -87,7 +87,7 @@ object LoaderDefaults {
 
     val baseCircularConfig: LoaderConfig.Circular
         @Composable get() = LoaderConfig.Circular(
-            color = Color(0xFF6200EE), // Or from theme
+            color = MeTheme.colorScheme.textHeading,
             strokeWidth = 2.dp,
             size = 22f,
         )
