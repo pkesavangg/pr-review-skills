@@ -176,9 +176,13 @@ extension DashboardGridEditingManagerTests {
         store.gridEditingManager.updateGoalCardPosition(2)
         store.gridEditingManager.toggleStreakRemoval(DashboardStrings.longestStreak)
 
-        await DashboardTestFixtures.waitUntil {
+        // Same fire-and-forget race as saveChangesPersistsEditedGridState: give the removal Task
+        // a generous ceiling (poll exits as soon as it lands) so a starved CI main actor can't
+        // let it land AFTER cancelEdit and corrupt the restored state.
+        await DashboardTestFixtures.waitUntil(timeoutNanoseconds: 30_000_000_000) {
             store.state.ui.removedStreaks.contains(DashboardStrings.longestStreak)
         }
+        #expect(store.state.ui.removedStreaks.contains(DashboardStrings.longestStreak))
 
         store.cancelEdit()
 
@@ -213,9 +217,15 @@ extension DashboardGridEditingManagerTests {
         store.state.ui.streakGridOrder = store.streakManager.state.streakItems.map(\.id.uuidString)
         store.gridEditingManager.toggleStreakRemoval(DashboardStrings.longestStreak)
 
-        await DashboardTestFixtures.waitUntil {
+        // toggleStreakRemoval applies its removal via a fire-and-forget Task. The removal MUST
+        // land before updateGoalCardPosition(1): with removedStreaks still empty, that call
+        // rounds the position down to the column grid ((1 / 2) * 2 == 0), the goal card saves at
+        // index 0, and the progress-metrics assertion below fails with a reordered array — which
+        // is exactly how this test failed on the congested CI main actor with the default 1s wait.
+        await DashboardTestFixtures.waitUntil(timeoutNanoseconds: 30_000_000_000) {
             store.state.ui.removedStreaks.contains(DashboardStrings.longestStreak)
         }
+        #expect(store.state.ui.removedStreaks.contains(DashboardStrings.longestStreak))
 
         store.gridEditingManager.updateGoalCardPosition(1)
         store.lifecycleManager.saveChanges()
