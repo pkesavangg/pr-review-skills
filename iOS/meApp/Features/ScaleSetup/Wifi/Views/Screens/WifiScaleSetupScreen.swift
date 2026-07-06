@@ -54,7 +54,7 @@ struct WifiScaleSetupScreen: View {
             
             // Footer Buttons
             footerButtons
-                .padding(.horizontal, .spacingSM)
+                .padding(.spacingSM)
         }
         .environmentObject(setupStore)
         .onAppear {
