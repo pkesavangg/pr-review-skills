@@ -67,9 +67,10 @@ sealed class LoaderConfig(
 
 object LoaderDefaults {
 
+    // In-progress loaders use the WG brand blue (Figma "Loading": wg-primary #1565C0). (MOB-1259)
     val baseDotConfig: LoaderConfig.Dot
         @Composable get() = LoaderConfig.Dot(
-            color = MeTheme.colorScheme.textHeading,
+            color = MeTheme.colorScheme.wgPrimary,
             minRadius = 6f,
             maxRadius = 12f,
             durationMillis = 700,
@@ -77,7 +78,7 @@ object LoaderDefaults {
 
     val baseDashedConfig: LoaderConfig.Dashed
         @Composable get() = LoaderConfig.Dashed(
-            color = MeTheme.colorScheme.textHeading, // Replace with MeTheme.colorScheme.textHeading if needed
+            color = MeTheme.colorScheme.wgPrimary,
             size = 22.dp,
             strokeWidth = 4f,
             dashLength = 10f,
@@ -87,7 +88,7 @@ object LoaderDefaults {
 
     val baseCircularConfig: LoaderConfig.Circular
         @Composable get() = LoaderConfig.Circular(
-            color = MeTheme.colorScheme.textHeading,
+            color = MeTheme.colorScheme.wgPrimary,
             strokeWidth = 2.dp,
             size = 22f,
         )
