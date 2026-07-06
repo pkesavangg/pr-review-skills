@@ -15,7 +15,7 @@ struct GoalStepView: View {
     @Environment(\.appTheme) private var theme
     @State private var selectedSegment: GoalTypeSegment = .loseGain
     @State private var focusedField: FocusField?
-    
+
     let goalStepLang = SignupStrings.GoalStep.self
     let labels = InputFieldLabels.self
 
@@ -34,7 +34,7 @@ struct GoalStepView: View {
                     // Trigger validation to clear form-level errors when switching modes
                     signupStore.signupForm.validate()
                 }
-                
+
                 VStack(spacing: 4) {
                     // Current Weight Input
                     if signupStore.signupForm.goalType.value != GoalType.maintain.rawValue {
@@ -68,7 +68,7 @@ struct GoalStepView: View {
                             }
                         }
                     }
-                    
+
                     MetricInputField(
                         config: TextInputConfig(
                             label: labels.goalWeight,
@@ -104,7 +104,8 @@ struct GoalStepView: View {
                 UnitSelectionToggle(
                     imperialTitle: goalStepLang.imperialUnit,
                     metricTitle: goalStepLang.metricUnit,
-                    isMetric: $signupStore.signupForm.useMetric.value
+                    isMetric: $signupStore.signupForm.useMetric.value,
+                    accessibilityIdentifier: AccessibilityID.signupGoalUnitToggle
                 )
                 .padding(.top, .spacingXS)
             }
