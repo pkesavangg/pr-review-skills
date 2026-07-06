@@ -33,7 +33,10 @@ object AppIconButtonDefaults {
     ): Color =
         when (type) {
             AppIconButtonType.Primary ->
-                if (enabled) MeTheme.colorScheme.primaryAction else MeTheme.colorScheme.primaryBackgroundDisabled
+                // Disabled tint is the greyed action colour (#D0CCCA) — matching the enabled
+                // primaryAction and the other types' X→XDisabled pattern. Was primaryBackgroundDisabled
+                // (50% white), which rendered a disabled primary icon as faint white. (MOB-1251)
+                if (enabled) MeTheme.colorScheme.primaryAction else MeTheme.colorScheme.primaryActionDisabled
 
             AppIconButtonType.Secondary ->
                 if (enabled) MeTheme.colorScheme.inverseAction else MeTheme.colorScheme.inverseActionDisabled

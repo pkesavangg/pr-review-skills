@@ -1,5 +1,6 @@
 package com.dmdbrands.gurus.weight.features.manualEntry.helper
 
+import com.dmdbrands.gurus.weight.core.shared.utilities.ConversionTools
 import com.dmdbrands.gurus.weight.data.storage.db.entity.entry.BodyScaleEntryEntity
 import com.dmdbrands.gurus.weight.data.storage.db.entity.entry.BodyScaleEntryMetricEntity
 import com.dmdbrands.gurus.weight.data.storage.db.entity.entry.BpmEntryEntity
@@ -516,7 +517,7 @@ class EntryHelperTest {
 
     @Test
     fun `GGScaleEntry toScaleEntry maps kg unit`() {
-        val result = with(EntryHelper) { ggScaleEntry(unit = "kg").toScaleEntry(ACCOUNT_ID, "dev-1") }
+        val result = with(EntryHelper) { ggScaleEntry(unit = "kg").toScaleEntry(ACCOUNT_ID, "dev-1", isMetric = true) }
         assertThat(result.entry.unit).isEqualTo(WeightUnit.KG)
         assertThat(result.entry.deviceId).isEqualTo("dev-1")
         assertThat(result.scale.scaleEntryMetric).isNotNull()
@@ -524,9 +525,14 @@ class EntryHelperTest {
 
     @Test
     fun `GGScaleEntry toScaleEntry maps lb unit and a3 weight`() {
-        val resultR4 = with(EntryHelper) { ggScaleEntry(unit = "lb", protocol = "A3").toScaleEntry(ACCOUNT_ID, "dev-1") }
+        val resultR4 = with(EntryHelper) {
+          ggScaleEntry(unit = "lb", protocol = "A3").toScaleEntry(ACCOUNT_ID, "dev-1", isMetric = false)
+        }
         assertThat(resultR4.entry.unit).isEqualTo(WeightUnit.LB)
         assertThat(resultR4.entry.deviceType).isEqualTo("A3")
+        // A3 kg (68.0) → scale's lb formula → convertKgToStoredA3(68.0), matching the scale display.
+        assertThat(resultR4.scale.scaleEntry.weight)
+          .isEqualTo(ConversionTools.convertKgToStoredA3(68.0))
     }
 
     @Test

@@ -24,8 +24,6 @@ import com.dmdbrands.gurus.weight.theme.MeTheme.colorScheme
 import com.dmdbrands.gurus.weight.theme.MeTheme.spacing
 import com.dmdbrands.gurus.weight.theme.MeTheme.typography
 
-private val BabyPurple = Color(0xFF8841A4)
-
 /**
  * Bottom sheet showing available product selections.
  * Each item is a [ProductSelection] — MyWeight, BloodPressure, or Baby(profile).
@@ -111,8 +109,8 @@ private fun ProductSelection.displayName(): String = when (this) {
 private fun ProductSelection.displayColor(): Color = when (this) {
     is ProductSelection.MyWeight -> colorScheme.iconPrimary
     is ProductSelection.BloodPressure -> colorScheme.success
-    is ProductSelection.Baby -> BabyPurple
-    is ProductSelection.BabyScale -> BabyPurple
+    is ProductSelection.Baby -> colorScheme.baby
+    is ProductSelection.BabyScale -> colorScheme.baby
 }
 
 @PreviewTheme
@@ -122,19 +120,19 @@ fun ProductSelectionBottomSheetPreview() {
         Column {
             ProductRow(
                 label = "My Weight & Body Comp",
-                color = Color(0xFF1565C0),
+                color = colorScheme.iconPrimary,
                 isSelected = true,
                 onClick = {},
             )
             ProductRow(
                 label = "My Blood Pressure",
-                color = Color(0xFF458239),
+                color = colorScheme.success,
                 isSelected = false,
                 onClick = {},
             )
             ProductRow(
                 label = "Tammy Thompson",
-                color = BabyPurple,
+                color = colorScheme.baby,
                 isSelected = false,
                 onClick = {},
             )
