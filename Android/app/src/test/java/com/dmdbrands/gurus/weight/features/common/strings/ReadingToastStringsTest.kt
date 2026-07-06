@@ -53,6 +53,8 @@ class ReadingToastStringsTest {
   @Test
   fun `no-baby copy matches the MOB-426 design`() {
     assertThat(ReadingToastStrings.NoBabyTitle).isEqualTo("New Reading Received")
+    // Short per Figma 30295-25144; the longer "…discarded and won't appear in History" copy is a
+    // design annotation/note, not the visible subtitle.
     assertThat(ReadingToastStrings.NoBabySubtitle).isEqualTo("Add a baby to save this reading.")
     assertThat(ReadingToastStrings.AddBaby).isEqualTo("ADD A BABY")
     assertThat(ReadingToastStrings.Discard).isEqualTo("DISCARD")
