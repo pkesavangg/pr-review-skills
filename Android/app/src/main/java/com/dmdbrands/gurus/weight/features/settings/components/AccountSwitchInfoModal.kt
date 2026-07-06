@@ -12,7 +12,6 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.dmdbrands.gurus.weight.features.common.components.AppButton
@@ -56,8 +55,10 @@ fun AccountSwitchInfoModal(
                         .padding(start = spacing.md)
                         .size(24.dp),
                       contentDescription = AppPopupStrings.AccountSwitchInfo.CloseContentDescription,
+                      // Tint the close-X with the primary icon token (neutral #2C2827) instead of
+                      // letting the drawable's baked-in blue show through. (MOB-1263)
                       type = AppIconType.Primary,
-                      tintColor = Color.Unspecified,
+                      tintColor = MeTheme.colorScheme.iconPrimary,
                       onClick = onClose,
                     )
                   }
