@@ -144,26 +144,26 @@ Keep `HTTPClient`/`EntryRepositoryAPI` on `@MainActor`. Decode stays on main, bu
 
 ## 6. Decisions needed (pick one per item — edit this file inline)
 
-**Decision 1 — approach**
-- [ ] **A. Full off-main pipeline** (Core + network/decode isolation, two PRs) ← recommended
-- [ ] **B. Core only** (merge/persist/reads off-main; decode stays on main, AC note)
+**Decision 1 — approach** · ✅ decided 2026-07-06
+- [x] **A. Full off-main pipeline** (Core + network/decode isolation) — **in a SINGLE PR** (Kesavan's call, overriding the two-PR suggestion)
+- [ ] ~~B. Core only~~
 
-**Decision 2 — where the background writer lives**
-- [ ] **Extend `SwiftDataWorker`** with entry write/merge APIs ← recommended (it's the ticket AC's named home; container-injected, tested)
-- [ ] **New dedicated `@ModelActor` (e.g. `EntrySyncWorker`)** keeping `SwiftDataWorker` read-only
+**Decision 2 — where the background writer lives** · ✅ decided 2026-07-06
+- [x] **Extend `SwiftDataWorker`** with entry write/merge APIs
+- [ ] ~~New dedicated `@ModelActor`~~
 
-**Decision 3 — the temporary capped-cursor patch + branch housekeeping**
-Current state: branch `MOB-1430-…` = develop + 1 unrelated commit; the capped-cursor edits + `CappedCursorSyncTests.swift` are uncommitted on top.
-- [ ] **Discard the temp patch**; MOB-1433 branch starts clean from `develop`, reimplementing refusal-detection + uncapped fallback properly ← recommended (avoids shipping the 1500-entry truncation)
-- [ ] **Keep the temp patch as an interim commit** (its own PR) and layer MOB-1433 on top
+**Decision 3 — the temporary capped-cursor patch + branch housekeeping** · ✅ decided 2026-07-06
+- [x] **Leave the temp patch alone — Kesavan will remove it himself later.** Implementation must NOT build on it: design for the production behavior where sync mode returns **all entries in one response**. (The uncapped cursor fallback from §4 item 3 is dropped from scope; can be layered later if the server's 5000-row guard materializes.)
 
-**Decision 4 — HealthKit forwarding on FIRST full-history sync**
-- [ ] **Forward everything, batched off main** (full parity with today's intent; 10k historical samples pushed to Apple Health once)
-- [ ] **Skip historical backfill on initial sync** — forward only entries newer than the integration's enable date / last-forwarded marker; incremental syncs forward normally ← recommended (avoids flooding Health with decade-old rows; matches MA-3886's actual goal of catching *new* Wi-Fi entries)
+**Decision 4 — HealthKit forwarding on FIRST full-history sync** · ✅ decided 2026-07-06
+- [x] **Skip historical backfill on initial sync** — forward only entries newer than the integration's enable date / last-forwarded marker; incremental syncs forward normally
+- [ ] ~~Forward everything, batched off main~~
 
-**Decision 5 — scope of the re-open fixes in this ticket**
-- [ ] **Include** index + `fetchLimit` + off-main hot reads + `lastActiveTime` re-init fix (all evidence-linked to the stutter symptom) ← recommended
-- [ ] **Split** the re-open/read-path work into a follow-up MOB task under MOB-516, keep MOB-1433 sync-only
+**Decision 5 — scope of the re-open fixes in this ticket** · ✅ decided 2026-07-06
+- [x] **Include** index + `fetchLimit` + off-main hot reads + `lastActiveTime` re-init fix (all evidence-linked to the stutter symptom)
+- [ ] ~~Split into a follow-up task~~
+
+> **All decisions closed.** Implementation blueprint: `iOS/docs/MOB-1433-implementation-plan.md` (self-contained handoff — a fresh chat can execute Phase 2 from that file alone).
 
 ---
 
