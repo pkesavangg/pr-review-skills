@@ -370,6 +370,7 @@ struct EntryServiceTests {
         integration: MockIntegrationService? = nil,
         goalAlert: MockGoalAlertService? = nil,
         logger: MockLoggerService? = nil,
+        worker: MockEntryWorker? = nil,
         activeAccount: AccountSnapshot? = AccountTestFixtures.makeAccountSnapshot(
             id: "acct-1",
             email: "entry@example.com",
@@ -408,7 +409,8 @@ struct EntryServiceTests {
                 accountService: account,
                 localRepo: repo ?? MockEntryRepository(),
                 localKVRepo: syncStore ?? MockEntrySyncStore(),
-                remoteRepo: remote ?? MockEntryRepositoryAPI()
+                remoteRepo: remote ?? MockEntryRepositoryAPI(),
+                worker: worker ?? MockEntryWorker()
             )
             // Lock the @Injector-resolved collaborators to the test doubles directly, bypassing the
             // global DependencyContainer. In the full serialized suite, leaked async work from the

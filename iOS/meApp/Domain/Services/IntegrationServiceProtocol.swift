@@ -55,6 +55,13 @@ protocol IntegrationServiceProtocol {
     /// Deletes an entry from the integrated health service (e.g., HealthKit) if integration is active.
     /// - Parameter entry: The entry to delete from the health service.
     func deleteEntry(_ entry: Entry) async throws
+
+    /// Deletes an entry from the integrated health service using an EntryNotification.
+    /// Use this overload when the local row is already gone — e.g. the batched
+    /// remote-sync merge deletes rows off the main actor and hands back
+    /// notifications extracted before deletion (MOB-1433).
+    /// - Parameter notification: The Sendable notification carrying the entry data.
+    func deleteEntry(notification: EntryNotification) async throws
     
     /// Clears all integration data if integration is active (used during account deletion).
     func clearIntegration() async throws

@@ -48,6 +48,7 @@ final class MockHealthKitStoreIntegrationService: IntegrationServiceProtocol {
     func syncNewEntry(_ entry: Entry) async throws {}
     func syncNewEntry(notification: EntryNotification) async throws {}
     func deleteEntry(_ entry: Entry) async throws {}
+    func deleteEntry(notification: EntryNotification) async throws {}
     func clearIntegration() async throws {}
     func requestNewIntegration(text: String) async throws {}
 

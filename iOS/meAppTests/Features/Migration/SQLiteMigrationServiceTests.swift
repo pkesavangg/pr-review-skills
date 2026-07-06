@@ -35,7 +35,7 @@ struct SQLiteMigrationServiceTests {
     func migrateAllUsersEntryData_singleUser_migratesEntries() async throws {
         let bundle = makeSUT()
         let sut = bundle.sut
-        let repo = bundle.repo
+        let worker = bundle.worker
         let dbPath = bundle.dbPath
         SQLiteTestHelper.createDatabase(at: dbPath, entries: [
             .init(userId: "user-A", timestamp: "2026-01-01T08:00:00Z", opType: "create", weight: 1800),
@@ -46,14 +46,14 @@ struct SQLiteMigrationServiceTests {
         let result = try await sut.migrateAllUsersEntryData()
 
         #expect(result["user-A"] == 2)
-        #expect(repo.saveEntryCalls == 2)
+        #expect(worker.insertedRows.count == 2)
     }
 
     @Test("migrateAllUsersEntryData migrates entries for multiple users")
     func migrateAllUsersEntryData_multipleUsers_migratesAllEntries() async throws {
         let bundle = makeSUT()
         let sut = bundle.sut
-        let repo = bundle.repo
+        let worker = bundle.worker
         let dbPath = bundle.dbPath
         SQLiteTestHelper.createDatabase(at: dbPath, entries: [
             .init(userId: "user-A", timestamp: "2026-01-01T08:00:00Z", opType: "create", weight: 1800),
@@ -66,14 +66,14 @@ struct SQLiteMigrationServiceTests {
 
         #expect(result["user-A"] == 1)
         #expect(result["user-B"] == 2)
-        #expect(repo.saveEntryCalls == 3)
+        #expect(worker.insertedRows.count == 3)
     }
 
     @Test("migrateAllUsersEntryData preserves weight and scale data in saved entries")
     func migrateAllUsersEntryData_withScaleData_preservesValues() async throws {
         let bundle = makeSUT()
         let sut = bundle.sut
-        let repo = bundle.repo
+        let worker = bundle.worker
         let dbPath = bundle.dbPath
         SQLiteTestHelper.createDatabase(at: dbPath, entries: [
             .init(
@@ -92,7 +92,7 @@ struct SQLiteMigrationServiceTests {
 
         _ = try await sut.migrateAllUsersEntryData()
 
-        let saved = repo.lastSavedEntry
+        let saved = worker.insertedRows.last
         #expect(saved?.scaleEntry?.weight == 1800)
         #expect(saved?.scaleEntry?.bodyFat == 250)
         #expect(saved?.scaleEntry?.muscleMass == 820)
@@ -105,7 +105,7 @@ struct SQLiteMigrationServiceTests {
     func migrateAllUsersEntryData_withMetrics_preservesValues() async throws {
         let bundle = makeSUT()
         let sut = bundle.sut
-        let repo = bundle.repo
+        let worker = bundle.worker
         let dbPath = bundle.dbPath
         SQLiteTestHelper.createDatabase(
             at: dbPath,
@@ -131,7 +131,7 @@ struct SQLiteMigrationServiceTests {
 
         _ = try await sut.migrateAllUsersEntryData()
 
-        let saved = repo.lastSavedEntry
+        let saved = worker.insertedRows.last
         #expect(saved?.scaleEntryMetric?.bmr == 1600)
         #expect(saved?.scaleEntryMetric?.metabolicAge == 35)
         #expect(saved?.scaleEntryMetric?.proteinPercent == 190)
@@ -146,7 +146,7 @@ struct SQLiteMigrationServiceTests {
     func migrateAllUsersEntryData_weightZero_noScaleEntry() async throws {
         let bundle = makeSUT()
         let sut = bundle.sut
-        let repo = bundle.repo
+        let worker = bundle.worker
         let dbPath = bundle.dbPath
         SQLiteTestHelper.createDatabase(at: dbPath, entries: [
             .init(userId: "user-A", timestamp: "2026-01-01T08:00:00Z", opType: "delete", weight: 0)
@@ -155,7 +155,7 @@ struct SQLiteMigrationServiceTests {
 
         _ = try await sut.migrateAllUsersEntryData()
 
-        let saved = repo.lastSavedEntry
+        let saved = worker.insertedRows.last
         #expect(saved != nil)
         #expect(saved?.scaleEntry == nil)
         #expect(saved?.operationType == "delete")
@@ -165,7 +165,7 @@ struct SQLiteMigrationServiceTests {
     func migrateAllUsersEntryData_noMetrics_noScaleEntryMetric() async throws {
         let bundle = makeSUT()
         let sut = bundle.sut
-        let repo = bundle.repo
+        let worker = bundle.worker
         let dbPath = bundle.dbPath
         SQLiteTestHelper.createDatabase(
             at: dbPath,
@@ -178,14 +178,14 @@ struct SQLiteMigrationServiceTests {
 
         _ = try await sut.migrateAllUsersEntryData()
 
-        #expect(repo.lastSavedEntry?.scaleEntryMetric == nil)
+        #expect(worker.insertedRows.last?.scaleEntryMetric == nil)
     }
 
     @Test("migrateAllUsersEntryData handles NULL values in optional scale fields")
     func migrateAllUsersEntryData_nullOptionalFields_handlesGracefully() async throws {
         let bundle = makeSUT()
         let sut = bundle.sut
-        let repo = bundle.repo
+        let worker = bundle.worker
         let dbPath = bundle.dbPath
         // Entry with weight but all other scale fields NULL
         SQLiteTestHelper.createDatabase(at: dbPath, entries: [
@@ -195,7 +195,7 @@ struct SQLiteMigrationServiceTests {
 
         _ = try await sut.migrateAllUsersEntryData()
 
-        let saved = repo.lastSavedEntry
+        let saved = worker.insertedRows.last
         #expect(saved?.scaleEntry?.weight == 1800)
         #expect(saved?.scaleEntry?.bodyFat == nil)
         #expect(saved?.scaleEntry?.muscleMass == nil)
@@ -208,7 +208,7 @@ struct SQLiteMigrationServiceTests {
     func migrateAllUsersEntryData_entryProperties_correctDefaults() async throws {
         let bundle = makeSUT()
         let sut = bundle.sut
-        let repo = bundle.repo
+        let worker = bundle.worker
         let dbPath = bundle.dbPath
         SQLiteTestHelper.createDatabase(at: dbPath, entries: [
             .init(userId: "user-A", timestamp: "2026-03-01T08:00:00Z", opType: "create", weight: 1800)
@@ -217,7 +217,7 @@ struct SQLiteMigrationServiceTests {
 
         _ = try await sut.migrateAllUsersEntryData()
 
-        let saved = repo.lastSavedEntry
+        let saved = worker.insertedRows.last
         #expect(saved?.accountId == "user-A")
         #expect(saved?.entryTimestamp == "2026-03-01T08:00:00Z")
         #expect(saved?.operationType == "create")
@@ -230,14 +230,14 @@ struct SQLiteMigrationServiceTests {
     func migrateAllUsersEntryData_nullOpType_defaultsToCreate() async throws {
         let bundle = makeSUT()
         let sut = bundle.sut
-        let repo = bundle.repo
+        let worker = bundle.worker
         let dbPath = bundle.dbPath
         SQLiteTestHelper.createDatabaseWithNullOpType(at: dbPath, userId: "user-A", timestamp: "2026-01-01T08:00:00Z", weight: 1800)
         defer { SQLiteTestHelper.cleanup(path: dbPath) }
 
         _ = try await sut.migrateAllUsersEntryData()
 
-        #expect(repo.lastSavedEntry?.operationType == "create")
+        #expect(worker.insertedRows.last?.operationType == "create")
     }
 
     // MARK: - migrateAllUsersEntryData: Empty/No Data
@@ -246,7 +246,7 @@ struct SQLiteMigrationServiceTests {
     func migrateAllUsersEntryData_noTables_returnsEmpty() async throws {
         let bundle = makeSUT()
         let sut = bundle.sut
-        let repo = bundle.repo
+        let worker = bundle.worker
         let dbPath = bundle.dbPath
         SQLiteTestHelper.createEmptyDatabase(at: dbPath)
         defer { SQLiteTestHelper.cleanup(path: dbPath) }
@@ -254,14 +254,14 @@ struct SQLiteMigrationServiceTests {
         let result = try await sut.migrateAllUsersEntryData()
 
         #expect(result.isEmpty)
-        #expect(repo.saveEntryCalls == 0)
+        #expect(worker.insertedRows.isEmpty)
     }
 
     @Test("migrateAllUsersEntryData returns empty dict when opStack table has no rows")
     func migrateAllUsersEntryData_emptyTable_returnsEmpty() async throws {
         let bundle = makeSUT()
         let sut = bundle.sut
-        let repo = bundle.repo
+        let worker = bundle.worker
         let dbPath = bundle.dbPath
         SQLiteTestHelper.createDatabase(at: dbPath, entries: [])
         defer { SQLiteTestHelper.cleanup(path: dbPath) }
@@ -269,7 +269,7 @@ struct SQLiteMigrationServiceTests {
         let result = try await sut.migrateAllUsersEntryData()
 
         #expect(result.isEmpty)
-        #expect(repo.saveEntryCalls == 0)
+        #expect(worker.insertedRows.isEmpty)
     }
 
     // MARK: - migrateAllUsersEntryData: Error Handling
@@ -287,31 +287,33 @@ struct SQLiteMigrationServiceTests {
         }
     }
 
-    @Test("migrateAllUsersEntryData continues when individual entry save fails")
+    @Test("migrateAllUsersEntryData continues with remaining users when one user's batch fails")
     func migrateAllUsersEntryData_partialSaveFailure_continuesWithRemaining() async throws {
-        let mockRepo = MockSQLiteMigrationEntryRepository(failOnCallNumbers: [1])
-        let bundle = makeSUT(entryRepository: mockRepo)
+        let failingWorker = MockEntryWorker()
+        failingWorker.insertEntriesFailAccountIds = ["user-A"]
+        let bundle = makeSUT(entryWorker: failingWorker)
         let sut = bundle.sut
         let dbPath = bundle.dbPath
         SQLiteTestHelper.createDatabase(at: dbPath, entries: [
             .init(userId: "user-A", timestamp: "2026-01-01T08:00:00Z", opType: "create", weight: 1800),
-            .init(userId: "user-A", timestamp: "2026-01-02T08:00:00Z", opType: "create", weight: 1750),
-            .init(userId: "user-A", timestamp: "2026-01-03T08:00:00Z", opType: "create", weight: 1700)
+            .init(userId: "user-B", timestamp: "2026-01-02T08:00:00Z", opType: "create", weight: 1750),
+            .init(userId: "user-B", timestamp: "2026-01-03T08:00:00Z", opType: "create", weight: 1700)
         ])
         defer { SQLiteTestHelper.cleanup(path: dbPath) }
 
         let result = try await sut.migrateAllUsersEntryData()
 
-        // 3 entries total, 1 fails → 2 successfully migrated
-        #expect(result["user-A"] == 2)
-        #expect(mockRepo.saveEntryCalls == 3)
+        // user-A's batch fails; user-B's still migrates
+        #expect(result["user-A"] == nil)
+        #expect(result["user-B"] == 2)
+        #expect(failingWorker.insertedRows.count == 2)
     }
 
     @Test("migrateAllUsersEntryData returns empty dict when all saves fail")
     func migrateAllUsersEntryData_allSavesFail_returnsEmptyDict() async throws {
-        let repo = MockEntryRepository()
-        repo.saveEntryError = SQLiteMigrationTestError.saveFailed
-        let bundle = makeSUT(entryRepository: repo)
+        let failingWorker = MockEntryWorker()
+        failingWorker.insertEntriesError = SQLiteMigrationTestError.saveFailed
+        let bundle = makeSUT(entryWorker: failingWorker)
         let sut = bundle.sut
         let dbPath = bundle.dbPath
         SQLiteTestHelper.createDatabase(at: dbPath, entries: [
@@ -366,7 +368,7 @@ struct SQLiteMigrationServiceTests {
     func fullFlow_migrateAndCleanup_worksEndToEnd() async throws {
         let bundle = makeSUT()
         let sut = bundle.sut
-        let repo = bundle.repo
+        let worker = bundle.worker
         let dbPath = bundle.dbPath
         SQLiteTestHelper.createDatabase(at: dbPath, entries: [
             .init(userId: "user-A", timestamp: "2026-01-01T08:00:00Z", opType: "create", weight: 1800)
@@ -378,7 +380,7 @@ struct SQLiteMigrationServiceTests {
         // Step 2: Migrate
         let result = try await sut.migrateAllUsersEntryData()
         #expect(result["user-A"] == 1)
-        #expect(repo.saveEntryCalls == 1)
+        #expect(worker.insertedRows.count == 1)
 
         // Step 3: Cleanup
         try sut.cleanupAfterMigration()
@@ -391,7 +393,7 @@ struct SQLiteMigrationServiceTests {
     func migrateAllUsersEntryData_onlyBmr_createsMetric() async throws {
         let bundle = makeSUT()
         let sut = bundle.sut
-        let repo = bundle.repo
+        let worker = bundle.worker
         let dbPath = bundle.dbPath
         SQLiteTestHelper.createDatabase(
             at: dbPath,
@@ -406,7 +408,7 @@ struct SQLiteMigrationServiceTests {
 
         _ = try await sut.migrateAllUsersEntryData()
 
-        let metric = repo.lastSavedEntry?.scaleEntryMetric
+        let metric = worker.insertedRows.last?.scaleEntryMetric
         #expect(metric != nil)
         #expect(metric?.bmr == 1600)
         #expect(metric?.metabolicAge == nil)
@@ -416,7 +418,7 @@ struct SQLiteMigrationServiceTests {
     func migrateAllUsersEntryData_onlyMetabolicAge_createsMetric() async throws {
         let bundle = makeSUT()
         let sut = bundle.sut
-        let repo = bundle.repo
+        let worker = bundle.worker
         let dbPath = bundle.dbPath
         SQLiteTestHelper.createDatabase(
             at: dbPath,
@@ -431,7 +433,7 @@ struct SQLiteMigrationServiceTests {
 
         _ = try await sut.migrateAllUsersEntryData()
 
-        let metric = repo.lastSavedEntry?.scaleEntryMetric
+        let metric = worker.insertedRows.last?.scaleEntryMetric
         #expect(metric != nil)
         #expect(metric?.bmr == nil)
         #expect(metric?.metabolicAge == 42)
@@ -441,16 +443,15 @@ struct SQLiteMigrationServiceTests {
 
     @MainActor
     private func makeSUT(
-        entryRepository: (any EntryRepositoryProtocol)? = nil
+        entryWorker: MockEntryWorker? = nil
     ) -> SQLiteMigrationSUT {
         TestDependencyContainer.reset()
 
         let dbPath = NSTemporaryDirectory() + "test_migration_\(UUID().uuidString).db"
-        let repo = (entryRepository as? MockEntryRepository) ?? MockEntryRepository()
-        let actualRepo = entryRepository ?? repo
-        let sut = SQLiteMigrationService(databasePathOverride: dbPath, entryRepository: actualRepo)
+        let worker = entryWorker ?? MockEntryWorker()
+        let sut = SQLiteMigrationService(databasePathOverride: dbPath, entryWorker: worker)
 
-        return SQLiteMigrationSUT(sut: sut, repo: repo, dbPath: dbPath)
+        return SQLiteMigrationSUT(sut: sut, worker: worker, dbPath: dbPath)
     }
 }
 
@@ -458,7 +459,7 @@ struct SQLiteMigrationServiceTests {
 
 private struct SQLiteMigrationSUT {
     let sut: SQLiteMigrationService
-    let repo: MockEntryRepository
+    let worker: MockEntryWorker
     let dbPath: String
 }
 
@@ -466,52 +467,4 @@ private struct SQLiteMigrationSUT {
 
 private enum SQLiteMigrationTestError: Error, Equatable {
     case saveFailed
-}
-
-// MARK: - MockSQLiteMigrationEntryRepository
-
-/// A specialized mock that fails on specific call numbers to test partial failure recovery.
-@MainActor
-private final class MockSQLiteMigrationEntryRepository: EntryRepositoryProtocol {
-    private let failOnCallNumbers: Set<Int>
-    private(set) var saveEntryCalls = 0
-    private(set) var savedEntries: [Entry] = []
-
-    init(failOnCallNumbers: Set<Int> = []) {
-        self.failOnCallNumbers = failOnCallNumbers
-    }
-
-    func saveEntry(_ entry: Entry) async throws {
-        saveEntryCalls += 1
-        if failOnCallNumbers.contains(saveEntryCalls) {
-            throw SQLiteMigrationTestError.saveFailed
-        }
-        savedEntries.append(entry)
-    }
-
-    // MARK: - Unused protocol stubs
-
-    func fetchEntry(byId id: String) async throws -> Entry? { nil }
-    func fetchAllEntries() async throws -> [Entry] { [] }
-    func updateEntry(_ entry: Entry) async throws {}
-    func updateEntrySyncStatus(entryId: String, isSynced: Bool, isFailedToSync: Bool, attempts: Int) async throws {}
-    func deleteEntry(byId id: String) async throws {}
-    func deleteAllEntries() async throws {}
-    func fetchEntries(forUserId userId: String, operationType: String?) async throws -> [Entry] { [] }
-    func fetchEntriesOfTimestamp(forUserId userId: String, timestamp: String) async throws -> [Entry] { [] }
-    func fetchEntry(byServerEntryId serverEntryId: String, forUserId userId: String) async throws -> Entry? { nil }
-    func fetchEntries(forMonth month: String, userId: String) async throws -> [Entry] { [] }
-    func fetchEntries(forDay day: String, userId: String) async throws -> [Entry] { [] }
-    func fetchUnsyncedEntries(forUserId userId: String) async throws -> [Entry] { [] }
-    func fetchLatestEntry(forUserId userId: String) async throws -> Entry? { nil }
-    func fetchEntries(lastNDays: Int, userId: String) async throws -> [Entry] { [] }
-    func fetchEntryCount(forUserId userId: String) async throws -> Int { 0 }
-    func fetchOldestEntry(forUserId userId: String) async throws -> Entry? { nil }
-    func checkEntryTimestampExists(forUserId userId: String, entryTimestamp: String) async throws -> Bool { false }
-    func fetchEntriesAsDTO(forUserId userId: String, operationType: String?) async throws -> [BathScaleOperationDTO] { [] }
-    func fetchEntriesAsBpmDTO(forUserId userId: String, operationType: String?) async throws -> [BpmOperationDTO] { [] }
-    func syncEntries(newEntries: [Entry]) async throws {}
-    func markEntryAsDeleted(byId id: String) async throws {}
-    func updateEntryServerEntryId(entryId: String, serverEntryId: String) async throws {}
-    func fetchUnsyncedEntriesAsSnapshots(forUserId userId: String) async throws -> [(EntrySnapshot, BathScaleOperationDTO)] { [] }
 }

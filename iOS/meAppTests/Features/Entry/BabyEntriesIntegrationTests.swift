@@ -385,7 +385,8 @@ struct BabyEntriesIntegrationTests {
             accountService: account,
             localRepo: repo ?? MockEntryRepository(),
             localKVRepo: MockEntrySyncStore(),
-            remoteRepo: remote ?? MockEntryRepositoryAPI()
+            remoteRepo: remote ?? MockEntryRepositoryAPI(),
+            worker: MockEntryWorker()
         )
         sut.logger = logger
         sut.goalAlertService = goalAlert

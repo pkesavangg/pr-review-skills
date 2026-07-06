@@ -18,7 +18,9 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
     private let localKVRepo: EntrySyncStoreProtocol
     private let remoteRepo: EntryRepositoryAPIProtocol
     private let migrationService: SQLiteMigrationService
-    private let swiftDataWorker: SwiftDataWorker
+    /// Batched off-main persistence (merge/insert/push bookkeeping/hot reads).
+    /// `SwiftDataWorker` in production; injectable for tests (MOB-1433).
+    private let worker: any EntryWorkerProtocol
     private let kvStorage: KvStorageServiceProtocol
     @MainActor static let shared = EntryService(accountService: AccountService.shared)
 
@@ -80,14 +82,17 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
         localKVRepo: EntrySyncStoreProtocol? = nil,
         remoteRepo: EntryRepositoryAPIProtocol? = nil,
         migrationService: SQLiteMigrationService? = nil,
-        kvStorage: KvStorageServiceProtocol? = nil
+        kvStorage: KvStorageServiceProtocol? = nil,
+        worker: (any EntryWorkerProtocol)? = nil
     ) {
         self.accountService = accountService
         self.localRepo = localRepo ?? EntryRepository()
         self.localKVRepo = localKVRepo ?? EntryRepositoryLocal()
         self.remoteRepo = remoteRepo ?? EntryRepositoryAPI()
-        self.migrationService = migrationService ?? SQLiteMigrationService()
-        self.swiftDataWorker = SwiftDataWorker(modelContainer: PersistenceController.shared.container)
+        let resolvedWorker = worker ?? SwiftDataWorker(modelContainer: PersistenceController.shared.container)
+        self.worker = resolvedWorker
+        // The migration shares the worker so its batch inserts run off main too.
+        self.migrationService = migrationService ?? SQLiteMigrationService(entryWorker: resolvedWorker)
         self.kvStorage = kvStorage ?? KvStorageService.shared
 
         Task { @MainActor in
@@ -413,7 +418,7 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
         let accountId = try getAccountId()
 
         // Reuse the worker so progress refreshes do not keep creating fresh model contexts.
-        let fetchResult = try await swiftDataWorker.fetchProgressData(accountId: accountId)
+        let fetchResult = try await worker.fetchProgressData(accountId: accountId)
         let goalInitial = await getGoalInitialWeight()
         let datasetSignature = Self.makeEntryDataSignature(fetchResult.allEntries)
 
@@ -1015,8 +1020,17 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
             let remoteOps = try await remoteRepo.fetchEntries(
                 start: syncStart, cursor: nil, limit: nil, category: nil
             )
-            let hadMergedNewCreates = await mergeRemoteOperations(remoteOps.operations, accountId: accountId)
-            let dashboardDataChanged = hadPushedCreates || hadMergedNewCreates
+            // `.operations` recomputes its DTO remap on every access — hold it once.
+            let operations = remoteOps.operations
+
+            // Batched merge runs on the @ModelActor, off the main thread (MOB-1433).
+            let mergeResult = try await worker.applyRemoteOperations(operations, accountId: accountId)
+            await applyMergeSideEffects(mergeResult)
+
+            // Remote deletes/updates refresh the dashboard too: the old per-row
+            // merge patched summaries inline as it deleted; the batched merge
+            // defers to one full reload instead.
+            let dashboardDataChanged = hadPushedCreates || mergeResult.hadChanges
             if dashboardDataChanged {
                 await loadDashboardData()
             }
@@ -1027,7 +1041,9 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
 
             if dashboardDataChanged {
                 await updateProgressAndStreakInternal()
-                try? await Task.sleep(nanoseconds: 3_000_000_000)
+            }
+            // Goal alerts fire only when new entries appeared (previous semantics).
+            if hadPushedCreates || mergeResult.hadNewCreates {
                 await checkGoalAlerts()
             }
             logger.log(
@@ -1035,7 +1051,8 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
                 tag: tag,
                 message: """
                 Full entry sync completed successfully: accountId=\(accountId), hadPushedCreates=\(hadPushedCreates), \
-                hadMergedNewCreates=\(hadMergedNewCreates), remoteOperationCount=\(remoteOps.operations.count)
+                merged(inserted=\(mergeResult.insertedCount), updated=\(mergeResult.updatedCount), \
+                deleted=\(mergeResult.deletedCount)), remoteOperationCount=\(operations.count)
                 """
             )
 
@@ -1198,8 +1215,12 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
             let remoteOps = try await remoteRepo.fetchEntries(
                 start: syncStart, cursor: nil, limit: nil, category: nil
             )
-            if !remoteOps.operations.isEmpty {
-                _ = await mergeRemoteOperations(remoteOps.operations, accountId: accountId)
+            // `.operations` recomputes its DTO remap on every access — hold it once.
+            let operations = remoteOps.operations
+            if !operations.isEmpty {
+                // Batched merge runs on the @ModelActor, off the main thread (MOB-1433).
+                let mergeResult = try await worker.applyRemoteOperations(operations, accountId: accountId)
+                await applyMergeSideEffects(mergeResult)
                 let syncTimestamp = remoteOps.timestamp ?? ISO8601DateFormatter().string(from: Date())
                 try await localKVRepo.setLastSyncTimestamp(accountId: accountId, timestamp: syncTimestamp)
             } else {
@@ -1219,175 +1240,28 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
         }
     }
 
-    /// Merge remote operations into local DB, resolving conflicts (latest wins by timestamp).
-    ///
-    /// - Returns: `true` if at least one new entry was inserted (create from remote that didn't exist locally).
-    ///   The caller uses this to decide whether to show the goal met card: we only show it when
-    ///   new entries arrived from the server in this sync (not on every login or pull-to-refresh).
-    private func mergeRemoteOperations( // swiftlint:disable:this cyclomatic_complexity function_body_length
-        _ remoteOps: [BathScaleOperationDTO],
-        accountId: String
-    ) async -> Bool {
-        var hadNewCreates = false
-        // MA-3886: collect each newly-created remote op so we can forward only those entries
-        // to health integrations after the merge. Pushing the overall "latest" entry alone is
-        // insufficient when multiple Wi-Fi/R4 entries arrive in a single sync.
-        var newlyCreatedOps: [BathScaleOperationDTO] = []
-        // Group operations by stable entry identity. Prefer the server-assigned entryId
-        // (unique per entry) so distinct entries that happen to share an `entryTimestamp`
-        // are NOT collapsed into one. Ops without a serverEntryId (legacy/local-only data)
-        // fall back to grouping by entryTimestamp, preserving the original behavior.
-        let groupedOps = Dictionary(grouping: remoteOps) { op in
-            op.serverEntryId ?? op.entryTimestamp ?? ""
-        }
-        for (groupKey, ops) in groupedOps {
-            guard !groupKey.isEmpty else { continue }
-
-            // Sort operations by serverTimestamp to process in chronological order
-            let sortedOps = ops.sorted {
-                ($0.serverTimestamp ?? "") < ($1.serverTimestamp ?? "")
-            }
-
-            // Find the final operation for this group (the latest one)
-            guard let finalOp = sortedOps.last else { continue }
-
-            // Server-identified entries: match the local row by serverEntryId so that
-            // distinct entries sharing an entryTimestamp remain independent. Each unique
-            // serverEntryId maps to exactly one local Entry.
-            if let serverEntryId = finalOp.serverEntryId {
-                let existing = try? await localRepo.fetchEntry(byServerEntryId: serverEntryId, forUserId: accountId)
-                if let localEntry = existing {
-                    let localServerTS = localEntry.serverTimestamp ?? ""
-                    let remoteServerTS = finalOp.serverTimestamp ?? ""
-                    let shouldApplyRemote = localServerTS.isEmpty || remoteServerTS > localServerTS
-
-                    if shouldApplyRemote {
-                        if finalOp.operationType == OperationType.delete.rawValue {
-                            try? await localRepo.deleteEntry(byId: localEntry.id.uuidString)
-                            try? await handleEntryDeleted(localEntry)
-                        } else {
-                            let updated = Entry(from: finalOp, accountId: accountId, isSynced: true)
-                            updated.id = localEntry.id
-                            try? await localRepo.updateEntry(updated)
-                        }
-                    } else if !localServerTS.isEmpty, !localEntry.isSynced {
-                        localEntry.isSynced = true
-                        try? await localRepo.updateEntry(localEntry)
-                    }
-                } else if finalOp.operationType == OperationType.create.rawValue {
-                    // No local entry for this server id — insert the new remote create.
-                    hadNewCreates = true
-                    newlyCreatedOps.append(finalOp)
-                    let newEntry = Entry(from: finalOp, accountId: accountId, isSynced: true)
-                    try? await localRepo.saveEntry(newEntry)
-                }
-                // Final op is a delete with no local entry: nothing to do.
-                continue
-            }
-
-            // Legacy path (no serverEntryId): key on entryTimestamp.
-            let timestamp = groupKey
-
-            // Check if local entry exists with this timestamp
-            // Normalize timestamp format variants to improve matching reliability
-            // Some entries may be stored with millisecond precision (".000Z"); others without.
-            let normalizedTimestamp = timestamp.replacingOccurrences(of: ".000Z", with: "Z")
-            let tsCandidates = timestamp == normalizedTimestamp ? [timestamp] : [timestamp, normalizedTimestamp]
-
-            // Fetch ALL entries with this timestamp (including both create and delete operations)
-            var localEntry: Entry?
-            var localEntries: [Entry]?
-            for ts in tsCandidates {
-                if let fetched = try? await localRepo.fetchEntriesOfTimestamp(forUserId: accountId, timestamp: ts), !fetched.isEmpty {
-                    localEntries = fetched
-                    localEntry = fetched.first { $0.operationType == OperationType.create.rawValue } ?? fetched.first
-                    break
-                }
-            }
-
-            // Additional check: Look for entries with same timestamp AND weight to prevent race condition duplicates
-            let potentialDuplicates = localEntries?.filter { entry in
-                if let entryWeight = entry.scaleEntry?.weight, let opWeight = finalOp.weight {
-                    return entryWeight == Int(opWeight) && tsCandidates.contains(entry.entryTimestamp)
-                }
-                return false
-            } ?? []
-
-            // If no entries found by timestamp but we have a weight, check all entries for this user to find potential duplicates
-            // This handles the case where the entry was just synced but not yet visible in the timestamp query
-            var allEntriesForUser: [Entry] = []
-            if localEntries?.isEmpty == true && finalOp.weight != nil {
-                do {
-                    allEntriesForUser = try await localRepo.fetchEntries(forUserId: accountId, operationType: OperationType.create.rawValue)
-                } catch {
-                    allEntriesForUser = []
-                }
-            }
-
-            // Determine the entry to work with - either from timestamp search or weight-based search
-            let entryToProcess = localEntry ?? allEntriesForUser.first { entry in
-                if let entryWeight = entry.scaleEntry?.weight, let opWeight = finalOp.weight {
-                    return entryWeight == Int(opWeight) && entry.entryTimestamp == normalizedTimestamp
-                }
-                return false
-            }
-
-            if let localEntry = entryToProcess {
-                // Local entry exists - compare server timestamps
-                let localServerTS = localEntry.serverTimestamp ?? ""
-                let remoteServerTS = finalOp.serverTimestamp ?? ""
-
-                let shouldApplyRemote = localServerTS.isEmpty || remoteServerTS > localServerTS
-
-                if shouldApplyRemote {
-                    if finalOp.operationType == OperationType.delete.rawValue {
-                        let entriesToDelete = localEntries ?? [localEntry]
-                        for entry in entriesToDelete {
-                            try? await localRepo.deleteEntry(byId: entry.id.uuidString)
-                        }
-                        try? await handleEntryDeleted(localEntry)
-                    } else {
-                        await cleanupDuplicates(localEntries: localEntries, keepId: localEntry.id)
-                        let updated = Entry(from: finalOp, accountId: accountId, isSynced: true)
-                        updated.id = localEntry.id
-                        try? await localRepo.updateEntry(updated)
-                    }
-                } else if !localServerTS.isEmpty {
-                    if !localEntry.isSynced {
-                        localEntry.isSynced = true
-                        try? await localRepo.updateEntry(localEntry)
-                    }
-                    await cleanupDuplicates(localEntries: localEntries, keepId: localEntry.id)
-                }
-            } else if !potentialDuplicates.isEmpty {
-                // Found potential duplicate by weight - update the existing one instead of creating new
-                guard let duplicateEntry = potentialDuplicates.first else {
-                    continue
-                }
-                let updated = Entry(from: finalOp, accountId: accountId, isSynced: true)
-                updated.id = duplicateEntry.id
-                try? await localRepo.updateEntry(updated)
-            } else {
-                // No local entry - only create if final operation is create
-                if finalOp.operationType == OperationType.create.rawValue {
-                    hadNewCreates = true
-                    newlyCreatedOps.append(finalOp)
-                    // Final state is create - add to local storage
-                    let newEntry = Entry(from: finalOp, accountId: accountId, isSynced: true)
-                    try? await localRepo.saveEntry(newEntry)
-                    // Notify downstream listeners/UI about the new entry so lists refresh
-                }
-                // If final operation is delete and no local entry exists, nothing to do
-                // (entry was already deleted or never existed locally)
+    /// Applies the UI/integration side effects the merge used to perform per
+    /// row, now driven by the worker's Sendable result (MOB-1433):
+    /// `entryDeleted` emissions + integration deletes for removed rows, ONE
+    /// `entrySaved` emission for the whole batch of new creates, and
+    /// integration forwarding of each newly-created entry (MA-3886).
+    private func applyMergeSideEffects(_ result: EntryMergeResult) async {
+        for notification in result.deletedNotifications {
+            entryDeleted.send(notification)
+            do {
+                try await integrationService.deleteEntry(notification: notification)
+            } catch {
+                logger.log(
+                    level: .error,
+                    tag: tag,
+                    message: "Failed to delete merged entry from integrations: \(error.localizedDescription)"
+                )
             }
         }
 
-        // MA-3851: only notify UI listeners when the remote merge actually inserted
-        // new entries locally. Calling handleEntryAdded here would re-route the overall
-        // latest entry through integrationService.syncNewEntry on every sync — pushing
-        // previously-unsynced historical entries into Apple Health after operations like
-        // deletes. New creates are synced to integrations by the MA-3886 loop below.
-        if hadNewCreates {
+        // MA-3851: only notify UI listeners when the remote merge actually
+        // inserted new entries locally — one emission for the whole batch.
+        if result.hadNewCreates {
             do {
                 if let entry = try await getLatestEntry() {
                     let notification = EntryNotification(from: entry)
@@ -1401,7 +1275,7 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
         // MA-3886: forward each newly-created entry to active health integrations
         // (e.g., Apple Health). Without this, Wi-Fi/R4 entries arriving via push-triggered
         // remote sync never reach HealthKit because the scale uploads to the server, not the phone.
-        for op in newlyCreatedOps {
+        for op in result.newlyCreatedOps {
             let notification = EntryNotification(from: op)
             do {
                 try await integrationService.syncNewEntry(notification: notification)
@@ -1411,23 +1285,6 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
                     tag: tag,
                     message: "Failed to sync remote-merged entry to integrations: " +
                         "timestamp=\(notification.entryTimestamp), error=\(error.localizedDescription)"
-                )
-            }
-        }
-        return hadNewCreates
-    }
-
-    private func cleanupDuplicates(localEntries: [Entry]?, keepId: UUID) async {
-        guard let allEntries = localEntries, allEntries.count > 1 else { return }
-        for entry in allEntries where entry.id != keepId {
-            do {
-                try await localRepo.deleteEntry(byId: entry.id.uuidString)
-                try await self.handleEntryDeleted(entry)
-            } catch {
-                logger.log(
-                    level: .error,
-                    tag: tag,
-                    message: "Failed to delete duplicate entry \(entry.id): \(error.localizedDescription)"
                 )
             }
         }

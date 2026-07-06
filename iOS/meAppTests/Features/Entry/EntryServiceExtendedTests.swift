@@ -406,6 +406,7 @@ struct EntryServiceExtendedTests {
         integration: MockIntegrationService? = nil,
         goalAlert: MockGoalAlertService? = nil,
         logger: MockLoggerService? = nil,
+        worker: MockEntryWorker? = nil,
         activeAccount: AccountSnapshot? = AccountTestFixtures.makeAccountSnapshot(id: "acct-1", email: "entry@example.com", isActiveAccount: true)
     ) -> EntryService {
         let account = MockAccountService()
@@ -426,7 +427,8 @@ struct EntryServiceExtendedTests {
             accountService: account,
             localRepo: repo ?? MockEntryRepository(),
             localKVRepo: syncStore ?? MockEntrySyncStore(),
-            remoteRepo: remote ?? MockEntryRepositoryAPI()
+            remoteRepo: remote ?? MockEntryRepositoryAPI(),
+            worker: worker ?? MockEntryWorker()
         )
         sut.logger = logger
         sut.goalAlertService = goalAlert

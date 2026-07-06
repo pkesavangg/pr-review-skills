@@ -418,7 +418,8 @@ struct UnifiedEntriesReadTests {
             accountService: account,
             localRepo: MockEntryRepository(),
             localKVRepo: MockEntrySyncStore(),
-            remoteRepo: remote
+            remoteRepo: remote,
+            worker: MockEntryWorker()
         )
         sut.logger = logger
         sut.goalAlertService = goalAlert

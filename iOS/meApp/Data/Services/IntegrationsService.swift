@@ -233,6 +233,14 @@ final class IntegrationsService: IntegrationServiceProtocol {
     /// Deletes an entry from the integrated health service (e.g., HealthKit) if integration is active.
     /// This method checks if HealthKit integration is active and delegates to the appropriate service.
     func deleteEntry(_ entry: Entry) async throws {
+        // Create notification to safely pass data across actor boundaries, then delegate.
+        try await deleteEntry(notification: EntryNotification(from: entry))
+    }
+
+    /// Deletes an entry from the integrated health service using an `EntryNotification`.
+    /// Used when the local row no longer exists — e.g. the batched remote-sync
+    /// merge deletes rows off the main actor and returns extracted notifications.
+    func deleteEntry(notification: EntryNotification) async throws {
         guard let integrationInfo = try await getStoredIntegrationData(),
               integrationInfo.isIntegrated
         else {
@@ -240,17 +248,14 @@ final class IntegrationsService: IntegrationServiceProtocol {
             return
         }
 
-        // Create notification to safely pass data across actor boundaries
-        let notification = EntryNotification(from: entry)
-
         switch integrationInfo.type {
         case .healthKit:
             // Delegate to HealthKit service for deletion using notification (safe cross-actor)
             let success = try await (healthKitService ?? HealthKitService.shared).deleteEntry(notification: notification)
             if success {
-                logger.log(level: .success, tag: tag, message: "Deleted entry from HealthKit. entryId=\(entry.id)")
+                logger.log(level: .success, tag: tag, message: "Deleted entry from HealthKit. entryId=\(notification.id)")
             } else {
-                logger.log(level: .error, tag: tag, message: "Failed deleting entry from HealthKit. entryId=\(entry.id)")
+                logger.log(level: .error, tag: tag, message: "Failed deleting entry from HealthKit. entryId=\(notification.id)")
             }
         default:
             // Other integrations not implemented for entry deletion yet

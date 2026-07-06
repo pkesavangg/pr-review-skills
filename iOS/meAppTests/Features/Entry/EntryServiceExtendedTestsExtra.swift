@@ -107,49 +107,66 @@ extension EntryServiceExtendedTests {
         #expect(logger.messages.contains { $0.contains("Full entry sync failed") })
     }
 
-    // MARK: - mergeRemoteOperations (via syncAllEntriesWithRemote)
+    // MARK: - remote merge (via syncAllEntriesWithRemote → worker)
 
-    @Test("sync merges remote delete: removes local entry")
+    // Merge semantics (what a remote delete does to local rows) are covered by
+    // BatchedMergeTests against the real SwiftDataWorker. Here we verify the
+    // service-side orchestration: the fetched ops reach the worker, and the
+    // worker's delete result drives the entryDeleted publisher + integration delete.
+    @Test("sync routes remote ops to the worker and applies delete side effects")
     func syncMergesRemoteDelete() async {
-        let repo = MockEntryRepository()
-        let existing = EntryTestFixtures.makeEntry(timestamp: "2026-03-01T08:00:00Z", operationType: .create, serverTimestamp: "a", isSynced: true)
-        repo.entries = [existing]
+        let deleteOp = BathScaleOperationDTO(
+            accountId: "acct-1",
+            bmr: nil,
+            bmi: nil,
+            bodyFat: nil,
+            boneMass: nil,
+            entryTimestamp: "2026-03-01T08:00:00Z",
+            entryType: nil,
+            impedance: nil,
+            metabolicAge: nil,
+            muscleMass: nil,
+            operationType: "delete",
+            proteinPercent: nil,
+            pulse: nil,
+            serverTimestamp: "b",
+            skeletalMusclePercent: nil,
+            source: nil,
+            subcutaneousFatPercent: nil,
+            systolic: nil,
+            diastolic: nil,
+            meanArterial: nil,
+            unit: nil,
+            visceralFatLevel: nil,
+            water: nil,
+            weight: nil
+        )
         let remote = MockEntryRepositoryAPI()
         remote.fetchEntriesResult = BathScaleOperationListResponse(
-            operations: [
-                BathScaleOperationDTO(
-                    accountId: "acct-1",
-                    bmr: nil,
-                    bmi: nil,
-                    bodyFat: nil,
-                    boneMass: nil,
-                    entryTimestamp: "2026-03-01T08:00:00Z",
-                    entryType: nil,
-                    impedance: nil,
-                    metabolicAge: nil,
-                    muscleMass: nil,
-                    operationType: "delete",
-                    proteinPercent: nil,
-                    pulse: nil,
-                    serverTimestamp: "b",
-                    skeletalMusclePercent: nil,
-                    source: nil,
-                    subcutaneousFatPercent: nil,
-                    systolic: nil,
-                    diastolic: nil,
-                    meanArterial: nil,
-                    unit: nil,
-                    visceralFatLevel: nil,
-                    water: nil,
-                    weight: nil
-                )
-            ],
+            operations: [deleteOp],
             timestamp: "2026-03-01T10:00:00Z"
         )
-        let sut = makeSUT(repo: repo, remote: remote)
+        let worker = MockEntryWorker()
+        worker.applyRemoteOperationsResult = EntryMergeResult(
+            insertedCount: 0,
+            updatedCount: 0,
+            deletedCount: 1,
+            newlyCreatedOps: [],
+            deletedNotifications: [EntryNotification(from: deleteOp)]
+        )
+        let integration = MockIntegrationService()
+        let sut = makeSUT(remote: remote, integration: integration, worker: worker)
+        var deleted: [EntryNotification] = []
+        let cancellable = sut.entryDeleted.sink { deleted.append($0) }
 
         await sut.syncAllEntriesWithRemote()
-        #expect(repo.entries.isEmpty)
+
+        #expect(worker.applyRemoteOperationsCalls == 1)
+        #expect(worker.lastAppliedOperations.count == 1)
+        #expect(worker.lastAppliedAccountId == "acct-1")
+        #expect(deleted.count == 1)
+        #expect(integration.deletedNotifications.count == 1)
+        cancellable.cancel()
     }
 
     // MARK: - handleEntryDeleted integration delete failure

@@ -7,12 +7,12 @@ final class SQLiteMigrationService {
     @Injector private var logger: LoggerServiceProtocol
     private let tag = "SQLiteMigrationService"
     private let databasePathOverride: String?
-    private let injectedEntryRepository: (any EntryRepositoryProtocol)?
+    private let injectedEntryWorker: (any EntryWorkerProtocol)?
 
     /// Initialize the service
-    init(databasePathOverride: String? = nil, entryRepository: (any EntryRepositoryProtocol)? = nil) {
+    init(databasePathOverride: String? = nil, entryWorker: (any EntryWorkerProtocol)? = nil) {
         self.databasePathOverride = databasePathOverride
-        self.injectedEntryRepository = entryRepository
+        self.injectedEntryWorker = entryWorker
     }
 
     /// SQLite database connection
@@ -150,17 +150,16 @@ final class SQLiteMigrationService {
     }
     
     private func migrateAllUsersEntries() async throws -> [String: Int] { // swiftlint:disable:this function_body_length
-        let entryRepository: any EntryRepositoryProtocol
-        if let injectedEntryRepository {
-            entryRepository = injectedEntryRepository
+        let entryWorker: any EntryWorkerProtocol
+        if let injectedEntryWorker {
+            entryWorker = injectedEntryWorker
         } else {
-            entryRepository = await MainActor.run { EntryRepository() }
+            entryWorker = await MainActor.run { SwiftDataWorker(modelContainer: PersistenceController.shared.container) }
         }
-        var migratedData: [String: Int] = [:]
-        
+
         // Query to fetch ALL unsynced operations with metrics joined - no user filter
         let query = """
-            SELECT 
+            SELECT
                 o.id, o.userId, o.entryTimestamp, NULL as serverTimestamp, o.operationType,
                 o.weight, o.bodyFat, o.muscleMass, o.water, o.bmi, NULL as verified, o.source, NULL as isPlaceholder,
                 m.bmr, m.metabolicAge, m.proteinPercent, m.pulse, m.skeletalMusclePercent,
@@ -170,7 +169,7 @@ final class SQLiteMigrationService {
             LEFT JOIN opStack_metric m ON o.userId = m.userId AND o.entryTimestamp = m.entryTimestamp
             ORDER BY o.userId, o.entryTimestamp DESC
         """
-        
+
         var statement: OpaquePointer?
         guard sqlite3_prepare_v2(db, query, -1, &statement, nil) == SQLITE_OK else {
             let errorMessage = String(cString: sqlite3_errmsg(db))
@@ -179,34 +178,40 @@ final class SQLiteMigrationService {
             }
             throw MigrationError.queryPreparationFailed
         }
-        
+
         defer { sqlite3_finalize(statement) }
-        
+
         guard let statement = statement else {
             throw MigrationError.queryPreparationFailed
         }
-        
+
+        // Read every row into Sendable transfer structs first, then insert per
+        // user in ONE batched worker call (chunked saves, off the main actor)
+        // instead of one main-actor save per row (MOB-1433).
         var rowsFound = 0
+        var rowsByUser: [String: [EntrySyncData]] = [:]
         while sqlite3_step(statement) == SQLITE_ROW {
             rowsFound += 1
-            
+            let userId = String(cString: sqlite3_column_text(statement, 1))
+            rowsByUser[userId, default: []].append(makeEntryRow(statement: statement, accountId: userId))
+        }
+
+        var migratedData: [String: Int] = [:]
+        for (userId, rows) in rowsByUser {
             do {
-                // Get the userId from the current row
-                let userId = String(cString: sqlite3_column_text(statement, 1))
-                let entry = try createEntryFromSQLiteRow(statement: statement, accountId: userId)
-                try await entryRepository.saveEntry(entry)
-                
-                // Track migration count per user
-                migratedData[userId] = (migratedData[userId] ?? 0) + 1
-                
+                migratedData[userId] = try await entryWorker.insertEntries(rows)
             } catch {
                 Task { @MainActor in
-                    logger.log(level: .error, tag: tag, message: "Failed to migrate entry: \(error.localizedDescription)")
+                    logger.log(
+                        level: .error,
+                        tag: tag,
+                        message: "Failed to migrate entries for user \(userId): \(error.localizedDescription)"
+                    )
                 }
-                // Continue with next entry
+                // Continue with the next user
             }
         }
-        
+
         let totalMigrated = migratedData.values.reduce(0, +)
         Task { @MainActor in
             logger.log(
@@ -215,30 +220,20 @@ final class SQLiteMigrationService {
                 message: "Query completed. Rows found: \(rowsFound), Successfully migrated: \(totalMigrated) entries for \(migratedData.count) users"
             )
         }
-        
+
         return migratedData
     }
-    
-    private func createEntryFromSQLiteRow(statement: OpaquePointer, accountId: String) throws -> Entry {
+
+    private func makeEntryRow(statement: OpaquePointer, accountId: String) -> EntrySyncData {
         // Extract basic opStack operation data
         let entryTimestamp = String(cString: sqlite3_column_text(statement, 2))
         let operationType = sqlite3_column_text(statement, 4) != nil ? String(cString: sqlite3_column_text(statement, 4)) : "create"
-        _ = sqlite3_column_type(statement, 21) != SQLITE_NULL ? Int(sqlite3_column_int(statement, 21)) : 0
-        
-        // Create the main entry (this will be treated as an unsynced operation)
-        let entry = Entry(
-            entryTimestamp: entryTimestamp,
-            accountId: accountId,
-            operationType: operationType,
-            serverTimestamp: nil, // opStack operations don't have serverTimestamp yet
-            entryType: EntryType.scale.rawValue,
-            isSynced: false // Mark as unsynced since it's from opStack
-        )
-        
-        // Create scale entry if weight data exists
+
+        // Scale entry data only if weight exists (same gate as before)
         let weight = sqlite3_column_int(statement, 5)
+        var scaleEntry: DeviceEntryData?
         if weight > 0 {
-            let scaleEntry = BathScaleEntry(
+            scaleEntry = DeviceEntryData(
                 weight: Int(weight),
                 bodyFat: sqlite3_column_type(statement, 6) != SQLITE_NULL ? Int(sqlite3_column_int(statement, 6)) : nil,
                 muscleMass: sqlite3_column_type(statement, 7) != SQLITE_NULL ? Int(sqlite3_column_int(statement, 7)) : nil,
@@ -246,15 +241,14 @@ final class SQLiteMigrationService {
                 bmi: sqlite3_column_type(statement, 9) != SQLITE_NULL ? Int(sqlite3_column_int(statement, 9)) : nil,
                 source: sqlite3_column_text(statement, 11) != nil ? String(cString: sqlite3_column_text(statement, 11)) : nil
             )
-            entry.scaleEntry = scaleEntry
         }
-        
-        // Create scale metric if extended data exists (from opStack_metric)
+
+        // Scale metric only if extended data exists (from opStack_metric)
         let hasBmr = sqlite3_column_type(statement, 13) != SQLITE_NULL
         let hasMetabolicAge = sqlite3_column_type(statement, 14) != SQLITE_NULL
-        
+        var scaleEntryMetric: DeviceMetricData?
         if hasBmr || hasMetabolicAge {
-            let scaleMetric = BathScaleMetric(
+            scaleEntryMetric = DeviceMetricData(
                 bmr: hasBmr ? Int(sqlite3_column_int(statement, 13)) : nil,
                 metabolicAge: hasMetabolicAge ? Int(sqlite3_column_int(statement, 14)) : nil,
                 proteinPercent: sqlite3_column_type(statement, 15) != SQLITE_NULL ? Int(sqlite3_column_int(statement, 15)) : nil,
@@ -266,9 +260,28 @@ final class SQLiteMigrationService {
                 impedance: nil, // opStack_metric doesn't have impedance
                 unit: nil // opStack_metric doesn't have unit
             )
-            entry.scaleEntryMetric = scaleMetric
         }
-        
-        return entry
+
+        return EntrySyncData(
+            id: UUID(),
+            accountId: accountId,
+            entryTimestamp: entryTimestamp,
+            serverTimestamp: nil, // opStack operations don't have serverTimestamp yet
+            operationType: operationType,
+            entryType: EntryType.scale.rawValue,
+            isSynced: false, // Mark as unsynced since it's from opStack
+            isFailedToSync: false,
+            attempts: 0,
+            scaleEntry: scaleEntry,
+            scaleEntryMetric: scaleEntryMetric,
+            bpmSystolic: nil,
+            bpmDiastolic: nil,
+            bpmMeanArterial: nil,
+            bpmPulse: nil,
+            note: nil,
+            babyEntryBabyId: nil,
+            babyEntryLength: nil,
+            babyEntryWeight: nil
+        )
     }
 }

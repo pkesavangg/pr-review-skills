@@ -21,6 +21,8 @@ final class MockIntegrationService: IntegrationServiceProtocol {
     private(set) var deleteEntryCalls = 0
     private(set) var clearIntegrationCalls = 0
     private(set) var lastSetStoredIntegrationDataInfo: IntegrationInfo?
+    private(set) var deletedNotifications: [EntryNotification] = []
+    private(set) var syncedNotifications: [EntryNotification] = []
 
     func getIntegrationUrl(_ provider: IntegrationType) async throws -> String {
         ""
@@ -60,11 +62,21 @@ final class MockIntegrationService: IntegrationServiceProtocol {
         deleteEntryCalls += 1
         if let deleteEntryError { throw deleteEntryError }
     }
+
+    func deleteEntry(notification: EntryNotification) async throws {
+        deleteEntryCalls += 1
+        deletedNotifications.append(notification)
+        if let deleteEntryError { throw deleteEntryError }
+    }
     func clearIntegration() async throws {
         clearIntegrationCalls += 1
         if let clearIntegrationError { throw clearIntegrationError }
     }
-    func syncNewEntry(notification: EntryNotification) async throws {}
+    func syncNewEntry(notification: EntryNotification) async throws {
+        syncNewEntryCalls += 1
+        syncedNotifications.append(notification)
+        if let syncNewEntryError { throw syncNewEntryError }
+    }
     func logHealthEntry(notification: EntryNotification) async {}
     func requestNewIntegration(text: String) async throws {}
 }
