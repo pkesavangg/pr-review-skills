@@ -462,7 +462,28 @@ extension BluetoothService {
         }
     }
 
+    /// Whether the paired device for this broadcastId is a BPM monitor.
+    /// `getUsers` / `getScaleUserList` is a weight-scale-only SDK operation; invoking it against a
+    /// BPM (A6) monitor crashes inside the vendored SDK (EXC_BAD_ACCESS in
+    /// `GGBPMonitorA6.description.getter`), so callers must skip it for BPM devices.
+    private func isBpmDevice(broadcastId: String) -> Bool {
+        guard let sku = bluetoothScales.first(where: { $0.broadcastIdString == broadcastId })?.sku else {
+            return false
+        }
+        return DeviceInfoUtils.shared.getDeviceInfo(bySku: sku)?.setupType == .bpm
+    }
+
     func getScaleUserList(broadcastId: String, skipConnectionCheck: Bool = false) async -> Result<[DeviceUser], BluetoothServiceError> {
+        // BPM monitors have no scale-style user list; asking the SDK for one crashes it.
+        guard !isBpmDevice(broadcastId: broadcastId) else {
+            logger.log(
+                level: .info,
+                tag: tag,
+                message: "Skipping getScaleUserList for BPM monitor \(broadcastId) — user-list is a weight-scale operation"
+            )
+            return .failure(.notImplemented)
+        }
+
         let isConnected = bluetoothScales.first { $0.broadcastIdString == broadcastId }?.isConnected ?? false
         guard skipConnectionCheck || isConnected else {
             logger.log(level: .error, tag: tag, message: "Cannot get user list - device is not connected: \(broadcastId)")

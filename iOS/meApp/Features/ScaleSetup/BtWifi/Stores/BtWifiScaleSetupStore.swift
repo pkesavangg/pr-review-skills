@@ -536,7 +536,7 @@ final class BtWifiScaleSetupStore: ObservableObject {
                         default:
                             ConnectionPromptView(
                                 title: customizeSettingsLang.collectingMeasurement,
-                                image: AppAssets.wgLogo
+                                image: AppAssets.meLogoLight
                             )
                         }
                     }

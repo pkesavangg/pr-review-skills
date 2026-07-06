@@ -169,21 +169,19 @@ extension BtWifiScaleSetupStore {
         onConfirm: @escaping () -> Void,
         onCancel: @escaping () -> Void = {}
     ) {
-        let lang = AlertStrings.ExitBtWifiSetupAlert.self
-        let message: String = {
-            switch (isWifiSetupOnly, savedScale != nil) {
-            case (true, _):  return lang.wifiExitMessage
-            case (false, true):  return lang.postConnectionExitMessage
-            default:  return lang.preConnectionExitMessage
-            }
-        }()
+        let lang = AlertStrings.ExitSetupAlert.self
+        // WiFi-only is a reconfiguration of an already-set-up scale, not a device setup,
+        // so it keeps its own contextual message. All device-setup exits share the unified copy.
+        let message: String = isWifiSetupOnly
+            ? AlertStrings.ExitBtWifiSetupAlert.wifiExitMessage
+            : lang.message
 
         let alert = AlertModel(
             title: lang.title,
             message: message,
             buttons: [
                 AlertButtonModel(title: lang.exitButton, type: .primary) { _ in onConfirm() },
-                AlertButtonModel(title: lang.goBackButton, type: .secondary) { _ in onCancel() }
+                AlertButtonModel(title: lang.returnButton, type: .secondary) { _ in onCancel() }
             ])
         notificationService.showAlert(alert)
     }

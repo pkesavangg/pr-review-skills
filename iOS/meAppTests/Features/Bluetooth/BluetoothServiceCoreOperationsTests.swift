@@ -700,6 +700,29 @@ struct BluetoothServiceCoreOperationsTests {
         }
     }
 
+    @Test("getScaleUserList skips BPM monitors (SDK getUsers crashes for BPM) and never calls the SDK")
+    func getScaleUserListSkipsBpmDevices() async {
+        let sdk = MockBluetoothSDKClient()
+        let sut = makeSUT(sdk: sdk)
+        let device = makeDevice(id: "bpm-1", broadcastIdString: "BPM663", isConnected: true)
+        device.sku = "0663" // A6 BPM monitor
+        sut.bluetoothScales = [device.toSnapshot(isConnected: true)]
+
+        let result = await sut.getScaleUserList(broadcastId: device.broadcastIdString ?? "", skipConnectionCheck: true)
+
+        switch result {
+        case .success:
+            Issue.record("Expected getScaleUserList to fail for a BPM monitor")
+        case .failure(let error):
+            guard case .notImplemented = error else {
+                Issue.record("Expected notImplemented, got \(error)")
+                return
+            }
+        }
+        // Critically, the crashing SDK getUsers call must not have been made.
+        #expect(sdk.userListRequests.isEmpty)
+    }
+
     @Test("withTimeout returns successful result before timeout expires")
     func withTimeoutReturnsBeforeDeadline() async throws {
         let sut = makeSUT()
