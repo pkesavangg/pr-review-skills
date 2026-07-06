@@ -836,7 +836,7 @@ class AppViewModelTest {
     }
 
     @Test
-    fun `saveBpmEntry maps and saves via saveBluetoothEntries when device known`() = runTest {
+    fun `saveBpmEntry shows the reading card without auto-saving when device known`() = runTest {
         viewModel = createViewModel()
         advanceUntilIdle()
         coEvery { deviceService.isSetupInProgress() } returns false
@@ -846,8 +846,10 @@ class AppViewModelTest {
         viewModel.invokePrivate("saveBpmEntry", listOf(aBpmGGEntry()))
         advanceUntilIdle()
 
-        coVerify { entryService.addEntry(any<List<Entry>>()) }
+        // A live BPM reading now surfaces the "New BPM Reading Received" card (SAVE/DISCARD) and
+        // persists only on SAVE — no auto-save, matching the weight-scale flow.
         verify { dialogQueueService.showToast(any()) }
+        coVerify(exactly = 0) { entryService.addEntry(any<List<Entry>>()) }
     }
 
     @Test

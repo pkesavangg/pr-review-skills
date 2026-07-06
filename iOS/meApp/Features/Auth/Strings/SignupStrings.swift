@@ -38,7 +38,7 @@ struct SignupStrings {
     struct GoalStep {
         static let title = "Set a goal!"
         static let subtitle = "This can be helpful feature to utilize on your journey. Goals can always be changed in the app settings."
-        static let imperialUnit = "lbs"
+        static let imperialUnit = "lb"
         static let metricUnit = "kg"
     }
     

@@ -182,9 +182,9 @@ abstract class BaseDashboardViewModel<S : BaseDashboardState, I : BaseGraphInten
 
   protected suspend fun pushEmptyProducer(producer: CartesianChartModelProducer) {
     withContext(Dispatchers.Main) {
-      producer.runTransaction(animate = false) {
-        lineSeries { series(listOf(0.0), listOf(0.0)) }
-      }
+      // Empty transaction → empty chart model, so no (0.0, 0.0) placeholder line is drawn. The
+      // empty UI is shown by EmptyDashboardGraph via isEmptyGraph. (mirrors pushSeriesToProducer)
+      producer.runTransaction(animate = false) {}
     }
   }
 

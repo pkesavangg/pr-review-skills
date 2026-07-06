@@ -43,6 +43,7 @@ fun AppDeviceCard(
   isSavedScale: Boolean,
   enabled: Boolean = true,
   canShowRightCaret: Boolean = true,
+  displayLabel: String? = null,
   onClick: (DeviceModelInfo) -> Unit,
 ) {
   val cardSpacing = if (isSavedScale) spacing.md else spacing.sm
@@ -79,7 +80,7 @@ fun AppDeviceCard(
       AppDeviceImage(sku = scale.sku)
 
       Spacer(modifier = Modifier.width(spacing.sm))
-      val displaySku = scale.sku
+      val displaySku = displayLabel ?: scale.sku
       Column(
         modifier = Modifier.weight(1f),
         verticalArrangement = Arrangement.Center,

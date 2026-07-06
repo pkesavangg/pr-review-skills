@@ -20,7 +20,7 @@ enum EntryUnit: String, Codable, Equatable {
         switch self {
         case .lb: return "lb"
         case .kg: return "kg"
-        case .lbOz: return "lbs oz"
+        case .lbOz: return "lb oz"
         case .mmhg: return "mmHg"
         }
     }

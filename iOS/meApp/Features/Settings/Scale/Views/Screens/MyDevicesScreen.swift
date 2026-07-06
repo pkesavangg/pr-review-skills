@@ -154,6 +154,7 @@ struct MyDevicesScreen: View {
                         focusedField: focusBinding
                     )
                     .padding(.bottom, .spacingMD)
+                    .appAccessibility(id: AccessibilityID.addScaleModelNumberField)
                     ButtonView(
                         text: CommonStrings.submit,
                         type: .filledPrimary,
@@ -182,6 +183,7 @@ struct MyDevicesScreen: View {
                             handleDeviceSelection(scaleWithOriginalSku, clearUI: true)
                         }
                     .padding(.bottom, .spacingSM)
+                    .appAccessibility(id: AccessibilityID.addScaleSubmitButton)
 
                     ButtonView(
                         text: lang.cantFindModelNumber,
@@ -193,6 +195,7 @@ struct MyDevicesScreen: View {
                             hideKeyboard()
                             activeSheet = .scaleList
                         }
+                    .appAccessibility(id: AccessibilityID.addScaleCantFindButton)
                 }
                 .padding(.horizontal, .spacingSM)
                 .padding(.vertical, .spacingLG)
@@ -277,6 +280,7 @@ struct MyDevicesScreen: View {
                                 },
                                 scaleType: scaleType
                             )
+                            .accessibilityIdentifier(AccessibilityID.deviceRow + "_" + (scale.sku ?? scale.id))
 
                             Divider()
                         }
@@ -286,6 +290,7 @@ struct MyDevicesScreen: View {
             .scrollDismissesKeyboard(.interactively)
         }
         .navigationBarBackButtonHidden(true)
+        .screenAccessibilityRoot(AccessibilityID.addEditScalesScreenRoot)
         .background(theme.backgroundSecondary.ignoresSafeArea())
         .onTapGesture {
             if !shouldMaintainKeyboardFocus {

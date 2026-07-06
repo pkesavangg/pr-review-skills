@@ -42,6 +42,7 @@ struct LoginScreen: View {
                         AppIconView(icon: AppAssets.helpCircle, size: IconSize(width: 24, height: 24))
                             .foregroundColor(theme.statusIconPrimary)
                     }
+                    .accessibilityIdentifier(AccessibilityID.loginHelpButton)
                     .accessibilityLabel(lang.accHelpLabel)
                     .accessibilityHint(lang.accHelpHint)
                 },
@@ -51,7 +52,8 @@ struct LoginScreen: View {
                 onTrailingTap: { },
                 canShowBorder: isFromAccountSwitching,
                 canShowPresentationIndicator: isFromAccountSwitching,
-                shouldShowBackground: false
+                shouldShowBackground: false,
+                leadingAccessibilityID: AccessibilityID.loginCloseButton
             )
             
             GeometryReader { geometry in
@@ -72,6 +74,7 @@ struct LoginScreen: View {
                                     .frame(maxWidth: .infinity, alignment: .center)
                                     .padding(.bottom, .spacingXL)
                                     .accessibilityAddTraits(.isHeader)
+                                    .accessibilityIdentifier(AccessibilityID.loginWelcomeTitle)
                                 VStack {
                                     // Email Input Field
                                     AppInputField(
@@ -237,7 +240,7 @@ struct LoginScreen: View {
                 hideKeyboard()
             }
         }
-        .accessibilityIdentifier(AccessibilityID.loginScreenRoot)
+        .screenAccessibilityRoot(AccessibilityID.loginScreenRoot)
     }
 }
 

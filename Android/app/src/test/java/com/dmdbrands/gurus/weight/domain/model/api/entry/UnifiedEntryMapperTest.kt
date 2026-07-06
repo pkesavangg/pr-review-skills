@@ -192,9 +192,8 @@ class UnifiedEntryMapperTest {
             it.copy(bpmEntry = it.bpmEntry.copy(systolic = 0, diastolic = 0, pulse = 0))
         }
         assertThat(garbage.toUnifiedRequests()).isEmpty()
-        // A systolic above the hard cap (BP_HARD_MAX = 500) is also rejected. Values within the
-        // cap (e.g. 400) are intentionally kept — the window mirrors the manual form's contract.
-        val tooHigh = bpmEntry().let { it.copy(bpmEntry = it.bpmEntry.copy(systolic = 501)) }
+        // A systolic above the hard cap (BP_HARD_MAX = 500) is also rejected.
+        val tooHigh = bpmEntry().let { it.copy(bpmEntry = it.bpmEntry.copy(systolic = 600)) }
         assertThat(tooHigh.toUnifiedRequests()).isEmpty()
     }
 

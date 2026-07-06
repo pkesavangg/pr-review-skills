@@ -154,11 +154,13 @@ struct BabyHistoryEntryItem: View {
                     Spacer()
 
                     Button(action: onEditNotes) {
-                        Image(systemName: "square.and.pencil")
+                        // "+" to add when no note exists, boxed pencil to edit once it does.
+                        Image(systemName: hasNotes ? "square.and.pencil" : "plus")
                             .font(.system(size: 18))
                             .foregroundColor(theme.actionPrimary)
                     }
                     .buttonStyle(.plain)
+                    .accessibilityLabel(hasNotes ? HistoryListStrings.accEditNoteLabel : HistoryListStrings.accAddNoteLabel)
                 }
                 .padding(.spacingSM)
                 .frame(maxWidth: .infinity, alignment: .leading)

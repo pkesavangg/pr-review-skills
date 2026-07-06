@@ -7,7 +7,6 @@ import Foundation
 
 enum BabyDashboardStrings {
     // MARK: - Units
-    static let lbs = "lbs"
     static let lb = "lb"
     static let oz = "oz"
     static let kg = "kg"

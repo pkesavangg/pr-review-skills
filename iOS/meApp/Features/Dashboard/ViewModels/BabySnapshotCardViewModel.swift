@@ -27,7 +27,7 @@ final class BabySnapshotCardViewModel: ObservableObject {
     }
 
     var unitText: String {
-        activeAccount?.weightUnit.rawValue ?? "lbs"
+        activeAccount?.weightUnit.rawValue ?? "lb"
     }
 
     var measurementUnits: MeasurementUnits {

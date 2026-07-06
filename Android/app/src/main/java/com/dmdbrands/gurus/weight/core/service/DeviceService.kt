@@ -19,6 +19,7 @@ import com.dmdbrands.gurus.weight.features.common.model.DialogModel
 import com.dmdbrands.gurus.weight.core.di.ApplicationScope
 import com.dmdbrands.library.ggbluetooth.model.GGBTDevice
 import com.dmdbrands.library.ggbluetooth.model.GGDeviceDetail
+import com.greatergoods.ggbluetoothsdk.external.enums.GGDeviceProtocolType
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -31,6 +32,8 @@ import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import java.util.TimeZone
 import java.util.UUID
 import javax.inject.Inject
@@ -54,6 +57,11 @@ constructor(
   // Provider to avoid a construction-time DI cycle (product manager → account → device).
   private val productSelectionManager: Provider<IProductSelectionManager>,
 ) : BaseService(connectivityObserver, dialogQueueService, appNavigationService), IDeviceService {
+  companion object {
+    /** Minimum gap between two foreground-triggered device refreshes, to dedupe lifecycle jitter. (MOB-1201) */
+    private const val FOREGROUND_REFRESH_THROTTLE_MS = 5_000L
+  }
+
   private val tag = "DeviceService"
 
   private var fetchJob: Job? = null
@@ -131,6 +139,20 @@ constructor(
   private var currentAccountId: String? = null
   private var deviceCollectionJob: Job? = null
 
+  /**
+   * Guards the passive foreground refresh (MOB-1201). The initial cold-start foreground is
+   * already covered by the loading flow's setAccountId() -> syncDevices(), so the first
+   * foreground event is skipped; subsequent ones are throttled to avoid redundant fetches.
+   */
+  private var hasHandledInitialForeground = false
+  private var lastForegroundRefreshAtMs = 0L
+
+  /** Serializes [syncDevices] so concurrent triggers never run its destructive wipe-and-rewrite at once. */
+  private val syncMutex = Mutex()
+
+  /** Tracks an in-flight on-demand refresh so overlapping triggers don't stack redundant syncs. (MOB-1201) */
+  private var deviceRefreshJob: Job? = null
+
   init {
     AppLog.d(tag, "DeviceService initialized")
     // Note: We don't call syncScales here as we need an account ID first
@@ -166,7 +188,21 @@ constructor(
     return deviceRepository
       .getDevices(accountId)
       .map { deviceList ->
-        deviceList.map { it.toGGBTDevice() }
+        // A6-only: when the same monitor (broadcastId) is paired under more than one user slot,
+        // set syncAllData so the SDK pulls history for every slot. A3 / single-slot never get it.
+        val countByBroadcast =
+          deviceList
+            .mapNotNull { it.device?.broadcastId }
+            .groupingBy { it }
+            .eachCount()
+        deviceList.map { device ->
+          val broadcastId = device.device?.broadcastId
+          val syncAll =
+            DeviceHelper.isA6BpmSku(device.sku) &&
+              broadcastId != null &&
+              (countByBroadcast[broadcastId] ?: 0) > 1
+          device.toGGBTDevice(syncAllData = syncAll)
+        }
       }
       .distinctUntilChanged { oldList, newList ->
         if (oldList.size != newList.size) return@distinctUntilChanged false
@@ -195,6 +231,66 @@ constructor(
   override suspend fun clearAccountData() {
     AppLog.d(tag, "Clearing account data")
     currentAccountId = null
+  }
+
+  /**
+   * Re-pull paired devices when the app returns to the foreground so a device paired on
+   * another platform (e.g. iOS) shows up without a cold restart. (MOB-1201)
+   *
+   * No-ops on the initial foreground (the loading flow already synced), when logged out,
+   * when offline, and when called again inside the throttle window.
+   */
+  override fun onAppForegrounded() {
+    // The initial cold-start foreground is already covered by setAccountId() -> syncDevices();
+    // skip it to avoid a duplicate fetch right after launch.
+    if (!hasHandledInitialForeground) {
+      hasHandledInitialForeground = true
+      AppLog.d(tag, "Initial foreground — refresh handled by cold-start sync, skipping")
+      return
+    }
+
+    val now = System.currentTimeMillis()
+    if (now - lastForegroundRefreshAtMs < FOREGROUND_REFRESH_THROTTLE_MS) {
+      AppLog.d(tag, "Skipping foreground device refresh — within throttle window")
+      return
+    }
+    lastForegroundRefreshAtMs = now
+
+    launchDeviceRefresh("App foregrounded")
+  }
+
+  override fun refreshPairedDevices() {
+    // On-demand refresh (e.g. opening My Devices). Not throttled — the user explicitly
+    // navigated here and expects the freshest list.
+    launchDeviceRefresh("My Devices opened")
+  }
+
+  /**
+   * Shared guarded launch for an on-demand device re-pull. No-ops when logged out or offline.
+   */
+  private fun launchDeviceRefresh(reason: String) {
+    val accountId = currentAccountId
+    if (accountId == null) {
+      AppLog.d(tag, "Skipping device refresh ($reason) — no active account")
+      return
+    }
+    if (!isNetworkAvailable()) {
+      AppLog.d(tag, "Skipping device refresh ($reason) — network unavailable")
+      return
+    }
+    // An in-flight refresh will already return the latest server state — don't stack another.
+    if (deviceRefreshJob?.isActive == true) {
+      AppLog.d(tag, "Skipping device refresh ($reason) — a refresh is already in progress")
+      return
+    }
+    AppLog.d(tag, "$reason — refreshing paired devices for account $accountId")
+    deviceRefreshJob = appScope.launch {
+      try {
+        syncDevices()
+      } catch (e: Exception) {
+        AppLog.e(tag, "Device refresh ($reason) failed", e)
+      }
+    }
   }
 
   /**
@@ -229,11 +325,22 @@ constructor(
   override suspend fun syncDevices(
     tempDevice: Device?
   ) {
+    // Serialize syncs so concurrent triggers (foreground refresh, My Devices open, scale setup)
+    // never run the destructive delete-all + re-insert at the same time. (MOB-1201)
+    syncMutex.withLock { syncDevicesInternal(tempDevice) }
+  }
+
+  private suspend fun syncDevicesInternal(
+    tempDevice: Device?
+  ) {
     val tag = "DeviceService-syncDevices"
     val accountId = currentAccountId ?: return
 
     val unsyncedDevices = mutableListOf<Device>()
     val syncedDevicesToStore = mutableListOf<Device>()
+    // Ids deleted this run — hoisted to function scope so the GET-merge (separate try below) can
+    // exclude them and never resurrect a just-deleted device.
+    var deletedIds: Set<String> = emptySet()
 
     try {
       // 1. Get locally stored devices
@@ -250,10 +357,15 @@ constructor(
           (!device.isSynced || (device.preferences != null && !device.preferences.isSynced))
       }
       val devicesMarkedDeleted = storedDevices.filter { it.isDeleted }
+      // Ids being deleted this run. When deleteScale passes an isDeleted=true copy as tempDevice,
+      // the ORIGINAL DB row still has isDeleted=false, so without this it lands in onlineScales and
+      // the GET-merge "keep devices the API didn't return" step resurrects the just-deleted scale.
+      deletedIds = devicesMarkedDeleted.map { it.id }.toSet()
 
       // Initialize syncedDevicesToStore with already synced devices (online scales)
       val onlineScales = storedDevices.filter { device ->
         !device.isDeleted &&
+          device.id !in deletedIds &&
           device.isSynced &&
           (device.preferences == null || device.preferences.isSynced)
       }
@@ -304,7 +416,11 @@ constructor(
       // 5. Delete devices marked for deletion
       for (device in devicesMarkedDeleted) {
         try {
-          deviceRepository.deleteDeviceFromApi(device.id)
+          // Devices are registered via the unified POST /v3/paired-device/, so they must be deleted
+          // via the unified DELETE /v3/paired-device/{id} — NOT the legacy /v3/paired-scale/{id}
+          // (deleteDeviceFromApi), which doesn't know the unified id and errors. The legacy delete
+          // "worked" on the release line only because that line also creates via paired-scale. (MOB-378)
+          deviceRepository.deletePairedDevice(device.id)
           deviceRepository.deleteDeviceFromDb(device.id)
         } catch (e: Exception) {
           AppLog.e(tag, "Error deleting device ${device.id}", e)
@@ -336,20 +452,38 @@ constructor(
     val finalDevices = try {
       val apiDevices = deviceRepository.getDevicesFromApi(accountId)
       AppLog.i(tag, "Successfully fetched ${apiDevices.size} devices from API")
+      // The unified POST /v3/paired-device/ (§2.3) echoes broadcastId, userNumber, mac, password and
+      // peripheralIdentifier, but the GET (§2.4) omits them. Preserve those fields from the local DB
+      // row — or, for a device paired THIS run that isn't in the DB yet (saveScale writes the DB only
+      // at the end of this method), from the in-memory copy we just synced, which still carries the
+      // POST response values. Without this every GET-driven sync nulls out the fields BPM/baby
+      // reading attribution + same-user pairing detection depend on (MOB-596).
+      val syncedById = syncedDevicesToStore.associateBy { it.id }
       val syncedList = apiDevices.map { apiDev ->
-        val localMatch = deviceRepository.getDevice(apiDev.id).first()
-        if (localMatch != null) {
+        val source = deviceRepository.getDevice(apiDev.id).first() ?: syncedById[apiDev.id]
+        if (source != null) {
           apiDev.copy(
             isSynced = true,
+            // Top-level userNumber is omitted by the GET, so preserve the user slot from the source
+            // or every sync would null it — breaking multi-user reading attribution.
+            userNumber = apiDev.userNumber ?: source.userNumber,
+            // BACKEND WORKAROUND: the GET (and POST) never return scaleToken, so preserve the local
+            // token here — otherwise every sync nulls it and R4 (0412) getUsers/updateAccount fail
+            // (e.g. blank scale-user names). REMOVE once the backend returns scaleToken.
+            token = apiDev.token?.takeIf { it.isNotBlank() } ?: source.token,
+            // R4 scale preferences (incl. the user's displayName) are local-only — there is no GET
+            // for them, so the paired-device GET never returns them. Preserve from the local source
+            // or every sync nulls the preference and the scale-detail "Users" name goes blank.
+            preferences = apiDev.preferences ?: source.preferences,
             device = apiDev.device?.copy(
-              macAddress = localMatch.device?.macAddress ?: apiDev.device?.macAddress ?: "",
-              // Preserve the locally-paired broadcastId/password: the unified GET /v3/paired-device/
-              // (§2.4) omits them, so the API copy would be null and break the broadcastId match
-              // that routes a scale reading to its device (MOB-598).
-              broadcastId = apiDev.device?.broadcastId ?: localMatch.device?.broadcastId,
-              broadcastIdString = apiDev.device?.broadcastIdString ?: localMatch.device?.broadcastIdString,
-              password = apiDev.device?.password ?: localMatch.device?.password,
-              isWifiConfigured = localMatch.device?.isWifiConfigured ?: apiDev.device?.isWifiConfigured ?: false,
+              macAddress = source.device?.macAddress ?: apiDev.device?.macAddress ?: "",
+              // peripheralIdentifier is dropped by the GET too; same-user pairing detection keys on it.
+              identifier = apiDev.device?.identifier?.takeIf { it.isNotBlank() }
+                ?: source.device?.identifier ?: "",
+              broadcastId = apiDev.device?.broadcastId ?: source.device?.broadcastId,
+              broadcastIdString = apiDev.device?.broadcastIdString ?: source.device?.broadcastIdString,
+              password = apiDev.device?.password ?: source.device?.password,
+              isWifiConfigured = source.device?.isWifiConfigured ?: apiDev.device?.isWifiConfigured ?: false,
             ),
           )
         } else {
@@ -360,7 +494,9 @@ constructor(
       // saved via paired-device isn't echoed by this GET) so a paired device never disappears
       // from the local list and its readings keep matching (MOB-598).
       val apiIds = syncedList.map { it.id }.toSet()
-      val localOnlySynced = syncedDevicesToStore.filter { it.id !in apiIds }
+      // Never resurrect a device deleted this run: the GET legitimately omits it because it was just
+      // deleted server-side, so it must not be kept as a "GET omitted it" local-only device.
+      val localOnlySynced = syncedDevicesToStore.filter { it.id !in apiIds && it.id !in deletedIds }
       mergeSyncedWithUnsyncedById(syncedList + localOnlySynced, unsyncedDevices)
     } catch (e: Exception) {
       AppLog.e(tag, "Error fetching devices from API $e", )
@@ -577,14 +713,35 @@ constructor(
       null
     }
 
-  override suspend fun healBpmDeviceBroadcastId(broadcastId: String, accountId: String): Device? =
+  override suspend fun getScaleByBroadcastIdAndUser(
+    broadcastId: String,
+    userNumber: Int,
+    accountId: String,
+  ): Device? =
+    try {
+      deviceRepository.getDeviceByBroadcastIdAndUser(broadcastId, userNumber, accountId).first()
+    } catch (e: Exception) {
+      AppLog.e(tag, "Error getting scale by broadcast ID + user", e)
+      null
+    }
+
+  override suspend fun healBpmDeviceBroadcastId(
+    broadcastId: String,
+    accountId: String,
+    protocolType: String?,
+  ): Device? =
     try {
       // Only safe to attribute a monitor reading when there's exactly one paired BPM device still
       // missing a broadcastId (the server-synced state). Multiple → ambiguous, so bail.
+      // Protocol guard: never stamp an A6 reading's broadcastId onto an A3 row (or vice-versa). Only
+      // enforced when the reading's protocolType is known; unknown → fall back so a missing protocol
+      // never regresses the heal. (MOB-596)
+      val readingIsA6 = protocolType?.let { it == GGDeviceProtocolType.GG_DEVICE_PROTOCOL_A6.value }
       val candidate = _pairedScales.value.singleOrNull { device ->
         !device.isDeleted &&
           DeviceHelper.isBpmDevice(device.sku.orEmpty()) &&
-          device.device?.broadcastIdString.isNullOrBlank()
+          device.device?.broadcastIdString.isNullOrBlank() &&
+          (readingIsA6 == null || DeviceHelper.isA6BpmSku(device.sku) == readingIsA6)
       }
       if (candidate == null) {
         AppLog.w(tag, "healBpmDeviceBroadcastId: no single un-identified BPM device to heal")
@@ -596,6 +753,29 @@ constructor(
       }
     } catch (e: Exception) {
       AppLog.e(tag, "Error healing BPM device broadcastId", e)
+      null
+    }
+
+  override suspend fun healBabyScaleBroadcastId(broadcastId: String, accountId: String): Device? =
+    try {
+      // Safe only when there's exactly one paired baby scale still missing a broadcastId — matched
+      // by SKU (0220/0222), which survives even when the id/deviceType were dropped on save.
+      // Multiple → ambiguous, so bail. Mirrors [healBpmDeviceBroadcastId].
+      val candidate = _pairedScales.value.singleOrNull { device ->
+        !device.isDeleted &&
+          DeviceHelper.isBabyScale(device.sku.orEmpty()) &&
+          device.device?.broadcastIdString.isNullOrBlank()
+      }
+      if (candidate == null) {
+        AppLog.w(tag, "healBabyScaleBroadcastId: no single un-identified baby scale to heal")
+        null
+      } else {
+        deviceRepository.updateDeviceBroadcastId(candidate.id, broadcastId, accountId)
+        AppLog.i(tag, "Healed baby scale ${candidate.id} with broadcastId=$broadcastId")
+        deviceRepository.getDeviceByBroadcastId(broadcastId, accountId).first()
+      }
+    } catch (e: Exception) {
+      AppLog.e(tag, "Error healing baby scale broadcastId", e)
       null
     }
 

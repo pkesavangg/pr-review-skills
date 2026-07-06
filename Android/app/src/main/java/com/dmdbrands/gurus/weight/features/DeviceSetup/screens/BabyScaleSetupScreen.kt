@@ -24,6 +24,7 @@ import com.dmdbrands.gurus.weight.features.DeviceSetup.components.DeviceInfoCont
 import com.dmdbrands.gurus.weight.features.DeviceSetup.components.DeviceNameContent
 import com.dmdbrands.gurus.weight.features.DeviceSetup.components.DevicePermissions
 import com.dmdbrands.gurus.weight.features.DeviceSetup.components.DeviceSetupHeader
+import com.dmdbrands.gurus.weight.features.DeviceSetup.components.SetupFinishedContent
 import com.dmdbrands.gurus.weight.features.DeviceSetup.enums.BabyScaleSetupStep
 import com.dmdbrands.gurus.weight.features.DeviceSetup.modal.ConnectionState
 import com.dmdbrands.gurus.weight.features.DeviceSetup.modal.SetupInitData
@@ -47,6 +48,7 @@ private val STEPS_WITH_NAV = setOf(
   BabyScaleSetupStep.PAIRED_SUCCESS,
   BabyScaleSetupStep.BABY_PROFILE_FORM,
   BabyScaleSetupStep.BABY_LIST,
+  BabyScaleSetupStep.SETUP_FINISHED,
 )
 
 @Composable
@@ -150,7 +152,8 @@ internal fun BabyScaleSetupScreenContent(
               },
             )
 
-          BabyScaleSetupStep.SETUP_FINISHED -> {}
+          BabyScaleSetupStep.SETUP_FINISHED ->
+            SetupFinishedContent()
         }
       }
 
@@ -171,11 +174,9 @@ internal fun BabyScaleSetupScreenContent(
             enabled = !state.isFirstStep,
             onClick = { onIntent(DeviceSetupIntent.Back) },
           )
-          // SKIP — only on the baby-profile steps; triggers the "Skip Baby Profile?"
-          // confirmation dialog (MOB-440).
-          if (currentStep == BabyScaleSetupStep.PAIRED_SUCCESS ||
-            currentStep == BabyScaleSetupStep.BABY_PROFILE_FORM
-          ) {
+          // SKIP — only on the baby-profile form; triggers the "Skip Baby Profile?"
+          // confirmation dialog (MOB-440). "You're Paired!" intentionally has no SKIP (design).
+          if (currentStep == BabyScaleSetupStep.BABY_PROFILE_FORM) {
             AppButton(
               type = ButtonType.TextPrimary,
               label = DeviceSetupStrings.skipButton,
@@ -225,7 +226,7 @@ internal fun BabyScaleSetupScreenContent(
             BabyScaleSetupStep.BABY_PROFILE_FORM ->
               AppButton(
                 type = ButtonType.PrimaryFilled,
-                label = BabyScaleSetupStrings.SetupButtons.Save,
+                label = DeviceSetupStrings.nextButton,
                 size = ButtonSize.Small,
                 enabled = state.editingProfile.name.isNotBlank(),
                 onClick = {
@@ -236,7 +237,20 @@ internal fun BabyScaleSetupScreenContent(
                 },
               )
 
+            // FINISH on the baby list advances to the "You're Done!" screen rather than
+            // exiting directly, so the completion screen is shown (design screen 9).
             BabyScaleSetupStep.BABY_LIST ->
+              AppButton(
+                type = ButtonType.PrimaryFilled,
+                label = BabyScaleSetupStrings.SetupButtons.Finish,
+                size = ButtonSize.Small,
+                onClick = {
+                  onIntent(DeviceSetupIntent.SetNewStep(BabyScaleSetupStep.SETUP_FINISHED))
+                },
+              )
+
+            // "You're Done!" — FINISH exits setup (saves scale + uploads baby profiles).
+            BabyScaleSetupStep.SETUP_FINISHED ->
               AppButton(
                 type = ButtonType.PrimaryFilled,
                 label = BabyScaleSetupStrings.SetupButtons.Finish,

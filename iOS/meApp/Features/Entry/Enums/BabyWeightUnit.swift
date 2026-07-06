@@ -13,12 +13,12 @@ enum BabyWeightUnit: String, CaseIterable, Identifiable, Hashable {
 
     var id: String { rawValue }
 
-    /// User-facing label for the weight-unit selector ("lbs", "lbs/oz", "kg").
+    /// User-facing label for the weight-unit selector ("lb", "lb/oz", "kg").
     /// Distinct from `rawValue`, which is the canonical storage/logic value.
     var displayName: String {
         switch self {
-        case .lbsOz: return "lbs/oz"
-        case .lb: return "lbs"
+        case .lbsOz: return "lb/oz"
+        case .lb: return "lb"
         case .kg: return "kg"
         }
     }

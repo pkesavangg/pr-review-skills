@@ -24,14 +24,6 @@ fun StartConnect(
             primaryButtonLabel = HealthConnectStrings.ActionButtons.connect,
         ),
         onPrimaryAction = onPrimaryAction,
-        dataTypes = listOf(
-            HealthConnectStrings.StartConnectStrings.DataTypeWeight,
-            HealthConnectStrings.StartConnectStrings.DataTypeBmi,
-            HealthConnectStrings.StartConnectStrings.DataTypeBodyFat,
-            HealthConnectStrings.StartConnectStrings.DataTypeLeanBodyMass,
-            HealthConnectStrings.StartConnectStrings.DataTypeBloodPressure,
-            HealthConnectStrings.StartConnectStrings.DataTypeHeartRate,
-        ),
     )
 }
 

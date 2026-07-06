@@ -5,7 +5,7 @@ import com.dmdbrands.library.ggbluetooth.model.GGDeviceDetail
 import com.google.common.truth.Truth.assertThat
 import io.mockk.every
 import io.mockk.mockk
-import org.junit.Test
+import org.junit.jupiter.api.Test
 
 class DeviceApiMapperTest {
 
@@ -21,6 +21,79 @@ class DeviceApiMapperTest {
         every { this@mockk.password } returns password
         every { deviceName } returns name
         every { this@mockk.identifier } returns identifier
+    }
+
+    private fun apiModel(
+        id: String = "srv-1",
+        type: String? = "bluetooth",
+        mac: String? = null,
+        scaleToken: String? = null,
+        peripheralIdentifier: String? = null,
+        name: String? = "Scale",
+        sku: String? = "0220",
+    ) = DeviceApiModel(
+        id = id,
+        nickname = null,
+        type = type,
+        createdAt = null,
+        userNumber = null,
+        mac = mac,
+        broadcastId = null,
+        password = null,
+        sku = sku,
+        name = name,
+        scaleToken = scaleToken,
+        peripheralIdentifier = peripheralIdentifier,
+        preference = null,
+        latestVersion = null,
+        productType = null,
+    )
+
+    // ── toDomainModel — local-value preservation when the server omits fields ─
+
+    @Test
+    fun `toDomainModel preserves local mac, peripheralId, deviceType and token when overrides are supplied`() {
+        // Server response omits mac/scaleToken/peripheralIdentifier and reports the connection type.
+        val server = apiModel(type = "bluetooth", mac = null, scaleToken = null, peripheralIdentifier = null)
+
+        val d = server.toDomainModel(
+            macAddressOverride = "AA:BB:CC",
+            peripheralIdentifierOverride = "pid-1",
+            deviceTypeOverride = "babyScale",
+            scaleTokenOverride = "tok-9",
+        )
+
+        assertThat(d.device?.macAddress).isEqualTo("AA:BB:CC")
+        assertThat(d.device?.identifier).isEqualTo("pid-1")
+        assertThat(d.deviceType).isEqualTo("babyScale") // NOT demoted to the connection type "bluetooth"
+        assertThat(d.token).isEqualTo("tok-9")
+    }
+
+    @Test
+    fun `toDomainModel uses server values when no overrides are given`() {
+        val server = apiModel(type = "weight_scale", mac = "SRV:MAC", scaleToken = "srv-tok", peripheralIdentifier = "srv-pid")
+
+        val d = server.toDomainModel()
+
+        assertThat(d.device?.macAddress).isEqualTo("SRV:MAC")
+        assertThat(d.device?.identifier).isEqualTo("srv-pid")
+        assertThat(d.deviceType).isEqualTo("weight_scale")
+        assertThat(d.token).isEqualTo("srv-tok")
+    }
+
+    @Test
+    fun `toDomainModel ignores blank overrides and falls back to server values`() {
+        val server = apiModel(type = "bluetooth", mac = "SRV:MAC", scaleToken = "srv-tok", peripheralIdentifier = "srv-pid")
+
+        val d = server.toDomainModel(
+            macAddressOverride = "",
+            peripheralIdentifierOverride = "",
+            scaleTokenOverride = "",
+        )
+
+        assertThat(d.device?.macAddress).isEqualTo("SRV:MAC")
+        assertThat(d.device?.identifier).isEqualTo("srv-pid")
+        assertThat(d.token).isEqualTo("srv-tok")
     }
 
     // ── toPairedDeviceRequest ─────────────────────────────────────────────────
@@ -87,5 +160,26 @@ class DeviceApiMapperTest {
         assertThat(convertHexToInt(null)).isNull()
         assertThat(convertHexToInt("")).isNull()
         assertThat(convertHexToInt("   ")).isNull()
+    }
+
+    // ── convertIntToHex — MAC-width (12-char) padding ─────────────────────────
+
+    @Test
+    fun `convertIntToHex round-trips a baby-scale MAC with a trailing zero byte`() {
+        // A baby-scale broadcastId is the 6-byte MAC. This one ends in a zero byte, so the
+        // reversed int drops leading zeros — only 12-char padding recovers the full MAC.
+        val macHex = "F88FC8F50000"
+        val asInt = convertHexToInt(macHex)
+
+        assertThat(convertIntToHex(asInt, "babyScale")).isEqualTo(macHex)   // local deviceType
+        assertThat(convertIntToHex(asInt, "baby_scale")).isEqualTo(macHex)  // unified API category
+        assertThat(convertIntToHex(asInt, "btWifiR4")).isEqualTo(macHex)    // R4 unchanged
+    }
+
+    @Test
+    fun `convertIntToHex keeps legacy 8-char behavior for non-MAC devices`() {
+        // A generic bluetooth (A6) device must NOT get 12-char padding — behavior unchanged.
+        val asInt = convertHexToInt("F88FC8F50000")
+        assertThat(convertIntToHex(asInt, "bluetooth")).isEqualTo("F88FC8F5")
     }
 }

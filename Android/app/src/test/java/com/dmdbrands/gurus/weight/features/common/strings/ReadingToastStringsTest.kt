@@ -11,10 +11,11 @@ import org.junit.jupiter.api.Test
 class ReadingToastStringsTest {
 
   @Test
-  fun `title is product-specific for every type`() {
-    assertThat(ReadingToastStrings.title(ProductType.MY_WEIGHT)).isEqualTo("New Weight Scale Reading Received")
-    assertThat(ReadingToastStrings.title(ProductType.BLOOD_PRESSURE)).isEqualTo("New BPM Reading Received")
-    // Baby title aligned to design 24866 ("New Reading Received") — MOB-598.
+  fun `title is the generic New Reading Received for every type`() {
+    // Figma 30295-24793 / 30295-25144: the arrival-card title is the generic "New Reading Received"
+    // for every product — the value and its product colour convey the type.
+    assertThat(ReadingToastStrings.title(ProductType.MY_WEIGHT)).isEqualTo("New Reading Received")
+    assertThat(ReadingToastStrings.title(ProductType.BLOOD_PRESSURE)).isEqualTo("New Reading Received")
     assertThat(ReadingToastStrings.title(ProductType.BABY)).isEqualTo("New Reading Received")
   }
 
@@ -52,6 +53,8 @@ class ReadingToastStringsTest {
   @Test
   fun `no-baby copy matches the MOB-426 design`() {
     assertThat(ReadingToastStrings.NoBabyTitle).isEqualTo("New Reading Received")
+    // Short per Figma 30295-25144; the longer "…discarded and won't appear in History" copy is a
+    // design annotation/note, not the visible subtitle.
     assertThat(ReadingToastStrings.NoBabySubtitle).isEqualTo("Add a baby to save this reading.")
     assertThat(ReadingToastStrings.AddBaby).isEqualTo("ADD A BABY")
     assertThat(ReadingToastStrings.Discard).isEqualTo("DISCARD")

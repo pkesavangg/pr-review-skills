@@ -64,15 +64,6 @@ struct UnitSelectionToggle: View {
     }
 }
 
-// MARK: - View helpers
-
-private extension View {
-    @ViewBuilder
-    func accessibilityIdentifierIfPresent(_ id: String?) -> some View {
-        if let id { accessibilityIdentifier(id) } else { self }
-    }
-}
-
 // MARK: - Preview
 #Preview {
     struct PreviewWrapper: View {
@@ -80,7 +71,7 @@ private extension View {
         var body: some View {
             VStack(spacing: 24) {
                 UnitSelectionToggle(imperialTitle: "Ft / In", metricTitle: "CM", isMetric: $isMetric)
-                UnitSelectionToggle(imperialTitle: "lbs", metricTitle: "kg", isMetric: $isMetric)
+                UnitSelectionToggle(imperialTitle: "lb", metricTitle: "kg", isMetric: $isMetric)
             }
             .padding()
             .background(Color.gray.opacity(0.2))

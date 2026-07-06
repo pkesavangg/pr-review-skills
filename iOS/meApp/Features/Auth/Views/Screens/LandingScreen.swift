@@ -155,7 +155,7 @@ struct LandingScreen: View {
             }
         }
         .environmentObject(router)
-        .accessibilityIdentifier(AccessibilityID.landingScreenRoot)
+        .screenAccessibilityRoot(AccessibilityID.landingScreenRoot)
     }
 }
 

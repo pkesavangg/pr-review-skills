@@ -526,7 +526,7 @@ struct DashboardLifecycleManagerTests {
         let streaks = [
             DashboardTestFixtures.makeMetricItem(label: DashboardStrings.currentStreak),
             DashboardTestFixtures.makeMetricItem(label: DashboardStrings.longestStreak),
-            DashboardTestFixtures.makeMetricItem(label: "lbs/week")
+            DashboardTestFixtures.makeMetricItem(label: "lb/week")
         ]
         store.streakManager.state.streakItems = streaks
         store.state.ui.streakGridOrder = [streaks[2].id.uuidString, streaks[0].id.uuidString, streaks[1].id.uuidString]

@@ -38,6 +38,9 @@ interface IDeviceRepository {
 
   fun getDeviceByBroadcastId(broadcastId: String, accountId: String): Flow<Device?>
 
+  /** Resolves the paired row for a monitor + user slot (broadcastId + userNumber). */
+  fun getDeviceByBroadcastIdAndUser(broadcastId: String, userNumber: Int, accountId: String): Flow<Device?>
+
   fun getDeviceByMac(mac: String, accountId: String): Flow<Device?>
 
   fun getDeviceByPeripheralId(peripheralId: String): Flow<Device?>

@@ -100,9 +100,7 @@ struct MetricDetailView: View {
     // Dynamic unit for weight (lb/lbs or kg) based on the displayed magnitude
     private var weightUnitLabel: String {
         guard metric == .weight else { return "" }
-        let stored = Int(rawValue ?? 0)
-        let display = ConversionTools.convertStoredToDisplay(stored, isMetric: weightUnit == .kg)
-        return WeightValueConvertor.unitForDisplay(value: display, unit: weightUnit)
+        return WeightValueConvertor.unitForDisplay(unit: weightUnit)
     }
 
     private var measurementDescription: String {
