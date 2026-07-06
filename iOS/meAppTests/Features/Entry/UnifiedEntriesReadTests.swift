@@ -414,12 +414,15 @@ struct UnifiedEntriesReadTests {
         DependencyContainer.shared.register(goalAlert as GoalAlertServiceProtocol)
         DependencyContainer.shared.register(integration as IntegrationServiceProtocol)
 
+        let readLocalRepo = MockEntryRepository()
+        let readWorker = MockEntryWorker()
+        readWorker.backingRepo = readLocalRepo
         let sut = EntryService(
             accountService: account,
-            localRepo: MockEntryRepository(),
+            localRepo: readLocalRepo,
             localKVRepo: MockEntrySyncStore(),
             remoteRepo: remote,
-            worker: MockEntryWorker()
+            worker: readWorker
         )
         sut.logger = logger
         sut.goalAlertService = goalAlert

@@ -9,7 +9,19 @@ enum MockEntryWorkerError: Error, Equatable {
 /// EntryService orchestration tests never touch a real SwiftData container.
 /// Merge semantics themselves are covered by `BatchedMergeTests`, which runs
 /// the real `SwiftDataWorker` against an in-memory container.
-final class MockEntryWorker: EntryWorkerProtocol, @unchecked Sendable {
+///
+/// For the read paths (`fetchEntriesAsDTO` / `fetchEntrySnapshots` /
+/// `fetchProgressData`), set `backingRepo` so reads stay consistent with the
+/// same `MockEntryRepository` the SUT writes to — in production both hit the
+/// one SwiftData container, so tests that seed `repo.entries` and then read
+/// back through the worker keep working. `@MainActor` keeps all `@Model`
+/// access on the main actor (the mock repo is main-actor-bound).
+@MainActor
+final class MockEntryWorker: EntryWorkerProtocol {
+
+    /// When set, read methods project this repo's entries instead of returning
+    /// the canned results below.
+    var backingRepo: MockEntryRepository?
 
     // MARK: - applyRemoteOperations
 
@@ -81,6 +93,10 @@ final class MockEntryWorker: EntryWorkerProtocol, @unchecked Sendable {
     func fetchEntrySnapshots(accountId: String, operationType: String?) async throws -> [EntrySnapshot] {
         fetchEntrySnapshotsCalls += 1
         if let entrySnapshotsError { throw entrySnapshotsError }
+        if let backingRepo {
+            let entries = (try? await backingRepo.fetchEntries(forUserId: accountId, operationType: operationType)) ?? []
+            return entries.map { $0.toSnapshot() }
+        }
         return entrySnapshotsResult
     }
 
@@ -91,6 +107,9 @@ final class MockEntryWorker: EntryWorkerProtocol, @unchecked Sendable {
     func fetchEntriesAsDTO(accountId: String, operationType: String) async throws -> [BathScaleOperationDTO] {
         fetchEntriesAsDTOCalls += 1
         if let entriesAsDTOError { throw entriesAsDTOError }
+        if let backingRepo {
+            return (try? await backingRepo.fetchEntriesAsDTO(forUserId: accountId, operationType: operationType)) ?? []
+        }
         return entriesAsDTOResult
     }
 }

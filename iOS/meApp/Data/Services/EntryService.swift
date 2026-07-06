@@ -280,8 +280,11 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
     }
 
     func fetchAllEntrySnapshots() async throws -> [EntrySnapshot] {
-        let entries = try await getAllEntries()
-        return entries.map { $0.toSnapshot() }
+        // MOB-1433: read + snapshot-map off the main actor via the worker.
+        // History/Content open this on a large account; doing the full-table
+        // fetch and per-row snapshot build on main was a re-open stutter source.
+        let accountId = try getAccountId()
+        return try await worker.fetchEntrySnapshots(accountId: accountId, operationType: OperationType.create.rawValue)
     }
 
     func fetchEntrySnapshots(forMonth month: String, entryType: EntryType = .scale) async throws -> [EntrySnapshot] {
@@ -309,8 +312,11 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
     /// Use this instead of getAllEntries() when you only need to read entry data
     /// to avoid blocking the main thread with toOperationDTO() calls.
     func getAllEntriesAsDTO() async throws -> [BathScaleOperationDTO] {
+        // MOB-1433: fetch + DTO-map off the main actor via the worker. This
+        // feeds the dashboard load, streak, and metrics — the heaviest read on
+        // a 5k-10k-entry account.
         let accountId = try getAccountId()
-        return try await localRepo.fetchEntriesAsDTO(forUserId: accountId, operationType: OperationType.create.rawValue)
+        return try await worker.fetchEntriesAsDTO(accountId: accountId, operationType: OperationType.create.rawValue)
     }
 
     func checkEntryTimestampExists(_ entryTimestamp: String) async throws -> Bool {

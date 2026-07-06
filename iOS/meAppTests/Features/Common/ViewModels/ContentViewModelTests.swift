@@ -32,14 +32,20 @@ struct ContentViewModelTests {
 
         viewModel.performAppInitialization()
         await viewModel.waitForInitialization()
+        // MOB-1433: the dashboard shows after the LOCAL load; remote sync + feed
+        // + scale refresh run behind it. Await that background pass before
+        // asserting on its effects.
+        await viewModel.waitForBackgroundSync()
 
         #expect(viewModel.contentViewState == .dashboard)
         #expect(bluetooth.startBluetoothOperationsCalls == 1)
         #expect(account.refreshAccountCalls == 1)
         #expect(entry.migrateFromSQLiteCalls == 1)
         #expect(entry.syncAllEntriesCalls == 1)
-        #expect(entry.loadDashboardDataCalls == 1)
-        #expect(entry.fetchAllEntrySnapshotsCalls == 1)
+        // loadDashboardData + fetchAllEntrySnapshots run once locally (pre-dashboard)
+        // and once more after the background sync completes.
+        #expect(entry.loadDashboardDataCalls == 2)
+        #expect(entry.fetchAllEntrySnapshotsCalls == 2)
         #expect(feed.fetchFeedItemsCalls == 1)
         #expect(feed.checkAndTriggerFeedModalCalls == 1)
         #expect(scale.syncAllScalesWithRemoteCalls == 1)
@@ -57,6 +63,7 @@ struct ContentViewModelTests {
 
         viewModel.performAppInitialization()
         await viewModel.waitForInitialization()
+        await viewModel.waitForBackgroundSync()
 
         #expect(viewModel.contentViewState == .dashboard)
         #expect(account.refreshAccountCalls == 1)
@@ -158,27 +165,29 @@ struct ContentViewModelTests {
         #expect(account.refreshAccountCalls == 1)
     }
 
-    @Test("account publisher re-initializes when same account has new lastActiveTime")
-    func accountPublisherReinitializesOnNewLastActiveTime() async {
+    @Test("account publisher does NOT re-initialize on a lastActiveTime-only change; refreshes metadata only")
+    func accountPublisherSkipsReinitOnNewLastActiveTime() async {
         let (viewModel, account, _, entry, _, _, _, _) = makeSUT()
         viewModel.contentViewState = .landing
         account.refreshAccountResult = .success(())
         entry.allEntriesResult = .success(ContentViewModelTestFixtures.makeEntries(accountId: "content-8", count: 1))
 
+        // First activation of a new account → full init runs.
         account.activeAccount = ContentViewModelTestFixtures.makeActiveAccount(id: "content-8", lastActiveTime: "t1")
         _ = await waitUntil { account.refreshAccountCalls == 1 }
         await viewModel.waitForInitialization()
+        await viewModel.waitForBackgroundSync()
 
-        account.refreshAccountResult = .success(())
+        // Same account, new lastActiveTime (e.g. app foregrounded). MOB-1433:
+        // this must refresh the published metadata but NOT re-run initialization
+        // (which previously re-synced the whole history and stuttered the UI).
         viewModel.contentViewState = .landing
         account.activeAccount = ContentViewModelTestFixtures.makeActiveAccount(id: "content-8", lastActiveTime: "t2")
-        await Task.yield()
-        let restarted = await waitUntil { account.refreshAccountCalls == 2 }
-        await viewModel.waitForInitialization()
+        _ = await waitUntil(timeoutNanoseconds: 300_000_000) { viewModel.currentAccount?.lastActiveTime == "t2" }
 
-        #expect(restarted == true)
-        #expect(viewModel.currentAccount?.lastActiveTime == "t2")
-        #expect(viewModel.contentViewState == .dashboard)
+        #expect(account.refreshAccountCalls == 1)                  // no second init
+        #expect(viewModel.currentAccount?.lastActiveTime == "t2")  // metadata refreshed
+        #expect(viewModel.contentViewState == .landing)            // untouched by the metadata-only change
     }
 
     @Test("entry saved publisher triggers account-flag check for entry flow")
@@ -239,7 +248,11 @@ struct ContentViewModelTests {
         accountFlag.getAccountFlagResult = .failure(ContentViewModelTestError.accountFlagFailed)
 
         viewModel.performAppInitialization()
-        let completed = await waitUntil { viewModel.contentViewState == .dashboard }
+        // getAccountFlag now runs in the background sync (after the dashboard is
+        // shown), so wait for that pass rather than just the dashboard flip.
+        let completed = await waitUntil {
+            viewModel.contentViewState == .dashboard && accountFlag.getAccountFlagCalls == 1
+        }
 
         #expect(completed == true)
         #expect(accountFlag.getAccountFlagCalls == 1)

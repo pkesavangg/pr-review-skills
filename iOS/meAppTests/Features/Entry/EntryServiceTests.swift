@@ -405,12 +405,15 @@ struct EntryServiceTests {
             DependencyContainer.shared.register(integration)
             DependencyContainer.shared.register(integration as IntegrationServiceProtocol)
 
+            let entryLocalRepo = repo ?? MockEntryRepository()
+            let entryWorker = worker ?? MockEntryWorker()
+            entryWorker.backingRepo = entryLocalRepo
             let service = EntryService(
                 accountService: account,
-                localRepo: repo ?? MockEntryRepository(),
+                localRepo: entryLocalRepo,
                 localKVRepo: syncStore ?? MockEntrySyncStore(),
                 remoteRepo: remote ?? MockEntryRepositoryAPI(),
-                worker: worker ?? MockEntryWorker()
+                worker: entryWorker
             )
             // Lock the @Injector-resolved collaborators to the test doubles directly, bypassing the
             // global DependencyContainer. In the full serialized suite, leaked async work from the

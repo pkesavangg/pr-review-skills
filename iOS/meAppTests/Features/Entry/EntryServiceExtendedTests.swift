@@ -434,12 +434,17 @@ struct EntryServiceExtendedTests {
         DependencyContainer.shared.register(goalAlert as GoalAlertServiceProtocol)
         DependencyContainer.shared.register(integration as IntegrationServiceProtocol)
 
+        let localRepo = repo ?? MockEntryRepository()
+        let entryWorker = worker ?? MockEntryWorker()
+        // Keep worker reads consistent with the repo the SUT writes to
+        // (production: one shared SwiftData container).
+        entryWorker.backingRepo = localRepo
         let sut = EntryService(
             accountService: account,
-            localRepo: repo ?? MockEntryRepository(),
+            localRepo: localRepo,
             localKVRepo: syncStore ?? MockEntrySyncStore(),
             remoteRepo: remote ?? MockEntryRepositoryAPI(),
-            worker: worker ?? MockEntryWorker()
+            worker: entryWorker
         )
         sut.logger = logger
         sut.goalAlertService = goalAlert
