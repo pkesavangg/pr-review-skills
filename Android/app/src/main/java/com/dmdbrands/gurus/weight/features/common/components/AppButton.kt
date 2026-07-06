@@ -108,8 +108,11 @@ object AppButtonDefaults {
 
       ButtonType.SecondaryOutlined ->
         if (enabled) MeTheme.colorScheme.primaryAction else MeTheme.colorScheme.primaryActionDisabled
+      // Figma Action/success: default #458239 (secondarySuccess), pressed #36682D (success,
+      // applied in pressedBackgroundColor), disabled #B7C3B0 (tertiarySuccess). Default was using
+      // `success` (the darker pressed shade), so it read one step too dark. (MOB-1251)
       ButtonType.SuccessFilled ->
-        if(enabled)  MeTheme.colorScheme.success else MeTheme.colorScheme.tertiarySuccess
+        if (enabled) MeTheme.colorScheme.secondarySuccess else MeTheme.colorScheme.tertiarySuccess
 
       else -> Color.Transparent
     }
