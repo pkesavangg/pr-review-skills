@@ -435,6 +435,94 @@ struct IntegrationsServiceTests {
         #expect(api.logHealthIntegrationCalls == 0)
     }
 
+    // MARK: - syncNewEntries (MOB-1433 batched forward + marker gating)
+
+    @Test("syncNewEntries first sync: seeds marker, forwards nothing (no historical flood)")
+    func syncNewEntriesFirstSyncSkipsHistorical() async throws {
+        let ctx = makeHealthKitContext()
+        let healthKit = MockHealthKitServiceForIntegrations()
+        let kv = MockKvStorageService()
+        let sut = makeSUT(account: ctx.account, local: ctx.local, healthKit: healthKit, kvStorage: kv)
+
+        let batch = [
+            makeForwardNotification(timestamp: "2020-01-01T08:00:00Z"),
+            makeForwardNotification(timestamp: "2026-05-01T08:00:00Z"),
+            makeForwardNotification(timestamp: "2023-03-01T08:00:00Z")
+        ]
+        try await sut.syncNewEntries(notifications: batch)
+
+        // No historical backfill on the first sync.
+        #expect(healthKit.syncNewDataNotificationCalls == 0)
+        // Marker seeded to at least the newest entry seen.
+        let marker = kv.getValue(forKey: ctx.markerKey) as? String
+        #expect(marker != nil)
+        #expect((marker ?? "") >= "2026-05-01T08:00:00Z")
+    }
+
+    @Test("syncNewEntries incremental: forwards only entries newer than the marker, then advances it")
+    func syncNewEntriesIncrementalForwardsNewerOnly() async throws {
+        let ctx = makeHealthKitContext()
+        let healthKit = MockHealthKitServiceForIntegrations()
+        let kv = MockKvStorageService()
+        kv.setValue("2026-05-01T00:00:00Z", forKey: ctx.markerKey)
+        let sut = makeSUT(account: ctx.account, local: ctx.local, healthKit: healthKit, kvStorage: kv)
+
+        let batch = [
+            makeForwardNotification(timestamp: "2026-04-01T08:00:00Z"), // older → skip
+            makeForwardNotification(timestamp: "2026-05-02T08:00:00Z"), // newer → forward
+            makeForwardNotification(timestamp: "2026-06-01T08:00:00Z")  // newer → forward
+        ]
+        try await sut.syncNewEntries(notifications: batch)
+
+        #expect(healthKit.syncNewDataNotificationCalls == 2)
+        let forwarded = Set(healthKit.syncedNotifications.map { $0.entryTimestamp })
+        #expect(forwarded == ["2026-05-02T08:00:00Z", "2026-06-01T08:00:00Z"])
+        // Marker advanced to the newest forwarded timestamp.
+        #expect((kv.getValue(forKey: ctx.markerKey) as? String) == "2026-06-01T08:00:00Z")
+    }
+
+    @Test("syncNewEntries not integrated: forwards nothing and leaves marker untouched")
+    func syncNewEntriesNotIntegratedNoOp() async throws {
+        let account = MockAccountService()
+        account.activeAccount = AccountTestFixtures.makeAccountSnapshot(id: "hk-1", email: "hk@ex.com", isLoggedIn: true, isActiveAccount: true)
+        let local = MockIntegrationRepository()
+        local.getIntegrationDataResult = IntegrationInfo(type: .healthKit, isIntegrated: false)
+        let healthKit = MockHealthKitServiceForIntegrations()
+        let kv = MockKvStorageService()
+        let sut = makeSUT(account: account, local: local, healthKit: healthKit, kvStorage: kv)
+
+        try await sut.syncNewEntries(notifications: [makeForwardNotification(timestamp: "2026-05-02T08:00:00Z")])
+
+        #expect(healthKit.syncNewDataNotificationCalls == 0)
+        #expect(kv.getValue(forKey: KvStorageKeys.lastHealthKitForwardTimestampKey(for: "hk-1")) == nil)
+    }
+
+    @Test("syncNewEntries empty batch: no-op")
+    func syncNewEntriesEmptyBatchNoOp() async throws {
+        let ctx = makeHealthKitContext()
+        let healthKit = MockHealthKitServiceForIntegrations()
+        let sut = makeSUT(account: ctx.account, local: ctx.local, healthKit: healthKit)
+
+        try await sut.syncNewEntries(notifications: [])
+
+        #expect(healthKit.syncNewDataNotificationCalls == 0)
+        #expect(ctx.local.getIntegrationDataCalls == 0)
+    }
+
+    @Test("syncNewEntries reads integration settings once, not per entry")
+    func syncNewEntriesReadsSettingsOnce() async throws {
+        let ctx = makeHealthKitContext()
+        let kv = MockKvStorageService()
+        kv.setValue("2020-01-01T00:00:00Z", forKey: ctx.markerKey)
+        let sut = makeSUT(account: ctx.account, local: ctx.local, kvStorage: kv)
+
+        let batch = (0 ..< 20).map { makeForwardNotification(timestamp: "2026-05-0\($0 % 9 + 1)T08:00:00Z") }
+        try await sut.syncNewEntries(notifications: batch)
+
+        // One settings read for the whole batch (was one per entry before MOB-1433).
+        #expect(ctx.local.getIntegrationDataCalls == 1)
+    }
+
     // MARK: - Helpers
 
     private func makeSUT(
@@ -443,7 +531,8 @@ struct IntegrationsServiceTests {
         entry: MockEntryService? = nil,
         api: MockIntegrationsAPIRepository? = nil,
         local: MockIntegrationRepository? = nil,
-        healthKit: MockHealthKitServiceForIntegrations? = nil
+        healthKit: MockHealthKitServiceForIntegrations? = nil,
+        kvStorage: MockKvStorageService? = nil
     ) -> IntegrationsService {
         IntegrationsService(
             apiRepository: api ?? MockIntegrationsAPIRepository(),
@@ -452,8 +541,27 @@ struct IntegrationsServiceTests {
             logger: logger ?? MockLoggerService(),
             entryService: entry ?? MockEntryService(),
             healthKitService: healthKit ?? MockHealthKitServiceForIntegrations(),
+            kvStorage: kvStorage ?? MockKvStorageService(),
             observeEntrySaved: false
         )
+    }
+
+    /// Builds an account + local integration repo already reporting an active
+    /// HealthKit integration, plus an account-scoped marker key.
+    private func makeHealthKitContext(
+        accountId: String = "hk-1"
+    ) -> (account: MockAccountService, local: MockIntegrationRepository, markerKey: String) {
+        let account = MockAccountService()
+        account.activeAccount = AccountTestFixtures.makeAccountSnapshot(
+            id: accountId, email: "hk@ex.com", isLoggedIn: true, isActiveAccount: true
+        )
+        let local = MockIntegrationRepository()
+        local.getIntegrationDataResult = IntegrationInfo(type: .healthKit, isIntegrated: true)
+        return (account, local, KvStorageKeys.lastHealthKitForwardTimestampKey(for: accountId))
+    }
+
+    private func makeForwardNotification(timestamp: String) -> EntryNotification {
+        EntryNotification(from: EntryTestFixtures.makeEntry(timestamp: timestamp, weight: 1800))
     }
 
     private func assertNoActiveAccount(_ error: Error) {

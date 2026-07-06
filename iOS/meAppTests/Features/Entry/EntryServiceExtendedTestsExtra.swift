@@ -367,6 +367,36 @@ extension EntryServiceExtendedTests {
         #expect(Set(serverIds.compactMap { $0 }) == ["srv-1", "srv-2"])
     }
 
+    @Test("sync forwards newly-merged creates to integrations in one batched call")
+    func syncForwardsNewCreatesInOneBatch() async {
+        let createOp = BathScaleOperationDTO(
+            accountId: "acct-1", bmr: nil, bmi: nil, bodyFat: nil, boneMass: nil,
+            entryTimestamp: "2026-05-01T08:00:00Z", entryType: nil, impedance: nil,
+            metabolicAge: nil, muscleMass: nil, operationType: "create", proteinPercent: nil,
+            pulse: nil, serverTimestamp: "2026-05-01T08:00:05Z", skeletalMusclePercent: nil,
+            source: nil, subcutaneousFatPercent: nil, systolic: nil, diastolic: nil,
+            meanArterial: nil, unit: nil, visceralFatLevel: nil, water: nil, weight: 1800
+        )
+        let repo = MockEntryRepository()
+        repo.entries = [EntryTestFixtures.makeEntry(timestamp: "2026-05-01T08:00:00Z", isSynced: true)]
+        let remote = MockEntryRepositoryAPI()
+        remote.fetchEntriesResult = BathScaleOperationListResponse(operations: [createOp], timestamp: "2026-05-01T10:00:00Z")
+        let worker = MockEntryWorker()
+        worker.applyRemoteOperationsResult = EntryMergeResult(
+            insertedCount: 1, updatedCount: 0, deletedCount: 0,
+            newlyCreatedOps: [createOp], deletedNotifications: []
+        )
+        let integration = MockIntegrationService()
+        let sut = makeSUT(repo: repo, remote: remote, integration: integration, worker: worker)
+
+        await sut.syncAllEntriesWithRemote()
+
+        // ONE batched forward call (was one syncNewEntry call per created op before MOB-1433).
+        #expect(integration.syncNewEntriesCalls == 1)
+        #expect(integration.lastSyncedNotificationBatch.count == 1)
+        #expect(integration.lastSyncedNotificationBatch.first?.entryTimestamp == "2026-05-01T08:00:00Z")
+    }
+
     @Test("push delete outcome removes the row via the worker and updates summaries")
     func pushDeleteRoutesThroughWorker() async {
         let repo = MockEntryRepository()

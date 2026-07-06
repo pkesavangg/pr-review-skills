@@ -31,8 +31,11 @@ final class MockHealthKitServiceForIntegrations: HealthKitServiceProtocol {
         if let syncNewDataEntryError { throw syncNewDataEntryError }
     }
 
+    private(set) var syncedNotifications: [EntryNotification] = []
+
     func syncNewData(notification: EntryNotification) async throws {
         syncNewDataNotificationCalls += 1
+        syncedNotifications.append(notification)
         if let syncNewDataNotificationError { throw syncNewDataNotificationError }
     }
 

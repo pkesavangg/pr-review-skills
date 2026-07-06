@@ -1326,21 +1326,22 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
             }
         }
 
-        // MA-3886: forward each newly-created entry to active health integrations
+        // MA-3886: forward newly-created entries to active health integrations
         // (e.g., Apple Health). Without this, Wi-Fi/R4 entries arriving via push-triggered
         // remote sync never reach HealthKit because the scale uploads to the server, not the phone.
-        for op in result.newlyCreatedOps {
-            let notification = EntryNotification(from: op)
-            do {
-                try await integrationService.syncNewEntry(notification: notification)
-            } catch {
-                logger.log(
-                    level: .error,
-                    tag: tag,
-                    message: "Failed to sync remote-merged entry to integrations: " +
-                        "timestamp=\(notification.entryTimestamp), error=\(error.localizedDescription)"
-                )
-            }
+        // MOB-1433: ONE batched call — settings read once, and a per-account marker
+        // skips the historical backfill on the first full sync instead of flooding
+        // HealthKit with thousands of writes.
+        guard !result.newlyCreatedOps.isEmpty else { return }
+        let notifications = result.newlyCreatedOps.map { EntryNotification(from: $0) }
+        do {
+            try await integrationService.syncNewEntries(notifications: notifications)
+        } catch {
+            logger.log(
+                level: .error,
+                tag: tag,
+                message: "Failed to forward remote-merged entries to integrations: \(error.localizedDescription)"
+            )
         }
     }
 

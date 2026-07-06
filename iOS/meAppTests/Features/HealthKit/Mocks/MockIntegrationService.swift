@@ -77,6 +77,16 @@ final class MockIntegrationService: IntegrationServiceProtocol {
         syncedNotifications.append(notification)
         if let syncNewEntryError { throw syncNewEntryError }
     }
+
+    private(set) var syncNewEntriesCalls = 0
+    private(set) var lastSyncedNotificationBatch: [EntryNotification] = []
+    var syncNewEntriesError: Error?
+
+    func syncNewEntries(notifications: [EntryNotification]) async throws {
+        syncNewEntriesCalls += 1
+        lastSyncedNotificationBatch = notifications
+        if let syncNewEntriesError { throw syncNewEntriesError }
+    }
     func logHealthEntry(notification: EntryNotification) async {}
     func requestNewIntegration(text: String) async throws {}
 }

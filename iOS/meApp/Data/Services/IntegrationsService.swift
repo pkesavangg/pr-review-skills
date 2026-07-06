@@ -27,6 +27,7 @@ final class IntegrationsService: IntegrationServiceProtocol {
     private let apiRepository: IntegrationRepositoryAPIProtocol
     private let localRepository: IntegrationRepositoryProtocol
     private let healthKitService: HealthKitServiceProtocol?
+    private let kvStorage: KvStorageServiceProtocol
     private let tag = "IntegrationService"
 
     // MARK: - Initializer -------------------------------------------------
@@ -41,11 +42,13 @@ final class IntegrationsService: IntegrationServiceProtocol {
         logger: LoggerServiceProtocol? = nil,
         entryService: EntryServiceProtocol? = nil,
         healthKitService: HealthKitServiceProtocol? = nil,
+        kvStorage: KvStorageServiceProtocol? = nil,
         observeEntrySaved: Bool = true
     ) {
         self.apiRepository = apiRepository ?? IntegrationAPIRepository()
         self.localRepository = localRepository ?? IntegrationRepository()
         self.healthKitService = healthKitService
+        self.kvStorage = kvStorage ?? KvStorageService.shared
         if let accountService {
             self.accountService = accountService
         }
@@ -228,6 +231,74 @@ final class IntegrationsService: IntegrationServiceProtocol {
                 message: "Entry sync not implemented for integration type: \(integrationInfo.type.rawValue)"
             )
         }
+    }
+
+    /// Batch-forwards newly-merged remote entries to HealthKit (MOB-1433).
+    ///
+    /// Reads integration settings ONCE, then gates by a per-account high-water
+    /// marker (`lastHealthKitForwardTimestamp`). On the first sync for an account
+    /// (no marker yet) the whole batch is treated as historical: the marker is
+    /// seeded to the newest timestamp seen and nothing is forwarded, so a
+    /// 5k–10k-entry first login does not flood Apple Health. Later syncs forward
+    /// only entries newer than the marker and advance it.
+    func syncNewEntries(notifications: [EntryNotification]) async throws {
+        guard !notifications.isEmpty else { return }
+
+        // Settings read once per sync (not per entry).
+        guard let integrationInfo = try await getStoredIntegrationData(),
+              integrationInfo.isIntegrated,
+              integrationInfo.type == .healthKit
+        else {
+            return
+        }
+        let accountId = try await getAccountId()
+        guard !accountId.isEmpty else { return }
+
+        let markerKey = KvStorageKeys.lastHealthKitForwardTimestampKey(for: accountId)
+        let batchMax = notifications.map { $0.entryTimestamp }.max()
+
+        guard let marker = kvStorage.getValue(forKey: markerKey) as? String else {
+            // First forward for this account (e.g. first full sync after login):
+            // skip the historical backlog and seed the marker to the newest
+            // entry seen — or "now" if that is later (clock skew guard).
+            let now = DateTimeTools.getCurrentDatetimeIsoString()
+            let seed = [batchMax, now].compactMap { $0 }.max() ?? now
+            kvStorage.setValue(seed, forKey: markerKey)
+            logger.log(
+                level: .info,
+                tag: tag,
+                message: "HealthKit forward marker seeded (historical backfill skipped): count=\(notifications.count), accountId=\(accountId)"
+            )
+            return
+        }
+
+        // Incremental: forward only entries newer than the marker.
+        let toForward = notifications.filter { $0.entryTimestamp > marker }
+        guard !toForward.isEmpty else { return }
+
+        let hkService = healthKitService ?? HealthKitService.shared
+        for notification in toForward {
+            do {
+                try await hkService.syncNewData(notification: notification)
+            } catch {
+                logger.log(
+                    level: .error,
+                    tag: tag,
+                    message: "Failed to forward merged entry to HealthKit: timestamp=\(notification.entryTimestamp), "
+                        + "error=\(error.localizedDescription)"
+                )
+            }
+        }
+
+        // Advance the marker to the newest timestamp we forwarded.
+        if let newMax = toForward.map({ $0.entryTimestamp }).max(), newMax > marker {
+            kvStorage.setValue(newMax, forKey: markerKey)
+        }
+        logger.log(
+            level: .info,
+            tag: tag,
+            message: "Forwarded \(toForward.count)/\(notifications.count) merged entries to HealthKit. accountId=\(accountId)"
+        )
     }
 
     /// Deletes an entry from the integrated health service (e.g., HealthKit) if integration is active.

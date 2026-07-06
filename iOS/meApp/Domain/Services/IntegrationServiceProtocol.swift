@@ -52,6 +52,15 @@ protocol IntegrationServiceProtocol {
     /// - Parameter notification: The Sendable notification carrying the entry data.
     func syncNewEntry(notification: EntryNotification) async throws
 
+    /// Batch-forwards newly-merged remote entries to the health service (MOB-1433).
+    /// Reads integration settings ONCE (not per entry) and gates by a per-account
+    /// high-water marker so the first full sync of a large history does not flood
+    /// HealthKit — only entries newer than the marker are forwarded, then the
+    /// marker advances. Replaces the per-entry `syncNewEntry(notification:)` loop
+    /// in the merge path.
+    /// - Parameter notifications: The batch of newly-created entries from the merge.
+    func syncNewEntries(notifications: [EntryNotification]) async throws
+
     /// Deletes an entry from the integrated health service (e.g., HealthKit) if integration is active.
     /// - Parameter entry: The entry to delete from the health service.
     func deleteEntry(_ entry: Entry) async throws
