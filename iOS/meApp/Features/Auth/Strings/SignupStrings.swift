@@ -17,7 +17,8 @@ struct SignupStrings {
 
     struct DateOfBirthStep {
         static let title = "When were you born?"
-        static let subtitle = "Your age helps us calculate accurate ranges and personalized insights for your health data. You must be 13+ to create an account."
+        static let subtitle = "Your age helps us calculate accurate ranges and personalized insights for your health data. " +
+            "You must be 13+ to create an account."
         static let birthdayLabel = "BIRTHDAY"
     }
 
