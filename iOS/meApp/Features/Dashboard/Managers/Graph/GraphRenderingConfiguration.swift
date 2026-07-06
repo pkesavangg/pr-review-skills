@@ -254,14 +254,28 @@ struct GraphRenderingConfiguration {
 
     // MARK: - Formatting
 
+    /// Fixed-locale (en_US_POSIX) formatter that renders in the *injected* calendar's timezone.
+    /// In production the calendar is `.current`, so this matches the device timezone exactly as
+    /// before; in tests a GMT calendar is injected, making formatted output deterministic instead
+    /// of dependent on the CI machine's timezone. Mirrors `DateTimeTools.formatter` but honours the
+    /// injected calendar — the whole reason this type takes a `Calendar` ("timezone-correct
+    /// rendering and easy testability").
+    private func formatter(_ format: String) -> DateFormatter {
+        let df = DateFormatter()
+        df.locale = Locale(identifier: "en_US_POSIX")
+        df.timeZone = calendar.timeZone
+        df.dateFormat = format
+        return df
+    }
+
     func formatXAxisLabel(for date: Date, period: TimePeriod, operations: [BathScaleWeightSummary]) -> String? {
         DateTimeTools.formatXAxisLabel(for: date, period: period, operations: operations)
     }
 
     func formatSelectedDate(_ date: Date, for period: TimePeriod) -> String {
         switch period {
-        case .week, .month: return DateTimeTools.formatter("MMM d, yyyy").string(from: date)
-        case .year, .total: return DateTimeTools.formatter("MMM yyyy").string(from: date)
+        case .week, .month: return formatter("MMM d, yyyy").string(from: date)
+        case .year, .total: return formatter("MMM yyyy").string(from: date)
         }
     }
 
@@ -272,32 +286,32 @@ struct GraphRenderingConfiguration {
         switch period {
         case .total:
             if calendar.isDate(start, equalTo: end, toGranularity: .month) {
-                return DateTimeTools.formatter("MMM yyyy").string(from: start)
+                return formatter("MMM yyyy").string(from: start)
             }
-            let fmt = DateTimeTools.formatter("MMM yyyy")
+            let fmt = formatter("MMM yyyy")
             return "\(fmt.string(from: start)) – \(fmt.string(from: end))"
 
         case .month:
             let sy = calendar.component(.year, from: start), sm = calendar.component(.month, from: start)
             let ey = calendar.component(.year, from: end), em = calendar.component(.month, from: end)
-            if sy == ey && sm == em { return DateTimeTools.formatter("MMM yyyy").string(from: start) }
+            if sy == ey && sm == em { return formatter("MMM yyyy").string(from: start) }
             if sy != ey {
-                let fmt = DateTimeTools.formatter("MMM d, yyyy")
+                let fmt = formatter("MMM d, yyyy")
                 return "\(fmt.string(from: start)) – \(fmt.string(from: end))"
             }
-            return "\(DateTimeTools.formatter("MMM d").string(from: start)) – \(DateTimeTools.formatter("MMM d, yyyy").string(from: end))"
+            return "\(formatter("MMM d").string(from: start)) – \(formatter("MMM d, yyyy").string(from: end))"
 
         case .year:
             let sy = calendar.component(.year, from: start), ey = calendar.component(.year, from: end)
-            if sy == ey { return DateTimeTools.formatter("yyyy").string(from: start) }
-            return "\(DateTimeTools.formatter("MMM yyyy").string(from: start)) – \(DateTimeTools.formatter("MMM yyyy").string(from: end))"
+            if sy == ey { return formatter("yyyy").string(from: start) }
+            return "\(formatter("MMM yyyy").string(from: start)) – \(formatter("MMM yyyy").string(from: end))"
 
         case .week:
             let inclusiveEnd = calendar.date(byAdding: .day, value: -1, to: end) ?? end
             let startDay = calendar.component(.day, from: start)
             let endDay = calendar.component(.day, from: inclusiveEnd)
-            let startMonth = DateTimeTools.formatter("LLL").string(from: start).lowercased()
-            let endMonth = DateTimeTools.formatter("LLL").string(from: inclusiveEnd).lowercased()
+            let startMonth = formatter("LLL").string(from: start).lowercased()
+            let endMonth = formatter("LLL").string(from: inclusiveEnd).lowercased()
             let year = calendar.component(.year, from: inclusiveEnd)
             return "\(startMonth) \(startDay) - \(endMonth) \(endDay), \(year)"
         }
@@ -308,15 +322,15 @@ struct GraphRenderingConfiguration {
         switch period {
         case .week:
             if let week = calendar.dateInterval(of: .weekOfYear, for: now) {
-                let start = DateTimeTools.formatter("MMM d").string(from: week.start)
-                let end = DateTimeTools.formatter("d").string(from: week.end.addingTimeInterval(-1))
+                let start = formatter("MMM d").string(from: week.start)
+                let end = formatter("d").string(from: week.end.addingTimeInterval(-1))
                 return "\(start)-\(end), \(calendar.component(.year, from: now))"
             }
-            return DateTimeTools.formatter("MMM d, yyyy").string(from: now)
+            return formatter("MMM d, yyyy").string(from: now)
         case .month:
-            return DateTimeTools.formatter("LLLL yyyy").string(from: now)
+            return formatter("LLLL yyyy").string(from: now)
         case .year, .total:
-            return DateTimeTools.formatter("yyyy").string(from: now)
+            return formatter("yyyy").string(from: now)
         }
     }
 

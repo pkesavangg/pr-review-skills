@@ -17,6 +17,16 @@ struct DashboardMetricsCalculatorTests {
         return DashboardMetricsCalculator()
     }
 
+    // Builds a stub `interpolatedWeight` closure that ignores its inputs and returns `value`.
+    // Returned as a value (rather than an inline trailing closure) so call sites pass it as a
+    // labelled argument — `interpolatedWeight` is not the last parameter of the context factories,
+    // so a trailing closure would bind to the wrong parameter.
+    private func constantInterpolatedWeight(
+        _ value: Double?
+    ) -> (Date, [BathScaleWeightSummary], Bool, Double?, @escaping (Double) -> Double) -> Double? {
+        { _, _, _, _, _ in value }
+    }
+
     // MARK: - getCurrentAverageWeight Tests
 
     @Test("getCurrentAverageWeight: empty operations returns 0")
@@ -309,8 +319,9 @@ struct DashboardMetricsCalculatorTests {
         let ops = [DashboardTestFixtures.makeSummary(period: "2026-03-01", weight: 1800)]
         let context = DashboardTestFixtures.makeDisplayWeightContext(
             selectedDate: date,
-            operations: ops
-        ) { _, _, _, _, _ in 181.5 }
+            operations: ops,
+            interpolatedWeight: constantInterpolatedWeight(181.5)
+        )
 
         let result = sut.calculateDisplayWeight(context: context)
 
@@ -323,8 +334,9 @@ struct DashboardMetricsCalculatorTests {
         let date = DateTimeTools.getDateFromDateString("2026-03-03", format: "yyyy-MM-dd")
         // No same-day entries, so falls through to interpolation
         let context = DashboardTestFixtures.makeDisplayWeightContext(
-            selectedDate: date
-        ) { _, _, _, _, _ in nil }
+            selectedDate: date,
+            interpolatedWeight: constantInterpolatedWeight(nil)
+        )
 
         let result = sut.calculateDisplayWeight(context: context)
 
@@ -442,8 +454,9 @@ struct DashboardMetricsCalculatorTests {
         let context = DashboardTestFixtures.makeDisplayWeightContext(
             selectedPoint: point,
             selectedDate: date,
-            operations: [point]
-        ) { _, _, _, _, _ in 175.0 }
+            operations: [point],
+            interpolatedWeight: constantInterpolatedWeight(175.0)
+        )
 
         let result = sut.calculateDisplayWeight(context: context)
 
@@ -643,8 +656,9 @@ struct DashboardMetricsCalculatorTests {
         let sut = makeSUT()
         let date = DateTimeTools.getDateFromDateString("2026-03-03", format: "yyyy-MM-dd")
         let context = DashboardTestFixtures.makeEntryCreationContext(
-            selectedDate: date
-        ) { _, _, _, _, _ in 180.0 }
+            selectedDate: date,
+            interpolatedWeight: constantInterpolatedWeight(180.0)
+        )
 
         let entry = sut.createEntryForMetricInfo(context: context)
 
@@ -664,8 +678,9 @@ struct DashboardMetricsCalculatorTests {
             selectedDate: date,
             isWeightlessMode: true,
             anchorWeight: 180.0,
-            weightUnit: .lb
-        ) { _, _, _, _, _ in 5.0 }  // weightless diff
+            weightUnit: .lb,
+            interpolatedWeight: constantInterpolatedWeight(5.0)
+        )  // weightless diff
 
         let entry = sut.createEntryForMetricInfo(context: context)
 
@@ -680,8 +695,9 @@ struct DashboardMetricsCalculatorTests {
         let sut = makeSUT()
         let date = DateTimeTools.getDateFromDateString("2026-03-03", format: "yyyy-MM-dd")
         let context = DashboardTestFixtures.makeEntryCreationContext(
-            selectedDate: date
-        ) { _, _, _, _, _ in nil }
+            selectedDate: date,
+            interpolatedWeight: constantInterpolatedWeight(nil)
+        )
 
         let entry = sut.createEntryForMetricInfo(context: context)
 
@@ -943,8 +959,9 @@ struct DashboardMetricsCalculatorTests {
         let context = DashboardTestFixtures.makeEntryCreationContext(
             selectedPoint: point,
             selectedDate: date,
-            metrics: []
-        ) { _, _, _, _, _ in 175.0 }
+            metrics: [],
+            interpolatedWeight: constantInterpolatedWeight(175.0)
+        )
 
         let entry = sut.createEntryForMetricInfo(context: context)
 
@@ -961,8 +978,9 @@ struct DashboardMetricsCalculatorTests {
             selectedDate: date,
             operations: ops,
             visibleOperations: ops,
-            weightUnit: .lb
-        ) { _, _, _, _, _ in 185.0 }
+            weightUnit: .lb,
+            interpolatedWeight: constantInterpolatedWeight(185.0)
+        )
 
         let entry = sut.createEntryForMetricInfo(context: context)
 
@@ -978,8 +996,9 @@ struct DashboardMetricsCalculatorTests {
         let date = DateTimeTools.getDateFromDateString("2026-03-03", format: "yyyy-MM-dd")
         let context = DashboardTestFixtures.makeEntryCreationContext(
             selectedDate: date,
-            weightUnit: .kg
-        ) { _, _, _, _, _ in 80.0 }
+            weightUnit: .kg,
+            interpolatedWeight: constantInterpolatedWeight(80.0)
+        )
 
         let entry = sut.createEntryForMetricInfo(context: context)
 
