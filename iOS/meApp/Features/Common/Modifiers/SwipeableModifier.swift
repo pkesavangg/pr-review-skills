@@ -111,58 +111,7 @@ struct SwipeableModifier: ViewModifier {
 
     func body(content: Content) -> some View {
         ZStack(alignment: .trailing) {
-            // Background swipe buttons
-            HStack(spacing: 0) {
-                ForEach(swipeButtons) { button in
-                    Button(action: {
-                        // Only trigger if fully opened
-                        if isSwipedOpen {
-                            if closeWithoutAnimationOnAction {
-                                // Close without animation to avoid jiggle when alert appears
-                                var tx = Transaction()
-                                tx.disablesAnimations = true
-                                withTransaction(tx) {
-                                    savedOffset = 0
-                                    currentOffset = 0
-                                    swipeState = .closed
-                                    isSwipedOpen = false
-                                }
-                                // Execute action immediately
-                                button.action()
-                            } else {
-                                withAnimation(.easeInOut(duration: 0.2)) {
-                                    savedOffset = 0
-                                    currentOffset = 0
-                                    swipeState = .closed
-                                    isSwipedOpen = false
-                                }
-                                Task { @MainActor in
-                                    try? await Task.sleep(nanoseconds: 100_000_000)
-                                    button.action()
-                                }
-                            }
-                        }
-                    }, label: {
-                        button.label()
-                            .frame(maxWidth: .infinity, maxHeight: .infinity)
-                    })
-                    .frame(width: buttonWidth)
-                    .background(button.tint)
-                    .contentShape(Rectangle())
-                    .allowsHitTesting(isSwipedOpen)
-                }
-            }
-            .frame(width: totalButtonWidth, alignment: .trailing)
-            .frame(minHeight: 0, maxHeight: .infinity)
-            .clipShape(
-                UnevenRoundedRectangle(
-                    topLeadingRadius: 0,
-                    bottomLeadingRadius: 0,
-                    bottomTrailingRadius: trailingCornerRadius,
-                    topTrailingRadius: trailingCornerRadius
-                )
-            )
-            .opacity(swipeState == .closed ? 0 : 1)
+            swipeButtonsBackground
 
             // Main content
             content
@@ -201,6 +150,59 @@ struct SwipeableModifier: ViewModifier {
                 closeSwipe()
             }
         }
+    }
+
+    // MARK: - Swipe Buttons
+    private var swipeButtonsBackground: some View {
+        HStack(spacing: 0) {
+            ForEach(swipeButtons) { button in
+                Button(action: { trigger(button) }, label: {
+                    button.label()
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                })
+                .frame(width: buttonWidth)
+                .background(button.tint)
+                .contentShape(Rectangle())
+                .allowsHitTesting(isSwipedOpen)
+            }
+        }
+        .frame(width: totalButtonWidth, alignment: .trailing)
+        .frame(minHeight: 0, maxHeight: .infinity)
+        .clipShape(
+            UnevenRoundedRectangle(
+                topLeadingRadius: 0,
+                bottomLeadingRadius: 0,
+                bottomTrailingRadius: trailingCornerRadius,
+                topTrailingRadius: trailingCornerRadius
+            )
+        )
+        .opacity(swipeState == .closed ? 0 : 1)
+    }
+
+    /// Runs a swipe button's action — only when the row is fully swiped open.
+    private func trigger(_ button: SwipeButton) {
+        guard isSwipedOpen else { return }
+        if closeWithoutAnimationOnAction {
+            // Close without animation to avoid jiggle when alert appears
+            var tx = Transaction()
+            tx.disablesAnimations = true
+            withTransaction(tx) { resetToClosed() }
+            // Execute action immediately
+            button.action()
+        } else {
+            withAnimation(.easeInOut(duration: 0.2)) { resetToClosed() }
+            Task { @MainActor in
+                try? await Task.sleep(nanoseconds: 100_000_000)
+                button.action()
+            }
+        }
+    }
+
+    private func resetToClosed() {
+        savedOffset = 0
+        currentOffset = 0
+        swipeState = .closed
+        isSwipedOpen = false
     }
 
     // MARK: - Gesture Handlers
