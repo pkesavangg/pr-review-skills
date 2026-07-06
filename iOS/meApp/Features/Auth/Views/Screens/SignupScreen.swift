@@ -194,7 +194,7 @@ struct SignupScreen: View {
                     }
                     Spacer()
                     ButtonView(
-                        text: SignupStrings.PickDeviceStep.addDeviceButton,
+                        text: SignupStrings.nextButton,
                         type: .filledPrimary,
                         size: .large,
                         isDisabled: !signupStore.isNextEnabled

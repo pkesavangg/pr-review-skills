@@ -57,7 +57,6 @@ struct SignupStrings {
         static let bpmSubtitle = "BP trends & reminders"
         static let weightScaleSubtitle = "BMI & weight insights"
         static let alreadyAdded = "already added to your profile"
-        static let addDeviceButton = SignupStrings.nextButton
     }
 
     struct AddBabyStep {
