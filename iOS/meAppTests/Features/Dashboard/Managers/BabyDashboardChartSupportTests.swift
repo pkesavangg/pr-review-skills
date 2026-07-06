@@ -453,13 +453,15 @@ struct BabyDashboardChartSupportTests {
     // MARK: - heightPercentile
 
     @Test("heightPercentile returns value between 0 and 100")
-    func heightPercentileInValidRange() {
+    func heightPercentileInValidRange() throws {
         let baby = makeBabyProfile()
         let birthday = BabyDashboardChartSupport.resolvedBirthday(for: baby)
         let date = cal.date(byAdding: .day, value: 60, to: birthday) ?? birthday
         let heightInches = BabyDashboardChartSupport.dummyHeightValue(for: baby, on: date)
 
-        let result = BabyDashboardChartSupport.heightPercentile(for: baby, heightInches: heightInches, on: date)
+        let result = try #require(
+            BabyDashboardChartSupport.heightPercentile(for: baby, heightInches: heightInches, on: date)
+        )
 
         #expect(result >= 0)
         #expect(result <= 100)
