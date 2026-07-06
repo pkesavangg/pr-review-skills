@@ -220,10 +220,11 @@ extension DashboardGridEditingManagerTests {
         store.gridEditingManager.updateGoalCardPosition(1)
         store.lifecycleManager.saveChanges()
 
-        // The save chain runs through AccountService + mock repos asynchronously; 2s was tight
-        // enough to time out under load on the CI runner (passed locally, flaked on CI). 5s keeps
-        // the assertion meaningful without being flaky on a busy machine.
-        await DashboardTestFixtures.waitUntil(timeoutNanoseconds: 5_000_000_000) {
+        // The save chain runs through AccountService + mock repos asynchronously — pure mock work,
+        // but it needs the main actor, which the full parallel suite starves on the CI runner.
+        // 2s and then 5s both flaked on CI (passed locally). The poll exits as soon as the
+        // condition holds, so a generous ceiling costs nothing on a green run.
+        await DashboardTestFixtures.waitUntil(timeoutNanoseconds: 30_000_000_000) {
             store.state.ui.isEditMode == false &&
                 store.editSessionManager.hasSnapshot == false &&
                 apiRepo.lastPatchDashboardMetrics == ["water", "bmi"] &&
