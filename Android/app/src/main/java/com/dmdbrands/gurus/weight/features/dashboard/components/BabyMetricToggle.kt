@@ -13,7 +13,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import com.dmdbrands.gurus.weight.features.dashboard.snapshot.components.SnapshotColors
 import com.dmdbrands.gurus.weight.features.dashboard.viewmodel.baby.BabyMetric
 import com.dmdbrands.gurus.weight.theme.MeTheme
 
@@ -38,7 +37,7 @@ internal fun BabyMetricToggle(
             interactionSource = remember { MutableInteractionSource() },
           ) { onSelect(metric) }
           .then(
-            if (isSelected) Modifier.background(SnapshotColors.Baby, RoundedCornerShape(8.dp))
+            if (isSelected) Modifier.background(MeTheme.colorScheme.baby, RoundedCornerShape(8.dp))
             else Modifier,
           )
           .padding(horizontal = MeTheme.spacing.sm, vertical = MeTheme.spacing.xs),
@@ -47,7 +46,7 @@ internal fun BabyMetricToggle(
         Text(
           text = metric.name.uppercase(),
           style = MeTheme.typography.link1,
-          color = if (isSelected) MeTheme.colorScheme.inverseAction else SnapshotColors.Baby,
+          color = if (isSelected) MeTheme.colorScheme.inverseAction else MeTheme.colorScheme.baby,
         )
       }
     }
