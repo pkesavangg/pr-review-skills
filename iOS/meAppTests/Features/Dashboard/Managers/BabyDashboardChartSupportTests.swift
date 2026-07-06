@@ -535,4 +535,78 @@ struct BabyDashboardChartSupportTests {
         let fresh = BabyDashboardChartSupport.dummySummaries(for: profile, period: .week)
         #expect(!fresh.isEmpty)
     }
+
+    // MARK: - Private-sex gating (Smart Baby percentile.service.ts parity)
+
+    @Test("isSexWithheld is true for private, nil, and empty; false for male/female")
+    func isSexWithheldTruthTable() {
+        #expect(BabyPercentileGrowthReference.isSexWithheld("private"))
+        #expect(BabyPercentileGrowthReference.isSexWithheld("PRIVATE"))
+        #expect(BabyPercentileGrowthReference.isSexWithheld(nil))
+        #expect(BabyPercentileGrowthReference.isSexWithheld(""))
+        #expect(!BabyPercentileGrowthReference.isSexWithheld("male"))
+        #expect(!BabyPercentileGrowthReference.isSexWithheld("female"))
+    }
+
+    @Test("percentileChartPoints returns no curves for private sex")
+    func percentileChartPointsEmptyForPrivateSex() {
+        // swiftlint:disable:next force_unwrapping
+        let birthday = cal.date(byAdding: .day, value: -90, to: Date())!
+        let range = birthday...Date()
+
+        let points = BabyPercentileGrowthReference.percentileChartPoints(
+            biologicalSex: "private",
+            birthday: birthday,
+            dateRange: range
+        ) { Double($0) / 10000.0 }
+
+        #expect(points.isEmpty)
+    }
+
+    @Test("weightPercentile returns nil for private sex")
+    func weightPercentileNilForPrivateSex() {
+        // swiftlint:disable:next force_unwrapping
+        let birthday = cal.date(byAdding: .day, value: -90, to: Date())!
+
+        let percentile = BabyPercentileGrowthReference.weightPercentile(
+            biologicalSex: "private",
+            birthday: birthday,
+            date: Date(),
+            weightDecigrams: 60_000
+        )
+
+        #expect(percentile == nil)
+    }
+
+    @Test("heightPercentileSeries returns no curves for private sex")
+    func heightPercentileSeriesEmptyForPrivateSex() {
+        let baby = makeBabyProfile(sex: "private")
+        let ops = makeDailySummaries(count: 4, from: cal.date(byAdding: .day, value: -4, to: Date()) ?? Date())
+
+        #expect(BabyDashboardChartSupport.heightPercentileSeries(for: baby, operations: ops).isEmpty)
+
+        // swiftlint:disable:next force_unwrapping
+        let start = cal.date(byAdding: .day, value: -20, to: Date())!
+        #expect(BabyDashboardChartSupport.heightPercentileSeries(for: baby, dateRange: start...Date()).isEmpty)
+    }
+
+    @Test("heightPercentile is nil for private sex and non-nil for female")
+    func heightPercentileGatedBySex() {
+        let privateBaby = makeBabyProfile(sex: "private")
+        let femaleBaby = makeBabyProfile(sex: "female")
+
+        let privateResult = BabyDashboardChartSupport.heightPercentile(
+            for: privateBaby,
+            heightInches: 22.0,
+            on: Date()
+        )
+        let femaleResult = BabyDashboardChartSupport.heightPercentile(
+            for: femaleBaby,
+            heightInches: 22.0,
+            on: Date()
+        )
+
+        #expect(privateResult == nil)
+        #expect(femaleResult != nil)
+    }
 }
