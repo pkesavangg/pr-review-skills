@@ -232,6 +232,72 @@ final class Entry {
     }
 }
 
+extension Entry {
+    /// Builds a full Entry (with child relationships) from the Sendable
+    /// transfer row used to cross actor boundaries. Shared by
+    /// `EntryRepository` (main actor) and `SwiftDataWorker` (@ModelActor).
+    convenience init(from data: EntrySyncData) {
+        self.init(
+            id: data.id,
+            entryTimestamp: data.entryTimestamp,
+            accountId: data.accountId,
+            operationType: data.operationType,
+            serverTimestamp: data.serverTimestamp,
+            entryType: data.entryType,
+            isSynced: data.isSynced
+        )
+        isFailedToSync = data.isFailedToSync
+        attempts = data.attempts
+
+        if let scaleData = data.scaleEntry {
+            scaleEntry = BathScaleEntry(
+                weight: scaleData.weight,
+                bodyFat: scaleData.bodyFat,
+                muscleMass: scaleData.muscleMass,
+                water: scaleData.water,
+                bmi: scaleData.bmi,
+                source: scaleData.source
+            )
+        }
+
+        if let metricData = data.scaleEntryMetric {
+            scaleEntryMetric = BathScaleMetric(
+                bmr: metricData.bmr,
+                metabolicAge: metricData.metabolicAge,
+                proteinPercent: metricData.proteinPercent,
+                pulse: metricData.pulse,
+                skeletalMusclePercent: metricData.skeletalMusclePercent,
+                subcutaneousFatPercent: metricData.subcutaneousFatPercent,
+                visceralFatLevel: metricData.visceralFatLevel,
+                boneMass: metricData.boneMass,
+                impedance: metricData.impedance,
+                unit: metricData.unit
+            )
+        }
+
+        if let systolic = data.bpmSystolic, let diastolic = data.bpmDiastolic,
+           let meanArterial = data.bpmMeanArterial, let pulse = data.bpmPulse {
+            bpmEntry = BPMEntry(
+                systolic: systolic,
+                diastolic: diastolic,
+                meanArterial: meanArterial,
+                pulse: pulse
+            )
+        }
+
+        if let babyId = data.babyEntryBabyId, let length = data.babyEntryLength,
+           let weight = data.babyEntryWeight {
+            babyEntry = BabyEntry(
+                babyId: babyId,
+                length: length,
+                weight: weight
+            )
+        }
+
+        note = data.note
+    }
+}
+
 // NOTE: SwiftData models are NOT thread-safe. Do not mark as Sendable.
 // Use PersistentIdentifier to pass references between contexts, and use
 // SwiftDataWorker or MainActor.run to safely access model properties.

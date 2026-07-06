@@ -728,77 +728,12 @@ final class EntryRepository: EntryRepositoryProtocol {
     
     /// Creates entries in background context from extracted data
     private func createEntriesInBackground(entriesData: [EntrySyncData]) async throws {
-        try await performTask { [self] ctx in
+        try await performTask { ctx in
             for data in entriesData {
-                let newEntry = self.createEntry(from: data)
-                ctx.insert(newEntry)
+                ctx.insert(Entry(from: data))
             }
             try ctx.save()
             return ()
         }
-    }
-    
-    /// Creates an Entry instance from EntrySyncData
-    private func createEntry(from data: EntrySyncData) -> Entry { // swiftlint:disable:this function_body_length
-        let newEntry = Entry(
-            id: data.id,
-            entryTimestamp: data.entryTimestamp,
-            accountId: data.accountId,
-            operationType: data.operationType,
-            serverTimestamp: data.serverTimestamp,
-            entryType: data.entryType,
-            isSynced: data.isSynced
-        )
-        newEntry.isFailedToSync = data.isFailedToSync
-        newEntry.attempts = data.attempts
-
-        if let seData = data.scaleEntry {
-            newEntry.scaleEntry = BathScaleEntry(
-                weight: seData.weight,
-                bodyFat: seData.bodyFat,
-                muscleMass: seData.muscleMass,
-                water: seData.water,
-                bmi: seData.bmi,
-                source: seData.source
-            )
-        }
-
-        if let mData = data.scaleEntryMetric {
-            newEntry.scaleEntryMetric = BathScaleMetric(
-                bmr: mData.bmr,
-                metabolicAge: mData.metabolicAge,
-                proteinPercent: mData.proteinPercent,
-                pulse: mData.pulse,
-                skeletalMusclePercent: mData.skeletalMusclePercent,
-                subcutaneousFatPercent: mData.subcutaneousFatPercent,
-                visceralFatLevel: mData.visceralFatLevel,
-                boneMass: mData.boneMass,
-                impedance: mData.impedance,
-                unit: mData.unit
-            )
-        }
-
-        if let systolic = data.bpmSystolic, let diastolic = data.bpmDiastolic,
-           let meanArterial = data.bpmMeanArterial, let pulse = data.bpmPulse {
-            newEntry.bpmEntry = BPMEntry(
-                systolic: systolic,
-                diastolic: diastolic,
-                meanArterial: meanArterial,
-                pulse: pulse
-            )
-        }
-
-        if let entryBabyId = data.babyEntryBabyId, let length = data.babyEntryLength,
-           let weight = data.babyEntryWeight {
-            newEntry.babyEntry = BabyEntry(
-                babyId: entryBabyId,
-                length: length,
-                weight: weight
-            )
-        }
-
-        newEntry.note = data.note
-
-        return newEntry
     }
 }
