@@ -176,9 +176,13 @@ extension DashboardGridEditingManagerTests {
         store.gridEditingManager.updateGoalCardPosition(2)
         store.gridEditingManager.toggleStreakRemoval(DashboardStrings.longestStreak)
 
-        await DashboardTestFixtures.waitUntil {
+        // Same fire-and-forget race as saveChangesPersistsEditedGridState: give the removal Task
+        // a generous ceiling (poll exits as soon as it lands) so a starved CI main actor can't
+        // let it land AFTER cancelEdit and corrupt the restored state.
+        await DashboardTestFixtures.waitUntil(timeoutNanoseconds: 30_000_000_000) {
             store.state.ui.removedStreaks.contains(DashboardStrings.longestStreak)
         }
+        #expect(store.state.ui.removedStreaks.contains(DashboardStrings.longestStreak))
 
         store.cancelEdit()
 
@@ -213,14 +217,24 @@ extension DashboardGridEditingManagerTests {
         store.state.ui.streakGridOrder = store.streakManager.state.streakItems.map(\.id.uuidString)
         store.gridEditingManager.toggleStreakRemoval(DashboardStrings.longestStreak)
 
-        await DashboardTestFixtures.waitUntil {
+        // toggleStreakRemoval applies its removal via a fire-and-forget Task. The removal MUST
+        // land before updateGoalCardPosition(1): with removedStreaks still empty, that call
+        // rounds the position down to the column grid ((1 / 2) * 2 == 0), the goal card saves at
+        // index 0, and the progress-metrics assertion below fails with a reordered array — which
+        // is exactly how this test failed on the congested CI main actor with the default 1s wait.
+        await DashboardTestFixtures.waitUntil(timeoutNanoseconds: 30_000_000_000) {
             store.state.ui.removedStreaks.contains(DashboardStrings.longestStreak)
         }
+        #expect(store.state.ui.removedStreaks.contains(DashboardStrings.longestStreak))
 
         store.gridEditingManager.updateGoalCardPosition(1)
         store.lifecycleManager.saveChanges()
 
-        await DashboardTestFixtures.waitUntil(timeoutNanoseconds: 2_000_000_000) {
+        // The save chain runs through AccountService + mock repos asynchronously — pure mock work,
+        // but it needs the main actor, which the full parallel suite starves on the CI runner.
+        // 2s and then 5s both flaked on CI (passed locally). The poll exits as soon as the
+        // condition holds, so a generous ceiling costs nothing on a green run.
+        await DashboardTestFixtures.waitUntil(timeoutNanoseconds: 30_000_000_000) {
             store.state.ui.isEditMode == false &&
                 store.editSessionManager.hasSnapshot == false &&
                 apiRepo.lastPatchDashboardMetrics == ["water", "bmi"] &&

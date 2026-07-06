@@ -77,11 +77,6 @@ data class SegmentButtonData(
  */
 object SegmentButtonDefaults {
   /**
-   * Primary color for selected segment buttons.
-   */
-  val PickerCyan: Color = Color(0xFF47B0EC)
-
-  /**
    * Returns the height for the given segment button size.
    */
   fun height(size: SegmentButtonSize): Dp =

@@ -53,6 +53,11 @@ class DashboardMetricsManager: ObservableObject, DashboardMetricsManaging {
     // MARK: - Initialization
     init(initialState: MetricsState = MetricsState(), skipInitialSetup: Bool = false) {
         self.state = initialState
+        // Cache DI-backed services during construction so later container mutations
+        // continue using the intended dependencies for this manager instance.
+        _ = accountService
+        _ = entryService
+        _ = logger
         if !skipInitialSetup {
             setupInitialMetrics()
         }

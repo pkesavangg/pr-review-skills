@@ -107,7 +107,7 @@ enum AccountTestFixtures {
         isSynced: Bool = true,
         productTypes: [String]? = nil
     ) -> Account {
-        let account = Account(from: makeAccountDTO(id: id, email: email, firstName: firstName))
+        let account = Account(from: makeAccountDTO(id: id, email: email, firstName: firstName, productTypes: productTypes))
         account.isLoggedIn = isLoggedIn
         account.isActiveAccount = isActive
         account.isSynced = isSynced

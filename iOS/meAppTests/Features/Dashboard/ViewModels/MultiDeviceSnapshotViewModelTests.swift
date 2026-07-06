@@ -278,36 +278,56 @@ struct MultiDeviceSnapshotViewModelTests {
 
     // MARK: - babySummaries
 
-    @Test("babySummaries returns dummy data when babyDailySummaries is empty for profile")
-    func babySummariesReturnsDummyWhenEmpty() {
+    // `babySummaries(for:)` returns ONLY real baby weight data. When a baby has no entries it
+    // returns an empty array so the snapshot card renders its empty state, rather than plotting
+    // synthetic dummy growth data (see MultiDeviceSnapshotViewModel.babySummaries).
+
+    @Test("babySummaries returns empty when the profile has no baby data")
+    func babySummariesEmptyWhenNoData() {
         let (sut, _) = makeSUT()
         let baby = makeBabyProfile()
 
         let result = sut.babySummaries(for: baby)
 
-        #expect(!result.isEmpty)
+        #expect(result.isEmpty)
     }
 
-    @Test("babySummaries returns dummy data for a baby whose id has no entry in babyDailySummaries")
-    func babySummariesReturnsDummyForUnknownBabyId() {
+    @Test("babySummaries returns empty for a baby whose id has no entry in babyDailySummaries")
+    func babySummariesEmptyForUnknownBabyId() {
         let (sut, _) = makeSUT()
-        // A profile whose id is NOT in babyDailySummaries (which is empty by default)
+        // A profile whose id is NOT in babyDailySummariesByProfile (empty by default)
         let baby = makeBabyProfile(id: "unknown-baby")
 
         let result = sut.babySummaries(for: baby)
 
-        // Dummy summaries are always non-empty for a valid baby profile
-        #expect(!result.isEmpty)
+        #expect(result.isEmpty)
     }
 
-    @Test("babySummaries dummy data account ids contain the baby id")
-    func babySummariesDummyDataHasBabyIdInAccountId() {
-        let (sut, _) = makeSUT()
-        let baby = makeBabyProfile(id: "my-baby-id")
+    @Test("babySummaries returns the real summaries published for the profile")
+    func babySummariesReturnsRealDataForProfile() {
+        let (sut, entryService) = makeSUT()
+        let baby = makeBabyProfile(id: "baby-with-data")
+        let summaries = [
+            makeBabySummary(babyId: baby.id, weight: 3200, date: Date()),
+            makeBabySummary(babyId: baby.id, weight: 3300, date: Date().addingTimeInterval(86400))
+        ]
+
+        entryService.babyDailySummariesByProfile[baby.id] = summaries
 
         let result = sut.babySummaries(for: baby)
 
-        #expect(result.allSatisfy { $0.accountId.contains("my-baby-id") })
+        #expect(result.count == 2)
+        #expect(result.allSatisfy { $0.accountId == baby.id })
+    }
+
+    @Test("babySummaries returns empty for a pending-selection baby placeholder")
+    func babySummariesEmptyForPendingSelection() {
+        let (sut, _) = makeSUT()
+        let pending = BabyProfile(id: BabyProfile.pendingSelectionId, name: "Baby Scale")
+
+        let result = sut.babySummaries(for: pending)
+
+        #expect(result.isEmpty)
     }
 
     // MARK: - Private Helpers
@@ -322,6 +342,17 @@ struct MultiDeviceSnapshotViewModelTests {
             weight: 0,
             systolic: systolic,
             diastolic: diastolic
+        )
+    }
+
+    private func makeBabySummary(babyId: String, weight: Double, date: Date) -> BathScaleWeightSummary {
+        BathScaleWeightSummary(
+            accountId: babyId,
+            period: DateTimeTools.formatter("yyyy-MM-dd").string(from: date),
+            entryTimestamp: ISO8601DateFormatter().string(from: date),
+            date: date,
+            count: 1,
+            weight: weight
         )
     }
 }

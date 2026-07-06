@@ -220,20 +220,42 @@ struct HistoryStoreTests {
         #expect(logger.messages.contains { $0.contains("HistoryStore") })
     }
 
-    @Test("loadEntries dedupes by entryTimestamp keeps latest by serverTimestamp and create only")
+    @Test("loadEntries dedupes by entry identity, keeps the latest op by serverTimestamp, and drops entries whose latest op is a delete")
     func loadEntriesDedupesAndFilters() async {
         let (store, entryService, _, _, _) = makeHistoryStoreSUT()
         let month = makeHistoryMonth(id: "2026-03")
-        let e1 = EntryTestFixtures.makeEntrySnapshot(entryTimestamp: "2026-03-01T08:00:00Z", serverTimestamp: "a", operationType: .create)
-        let e2 = EntryTestFixtures.makeEntrySnapshot(entryTimestamp: "2026-03-01T08:00:00Z", serverTimestamp: "b", operationType: .create)
-        let e3 = EntryTestFixtures.makeEntrySnapshot(entryTimestamp: "2026-03-01T08:00:00Z", serverTimestamp: "b", operationType: .delete)
-        entryService.fetchEntrySnapshotsForMonthResult = .success([e1, e2, e3])
+
+        // entry-1: two create ops for the same server entry — keep the latest by serverTimestamp ("c").
+        let entry1Old = EntryTestFixtures.makeEntrySnapshot(
+            entryTimestamp: "2026-03-01T08:00:00Z", serverTimestamp: "a", serverEntryId: "entry-1", operationType: .create
+        )
+        let entry1New = EntryTestFixtures.makeEntrySnapshot(
+            entryTimestamp: "2026-03-01T08:00:00Z", serverTimestamp: "c", serverEntryId: "entry-1", operationType: .create
+        )
+        // entry-2: latest op is a delete — the whole entry is filtered out.
+        let entry2Create = EntryTestFixtures.makeEntrySnapshot(
+            entryTimestamp: "2026-03-02T08:00:00Z", serverTimestamp: "a", serverEntryId: "entry-2", operationType: .create
+        )
+        let entry2Delete = EntryTestFixtures.makeEntrySnapshot(
+            entryTimestamp: "2026-03-02T08:00:00Z", serverTimestamp: "b", serverEntryId: "entry-2", operationType: .delete
+        )
+        // entry-3: a distinct entry that shares entry-1's entryTimestamp — must NOT collapse into entry-1
+        // (dedup keys on entry identity, not entryTimestamp).
+        let entry3 = EntryTestFixtures.makeEntrySnapshot(
+            entryTimestamp: "2026-03-01T08:00:00Z", serverTimestamp: "a", serverEntryId: "entry-3", operationType: .create
+        )
+        entryService.fetchEntrySnapshotsForMonthResult = .success([entry1Old, entry1New, entry2Create, entry2Delete, entry3])
         store.setSelectedMonth(selectedMonth: month)
 
         await store.loadEntries(for: month)
-        #expect(store.entries.count == 1)
-        #expect(store.entries.first?.serverTimestamp == "b")
-        #expect(store.entries.first?.operationType == OperationType.create.rawValue)
+
+        // entry-1 (latest create) and entry-3 survive; entry-2 (latest delete) is dropped.
+        #expect(store.entries.count == 2)
+        let entry1 = store.entries.first { $0.serverEntryId == "entry-1" }
+        #expect(entry1?.serverTimestamp == "c")
+        #expect(entry1?.operationType == OperationType.create.rawValue)
+        #expect(store.entries.contains { $0.serverEntryId == "entry-3" })
+        #expect(!store.entries.contains { $0.serverEntryId == "entry-2" })
     }
 
     @Test("loadEntries sorts newest first by entryTimestamp")
