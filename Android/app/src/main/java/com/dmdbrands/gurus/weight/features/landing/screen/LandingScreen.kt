@@ -1,6 +1,5 @@
 package com.dmdbrands.gurus.weight.features.landing.screen
 
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -14,18 +13,16 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.ColorFilter
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.style.TextAlign
 import com.dmdbrands.gurus.weight.core.navigation.AppRoute
 import com.dmdbrands.gurus.weight.core.navigation.LocalNavBackStack
 import com.dmdbrands.gurus.weight.features.common.components.AppButton
 import com.dmdbrands.gurus.weight.features.common.components.ButtonSize
 import com.dmdbrands.gurus.weight.features.common.components.ButtonType
+import com.dmdbrands.gurus.weight.features.common.components.MeHealthLogoCard
 import com.dmdbrands.gurus.weight.features.common.components.PreviewTheme
 import com.dmdbrands.gurus.weight.features.common.components.VersionText
 import com.dmdbrands.gurus.weight.features.landing.strings.LandingString
-import com.dmdbrands.gurus.weight.resources.AppIcons
 import com.dmdbrands.gurus.weight.theme.MeAppTheme
 import com.dmdbrands.gurus.weight.theme.MeTheme
 import kotlinx.coroutines.launch
@@ -39,27 +36,21 @@ fun LandingScreen() {
     modifier =
       Modifier
         .fillMaxSize()
-        .background(MeTheme.colorScheme.primaryAction),
+        .background(MeTheme.colorScheme.secondaryBackground),
   ) {
     // Main content
     Column(
       modifier =
         Modifier
           .align(Alignment.Center)
-          .padding(horizontal = MeTheme.spacing.md),
+          .padding(horizontal = MeTheme.spacing.x2l),
       horizontalAlignment = Alignment.CenterHorizontally,
       verticalArrangement = Arrangement.Center,
     ) {
-      Image(
-        painter = painterResource(id = AppIcons.Default.Banner),
-        // TalkBack: brand logo — read the product name rather than the
-        // unrelated "loading" string the banner previously borrowed.
-        contentDescription = LandingString.accLogoLabel,
-        colorFilter = ColorFilter.tint(MeTheme.colorScheme.inverseAction),
-      )
+      MeHealthLogoCard()
       Spacer(modifier = Modifier.height(MeTheme.spacing.x6l))
       AppButton(
-        type = ButtonType.SecondaryFilled,
+        type = ButtonType.PrimaryFilled,
         label = LandingString.Login,
         size = ButtonSize.Large,
         onClick = {
@@ -97,7 +88,7 @@ fun LandingScreen() {
       VersionText(
         modifier = Modifier.fillMaxWidth(),
         textAlign = TextAlign.Center,
-        color = MeTheme.colorScheme.inverseAction,
+        color = MeTheme.colorScheme.textSubheading,
         style = MeTheme.typography.subHeading2,
       )
     }
