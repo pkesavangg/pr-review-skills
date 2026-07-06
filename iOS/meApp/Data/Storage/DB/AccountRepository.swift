@@ -40,7 +40,7 @@ final class AccountRepository: AccountRepositoryProtocol {
             context.delete(duplicate)
         }
 
-        try context.save()
+        try saveClearingTokens()
     }
 
     /// Updates an existing account in the local data store.
@@ -50,7 +50,7 @@ final class AccountRepository: AccountRepositoryProtocol {
             if existing !== account {
                 mergeAccount(from: account, into: existing)
             }
-            try context.save()
+            try saveClearingTokens()
             return
         }
 
@@ -96,7 +96,7 @@ final class AccountRepository: AccountRepositoryProtocol {
             throw AccountError.accountNotFound(id: id)
         }
 
-        try context.save()
+        try saveClearingTokens()
     }
 
     /// Deletes an account by its unique ID.
@@ -122,6 +122,24 @@ final class AccountRepository: AccountRepositoryProtocol {
     func fetchAllAccountsSync() throws -> [Account] {
         let descriptor = FetchDescriptor<Account>()
         return try context.fetch(descriptor)
+    }
+
+    /// Saves the context after scrubbing auth-token columns from every account it holds.
+    ///
+    /// This is the real enforcement of the Keychain-only token invariant on the repository's
+    /// direct-save paths. `Account.willSave()` cannot enforce it: SwiftData computes the pending
+    /// write *before* calling `willSave()`, so a model nil-ing its own token columns there is not
+    /// folded into that same save (verified against an on-disk store — the token still landed on
+    /// disk). Clearing explicitly *before* `save()` makes the nils part of the write, matching what
+    /// `AccountService.clearTokenFieldsBeforeSave` already does on its wrapper paths. The context
+    /// query reflects pending inserts, so freshly inserted accounts are covered too.
+    private func saveClearingTokens() throws {
+        for account in try loadAllAccounts() {
+            if account.accessToken != nil { account.accessToken = nil }
+            if account.refreshToken != nil { account.refreshToken = nil }
+            if account.expiresAt != nil { account.expiresAt = nil }
+        }
+        try context.save()
     }
 
     private func findAccount(byId id: String) throws -> Account? {

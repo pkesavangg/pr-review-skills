@@ -13,9 +13,20 @@ final class DashboardSyncCoordinator: DashboardSyncCoordinatorProtocol {
     @Injector private var notificationService: NotificationHelperServiceProtocol
     
     // MARK: - Constants
-    
+
     private static let allProgressMetricsRemovedKey = "dashboard.allProgressMetricsRemoved"
-    
+
+    // MARK: - Initialization
+
+    init() {
+        // Cache DI-backed services during construction so later container mutations
+        // continue using the intended dependencies for this coordinator instance.
+        _ = entryService
+        _ = logger
+        _ = accountService
+        _ = notificationService
+    }
+
     // MARK: - Sync Operations
     
     func syncEntries() async {
