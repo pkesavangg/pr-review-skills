@@ -60,17 +60,20 @@ fun AppProfileAvatar(
     contentDescription: String? = null,
     onLongPress: (() -> Unit)? = null,
 ) {
+    // Account avatar is the WG brand blue per Figma (Account Switch icon): active = solid wgPrimary
+    // with white initial, inactive = wgPrimary outline + wgPrimary initial. iconPrimary was remapped
+    // to neutral #2C2827 in MOB-987, which had turned the avatar dark. (MOB-1259)
     val backgroundColor = when {
-        isActive -> MeTheme.colorScheme.iconPrimary
+        isActive -> MeTheme.colorScheme.wgPrimary
         else -> Color.Transparent
     }
     val textColor = when {
         !enabled -> MeTheme.colorScheme.primaryActionDisabled
         isActive -> MeTheme.colorScheme.inverseAction
-        else -> MeTheme.colorScheme.primaryAction
+        else -> MeTheme.colorScheme.wgPrimary
     }
     val borderModifier = when {
-        !isActive && enabled -> Modifier.border(2.dp, MeTheme.colorScheme.iconPrimary, CircleShape)
+        !isActive && enabled -> Modifier.border(2.dp, MeTheme.colorScheme.wgPrimary, CircleShape)
         !isActive && !enabled -> Modifier.border(2.dp, MeTheme.colorScheme.iconPrimaryDisabled, CircleShape)
         else -> Modifier
     }
@@ -138,7 +141,7 @@ fun AppProfileAvatar(
                 modifier = Modifier
                     .align(Alignment.CenterEnd)
                     .size(size)
-                    .border(BORDER_WIDTH_DP, MeTheme.colorScheme.iconPrimary, CircleShape)
+                    .border(BORDER_WIDTH_DP, MeTheme.colorScheme.wgPrimary, CircleShape)
                     .clip(CircleShape)
                     .background(Color.Transparent),
                 contentAlignment = Alignment.Center,
@@ -146,7 +149,8 @@ fun AppProfileAvatar(
                 AppIcon(
                     id = AppIcons.Filled.Profile,
                     contentDescription = AppProfileAvatarStrings.accProfileLabel,
-                    type = AppIconType.Primary,
+                    // Person glyph is the WG brand blue to match the avatar outline. (MOB-1259)
+                    tintColor = MeTheme.colorScheme.wgPrimary,
                     modifier = Modifier
                         // Optical nudge compensates for the SVG path's geometric asymmetry so the
                         // glyph appears centered inside the border circle (per Figma).
