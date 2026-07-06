@@ -16,6 +16,17 @@ import SwiftData
 
 @Model
 final class Entry {
+    // Every hot predicate filters on accountId, serverEntryId (merge identity),
+    // entryTimestamp (sorting/range reads), or accountId+operationType. Without
+    // these, each lookup is a full-table scan (MOB-1433). Additive change —
+    // SwiftData applies it via lightweight migration.
+    #Index<Entry>(
+        [\.accountId],
+        [\.serverEntryId],
+        [\.entryTimestamp],
+        [\.accountId, \.operationType]
+    )
+
     /// Unique entry ID (PK)
     @Attribute(.unique) var id: UUID
     /// Foreign key referencing account.accountId
