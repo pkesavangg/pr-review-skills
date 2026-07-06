@@ -45,11 +45,12 @@ fun ModalDialog(
             // Dialog is a separate window; opt its tree into resource-id exposure (MOB-1099).
             modifier = Modifier.fillMaxSize().exposeTestTagsAsResourceId()
         ) {
-            // Background overlay - clickable when dismissOnClickOutside is enabled
+            // Background scrim - clickable when dismissOnClickOutside is enabled.
+            // Figma maps the modal scrim to Support/overlay (#2c282740); `glow` is the drop-shadow color.
             Box(
                 modifier = Modifier
                     .fillMaxSize()
-                    .background(MeTheme.colorScheme.glow)
+                    .background(MeTheme.colorScheme.overlay)
                     .then(
                         if (config.dismissOnClickOutside) {
                             Modifier.clickable(
