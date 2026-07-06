@@ -16,7 +16,7 @@ extension DashboardGridEditingManagerTests {
         #expect(store.state.ui.selectedMetricLabel == nil)
 
         let newMetric = DashboardTestFixtures.makeMetricItem(label: DashboardStrings.muscle)
-        let newStreak = DashboardTestFixtures.makeMetricItem(label: "lbs/month")
+        let newStreak = DashboardTestFixtures.makeMetricItem(label: "lb/month")
         store.gridEditingManager.metricsBinding.wrappedValue = [newMetric]
         store.gridEditingManager.streakItemsBinding.wrappedValue = [newStreak]
         store.gridEditingManager.draggingMetricBinding.wrappedValue = newMetric
@@ -24,9 +24,9 @@ extension DashboardGridEditingManagerTests {
         store.gridEditingManager.dropHoverIdBinding.wrappedValue = "hover"
 
         #expect(metricLabels(in: store) == [DashboardStrings.muscle])
-        #expect(streakLabels(in: store) == ["lbs/month"])
+        #expect(streakLabels(in: store) == ["lb/month"])
         #expect(store.state.ui.draggingMetric?.label == DashboardStrings.muscle)
-        #expect(store.state.ui.draggingStreak?.label == "lbs/month")
+        #expect(store.state.ui.draggingStreak?.label == "lb/month")
         #expect(store.state.ui.dropHoverId == "hover")
 
         store.gridEditingManager.startDraggingGoalCard()

@@ -55,15 +55,24 @@ data class SettingsState(
       account?.productTypes?.contains(ProductType.BABY.apiValue) == true
 
   /**
-   * Whether the "Unit Type" row shows in the App section. Hidden for Balance Health
-   * (blood-pressure) only accounts — a BP monitor has no weight/length unit to choose
-   * (readings are always mmHg). Shown when the account owns a weight or baby product
-   * (both have a configurable unit). Mirrors the WG/SB-show, BH-hide design.
+   * Whether the "My Weight" Unit Type section is editable — driven by product ownership
+   * ([Account.productTypes] carries "weight"), which is auto-added when a weight scale is
+   * paired and is additive (stays after the device is removed). Deliberately NOT keyed off
+   * the [hasWeightScale] device flag: that reads DeviceService._pairedScales, where a baby
+   * scale can surface under a weight-scale device type and falsely enable this section for a
+   * baby/BP-only account. When false the section is shown locked at the default unit. (MOB-1175)
+   */
+  val isMyWeightEnabled: Boolean
+    get() = account?.productTypes?.contains(ProductType.MY_WEIGHT.apiValue) == true
+
+  /**
+   * Whether the "Unit Type" row shows in the App section. Always shown now (MOB-1175):
+   * BP-only accounts previously hid it, but per the finalised visibility rules the row
+   * stays visible with both sections locked to the default unit and an unlock message,
+   * nudging users to add the relevant weight/baby scale.
    */
   val showUnitType: Boolean
-    get() = account?.productTypes?.let {
-      it.contains(ProductType.MY_WEIGHT.apiValue) || it.contains(ProductType.BABY.apiValue)
-    } ?: true
+    get() = true
 
   /**
    * Whether the "Integrations" row shows in the Account section. Hidden for baby-scale

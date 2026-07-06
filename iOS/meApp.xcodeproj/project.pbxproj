@@ -102,6 +102,11 @@
 			path = meAppUITests;
 			sourceTree = "<group>";
 		};
+		ACCE55B10000000000000001 /* SharedAccessibility */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = SharedAccessibility;
+			sourceTree = "<group>";
+		};
 /* End PBXFileSystemSynchronizedRootGroup section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -144,6 +149,7 @@
 				105A1F9C2DE585B800FBB764 /* meApp */,
 				105A1FAF2DE585BA00FBB764 /* meAppTests */,
 				105A1FB92DE585BA00FBB764 /* meAppUITests */,
+				ACCE55B10000000000000001 /* SharedAccessibility */,
 				D09DAD742E14F16D00188753 /* Frameworks */,
 				105A1F9B2DE585B800FBB764 /* Products */,
 			);
@@ -183,6 +189,7 @@
 			);
 			fileSystemSynchronizedGroups = (
 				105A1F9C2DE585B800FBB764 /* meApp */,
+				ACCE55B10000000000000001 /* SharedAccessibility */,
 			);
 			name = meApp;
 			packageProductDependencies = (
@@ -238,6 +245,7 @@
 			);
 			fileSystemSynchronizedGroups = (
 				105A1FB92DE585BA00FBB764 /* meAppUITests */,
+				ACCE55B10000000000000001 /* SharedAccessibility */,
 			);
 			name = meAppUITests;
 			packageProductDependencies = (

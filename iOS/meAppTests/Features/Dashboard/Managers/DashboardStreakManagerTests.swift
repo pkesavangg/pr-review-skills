@@ -41,7 +41,7 @@ struct DashboardStreakManagerTests {
         #expect(sut.state.streakItems[1].value == "7")
         #expect(sut.state.streakItems[2].label == "lb/week")
         #expect(sut.state.streakItems[2].value == "+1.0")
-        #expect(sut.state.streakItems[5].label == "lbs/total")
+        #expect(sut.state.streakItems[5].label == "lb/total")
     }
 
     @Test("updateStreakItems: populates streak cards from Progress in kilograms")
@@ -139,7 +139,7 @@ struct DashboardStreakManagerTests {
         sut.state.streakItems = [
             DashboardTestFixtures.makeMetricItem(label: DashboardStrings.currentStreak),
             DashboardTestFixtures.makeMetricItem(label: DashboardStrings.longestStreak),
-            DashboardTestFixtures.makeMetricItem(label: "lbs/week")
+            DashboardTestFixtures.makeMetricItem(label: "lb/week")
         ]
         sut.state.activeStreakItemsCount = 2
 
@@ -254,14 +254,14 @@ struct DashboardStreakManagerTests {
         sut.state.streakItems = [
             DashboardTestFixtures.makeMetricItem(label: DashboardStrings.currentStreak),
             DashboardTestFixtures.makeMetricItem(label: DashboardStrings.longestStreak),
-            DashboardTestFixtures.makeMetricItem(label: "lbs/week")
+            DashboardTestFixtures.makeMetricItem(label: "lb/week")
         ]
 
         try await sut.reorderStreakItems(from: IndexSet(integer: 0), to: 3)
 
         #expect(sut.state.streakItems.map(\.label) == [
             DashboardStrings.longestStreak,
-            "lbs/week",
+            "lb/week",
             DashboardStrings.currentStreak
         ])
     }

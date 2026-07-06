@@ -1,3 +1,7 @@
+// Migration tests seed a full DB and assert many columns/rows per version step, so the
+// per-test methods are intentionally long — data setup + assertions don't decompose cleanly.
+@file:Suppress("LongMethod")
+
 package com.dmdbrands.gurus.weight.data.storage.db
 
 import android.content.ContentValues
@@ -198,6 +202,212 @@ class MigrationTest {
         db.query("SELECT * FROM notification_settings WHERE accountId = 'acct-1'").use { cursor ->
             assertThat(cursor.moveToFirst()).isTrue()
             assertThat(cursor.getInt(cursor.getColumnIndexOrThrow("willReceiveEmails"))).isEqualTo(0)
+        }
+
+        db.close()
+    }
+
+    /**
+     * MOB-948 — full production upgrade path.
+     *
+     * Every shipped 5.0.x build (5.0.0–5.0.3) is Room DB **version 1**; versions 2–8 only
+     * ever existed on internal Phase 2 builds. So the ONLY migration path a real user takes
+     * on the 5.0.3 → 5.1.0 update is the whole chain **1 → 8** in one shot. This test creates
+     * a version-1 database with representative weight, BPM, and baby data, runs the entire
+     * migration chain, and asserts nothing is lost and the Phase 2 additions land correctly:
+     *  - existing account / weight / BPM rows survive
+     *  - baby_profiles → baby (id→babyId, biologicalSex→sex) with data preserved
+     *  - baby_entry column renames (babyProfileId→babyId, photo→photoUri) with data preserved
+     *  - bpm_entry PK rename (id→entryId) with data preserved
+     *  - product_settings back-filled to the weight-only default for the legacy account
+     */
+    @Test
+    fun migrate1To8_fullProductionUpgradePath() {
+        // --- Create DB at version 1 and seed representative 5.0.3 data ---------------
+        helper.createDatabase(TEST_DB, 1).apply {
+            insert(
+                "account",
+                SQLiteDatabase.CONFLICT_REPLACE,
+                ContentValues().apply {
+                    put("accountId", "acct-1")
+                    put("firstName", "Test")
+                    put("lastName", "User")
+                    put("dob", "1990-01-01")
+                    put("email", "test@example.com")
+                    put("gender", "male")
+                    put("isActiveAccount", 1)
+                    put("isLoggedIn", 1)
+                    put("isExpired", 0)
+                    put("isSynced", 1)
+                    put("zipcode", "12345")
+                },
+            )
+
+            // entry #1 → weight (body_scale_entry)
+            insert(
+                "entry",
+                SQLiteDatabase.CONFLICT_REPLACE,
+                ContentValues().apply {
+                    put("id", 1)
+                    put("accountId", "acct-1")
+                    put("entryTimestamp", "2025-06-01T10:00:00.000Z")
+                    put("operationType", "create")
+                    put("deviceType", "scale")
+                    put("deviceId", "dev-1")
+                    put("attempts", 0)
+                    put("unit", "lb")
+                    put("isSynced", 1)
+                },
+            )
+            insert(
+                "body_scale_entry",
+                SQLiteDatabase.CONFLICT_REPLACE,
+                ContentValues().apply {
+                    put("id", 1)
+                    put("weight", 1800.0)
+                    put("source", "manual")
+                },
+            )
+
+            // entry #2 → BPM (bpm_entry, PK `id` at v1)
+            insert(
+                "entry",
+                SQLiteDatabase.CONFLICT_REPLACE,
+                ContentValues().apply {
+                    put("id", 2)
+                    put("accountId", "acct-1")
+                    put("entryTimestamp", "2025-06-02T10:00:00.000Z")
+                    put("operationType", "create")
+                    put("deviceType", "bpm")
+                    put("deviceId", "dev-1")
+                    put("attempts", 0)
+                    put("unit", "mmHg")
+                    put("isSynced", 1)
+                },
+            )
+            insert(
+                "bpm_entry",
+                SQLiteDatabase.CONFLICT_REPLACE,
+                ContentValues().apply {
+                    put("id", 2)
+                    put("systolic", 120)
+                    put("diastolic", 80)
+                    put("pulse", 72)
+                    put("meanArterial", "93")
+                    put("note", "morning reading")
+                },
+            )
+
+            // baby_profiles row (renamed to `baby` in 4→5; biologicalSex→sex, id→babyId)
+            insert(
+                "baby_profiles",
+                SQLiteDatabase.CONFLICT_REPLACE,
+                ContentValues().apply {
+                    put("id", "baby-1")
+                    put("accountId", "acct-1")
+                    put("name", "Baby Test")
+                    put("biologicalSex", "male")
+                    put("birthWeightDecigrams", 35000)
+                    put("isBorn", 1)
+                    put("isOwnedByAccount", 1)
+                },
+            )
+
+            // entry #3 → baby entry (baby_entry: babyProfileId→babyId, photo→photoUri)
+            insert(
+                "entry",
+                SQLiteDatabase.CONFLICT_REPLACE,
+                ContentValues().apply {
+                    put("id", 3)
+                    put("accountId", "acct-1")
+                    put("entryTimestamp", "2025-06-03T10:00:00.000Z")
+                    put("operationType", "create")
+                    put("deviceType", "baby")
+                    put("deviceId", "dev-1")
+                    put("attempts", 0)
+                    put("unit", "lb")
+                    put("isSynced", 1)
+                },
+            )
+            insert(
+                "baby_entry",
+                SQLiteDatabase.CONFLICT_REPLACE,
+                ContentValues().apply {
+                    put("id", 3)
+                    put("babyProfileId", "baby-1")
+                    put("babyWeightDecigrams", 36000)
+                    put("entryType", "weight")
+                    put("photo", "file://old/photo.jpg")
+                    put("source", "manual")
+                },
+            )
+
+            close()
+        }
+
+        // --- Run the FULL chain 1 → 8 ------------------------------------------------
+        val db = helper.runMigrationsAndValidate(
+            TEST_DB,
+            8,
+            true,
+            AppDatabase.MIGRATION_1_2,
+            AppDatabase.MIGRATION_2_3,
+            AppDatabase.MIGRATION_3_4,
+            AppDatabase.MIGRATION_4_5,
+            AppDatabase.MIGRATION_5_6,
+            AppDatabase.MIGRATION_6_7,
+            AppDatabase.MIGRATION_7_8,
+        )
+
+        // --- Account survived --------------------------------------------------------
+        db.query("SELECT * FROM account WHERE accountId = 'acct-1'").use { cursor ->
+            assertThat(cursor.moveToFirst()).isTrue()
+            assertThat(cursor.getString(cursor.getColumnIndexOrThrow("email")))
+                .isEqualTo("test@example.com")
+        }
+
+        // --- Weight entry survived ---------------------------------------------------
+        db.query("SELECT * FROM body_scale_entry WHERE id = 1").use { cursor ->
+            assertThat(cursor.moveToFirst()).isTrue()
+            assertThat(cursor.getDouble(cursor.getColumnIndexOrThrow("weight"))).isEqualTo(1800.0)
+        }
+
+        // --- BPM entry survived and PK renamed id → entryId --------------------------
+        db.query("SELECT * FROM bpm_entry WHERE entryId = 2").use { cursor ->
+            assertThat(cursor.moveToFirst()).isTrue()
+            assertThat(cursor.getInt(cursor.getColumnIndexOrThrow("systolic"))).isEqualTo(120)
+            assertThat(cursor.getInt(cursor.getColumnIndexOrThrow("diastolic"))).isEqualTo(80)
+            assertThat(cursor.getString(cursor.getColumnIndexOrThrow("note")))
+                .isEqualTo("morning reading")
+        }
+
+        // --- baby_profiles → baby (id→babyId, biologicalSex→sex), data preserved -----
+        db.query("SELECT * FROM baby WHERE babyId = 'baby-1'").use { cursor ->
+            assertThat(cursor.moveToFirst()).isTrue()
+            assertThat(cursor.getString(cursor.getColumnIndexOrThrow("name"))).isEqualTo("Baby Test")
+            assertThat(cursor.getString(cursor.getColumnIndexOrThrow("sex"))).isEqualTo("male")
+            assertThat(cursor.getInt(cursor.getColumnIndexOrThrow("birthWeightDecigrams")))
+                .isEqualTo(35000)
+        }
+
+        // --- baby_entry renames (babyProfileId→babyId, photo→photoUri), preserved ----
+        db.query("SELECT * FROM baby_entry WHERE id = 3").use { cursor ->
+            assertThat(cursor.moveToFirst()).isTrue()
+            assertThat(cursor.getString(cursor.getColumnIndexOrThrow("babyId"))).isEqualTo("baby-1")
+            assertThat(cursor.getString(cursor.getColumnIndexOrThrow("photoUri")))
+                .isEqualTo("file://old/photo.jpg")
+            assertThat(cursor.getInt(cursor.getColumnIndexOrThrow("babyWeightDecigrams")))
+                .isEqualTo(36000)
+        }
+
+        // --- product_settings back-filled to weight-only default for legacy account --
+        db.query("SELECT * FROM product_settings WHERE accountId = 'acct-1'").use { cursor ->
+            assertThat(cursor.moveToFirst()).isTrue()
+            assertThat(cursor.getString(cursor.getColumnIndexOrThrow("productTypes")))
+                .isEqualTo("[\"weight\"]")
+            assertThat(cursor.getString(cursor.getColumnIndexOrThrow("measurementUnits")))
+                .isEqualTo("metric")
+            assertThat(cursor.getInt(cursor.getColumnIndexOrThrow("isSynced"))).isEqualTo(0)
         }
 
         db.close()

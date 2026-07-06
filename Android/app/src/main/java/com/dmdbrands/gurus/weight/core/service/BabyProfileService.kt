@@ -24,13 +24,14 @@ class BabyProfileService @Inject constructor(
             babyProfileRepository.observeAll(accountId)
         }
 
-    override suspend fun save(profile: BabyProfile) {
+    override suspend fun save(profile: BabyProfile): BabyProfile {
         AppLog.d(TAG, "Saving baby profile: ${profile.id}")
-        babyProfileRepository.save(profile)
+        val persisted = babyProfileRepository.save(profile)
         analyticsService.logEvent(IAnalyticsService.Events.BABY_PROFILE_CREATED)
         // NOTE: the server auto-adds "baby" to the account's productTypes. Mirroring
         // that into the local account model is deferred to MOB-377 (Account API
         // foundation), which introduces productTypes on Android.
+        return persisted
     }
 
     override suspend fun update(profile: BabyProfile) {

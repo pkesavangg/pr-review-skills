@@ -7,6 +7,8 @@ import com.dmdbrands.gurus.weight.domain.interfaces.IDialogQueueService
 import com.dmdbrands.gurus.weight.domain.model.storage.Account.Account
 import com.dmdbrands.gurus.weight.domain.enums.ProductType
 import com.dmdbrands.gurus.weight.domain.model.api.auth.SignupRequest
+import com.dmdbrands.gurus.weight.domain.model.common.BabyProfile
+import com.dmdbrands.gurus.weight.domain.repository.IAccountRepository
 import com.dmdbrands.gurus.weight.domain.repository.IProductSelectionRepository
 import com.dmdbrands.gurus.weight.core.shared.utilities.ConversionTools
 import com.dmdbrands.gurus.weight.domain.services.IAccountService
@@ -79,6 +81,9 @@ class SignupViewModelTest {
     @MockK(relaxed = true)
     lateinit var productSelectionRepository: IProductSelectionRepository
 
+    @MockK(relaxUnitFun = true)
+    lateinit var accountRepository: IAccountRepository
+
     private lateinit var navigationService: IAppNavigationService
     private lateinit var dialogQueueService: IDialogQueueService
     private lateinit var viewModel: SignupViewModel
@@ -88,12 +93,17 @@ class SignupViewModelTest {
         MockKAnnotations.init(this)
         navigationService = mockk(relaxed = true)
         dialogQueueService = mockk(relaxed = true)
+        // save() returns the persisted profile (server-assigned id); default stub for baby tests.
+        coEvery { babyProfileService.save(any()) } answers {
+            (firstArg<BabyProfile>()).copy(id = "server-${firstArg<BabyProfile>().id}")
+        }
         viewModel = SignupViewModel(
             accountService = accountService,
             goalService = goalService,
             analyticsService = analyticsService,
             productSelectionRepository = productSelectionRepository,
             babyProfileService = babyProfileService,
+            accountRepository = accountRepository,
         ).initTestDependencies(
             navigationService = navigationService,
             dialogQueueService = dialogQueueService,
@@ -695,6 +705,24 @@ class SignupViewModelTest {
     }
 
     @Test
+    fun `Submit baby scale sets the newly-added baby as the active baby`() = runTest(mainDispatcherRule.scheduler) {
+        coEvery { accountService.signup(any()) } returns TestFixtures.activeAccount
+
+        navigateToBabyPasswordStep { form ->
+            form.name.onValueChange("Tammy")
+            form.biologicalSex.onValueChange("male")
+            form.weightUnit.onValueChange(BabyWeightUnit.KG)
+            form.birthWeight.onValueChange("3.5")
+            form.birthLength.onValueChange("50")
+        }
+        viewModel.handleIntent(SignupIntent.Next)
+        advanceUntilIdle()
+
+        // The persisted baby (server-assigned id) becomes the account's active baby.
+        coVerify { accountRepository.setActiveBabyId(TestFixtures.activeAccount.id, any()) }
+    }
+
+    @Test
     fun `Submit baby scale persists baby with kg weight and cm length converted`() = runTest(mainDispatcherRule.scheduler) {
         coEvery { accountService.signup(any()) } returns TestFixtures.activeAccount
 
@@ -916,22 +944,7 @@ class SignupViewModelTest {
     }
 
     @Test
-    fun `Loop pass routes to the ERROR screen when product sync fails`() = runTest(mainDispatcherRule.scheduler) {
-        coEvery { accountService.signup(any()) } returns TestFixtures.activeAccount
-        coEvery { goalService.createGoalForSignup(any(), any(), any(), any()) } returns TestFixtures.activeAccount
-        coEvery { accountService.getCurrentAccount() } returns TestFixtures.activeAccount
-        // The loop-pass product sync fails → no longer swallowed → ERROR screen.
-        coEvery { accountService.addProduct(any()) } throws RuntimeException("network down")
-
-        registerFirstWeightDeviceThenPickBloodPressure()
-        viewModel.handleIntent(SignupIntent.Next)
-        advanceUntilIdle()
-
-        assertThat(viewModel.state.value.currentStep).isEqualTo(SignupStep.ERROR)
-    }
-
-    @Test
-    fun `Loop pass patches gender and dob via profile before adding the product type`() = runTest(mainDispatcherRule.scheduler) {
+    fun `Loop pass PATCHes the profile before adding the product`() = runTest(mainDispatcherRule.scheduler) {
         coEvery { accountService.signup(any()) } returns TestFixtures.activeAccount
         coEvery { goalService.createGoalForSignup(any(), any(), any(), any()) } returns TestFixtures.activeAccount
         coEvery { accountService.getCurrentAccount() } returns TestFixtures.activeAccount
@@ -940,12 +953,28 @@ class SignupViewModelTest {
         viewModel.handleIntent(SignupIntent.Next)
         advanceUntilIdle()
 
-        // Weight/BP loop devices PATCH the profile (gender + dob) BEFORE the product
-        // type is added, so the product is never added against an incomplete account.
+        // §2.19 rejects adding weight/blood_pressure before gender/dob exist on the account, so the
+        // profile PATCH must run BEFORE the product add on a second-device loop pass. (MOB-598 #9)
         coVerifyOrder {
             accountService.updateProfile(any(), any(), any())
             accountService.addProduct(ProductType.BLOOD_PRESSURE)
         }
+    }
+
+    @Test
+    fun `Loop pass routes to device error when addProduct fails`() = runTest(mainDispatcherRule.scheduler) {
+        coEvery { accountService.signup(any()) } returns TestFixtures.activeAccount
+        coEvery { goalService.createGoalForSignup(any(), any(), any(), any()) } returns TestFixtures.activeAccount
+        coEvery { accountService.getCurrentAccount() } returns TestFixtures.activeAccount
+        coEvery { accountService.addProduct(any()) } throws RuntimeException("§2.19 rejected the product")
+
+        registerFirstWeightDeviceThenPickBloodPressure()
+        viewModel.handleIntent(SignupIntent.Next)
+        advanceUntilIdle()
+
+        // addProduct is deliberately OUTSIDE runCatching, so its failure propagates to
+        // runDeviceProfile's catch → ShowDeviceError (the ERROR screen). (MOB-598 #9)
+        assertThat(viewModel.state.value.currentStep).isEqualTo(SignupStep.ERROR)
     }
 
     @Test

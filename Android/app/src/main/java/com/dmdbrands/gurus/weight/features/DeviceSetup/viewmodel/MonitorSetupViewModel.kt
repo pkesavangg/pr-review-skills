@@ -340,29 +340,28 @@ constructor(
           if (deviceDetails != null) {
             deviceInfo = deviceDetails
           }
-          val peripheralIdentifier = deviceInfo?.macAddress?.replace(":", "") ?: ""
           val selectedUser = selectedUserToNumber()
           val searchInfo = checkIfDeviceExists(
-            peripheralIdentifier = peripheralIdentifier,
-            isSameUser = true,
+            key = peripheralKey(deviceInfo),
             userNumber = selectedUser,
           )
           when {
             searchInfo.isMonitorExistsWithSameUser -> {
-              // Re-pairing same user on same device — replace existing entry
+              // Re-pairing same monitor + same user slot — replace existing entry.
               monitorToDelete = searchInfo.deviceInfo
               AppLog.d(TAG, "Monitor exists for same user, confirming re-pair")
               confirmSameUserPair()
             }
-            searchInfo.isMonitorExistsWithDifferentUser && !isA6 -> {
-              // A3: one entry per device — replacing across users is valid
+            searchInfo.isMonitorExistsWithDifferentUser -> {
+              // Different user slot on an already-paired monitor. Per requirement the replace is
+              // protocol-agnostic (A3 and A6): confirm, then delete the old row for this
+              // peripheralIdentifier and insert the new one.
               monitorToDelete = searchInfo.deviceInfo
-              AppLog.d(TAG, "A3 monitor exists for different user, confirming user switch")
+              AppLog.d(TAG, "Monitor exists for different user, confirming user switch (isA6=$isA6)")
               confirmDifferentUserPair()
             }
             else -> {
-              // A6 with different user: additive — do NOT delete existing user's pairing
-              // A6 new device, or A3 new device: just pair
+              // Genuinely new monitor — just pair.
               monitorToDelete = null
               AppLog.d(TAG, "Proceeding with new pairing (isA6=$isA6)")
               onFoundNewA6Monitor()
@@ -383,30 +382,40 @@ constructor(
    * @param isSameUser Whether to check for an exact user-number match.
    * @param userNumber The selected user number to match against.
    */
+  /**
+   * Stable per-account identity for a monitor: the BLE peripheralIdentifier (A3 = serial, A6 = MAC),
+   * which is what survives a DB round-trip (DeviceEntity.peripheralIdentifier). Falls back to the
+   * colon-stripped MAC and is compared case-insensitively so a re-discovered monitor matches its
+   * stored row regardless of MAC casing. (MOB-596)
+   */
+  private fun peripheralKey(detail: GGDeviceDetail?): String =
+    (detail?.identifier?.takeIf { it.isNotBlank() }
+      ?: detail?.macAddress?.replace(":", "").takeIf { !it.isNullOrBlank() }
+      ?: "").lowercase()
+
+  /**
+   * Looks up an already-paired monitor for THIS account by [peripheralKey] + [userNumber].
+   * Same key + same user slot → same-user (re-pair); same key + other slot → different-user.
+   */
   private fun checkIfDeviceExists(
-    peripheralIdentifier: String,
-    isSameUser: Boolean = false,
-    userNumber: Int? = null,
+    key: String,
+    userNumber: Int?,
   ): DeviceSearchInfo {
-    val normalizedId = peripheralIdentifier.replace(":", "")
-    val matchingDevices = existingDevices.filter { device ->
-      device.device?.macAddress?.replace(":", "") == normalizedId
-    }
-    if (matchingDevices.isEmpty()) {
-      return DeviceSearchInfo()
-    }
-    val deviceFound = matchingDevices.find { it.userNumber == userNumber }
-    return if (isSameUser && deviceFound != null) {
+    if (key.isBlank()) return DeviceSearchInfo()
+    val matchingDevices = existingDevices.filter { peripheralKey(it.device) == key }
+    if (matchingDevices.isEmpty()) return DeviceSearchInfo()
+    val sameUser = matchingDevices.find { it.userNumber == userNumber }
+    return if (sameUser != null) {
       DeviceSearchInfo(
         isMonitorExists = true,
         isMonitorExistsWithSameUser = true,
-        deviceInfo = deviceFound,
+        deviceInfo = sameUser,
       )
     } else {
       DeviceSearchInfo(
         isMonitorExists = true,
         isMonitorExistsWithDifferentUser = true,
-        deviceInfo = matchingDevices.find { it.userNumber != userNumber },
+        deviceInfo = matchingDevices.first(),
       )
     }
   }
@@ -496,6 +505,8 @@ constructor(
         deviceType = setupType.value,
         device = deviceInfo?.copy(
           deviceName = deviceInfo.deviceName.ifEmpty { scaleInfo?.productName ?: "" },
+          // A6 monitors always pair with password 0; A3 keeps its device password. (mirrors bpmMobileApp4)
+          password = if (isA6) "0" else deviceInfo.password,
         ),
         nickname = nickname,
         sku = DeviceHelper.primaryBpmSku(sku),

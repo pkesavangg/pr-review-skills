@@ -30,6 +30,7 @@ struct ScaleSetupIntroView: View {
                         ButtonView(text: buttonTitle, type: .inlineTextPrimary, size: .large, isDisabled: false) {
                             onClick?()
                         }
+                        .appAccessibility(id: AccessibilityID.scaleSetupIntroButton)
                     }
                 }
                 .frame(maxWidth: .infinity)

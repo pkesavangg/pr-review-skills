@@ -78,7 +78,7 @@ struct BabySnapshotCardViewModelTests {
     @Test("unitText defaults to lbs when no account is set")
     func unitTextDefaultsWhenNoAccount() {
         let (sut, _) = makeSUT(account: nil)
-        #expect(sut.unitText == "lbs")
+        #expect(sut.unitText == "lb")
     }
 
     // MARK: - convertStoredWeightToDisplay

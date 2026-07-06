@@ -874,7 +874,7 @@ final class HistoryStore: ObservableObject {
             return "\(String(format: "%.1f", lb)) \(HistoryListStrings.lb)"
         case .imperialLbOz:
             let lbsOz = ConversionTools.convertBabyDecigramsToLbsOz(graduatedDecigrams)
-            return "\(lbsOz.lbs) \(HistoryListStrings.lbs) \(String(format: "%.1f", lbsOz.oz)) \(HistoryListStrings.oz)"
+            return "\(lbsOz.lbs) \(HistoryListStrings.lb) \(String(format: "%.1f", lbsOz.oz)) \(HistoryListStrings.oz)"
         }
     }
 

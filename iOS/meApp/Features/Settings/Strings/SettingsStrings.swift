@@ -70,11 +70,11 @@ struct SettingsStrings {
         static let kgCm = "kg & cm"
 
         // "My Weight" weight unit options
-        static let lbsIn = "lbs / in"
+        static let lbsIn = "lb / in"
         static let metricCm = "kg / cm"
 
         // "My Kids" measurement unit options
-        static let lbsOzIn = "lbs & oz / in"
-        static let lbsDecimalIn = "lbs / in"
+        static let lbsOzIn = "lb & oz / in"
+        static let lbsDecimalIn = "lb / in"
     }
 }

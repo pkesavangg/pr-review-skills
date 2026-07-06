@@ -746,7 +746,7 @@ class BottomTabBarViewModel: ObservableObject {
                 decigrams: decigrams, source: source, unit: .lbOz, isBabyScaleEntry: true
             )
             let lbsOz = ConversionTools.convertBabyDecigramsToLbsOz(grad)
-            return "\(lbsOz.lbs) lbs \(String(format: "%.1f", lbsOz.oz)) oz"
+            return "\(lbsOz.lbs) lb \(String(format: "%.1f", lbsOz.oz)) oz"
         }
     }
 
@@ -1086,7 +1086,7 @@ class BottomTabBarViewModel: ObservableObject {
         let display = ConversionTools.convertStoredToDisplay(Double(stored), isMetric: isMetric)
         return isMetric
             ? String(format: "%.1f kg", display)
-            : String(format: "%.1f lbs", display)
+            : String(format: "%.1f lb", display)
     }
 
     /// Shows a reading-arrival card when a BT weight scale entry arrives.

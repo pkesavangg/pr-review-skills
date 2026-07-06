@@ -6,10 +6,14 @@ import com.dmdbrands.gurus.weight.core.service.AccountFlagService
 import com.dmdbrands.gurus.weight.core.service.WeightOnlyModeEventService
 import com.dmdbrands.gurus.weight.core.service.WeightOnlyModeEventType
 import com.dmdbrands.gurus.weight.core.shared.utilities.AppReviewManager
+import com.dmdbrands.gurus.weight.core.shared.utilities.ConversionTools
 import com.dmdbrands.gurus.weight.core.shared.utilities.logging.AppLog
+import com.dmdbrands.gurus.weight.domain.enums.ProductType
 import com.dmdbrands.gurus.weight.domain.interfaces.IDialogUtility
+import com.dmdbrands.gurus.weight.domain.model.common.WeightUnit
 import com.dmdbrands.gurus.weight.domain.model.storage.BLEStatus
 import com.dmdbrands.gurus.weight.domain.model.storage.Device
+import com.dmdbrands.gurus.weight.domain.model.storage.entry.ScaleEntry
 import com.dmdbrands.gurus.weight.domain.model.storage.toGGBTDevice
 import com.dmdbrands.gurus.weight.domain.repository.IDeviceService
 import com.dmdbrands.gurus.weight.domain.services.IAccountService
@@ -19,12 +23,14 @@ import com.dmdbrands.gurus.weight.domain.services.IHealthConnectService
 import com.dmdbrands.gurus.weight.features.appPermissions.helper.AppPermissionsHelper
 import com.dmdbrands.gurus.weight.features.common.enums.DeviceSetupType
 import com.dmdbrands.gurus.weight.features.common.helper.DeviceDataHelper
+import com.dmdbrands.gurus.weight.features.common.model.ReadingToast
 import com.dmdbrands.gurus.weight.features.common.model.Toast
 import com.dmdbrands.gurus.weight.features.common.service.BaseIntentViewModel
 import com.dmdbrands.gurus.weight.features.home.reducer.HomeIntent
 import com.dmdbrands.gurus.weight.features.home.reducer.HomeReducer
 import com.dmdbrands.gurus.weight.features.home.reducer.HomeState
 import com.dmdbrands.gurus.weight.features.home.strings.HomeStrings
+import com.dmdbrands.gurus.weight.features.manualEntry.helper.EntryHelper
 import com.dmdbrands.gurus.weight.features.manualEntry.helper.EntryHelper.toScaleApiEntry
 import com.dmdbrands.gurus.weight.features.manualEntry.helper.EntryHelper.toScaleEntry
 import com.dmdbrands.library.ggbluetooth.enums.GGBTSettingType
@@ -50,6 +56,7 @@ import kotlinx.coroutines.withTimeoutOrNull
 import javax.inject.Inject
 import android.app.Activity
 import java.lang.ref.WeakReference
+import java.util.Locale
 
 @HiltViewModel
 class HomeViewModel
@@ -393,7 +400,9 @@ constructor(
             viewModelScope.launch {
               val saveEntry =
                 result.toScaleEntry(accountId, currentAccount.weightUnit.value.toString(), currentAccount.height, true)
-              appSyncService.handleSaveAppSyncData(saveEntry)
+              if (appSyncService.handleSaveAppSyncData(saveEntry)) {
+                showAppSyncSavedToast(saveEntry, currentAccount.weightUnit)
+              }
             }
           },
         )
@@ -405,6 +414,33 @@ constructor(
         )
       }
     }
+  }
+
+  /**
+   * AppSync save confirmation card (matches manual entry / BLE reading): "New Reading saved to your
+   * log · <value>" with a single VIEW action into this entry's History detail — replaces the plain
+   * "Entry added" toast AppSync used to show.
+   */
+  private fun showAppSyncSavedToast(saveEntry: ScaleEntry, weightUnit: WeightUnit) {
+    val isMetric = weightUnit == WeightUnit.KG
+    val displayValue = ConversionTools.convertStoredToDisplay(saveEntry.scale.scaleEntry.weight, isMetric)
+    val reading = "${String.format(Locale.US, "%.1f", displayValue)} ${weightUnit.label}"
+    val detailKey = EntryHelper.historyDetailKey(saveEntry.entry.entryTimestamp, ProductType.MY_WEIGHT)
+    dialogQueueService.showToast(
+      Toast.Custom(
+        ReadingToast(
+          reading = reading,
+          type = ProductType.MY_WEIGHT,
+          timestamp = "Just now",
+          savedToLog = true,
+          onView = {
+            viewModelScope.launch {
+              navigationService.navigateTo(AppRoute.History.MonthDetails(detailKey, ProductType.MY_WEIGHT))
+            }
+          },
+        ),
+      ),
+    )
   }
 
   private fun navigateToManualEntry() {

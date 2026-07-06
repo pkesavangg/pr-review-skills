@@ -29,8 +29,9 @@ import org.junit.jupiter.api.extension.RegisterExtension
 
 /**
  * Tests for the SKIP flow in [BabyScaleBLESetupViewModel] (MOB-440):
- * skipping on the baby-profile steps (PAIRED_SUCCESS / BABY_PROFILE_FORM) confirms via the
- * "Skip Baby Profile?" dialog and FINISH SETUP exits; other steps fall through to onNext.
+ * skipping on the baby-profile FORM confirms via the "Skip Baby Profile?" dialog and FINISH SETUP
+ * exits; all other steps (including PAIRED_SUCCESS, which no longer shows a SKIP button per design)
+ * fall through to onNext.
  */
 @OptIn(ExperimentalCoroutinesApi::class)
 class BabyScaleBLESetupSkipFlowTest {
@@ -120,14 +121,15 @@ class BabyScaleBLESetupSkipFlowTest {
     }
 
     @Test
-    fun `Skip on PAIRED_SUCCESS enqueues the skip-baby-profile confirm dialog`() {
+    fun `Skip on PAIRED_SUCCESS does not show the confirm dialog`() {
         createViewModel()
         stepTo(BabyScaleSetupStep.PAIRED_SUCCESS)
 
         viewModel.handleIntent(DeviceSetupIntent.Skip)
         advanceScheduler()
 
-        verify { dialogQueueService.enqueue(any<DialogModel.Confirm>()) }
+        // PAIRED_SUCCESS no longer has a SKIP button (design); skip falls through to onNext.
+        verify(exactly = 0) { dialogQueueService.enqueue(any<DialogModel.Confirm>()) }
     }
 
     @Test
@@ -168,5 +170,19 @@ class BabyScaleBLESetupSkipFlowTest {
         advanceScheduler()
 
         verify { deviceService.setSetupInProgress(false) }
+    }
+
+    @Test
+    fun `finishing setup shows then dismisses the saving loader`() {
+        createViewModel()
+        stepTo(BabyScaleSetupStep.SETUP_FINISHED)
+
+        // FINISH on the "You're Done!" screen → ExitSetup(true) → onSetupFinished wraps the
+        // save in a loader so the screen isn't interactive before navigating back.
+        viewModel.handleIntent(DeviceSetupIntent.ExitSetup(true))
+        advanceScheduler()
+
+        verify { dialogQueueService.showLoader(any(), any()) }
+        verify { dialogQueueService.dismissLoader() }
     }
 }

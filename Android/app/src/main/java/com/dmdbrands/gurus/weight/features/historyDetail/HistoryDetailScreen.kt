@@ -130,6 +130,7 @@ fun HistoryDetailScreenContent(
                                     handleIntent(HistoryDetailIntent.SetItemsOpened(newIds))
                                 },
                                 onEditEntry = { handleIntent(HistoryDetailIntent.EditEntry(it)) },
+                                onItemDelete = { handleIntent(HistoryDetailIntent.DeleteEntry(it)) },
                             )
                         }
                         ProductType.BABY -> {
@@ -137,6 +138,7 @@ fun HistoryDetailScreenContent(
                                 entries = state.historyItems.filterIsInstance<BabyEntry>(),
                                 isMetric = state.isMetric,
                                 onEditEntry = { handleIntent(HistoryDetailIntent.EditBabyEntry(it)) },
+                                onItemDelete = { handleIntent(HistoryDetailIntent.DeleteEntry(it)) },
                             )
                         }
                         else -> {

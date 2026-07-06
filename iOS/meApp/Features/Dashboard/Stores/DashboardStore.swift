@@ -901,7 +901,7 @@ class DashboardStore: ObservableObject, DashboardStateProviding {
 
     var currentUnit: WeightUnit { accountService.activeAccount?.weightUnit ?? .lb }
     var currentUnitString: String { currentUnit.rawValue }
-    var currentUnitText: String { accountService.activeAccount?.weightUnit.rawValue ?? "lbs" }
+    var currentUnitText: String { accountService.activeAccount?.weightUnit.rawValue ?? "lb" }
     var currentWeightlessMode: Bool { accountService.activeAccount?.isWeightlessOn ?? false }
     var currentMeasurementUnits: MeasurementUnits {
         guard let raw = accountService.activeAccount?.measurementUnits,

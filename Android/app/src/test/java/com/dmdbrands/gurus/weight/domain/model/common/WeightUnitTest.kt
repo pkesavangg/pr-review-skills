@@ -48,19 +48,37 @@ class WeightUnitTest {
     assertThat(WeightUnit.from(null)).isEqualTo(WeightUnit.LB)
   }
 
+  // Unit Type dialog labels — canonical set (MOB-667 / MOB-1250): "&" separates weight
+  // from length, singular "lb", compound weight hyphenated "lb-oz", adult height "ft"
+  // (My Weight / [unit]) vs baby length "in" (My Kids / [babyUnit]).
   @Test
-  fun `LB unit display is lbs forward slash ft`() {
-    assertThat(WeightUnit.LB.unit).isEqualTo("lbs / ft")
+  fun `LB unit display is lb ampersand ft`() {
+    assertThat(WeightUnit.LB.unit).isEqualTo("lb & ft")
   }
 
   @Test
-  fun `KG unit display is kg forward slash cm`() {
-    assertThat(WeightUnit.KG.unit).isEqualTo("kg / cm")
+  fun `KG unit display is kg ampersand cm`() {
+    assertThat(WeightUnit.KG.unit).isEqualTo("kg & cm")
   }
 
   @Test
-  fun `LB_OZ unit display is lbs ampersand oz forward slash in`() {
-    assertThat(WeightUnit.LB_OZ.unit).isEqualTo("lbs & oz / in")
+  fun `LB_OZ unit display is lb-oz ampersand in`() {
+    assertThat(WeightUnit.LB_OZ.unit).isEqualTo("lb-oz & in")
+  }
+
+  @Test
+  fun `LB babyUnit display is lb ampersand in`() {
+    assertThat(WeightUnit.LB.babyUnit).isEqualTo("lb & in")
+  }
+
+  @Test
+  fun `KG babyUnit display is kg ampersand cm`() {
+    assertThat(WeightUnit.KG.babyUnit).isEqualTo("kg & cm")
+  }
+
+  @Test
+  fun `LB_OZ babyUnit display is lb-oz ampersand in`() {
+    assertThat(WeightUnit.LB_OZ.babyUnit).isEqualTo("lb-oz & in")
   }
 
   @Test
@@ -68,6 +86,8 @@ class WeightUnitTest {
     assertThat(WeightUnit.LB_OZ.value).isEqualTo("lb_oz")
   }
 
+  // [label] is the short value-suffix printed next to weights (history, notifications).
+  // Unchanged by MOB-1250 — the singular-lb change for value suffixes is MOB-655/657.
   @Test
   fun `LB_OZ label is lbs ampersand oz`() {
     assertThat(WeightUnit.LB_OZ.label).isEqualTo("lbs & oz")

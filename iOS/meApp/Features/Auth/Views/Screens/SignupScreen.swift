@@ -82,6 +82,7 @@ struct SignupScreen: View {
                 .accessibilityLabel(accLang.accCloseLabel)
                 .accessibilityHint(accLang.accCloseHint)
                 .accessibilityAddTraits(.isButton)
+                .appAccessibility(id: AccessibilityID.signupCloseButton)
         }
     }
 
@@ -96,6 +97,7 @@ struct SignupScreen: View {
             }
             .accessibilityLabel(accLang.accHelpLabel)
             .accessibilityHint(accLang.accHelpHint)
+            .appAccessibility(id: AccessibilityID.signupHelpButton)
         }
     }
 
@@ -162,6 +164,7 @@ struct SignupScreen: View {
                     }
                     .padding(.horizontal, .spacingSM)
                     .accessibilityHint(accLang.accFinishHint)
+                    .appAccessibility(id: AccessibilityID.signupFinishButton)
 
                     ButtonView(
                         text: SignupStrings.ProfileReadyStep.connectAnotherDevice,
@@ -174,6 +177,7 @@ struct SignupScreen: View {
                         }
                     }
                     .accessibilityHint(accLang.accConnectAnotherDeviceHint)
+                    .appAccessibility(id: AccessibilityID.signupConnectAnotherDeviceButton)
                 }
                 .padding(.vertical, .spacingSM)
 
@@ -198,6 +202,7 @@ struct SignupScreen: View {
                         withAnimation { signupStore.moveToNextStep() }
                     }
                     .padding(.trailing, .spacingSM)
+                    .appAccessibility(id: AccessibilityID.signupAddDeviceButton)
                 }
                 .padding(.vertical, .spacingSM)
 
@@ -213,6 +218,7 @@ struct SignupScreen: View {
                 .padding(.horizontal, .spacingSM)
                 .padding(.vertical, .spacingSM)
                 .accessibilityHint(accLang.accDoneHint)
+                .appAccessibility(id: AccessibilityID.signupDoneButton)
 
             } else if signupStore.currentStep == .signupError {
                 HStack {
@@ -238,6 +244,7 @@ struct SignupScreen: View {
                         signupStore.retryFailedDevices()
                     }
                     .accessibilityHint(accLang.accTryAgainHint)
+                    .appAccessibility(id: AccessibilityID.signupTryAgainButton)
                 }
                 .padding(.vertical, .spacingSM)
                 .padding(.trailing, .spacingSM)
@@ -255,6 +262,7 @@ struct SignupScreen: View {
                         }
                     }
                     .accessibilityHint(accLang.accBackHint)
+                    .appAccessibility(id: AccessibilityID.signupBackButton)
 
                     Spacer()
 
@@ -278,6 +286,11 @@ struct SignupScreen: View {
                         }
                     }
                     .accessibilityHint(signupStore.currentStep == SignupStep.password ? accLang.accCompleteHint : accLang.accNextHint)
+                    .appAccessibility(
+                        id: signupStore.currentStep == SignupStep.password
+                            ? AccessibilityID.signupCreateAccountButton
+                            : AccessibilityID.signupNextButton
+                    )
                 }
                 .overlay {
                     HStack {
@@ -290,6 +303,7 @@ struct SignupScreen: View {
                                 }
                             }
                             .accessibilityHint(accLang.accSkipHint)
+                            .appAccessibility(id: AccessibilityID.signupSkipButton)
                         }
                         Spacer()
                     }

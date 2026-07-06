@@ -611,7 +611,7 @@ enum BabyDashboardChartSupport {
             if roundedOz >= 16.0 { wholeLbs += 1; remainingOz = 0.0 }
             return BabyWeightDisplay(
                 primary: "\(wholeLbs)",
-                primaryUnit: BabyDashboardStrings.lbs,
+                primaryUnit: BabyDashboardStrings.lb,
                 secondary: String(format: "%.1f", remainingOz),
                 secondaryUnit: BabyDashboardStrings.oz
             )
@@ -637,7 +637,7 @@ enum BabyDashboardChartSupport {
         case .imperialLbDecimal:
             return BabyWeightDisplay(primary: "0.0", primaryUnit: BabyDashboardStrings.lb, secondary: nil, secondaryUnit: nil)
         case .imperialLbOz:
-            return BabyWeightDisplay(primary: "00", primaryUnit: BabyDashboardStrings.lbs, secondary: "0.0", secondaryUnit: BabyDashboardStrings.oz)
+            return BabyWeightDisplay(primary: "00", primaryUnit: BabyDashboardStrings.lb, secondary: "0.0", secondaryUnit: BabyDashboardStrings.oz)
         }
     }
 

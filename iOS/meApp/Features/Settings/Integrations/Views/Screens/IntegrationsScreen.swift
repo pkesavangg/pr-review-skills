@@ -41,6 +41,7 @@ struct IntegrationsScreen: View {
                                 item: item
                             ) { store.selectIntegration(item: item) }
                             .listRowInsets()
+                            .accessibilityIdentifier(AccessibilityID.integrationRow + "_" + item.type.snakeKey)
                         }
                     }
                 }
@@ -49,6 +50,7 @@ struct IntegrationsScreen: View {
                 Section(header: SectionHeader(title: IntegrationsStrings.weightScalesAndBpmSectionTitle, fontStyle: .label1)) {
                     HealthKitIntegrationListItemView()
                         .listRowInsets()
+                        .accessibilityIdentifier(AccessibilityID.integrationRow + "_" + IntegrationItemType.appleHealth.snakeKey)
                 }
 
                 // Request new integration — sits just below the list sections
@@ -62,6 +64,7 @@ struct IntegrationsScreen: View {
                     .listRowBackground(Color.clear)
                     .listRowInsets(EdgeInsets())
                     .padding(.vertical, .spacingSM)
+                    .appAccessibility(id: AccessibilityID.integrationsRequestButton)
                 }
             }
             .listStyle(.insetGrouped)
@@ -78,6 +81,7 @@ struct IntegrationsScreen: View {
                 store.refreshAccounts()
             }
         }
+        .screenAccessibilityRoot(AccessibilityID.integrationsScreenRoot)
     }
 }
 

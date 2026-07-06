@@ -11,6 +11,7 @@ import com.dmdbrands.gurus.weight.domain.model.common.BabyProfile as DomainBabyP
 import com.dmdbrands.gurus.weight.domain.model.common.MeasurementUnits
 import com.dmdbrands.gurus.weight.domain.model.common.WeightUnit
 import com.dmdbrands.gurus.weight.domain.model.storage.Account.Account
+import com.dmdbrands.gurus.weight.domain.repository.IAccountRepository
 import com.dmdbrands.gurus.weight.domain.repository.IProductSelectionRepository
 import com.dmdbrands.gurus.weight.domain.services.IAccountService
 import com.dmdbrands.gurus.weight.domain.services.IAnalyticsService
@@ -67,6 +68,7 @@ constructor(
   private val analyticsService: IAnalyticsService,
   private val productSelectionRepository: IProductSelectionRepository,
   private val babyProfileService: IBabyProfileService,
+  private val accountRepository: IAccountRepository,
 ) : BaseIntentViewModel<SignupState, SignupIntent>(
   reducer = SignupReducer(),
 ) {
@@ -399,7 +401,12 @@ constructor(
     // For additional devices (account already existed before this pass), the original signup
     // request only carried the first product, so sync the newly added product here.
     if (stateValue.accountCreated) {
-      syncDeviceToServer(productType, account, signupData)
+      // Order matters: the products endpoint (§2.19) rejects adding weight/blood_pressure with
+      // "gender, dob must be set before adding the requested product(s)" if the account is missing
+      // them (e.g. a previously baby-only account). The signup request only sent gender/dob/height
+      // for the FIRST device, so PATCH the profile FIRST, then add the product. (MOB-598 #9)
+      syncProfileForAdditionalDevice(productType, account, stateValue, signupData)
+      syncDeviceToServer(productType, signupData)
     }
 
     when (productType) {
@@ -437,10 +444,18 @@ constructor(
     }
     // Any save failure propagates so runDeviceProfile routes to the terminal ERROR
     // screen rather than silently advancing to the success screen.
+    var lastSavedBabyId: String? = null
     babies.forEach { baby ->
-      babyProfileService.save(baby.toDomain(account.id))
+      // save() returns the persisted profile with the server-assigned id.
+      val saved = babyProfileService.save(baby.toDomain(account.id))
+      lastSavedBabyId = saved.id
     }
     AppLog.d(TAG, "Persisted ${babies.size} baby profiles to server")
+
+    // The last baby added during signup becomes the active baby (the one the dashboard
+    // shows). The Loading screen reloads available products next, so this surfaces without
+    // an app restart.
+    lastSavedBabyId?.let { accountRepository.setActiveBabyId(account.id, it) }
   }
 
   /** Maps a signup-flow [SignupBabyProfile] to the domain [DomainBabyProfile] the API layer expects. */
@@ -483,38 +498,66 @@ constructor(
    * is also auto-managed server-side when the device is paired or an entry is created, and the
    * next account sync reconciles. Mirrors ProductSelectionManager.persistProductForSetup.
    */
-  private suspend fun syncDeviceToServer(productType: ProductType, account: Account, signupData: SignupData) {
-    AppLog.d(TAG, "Syncing product=${productType.apiValue} + measurement units to server")
-    val weightUnit = if (signupData.useMetric) WeightUnit.KG else WeightUnit.LB
-
-    // Weight/BP products require gender + dob (and height for weight). A baby-first
-    // account won't have those yet, so PATCH the profile BEFORE adding the product
-    // type — otherwise the product is added against an account the server considers
-    // incomplete. Baby has no such requirement, so it's skipped.
+  /**
+   * Syncs the gender/dob (and height for weight) entered for a device added on a loop pass.
+   *
+   * [buildSignupRequest] only sends these for the first device; a device added later collects
+   * them again but they were never PATCHed, so the account kept its original (often null) values
+   * — e.g. a baby-only account stayed gender-less after a weight scale was added. We merge the
+   * freshly entered values onto the existing account and PATCH the profile (spec §2.5).
+   *
+   * Best-effort: a failure must not block the signup loop; the next account sync reconciles.
+   */
+  private suspend fun syncProfileForAdditionalDevice(
+    productType: ProductType,
+    account: Account,
+    stateValue: SignupState,
+    signupData: SignupData,
+  ) {
     val needsGenderDob = productType == ProductType.MY_WEIGHT || productType == ProductType.BLOOD_PRESSURE
-    val needsHeight = productType == ProductType.MY_WEIGHT
-    if (needsGenderDob) {
-      accountService.updateProfile(
-        ProfileUpdateRequest(
-          id = account.id,
-          email = account.email,
-          firstName = account.firstName,
-          lastName = account.lastName,
-          gender = signupData.sex.takeIf { it.isNotBlank() },
-          zipcode = account.zipcode,
-          dob = DateTimeValue.getDateFormatFromMilliseconds(signupData.birthday.getTimestamp()),
-          height = if (needsHeight) signupData.height.toStoredHeight()?.toDouble() else null,
-          weightUnit = weightUnit.value,
-          measurementUnits = MeasurementUnits.fromWeightUnit(weightUnit).value,
-        ),
-        showToast = false,
-      )
+    if (!needsGenderDob) return
+
+    val controls = stateValue.form.controls
+    val gender = signupData.sex.takeIf { it.isNotBlank() } ?: account.gender
+    val dob = controls.birthday.value.getTimestamp()
+      .takeIf { it > 0 }
+      ?.let { DateTimeValue.getDateFormatFromMilliseconds(it) }
+      ?: account.dob
+    // Height is only collected for weight scales; reuse the existing height otherwise.
+    val height = if (productType == ProductType.MY_WEIGHT) {
+      controls.height.value.toStoredHeight().toDouble()
+    } else {
+      account.height?.toDouble()
     }
 
-    // Any failure propagates so runDeviceProfile routes to the terminal ERROR screen
-    // ("Something went wrong") rather than silently advancing to the success screen.
+    val request = ProfileUpdateRequest(
+      id = account.id,
+      email = account.email,
+      firstName = account.firstName,
+      lastName = account.lastName,
+      gender = gender,
+      zipcode = account.zipcode,
+      dob = dob,
+      height = height,
+    )
+    AppLog.d(TAG, "Syncing profile (gender/dob/height) for additional device=${productType.apiValue}")
+    runCatching { accountService.updateProfile(request, isFromProfile = false, showToast = false) }
+      .onFailure { AppLog.e(TAG, "Profile sync for additional device failed (continuing signup)", it) }
+  }
+
+  private suspend fun syncDeviceToServer(productType: ProductType, signupData: SignupData) {
+    AppLog.d(TAG, "Syncing product=${productType.apiValue} to server")
+    // Product registration is required for the device to actually exist on the account. If it
+    // fails (e.g. §2.19 rejects the request) we must NOT complete signup silently with the product
+    // missing — let the failure propagate so runDeviceProfile routes to the device-error screen
+    // (with retry). (MOB-598 #9)
     accountService.addProduct(productType)
-    accountService.updateMeasurementUnits(MeasurementUnits.fromWeightUnit(weightUnit))
+    // Measurement units are best-effort: a failure here must not block the loop, and the next
+    // account sync reconciles.
+    runCatching {
+      val weightUnit = if (signupData.useMetric) WeightUnit.KG else WeightUnit.LB
+      accountService.updateMeasurementUnits(MeasurementUnits.fromWeightUnit(weightUnit))
+    }.onFailure { AppLog.e(TAG, "Measurement-units sync failed (continuing signup)", it) }
   }
 
   /**
@@ -539,7 +582,8 @@ constructor(
       }
       // Any sync failure routes to the terminal ERROR screen, matching the submit path.
       try {
-        syncDeviceToServer(productType, account, signupData)
+        syncProfileForAdditionalDevice(productType, account, stateValue, signupData)
+        syncDeviceToServer(productType, signupData)
       } catch (e: Exception) {
         AppLog.e(TAG, "Skip-pass device sync failed", e)
         handleIntent(SignupIntent.ShowDeviceError)

@@ -101,16 +101,11 @@ private fun ReadingContent(
     } else {
         ReadingToastStrings.title(readingToast.type)
     }
-    val primaryLabel = if (singleBabyName != null) {
-        ReadingToastStrings.Save
-    } else {
-        ReadingToastStrings.primaryAction(readingToast.type)
-    }
-    val secondaryLabel = if (singleBabyName != null) {
-        ReadingToastStrings.Discard
-    } else {
-        ReadingToastStrings.secondaryAction(readingToast.type)
-    }
+    // Labels come from the product: baby → ASSIGN / DON'T ASSIGN (Figma 30295-24866), weight/BPM →
+    // SAVE / DISCARD. The single-baby card still names the baby in its title (titleForBaby above) and
+    // ASSIGN persists straight to that baby (no picker).
+    val primaryLabel = ReadingToastStrings.primaryAction(readingToast.type)
+    val secondaryLabel = ReadingToastStrings.secondaryAction(readingToast.type)
 
     Text(
         text = title,
@@ -148,8 +143,11 @@ private fun SavedToLogContent(
     clearToast: () -> Unit,
 ) {
     val measurementType = readingToast.type.toMeasurementType()
+    // A baby manual entry names the selected baby ("New Reading Received for NAME"), matching the
+    // device-sync single-baby card; weight/BP keep the plain "New Reading saved to your log".
+    val babyName = readingToast.assignedTo?.takeIf { readingToast.type == ProductType.BABY }
     Text(
-        text = ReadingToastStrings.SavedToLog,
+        text = babyName?.let { ReadingToastStrings.titleForBaby(it) } ?: ReadingToastStrings.SavedToLog,
         style = MeTheme.typography.heading5,
         color = colorScheme.textBody,
     )

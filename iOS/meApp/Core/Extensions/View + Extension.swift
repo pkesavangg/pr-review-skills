@@ -26,3 +26,70 @@ public extension View {
         }
     }
 }
+
+// MARK: - Screen-level accessibility root
+public extension View {
+    /// Tags a screen's root container with a stable automation id **without the id bleeding
+    /// onto the screen's child controls**.
+    ///
+    /// Applying `.accessibilityIdentifier(_:)` directly to the body container makes SwiftUI
+    /// propagate that id down onto every descendant accessibility element that isn't its own
+    /// clean leaf — e.g. the `NavbarHeaderView` Close/Help buttons — so their per-control ids
+    /// resolve to the screen-root id instead of their own (MOB-1132).
+    ///
+    /// `.accessibilityElement(children: .contain)` first promotes the container into a single
+    /// accessibility element that *holds* its children, so the id lands only on the container
+    /// and each child keeps the id it set for itself.
+    ///
+    /// Use this for every `*ScreenRoot` identifier instead of a bare `.accessibilityIdentifier`.
+    func screenAccessibilityRoot(_ identifier: String) -> some View {
+        self
+            .accessibilityElement(children: .contain)
+            .accessibilityIdentifier(identifier)
+    }
+}
+
+// MARK: - Leaf-control accessibility
+public extension View {
+    /// The single sanctioned way to tag an **interactive leaf control** (button, field,
+    /// toggle, tappable row) for both UI-test automation and VoiceOver.
+    ///
+    /// Pass an `AccessibilityID` constant as `id`. Optionally pass a human-readable
+    /// VoiceOver `label` — when omitted the control keeps whatever label SwiftUI derives
+    /// from its content. Do **not** use this on a screen-root container; use
+    /// `screenAccessibilityRoot(_:)` there (MOB-1132).
+    ///
+    /// - Parameters:
+    ///   - id: Stable snake_case identifier (mirrors the Android `testTag`).
+    ///   - label: Optional VoiceOver label.
+    @ViewBuilder
+    func appAccessibility(id: String, label: String? = nil) -> some View {
+        if let label {
+            self
+                .accessibilityIdentifier(id)
+                .accessibilityLabel(label)
+        } else {
+            self
+                .accessibilityIdentifier(id)
+        }
+    }
+}
+
+// MARK: - Optional automation identifier
+public extension View {
+    /// Applies an accessibility identifier **only when a non-nil id is provided**.
+    ///
+    /// Shared components (input fields, nav-bar header) accept an *optional* automation id so
+    /// screens that don't opt into automation pass `nil`. Applying
+    /// `.accessibilityIdentifier(id ?? "")` in that case stamps an **empty** identifier onto the
+    /// control, polluting the accessibility tree of every un-opted screen (MOB-1132). Gating the
+    /// modifier means no identifier is applied when `identifier` is `nil`.
+    @ViewBuilder
+    func accessibilityIdentifierIfPresent(_ identifier: String?) -> some View {
+        if let identifier {
+            self.accessibilityIdentifier(identifier)
+        } else {
+            self
+        }
+    }
+}

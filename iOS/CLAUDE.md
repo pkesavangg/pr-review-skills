@@ -369,3 +369,24 @@ The `post-change-guard` is a mid-session quality fix-and-check pass. Run it afte
 
 **Vital files that trigger build check:**
 `Core/DI/`, `Core/Services/ServiceRegistry.swift`, `Domain/Repositories/*Protocol.swift`, `Domain/Services/*Protocol.swift`, `Data/Services/`, `Data/API/`, `Core/Network/`, `Domain/Models/DB/`, `meApp.xcodeproj/`
+
+---
+
+## Accessibility Identifiers (UI-test automation) — Definition of Done
+
+Every screen the QA team automates is located through the iOS accessibility tree, so
+**interactive controls must carry a stable `accessibilityIdentifier`** (MOB-1131). This
+is part of the Definition of Done for any PR that adds or changes UI:
+
+- **New/changed interactive control** (Button, TextField, Toggle, tappable row, tab item)
+  carries a stable id via `.appAccessibility(id:)`, from an `AccessibilityID` constant.
+- **Screen/container roots** use `.screenAccessibilityRoot(_:)` — **never** a bare
+  `.accessibilityIdentifier(...)` on a container (it bleeds onto children; MOB-1132).
+  Enforced by the SwiftLint rule `accessibility_id_on_screen_root`.
+- **Ids are single-sourced** in `iOS/SharedAccessibility/AccessibilityID+<Module>.swift`
+  (compiled into both `meApp` and `meAppUITests`), snake_case, and byte-identical to the
+  Android `Modifier.testTag`. Decorative icons are `.accessibilityHidden(true)`.
+- The `meAppUITests` `AccessibilityIDContractUITests` asserts each id resolves to exactly
+  one element; extend it when a module gains ids.
+
+Full guide (rationale, the 5 rules, reference pattern): `iOS/docs/accessibility-identifiers-guide.md` (MOB-1144).

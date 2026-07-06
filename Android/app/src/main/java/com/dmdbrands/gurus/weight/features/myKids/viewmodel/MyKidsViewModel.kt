@@ -4,6 +4,7 @@ import androidx.lifecycle.viewModelScope
 import com.dmdbrands.gurus.weight.core.shared.utilities.logging.AppLog
 import com.dmdbrands.gurus.weight.domain.model.common.BabyProfile
 import com.dmdbrands.gurus.weight.domain.model.common.MeasurementUnits
+import com.dmdbrands.gurus.weight.domain.model.common.ProductSelection
 import com.dmdbrands.gurus.weight.domain.repository.IAccountRepository
 import com.dmdbrands.gurus.weight.domain.services.IBabyProfileService
 import com.dmdbrands.gurus.weight.features.common.service.BaseIntentViewModel
@@ -94,22 +95,30 @@ class MyKidsViewModel @Inject constructor(
                     birthWeightDecigrams = intent.birthWeightDecigrams,
                     birthLengthMillimeters = intent.birthLengthMillimeters,
                 )
+                var savedBaby: BabyProfile? = null
                 if (isEditing) {
                     babyProfileService.update(profile)
                 } else {
-                    babyProfileService.save(profile)
-                }
-
-                // Set as activeBabyId if none is set yet (create only).
-                val currentActiveBabyId = accountRepository.getActiveBabyId()
-                if (!isEditing && currentActiveBabyId == null) {
-                    accountRepository.setActiveBabyId(accountId, profile.id)
-                    handleIntent(MyKidsIntent.SetActiveBabyId(profile.id))
+                    // save() returns the persisted profile carrying the server-assigned id
+                    // (the client id is discarded), which is what activeBabyId must reference.
+                    val saved = babyProfileService.save(profile)
+                    savedBaby = saved
+                    // A newly-added baby always becomes the active baby, overriding any
+                    // previous active baby.
+                    accountRepository.setActiveBabyId(accountId, saved.id)
+                    handleIntent(MyKidsIntent.SetActiveBabyId(saved.id))
                 }
 
                 // Refresh available products so the new baby appears in the dropdown
                 // (and replaces the "Baby Scale" empty entry) without an app restart. (MOB-416)
                 productSelectionManager.loadAvailableProducts(accountId)
+
+                // A newly-added baby also becomes the active product view: switch the dashboard
+                // to that baby and leave snapshot mode so it opens on the baby's detail dashboard.
+                savedBaby?.let { saved ->
+                    productSelectionManager.selectProduct(ProductSelection.Baby(saved))
+                    productSelectionManager.setSnapshotMode(false)
+                }
 
                 AppLog.d(TAG, "Saved baby profile: ${profile.id}")
                 navigationService.navigateBack()

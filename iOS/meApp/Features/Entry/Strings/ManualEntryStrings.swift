@@ -16,13 +16,12 @@ struct ManualEntryStrings {
     static let pulse = "pulse"
     static let notes = "notes"
 
-    // Baby entry labels
-    static let pounds = "pounds"
-    static let ounces = "ounces"
-    static let inches = "inches"
-    static let kg = "kg"
-    static let lb = "lb"
-    static let cm = "cm"
+    static let pounds = "weight (lb)"
+    static let ounces = "weight (oz)"
+    static let inches = "length (in)"
+    static let kg = "weight (kg)"
+    static let lb = "weight (lb)"
+    static let cm = "length (cm)"
 
     // Baby validation error messages
     static let required = "Required."

@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -42,6 +43,14 @@ data class RadioGroupSection<T>(
   val label: String,
   val options: List<RadioButtonOption<T>>,
   val selectedItem: T?,
+  /**
+   * When false the section is shown but locked: its options are non-selectable
+   * (pinned to [selectedItem], the system default) and [lockedMessage] explains
+   * how to unlock it. Used by the Unit Type dialog when the account lacks the
+   * relevant product. (MOB-1175)
+   */
+  val enabled: Boolean = true,
+  val lockedMessage: String? = null,
 )
 
 /**
@@ -81,7 +90,7 @@ fun <T> AppSectionedRadioGroupModal(
     Box(
       modifier = Modifier
         .fillMaxSize()
-        .background(MeTheme.colorScheme.glow),
+        .background(MeTheme.colorScheme.overlay),
     ) {
       Box(modifier = Modifier.align(Alignment.Center)) {
         BaseModal(
@@ -135,13 +144,36 @@ private fun <T> SectionedRadioGroupContent(
           color = MeTheme.colorScheme.utility,
         )
       }
+      // A locked section renders its options greyed and non-selectable, pinned to
+      // the default supplied via [section.selectedItem]. (MOB-1175)
+      val options = if (section.enabled) {
+        section.options
+      } else {
+        section.options.map { it.copy(enabled = false) }
+      }
       AppRadioGroup(
-        options = section.options,
+        options = options,
         selectedItem = currentSelections[section.key],
-        onOptionSelected = { selected -> currentSelections[section.key] = selected },
+        onOptionSelected = { selected ->
+          if (section.enabled) currentSelections[section.key] = selected
+        },
         groupLabel = section.label,
+        // Active section header uses the heading colour; a locked section is greyed. (MOB-1256)
+        groupLabelColor = if (section.enabled) {
+          MeTheme.colorScheme.textHeading
+        } else {
+          MeTheme.colorScheme.textSubheading
+        },
         modifier = Modifier.fillMaxWidth(),
       )
+      if (!section.enabled && section.lockedMessage != null) {
+        Text(
+          text = section.lockedMessage,
+          style = MeTheme.typography.body2,
+          color = MeTheme.colorScheme.textSubheading,
+          modifier = Modifier.padding(top = MeTheme.spacing.xs),
+        )
+      }
     }
   }
 }
@@ -206,8 +238,8 @@ private fun AppSectionedRadioGroupModalPreview() {
           key = "myWeight",
           label = "My Weight",
           options = listOf(
-            RadioButtonOption(id = "lb", label = "lbs / ft"),
-            RadioButtonOption(id = "kg", label = "kg / cm"),
+            RadioButtonOption(id = "lb", label = "lb & ft"),
+            RadioButtonOption(id = "kg", label = "kg & cm"),
           ),
           selectedItem = "lb",
         ),
@@ -215,11 +247,13 @@ private fun AppSectionedRadioGroupModalPreview() {
           key = "myKids",
           label = "My Kids",
           options = listOf(
-            RadioButtonOption(id = "lb_oz", label = "lbs & oz / in"),
-            RadioButtonOption(id = "lb", label = "lbs / in"),
-            RadioButtonOption(id = "kg", label = "kg / cm"),
+            RadioButtonOption(id = "lb_oz", label = "lb-oz & in"),
+            RadioButtonOption(id = "lb", label = "lb & in"),
+            RadioButtonOption(id = "kg", label = "kg & cm"),
           ),
           selectedItem = "lb_oz",
+          enabled = false,
+          lockedMessage = "Add a baby scale or baby profile to configure this unit.",
         ),
       ),
       onCancel = {},

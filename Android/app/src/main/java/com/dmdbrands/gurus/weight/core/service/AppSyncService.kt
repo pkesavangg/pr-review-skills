@@ -10,7 +10,6 @@ import com.dmdbrands.gurus.weight.domain.services.IAccountService
 import com.dmdbrands.gurus.weight.domain.services.IAppSyncService
 import com.dmdbrands.gurus.weight.domain.services.IEntryService
 import com.dmdbrands.gurus.weight.features.common.model.Toast
-import com.dmdbrands.gurus.weight.features.manualEntry.strings.EntryScreenStrings
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -64,22 +63,18 @@ class AppSyncService @Inject constructor(
     }
   }
 
-  override suspend fun handleSaveAppSyncData(scaleEntry: ScaleEntry) {
-    try {
+  override suspend fun handleSaveAppSyncData(scaleEntry: ScaleEntry): Boolean {
+    return try {
       entryService.addEntry(scaleEntry)
-      dialogQueueService.showToast(
-        Toast.Simple(
-          title = EntryScreenStrings.EntryAddedTitle,
-          message = EntryScreenStrings.EntryAdded,
-        ),
-      )
       setAppSyncDataForEditing(null)
       AppLog.d("AppSyncService", "Successfully saved AppSync entry")
+      true
     } catch (e: Exception) {
       AppLog.e("AppSyncService", "Error saving AppSync entry: ${e.message}", e)
       dialogQueueService.showToast(
         Toast.Simple(message = "Failed to save entry: ${e.message}"),
       )
+      false
     }
   }
 }
