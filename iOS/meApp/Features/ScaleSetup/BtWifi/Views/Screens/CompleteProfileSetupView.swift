@@ -114,13 +114,12 @@ struct CompleteProfileSetupView: View {
 
             SegmentedButtonView(
                 segments: GoalTypeSegment.allCases,
-                selectedSegment: $store.profileGoalSegment,
-                accessibilityIdentifierProvider: { segment in
-                    segment == .maintain
-                        ? AccessibilityID.scaleSetupProfileGoalMaintainTab
-                        : AccessibilityID.scaleSetupProfileGoalLoseGainTab
-                }
-            )
+                selectedSegment: $store.profileGoalSegment
+            ) { segment in
+                segment == .maintain
+                    ? AccessibilityID.scaleSetupProfileGoalMaintainTab
+                    : AccessibilityID.scaleSetupProfileGoalLoseGainTab
+            }
 
             VStack(spacing: 4) {
                 if store.profileGoalSegment == .loseGain {
@@ -136,9 +135,8 @@ struct CompleteProfileSetupView: View {
                         ),
                         value: $store.profileCurrentWeight,
                         focusedField: $focusedField,
-                        accessibilityIdentifier: AccessibilityID.scaleSetupProfileStartingWeightField,
-                        onCommit: { focusedField = .goalWeight }
-                    )
+                        accessibilityIdentifier: AccessibilityID.scaleSetupProfileStartingWeightField
+                    ) { focusedField = .goalWeight }
                 }
 
                 MetricInputField(
@@ -153,9 +151,8 @@ struct CompleteProfileSetupView: View {
                     ),
                     value: $store.profileGoalWeight,
                     focusedField: $focusedField,
-                    accessibilityIdentifier: AccessibilityID.scaleSetupProfileGoalWeightField,
-                    onCommit: { focusedField = nil }
-                )
+                    accessibilityIdentifier: AccessibilityID.scaleSetupProfileGoalWeightField
+                ) { focusedField = nil }
             }
         }
         .padding(.top, .spacingSM)
