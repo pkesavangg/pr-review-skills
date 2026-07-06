@@ -63,7 +63,6 @@ final class SignupStore: ObservableObject {
     // Baby management
     @Published var babies: [SignupBaby] = []
     @Published var isEditingBabyIndex: Int?
-    @Published var showBabySexPicker = false
     @Published var showBabyDatePicker = false
     @Published var babyProfileForm = BabyProfileSetupForm()
 
@@ -1146,7 +1145,6 @@ final class SignupStore: ObservableObject {
         deviceStatuses = []
         babies.removeAll()
         isEditingBabyIndex = nil
-        showBabySexPicker = false
         showBabyDatePicker = false
         currentStepIndex = 0
         isGoalSkipped = false
