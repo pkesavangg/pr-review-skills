@@ -1,4 +1,3 @@
-// swiftlint:disable file_length
 import Foundation
 @testable import meApp
 import SwiftData
@@ -7,7 +6,6 @@ import Testing
 
 @Suite(.serialized)
 @MainActor
-// swiftlint:disable:next type_body_length
 struct DashboardLifecycleManagerTests {
 
     // MARK: - SUT Factory

@@ -8,11 +8,14 @@ import Testing
 @MainActor
 struct AccountServiceCoverageTests {
 
+    // swiftlint:disable:next large_tuple
+    typealias SUTBundle = (AccountService, MockAccountAPIRepository, MockAccountRepository)
+
     private func makeSUT(
         api: MockAccountAPIRepository? = nil,
         local: MockAccountRepository? = nil,
         networkMonitor: MockNetworkMonitor? = nil
-    ) -> (AccountService, MockAccountAPIRepository, MockAccountRepository) {
+    ) -> SUTBundle {
         let api = api ?? MockAccountAPIRepository()
         let local = local ?? MockAccountRepository()
         let logger = MockLoggerService()

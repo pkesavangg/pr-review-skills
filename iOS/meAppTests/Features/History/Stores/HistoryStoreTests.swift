@@ -469,7 +469,9 @@ struct HistoryStoreTests {
         ])
         let entry = EntryTestFixtures.makeEntry(timestamp: "2026-03-02T09:00:00Z")
         entryService.entrySaved.send(EntryNotification(from: entry))
-        let done = await waitUntilHistoryStore { entryService.getMonthsAllCalls >= 2 && entryService.fetchEntrySnapshotsForMonthCalls > initialSnapshotCalls }
+        let done = await waitUntilHistoryStore {
+            entryService.getMonthsAllCalls >= 2 && entryService.fetchEntrySnapshotsForMonthCalls > initialSnapshotCalls
+        }
         #expect(done == true)
     }
 

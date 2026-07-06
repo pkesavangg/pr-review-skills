@@ -58,12 +58,30 @@ struct EntryServiceCoverageTests {
         entryType: String = EntryType.scale.rawValue
     ) -> BathScaleOperationDTO {
         var dto = BathScaleOperationDTO(
-            accountId: "acct-1", bmr: nil, bmi: nil, bodyFat: nil, boneMass: nil,
-            entryTimestamp: timestamp, entryType: entryType, impedance: nil, metabolicAge: nil,
-            muscleMass: nil, operationType: OperationType.create.rawValue, proteinPercent: nil,
-            pulse: nil, serverTimestamp: timestamp, skeletalMusclePercent: nil, source: "manual",
-            subcutaneousFatPercent: nil, systolic: nil, diastolic: nil, meanArterial: nil,
-            unit: "lb", visceralFatLevel: nil, water: nil, weight: weight
+            accountId: "acct-1",
+            bmr: nil,
+            bmi: nil,
+            bodyFat: nil,
+            boneMass: nil,
+            entryTimestamp: timestamp,
+            entryType: entryType,
+            impedance: nil,
+            metabolicAge: nil,
+            muscleMass: nil,
+            operationType: OperationType.create.rawValue,
+            proteinPercent: nil,
+            pulse: nil,
+            serverTimestamp: timestamp,
+            skeletalMusclePercent: nil,
+            source: "manual",
+            subcutaneousFatPercent: nil,
+            systolic: nil,
+            diastolic: nil,
+            meanArterial: nil,
+            unit: "lb",
+            visceralFatLevel: nil,
+            water: nil,
+            weight: weight
         )
         dto.serverEntryId = serverEntryId
         return dto
@@ -77,7 +95,10 @@ struct EntryServiceCoverageTests {
         let sut = makeSUT(repo: repo)
 
         try await sut.createBabyEntry(
-            babyId: "baby-1", weight: 3500, length: 500, note: "morning",
+            babyId: "baby-1",
+            weight: 3500,
+            length: 500,
+            note: "morning",
             entryTimestamp: "2026-03-01T08:00:00Z"
         )
 
@@ -93,7 +114,10 @@ struct EntryServiceCoverageTests {
 
         await #expect(throws: (any Error).self) {
             try await sut.createBabyEntry(
-                babyId: "baby-1", weight: 3500, length: 500, note: "n",
+                babyId: "baby-1",
+                weight: 3500,
+                length: 500,
+                note: "n",
                 entryTimestamp: "2026-03-01T08:00:00Z"
             )
         }
@@ -179,9 +203,9 @@ struct EntryServiceCoverageTests {
     func syncConcurrentCallsCoalesce() async {
         let sut = makeSUT()
 
-        async let a: Void = sut.syncAllEntriesWithRemote()
-        async let b: Void = sut.syncAllEntriesWithRemote()
-        _ = await (a, b)
+        async let first: Void = sut.syncAllEntriesWithRemote()
+        async let second: Void = sut.syncAllEntriesWithRemote()
+        _ = await (first, second)
 
         #expect(sut.isSyncing == false)
     }

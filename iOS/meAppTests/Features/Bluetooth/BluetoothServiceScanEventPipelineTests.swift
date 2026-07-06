@@ -157,7 +157,6 @@ struct BluetoothServiceScanEventPipelineTests {
         #expect(sut.pendingScaleEntry == nil)
     }
 
-
 //    @Test("device connected updates connection state, weight-only status, and debounced alert visibility")
 //    func deviceConnectedUpdatesStateAndShowsDebouncedAlert() async throws {
 //        let rawBroadcastId = "AA11"
@@ -480,7 +479,6 @@ private func makeEntry(protocolType: String, timestamp: Int, weightInKg: Float) 
         as: GGEntry.self
     )
 }
-
 
 private func encodeJSONObject<T: Encodable>(_ value: T) -> Any {
     let data = try! JSONEncoder().encode(value) // swiftlint:disable:this force_try

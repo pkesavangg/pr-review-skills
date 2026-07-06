@@ -226,10 +226,10 @@ struct EntryServiceSupportTests {
     @Test("EntriesPage equatability")
     func entriesPageEquatable() {
         let dto = makeDTO(entryTimestamp: "2026-05-01T10:00:00Z", weight: 100)
-        let a = EntriesPage(entries: [dto], nextCursor: "2026-05-01T10:00:00Z", hasMore: true)
-        let b = EntriesPage(entries: [dto], nextCursor: "2026-05-01T10:00:00Z", hasMore: true)
+        let first = EntriesPage(entries: [dto], nextCursor: "2026-05-01T10:00:00Z", hasMore: true)
+        let second = EntriesPage(entries: [dto], nextCursor: "2026-05-01T10:00:00Z", hasMore: true)
 
-        #expect(a == b)
-        #expect(a != EntriesPage.empty)
+        #expect(first == second)
+        #expect(first != EntriesPage.empty)
     }
 }
