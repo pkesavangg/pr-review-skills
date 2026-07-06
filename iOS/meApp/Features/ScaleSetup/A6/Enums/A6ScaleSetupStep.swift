@@ -13,6 +13,9 @@ enum A6ScaleSetupStep: Int, CaseIterable {
     case intro = 0
     /// Application permissions required for setup (Bluetooth).
     case permissions
+    /// Collect missing user-profile details (biological sex, height, optional goal).
+    /// Skipped automatically when the account already has these details (MOB-1388).
+    case completeProfile
     ///  Searching for the scale via Bluetooth.
     case wakeUp
     /// Connecting and saving scale information.

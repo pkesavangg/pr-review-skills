@@ -17,7 +17,11 @@ final class A6ScaleSetupStore: ObservableObject {
     @Injector var bluetoothService: BluetoothServiceProtocol
     @Injector var deviceService: PairedDeviceServiceProtocol
     @Injector var accountService: AccountServiceProtocol
-    
+
+    /// Owns the shared Complete Profile step state + logic (MOB-1388). Rendered on the
+    /// `.completeProfile` step; skipped automatically when the profile is already complete.
+    let completeProfileStore = CompleteProfileSetupStore()
+
     // MARK: - Private
     private var cancellables = Set<AnyCancellable>()
     /// Active subscription to the Bluetooth discovery publisher – only used during the *wake-up* step.
@@ -71,6 +75,8 @@ final class A6ScaleSetupStore: ObservableObject {
                 return AnyView(ScaleSetupIntroView(scale: scaleItem))
             case .permissions:
                 return AnyView(PermissionListView(setupType: .bluetooth))
+            case .completeProfile:
+                return AnyView(CompleteProfileSetupFormView(store: completeProfileStore))
             case .wakeUp:
                 return AnyView(ConnectionPromptView(
                     subtitle: scaleSetupStrings.wakeYourScaleSubtitleLCBT,
@@ -125,6 +131,20 @@ final class A6ScaleSetupStore: ObservableObject {
         let previousIndex = adjustedIndex(from: currentStepIndex - 1, direction: -1)
         guard previousIndex >= 0 else { return }
         currentStepIndex = previousIndex
+    }
+
+    // MARK: - Complete Profile (MOB-1388)
+
+    /// Saves the Complete Profile step, then advances to the next step.
+    func handleCompleteProfileNext() {
+        completeProfileStore.saveCompleteProfile { [weak self] in
+            self?.moveToNextStep()
+        }
+    }
+
+    /// Advances past the Complete Profile step without saving.
+    func handleCompleteProfileSkip() {
+        moveToNextStep()
     }
     
     // MARK: - Configuration
@@ -237,6 +257,8 @@ final class A6ScaleSetupStore: ObservableObject {
     
     private func handleStepChange() {
         switch currentStep {
+        case .completeProfile:
+            completeProfileStore.prefillCompleteProfile()
         case .wakeUp:
             self.pair()
         case .connectingBluetooth:
@@ -396,9 +418,9 @@ final class A6ScaleSetupStore: ObservableObject {
     /// - Returns: A new index that omits the permissions page if it can be skipped.
     private func adjustedIndex(from index: Int, direction: Int) -> Int {
         var idx = index
-        while idx >= 0 && idx < steps.count,
-              steps[idx] == .permissions,
-              isBluetoothPermissionEnabled() {
+        while idx >= 0 && idx < steps.count {
+            let step = steps[idx]
+            guard step == .permissions && isBluetoothPermissionEnabled() else { break }
             idx += direction
         }
         return idx
