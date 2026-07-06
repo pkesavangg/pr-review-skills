@@ -15,6 +15,8 @@ object AppIcons {
     val Banner = R.drawable.weight_gurus_banner
     val Logo = R.drawable.ic_logo
     val BrandLogo = R.drawable.brand_logo
+    // "my everyday health" wordmark (dark + teal) for the Phase 2 loading/landing screens (MOB-1381)
+    val MeHealthLogo = R.drawable.me_health_logo
     val WgLogo = R.drawable.wg_logo
     val Appsync = R.drawable.ic_appsync
     val Graph = R.drawable.ic_graph
