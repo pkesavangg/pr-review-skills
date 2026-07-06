@@ -329,8 +329,8 @@ private enum SignupFormTestText {
     static let passwordMatch = "both passwords must match"
     static let valueShouldNotBeEqual = "value should not be equal to starting weight"
     static let minWeightKg = "value should be greater than 0 kg"
-    static let minWeightLb = "value should be greater than 0 lbs"
+    static let minWeightLb = "value should be greater than 0 lb"
     static let maxWeightKg = "value should be less than 450 kg"
-    static let maxWeightLb = "value should be less than 999 lbs"
+    static let maxWeightLb = "value should be less than 999 lb"
     static func maxLength(_ length: Int) -> String { "maximum value should be \(length)" }
 }

@@ -61,7 +61,7 @@ struct HistoryEntryFormattingTests {
     @Test("BabyHistoryEntry weightText formats as lbs and oz")
     func babyEntry_weightText_formatsCorrectly() {
         let entry = makeBabyEntry(weightLbs: 8, weightOz: 5.2)
-        #expect(entry.weightText == "8 lbs 5.2 oz")
+        #expect(entry.weightText == "8 lb 5.2 oz")
     }
 
     // MARK: - BabyHistoryEntry.lengthText

@@ -226,15 +226,19 @@ final class Account {
         )
     }
 
-    /// SwiftData lifecycle hook — defense-in-depth for the Keychain-only token invariant.
+    /// SwiftData lifecycle hook — best-effort scrub of the Keychain-only token columns.
     ///
     /// `accessToken`/`refreshToken`/`expiresAt` are persisted columns purely so the one-time
     /// `migrateTokensToKeychainIfNeeded()` pass can read tokens an upgrading 5.0.3 store still
     /// holds. Keychain is the source of truth; a token must never be (re)written to the unencrypted
-    /// on-disk store. `AccountService` clears these via `clearTokenFieldsBeforeSave` before its
-    /// save/update wrappers, but `AccountRepository.activateAccount`/`mergeAccount` (and any future
-    /// caller) call `context.save()` directly. Clearing here guarantees the invariant holds on
-    /// *every* persist path rather than relying on each writer remembering to use the wrapper.
+    /// on-disk store.
+    ///
+    /// IMPORTANT: this hook is **not** a reliable backstop. SwiftData computes a save's pending
+    /// changes *before* invoking `willSave()`, so a model nil-ing its own columns here is not folded
+    /// into that same `save()` (verified against an on-disk store: the token still reached disk). The
+    /// invariant is actually enforced by clearing the columns *before* the save — `AccountService`
+    /// via `clearTokenFieldsBeforeSave`, and `AccountRepository` via `saveClearingTokens()` on its
+    /// direct-save paths. This hook is kept only as a cheap extra scrub for the *next* save cycle.
     ///
     /// The migration reads tokens from the freshly fetched (unsaved) object before this fires, so
     /// the one-time copy to Keychain is unaffected. Each field is nil-guarded so this never re-marks

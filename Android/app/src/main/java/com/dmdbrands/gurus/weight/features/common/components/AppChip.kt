@@ -210,7 +210,9 @@ fun AppChip(
                 disabledLabelColor = contentColor,
                 disabledLeadingIconColor = contentColor,
                 disabledTrailingIconColor = contentColor,
-                disabledSelectedContainerColor = contentColor,
+                // Disabled+selected keeps the white container like every other state — using
+                // contentColor here filled the chip dark and hid the (also dark) label. (MOB-1252)
+                disabledSelectedContainerColor = backgroundColor,
                 selectedLabelColor = contentColor,
                 selectedLeadingIconColor = contentColor,
                 selectedTrailingIconColor = contentColor,

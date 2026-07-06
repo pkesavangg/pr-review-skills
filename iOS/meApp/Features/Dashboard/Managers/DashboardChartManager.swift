@@ -69,6 +69,10 @@ final class DashboardChartManager: DashboardChartManaging {
         self.getIsWeightlessModeEnabled = getIsWeightlessModeEnabled
         self.getWeightlessAnchorWeight = getWeightlessAnchorWeight
         self.getGoalWeightForDisplay = getGoalWeightForDisplay
+        // Cache DI-backed services during construction so later container mutations
+        // continue using the intended dependencies for this manager instance.
+        _ = accountService
+        _ = logger
     }
 
     // MARK: - Y-Axis

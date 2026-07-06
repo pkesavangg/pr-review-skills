@@ -2,6 +2,7 @@ package com.dmdbrands.gurus.weight.features.historyDetail.components
 
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -120,7 +121,15 @@ fun BabyDayHistoryItem(
         HistoryDetailScreenStrings.accCollapsedState
     }
 
-    Column(modifier = Modifier.testTag("entry_row")) {
+    // Opaque row fill (white collapsed, grey when expanded) so the red swipe-to-delete action
+    // behind the row can't bleed through the content — the row had no background. (MOB-1259)
+    Column(
+        modifier = Modifier
+            .testTag("entry_row")
+            .background(
+                if (isExpanded) MeTheme.colorScheme.secondaryBackground else MeTheme.colorScheme.primaryBackground,
+            ),
+    ) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()

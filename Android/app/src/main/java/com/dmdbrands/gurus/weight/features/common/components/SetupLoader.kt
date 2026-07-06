@@ -83,8 +83,11 @@ private fun ConnectionState.toLoaderDisplay(): LoaderDisplay = when (this) {
 
 @Composable
 private fun LoaderDisplay.dotColor(): Color = when (this) {
-  LoaderDisplay.Loading -> colorScheme.iconPrimary
-  LoaderDisplay.Success -> colorScheme.success
+  // Figma "Loading": in-progress = wg-primary #1565C0, success = Status/success #458239
+  // (secondarySuccess), failed = Status/error #B3261E. iconPrimary was remapped to neutral
+  // #2C2827 in MOB-987, so the loading dots had gone black. (MOB-1259)
+  LoaderDisplay.Loading -> colorScheme.wgPrimary
+  LoaderDisplay.Success -> colorScheme.secondarySuccess
   LoaderDisplay.Failed -> colorScheme.danger
 }
 

@@ -94,13 +94,15 @@ fun WeightHistoryDetailItemHeader(
     onClick: () -> Unit,
 ) {
     val rotation by animateFloatAsState(targetValue = if (isExpanded) -90f else 90f, label = "")
-  val tintColor = if(isExpanded) MeTheme.colorScheme.inverseAction else MeTheme.colorScheme.primaryAction
+    // Header reads the same in both states (per Figma WG history): dark date, grey time/unit,
+    // brand-blue weight value; only the row fill shifts (white collapsed, grey when expanded) and
+    // the caret rotates. The old isExpanded inversion drew white text on the now-white
+    // `secondaryAction` fill, making the date + weight invisible. (MOB-1259)
+    val tintColor = MeTheme.colorScheme.primaryAction
     val backgroundColor =
-        if (isExpanded) MeTheme.colorScheme.secondaryAction else MeTheme.colorScheme.secondaryBackground
-    val textColor =
-        if (isExpanded) MeTheme.colorScheme.primaryBackground else MeTheme.colorScheme.textBody
-    val subTextColor =
-        if (isExpanded) MeTheme.colorScheme.secondaryBackground else MeTheme.colorScheme.textSubheading
+        if (isExpanded) MeTheme.colorScheme.secondaryBackground else MeTheme.colorScheme.primaryBackground
+    val textColor = MeTheme.colorScheme.textBody
+    val subTextColor = MeTheme.colorScheme.textSubheading
   var lastClickTime by remember { mutableStateOf(0L) }
   val debounceTime = 500L // Prevent multiple clicks within 300ms
     // TalkBack: read the weight entry as one announcement with an expand/collapse state,
@@ -179,7 +181,8 @@ fun WeightHistoryDetailItemHeader(
                         append(formatWeightValue(item.scale.scaleEntry.weight))        // always append value with sign
                     },
                     style = MeTheme.typography.heading3,
-                    color = textColor,
+                    // Weight value is the WG brand blue (matches BP=green / Baby=purple). (MOB-1259)
+                    color = MeTheme.colorScheme.wgPrimary,
                     textAlign = TextAlign.End,
                 )
                 Text(
