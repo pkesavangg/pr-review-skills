@@ -321,10 +321,69 @@ extension EntryServiceExtendedTests {
         let remote = MockEntryRepositoryAPI()
         remote.submitEntriesError = EntryTestError.remoteFailure
         let syncStore = MockEntrySyncStore()
-        let sut = makeSUT(repo: repo, remote: remote, syncStore: syncStore)
+        let worker = MockEntryWorker()
+        let sut = makeSUT(repo: repo, remote: remote, syncStore: syncStore, worker: worker)
 
         await sut.syncAllEntriesWithRemote()
-        #expect(repo.updateEntrySyncStatusCalls >= 1)
+
+        // A failed chunk records one more attempt for every entry in it.
+        let failedOutcome = worker.appliedPushOutcomes.first
+        #expect(failedOutcome?.entryId == entry.id)
+        if case .failed(let attempts, let markAsFailed)? = failedOutcome?.outcome {
+            #expect(attempts == 1)
+            #expect(markAsFailed == false)
+        } else {
+            Issue.record("Expected a .failed push outcome, got \(String(describing: failedOutcome))")
+        }
+    }
+
+    @Test("push batches all unsynced entries into one POST and maps server ids per entry")
+    func pushBatchesEntriesIntoOnePost() async {
+        let repo = MockEntryRepository()
+        let first = EntryTestFixtures.makeEntry(timestamp: "2026-03-01T08:00:00Z", isSynced: false)
+        let second = EntryTestFixtures.makeEntry(timestamp: "2026-03-02T08:00:00Z", isSynced: false)
+        repo.entries = [first, second]
+        let remote = MockEntryRepositoryAPI()
+        remote.submitEntriesResult = UnifiedEntryResponse(
+            entries: [
+                EntryTestFixtures.makeUnifiedResult(entryId: "srv-1", timestamp: "2026-03-01T08:00:00Z"),
+                EntryTestFixtures.makeUnifiedResult(entryId: "srv-2", timestamp: "2026-03-02T08:00:00Z")
+            ],
+            timestamp: "2026-03-02T09:00:00Z"
+        )
+        let worker = MockEntryWorker()
+        let sut = makeSUT(repo: repo, remote: remote, worker: worker)
+
+        await sut.syncAllEntriesWithRemote()
+
+        // ONE POST for both entries (previously one round trip per entry).
+        #expect(remote.submitEntriesCalls == 1)
+        #expect((remote.lastSubmittedEntries ?? []).count == 2)
+        // Server ids map back positionally onto the entries' outcomes.
+        let serverIds: [String?] = worker.appliedPushOutcomes.compactMap {
+            if case .created(let serverEntryId, _) = $0.outcome { return serverEntryId }
+            return nil
+        }
+        #expect(Set(serverIds.compactMap { $0 }) == ["srv-1", "srv-2"])
+    }
+
+    @Test("push delete outcome removes the row via the worker and updates summaries")
+    func pushDeleteRoutesThroughWorker() async {
+        let repo = MockEntryRepository()
+        let entry = EntryTestFixtures.makeEntry(timestamp: "2026-03-01T08:00:00Z", operationType: .delete, isSynced: false)
+        entry.serverEntryId = "srv-9"
+        repo.entries = [entry]
+        let remote = MockEntryRepositoryAPI()
+        let worker = MockEntryWorker()
+        let sut = makeSUT(repo: repo, remote: remote, worker: worker)
+        var deleted: [EntryNotification] = []
+        let cancellable = sut.entryDeleted.sink { deleted.append($0) }
+
+        await sut.syncAllEntriesWithRemote()
+
+        #expect(worker.appliedPushOutcomes.contains { $0.entryId == entry.id && $0.outcome == .deleted })
+        #expect(deleted.count == 1)
+        cancellable.cancel()
     }
 
     // MARK: - updateDailySummary / updateMonthlySummary

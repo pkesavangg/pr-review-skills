@@ -1061,122 +1061,176 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
         }
     }
 
-    /// Pushes unsynced local entries to the remote API.
-    ///
-    /// - Returns: `true` if at least one create operation was successfully synced.
-    ///   The caller uses this to decide whether to show the goal met card: we only show it when
-    ///   the user actually added new entries in this sync (not on every login or pull-to-refresh).
-    private func pushUnsyncedEntriesToRemote(accountId: String) async -> Bool { // swiftlint:disable:this cyclomatic_complexity function_body_length
-        // 1. Get all unsynced entries (both new and delete operations)
-        let unsynced = try? await localRepo.fetchUnsyncedEntries(forUserId: accountId)
+    /// Maximum unified requests per batched `POST /v3/entries/` call.
+    private static let pushChunkMaxRequests = 100
 
-        // Tracks whether we successfully synced at least one create to the API; drives goal met card visibility.
+    /// One unsynced local entry prepared for pushing: its identity/bookkeeping
+    /// fields plus the 1–2 unified requests it expands to (baby: weight + length).
+    private struct PendingPushEntry {
+        let entryId: UUID
+        let operationType: String
+        let entryTimestamp: String
+        let attempts: Int
+        let requests: [UnifiedEntryRequest]
+    }
+
+    /// Running counters for a push pass, shared across chunks.
+    private struct PushTally {
         var hadSuccessfulCreate = false
         var successfulCreateCount = 0
         var successfulDeleteCount = 0
         var failedSyncCount = 0
         var firstFailureReason: String?
+    }
 
-        // 2. Try to sync with backend. Baby entries expand into baby-category
-        // weight + measureLength requests (MOB-386) and are pushed alongside
-        // weight/BP entries.
-        if let unsyncedEntries = unsynced, !unsyncedEntries.isEmpty {
-            for operation in unsyncedEntries {
-                // R7/R9: Extract all @Model data BEFORE any await calls
-                let entryId = operation.id
-                let entryIdString = entryId.uuidString
-                let operationType = operation.operationType
-                let entryTimestamp = operation.entryTimestamp
-                let currentAttempts = operation.attempts
-                let note = operation.note
-                let serverEntryId = operation.serverEntryId
-                let dto = operation.toOperationDTO()
+    /// Pushes unsynced local entries to the remote API in chunked batch POSTs
+    /// (MOB-1433) — N unsynced entries no longer cost N HTTP round trips and
+    /// N per-row saves.
+    ///
+    /// - Returns: `true` if at least one create operation was successfully synced.
+    ///   The caller uses this to decide whether to show the goal met card: we only show it when
+    ///   the user actually added new entries in this sync (not on every login or pull-to-refresh).
+    private func pushUnsyncedEntriesToRemote(accountId: String) async -> Bool {
+        // 1. All unsynced entries (creates and deletes) as Sendable snapshot+DTO
+        // pairs, extracted inside the repository context (MA-3898).
+        let unsynced = (try? await localRepo.fetchUnsyncedEntriesAsSnapshots(forUserId: accountId)) ?? []
+        guard !unsynced.isEmpty else { return false }
 
-                // Map to the unified request(s). Weight/BP produce one request; a baby entry
-                // can expand into a `weight` and a `measureLength` request (MOB-386).
-                let requests: [UnifiedEntryRequest]
-                if dto.entryType == EntryType.baby.rawValue {
-                    requests = BabyEntryRequest.makeRequests(from: dto, entryId: entryIdString, note: note)
-                } else if let request = UnifiedEntryRequest(from: dto, serverEntryId: serverEntryId, note: note) {
-                    requests = [request]
-                } else {
-                    requests = []
-                }
-                guard !requests.isEmpty else { continue }
-
-                do {
-                    // POST /v3/entries/ — atomic batch; baby entries submit their sub-type rows together.
-                    let submitResponse = try await remoteRepo.submitEntries(requests)
-                    logger.log(
-                        level: .info,
-                        tag: tag,
-                        message: "API submitEntries response: entryId=\(entryIdString), responseEntries.count=\(submitResponse.entries.count)"
-                    )
-
-                    if operationType == "create" {
-                        hadSuccessfulCreate = true
-                        // Store server-assigned entryId so future delete requests can include it.
-                        if let responseEntryId = submitResponse.entries.first?.entryId {
-                            do {
-                                try await localRepo.updateEntryServerEntryId(
-                                    entryId: entryIdString,
-                                    serverEntryId: responseEntryId
-                                )
-                            } catch {
-                                logger.log(
-                                    level: .error,
-                                    tag: tag,
-                                    message: "Failed to persist serverEntryId for entryId=\(entryIdString): " +
-                                        "\(error.localizedDescription)"
-                                )
-                            }
-                        }
-                        // R9: Use primitive-based update instead of mutating @Model
-                        try await localRepo.updateEntrySyncStatus(
-                            entryId: entryIdString,
-                            isSynced: true,
-                            isFailedToSync: false,
-                            attempts: currentAttempts
-                        )
-                        successfulCreateCount += 1
-                    } else {
-                        try await localRepo.deleteEntry(byId: entryIdString)
-                        try await handleEntryDeleted(entryId: entryId, entryTimestamp: entryTimestamp)
-                        successfulDeleteCount += 1
-                    }
-                } catch {
-                    // R9: Compute new sync values from extracted primitives (no @Model mutation)
-                    let newAttempts = currentAttempts + 1
-                    let markAsFailed = newAttempts > 8
-
-                    try? await localRepo.updateEntrySyncStatus(
-                        entryId: entryIdString,
-                        isSynced: markAsFailed,
-                        isFailedToSync: markAsFailed,
-                        attempts: newAttempts
-                    )
-                    failedSyncCount += 1
-                    if firstFailureReason == nil {
-                        firstFailureReason = error.localizedDescription
-                    }
-                }
+        // 2. Map every entry to its unified request(s) up front. Weight/BP produce
+        // one request; a baby entry can expand into a `weight` and a
+        // `measureLength` request (MOB-386).
+        let pending: [PendingPushEntry] = unsynced.compactMap { snapshot, dto in
+            let requests: [UnifiedEntryRequest]
+            if dto.entryType == EntryType.baby.rawValue {
+                requests = BabyEntryRequest.makeRequests(from: dto, entryId: snapshot.id.uuidString, note: snapshot.note)
+            } else if let request = UnifiedEntryRequest(from: dto, serverEntryId: snapshot.serverEntryId, note: snapshot.note) {
+                requests = [request]
+            } else {
+                requests = []
             }
+            guard !requests.isEmpty else { return nil }
+            return PendingPushEntry(
+                entryId: snapshot.id,
+                operationType: snapshot.operationType,
+                entryTimestamp: snapshot.entryTimestamp,
+                attempts: snapshot.attempts,
+                requests: requests
+            )
+        }
+        guard !pending.isEmpty else { return false }
+
+        // 3. POST in chunks of ≤100 requests; an entry's requests never split
+        // across chunks so response rows can be mapped back per entry.
+        var tally = PushTally()
+        for chunk in Self.chunkForPush(pending, maxRequests: Self.pushChunkMaxRequests) {
+            await pushChunk(chunk, accountId: accountId, tally: &tally)
+        }
+
+        logger.log(
+            level: .info,
+            tag: tag,
+            message: "Unsynced entry push completed for accountId=\(accountId): "
+                + "createsSynced=\(tally.successfulCreateCount), deletesSynced=\(tally.successfulDeleteCount), failures=\(tally.failedSyncCount)"
+        )
+        if tally.failedSyncCount > 0 {
+            logger.log(
+                level: .error,
+                tag: tag,
+                message: "Unsynced entry push had failures: accountId=\(accountId), failures=\(tally.failedSyncCount), "
+                    + "firstFailure=\(tally.firstFailureReason ?? "unknown")"
+            )
+        }
+        return tally.hadSuccessfulCreate
+    }
+
+    /// Splits pending entries into chunks whose combined request count stays
+    /// within `maxRequests`, keeping each entry's requests contiguous.
+    private static func chunkForPush(_ entries: [PendingPushEntry], maxRequests: Int) -> [[PendingPushEntry]] {
+        var chunks: [[PendingPushEntry]] = []
+        var current: [PendingPushEntry] = []
+        var requestCount = 0
+        for entry in entries {
+            if !current.isEmpty, requestCount + entry.requests.count > maxRequests {
+                chunks.append(current)
+                current = []
+                requestCount = 0
+            }
+            current.append(entry)
+            requestCount += entry.requests.count
+        }
+        if !current.isEmpty {
+            chunks.append(current)
+        }
+        return chunks
+    }
+
+    /// POSTs one chunk and applies its bookkeeping in a single batched worker
+    /// call (mark-synced + server ids + deletes, or failure attempts).
+    private func pushChunk(_ chunk: [PendingPushEntry], accountId: String, tally: inout PushTally) async {
+        let requests = chunk.flatMap { $0.requests }
+        do {
+            // POST /v3/entries/ — atomic batch; baby entries submit their sub-type rows together.
+            let submitResponse = try await remoteRepo.submitEntries(requests)
             logger.log(
                 level: .info,
                 tag: tag,
-                message: "Unsynced entry push completed for accountId=\(accountId): "
-                    + "createsSynced=\(successfulCreateCount), deletesSynced=\(successfulDeleteCount), failures=\(failedSyncCount)"
+                message: "API submitEntries batch response: requests=\(requests.count), "
+                    + "responseEntries.count=\(submitResponse.entries.count)"
             )
-            if failedSyncCount > 0 {
+
+            // Map response rows back positionally: one row per request in order,
+            // and each entry owns the row of its FIRST request (the same row the
+            // per-entry push read via `entries.first`).
+            var outcomes: [EntryPushOutcome] = []
+            var deletedEntries: [(entryId: UUID, entryTimestamp: String)] = []
+            var responseCursor = 0
+            for entry in chunk {
+                if entry.operationType == OperationType.create.rawValue {
+                    let serverEntryId = responseCursor < submitResponse.entries.count
+                        ? submitResponse.entries[responseCursor].entryId
+                        : nil
+                    outcomes.append(EntryPushOutcome(
+                        entryId: entry.entryId,
+                        outcome: .created(serverEntryId: serverEntryId, attempts: entry.attempts)
+                    ))
+                    tally.hadSuccessfulCreate = true
+                    tally.successfulCreateCount += 1
+                } else {
+                    outcomes.append(EntryPushOutcome(entryId: entry.entryId, outcome: .deleted))
+                    deletedEntries.append((entry.entryId, entry.entryTimestamp))
+                    tally.successfulDeleteCount += 1
+                }
+                responseCursor += entry.requests.count
+            }
+
+            do {
+                try await worker.applyPushOutcomes(outcomes)
+            } catch {
                 logger.log(
                     level: .error,
                     tag: tag,
-                    message: "Unsynced entry push had failures: accountId=\(accountId), failures=\(failedSyncCount), "
-                        + "firstFailure=\(firstFailureReason ?? "unknown")"
+                    message: "Failed to persist push outcomes for accountId=\(accountId): \(error.localizedDescription)"
                 )
             }
+            for deleted in deletedEntries {
+                try? await handleEntryDeleted(entryId: deleted.entryId, entryTimestamp: deleted.entryTimestamp)
+            }
+        } catch {
+            // The batch is atomic, so a failed chunk marks every entry in it
+            // with one more attempt (the per-entry semantics, applied per chunk).
+            let outcomes = chunk.map { entry -> EntryPushOutcome in
+                let newAttempts = entry.attempts + 1
+                return EntryPushOutcome(
+                    entryId: entry.entryId,
+                    outcome: .failed(attempts: newAttempts, markAsFailed: newAttempts > 8)
+                )
+            }
+            try? await worker.applyPushOutcomes(outcomes)
+            tally.failedSyncCount += chunk.count
+            if tally.firstFailureReason == nil {
+                tally.firstFailureReason = error.localizedDescription
+            }
         }
-        return hadSuccessfulCreate
     }
 
     /// Lightweight summary for a single month. Avoids computing all months when only one changes.
