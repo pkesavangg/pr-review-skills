@@ -125,7 +125,7 @@ struct ColorTokens {
             statusIconSecondary: neutral700,
             statusIconPrimaryDisabled: neutral400,
             statusIconSecondaryDisabled: neutral400,
-            statusIconLoading: neutral700,
+            statusIconLoading: blue100,
             statusIconLoadingError: red100,
 
             // Logos

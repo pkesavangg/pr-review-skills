@@ -5,7 +5,6 @@ import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.keyframes
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -24,10 +23,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.liveRegion
@@ -36,9 +33,9 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.dmdbrands.gurus.weight.features.common.components.MeHealthLogoCard
 import com.dmdbrands.gurus.weight.features.common.components.PreviewTheme
 import com.dmdbrands.gurus.weight.features.loading.string.LoadingString
-import com.dmdbrands.gurus.weight.resources.AppIcons
 import com.dmdbrands.gurus.weight.theme.MeAppTheme
 import com.dmdbrands.gurus.weight.theme.MeTheme
 import kotlinx.coroutines.delay
@@ -55,21 +52,17 @@ fun LoadingScreen(
     modifier =
       Modifier
         .fillMaxSize()
-        .background(MeTheme.colorScheme.primaryAction),
+        .background(MeTheme.colorScheme.secondaryBackground),
   ) {
     Column(
       modifier =
         Modifier
           .fillMaxWidth()
-          .align(Alignment.Center),
+          .align(Alignment.Center)
+          .padding(horizontal = MeTheme.spacing.x2l),
       horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-      Image(
-        painter = painterResource(id = AppIcons.Default.Banner),
-        // TalkBack: brand logo on the splash screen.
-        contentDescription = LoadingString.accLogoLabel,
-        colorFilter = ColorFilter.tint(MeTheme.colorScheme.inverseAction),
-      )
+      MeHealthLogoCard()
       Spacer(modifier = Modifier.height(MeTheme.spacing.x3l))
       LoadingTextWithDots()
     }
@@ -85,7 +78,7 @@ fun LoadingScreen(
     ) {
       Text(
         text = LoadingString.VERSION,
-        color = MeTheme.colorScheme.inverseAction,
+        color = MeTheme.colorScheme.textSubheading,
         style = MeTheme.typography.subHeading2,
         textAlign = TextAlign.Center,
       )
@@ -101,7 +94,7 @@ fun LoadingTextWithDots(
   baseText: String = LoadingString.LOADING,
   dotCount: Int = 3,
   modifier: Modifier = Modifier,
-  textColor: Color = MeTheme.colorScheme.inverseAction,
+  textColor: Color = MeTheme.colorScheme.textBody,
   dotColor: Color = textColor
 ) {
   Row(

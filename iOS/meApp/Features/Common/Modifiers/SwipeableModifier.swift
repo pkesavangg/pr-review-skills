@@ -5,6 +5,7 @@
 //  Created by Kesavan Panchabakesan on 24/06/25.
 //
 import SwiftUI
+import UIKit
 
 // MARK: - SwipeState
 /// The swipe gesture's current state
@@ -14,43 +15,58 @@ enum SwipeState {
     case triggering
 }
 
-// MARK: - GestureVelocity
-/// Property wrapper to track gesture velocity
-@propertyWrapper
-struct GestureVelocity: DynamicProperty {
-    @State var previous: DragGesture.Value?
-    @State var current: DragGesture.Value?
+// MARK: - HorizontalPanGesture
+/// UIKit-backed pan that only begins when the drag starts horizontally.
+/// A SwiftUI `DragGesture` cannot fail based on direction — since iOS 18 it claims
+/// the touch outright and blocks the enclosing ScrollView's vertical pan
+/// (FB14205678), which froze scrolling on every screen with swipeable rows.
+/// Rejecting vertical drags in `gestureRecognizerShouldBegin` means the swipe
+/// never competes with scrolling — the same arbitration UIKit's own
+/// table-view swipe actions rely on.
+private struct HorizontalPanGesture: UIGestureRecognizerRepresentable {
+    let isEnabled: Bool
+    let onBegan: () -> Void
+    /// Receives the pan translation.
+    let onChanged: (CGPoint) -> Void
+    /// Receives the final translation and velocity (pt/s).
+    let onEnded: (CGPoint, CGPoint) -> Void
 
-    func update(_ value: DragGesture.Value) {
-        if current != nil {
-            previous = current
+    func makeCoordinator(converter: CoordinateSpaceConverter) -> Coordinator {
+        Coordinator()
+    }
+
+    func makeUIGestureRecognizer(context: Context) -> UIPanGestureRecognizer {
+        let recognizer = UIPanGestureRecognizer()
+        recognizer.maximumNumberOfTouches = 1
+        recognizer.delegate = context.coordinator
+        return recognizer
+    }
+
+    func updateUIGestureRecognizer(_ recognizer: UIPanGestureRecognizer, context: Context) {
+        recognizer.isEnabled = isEnabled
+    }
+
+    func handleUIGestureRecognizerAction(_ recognizer: UIPanGestureRecognizer, context: Context) {
+        let translation = recognizer.translation(in: recognizer.view)
+        switch recognizer.state {
+        case .began:
+            onBegan()
+        case .changed:
+            onChanged(translation)
+        case .ended, .cancelled, .failed:
+            onEnded(translation, recognizer.velocity(in: recognizer.view))
+        default:
+            break
         }
-        current = value
     }
 
-    func reset() {
-        previous = nil
-        current = nil
-    }
-
-    var projectedValue: GestureVelocity {
-        return self
-    }
-
-    var wrappedValue: CGVector {
-        value
-    }
-
-    private var value: CGVector {
-        guard let previous, let current else {
-            return .zero
+    final class Coordinator: NSObject, UIGestureRecognizerDelegate {
+        func gestureRecognizerShouldBegin(_ gestureRecognizer: UIGestureRecognizer) -> Bool {
+            guard let pan = gestureRecognizer as? UIPanGestureRecognizer,
+                  let view = pan.view else { return false }
+            let velocity = pan.velocity(in: view)
+            return abs(velocity.x) > abs(velocity.y)
         }
-
-        let timeDelta = current.time.timeIntervalSince(previous.time)
-        let speedY = Double(current.translation.height - previous.translation.height) / timeDelta
-        let speedX = Double(current.translation.width - previous.translation.width) / timeDelta
-
-        return .init(dx: speedX, dy: speedY)
     }
 }
 
@@ -66,25 +82,15 @@ struct SwipeableModifier: ViewModifier {
     var trailingCornerRadius: CGFloat
 
     // MARK: - Configuration
-    // MOB-232: Reduced from 20 → 10 so the gesture fails faster on clearly vertical drags,
-    // letting the parent ScrollView take over without a perceptible delay.
-    private let swipeMinimumDistance: CGFloat = 10
-    private let expandThreshold: CGFloat = 50
     private let rubberBandPower: CGFloat = 0.7
     private let animationDuration: CGFloat = 0.3
     private let velocityThreshold: CGFloat = 200
-    private let maxSwipeAngle: CGFloat = 30 // Reduced angle for stricter horizontal detection
 
     // MARK: - State
     @State private var currentOffset: CGFloat = 0
     @State private var savedOffset: CGFloat = 0
     @State private var swipeState: SwipeState = .closed
     @State private var isSwipedOpen: Bool = false
-    @GestureVelocity private var velocity: CGVector
-    @GestureState private var isDragging: Bool = false
-    @State private var dragStarted: Bool = false
-    @State private var isHorizontalSwipe: Bool = false
-    @State private var gestureStartPoint: CGPoint = .zero
 
     // MARK: - Computed Properties
     private var totalOffset: CGFloat {
@@ -103,69 +109,9 @@ struct SwipeableModifier: ViewModifier {
         totalButtonWidth
     }
 
-// swiftlint:disable:next function_body_length
     func body(content: Content) -> some View {
-        let dragGesture = DragGesture(minimumDistance: swipeMinimumDistance)
-            .updating($isDragging) { _, state, _ in
-                state = true
-            }
-            .onChanged(onDragChanged)
-            .onEnded(onDragEnded)
-            .updatingVelocity($velocity)
-
         ZStack(alignment: .trailing) {
-            // Background swipe buttons
-            HStack(spacing: 0) {
-                ForEach(swipeButtons) { button in
-                    Button(action: {
-                        // Only trigger if fully opened
-                        if isSwipedOpen {
-                            if closeWithoutAnimationOnAction {
-                                // Close without animation to avoid jiggle when alert appears
-                                var tx = Transaction()
-                                tx.disablesAnimations = true
-                                withTransaction(tx) {
-                                    savedOffset = 0
-                                    currentOffset = 0
-                                    swipeState = .closed
-                                    isSwipedOpen = false
-                                }
-                                // Execute action immediately
-                                button.action()
-                            } else {
-                                withAnimation(.easeInOut(duration: 0.2)) {
-                                    savedOffset = 0
-                                    currentOffset = 0
-                                    swipeState = .closed
-                                    isSwipedOpen = false
-                                }
-                                Task { @MainActor in
-                                    try? await Task.sleep(nanoseconds: 100_000_000)
-                                    button.action()
-                                }
-                            }
-                        }
-                    }, label: {
-                        button.label()
-                            .frame(maxWidth: .infinity, maxHeight: .infinity)
-                    })
-                    .frame(width: buttonWidth)
-                    .background(button.tint)
-                    .contentShape(Rectangle())
-                    .allowsHitTesting(isSwipedOpen)
-                }
-            }
-            .frame(width: totalButtonWidth, alignment: .trailing)
-            .frame(minHeight: 0, maxHeight: .infinity)
-            .clipShape(
-                UnevenRoundedRectangle(
-                    topLeadingRadius: 0,
-                    bottomLeadingRadius: 0,
-                    bottomTrailingRadius: trailingCornerRadius,
-                    topTrailingRadius: trailingCornerRadius
-                )
-            )
-            .opacity(swipeState == .closed ? 0 : 1)
+            swipeButtonsBackground
 
             // Main content
             content
@@ -175,19 +121,19 @@ struct SwipeableModifier: ViewModifier {
         }
         .clipped()
         .gesture(
-            dragGesture,
-            including: swipeButtons.isEmpty ? .subviews : .all
+            HorizontalPanGesture(
+                isEnabled: !swipeButtons.isEmpty,
+                onBegan: onPanBegan,
+                onChanged: onPanChanged,
+                onEnded: onPanEnded
+            )
         )
-        .onChange(of: isDragging) { _, newValue in
-            if newValue {
-                dragStarted = true
-                // Mark this item as potentially opening only if it's a horizontal swipe
-                if swipeState == .closed && isHorizontalSwipe {
-                    openItemID?.wrappedValue = itemID
-                }
-            } else {
-                dragStarted = false
-                isHorizontalSwipe = false
+        // The pan gesture is invisible to VoiceOver/Switch Control, and the buttons are
+        // opacity(0) + hit-test-disabled while closed — expose each swipe action as a
+        // custom accessibility action, matching what UIKit swipe actions provide natively.
+        .accessibilityActions {
+            ForEach(swipeButtons) { button in
+                Button(action: button.action) { button.label() }
             }
         }
         .onChange(of: openItemID?.wrappedValue) { _, newValue in
@@ -206,41 +152,69 @@ struct SwipeableModifier: ViewModifier {
         }
     }
 
-    // MARK: - Gesture Handlers
-    private func onDragChanged(_ value: DragGesture.Value) {
-        $velocity.update(value)
-
-        // Calculate swipe angle to determine if it's horizontal
-        let deltaX = value.location.x - value.startLocation.x
-        let deltaY = value.location.y - value.startLocation.y
-        let angle = abs(atan2(deltaY, deltaX) * 180 / .pi)
-
-        // Check if this is a horizontal swipe
-        if !isHorizontalSwipe && abs(deltaX) > swipeMinimumDistance {
-            let isHorizontal = angle <= maxSwipeAngle || angle >= (180 - maxSwipeAngle)
-            if isHorizontal {
-                isHorizontalSwipe = true
+    // MARK: - Swipe Buttons
+    private var swipeButtonsBackground: some View {
+        HStack(spacing: 0) {
+            ForEach(swipeButtons) { button in
+                Button(action: { trigger(button) }, label: {
+                    button.label()
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                })
+                .frame(width: buttonWidth)
+                .background(button.tint)
+                .contentShape(Rectangle())
+                .allowsHitTesting(isSwipedOpen)
             }
         }
+        .frame(width: totalButtonWidth, alignment: .trailing)
+        .frame(minHeight: 0, maxHeight: .infinity)
+        .clipShape(
+            UnevenRoundedRectangle(
+                topLeadingRadius: 0,
+                bottomLeadingRadius: 0,
+                bottomTrailingRadius: trailingCornerRadius,
+                topTrailingRadius: trailingCornerRadius
+            )
+        )
+        .opacity(swipeState == .closed ? 0 : 1)
+    }
 
-        // Only process horizontal swipes - this prevents interference with vertical scroll
-        guard isHorizontalSwipe else { return }
-
-        // Additional check: ensure horizontal movement is dominant
-        // Use a stricter threshold to be more selective about horizontal vs vertical detection
-        let horizontalThreshold: CGFloat = 2.0 // Increased from 1.5 to 2.0 for stricter detection
-        if abs(deltaY) > abs(deltaX) * horizontalThreshold {
-            // Vertical movement is dominant, don't process
-            return
+    /// Runs a swipe button's action — only when the row is fully swiped open.
+    private func trigger(_ button: SwipeButton) {
+        guard isSwipedOpen else { return }
+        if closeWithoutAnimationOnAction {
+            // Close without animation to avoid jiggle when alert appears
+            var tx = Transaction()
+            tx.disablesAnimations = true
+            withTransaction(tx) { resetToClosed() }
+            // Execute action immediately
+            button.action()
+        } else {
+            withAnimation(.easeInOut(duration: 0.2)) { resetToClosed() }
+            Task { @MainActor in
+                try? await Task.sleep(nanoseconds: 100_000_000)
+                button.action()
+            }
         }
-        
-        // Additional check: require minimum horizontal movement before processing
-        if abs(deltaX) < swipeMinimumDistance {
-            return
-        }
+    }
 
-        let translation = value.translation.width
-        let totalTranslation = savedOffset + translation
+    private func resetToClosed() {
+        savedOffset = 0
+        currentOffset = 0
+        swipeState = .closed
+        isSwipedOpen = false
+    }
+
+    // MARK: - Gesture Handlers
+    private func onPanBegan() {
+        // Mark this item as the active one so any other open row closes
+        if swipeState == .closed {
+            openItemID?.wrappedValue = itemID
+        }
+    }
+
+    private func onPanChanged(_ translation: CGPoint) {
+        let totalTranslation = savedOffset + translation.x
 
         // Only allow left swipe (negative translation)
         if totalTranslation > 0 {
@@ -265,19 +239,8 @@ struct SwipeableModifier: ViewModifier {
         }
     }
 
-    private func onDragEnded(_ value: DragGesture.Value) {
-        let translation = value.translation.width
-        let totalTranslation = savedOffset + translation
-        let gestureVelocity = $velocity.wrappedValue.dx
-
-        // Reset horizontal swipe flag
-        defer { isHorizontalSwipe = false }
-
-        // If this wasn't a horizontal swipe, don't process the end
-        guard isHorizontalSwipe else {
-            $velocity.reset()
-            return
-        }
+    private func onPanEnded(_ translation: CGPoint, _ velocity: CGPoint) {
+        let totalTranslation = savedOffset + translation.x
 
         // Don't allow positive swipes
         if totalTranslation > 0 {
@@ -287,9 +250,8 @@ struct SwipeableModifier: ViewModifier {
 
         // Determine final state based on position and velocity
         let absOffset = abs(totalTranslation)
-        _ = abs(gestureVelocity) > velocityThreshold
-        let velocityTowardsOpen = gestureVelocity < -velocityThreshold
-        let velocityTowardsClose = gestureVelocity > velocityThreshold
+        let velocityTowardsOpen = velocity.x < -velocityThreshold
+        let velocityTowardsClose = velocity.x > velocityThreshold
 
         if velocityTowardsClose {
             // Strong velocity towards closing
@@ -304,8 +266,6 @@ struct SwipeableModifier: ViewModifier {
             // Default to close
             closeSwipe()
         }
-
-        $velocity.reset()
     }
 
     // MARK: - State Management
@@ -329,18 +289,6 @@ struct SwipeableModifier: ViewModifier {
 
         if openItemID?.wrappedValue == itemID {
             openItemID?.wrappedValue = nil
-        }
-    }
-}
-
-// MARK: - Gesture Extensions
-extension Gesture where Value == DragGesture.Value {
-    func updatingVelocity(_ velocity: GestureVelocity) -> _EndedGesture<_ChangedGesture<Self>> {
-        onChanged { value in
-            velocity.update(value)
-        }
-        .onEnded { _ in
-            velocity.reset()
         }
     }
 }
