@@ -15,6 +15,18 @@ struct DashboardTrendView<TopContent: View, ChartFooter: View>: View {
     private let topContent: () -> TopContent
     private let chartFooter: () -> ChartFooter
 
+    /// Footer shown when the selected product has no entries yet. Two variants (MOB-1245):
+    /// a pending baby selection (no profile) shows the "No babies added yet" / ADD A BABY card;
+    /// every other empty state shows the "connect a device" / CONNECT DEVICE card.
+    @ViewBuilder
+    private func emptyStateFooter() -> some View {
+        if dashboardStore.isPendingBabySelection {
+            noBabyFooter()
+        } else {
+            noEntriesFooter()
+        }
+    }
+
     @ViewBuilder
     private func noEntriesFooter() -> some View {
         VStack(spacing: .spacingMD) {
@@ -37,6 +49,37 @@ struct DashboardTrendView<TopContent: View, ChartFooter: View>: View {
         }
         .padding(.vertical, .spacingMD)
         .frame(maxWidth: .infinity)
+    }
+
+    @ViewBuilder
+    private func noBabyFooter() -> some View {
+        VStack(spacing: .spacingMD) {
+            VStack(spacing: .spacingXS) {
+                Text(BabyDashboardStrings.noBabiesTitle)
+                    .fontOpenSans(.heading4)
+                    .foregroundStyle(theme.textHeading)
+                    .multilineTextAlignment(.center)
+                Text(BabyDashboardStrings.noBabiesSubtitle)
+                    .fontOpenSans(.body2)
+                    .foregroundStyle(theme.textBody)
+                    .multilineTextAlignment(.center)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            .padding(.horizontal, .spacingLG)
+            ButtonView(
+                text: BabyDashboardStrings.addBaby,
+                type: .filledPrimary,
+                size: .large,
+                isDisabled: false
+            ) {
+                tabViewModel.navigateToSettings(route: .addBaby, sourceTab: .dash)
+            }
+            .padding(.horizontal, .spacingLG)
+        }
+        .padding(.vertical, .spacingMD)
+        .frame(maxWidth: .infinity)
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel(BabyDashboardStrings.noBabiesTitle)
     }
 
     init(
@@ -66,7 +109,7 @@ struct DashboardTrendView<TopContent: View, ChartFooter: View>: View {
                 .padding(.horizontal, 15)
                 if !dashboardStore.state.data.hasAnyEntries ||
                    (dashboardStore.isBabySelection && !dashboardStore.hasBabyEntries) {
-                    noEntriesFooter()
+                    emptyStateFooter()
                 }
             }
             .padding(.top, .spacingMD)

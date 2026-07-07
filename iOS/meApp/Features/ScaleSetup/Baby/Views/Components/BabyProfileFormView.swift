@@ -167,9 +167,6 @@ struct BabyProfileFormView: View {
         .onChange(of: focusedField) { _, _ in
             showDatePicker = false
         }
-        .onChange(of: form.name.value) { _, _ in
-            form.duplicateNameError = nil
-        }
     }
 
     private func dismissKeyboardAndUnfocus() {

@@ -84,6 +84,13 @@ class DashboardStore: ObservableObject, DashboardStateProviding {
         return nil
     }
 
+    /// True when the baby product is selected but no real baby profile exists yet — i.e. the
+    /// "Baby Scale" placeholder selection. Drives the "No babies added yet" / ADD A BABY empty
+    /// state (a profile, not a device, is the blocker per MOB-1245).
+    var isPendingBabySelection: Bool {
+        selectedBabyProfile?.isPendingSelection ?? false
+    }
+
     var selectedBabyMetric: BabyMetric {
         state.ui.selectedMetricLabel == BabyMetric.height.rawValue ? .height : .weight
     }
