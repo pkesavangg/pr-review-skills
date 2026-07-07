@@ -30,44 +30,33 @@ struct LandingScreen: View {
     var body: some View {
         RoutingView(stack: $router.stack) {
             ZStack {
-                Group {
-                    hasAnyAccounts ? theme.backgroundSecondary : theme.actionPrimary
-                }
-                .ignoresSafeArea()
+                theme.backgroundSecondary
+                    .ignoresSafeArea()
                 if !hasAnyAccounts {
                     VStack(alignment: .center) {
                         Spacer()
                             .frame(minHeight: .spacing6XL)
 
-                        LogoView()
-                            .padding(.bottom, 55)
-                            .accessibilityElement(children: .ignore)
-                            .accessibilityLabel(lang.accLogoLabel)
+                        MeHealthLogoCard()
+                            .padding(.bottom, .spacing2XL)
 
                         VStack(alignment: .center, spacing: .spacingSM) {
 
-                            Button(action: {
+                            ButtonView(text: commonLang.logIn, type: .filledPrimary, size: .large, isDisabled: false) {
                                 if landingStore.canAddMoreAccounts() {
                                     router.navigate(to: .login(nil))
                                 }
-
-                            }, label: {
-                                Text(commonLang.logIn.uppercased())
-                                    .fontWeight(.bold)
-                                    .fontOpenSans(.button1)
-                                    .frame(minWidth: 96)
-                                    .padding(.vertical, .spacingXS)
-                            })
-                            .buttonStyle(AppPressableButtonStyle(type: .filledSecondary, size: .large, backgroundColorOverride: nil))
+                            }
+                            .frame(width: 160)
                             .accessibilityIdentifier(AccessibilityID.landingLogInButton)
                             .accessibilityHint(lang.accLogInHint)
 
-                            ButtonView(text: lang.signUp, type: .outlinedSecondary, size: .large, isDisabled: false) {
+                            ButtonView(text: lang.signUp, type: .outlinedPrimary, size: .large, isDisabled: false) {
                                 if landingStore.canAddMoreAccounts() {
                                     router.navigate(to: .signup)
                                 }
                             }
-                            .frame(width: 96)
+                            .frame(width: 160)
                             .accessibilityIdentifier(AccessibilityID.landingSignUpButton)
                             .accessibilityHint(lang.accSignUpHint)
                         }

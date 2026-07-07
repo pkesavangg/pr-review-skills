@@ -18,7 +18,7 @@ struct VersionView: View {
         VStack {
             Text("\(lang.versionPrefix.lowercased()) \(appVersion)")
                 .fontOpenSans(.subHeading2)
-                .foregroundColor(theme.backgroundPrimary)
+                .foregroundColor(theme.textBody)
         }
         .padding(.horizontal, .spacingSM)
         .padding(.bottom, .spacingSM)
