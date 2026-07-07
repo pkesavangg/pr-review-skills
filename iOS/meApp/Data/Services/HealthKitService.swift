@@ -251,7 +251,8 @@ final class HealthKitService: HealthKitServiceProtocol {
                         weight: entry.scaleEntry?.weight,
                         bodyFat: entry.scaleEntry?.bodyFat,
                         muscleMass: entry.scaleEntry?.muscleMass,
-                        bmi: entry.scaleEntry?.bmi
+                        bmi: entry.scaleEntry?.bmi,
+                        pulse: entry.scaleEntryMetric?.pulse
                     ))
                 }
             }
@@ -572,6 +573,18 @@ final class HealthKitService: HealthKitServiceProtocol {
                     timestamp: timestamp
                 ))
             }
+
+            // MOB-819: scale entries can carry a measured heart rate on
+            // scaleEntryMetric.pulse. The full-history push dropped it, so
+            // existing entries never wrote heart rate to Apple Health. A stored
+            // `0` means the scale couldn't measure it — skip, like the other metrics.
+            if let pulse = item.pulse, pulse > 0 {
+                healthKitData.append(HealthKitData(
+                    type: .heartRate,
+                    value: Double(pulse),
+                    timestamp: timestamp
+                ))
+            }
         }
         return healthKitData
     }
@@ -583,6 +596,7 @@ final class HealthKitService: HealthKitServiceProtocol {
         let bodyFat: Int?
         let muscleMass: Int?
         let bmi: Int?
+        let pulse: Int?
     }
 
     /// Extended export struct that includes pulse and BPM data for EntryNotification conversions.
