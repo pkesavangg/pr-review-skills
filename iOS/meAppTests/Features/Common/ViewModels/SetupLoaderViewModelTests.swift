@@ -44,14 +44,16 @@ struct SetupLoaderViewModelTests {
     }
 
     @Test("startAnimation is a no-op when the connection state is not loading")
-    func startAnimationNoOpWhenNotLoading() async {
+    func startAnimationNoOpWhenNotLoading() {
         let sut = SetupLoaderViewModel()
         sut.connectionState = .success
 
         sut.startAnimation()
 
-        // Give the timer a chance to fire had it been scheduled.
-        try? await Task.sleep(nanoseconds: 800_000_000)
+        // The loading guard short-circuits synchronously, so no timer is ever
+        // scheduled and no tick can mutate the dots. Assert that scheduling state
+        // deterministically instead of waiting a fixed interval to see nothing happen.
+        #expect(sut.isAnimating == false)
         #expect(sut.dotScales.allSatisfy { $0 == 0.5 })
     }
 
