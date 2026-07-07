@@ -356,6 +356,28 @@ jobs:
             # and ViewModels ~57% are the shortfalls), so the shortage is visible and enforced.
             THRESHOLD=80
             echo "Non-UI line coverage: ${COVERAGE}% (UI layer excluded per CLAUDE.md; threshold ${THRESHOLD}%)"
+            # Diagnostic: the non-UI testable files with the most uncovered lines, so
+            # coverage work can target the biggest gaps first.
+            python3 -c "
+            import json
+            d = json.load(open('coverage.json'))
+            apps = [t for t in d.get('targets', []) if t.get('name','').startswith('meApp') and t.get('name','').endswith('.app')]
+            target = apps[0] if apps else None
+            def is_ui(path):
+                if '/Views/' in path: return True
+                base = path.rsplit('/', 1)[-1]
+                return base.endswith(('View.swift','Screen.swift','Modifier.swift'))
+            rows = []
+            for f in (target.get('files', []) if target else []):
+                p = f.get('path', f.get('name',''))
+                if is_ui(p): continue
+                ex = f.get('executableLines',0); cov = f.get('coveredLines',0)
+                if ex - cov > 0: rows.append((ex-cov, ex, cov, p.rsplit('/',1)[-1]))
+            rows.sort(reverse=True)
+            print('--- Top 25 non-UI files by uncovered lines ---')
+            for gap, ex, cov, name in rows[:25]:
+                print(f'  gap={gap:4d}  {(cov/ex*100 if ex else 100):5.1f}%  ({cov}/{ex})  {name}')
+            "
             if (( $(echo "$COVERAGE < $THRESHOLD" | bc -l) )); then
               echo "ERROR: Coverage ${COVERAGE}% is below the ${THRESHOLD}% threshold."
               exit 1
