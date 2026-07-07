@@ -116,16 +116,15 @@ struct HistoryMonthListScreen: View {
                 }
             }
         }
-        .simultaneousGesture(
-            DragGesture(minimumDistance: 10)
-                .onChanged { _ in
-                    if openItemID != nil {
-                        withAnimation {
-                            openItemID = nil
-                        }
-                    }
+        // A DragGesture here (even simultaneous) can block the ScrollView's own pan
+        // on iOS 18+, so close any open swipe row via the scroll phase instead.
+        .onScrollPhaseChange { _, newPhase in
+            if newPhase != .idle, openItemID != nil {
+                withAnimation {
+                    openItemID = nil
                 }
-        )
+            }
+        }
     }
 }
 

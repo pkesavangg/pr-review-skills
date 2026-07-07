@@ -177,6 +177,8 @@ struct MyKidsScreen: View {
                         AnyView(
                             AppIconView(icon: AppAssets.trash, size: IconSize(width: 24, height: 24))
                                 .foregroundColor(theme.backgroundPrimary)
+                                // Icon-only: names the VoiceOver custom action too
+                                .accessibilityLabel(CommonStrings.delete)
                         )
                     }
                 )
