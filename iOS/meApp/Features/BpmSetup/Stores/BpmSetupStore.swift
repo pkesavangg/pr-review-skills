@@ -595,9 +595,11 @@ final class BpmSetupStore: ObservableObject {
         // initial connect times out / errors. That failed attempt tears the stale session
         // down, which is why a manual "Try Again" then succeeds. Do that recovery
         // automatically — retry the connect once before surfacing "Unable to Connect", so
-        // the user isn't forced to reconnect. Only `.failure` (timeout / pair error) is
-        // retried; the SDK's conflict responses below are legitimate and handled as-is.
-        if case .failure(let error) = result {
+        // the user isn't forced to reconnect. Only transient pairing failures (timeout / pair
+        // error) are retried (`isRetryablePairingFailure`); hard failures — Bluetooth off,
+        // permission denied, invalid id, device not found — fail fast, and the SDK's conflict
+        // responses below are legitimate and handled as-is.
+        if case .failure(let error) = result, error.isRetryablePairingFailure {
             LoggerService.shared.log(
                 level: .info,
                 tag: tag,

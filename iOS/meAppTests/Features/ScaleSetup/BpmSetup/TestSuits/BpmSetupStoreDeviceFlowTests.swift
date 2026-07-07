@@ -387,6 +387,30 @@ extension BpmSetupStoreTests {
             #expect(harness.notification.alertData?.title == BpmSetupStrings.ConnectionErrorAlert.title)
         }
 
+        @Test("startPairing does not retry a non-recoverable failure (Bluetooth unavailable)")
+        func startPairingNoRetryOnNonRecoverableFailure() async {
+            let bluetooth = MockBluetoothService()
+            // A hard failure can't be fixed by a second connect — it must fail fast, not retry.
+            bluetooth.connectBpmResults = [.failure(.bluetoothUnavailable), .success(.creationCompleted)]
+            let harness = BpmSetupStoreTestFixtures.makeSUT(bluetooth: bluetooth)
+            let store = harness.store
+            BpmSetupStoreTestFixtures.configureA6Bpm(store)
+            store.selectedUserNumber = 2
+            store.currentStepIndex = BpmSetupStoreTestFixtures.stepIndex(.scanning, in: store)
+
+            let device = BpmSetupStoreTestFixtures.makeBpmDevice()
+            store.testSetInternalState(
+                discoveredDevice: device,
+                discoveryEvent: BpmSetupStoreTestFixtures.makeBpmDiscoveryEvent(device: device, protocolType: .A6)
+            )
+
+            await store.testStartPairing()
+
+            // Connected only once, and "Unable to Connect" surfaced immediately.
+            #expect(bluetooth.connectBpmCalls == 1)
+            #expect(harness.notification.alertData?.title == BpmSetupStrings.ConnectionErrorAlert.title)
+        }
+
         @Test("startPairing does not retry when the first connect succeeds")
         func startPairingNoRetryOnFirstSuccess() async {
             let bluetooth = MockBluetoothService()
