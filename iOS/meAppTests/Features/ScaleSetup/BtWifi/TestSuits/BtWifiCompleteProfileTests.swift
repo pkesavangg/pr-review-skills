@@ -21,6 +21,11 @@ struct BtWifiCompleteProfileTests {
             weightHeight: weightHeight
         )
         account.seedAccounts([snapshot], active: snapshot)
+        // MockAccountService's persistence stubs default to `.failure`; stub success so the
+        // save path runs updateProfile → updateBodyComp → createGoal without throwing early.
+        account.updateProfileResult = .success(())
+        account.updateBodyCompResult = .success(())
+        account.createGoalResult = .success(())
         return BtWifiStoreTestFixtures.makeSUT(account: account)
     }
 
