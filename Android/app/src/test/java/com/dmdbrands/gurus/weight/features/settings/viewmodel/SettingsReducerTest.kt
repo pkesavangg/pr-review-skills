@@ -109,14 +109,6 @@ class SettingsReducerTest {
         assertThat(result?.showUnreadFeedIndication).isTrue()
     }
 
-    @Test
-    fun `SetExportEnabled updates isExportEnabled`() {
-        val state = SettingsState(isExportEnabled = false)
-
-        val result = reducer.reduce(state, SettingsIntent.SetExportEnabled(enabled = true))
-
-        assertThat(result?.isExportEnabled).isTrue()
-    }
 
     @Test
     fun `SetIsBabyProduct updates isBabyProduct`() {
@@ -184,7 +176,6 @@ class SettingsReducerTest {
         assertThat(state.enableTestingFeatures).isFalse()
         assertThat(state.unreadFeedCount).isEqualTo(0)
         assertThat(state.showUnreadFeedIndication).isFalse()
-        assertThat(state.isExportEnabled).isFalse()
         assertThat(state.isBabyProduct).isFalse()
         assertThat(state.hasWeightScale).isFalse()
         assertThat(state.hasBabyScaleDevice).isFalse()
@@ -360,7 +351,6 @@ class SettingsReducerTest {
     fun `side-effect and modal intents return null`() {
         val state = SettingsState()
 
-        assertThat(reducer.reduce(state, SettingsIntent.ExportData)).isNull()
         assertThat(reducer.reduce(state, SettingsIntent.LogoutAllAccounts)).isNull()
         assertThat(reducer.reduce(state, SettingsIntent.DeleteAccount)).isNull()
         assertThat(reducer.reduce(state, SettingsIntent.ConfirmDeleteAccount)).isNull()
