@@ -151,9 +151,7 @@ struct HistoryListScreen: View {
             }
         }
         .refreshable {
-            Task {
-                await store.refreshAllEntries()
-            }
+            await store.refreshAllEntries()
         }
     }
 
@@ -193,6 +191,9 @@ struct HistoryListScreen: View {
                     }
                 }
             }
+        }
+        .refreshable {
+            await store.refreshAllEntries()
         }
     }
 
@@ -249,6 +250,9 @@ struct HistoryListScreen: View {
                     }
                 }
             }
+        }
+        .refreshable {
+            await store.refreshAllEntries()
         }
     }
 }

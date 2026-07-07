@@ -92,7 +92,6 @@ final class BabyScaleSetupStore: ObservableObject {
     @Published var showSkipDialog: Bool = false
     @Published var showSkipEditDialog: Bool = false
     @Published var showBabyDatePicker: Bool = false
-    @Published var showBabySexPicker: Bool = false
 
     // MARK: - Computed Properties
 
@@ -126,10 +125,6 @@ final class BabyScaleSetupStore: ObservableObject {
                     showDatePicker: Binding(
                         get: { [weak self] in self?.showBabyDatePicker ?? false },
                         set: { [weak self] in self?.showBabyDatePicker = $0 }
-                    ),
-                    showSexPicker: Binding(
-                        get: { [weak self] in self?.showBabySexPicker ?? false },
-                        set: { [weak self] in self?.showBabySexPicker = $0 }
                     )
                 ))
             case .babyAdded:
