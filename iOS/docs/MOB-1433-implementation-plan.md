@@ -145,6 +145,24 @@ Tell Kesavan the stash name so he can `git stash pop` on his own branch later. I
 - **Isolation updates:** mocks lose `@MainActor` where protocols changed (`MockHTTPClient` etc.).
 - Leave `CappedCursorSyncTests.swift` alone (Kesavan's temp file, stashed anyway).
 
+## 5a. Implementation status (2026-07-06) — SHIPPED
+
+All workstreams landed on branch `MOB-1433-entry-sync-batch-...` as 7 commits:
+
+| Commit | Scope | SHA |
+|--------|-------|-----|
+| 1 | E1 `#Index<Entry>` + A3 repo `fetchLimit`/`fetchCount`, delete dead queue, rename `performBackgroundTask`→`performTask` | `0d8177674` |
+| 2 | A1 `SwiftDataWorker` batched merge/insert/push/read APIs (`EntryWorkerProtocol`) + `BatchedMergeTests` parity suite | `c8df162d6` |
+| 3 | A2/A4 reroute sync + SQLite migration through the worker; delete per-row `mergeRemoteOperations`/`cleanupDuplicates`; **remove the 3 s sleep** | `a4c48cf39` |
+| 4 | B1 chunked (`≤100`) batch `POST /v3/entries/` + `applyPushOutcomes` bookkeeping | `1f997aa8e` |
+| 5 | C1 batched HealthKit forward + per-account `lastHealthKitForwardTimestamp` marker (first-sync skip) | `aa78026e6` |
+| 6 | F decode off the main actor (see scope note) | `44e86dcf0` |
+| 7 | D1 hot reads (`getAllEntriesAsDTO`/`fetchAllEntrySnapshots`) via worker; D2 dashboard un-gating + `lastActiveTime` re-init fix | `19b38ac64` |
+
+**Two deliberate scope adjustments (flagged, not silent):**
+- **F (network isolation) — narrowed.** Instead of dropping `@MainActor` from `HTTPClientProtocol`/`HTTPClient`/the 10 API repos, only the CPU-bound **decode** moved off main (a `nonisolated` async helper). Full de-isolation would move `@Injector`/`DependencyContainer.shared` (a non-thread-safe dictionary) access off main and force de-isolating the DI container + every repo — too broad to land safely without device test runs. URLSession I/O already runs off-thread; decode was the real main-thread cost. Full de-isolation remains a possible follow-up.
+- **A5 (`migrateBabyEntriesToDecigrams`) — not rewritten.** Its per-row loop is a one-time, flag-gated, baby-only path (tens of rows, not 5k–10k) and not a freeze contributor. Left as-is; batch it later if profiling flags it.
+
 ## 6. Suggested commit sequence (single PR, reviewable commits)
 
 1. `MOB-1433` E1 schema index + A3 repo `fetchLimit`/`fetchCount` + delete dead queue actor
