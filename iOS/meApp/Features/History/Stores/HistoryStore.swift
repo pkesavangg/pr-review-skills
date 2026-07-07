@@ -264,8 +264,16 @@ final class HistoryStore: ObservableObject {
         try? await accountService.refreshAccount()
         await entryService.syncAllEntriesWithRemote()
         await loadMonthsInternal(canShowLoader: false)
+        // Refresh whichever product detail is currently open so pull-to-refresh
+        // updates the visible detail screen for weight, BP, and baby alike.
         if let selectedMonth {
             await loadEntries(for: selectedMonth, showLoader: false)
+        }
+        if let selectedBPMonth {
+            selectBPMonth(selectedBPMonth)
+        }
+        if let selectedBabyDay {
+            selectBabyDay(selectedBabyDay)
         }
     }
 

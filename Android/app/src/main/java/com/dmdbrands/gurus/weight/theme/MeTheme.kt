@@ -202,7 +202,10 @@ private fun iamColorsFromColorScheme(colorScheme: ColorScheme): IamColors {
     primaryFocusedAction = colorScheme.primaryFocusedAction,
     primaryAction = colorScheme.primaryAction,
     primaryActionDisabled = colorScheme.primaryActionDisabled,
-    secondaryAction = colorScheme.secondaryAction,
+    // IAM's secondaryAction is the dark filled-button colour (its only use is the TertiaryFilled
+    // button bg). MeApp's secondaryAction went white in MOB-987, which made that button
+    // white-on-white; map it to the neutral primaryAction (#2C2827) so it stays visible. (MOB-1261)
+    secondaryAction = colorScheme.primaryAction,
     secondaryActionDisabled = colorScheme.secondaryActionDisabled,
     tertiaryAction = colorScheme.tertiaryAction,
     tertiaryActionDisabled = colorScheme.tertiaryActionDisabled,
