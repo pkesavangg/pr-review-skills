@@ -44,20 +44,45 @@ extension SwiftDataWorker: EntryWorkerProtocol {
         var context = try makeMergeContext(accountId: accountId)
 
         let groupedOps = Dictionary(grouping: remoteOps) { $0.serverEntryId ?? $0.entryTimestamp ?? "" }
-        for (groupKey, ops) in groupedOps {
-            guard !groupKey.isEmpty else { continue }
 
-            // Latest operation per entry wins, in serverTimestamp order.
+        // Resolve each group to its latest operation (by serverTimestamp), then
+        // apply in two passes: creates/updates first, deletes last.
+        //
+        // Deletes MUST run after creates and be resolved by (entryTimestamp,
+        // entryType) — not by the delete op's serverEntryId. The server assigns a
+        // fresh entryId to every operation, so a create and the delete that removes
+        // it carry DIFFERENT serverEntryIds but the SAME (entryTimestamp, category);
+        // a delete references its target by that (timestamp, category), never by its
+        // own id. Grouping on serverEntryId therefore stranded each delete in its
+        // own group where it matched the local row by the wrong id, found nothing,
+        // and was silently dropped — resurrecting the deleted entry on the next
+        // sync (MOB-1433). Splitting the passes guarantees the target row is
+        // materialized before a delete resolves it, independent of group order.
+        var finalOps: [BathScaleOperationDTO] = []
+        finalOps.reserveCapacity(groupedOps.count)
+        for (groupKey, ops) in groupedOps where !groupKey.isEmpty {
             let sortedOps = ops.sorted { ($0.serverTimestamp ?? "") < ($1.serverTimestamp ?? "") }
-            guard let finalOp = sortedOps.last else { continue }
+            if let finalOp = sortedOps.last {
+                finalOps.append(finalOp)
+            }
+        }
 
+        // Pass 1 — creates / updates.
+        for finalOp in finalOps where finalOp.operationType != OperationType.delete.rawValue {
             if finalOp.serverEntryId != nil {
                 mergeServerIdentifiedGroup(finalOp: finalOp, accountId: accountId, context: &context)
             } else {
-                mergeLegacyTimestampGroup(groupKey: groupKey, finalOp: finalOp, accountId: accountId, context: &context)
+                mergeLegacyTimestampGroup(groupKey: finalOp.entryTimestamp ?? "", finalOp: finalOp, accountId: accountId, context: &context)
             }
             try saveChunkIfNeeded(&context)
         }
+
+        // Pass 2 — deletes, resolved against the now-materialized rows.
+        for finalOp in finalOps where finalOp.operationType == OperationType.delete.rawValue {
+            mergeDelete(finalOp: finalOp, context: &context)
+            try saveChunkIfNeeded(&context)
+        }
+
         try savePendingChanges(&context)
 
         return EntryMergeResult(
@@ -245,6 +270,44 @@ extension SwiftDataWorker: EntryWorkerProtocol {
                 context.mutationsSinceSave += 1
             }
             removeDuplicates(rows, keeping: localEntry, context: &context)
+        }
+    }
+
+    /// Applies a remote delete. A delete op's `serverEntryId` is a fresh
+    /// per-operation id, NOT the target row's id — the server references the target
+    /// by (entryTimestamp, category). So resolve the local row(s) by normalized
+    /// timestamp + entryType and remove them when the delete is the newer server
+    /// state (latest-wins by serverTimestamp, mirroring the create/update rule).
+    private func mergeDelete(finalOp: BathScaleOperationDTO, context: inout MergeContext) {
+        guard let timestamp = finalOp.entryTimestamp, !timestamp.isEmpty else { return }
+        let normalizedTimestamp = timestamp.replacingOccurrences(of: ".000Z", with: "Z")
+        let tsCandidates = timestamp == normalizedTimestamp ? [timestamp] : [timestamp, normalizedTimestamp]
+
+        var rows: [Entry] = []
+        for candidate in tsCandidates {
+            if let localRows = context.byTimestamp[candidate] {
+                rows.append(contentsOf: localRows)
+            }
+        }
+        // Restrict to the same product when the op carries a category — a delete
+        // for one product must never remove another product's entry recorded at
+        // the same instant.
+        if let targetType = finalOp.entryType {
+            rows = rows.filter { $0.entryType == targetType }
+        }
+        // No matching local row (e.g. a create+delete pair where the create was
+        // itself superseded) — nothing to remove.
+        guard !rows.isEmpty else { return }
+
+        let remoteServerTS = finalOp.serverTimestamp ?? ""
+        var notified = false
+        for row in rows {
+            let localServerTS = row.serverTimestamp ?? ""
+            guard localServerTS.isEmpty || remoteServerTS > localServerTS else { continue }
+            // One UI/integration notification per delete (as the prior merge did);
+            // extra rows sharing the timestamp are removed silently.
+            deleteRow(row, notify: !notified, context: &context)
+            notified = true
         }
     }
 

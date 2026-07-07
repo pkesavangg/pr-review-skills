@@ -209,6 +209,106 @@ struct BatchedMergeTests {
         #expect(try fetchAll(container).count == 1)
     }
 
+    // MARK: - Cross-operation delete identity (MOB-1433)
+
+    @Test("delete op with its own serverEntryId removes the create it targets by timestamp (full sync)")
+    func deleteWithDistinctServerIdRemovesTargetByTimestamp() async throws {
+        let (worker, container) = makeSUT()
+
+        // Mirrors the real GET /v3/entries payload: every operation gets its OWN
+        // entryId, so the delete's serverEntryId (1069155) differs from the create
+        // it removes (1069154) — they share only the entryTimestamp. The 250 entry
+        // is a separate create. Before the two-pass fix the delete was stranded in
+        // its own serverEntryId group and dropped, resurrecting the 100 entry.
+        let created100 = makeOp(
+            serverEntryId: "1069154",
+            timestamp: "2026-07-07T09:22:28.361Z",
+            serverTimestamp: "2026-07-07T09:22:29.427Z",
+            weight: 1000
+        )
+        let delete100 = makeOp(
+            serverEntryId: "1069155",
+            timestamp: "2026-07-07T09:22:28.361Z",
+            serverTimestamp: "2026-07-07T09:22:42.673Z",
+            operationType: "delete",
+            weight: nil
+        )
+        let created250 = makeOp(
+            serverEntryId: "1069156",
+            timestamp: "2026-07-07T09:23:10.815Z",
+            serverTimestamp: "2026-07-07T09:23:31.275Z",
+            weight: 2500
+        )
+
+        let result = try await worker.applyRemoteOperations(
+            [created250, created100, delete100], accountId: accountId
+        )
+
+        // Only the 250 entry survives; the deleted 100 must not resurrect.
+        let all = try fetchAll(container)
+        #expect(all.count == 1)
+        #expect(all.first?.serverEntryId == "1069156")
+        #expect(all.first?.scaleEntry?.weight == 2500)
+        #expect(result.deletedCount == 1)
+    }
+
+    @Test("delete op removes an already-synced local row via timestamp when serverIds differ (incremental sync)")
+    func deleteRemovesAlreadySyncedRowByTimestamp() async throws {
+        let (worker, container) = makeSUT()
+        // The create was synced on a previous run and stored serverEntryId 1069154.
+        let local = EntryTestFixtures.makeEntry(
+            timestamp: "2026-07-07T09:22:28.361Z",
+            weight: 1000,
+            serverTimestamp: "2026-07-07T09:22:29.427Z",
+            isSynced: true
+        )
+        local.serverEntryId = "1069154"
+        try seed(container, entries: [local])
+
+        // A later sync returns ONLY the delete, carrying its own op id (1069155).
+        let result = try await worker.applyRemoteOperations(
+            [makeOp(
+                serverEntryId: "1069155",
+                timestamp: "2026-07-07T09:22:28.361Z",
+                serverTimestamp: "2026-07-07T09:22:42.673Z",
+                operationType: "delete",
+                weight: nil
+            )],
+            accountId: accountId
+        )
+
+        #expect(result.deletedCount == 1)
+        #expect(result.deletedNotifications.count == 1)
+        #expect(try fetchAll(container).isEmpty)
+    }
+
+    @Test("an older delete op does not remove a newer local row")
+    func staleDeleteDoesNotRemoveNewerRow() async throws {
+        let (worker, container) = makeSUT()
+        let local = EntryTestFixtures.makeEntry(
+            timestamp: "2026-07-07T09:22:28.361Z",
+            serverTimestamp: "2026-07-07T09:30:00.000Z",
+            isSynced: true
+        )
+        local.serverEntryId = "1069154"
+        try seed(container, entries: [local])
+
+        // Delete is OLDER (serverTimestamp before the local row's) → must not win.
+        let result = try await worker.applyRemoteOperations(
+            [makeOp(
+                serverEntryId: "1069155",
+                timestamp: "2026-07-07T09:22:28.361Z",
+                serverTimestamp: "2026-07-07T09:22:42.673Z",
+                operationType: "delete",
+                weight: nil
+            )],
+            accountId: accountId
+        )
+
+        #expect(result.deletedCount == 0)
+        #expect(try fetchAll(container).count == 1)
+    }
+
     // MARK: - Legacy timestamp identity
 
     @Test("legacy op matches local row by timestamp and updates it")

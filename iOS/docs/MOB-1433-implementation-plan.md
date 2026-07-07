@@ -82,7 +82,7 @@ Tell Kesavan the stash name so he can `git stash pop` on his own branch later. I
 
 **A2. `iOS/meApp/Data/Services/EntryService.swift`** — becomes a thin `@MainActor` orchestrator:
 - `performSync()` (`:996`): push (B1) → fetch full history (one sync-mode response, per Decision 3) → `swiftDataWorker.applyRemoteOperations(...)` → if changed: ONE `entrySaved` emission (existing `getLatestEntry` pattern `:1458-1467`), `loadDashboardData()`, `updateProgressAndStreakInternal()` → HealthKit batch-forward (C1) → **delete the 3 s `Task.sleep` (`:1033`)** → `checkGoalAlerts()`.
-- Delete `mergeRemoteOperations` + `cleanupDuplicates` (logic moves to worker; parity covered by tests). Mirror the same rewiring in the second sync path (`syncUnsyncedEntries`, ~`:1260-1290`).
+- Delete `mergeRemoteOperations` + `cleanupDuplicates` (logic moves to worker; parity covered by tests). Mirror the same rewiring in the second sync path (`syncUnsyncedEntries`, ~`:1260-1290`). **Update (2026-07-07):** that second path was later deleted outright rather than rewired — see §5b.3.
 - Keep `isSyncing`/`lastSyncTime` published on main as today.
 - *Why:* `EntryService` must stay `@MainActor` for its `@Published` UI state, but the heavy machinery must not inherit that isolation.
 
@@ -162,6 +162,39 @@ All workstreams landed on branch `MOB-1433-entry-sync-batch-...` as 7 commits:
 **Two deliberate scope adjustments (flagged, not silent):**
 - **F (network isolation) — narrowed.** Instead of dropping `@MainActor` from `HTTPClientProtocol`/`HTTPClient`/the 10 API repos, only the CPU-bound **decode** moved off main (a `nonisolated` async helper). Full de-isolation would move `@Injector`/`DependencyContainer.shared` (a non-thread-safe dictionary) access off main and force de-isolating the DI container + every repo — too broad to land safely without device test runs. URLSession I/O already runs off-thread; decode was the real main-thread cost. Full de-isolation remains a possible follow-up.
 - **A5 (`migrateBabyEntriesToDecigrams`) — not rewritten.** Its per-row loop is a one-time, flag-gated, baby-only path (tens of rows, not 5k–10k) and not a freeze contributor. Left as-is; batch it later if profiling flags it.
+
+## 5b. Post-ship follow-ups (2026-07-07)
+
+Two correctness/robustness fixes plus a dead-path removal landed on the branch after the initial 7-commit ship. All three touch `SwiftDataWorker+EntryMerge.swift`, `EntryService.swift`, and `BatchedMergeTests.swift`.
+
+### 5b.1 Delete-resurrection bug — the merge now applies deletes in a second pass
+
+**Symptom:** a deleted entry reappeared on the next full sync.
+
+**Root cause:** `applyRemoteOperations` grouped every op by `serverEntryId ?? entryTimestamp`, then matched the group's final op to a local row by that same key. But the server assigns a **fresh `entryId` to every operation** — a create and the delete that removes it carry *different* `serverEntryId`s and share only `(entryTimestamp, category)`. A delete references its target by `(timestamp, category)`, never by its own id. So each delete was stranded in its own single-op `serverEntryId` group, matched no local row, and was silently dropped — resurrecting the row on the next sync.
+
+**Fix:** resolve each group to its latest op (by `serverTimestamp`), then apply in **two passes**:
+1. **Pass 1 — creates/updates** (unchanged semantics; keyed by `serverEntryId`, or legacy `entryTimestamp` when absent).
+2. **Pass 2 — deletes**, via the new `mergeDelete(finalOp:context:)`, which resolves the target row(s) by **normalized `entryTimestamp` + `entryType`** (never by the delete op's own id) and removes them latest-wins by `serverTimestamp`. Splitting the passes guarantees the target row is materialized before any delete resolves it, independent of group-iteration order. When the op carries a `category`/`entryType`, the match is restricted to that product so a delete never removes another product's entry recorded at the same instant. One notification per delete (prior `deleteRow(notify:)` semantics).
+
+**Tests added** (`BatchedMergeTests` → "Cross-operation delete identity (MOB-1433)"):
+- `deleteWithDistinctServerIdRemovesTargetByTimestamp` — full-sync payload (create `1069154` + its delete `1069155` + separate create `1069156`, all distinct ids): only the 250 entry survives; the deleted 100 does not resurrect.
+- `deleteRemovesAlreadySyncedRowByTimestamp` — an incremental sync returning ONLY the delete removes the previously-synced local row it targets by timestamp.
+- `staleDeleteDoesNotRemoveNewerRow` — an older delete (`serverTimestamp` before the local row's) does not win.
+
+### 5b.2 Eager push after every local mutation — shrink the data-loss-on-kill window
+
+**Problem:** a just-made add/edit/delete stayed local until the next Dashboard/History/foreground sync; killing or uninstalling the app in between lost it.
+
+**Fix (`EntryService`):** subscribe once in `init` to `Publishers.Merge(entrySaved, entryDeleted)`, debounce 500 ms (so an edit = delete+add collapses into one push), and call the new **`pushPendingEntries()`** to flush unsynced rows to the server immediately. It is:
+- **Push-only** (no remote pull) → cheap enough to run per mutation.
+- **Coalesced** via a new `pendingPushTask` — concurrent eager pushes await the in-flight one instead of racing.
+- **Piggybacked** — if a full sync is running (`activeSyncTask`) it awaits that instead of pushing concurrently; conversely `syncEntries` now awaits any in-flight `pendingPushTask` before its own push. The two never double-submit the same unsynced rows.
+- **Offline-guarded** — skips when `NetworkMonitor.shared.isConnected` is false, so it doesn't burn the 8-try attempt budget; rows stay queued for the next online trigger.
+
+### 5b.3 Removed dead `syncUnsyncedEntries`
+
+The private push-then-pull "sync after local changes" path (the one §5 A2 planned to "mirror the rewiring" into) is deleted outright — it had no remaining callers, and its role is now covered by eager push (immediate push, 5b.2) plus the full `syncEntries` (pull).
 
 ## 6. Suggested commit sequence (single PR, reviewable commits)
 

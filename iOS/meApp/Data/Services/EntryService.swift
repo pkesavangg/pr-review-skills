@@ -66,6 +66,10 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
     private var lastLoggedEntryCountByAccount: [String: Int] = [:]
     /// Tracks the active sync task so concurrent callers can await it instead of skipping.
     private var activeSyncTask: Task<Void, Never>?
+    /// Tracks an in-flight eager push (fired after a local mutation) so concurrent
+    /// eager pushes coalesce onto one task and a full sync can await it before its
+    /// own push, preventing the same unsynced rows from being submitted twice.
+    private var pendingPushTask: Task<Void, Never>?
     /// Tracks in-flight dashboard loads so repeated callers can piggyback on the same work.
     /// The Bool result indicates whether the load succeeded; piggybacked callers retry on failure.
     private var activeDashboardLoadTasks: [EntryType: Task<Bool, Never>] = [:]
@@ -119,6 +123,25 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
                     }
                     .store(in: &self.cancellables)
             }
+
+            // Eager push after a local mutation. Every mutation (weight/BP/baby
+            // create or delete) emits on entrySaved/entryDeleted, so subscribing
+            // here covers all of them — and any future mutation — in one place.
+            // Debounce a short window so an edit (delete + add → two emissions)
+            // collapses into a single push, then flush unsynced rows to the server
+            // right away instead of waiting for the next Dashboard/History/foreground
+            // sync. This shrinks the window where a just-made add/edit/delete would
+            // be lost on app kill/uninstall (MOB-1433). The push is push-only,
+            // coalesced, and offline-guarded — see `pushPendingEntries()`.
+            Publishers.Merge(self.entrySaved, self.entryDeleted)
+                .debounce(for: .milliseconds(500), scheduler: DispatchQueue.main)
+                .sink { [weak self] _ in
+                    guard let self else { return }
+                    Task { @MainActor in
+                        await self.pushPendingEntries()
+                    }
+                }
+                .store(in: &self.cancellables)
         }
     }
 
@@ -984,6 +1007,14 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
             return
         }
 
+        // Let a just-fired eager push finish first so its rows are marked synced
+        // before this sync's own push runs — otherwise both could submit the same
+        // unsynced entries. (`pushPendingEntries()` piggybacks the other way while a
+        // full sync is active, so the two never push concurrently.)
+        if let existingPush = pendingPushTask {
+            await existingPush.value
+        }
+
         let task = Task { [weak self] in
             guard let self else { return }
             await self.performSync()
@@ -995,6 +1026,49 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
 
         activeSyncTask = nil
         isSyncing = false
+    }
+
+    /// Pushes locally-saved-but-unsynced changes to the server immediately after a
+    /// mutation (add/edit/delete), so they survive an app kill/uninstall instead of
+    /// waiting for the next Dashboard/History/foreground sync (MOB-1433). Fired
+    /// automatically off `entrySaved`/`entryDeleted` — see the subscription in `init`.
+    ///
+    /// Push-only (no remote pull), so it stays cheap enough to run per mutation.
+    /// Safety:
+    /// - If a full sync is running it piggybacks on that task (whose first step is a
+    ///   push) instead of pushing concurrently — no double-submit.
+    /// - Concurrent eager pushes coalesce onto one in-flight task.
+    /// - Skips entirely when offline: a failed push increments each entry's attempt
+    ///   count and abandons it after 8 tries (isSynced/isFailedToSync flipped true),
+    ///   so firing doomed pushes offline would burn the retry budget. Offline entries
+    ///   stay queued at their current attempt count for the next online trigger.
+    func pushPendingEntries() async {
+        // A full sync pushes unsynced rows as its first step — ride it, don't race it.
+        if let existingSync = activeSyncTask {
+            await existingSync.value
+            return
+        }
+        // Coalesce bursts (an edit is delete + add → two mutations → one push).
+        if let existingPush = pendingPushTask {
+            await existingPush.value
+            return
+        }
+        guard NetworkMonitor.shared.isConnected else {
+            logger.log(level: .info, tag: tag, message: "Eager push skipped — offline; entries remain queued for next sync")
+            return
+        }
+        guard let accountId = try? getAccountId() else {
+            logger.log(level: .error, tag: tag, message: "Eager push skipped — no active account")
+            return
+        }
+
+        let task = Task { [weak self] in
+            guard let self else { return }
+            _ = await self.pushUnsyncedEntriesToRemote(accountId: accountId)
+        }
+        pendingPushTask = task
+        await task.value
+        pendingPushTask = nil
     }
 
     /// The actual sync work — only one instance runs at a time.
@@ -1244,60 +1318,6 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
         let monthEntries = try await getEntries(forMonth: monthKey)
         guard !monthEntries.isEmpty else { return nil }
         return Self.buildHistoryMonth(monthKey: monthKey, monthEntries: monthEntries)
-    }
-
-    /// Internal: Sync only unsynced entries (used after local changes)
-    private func syncUnsyncedEntries() async {
-        guard !isSyncing else { return }
-
-        isSyncing = true
-        defer { isSyncing = false }
-
-        guard let accountId = try? getAccountId() else {
-            logger.log(level: .error, tag: tag, message: "Unsynced entries sync failed: No account ID available")
-            return
-        }
-
-        do {
-            // 1. Push unsynced entries to remote (return value unused; goal alerts handled by saveNewEntry)
-            _ = await pushUnsyncedEntriesToRemote(accountId: accountId)
-
-            // After syncing, update last sync timestamp and local state
-            var lastSyncTimestamp = try? await localKVRepo.getLastSyncTimestamp(accountId: accountId)
-            if (try? await localRepo.fetchEntryCount(forUserId: accountId)) == 0 {
-                try? await localKVRepo.clearLastSyncTimestamp(accountId: accountId)
-                lastSyncTimestamp = nil
-            }
-
-            // Full sync (no prior timestamp) → epoch start so the server returns the entire
-            // history in sync mode instead of a partial 20-row cursor page.
-            let syncStart = lastSyncTimestamp ?? Self.fullSyncStart
-            let remoteOps = try await remoteRepo.fetchEntries(
-                start: syncStart, cursor: nil, limit: nil, category: nil
-            )
-            // `.operations` recomputes its DTO remap on every access — hold it once.
-            let operations = remoteOps.operations
-            if !operations.isEmpty {
-                // Batched merge runs on the @ModelActor, off the main thread (MOB-1433).
-                let mergeResult = try await worker.applyRemoteOperations(operations, accountId: accountId)
-                await applyMergeSideEffects(mergeResult)
-                let syncTimestamp = remoteOps.timestamp ?? ISO8601DateFormatter().string(from: Date())
-                try await localKVRepo.setLastSyncTimestamp(accountId: accountId, timestamp: syncTimestamp)
-            } else {
-                try await localKVRepo.setLastSyncTimestamp(accountId: accountId, timestamp: ISO8601DateFormatter().string(from: Date()))
-            }
-
-            lastSyncTime = Date()
-            // Update progress, streak, and check for goal alerts
-            await updateProgressAndStreakInternal()
-            await loadDashboardData()
-        } catch {
-            logger.log(
-                level: .error,
-                tag: tag,
-                message: "Unsynced entries sync failed: accountId=\(accountId), error=\(error.localizedDescription)"
-            )
-        }
     }
 
     /// Applies the UI/integration side effects the merge used to perform per
