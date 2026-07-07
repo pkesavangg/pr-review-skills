@@ -70,10 +70,10 @@ fun PickDeviceStep(
 ) {
     val devices = listOf(
         DeviceOption(
-            id = PickDeviceStrings.Devices.BABY_SCALE,
-            title = PickDeviceStrings.babyScaleTitle,
-            subtitle = PickDeviceStrings.babyScaleSubtitle,
-            iconResId = AppIcons.Default.BabyScale,
+            id = PickDeviceStrings.Devices.WEIGHT_SCALE,
+            title = PickDeviceStrings.weightScaleTitle,
+            subtitle = PickDeviceStrings.weightScaleSubtitle,
+            iconResId = AppIcons.Default.WeightScale,
         ),
         DeviceOption(
             id = PickDeviceStrings.Devices.BLOOD_PRESSURE,
@@ -82,10 +82,10 @@ fun PickDeviceStep(
             iconResId = AppIcons.Default.BloodPressureMonitor,
         ),
         DeviceOption(
-            id = PickDeviceStrings.Devices.WEIGHT_SCALE,
-            title = PickDeviceStrings.weightScaleTitle,
-            subtitle = PickDeviceStrings.weightScaleSubtitle,
-            iconResId = AppIcons.Default.WeightScale,
+            id = PickDeviceStrings.Devices.BABY_SCALE,
+            title = PickDeviceStrings.babyScaleTitle,
+            subtitle = PickDeviceStrings.babyScaleSubtitle,
+            iconResId = AppIcons.Default.BabyScale,
         ),
     )
 
