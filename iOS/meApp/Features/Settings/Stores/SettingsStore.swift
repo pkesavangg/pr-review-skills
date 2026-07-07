@@ -559,23 +559,6 @@ class SettingsStore: ObservableObject {
         (weightlessForm.isOn.value != initialWeightlessToggleState) || weightlessForm.isDirty
     }
 
-    // MARK: - Handle export
-
-    func handleExport() {
-        let alert = AlertModel(
-            title: alertLang.CsvExportAlert.title,
-            message: alertLang.CsvExportAlert.message,
-            buttons: [
-                AlertButtonModel(title: alertLang.CsvExportAlert.sendButton, type: .primary) { _ in
-                    self.exportData()
-                },
-                AlertButtonModel(title: alertLang.CsvExportAlert.cancelButton, type: .secondary) { _ in
-                }
-            ]
-        )
-        notificationService.showAlert(alert)
-    }
-
     // MARK: - Edit Profile Helpers
 
     /// Populates the form with existing profile data (only once, on first load).
@@ -831,28 +814,6 @@ class SettingsStore: ObservableObject {
                 }
                 notificationService.showToast(ToastModel(title: toastTitle, message: toastMessage))
                 logger.log(level: .error, tag: tag, message: "Password update failed:", data: error.localizedDescription)
-            }
-            notificationService.dismissLoader()
-        }
-    }
-
-    // MARK: - Export Data
-
-    private func exportData() {
-        Task {
-            notificationService.showLoader(LoaderModel(text: loaderLang.sendingCsv))
-            do {
-                try await entryService.exportCSV()
-                notificationService.showToast(ToastModel(message: toastLang.csvExported))
-            } catch {
-                logger.log(level: .error, tag: tag, message: "CSV export failed:", data: error.localizedDescription)
-                switch error {
-                case HTTPError.noInternet:
-                    break
-                default:
-                    notificationService.showToast(ToastModel(
-                        message: toastLang.csvExportError))
-                }
             }
             notificationService.dismissLoader()
         }
