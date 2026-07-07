@@ -49,7 +49,6 @@ struct MyKidsAddBabyScreen: View {
             BabyProfileFormView(
                 form: store.babyProfileForm,
                 showDatePicker: $store.showBabyDatePicker,
-                showSexPicker: $store.showBabySexPicker,
                 hideHeader: true,
                 hideUnitToggle: true
             )
