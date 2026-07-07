@@ -24,7 +24,8 @@ final class BluetoothScaleSetupStore: ObservableObject {
     @Injector private var accountService: AccountServiceProtocol
 
     /// Owns the shared Complete Profile step state + logic (MOB-1388). Rendered on the
-    /// `.completeProfile` step; skipped automatically when the profile is already complete.
+    /// `.completeProfile` step, which the Bluetooth flow always presents; existing profile
+    /// values are pre-filled so the user can confirm or adjust them.
     let completeProfileStore = CompleteProfileSetupStore()
 
     // MARK: - Private

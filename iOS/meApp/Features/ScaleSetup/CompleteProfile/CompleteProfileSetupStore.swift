@@ -3,14 +3,17 @@
 //  meApp
 //
 //  Complete Profile Setup step. Collects the biological sex + height that the weight
-//  product requires and an optional weight goal, but only when the active account is
-//  missing those details (e.g. a baby-only account that just paired a weight scale).
-//  Accounts that already have them skip the step entirely.
+//  product requires and an optional weight goal (e.g. for a baby-only account that just
+//  paired a weight scale). Existing account values are pre-filled so the user can confirm
+//  or adjust them.
 //
 //  This store is shared across the Bluetooth scale-setup flows (A6/LCBT, Bluetooth/A3
-//  and, historically, BtWifi/R4). Navigation stays with the owning flow store: `save`
-//  and `skip` invoke a completion closure once their work is done. The logic mirrors
-//  `BtWifiScaleSetupStore`'s original Complete Profile implementation (MOB-1388).
+//  and, historically, BtWifi/R4). The A6 and Bluetooth flows always present the step;
+//  only the BtWifi flow auto-skips it (via its coordinator's `canSkipCompleteProfile`
+//  guard, driven by `isProfileComplete()`) when the account is already complete.
+//  Navigation stays with the owning flow store: `save` and `skip` invoke a completion
+//  closure once their work is done. The logic mirrors `BtWifiScaleSetupStore`'s original
+//  Complete Profile implementation (MOB-1388).
 //
 
 import Foundation
@@ -71,9 +74,10 @@ final class CompleteProfileSetupStore: ObservableObject {
 
     // MARK: - Skip Guard
 
-    /// The required profile details (biological sex + height) are already available, so the
-    /// Complete Profile step is redundant and should be skipped. Missing account ⇒ treat as
-    /// complete so we never block setup.
+    /// Whether the required profile details (biological sex + height) are already available.
+    /// Consulted only by the BtWifi flow's `canSkipCompleteProfile` guard to skip the step;
+    /// the A6/Bluetooth flows always present it. Missing account ⇒ treat as complete so we
+    /// never block setup.
     func isProfileComplete() -> Bool {
         guard let account = accountService.activeAccount else { return true }
         let hasGender = account.gender != nil
