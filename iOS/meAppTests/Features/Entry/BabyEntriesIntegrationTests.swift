@@ -381,11 +381,15 @@ struct BabyEntriesIntegrationTests {
         DependencyContainer.shared.register(goalAlert as GoalAlertServiceProtocol)
         DependencyContainer.shared.register(integration as IntegrationServiceProtocol)
 
+        let babyLocalRepo = repo ?? MockEntryRepository()
+        let babyWorker = MockEntryWorker()
+        babyWorker.backingRepo = babyLocalRepo
         let sut = EntryService(
             accountService: account,
-            localRepo: repo ?? MockEntryRepository(),
+            localRepo: babyLocalRepo,
             localKVRepo: MockEntrySyncStore(),
-            remoteRepo: remote ?? MockEntryRepositoryAPI()
+            remoteRepo: remote ?? MockEntryRepositoryAPI(),
+            worker: babyWorker
         )
         sut.logger = logger
         sut.goalAlertService = goalAlert

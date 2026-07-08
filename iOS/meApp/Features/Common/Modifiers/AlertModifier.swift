@@ -40,7 +40,13 @@ struct AlertModifier: ViewModifier {
     var isAlertPresented: Binding<Bool> {
         Binding(
             get: { alertData != nil },
-            set: { if !$0 { alertData = nil } }
+            // SwiftUI drives this setter while reconciling the alert's dismissal
+            // *inside* a view update. Dismissal already clears `alertData` from a
+            // safe context (the button action below, or a programmatic dismissal
+            // via the service), so only write when it is still set — assigning to
+            // the @Published `alertData` here otherwise republishes mid-update and
+            // trips "Publishing changes from within view updates".
+            set: { if !$0, alertData != nil { alertData = nil } }
         )
     }
 

@@ -351,18 +351,25 @@ struct EntryServiceExtendedTests {
             timestamp: "2026-03-01T08:00:05Z"
         )
 
-        let sut = makeSUT(repo: repo, remote: remote)
+        let worker = MockEntryWorker()
+        let sut = makeSUT(repo: repo, remote: remote, worker: worker)
         await sut.syncAllEntriesWithRemote()
 
-        #expect(repo.updateEntryServerEntryIdCalls == 1)
-        #expect(repo.lastServerEntryId == "server-abc-123")
+        // The batched push routes bookkeeping through the worker: the create
+        // outcome must carry the server-assigned id from the response row.
+        let createdOutcome = worker.appliedPushOutcomes.first
+        #expect(createdOutcome != nil)
+        if case .created(let serverEntryId, _)? = createdOutcome?.outcome {
+            #expect(serverEntryId == "server-abc-123")
+        } else {
+            Issue.record("Expected a .created push outcome, got \(String(describing: createdOutcome))")
+        }
     }
 
-    @Test("syncAllEntriesWithRemote: logs error and continues when serverEntryId persistence fails")
+    @Test("syncAllEntriesWithRemote: logs error and continues when push bookkeeping fails")
     func syncAllEntriesWithRemoteLogsErrorOnServerEntryIdFailure() async {
         let repo = MockEntryRepository()
         repo.entries = [EntryTestFixtures.makeEntry(isSynced: false)]
-        repo.updateEntryServerEntryIdError = EntryTestError.localFailure
 
         let remote = MockEntryRepositoryAPI()
         remote.submitEntriesResult = UnifiedEntryResponse(
@@ -389,12 +396,16 @@ struct EntryServiceExtendedTests {
             timestamp: "2026-03-01T08:00:05Z"
         )
 
+        let worker = MockEntryWorker()
+        worker.applyPushOutcomesError = EntryTestError.localFailure
         let logger = MockLoggerService()
-        let sut = makeSUT(repo: repo, remote: remote, logger: logger)
+        let sut = makeSUT(repo: repo, remote: remote, logger: logger, worker: worker)
         await sut.syncAllEntriesWithRemote()
 
-        #expect(logger.messages.contains { $0.contains("Failed to persist serverEntryId") })
-        #expect(repo.updateEntrySyncStatusCalls == 1, "Sync should continue despite serverEntryId write failure")
+        #expect(logger.messages.contains { $0.contains("Failed to persist push outcomes") })
+        // The sync must still complete (fetch + merge + timestamp) after the
+        // bookkeeping failure.
+        #expect(worker.applyRemoteOperationsCalls == 1, "Sync should continue despite push bookkeeping failure")
     }
 
     // MARK: - Factory
@@ -406,6 +417,7 @@ struct EntryServiceExtendedTests {
         integration: MockIntegrationService? = nil,
         goalAlert: MockGoalAlertService? = nil,
         logger: MockLoggerService? = nil,
+        worker: MockEntryWorker? = nil,
         activeAccount: AccountSnapshot? = AccountTestFixtures.makeAccountSnapshot(id: "acct-1", email: "entry@example.com", isActiveAccount: true)
     ) -> EntryService {
         let account = MockAccountService()
@@ -422,11 +434,17 @@ struct EntryServiceExtendedTests {
         DependencyContainer.shared.register(goalAlert as GoalAlertServiceProtocol)
         DependencyContainer.shared.register(integration as IntegrationServiceProtocol)
 
+        let localRepo = repo ?? MockEntryRepository()
+        let entryWorker = worker ?? MockEntryWorker()
+        // Keep worker reads consistent with the repo the SUT writes to
+        // (production: one shared SwiftData container).
+        entryWorker.backingRepo = localRepo
         let sut = EntryService(
             accountService: account,
-            localRepo: repo ?? MockEntryRepository(),
+            localRepo: localRepo,
             localKVRepo: syncStore ?? MockEntrySyncStore(),
-            remoteRepo: remote ?? MockEntryRepositoryAPI()
+            remoteRepo: remote ?? MockEntryRepositoryAPI(),
+            worker: entryWorker
         )
         sut.logger = logger
         sut.goalAlertService = goalAlert

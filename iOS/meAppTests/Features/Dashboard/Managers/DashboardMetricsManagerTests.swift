@@ -310,11 +310,17 @@ struct DashboardMetricsManagerTests {
         )
         let logger = LoggerService()
         let entryRepo = MockEntryRepository()
+        // MOB-1433: the metric fallback reads entries through the worker. Back it with
+        // the same repo the test seeds so those entries are visible (a default
+        // SwiftDataWorker would read an empty container and defeat the fallback).
+        let entryWorker = MockEntryWorker()
+        entryWorker.backingRepo = entryRepo
         let entryService = EntryService(
             accountService: accountService,
             localRepo: entryRepo,
             localKVRepo: MockEntrySyncStore(),
-            remoteRepo: MockEntryRepositoryAPI()
+            remoteRepo: MockEntryRepositoryAPI(),
+            worker: entryWorker
         )
 
         DependencyContainer.shared.register(accountService as AccountService)
