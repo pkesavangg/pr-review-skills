@@ -52,6 +52,9 @@ final class DashboardGridEditingManager: DashboardGridEditingManaging {
         self.getMetricsToShow = getMetricsToShow
         self.getStreakItemsToShow = getStreakItemsToShow
         self.beginEdit = beginEdit
+        // Cache DI-backed services during construction so later container mutations
+        // continue using the intended dependencies for this manager instance.
+        _ = logger
     }
 
     // MARK: - Progress Metrics Loading

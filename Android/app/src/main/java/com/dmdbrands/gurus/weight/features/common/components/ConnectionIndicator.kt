@@ -57,14 +57,18 @@ fun ConnectionIndicator(
   connectionState: ConnectionIndicatorState,
   modifier: Modifier = Modifier
 ) {
+  // Per Figma (Connection Indicator): connecting = wg-primary #1565C0 solid + Status/loading
+  // (#1565C080, i.e. wg-primary @50%) glow; failed = Status/error #B3261E solid + Status/loading-error
+  // #F5C0BD glow. iconPrimary was remapped to neutral #2C2827 in MOB-987, so the connecting circle
+  // had gone dark/black instead of brand-blue. (MOB-1259)
   val mainCircleColor = when (connectionState) {
-    ConnectionIndicatorState.Connecting -> colorScheme.iconPrimary
+    ConnectionIndicatorState.Connecting -> colorScheme.wgPrimary
     ConnectionIndicatorState.Failed -> colorScheme.danger
   }
 
   val pulsingCircleColor = when (connectionState) {
-    ConnectionIndicatorState.Connecting -> colorScheme.iconPrimary.copy(alpha = 0.3f)
-    ConnectionIndicatorState.Failed -> colorScheme.danger.copy(alpha = 0.3f)
+    ConnectionIndicatorState.Connecting -> colorScheme.wgPrimary.copy(alpha = 0.5f)
+    ConnectionIndicatorState.Failed -> colorScheme.loadingError
   }
 
   val stateDescription = when (connectionState) {

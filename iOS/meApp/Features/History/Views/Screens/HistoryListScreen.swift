@@ -115,16 +115,7 @@ struct HistoryListScreen: View {
     private var weightContent: some View {
         ScrollView(showsIndicators: !store.isEmptyState) {
             if store.isEmptyState {
-                ZStack {
-                    Spacer().containerRelativeFrame([.horizontal, .vertical])
-                    VStack {
-                        NoEntryView {
-                            tabViewModel.pendingSettingsNavigation = .addEditScales
-                            tabViewModel.selectedTab = .settings
-                            tabViewModel.settingsNavigationSourceTab = .history
-                        }
-                    }
-                }
+                emptyStateContainer { weightEmptyState }
             } else {
                 LazyVStack(spacing: 0) {
                     ForEach(store.months, id: \.id) { month in
@@ -151,9 +142,7 @@ struct HistoryListScreen: View {
             }
         }
         .refreshable {
-            Task {
-                await store.refreshAllEntries()
-            }
+            await store.refreshAllEntries()
         }
     }
 
@@ -161,16 +150,7 @@ struct HistoryListScreen: View {
     private var bpContent: some View {
         ScrollView(showsIndicators: !store.bpMonths.isEmpty) {
             if store.bpMonths.isEmpty {
-                ZStack {
-                    Spacer().containerRelativeFrame([.horizontal, .vertical])
-                    VStack {
-                        NoEntryView {
-                            tabViewModel.pendingSettingsNavigation = .addEditScales
-                            tabViewModel.selectedTab = .settings
-                            tabViewModel.settingsNavigationSourceTab = .history
-                        }
-                    }
-                }
+                emptyStateContainer { bpEmptyState }
             } else {
                 LazyVStack(spacing: 0) {
                     ForEach(store.bpMonths) { month in
@@ -194,35 +174,16 @@ struct HistoryListScreen: View {
                 }
             }
         }
+        .refreshable {
+            await store.refreshAllEntries()
+        }
     }
 
     @ViewBuilder
     private var babyContent: some View {
         ScrollView(showsIndicators: !store.babyWeeks.isEmpty) {
             if store.babyWeeks.isEmpty {
-                ZStack {
-                    Spacer().containerRelativeFrame([.horizontal, .vertical])
-                    VStack {
-                        if productTypeStore.selectedItem.isPendingBaby {
-                            // No baby profile yet — prompt the user to add one.
-                            NoEntryView(
-                                title: ProductTypeStrings.BabyEmptyState.title,
-                                description: ProductTypeStrings.BabyEmptyState.historyDescription,
-                                buttonTitle: ProductTypeStrings.BabyEmptyState.addABaby,
-                                iconAsset: AppAssets.babyAppIcon,
-                                iconTint: theme.babyScaleColor
-                            ) {
-                                tabViewModel.navigateToSettings(route: .myKids, sourceTab: .history)
-                            }
-                        } else {
-                            NoEntryView {
-                                tabViewModel.pendingSettingsNavigation = .addEditScales
-                                tabViewModel.selectedTab = .settings
-                                tabViewModel.settingsNavigationSourceTab = .history
-                            }
-                        }
-                    }
-                }
+                emptyStateContainer { babyEmptyState }
             } else {
                 LazyVStack(spacing: 0) {
                     ForEach(store.babyWeeks) { week in
@@ -250,6 +211,110 @@ struct HistoryListScreen: View {
                 }
             }
         }
+        .refreshable {
+            await store.refreshAllEntries()
+        }
+    }
+
+    // MARK: - Empty States (MOB-1220) -----------------------------------
+    // History empty states per product & state. Once a device is paired the primary
+    // CTA flips from ADD DEVICE to LOG MANUALLY. Illustrations are tinted per product
+    // (weight → blue, BP → green, baby → purple).
+
+    /// Centers an empty-state view within the scroll viewport.
+    @ViewBuilder
+    private func emptyStateContainer<Content: View>(@ViewBuilder content: () -> Content) -> some View {
+        ZStack {
+            Spacer().containerRelativeFrame([.horizontal, .vertical])
+            VStack { content() }
+        }
+    }
+
+    @ViewBuilder
+    private var weightEmptyState: some View {
+        if store.hasPairedDeviceForCurrentProduct {
+            NoEntryView(
+                title: ProductTypeStrings.EmptyState.weightNoEntriesTitle,
+                description: ProductTypeStrings.EmptyState.weightNoEntriesDescription,
+                buttonTitle: ProductTypeStrings.EmptyState.logManually,
+                iconAsset: AppAssets.history,
+                iconTint: theme.weightScaleColor
+            ) { navigateToManualEntry() }
+        } else {
+            NoEntryView(
+                title: ProductTypeStrings.EmptyState.weightNoDeviceTitle,
+                description: ProductTypeStrings.EmptyState.weightNoDeviceDescription,
+                buttonTitle: ProductTypeStrings.EmptyState.addDevice,
+                iconAsset: AppAssets.weightScaleIcon,
+                iconTint: theme.weightScaleColor
+            ) { navigateToAddDevice() }
+        }
+    }
+
+    @ViewBuilder
+    private var bpEmptyState: some View {
+        if store.hasPairedDeviceForCurrentProduct {
+            NoEntryView(
+                title: ProductTypeStrings.EmptyState.bpNoEntriesTitle,
+                description: ProductTypeStrings.EmptyState.bpNoEntriesDescription,
+                buttonTitle: ProductTypeStrings.EmptyState.logManually,
+                iconAsset: AppAssets.history,
+                iconTint: theme.bpmColor
+            ) { navigateToManualEntry() }
+        } else {
+            NoEntryView(
+                title: ProductTypeStrings.EmptyState.bpNoDeviceTitle,
+                description: ProductTypeStrings.EmptyState.bpNoDeviceDescription,
+                buttonTitle: ProductTypeStrings.EmptyState.addDevice,
+                iconAsset: AppAssets.bpmIcon,
+                iconTint: theme.bpmColor
+            ) { navigateToAddDevice() }
+        }
+    }
+
+    @ViewBuilder
+    private var babyEmptyState: some View {
+        if productTypeStore.selectedItem.isPendingBaby {
+            // State 1 — no baby profile yet.
+            NoEntryView(
+                title: ProductTypeStrings.BabyEmptyState.title,
+                description: ProductTypeStrings.BabyEmptyState.historyDescription,
+                buttonTitle: ProductTypeStrings.BabyEmptyState.addABaby,
+                iconAsset: AppAssets.babyHeadIcon,
+                iconTint: theme.babyScaleColor
+            ) { tabViewModel.navigateToSettings(route: .myKids, sourceTab: .history) }
+        } else if store.hasPairedDeviceForCurrentProduct {
+            // State 3 — profile + baby scale paired, no measurement yet.
+            NoEntryView(
+                title: ProductTypeStrings.EmptyState.babyNoEntriesTitle,
+                description: ProductTypeStrings.EmptyState.babyNoEntriesDescription,
+                buttonTitle: ProductTypeStrings.EmptyState.logManually,
+                iconAsset: AppAssets.history,
+                iconTint: theme.babyScaleColor
+            ) { navigateToManualEntry() }
+        } else {
+            // State 2 — profile exists, no baby scale paired. ADD DEVICE + LOG MANUALLY.
+            NoEntryView(
+                title: ProductTypeStrings.EmptyState.babyNoDeviceTitle,
+                description: ProductTypeStrings.EmptyState.babyNoDeviceDescription,
+                buttonTitle: ProductTypeStrings.EmptyState.addDevice,
+                iconAsset: AppAssets.babyAppIcon,
+                iconTint: theme.babyScaleColor,
+                secondaryButtonTitle: ProductTypeStrings.EmptyState.logManually,
+                onSecondaryButtonTap: { navigateToManualEntry() },
+                onButtonTap: { navigateToAddDevice() }
+            )
+        }
+    }
+
+    /// Deep-links to the Settings pairing flow (ADD DEVICE).
+    private func navigateToAddDevice() {
+        tabViewModel.navigateToSettings(route: .addEditScales, sourceTab: .history)
+    }
+
+    /// Switches to the Manual Entry tab (LOG MANUALLY).
+    private func navigateToManualEntry() {
+        tabViewModel.selectTab(.entry)
     }
 }
 

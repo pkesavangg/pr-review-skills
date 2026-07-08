@@ -46,6 +46,11 @@ extension BluetoothScaleSetupStoreTests {
             BluetoothScaleSetupStoreTestFixtures.configureDefaultScale(store)
 
             store.currentStepIndex = BluetoothScaleSetupStep.permissions.index
+
+            // permissions → completeProfile (always presented, MOB-1388) → selectUser once
+            // the Complete Profile step is passed, since no scale has been saved yet.
+            store.moveToNextStep()
+            #expect(store.currentStep == .completeProfile)
             store.moveToNextStep()
 
             #expect(store.currentStep == .selectUser)

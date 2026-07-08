@@ -22,7 +22,12 @@ final class BluetoothScaleSetupStore: ObservableObject {
     @Injector private var bluetoothService: BluetoothServiceProtocol
     @Injector private var deviceService: PairedDeviceServiceProtocol
     @Injector private var accountService: AccountServiceProtocol
-    
+
+    /// Owns the shared Complete Profile step state + logic (MOB-1388). Rendered on the
+    /// `.completeProfile` step, which the Bluetooth flow always presents; existing profile
+    /// values are pre-filled so the user can confirm or adjust them.
+    let completeProfileStore = CompleteProfileSetupStore()
+
     // MARK: - Private
     private var cancellables = Set<AnyCancellable>()
     private var deviceDiscoveryCancellable: AnyCancellable?
@@ -96,6 +101,8 @@ final class BluetoothScaleSetupStore: ObservableObject {
                 return AnyView(ScaleSetupIntroView(scale: scaleItem))
             case .permissions:
                 return AnyView(PermissionListView(setupType: .bluetooth))
+            case .completeProfile:
+                return AnyView(CompleteProfileSetupFormView(store: completeProfileStore))
             case .selectUser:
                 // Dummy view – UI to select user number will be implemented later.
                 return AnyView(
@@ -150,17 +157,12 @@ final class BluetoothScaleSetupStore: ObservableObject {
         
         switch currentStep {
         case .permissions:
-            // If scale is already saved and paired, navigate to stepOn
-            // Otherwise, navigate to selectUser
-            if isScaleSaved && bluetoothConnectionState == .success {
-                if let index = steps.firstIndex(of: .stepOn) {
-                    currentStepIndex = index
-                }
-            } else {
-                if let index = steps.firstIndex(of: .selectUser) {
-                    currentStepIndex = index
-                }
+            if let index = steps.firstIndex(of: .completeProfile) {
+                currentStepIndex = index
             }
+            return
+        case .completeProfile:
+            proceedAfterCompleteProfile()
             return
         case .setupFinished:
             dismissAction?()
@@ -181,6 +183,32 @@ final class BluetoothScaleSetupStore: ObservableObject {
         currentStepIndex = previousIndex
         if currentStep == .connectingBluetooth {
             resetDiscoveryState()
+        }
+    }
+
+    // MARK: - Complete Profile (MOB-1388)
+
+    /// Saves the Complete Profile step, then continues to pairing.
+    func handleCompleteProfileNext() {
+        completeProfileStore.saveCompleteProfile { [weak self] in
+            self?.proceedAfterCompleteProfile()
+        }
+    }
+
+    /// Continues past the Complete Profile step without saving.
+    func handleCompleteProfileSkip() {
+        proceedAfterCompleteProfile()
+    }
+
+    /// Routes forward once the Complete Profile step is done: straight to `stepOn` when the
+    /// scale is already paired, otherwise to `selectUser` to begin pairing.
+    private func proceedAfterCompleteProfile() {
+        if isScaleSaved && bluetoothConnectionState == .success {
+            if let index = steps.firstIndex(of: .stepOn) {
+                currentStepIndex = index
+            }
+        } else if let index = steps.firstIndex(of: .selectUser) {
+            currentStepIndex = index
         }
     }
     
@@ -226,6 +254,8 @@ final class BluetoothScaleSetupStore: ObservableObject {
     // MARK: - Step Transition Handling
     private func handleStepChange() {
         switch currentStep {
+        case .completeProfile:
+            completeProfileStore.prefillCompleteProfile()
         case .connectingBluetooth:
             pair()
             // For BPM scales, advance past this step immediately so the user never sees it.
@@ -661,9 +691,9 @@ final class BluetoothScaleSetupStore: ObservableObject {
     ///   - direction: +1 when moving forward, -1 when moving backwards.
     private func adjustedIndex(from index: Int, direction: Int) -> Int {
         var idx = index
-        while idx >= 0 && idx < steps.count,
-              steps[idx] == .permissions,
-              isBluetoothPermissionEnabled() {
+        while idx >= 0 && idx < steps.count {
+            let step = steps[idx]
+            guard step == .permissions && isBluetoothPermissionEnabled() else { break }
             idx += direction
         }
         return idx

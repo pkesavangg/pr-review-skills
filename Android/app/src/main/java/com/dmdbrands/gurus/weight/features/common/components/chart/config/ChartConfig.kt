@@ -35,6 +35,8 @@ fun rememberChartConfig(
 ): ChartConfig {
   val primaryColor = MeTheme.colorScheme.primaryAction
   val secondaryColor = MeTheme.colorScheme.secondaryAction
+  // Neutral fallback for the diastolic line when there's no average yet (was a hardcoded grey).
+  val diastolicFallback = MeTheme.colorScheme.textSubheading
   return remember(product, goal, avgSystolic, avgDiastolic, avgPulse, hasPercentile) {
     when (product) {
       is ProductSelection.MyWeight -> ChartConfig(
@@ -50,8 +52,8 @@ fun rememberChartConfig(
       is ProductSelection.BloodPressure -> ChartConfig(
         lines = listOf(
           LineSpec(color = avgSystolic?.let { SnapshotColors.systolicColor(it) } ?: SnapshotColors.BloodPressure),
-          LineSpec(color = avgDiastolic?.let { SnapshotColors.diastolicColor(it) } ?: Color(0xFF7B726E)),
-          LineSpec(color = avgPulse?.let { SnapshotColors.pulseColor(it) } ?: Color(0xFF00B3E3)),
+          LineSpec(color = avgDiastolic?.let { SnapshotColors.diastolicColor(it) } ?: diastolicFallback),
+          LineSpec(color = avgPulse?.let { SnapshotColors.pulseColor(it) } ?: SnapshotColors.PulseNormal),
         ),
         useAllSeriesForYRange = true,
       )

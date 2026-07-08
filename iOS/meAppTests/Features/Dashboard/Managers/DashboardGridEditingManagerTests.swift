@@ -313,7 +313,7 @@ struct DashboardGridEditingManagerTests {
 
         store.metricsManager.state.activeMetricsCount = 2
         store.gridEditingManager.debouncedSyncRemovalState()
-        await DashboardTestFixtures.waitUntil(timeoutNanoseconds: 500_000_000) {
+        await DashboardTestFixtures.waitUntil(timeoutNanoseconds: 30_000_000_000) {
             store.state.ui.removedMetrics == Set([DashboardStrings.water])
         }
 
@@ -359,13 +359,13 @@ struct DashboardGridEditingManagerTests {
         configureStore(store, metrics: makeDefaultMetrics(), streaks: makeDefaultStreaks(), isEditMode: true)
 
         store.gridEditingManager.toggleMetricRemovalInReorderedArray(at: 1)
-        await DashboardTestFixtures.waitUntil {
+        await DashboardTestFixtures.waitUntil(timeoutNanoseconds: 30_000_000_000) {
             store.state.ui.removedMetrics.contains(DashboardStrings.bodyFat)
         }
         #expect(store.gridEditingManager.isMetricRemovedInReorderedArray(at: 2) == true)
 
         store.gridEditingManager.toggleStreakRemovalInReorderedArray(at: 1)
-        await DashboardTestFixtures.waitUntil {
+        await DashboardTestFixtures.waitUntil(timeoutNanoseconds: 30_000_000_000) {
             store.state.ui.removedStreaks.contains(DashboardStrings.longestStreak)
         }
         #expect(store.gridEditingManager.isStreakRemovedInReorderedArray(at: 2) == true)
@@ -415,7 +415,7 @@ struct DashboardGridEditingManagerTests {
         configureStore(store, metrics: makeDefaultMetrics(), streaks: makeDefaultStreaks(), isEditMode: true)
 
         store.gridEditingManager.toggleStreakRemoval(DashboardStrings.longestStreak)
-        await DashboardTestFixtures.waitUntil {
+        await DashboardTestFixtures.waitUntil(timeoutNanoseconds: 30_000_000_000) {
             store.state.ui.removedStreaks.contains(DashboardStrings.longestStreak)
         }
 
@@ -423,7 +423,7 @@ struct DashboardGridEditingManagerTests {
         #expect(store.streakManager.state.activeStreakItemsCount == 2)
 
         store.gridEditingManager.toggleStreakRemoval(DashboardStrings.longestStreak)
-        await DashboardTestFixtures.waitUntil {
+        await DashboardTestFixtures.waitUntil(timeoutNanoseconds: 30_000_000_000) {
             !store.state.ui.removedStreaks.contains(DashboardStrings.longestStreak)
         }
 

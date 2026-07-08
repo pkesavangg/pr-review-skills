@@ -38,7 +38,9 @@ fun BabyDayHistoryList(
                     itemWidth = 88.dp,
                     text = HistoryDetailScreenStrings.DeleteButton,
                     contentDescription = HistoryDetailScreenStrings.DeleteEntryContentDescription,
-                    backgroundColor = MeTheme.colorScheme.textError,
+                    // Destructive swipe fill uses the Status/danger background token, not the
+                    // text/error token (same red, correct role) — matches other lists. (MOB-1259)
+                    backgroundColor = MeTheme.colorScheme.danger,
                 ) {
                     onItemDelete(item)
                 }

@@ -344,13 +344,19 @@ object EntryHelper {
     }
   }
 
-  fun GGScaleEntry.toScaleEntry(accountId: String, deviceId: String): ScaleEntry {
-    val weight = if (unit.lowercase() == "kg") weightInKg.toDoublePreserve() else {
-      if (this.protocolType == "A3") {
-        ConversionTools.convertKgToStoredA3(weightInKg.toDoublePreserve())
-      } else {
-        weight.toDoublePreserve()
-      }
+  fun GGScaleEntry.toScaleEntry(accountId: String, deviceId: String, isMetric: Boolean): ScaleEntry {
+    val isA3 = this.protocolType == "A3"
+    // Raw SDK fields captured before the local `weight` val shadows the property.
+    val rawWeightLb = this.weight
+    val rawWeightInKg = this.weightInKg
+    // Store the reading in the APP's unit preference (not the scale's transmitted `unit`). A6 body
+    // scales like the 0382 always broadcast kg, so for an imperial account convert kg→lb with the
+    // scale's own A3 formula (convertKgToStoredA3) — this reproduces the scale's displayed lb value
+    // (e.g. 27.0 kg → 59.6 lb) instead of the exact-factor 59.5, fixing the 0.1 lb gap. (MOB-872)
+    val weight = when {
+      isMetric -> rawWeightInKg.toDoublePreserve()
+      isA3 -> ConversionTools.convertKgToStoredA3(rawWeightInKg.toDoublePreserve())
+      else -> rawWeightLb.toDoublePreserve()
     }
     val entryEntity = EntryEntity(
       accountId = accountId,
@@ -360,7 +366,7 @@ object EntryHelper {
       operationType = operationType ?: "create", // default fallback
       deviceType = protocolType,
       deviceId = deviceId,
-      unit = if (unit.lowercase() == "kg") WeightUnit.KG else WeightUnit.LB,
+      unit = if (isMetric) WeightUnit.KG else WeightUnit.LB,
       isSynced = false,
     )
 

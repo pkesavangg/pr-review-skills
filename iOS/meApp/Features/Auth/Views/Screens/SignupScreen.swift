@@ -28,7 +28,6 @@ struct SignupScreen: View {
                 AnyView(BabyProfileFormView(
                     form: signupStore.babyProfileForm,
                     showDatePicker: $signupStore.showBabyDatePicker,
-                    showSexPicker: $signupStore.showBabySexPicker,
                     headerTitle: SignupStrings.AddBabyStep.title,
                     headerSubtitle: SignupStrings.AddBabyStep.subtitle
                 ))
@@ -195,7 +194,7 @@ struct SignupScreen: View {
                     }
                     Spacer()
                     ButtonView(
-                        text: SignupStrings.PickDeviceStep.addDeviceButton,
+                        text: SignupStrings.nextButton,
                         type: .filledPrimary,
                         size: .large,
                         isDisabled: !signupStore.isNextEnabled

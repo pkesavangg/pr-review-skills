@@ -31,7 +31,12 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
     private var isChangingPeriod = false
     private var lastYAxisScale: YAxisScale?
 
-    init(initialState: GraphState = GraphState()) { self.state = initialState }
+    init(initialState: GraphState = GraphState()) {
+        self.state = initialState
+        // Cache DI-backed services during construction so later container mutations
+        // continue using the intended dependencies for this manager instance.
+        _ = logger
+    }
 
     // MARK: - Scroll Handling
 

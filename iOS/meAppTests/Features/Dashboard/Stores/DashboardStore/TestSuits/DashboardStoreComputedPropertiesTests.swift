@@ -373,10 +373,35 @@ extension DashboardStoreTests {
         return store
     }
 
-    @Test("canShowSnapshotOverview: true when baby item is present (no weight or BPM required)")
-    func canShowSnapshotOverviewTrueForBabyOnly() async {
+    @Test("canShowSnapshotOverview: false when only baby is present — drills into the baby detail dashboard")
+    func canShowSnapshotOverviewFalseForBabyOnly() async {
         let babyProfile = BabyProfile(id: "baby-1", name: "Test Baby")
         let store = await makeStoreWithMockProductTypeStore(availableItems: [.baby(profile: babyProfile)])
+
+        #expect(store.hasBabySnapshotItem == true)
+        // Baby is a single product category — nothing to pick, so no overview.
+        #expect(store.canShowSnapshotOverview == false)
+    }
+
+    @Test("canShowSnapshotOverview: false when only baby profiles exist (multiple babies use the header dropdown)")
+    func canShowSnapshotOverviewFalseForMultipleBabiesOnly() async {
+        let babyA = BabyProfile(id: "baby-1", name: "Aria")
+        let babyB = BabyProfile(id: "baby-2", name: "Leo")
+        let store = await makeStoreWithMockProductTypeStore(
+            availableItems: [.baby(profile: babyA), .baby(profile: babyB)]
+        )
+
+        #expect(store.hasBabySnapshotItem == true)
+        // Multiple baby profiles are one category — switched via the dropdown, not the overview.
+        #expect(store.canShowSnapshotOverview == false)
+    }
+
+    @Test("canShowSnapshotOverview: true when baby and weight are both paired")
+    func canShowSnapshotOverviewTrueForBabyAndWeight() async {
+        let babyProfile = BabyProfile(id: "baby-1", name: "Test Baby")
+        let store = await makeStoreWithMockProductTypeStore(
+            availableItems: [.baby(profile: babyProfile), .myWeight]
+        )
 
         #expect(store.hasBabySnapshotItem == true)
         #expect(store.canShowSnapshotOverview == true)

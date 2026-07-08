@@ -111,33 +111,36 @@ class StreakCardCell: UICollectionViewCell {
     
     private func createSwiftUIView(item: MetricItem, store: DashboardStore) -> AnyView {
         let streakCardView = createStreakCardView(item: item, store: store)
-        let shouldShowOverlay = store.state.ui.isEditMode && 
-                               !(currentIsBeingDragged || isLongPressed || suppressOverlay)
-        
-        if shouldShowOverlay {
-            let viewWithOverlay = AnyView(
-                streakCardView
-                    .editModeOverlay(
-                        isEditMode: true,
-                        isRemoved: isRemoved,
-                        onToggleRemoval: {
-                            store.gridEditingManager.toggleStreakRemoval(item.label)
-                        },
-                        isBeingDragged: currentIsBeingDragged || isLongPressed,
-                        isDropTarget: store.state.ui.dropHoverId == item.id.uuidString,
-                        rowIndex: rowIndex,
-                        disableWiggle: isRemoved,
-                        iconOffset: CGSize(width: 22, height: -32)
-                    )
-            )
-            overlayButtonVisible = store.state.ui.dropHoverId != item.id.uuidString
-            overlayButtonAction = { store.gridEditingManager.toggleStreakRemoval(item.label) }
-            return viewWithOverlay
-        } else {
+
+        guard store.state.ui.isEditMode else {
             overlayButtonVisible = false
             overlayButtonAction = nil
             return AnyView(streakCardView)
         }
+
+        // MOB-187: keep the remove icon visible while the card is long-pressed/dragged, matching
+        // the metric grid. The lift itself no longer hides the icon (previously it was suppressed
+        // via `currentIsBeingDragged`/`isLongPressed`/`suppressOverlay`); only an active drop
+        // target hides it, exactly as `MetricCell` behaves.
+        let isDropTarget = store.state.ui.dropHoverId == item.id.uuidString
+        let viewWithOverlay = AnyView(
+            streakCardView
+                .editModeOverlay(
+                    isEditMode: true,
+                    isRemoved: isRemoved,
+                    onToggleRemoval: {
+                        store.gridEditingManager.toggleStreakRemoval(item.label)
+                    },
+                    isBeingDragged: false,
+                    isDropTarget: isDropTarget,
+                    rowIndex: rowIndex,
+                    disableWiggle: isRemoved,
+                    iconOffset: CGSize(width: 22, height: -32)
+                )
+        )
+        overlayButtonVisible = !isDropTarget
+        overlayButtonAction = { store.gridEditingManager.toggleStreakRemoval(item.label) }
+        return viewWithOverlay
     }
     
     private func setupHostingController(with swiftUIView: AnyView) {
@@ -213,7 +216,7 @@ class StreakCardCell: UICollectionViewCell {
         currentStore = nil
         currentIsBeingDragged = false
         isLongPressed = false
-        
+
         // Stop any ongoing wiggle animation
         contentView.stopWiggle()
         isWiggling = false
