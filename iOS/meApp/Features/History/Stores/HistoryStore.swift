@@ -378,11 +378,7 @@ final class HistoryStore: ObservableObject {
                         if case .baby(let profile) = self.productTypeStore.selectedItem { return profile }
                         return nil
                     }()
-                    let babyEntries = allEntries.filter {
-                        $0.entryType == EntryType.baby.rawValue
-                        && $0.operationType == OperationType.create.rawValue
-                        && $0.babyEntry?.babyId == babyProfile?.id
-                    }
+                    let babyEntries = self.babyCreateEntries(from: allEntries, profile: babyProfile)
                     let result = self.mapBabyEntriesToWeeks(babyEntries, profile: babyProfile)
                     self.babyWeeks = result
                     self.isEmptyState = result.isEmpty
@@ -821,12 +817,8 @@ final class HistoryStore: ObservableObject {
                     if case .baby(let profile) = productTypeStore.selectedItem { return profile }
                     return nil
                 }()
-                let babyId = babyProfile?.id
-                let dayEntries = allEntries.filter {
-                    $0.entryType == EntryType.baby.rawValue
-                    && $0.operationType == OperationType.create.rawValue
-                    && $0.babyEntry?.babyId == babyId
-                    && self.localDayString(from: $0.entryTimestamp) == day.id
+                let dayEntries = self.babyCreateEntries(from: allEntries, profile: babyProfile).filter {
+                    self.localDayString(from: $0.entryTimestamp) == day.id
                 }
                 let units = self.currentMeasurementUnits
                 let metric = units == .metric
@@ -966,6 +958,32 @@ final class HistoryStore: ObservableObject {
         }.sorted { $0.entryTimestamp > $1.entryTimestamp }
     }
 
+    /// Returns `true` when a day (`"yyyy-MM-dd"`) matches the baby's birthday
+    /// month + day. Returns `false` when no birthday is set (MOB-1164).
+    static func isBirthday(dayId: String, birthdayComponents: DateComponents?) -> Bool {
+        guard let birthdayComponents,
+              let birthMonth = birthdayComponents.month,
+              let birthDay = birthdayComponents.day else { return false }
+        let parts = dayId.split(separator: "-")
+        guard parts.count == 3,
+              let month = Int(parts[1]),
+              let day = Int(parts[2]) else { return false }
+        return month == birthMonth && day == birthDay
+    }
+
+    // MARK: - Baby Entries
+
+    /// Baby `create` entries for `profile`. Birth weight/length recorded on the baby profile
+    /// are intentionally NOT injected as a synthetic history entry — history reflects only
+    /// real recorded entries.
+    private func babyCreateEntries(from all: [EntrySnapshot], profile: BabyProfile?) -> [EntrySnapshot] {
+        all.filter {
+            $0.entryType == EntryType.baby.rawValue
+            && $0.operationType == OperationType.create.rawValue
+            && $0.babyEntry?.babyId == profile?.id
+        }
+    }
+
     /// Groups baby entries by day, then by week, building weekly summaries.
     private func mapBabyEntriesToWeeks(_ entries: [EntrySnapshot], profile: BabyProfile? = nil) -> [BabyHistoryWeek] { // swiftlint:disable:this function_body_length
         // Group by local day
@@ -976,6 +994,11 @@ final class HistoryStore: ObservableObject {
         // Build days sorted newest first
         let units = self.currentMeasurementUnits
         let metric = units == .metric
+        // Birthday match is anniversary-aware (month + day) so the balloon appears on
+        // the birth day and every subsequent birthday. Nil when no birthday is set.
+        let birthdayComponents: DateComponents? = profile?.birthday.map {
+            Calendar.current.dateComponents([.month, .day], from: $0)
+        }
         let days: [BabyHistoryDay] = grouped.map { dayId, dayEntries in
             let count = dayEntries.count
             let weights = dayEntries.compactMap { $0.babyEntry?.weight }
@@ -1009,7 +1032,8 @@ final class HistoryStore: ObservableObject {
                 lengthCm: lengthCm,
                 percentile: pct,
                 weightDisplay: self.formatBabyWeightDisplay(decigrams: avgWeight, units: units),
-                lengthDisplay: self.formatBabyLengthDisplay(mm: avgMm, isMetric: metric)
+                lengthDisplay: self.formatBabyLengthDisplay(mm: avgMm, isMetric: metric),
+                isBirthday: Self.isBirthday(dayId: dayId, birthdayComponents: birthdayComponents)
             )
         }.sorted { $0.id > $1.id }
 

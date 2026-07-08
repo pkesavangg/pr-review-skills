@@ -65,4 +65,5 @@ enum HistoryListStrings {
     static let accEntryCollapseHint = "Double tap to collapse metrics"
     static let accAddNoteLabel = "Add note"
     static let accEditNoteLabel = "Edit note"
+    static let accBirthdayBalloonLabel = "Birthday"
 }

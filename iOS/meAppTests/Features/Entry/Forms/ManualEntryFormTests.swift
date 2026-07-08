@@ -81,6 +81,26 @@ struct ManualEntryFormTests {
         #expect(error == FormErrorMessages.maxWeightLb)
     }
 
+    // MOB-1392: the cap is exclusive, so a value equal to the max must surface the message.
+    @Test("weight invalid when exactly at 999 lbs boundary (exclusive maxValue)")
+    func weightMaxValueLbBoundary() {
+        let form = makeForm()
+        form.weight.value = "999"
+        form.weight.markAsDirty()
+        form.weight.validate()
+        #expect(form.weight.errors[.maxValue] == true)
+        #expect(form.getError(for: form.weight, weightUnit: .lb) == FormErrorMessages.maxWeightLb)
+    }
+
+    @Test("weight valid just below 999 lbs boundary")
+    func weightJustBelowLbBoundary() {
+        let form = makeForm()
+        form.weight.value = "998.9"
+        form.weight.markAsDirty()
+        form.weight.validate()
+        #expect(form.getError(for: form.weight, weightUnit: .lb) == nil)
+    }
+
     @Test("weight valid with normal lb value")
     func weightValidLb() {
         let form = makeForm()

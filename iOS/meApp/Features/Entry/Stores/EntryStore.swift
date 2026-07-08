@@ -427,7 +427,9 @@ final class EntryStore: ObservableObject {
     private func updateWeightValidators() {
         let maxWeight = self.weightUnit == .kg ? 450.0 : 999.0
         manualEntryForm.weight.removeValidator(ofType: .maxValue)
-        manualEntryForm.weight.addValidator(Validator.maxValue(maxWeight))
+        // Exclusive cap: a value equal to the max (e.g. exactly 450.0 kg) must be rejected so the
+        // "value should be less than 450 kg" message shows, mirroring the lbs path (MOB-1392).
+        manualEntryForm.weight.addValidator(Validator.maxValueExclusive(maxWeight))
     }
 
     private func toTenths(_ string: String) -> Int? {

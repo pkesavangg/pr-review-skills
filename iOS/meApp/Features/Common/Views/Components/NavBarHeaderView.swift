@@ -12,6 +12,10 @@ struct NavbarHeaderView<Leading: View, Trailing: View>: View {
 
     var title: String?
     var titleColor: Color?
+    /// Optional view rendered immediately before the centered title (e.g. the
+    /// birthday balloon badge on Child History). Non-generic so existing call
+    /// sites are unaffected.
+    var titleLeadingContent: AnyView?
     var leadingContent: (() -> Leading)?
     var trailingContent: (() -> Trailing)?
     var onLeadingTap: (() -> Void)?
@@ -31,6 +35,9 @@ struct NavbarHeaderView<Leading: View, Trailing: View>: View {
             if let title = title {
                 HStack(spacing: 4) {
                     Spacer()
+                    if let titleLeadingContent {
+                        titleLeadingContent
+                    }
                     Text(title)
                         .fontOpenSans(.heading5)
                         .fontWeight(.bold)
