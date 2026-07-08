@@ -29,7 +29,8 @@ extension BtWifiScaleSetupStore {
             from: currentStepIndex + 1,
             direction: 1,
             steps: steps,
-            canSkipPermissions: arePermissionsEnabled()
+            canSkipPermissions: arePermissionsEnabled(),
+            canSkipCompleteProfile: isProfileComplete()
         )
         guard nextIndex < steps.count else {
             dismissAction?()
@@ -51,7 +52,8 @@ extension BtWifiScaleSetupStore {
             from: currentStepIndex - 1,
             direction: -1,
             steps: steps,
-            canSkipPermissions: arePermissionsEnabled()
+            canSkipPermissions: arePermissionsEnabled(),
+            canSkipCompleteProfile: isProfileComplete()
         )
         guard previousIndex >= 0 else { return }
         currentStepIndex = previousIndex

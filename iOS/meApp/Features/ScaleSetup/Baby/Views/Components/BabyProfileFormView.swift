@@ -10,7 +10,6 @@ import SwiftUI
 struct BabyProfileFormView: View {
     @ObservedObject var form: BabyProfileSetupForm
     @Binding var showDatePicker: Bool
-    @Binding var showSexPicker: Bool
     @Environment(\.appTheme) private var theme
     @FocusState private var focusedField: FocusField?
     private let lang = BabyScaleSetupStrings.BabyProfile.self
@@ -122,7 +121,6 @@ struct BabyProfileFormView: View {
                             isSelected: showDatePicker
                         ) {
                             dismissKeyboardAndUnfocus()
-                            if showSexPicker { showSexPicker = false }
                             withAnimation { showDatePicker.toggle() }
                         }
 
@@ -140,7 +138,7 @@ struct BabyProfileFormView: View {
                         chevronType: .upDown) {
                             dismissKeyboardAndUnfocus()
                             if showDatePicker { showDatePicker = false }
-                            showSexPicker = true
+                            presentSexPicker()
                         })
                         .padding(.horizontal, .spacingSM)
                         .padding(.vertical, .spacingXS / 2)
@@ -168,32 +166,42 @@ struct BabyProfileFormView: View {
         .scrollDismissesKeyboard(.interactively)
         .onChange(of: focusedField) { _, _ in
             showDatePicker = false
-            showSexPicker = false
         }
+        // Clear a stale "baby name already exists" 409 error as the user edits the
+        // name. This view is shared by Signup, Scale Setup and My Kids; only Signup
+        // re-homes this clear into its store, so the local clear is what keeps the
+        // BabyScaleSetupStore-driven flows correct (the Signup store re-clears on the
+        // same tick, so it stays correct there too).
         .onChange(of: form.name.value) { _, _ in
             form.duplicateNameError = nil
-        }
-        .pickerSheet(
-            isPresented: $showSexPicker,
-            selectedValues: [selectedSex],
-            options: [Sex.allCases],
-            displayValue: sexDisplay,
-            title: labels.biologicalSex
-        ) { vals in
-            if let sex = vals.first {
-                // Store the API-expected lowercase raw value ("male"/"female").
-                // The UI capitalizes it for display via `sexDisplayText`; sending the
-                // capitalized form makes the server reject it ("Invalid value for sex").
-                form.biologicalSex.value = sex.rawValue
-                form.biologicalSex.markAsTouched()
-                form.biologicalSex.validate()
-            }
         }
     }
 
     private func dismissKeyboardAndUnfocus() {
         focusedField = nil
         hideKeyboard()
+    }
+
+    /// Presents the biological sex picker as a centered radio-button popup with
+    /// CANCEL / SAVE (MOB-1224), replacing the previous wheel half-sheet.
+    private func presentSexPicker() {
+        let notifications = NotificationHelperService.shared
+        notifications.showModal(ModalData(presentedView: AnyView(
+            BiologicalSexPickerModalView(
+                selected: selectedSex,
+                displayValue: sexDisplay,
+                onCancel: { notifications.dismissModal() },
+                onSave: { sex in
+                    // Store the API-expected lowercase raw value ("male"/"female").
+                    // The UI capitalizes it for display via `sexDisplayText`; sending the
+                    // capitalized form makes the server reject it ("Invalid value for sex").
+                    form.biologicalSex.value = sex.rawValue
+                    form.biologicalSex.markAsTouched()
+                    form.biologicalSex.validate()
+                    notifications.dismissModal()
+                }
+            )
+        )))
     }
 
     // MARK: - Birth Length Field
@@ -349,6 +357,116 @@ struct BabyProfileFormView: View {
                 .multilineTextAlignment(.center)
                 .frame(maxWidth: 288)
                 .frame(maxWidth: .infinity)
+        }
+    }
+}
+
+// MARK: - Biological Sex Picker
+
+/// Radio-style Biological Sex dialog presented via `notificationService.showModal`.
+///
+/// Replaces the previous wheel half-sheet with a centered radio-button popup
+/// (CANCEL / SAVE), matching the Android picker for cross-platform consistency (MOB-1224).
+/// `onSave` returns the selected `Sex`; the caller is responsible for dismissing the modal.
+struct BiologicalSexPickerModalView: View {
+    @Environment(\.appTheme) private var theme
+
+    let options: [Sex]
+    let displayValue: (Sex) -> String
+    let onCancel: () -> Void
+    let onSave: (Sex) -> Void
+
+    @State private var selection: Sex
+
+    private let commonLang = CommonStrings.self
+    private let labels = InputFieldLabels.self
+
+    init(
+        options: [Sex] = Sex.allCases,
+        selected: Sex,
+        displayValue: @escaping (Sex) -> String,
+        onCancel: @escaping () -> Void,
+        onSave: @escaping (Sex) -> Void
+    ) {
+        self.options = options
+        self.displayValue = displayValue
+        self.onCancel = onCancel
+        self.onSave = onSave
+        _selection = State(initialValue: selected)
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: .spacingMD) {
+            Text(labels.biologicalSex)
+                .fontOpenSans(.heading4)
+                .foregroundStyle(theme.textHeading)
+                .accessibilityAddTraits(.isHeader)
+
+            VStack(alignment: .leading, spacing: 0) {
+                ForEach(options, id: \.self) { option in
+                    radioRow(
+                        title: displayValue(option),
+                        isSelected: selection == option
+                    ) { selection = option }
+                }
+            }
+
+            actionButtons
+        }
+        .padding(.spacingMD)
+        .background(theme.backgroundPrimary)
+        .clipShape(.rect(cornerRadius: .radiusXL))
+    }
+
+    // MARK: - Components
+
+    private func radioRow(title: String, isSelected: Bool, onTap: @escaping () -> Void) -> some View {
+        Button(action: onTap) {
+            HStack(spacing: .spacingSM) {
+                ZStack {
+                    Circle()
+                        .strokeBorder(
+                            isSelected ? theme.actionPrimary : theme.textBody.opacity(0.4),
+                            lineWidth: 2
+                        )
+                        .frame(width: 22, height: 22)
+                    if isSelected {
+                        Circle()
+                            .fill(theme.actionPrimary)
+                            .frame(width: 12, height: 12)
+                    }
+                }
+                Text(title)
+                    .fontOpenSans(.body1)
+                    .foregroundStyle(theme.textHeading)
+                Spacer(minLength: 0)
+            }
+            .contentShape(Rectangle())
+            .padding(.vertical, .spacingSM)
+        }
+        .buttonStyle(.plain)
+        .accessibilityElement(children: .combine)
+        .accessibilityAddTraits(isSelected ? [.isButton, .isSelected] : .isButton)
+    }
+
+    private var actionButtons: some View {
+        HStack(spacing: .spacingMD) {
+            Spacer()
+            ButtonView(
+                text: commonLang.cancel,
+                type: .inlineTextTertiary,
+                size: .small,
+                isDisabled: false,
+                action: onCancel
+            )
+            ButtonView(
+                text: commonLang.save,
+                type: .inlineTextPrimary,
+                size: .small,
+                isDisabled: false
+            ) {
+                onSave(selection)
+            }
         }
     }
 }

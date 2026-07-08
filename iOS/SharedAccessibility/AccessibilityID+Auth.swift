@@ -28,6 +28,7 @@ extension AccessibilityID {
     static let signupPasswordField = "signup_password_field"
     static let signupConfirmPasswordField = "signup_confirm_password_field"
     static let signupZipcodeField = "signup_zipcode_field"
+    static let signupGoalUnitToggle = "signup_goal_unit_toggle"
 
     // MARK: - Signup wizard — navbar & footer actions
     static let signupCloseButton = "signup_close_button"

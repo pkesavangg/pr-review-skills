@@ -8,7 +8,7 @@ import SwiftUI
 /// Radio-style Unit Type dialog presented via `notificationService.showModal`.
 ///
 /// Three layouts driven by `UnitDisplayMode`:
-/// - `.myWeight` — a single weight-unit list (`lb & feet` / `kg & cm`) bound to `WeightUnit`.
+/// - `.myWeight` — a single weight-unit list (`lb & ft` / `kg & cm`) bound to `WeightUnit`.
 /// - `.myKids`   — a "My Kids" section only (`MeasurementUnits`) for baby-scale readings.
 /// - `.both`     — both sections with a divider; shown when weight scale + baby scale are paired.
 ///                 "My Weight" changes apply to the weight scale; "My Kids" changes apply to the baby scale.
@@ -77,11 +77,11 @@ struct UnitTypePickerModalView: View {
                 .padding(.bottom, .spacingXS)
 
             radioRow(
-                title: lang.lbsIn,
+                title: lang.lbFeet,
                 isSelected: selectedWeightUnit == .lb
             ) { selectedWeightUnit = .lb }
             radioRow(
-                title: lang.metricCm,
+                title: lang.kgCm,
                 isSelected: selectedWeightUnit == .kg
             ) { selectedWeightUnit = .kg }
 
@@ -102,7 +102,7 @@ struct UnitTypePickerModalView: View {
                 isSelected: selectedMeasurementUnits == .imperialLbDecimal
             ) { selectedMeasurementUnits = .imperialLbDecimal }
             radioRow(
-                title: lang.metricCm,
+                title: lang.kgCm,
                 isSelected: selectedMeasurementUnits == .metric
             ) { selectedMeasurementUnits = .metric }
         }
@@ -132,7 +132,7 @@ struct UnitTypePickerModalView: View {
                 isSelected: selectedMeasurementUnits == .imperialLbDecimal
             ) { selectedMeasurementUnits = .imperialLbDecimal }
             radioRow(
-                title: lang.metricCm,
+                title: lang.kgCm,
                 isSelected: selectedMeasurementUnits == .metric
             ) { selectedMeasurementUnits = .metric }
         }
