@@ -44,7 +44,10 @@ struct EntryServiceTests {
         #expect(repo.entries.first?.isSynced == false)
         #expect(savedNotifications.count == 1)
         #expect(savedNotifications.first?.entryTimestamp == "2026-03-01T08:00:00Z")
-        #expect(integration.syncNewEntryCalls == 1)
+        // MOB-1433 §5c: the integration (HealthKit) forward now runs behind the save as a
+        // fire-and-forget Task so it can't block the save, so await it before asserting.
+        let synced = await waitUntil { integration.syncNewEntryCalls == 1 }
+        #expect(synced)
         #expect(sut.dailySummaries.count == 1)
         #expect(sut.dailySummaries.first?.weight == 1800)
         #expect(sut.monthlySummaries.count == 1)
@@ -360,7 +363,12 @@ struct EntryServiceTests {
         // the remote inline. An integration failure is logged and swallowed so the save still succeeds.
         #expect(repo.entries.count == 1)
         #expect(remote.submitEntriesCalls == 0)
-        #expect(logger.messages.contains { $0.contains("Failed to sync new entry to integrations") })
+        // MOB-1433 §5c: the integration forward is fire-and-forget; wait for it to run,
+        // fail, and log before asserting the swallowed error was recorded.
+        let logged = await waitUntil {
+            logger.messages.contains { $0.contains("Failed to sync new entry to integrations") }
+        }
+        #expect(logged)
     }
 
     private func makeSUT(
@@ -425,4 +433,16 @@ struct EntryServiceTests {
             service.integrationService = integration
             return service
         }
+}
+
+/// Polls `condition` on the main actor, yielding between checks, until it holds or the
+/// iteration budget is exhausted. Used to await fire-and-forget background work (e.g. the
+/// MOB-1433 §5c integration forward that no longer blocks `saveNewEntry`).
+@MainActor
+private func waitUntil(timeoutIterations: Int = 200, condition: () -> Bool) async -> Bool {
+    for _ in 0..<timeoutIterations {
+        if condition() { return true }
+        await Task.yield()
+    }
+    return false
 }
