@@ -171,6 +171,17 @@ struct ManualEntryScreen: View {
                         }
                         .id(entryStore.weightUnit)
 
+                        // Optional note (max 280 chars) — matches the Weight manual-entry mock (MOB-1172).
+                        AppInputField(
+                            config: TextInputConfig(
+                                label: manualEntryLang.notes,
+                                inputType: .notes,
+                                focusField: .notes
+                            ),
+                            value: $entryStore.manualEntryForm.notes.value,
+                            focusedField: $focusedField
+                        )
+
                         Text(labels.date)
                             .fontOpenSans(.heading4)
                             .foregroundColor(theme.textHeading)

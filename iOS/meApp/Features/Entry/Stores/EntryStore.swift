@@ -205,6 +205,8 @@ final class EntryStore: ObservableObject {
             entryType: EntryType.scale.rawValue,
             isSynced: false
         )
+        let note = manualEntryForm.notes.value.trimmingCharacters(in: .whitespacesAndNewlines)
+        entry.note = note.isEmpty ? nil : note
         entry.scaleEntry = scaleEntry
         entry.scaleEntryMetric = scaleMetric
 
