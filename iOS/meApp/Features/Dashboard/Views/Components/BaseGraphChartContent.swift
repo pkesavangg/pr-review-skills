@@ -51,85 +51,21 @@ struct ChartSeriesContent: ChartContent {
     // MARK: - Private Helpers
 
     private func visiblePoints(from points: [PlottedGraphSeries], seriesName: String) -> [PlottedGraphSeries] {
+        // Percentile reference curves are drawn edge-to-edge across the full visible grid range
+        // (not the tighter scroll window), so they take the boundary-extended path below rather
+        // than `pointsToRender`. Each percentile series is already downsampled to ~150 points at
+        // generation (BabyPercentileGrowthReference), so `pointsToRender`'s ≤200-point cap would
+        // never fire for them — the real per-frame cost was the O(n) `.filter` + linear neighbour
+        // scans, now replaced with O(log n) binary search (MOB-518 / H1).
+        if BabyDashboardChartSupport.isPercentileSeries(seriesName), let visibleGridRange {
+            return PercentileChartWindowing.boundaryExtendedPoints(from: points, visibleGridRange: visibleGridRange)
+        }
         let visibleEnd = scrollPosition.addingTimeInterval(visibleDomainLength)
-        let visiblePoints = BaseGraphViewCacheSupport.pointsToRender(
+        return BaseGraphViewCacheSupport.pointsToRender(
             from: points,
             visibleStart: scrollPosition,
             visibleEnd: visibleEnd
         )
-        guard BabyDashboardChartSupport.isPercentileSeries(seriesName),
-              let visibleGridRange else {
-            return visiblePoints
-        }
-        return percentileBoundaryExtendedPoints(from: points, visibleGridRange: visibleGridRange)
-    }
-
-    private func percentileBoundaryExtendedPoints(
-        from points: [PlottedGraphSeries],
-        visibleGridRange: ClosedRange<Date>
-    ) -> [PlottedGraphSeries] {
-        let pointsInGridRange = points.filter {
-            $0.xDate >= visibleGridRange.lowerBound && $0.xDate <= visibleGridRange.upperBound
-        }
-
-        guard !pointsInGridRange.isEmpty else { return points }
-
-        var result = pointsInGridRange
-
-        if result.first?.xDate != visibleGridRange.lowerBound,
-           let leadingBoundaryPoint = interpolatedBoundaryPoint(from: points, at: visibleGridRange.lowerBound) {
-            result.insert(leadingBoundaryPoint, at: 0)
-        }
-
-        if result.last?.xDate != visibleGridRange.upperBound,
-           let trailingBoundaryPoint = interpolatedBoundaryPoint(from: points, at: visibleGridRange.upperBound) {
-            result.append(trailingBoundaryPoint)
-        }
-
-        return result
-    }
-
-    private func interpolatedBoundaryPoint(
-        from points: [PlottedGraphSeries],
-        at boundary: Date
-    ) -> PlottedGraphSeries? {
-        if let exactMatch = points.first(where: { $0.xDate == boundary }) {
-            return exactMatch
-        }
-
-        let previousPoint = points.last { $0.xDate < boundary }
-        let nextPoint = points.first { $0.xDate > boundary }
-
-        let segment: (start: PlottedGraphSeries, end: PlottedGraphSeries)?
-        switch (previousPoint, nextPoint) {
-        case let (.some(previous), .some(next)):
-            segment = (previous, next)
-        case let (.some(lastPoint), .none):
-            guard let priorPoint = points.dropLast().last else { return nil }
-            segment = (priorPoint, lastPoint)
-        case let (.none, .some(firstPoint)):
-            guard let followingPoint = points.dropFirst().first else { return nil }
-            segment = (firstPoint, followingPoint)
-        case (.none, .none):
-            return nil
-        }
-
-        guard let segment else { return nil }
-
-        let interpolatedValue = BabyDashboardChartSupport.interpolatedValue(
-            at: boundary,
-            from: segment.start.xDate,
-            startValue: segment.start.original.value,
-            to: segment.end.xDate,
-            endValue: segment.end.original.value
-        )
-
-        let interpolatedSeriesPoint = GraphSeries(
-            date: boundary,
-            value: interpolatedValue,
-            series: segment.start.original.series
-        )
-        return PlottedGraphSeries(original: interpolatedSeriesPoint, xDate: boundary)
     }
 
     private func isOutsideActiveMonth(date: Date) -> Bool {
@@ -295,5 +231,92 @@ struct BpmReferenceLines: ChartContent {
                 .lineStyle(StrokeStyle(lineWidth: 1, dash: [4, 4]))
                 .foregroundStyle(theme.textSubheading.opacity(0.4))
         }
+    }
+}
+
+// MARK: - PercentileChartWindowing
+
+/// Pure windowing for baby/BPM percentile reference curves, extracted from `ChartSeriesContent`
+/// so it can be unit-tested for point-set parity (MOB-518 / H1).
+///
+/// The percentile lines are drawn edge-to-edge across the full visible grid range, so instead of
+/// `pointsToRender` (which windows to the scroll range) they return the in-grid-range slice plus
+/// interpolated points exactly on the grid edges. Input `points` MUST be sorted ascending by
+/// `xDate` (guaranteed by `BaseGraphViewCacheSupport.makeCacheUpdate`), which lets the slice and
+/// the bracketing neighbours be found with O(log n) binary search rather than O(n) scans.
+enum PercentileChartWindowing {
+
+    /// Points within `visibleGridRange`, plus a boundary-interpolated point at each grid edge when
+    /// no real point sits exactly on it. Returns all `points` when none fall inside the range —
+    /// identical behaviour to the previous `filter`-based implementation.
+    static func boundaryExtendedPoints(
+        from points: [PlottedGraphSeries],
+        visibleGridRange: ClosedRange<Date>
+    ) -> [PlottedGraphSeries] {
+        guard let lowerIndex = SortedArrayIndex.first(in: points, where: { $0.xDate >= visibleGridRange.lowerBound }),
+              let upperIndex = SortedArrayIndex.last(in: points, where: { $0.xDate <= visibleGridRange.upperBound }),
+              lowerIndex <= upperIndex else {
+            return points
+        }
+
+        var result = Array(points[lowerIndex...upperIndex])
+
+        if result.first?.xDate != visibleGridRange.lowerBound,
+           let leadingBoundaryPoint = interpolatedBoundaryPoint(from: points, at: visibleGridRange.lowerBound) {
+            result.insert(leadingBoundaryPoint, at: 0)
+        }
+
+        if result.last?.xDate != visibleGridRange.upperBound,
+           let trailingBoundaryPoint = interpolatedBoundaryPoint(from: points, at: visibleGridRange.upperBound) {
+            result.append(trailingBoundaryPoint)
+        }
+
+        return result
+    }
+
+    /// Returns the exact point at `boundary`, or a linearly-interpolated point on the segment that
+    /// brackets it (extrapolating from the nearest segment when `boundary` lies outside the data).
+    static func interpolatedBoundaryPoint(
+        from points: [PlottedGraphSeries],
+        at boundary: Date
+    ) -> PlottedGraphSeries? {
+        if let matchIndex = SortedArrayIndex.first(in: points, where: { $0.xDate >= boundary }),
+           points[matchIndex].xDate == boundary {
+            return points[matchIndex]
+        }
+
+        let previousPoint = SortedArrayIndex.last(in: points, where: { $0.xDate < boundary }).map { points[$0] }
+        let nextPoint = SortedArrayIndex.first(in: points, where: { $0.xDate > boundary }).map { points[$0] }
+
+        let segment: (start: PlottedGraphSeries, end: PlottedGraphSeries)?
+        switch (previousPoint, nextPoint) {
+        case let (.some(previous), .some(next)):
+            segment = (previous, next)
+        case let (.some(lastPoint), .none):
+            guard let priorPoint = points.dropLast().last else { return nil }
+            segment = (priorPoint, lastPoint)
+        case let (.none, .some(firstPoint)):
+            guard let followingPoint = points.dropFirst().first else { return nil }
+            segment = (firstPoint, followingPoint)
+        case (.none, .none):
+            return nil
+        }
+
+        guard let segment else { return nil }
+
+        let interpolatedValue = BabyDashboardChartSupport.interpolatedValue(
+            at: boundary,
+            from: segment.start.xDate,
+            startValue: segment.start.original.value,
+            to: segment.end.xDate,
+            endValue: segment.end.original.value
+        )
+
+        let interpolatedSeriesPoint = GraphSeries(
+            date: boundary,
+            value: interpolatedValue,
+            series: segment.start.original.series
+        )
+        return PlottedGraphSeries(original: interpolatedSeriesPoint, xDate: boundary)
     }
 }
