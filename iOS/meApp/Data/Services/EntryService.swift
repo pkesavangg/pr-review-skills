@@ -70,10 +70,11 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
     /// eager pushes coalesce onto one task and a full sync can await it before its
     /// own push, preventing the same unsynced rows from being submitted twice.
     private var pendingPushTask: Task<Void, Never>?
-    /// Coalesces the full-dataset progress/streak recompute (`updateProgressAndStreakInternal`)
-    /// so it runs BEHIND the UI after a local add. Awaiting it inline made the save's loader
-    /// wait seconds on 5k-10k-entry accounts, since it re-reads the whole dataset (MOB-1433).
-    /// Successive adds cancel the pending refresh so a bulk save triggers one recompute, not N.
+    /// Coalesces the behind-the-UI post-add work (`updateProgressAndStreakInternal` then
+    /// `checkGoalAlerts`) so it runs BEHIND the UI after a local add. Awaiting this inline made
+    /// the save's loader wait seconds on 5k-10k-entry accounts, since the recompute re-reads the
+    /// whole dataset and the goal-alert reads then contend with it (MOB-1433 §5c).
+    /// Successive adds cancel the pending refresh so a bulk save triggers one run, not N.
     private var progressRefreshTask: Task<Void, Never>?
     /// Tracks in-flight dashboard loads so repeated callers can piggyback on the same work.
     /// The Bool result indicates whether the load succeeded; piggybacked callers retry on failure.
@@ -203,8 +204,12 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
             )
 
             try await handleEntryAdded(entry)
-
-            await checkGoalAlerts()
+            // Goal alerts are evaluated BEHIND the UI via scheduleProgressAndStreakRefresh()
+            // (invoked from handleEntryAdded), not awaited here. Awaiting them inline put their
+            // main-context reads (getLatestEntry/getEntryCount) on the save's critical path,
+            // where they were starved for ~1.8s by the concurrent full-dataset progress/streak
+            // worker read on the shared store — delaying the save's success toast by seconds on
+            // 5k-10k-entry accounts once the HealthKit forward was moved off the path (MOB-1433 §5c).
         } catch {
             logger.log(
                 level: .error,
@@ -2234,15 +2239,21 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
         }
     }
 
-    /// Schedules the full-dataset progress/streak recompute to run behind the UI,
-    /// coalescing rapid successive adds onto a single trailing run (see
-    /// `progressRefreshTask`). Use this on the local-add path; `performSync` still
+    /// Schedules the full-dataset progress/streak recompute — and the goal-alert check —
+    /// to run behind the UI, coalescing rapid successive adds onto a single trailing run
+    /// (see `progressRefreshTask`). Use this on the local-add path; `performSync` still
     /// awaits `updateProgressAndStreakInternal()` directly since it runs off the UI's
     /// critical path already.
     private func scheduleProgressAndStreakRefresh() {
         progressRefreshTask?.cancel()
         progressRefreshTask = Task { [weak self] in
             await self?.updateProgressAndStreakInternal()
+            // Check goal alerts AFTER the progress/streak recompute so their cheap
+            // main-context reads (getLatestEntry/getEntryCount) don't contend with that
+            // full-dataset worker read on the shared store. That contention was pushing the
+            // save's success toast out by seconds once the HealthKit forward was moved off
+            // the critical path (MOB-1433 §5c).
+            await self?.checkGoalAlerts()
         }
     }
 
