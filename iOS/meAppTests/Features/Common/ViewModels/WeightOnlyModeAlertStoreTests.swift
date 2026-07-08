@@ -226,10 +226,17 @@ struct WeightOnlyModeAlertStoreTests {
         bluetooth: MockBluetoothService? = nil,
         notification: MockNotificationHelperService? = nil
     ) -> (WeightOnlyModeAlertStore, MockScaleService, MockBluetoothService, MockNotificationHelperService) { // swiftlint:disable:this large_tuple
+        // Reset the shared container first so leaked registrations/subscriptions from other
+        // suites (e.g. NWPathMonitor callbacks, stale observers) can't perturb this suite's
+        // async flows — matches the isolation convention used across the test target.
+        TestDependencyContainer.reset()
+
         let scaleService = scaleService ?? MockScaleService()
         let bluetooth = bluetooth ?? MockBluetoothService()
         let notification = notification ?? MockNotificationHelperService()
 
+        // Register the suite's mocks BEFORE creating the store so its @Injector-backed
+        // bluetoothService / notificationService cache these instances (not the reset defaults).
         DependencyContainer.shared.register(bluetooth as BluetoothServiceProtocol)
         DependencyContainer.shared.register(notification as NotificationHelperServiceProtocol)
 
