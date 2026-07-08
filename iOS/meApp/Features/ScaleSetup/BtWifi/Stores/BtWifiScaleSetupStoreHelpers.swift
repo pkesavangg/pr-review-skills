@@ -116,7 +116,8 @@ extension BtWifiScaleSetupStore {
             from: index,
             direction: direction,
             steps: steps,
-            canSkipPermissions: arePermissionsEnabled()
+            canSkipPermissions: arePermissionsEnabled(),
+            canSkipCompleteProfile: isProfileComplete()
         )
     }
 

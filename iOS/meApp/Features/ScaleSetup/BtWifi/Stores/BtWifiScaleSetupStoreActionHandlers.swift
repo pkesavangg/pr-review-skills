@@ -215,9 +215,13 @@ extension BtWifiScaleSetupStore {
             let hasNetwork = networkMonitor.isConnected
             if !hasPermissions || !hasNetwork {
                 navigateToStep(.permissions)
+            } else if !isProfileComplete() {
+                navigateToStep(.completeProfile)
             } else {
                 navigateToStep(.wakeup)
             }
+        case .completeProfile:
+            saveCompleteProfileAndProceed()
         case .gatheringNetwork:
             if scaleSetupError == .duplicatesFound {
                 handleSaveDuplicateUser()

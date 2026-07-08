@@ -933,6 +933,8 @@ struct AppAssets {
     static let babyAppIcon = "babyAppIcon"
     static let bpmIcon = "bpmIcon"
     static let weightScaleIcon = "weightScaleIcon"
+    /// Outlined baby-head glyph used for the "No babies added yet" empty state (baby profile absent).
+    static let babyHeadIcon = "babyHeadIcon"
 
     // MARK: - Baby scale series
     static let scale0220 = "0220"

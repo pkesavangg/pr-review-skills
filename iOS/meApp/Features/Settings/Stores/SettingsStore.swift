@@ -116,13 +116,6 @@ class SettingsStore: ObservableObject {
         }
     }
 
-    private var signedUpWithBabyScale: Bool {
-        guard let accountId = activeAccount?.accountId,
-              let rawValue = kvStore.getValue(forKey: KvStorageKeys.selectedSignupDeviceTypeKey(for: accountId)) as? String
-        else { return false }
-        return SignupDeviceType(rawValue: rawValue) == .babyScale
-    }
-
     var shouldShowIntegrations: Bool {
         hasWeightScale || hasBpmDevice
     }
@@ -138,10 +131,6 @@ class SettingsStore: ObservableObject {
 
     var shouldShowWeightScaleSection: Bool {
         hasWeightScale
-    }
-
-    var isMyKidsEnabled: Bool {
-        hasBabyProfile || hasBabyScale
     }
 
     /// Main browser presentation binding for the view

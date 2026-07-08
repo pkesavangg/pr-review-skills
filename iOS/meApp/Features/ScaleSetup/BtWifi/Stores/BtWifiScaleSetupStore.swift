@@ -243,6 +243,28 @@ final class BtWifiScaleSetupStore: ObservableObject {
     // MARK: - Forms
     @Published var userNameForm = UserNameForm()
     @Published var networkForm = NetworkForm()
+
+    // MARK: - Complete Profile State (MOB-1388)
+    /// Biological sex selected on the Complete Profile step.
+    @Published var profileGender: Sex = .male
+    /// Height selected on the Complete Profile step, stored as tenths-of-inches (matches `weightHeight`).
+    @Published var profileHeightStored: String = ""
+    /// Controls the biological-sex picker sheet.
+    @Published var showProfileGenderPicker: Bool = false
+    /// Controls the imperial (feet & inches) height picker sheet.
+    @Published var showProfileHeightInchesPicker: Bool = false
+    /// Controls the metric (centimetres) height picker sheet.
+    @Published var showProfileHeightCmPicker: Bool = false
+    /// Selected imperial height components (feet, inches).
+    @Published var selectedProfileHeightInches: [String] = ["5", "10"]
+    /// Selected metric height components (centimetres digits).
+    @Published var selectedProfileHeightCm: [String] = ["1", "7", "8"]
+    /// Selected goal type on the optional "Set a Goal" section.
+    @Published var profileGoalSegment: GoalTypeSegment = .maintain
+    /// Optional goal weight entered on the Complete Profile step (display units).
+    @Published var profileGoalWeight: String = ""
+    /// Optional starting weight entered when the goal type is Lose / Gain (display units).
+    @Published var profileCurrentWeight: String = ""
     
     // MARK: - Computed Properties
     /// Check if this is being used for settings WiFi configuration
@@ -304,6 +326,8 @@ final class BtWifiScaleSetupStore: ObservableObject {
                 return AnyView(ScaleSetupIntroView(scale: scaleItem))
             case .permissions:
                 return AnyView(PermissionListView(setupType: .btWifi))
+            case .completeProfile:
+                return AnyView(CompleteProfileSetupView().environmentObject(self))
             case .wakeup:
                 return AnyView(ConnectionPromptView(
                     subtitle: scaleSetupStrings.wakeYourScaleSubtitle,

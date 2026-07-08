@@ -17,7 +17,11 @@ struct NoEntryView: View {
     let iconAsset: String?
     /// Tint applied to `iconAsset`. Defaults to `statusIconPrimary` when nil.
     let iconTint: Color?
+    /// Optional secondary text CTA rendered beneath the primary button (e.g. "LOG MANUALLY"
+    /// on the baby "no scale paired" state). When nil, only the primary button is shown.
+    let secondaryButtonTitle: String?
     let onButtonTap: () -> Void
+    let onSecondaryButtonTap: (() -> Void)?
 
     init(
         title: String? = EntryStrings.noEntries,
@@ -25,6 +29,8 @@ struct NoEntryView: View {
         buttonTitle: String = CommonStrings.connectScale,
         iconAsset: String? = nil,
         iconTint: Color? = nil,
+        secondaryButtonTitle: String? = nil,
+        onSecondaryButtonTap: (() -> Void)? = nil,
         onButtonTap: @escaping () -> Void
     ) {
         self.title = title
@@ -32,6 +38,8 @@ struct NoEntryView: View {
         self.buttonTitle = buttonTitle
         self.iconAsset = iconAsset
         self.iconTint = iconTint
+        self.secondaryButtonTitle = secondaryButtonTitle
+        self.onSecondaryButtonTap = onSecondaryButtonTap
         self.onButtonTap = onButtonTap
     }
 
@@ -62,7 +70,7 @@ struct NoEntryView: View {
                 }
             }
 
-            // Connect scale button
+            // Primary CTA (ADD DEVICE / ADD A BABY / LOG MANUALLY depending on state)
             ButtonView(
                 text: buttonTitle,
                 type: .filledPrimary,
@@ -70,6 +78,20 @@ struct NoEntryView: View {
                 isDisabled: false,
                 action: onButtonTap
             )
+            .appAccessibility(id: AccessibilityID.emptyStatePrimaryButton)
+
+            // Optional secondary text CTA (e.g. LOG MANUALLY beneath ADD DEVICE)
+            if let secondaryButtonTitle = secondaryButtonTitle,
+               let onSecondaryButtonTap = onSecondaryButtonTap {
+                ButtonView(
+                    text: secondaryButtonTitle,
+                    type: .textPrimary,
+                    size: .large,
+                    isDisabled: false,
+                    action: onSecondaryButtonTap
+                )
+                .appAccessibility(id: AccessibilityID.emptyStateSecondaryButton)
+            }
 
             Spacer()
         }

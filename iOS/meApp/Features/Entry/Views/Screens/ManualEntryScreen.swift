@@ -149,7 +149,7 @@ struct ManualEntryScreen: View {
             title: ProductTypeStrings.BabyEmptyState.title,
             description: ProductTypeStrings.BabyEmptyState.entryDescription,
             buttonTitle: ProductTypeStrings.BabyEmptyState.addABaby,
-            iconAsset: appAssets.babyAppIcon,
+            iconAsset: appAssets.babyHeadIcon,
             iconTint: theme.babyScaleColor
         ) {
             tabViewModel.navigateToSettings(route: .addBaby, sourceTab: .entry)
