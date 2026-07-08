@@ -91,28 +91,65 @@ struct A6ScaleSetupScreen: View {
     
     private var footerButtons: some View {
         HStack {
-            ButtonView(text: commonLang.back,
-                       type: .inlineTextPrimary,
-                       size: .small,
-                       isDisabled: setupStore.currentStep == .intro || setupStore.currentStep == .setupFinished) {
-                withAnimation {
-                    hideKeyboard()
+            if setupStore.currentStep == .completeProfile {
+                completeProfileFooter
+            } else {
+                ButtonView(text: commonLang.back,
+                           type: .inlineTextPrimary,
+                           size: .small,
+                           isDisabled: setupStore.currentStep == .intro || setupStore.currentStep == .setupFinished) {
+                    withAnimation {
+                        hideKeyboard()
+                    }
+                    setupStore.moveToPreviousStep()
                 }
-                setupStore.moveToPreviousStep()
-            }
-            
-            Spacer()
-            
-            ButtonView(text: setupStore.currentStep == .setupFinished ? commonLang.finish : commonLang.next,
-                       type: .filledPrimary,
-                       size: .small,
-                       isDisabled: !setupStore.isNextEnabled) {
-                withAnimation {
-                    hideKeyboard()
+
+                Spacer()
+
+                ButtonView(text: setupStore.currentStep == .setupFinished ? commonLang.finish : commonLang.next,
+                           type: .filledPrimary,
+                           size: .small,
+                           isDisabled: !setupStore.isNextEnabled) {
+                    withAnimation {
+                        hideKeyboard()
+                    }
+                    setupStore.moveToNextStep()
                 }
-                setupStore.moveToNextStep()
             }
         }
+    }
+
+    /// Complete Profile Setup: Back / Skip / Next (MOB-1388).
+    @ViewBuilder private var completeProfileFooter: some View {
+        ButtonView(text: commonLang.back,
+                   type: .inlineTextPrimary,
+                   size: .small,
+                   isDisabled: false,
+                   useFrameForInlineText: true) {
+            withAnimation {
+                hideKeyboard()
+            }
+            setupStore.moveToPreviousStep()
+        }
+        Spacer()
+        ButtonView(text: commonLang.skip, type: .inlineTextTertiary, size: .small, isDisabled: false) {
+            withAnimation {
+                hideKeyboard()
+            }
+            setupStore.handleCompleteProfileSkip()
+        }
+        .appAccessibility(id: AccessibilityID.scaleSetupProfileSkipButton)
+        Spacer()
+        ButtonView(text: commonLang.next,
+                   type: .filledPrimary,
+                   size: .small,
+                   isDisabled: !setupStore.isNextEnabled) {
+            withAnimation {
+                hideKeyboard()
+            }
+            setupStore.handleCompleteProfileNext()
+        }
+        .appAccessibility(id: AccessibilityID.scaleSetupProfileNextButton)
     }
 }
 

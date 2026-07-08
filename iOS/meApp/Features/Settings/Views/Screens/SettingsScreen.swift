@@ -171,10 +171,9 @@ struct SettingsScreen: View {
             })
             .listRowInsets()
             .accessibilityIdentifier(AccessibilityID.settingsRowUserProfile)
-            ActionListItemView(config: ActionListItemConfig(
-                title: settingsLang.myKids,
-                isDisabled: !settingsStore.isMyKidsEnabled
-            ) {
+            // MOB-1226: "My Kids" is always enabled for every user — there is no disabled
+            // state. Users with no baby profile land on the "No babies added yet" empty state.
+            ActionListItemView(config: ActionListItemConfig(title: settingsLang.myKids) {
                 router.navigate(to: .myKids)
             })
             .listRowInsets()

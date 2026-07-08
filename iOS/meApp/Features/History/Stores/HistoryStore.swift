@@ -20,6 +20,7 @@ final class HistoryStore: ObservableObject {
     @Injector var logger: LoggerServiceProtocol
     @Injector var accountService: AccountServiceProtocol
     @Injector var productTypeStore: ProductTypeStoreProtocol
+    @Injector var deviceService: PairedDeviceServiceProtocol
 
     // MARK: - Summary Screen State
     @Published private(set) var months: [HistoryMonth] = []
@@ -72,6 +73,17 @@ final class HistoryStore: ObservableObject {
     // MARK: - UI Flags
     @Published var isEmptyState: Bool = false
 
+    /// The local `DeviceType.rawValue`s of every currently paired device, mirrored from
+    /// `deviceService.scalesPublisher` so the empty state re-renders when a device is
+    /// paired/unpaired. Drives the "no device" vs. "no measurement" empty-state split.
+    @Published private(set) var pairedDeviceTypes: Set<String> = []
+
+    /// Whether a device matching the currently selected product is paired.
+    /// `.myWeight` → weight scale, `.myBloodPressure` → BP monitor, `.baby` → baby scale.
+    var hasPairedDeviceForCurrentProduct: Bool {
+        pairedDeviceTypes.contains(productTypeStore.selectedItem.deviceType.rawValue)
+    }
+
     // MARK: - Cursor Pagination State (Remote Read)
     /// Accumulated entries pulled from the unified `GET /v3/entries/` cursor endpoint.
     @Published private(set) var pagedEntries: [BathScaleOperationDTO] = []
@@ -102,6 +114,16 @@ final class HistoryStore: ObservableObject {
 
     // swiftlint:disable:next cyclomatic_complexity function_body_length
     init() {
+        // Seed + track paired devices so the empty state can distinguish "no device"
+        // from "device paired, no measurement" and update live as devices are paired.
+        pairedDeviceTypes = Set(deviceService.scales.compactMap { $0.deviceType })
+        deviceService.scalesPublisher
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] scales in
+                self?.pairedDeviceTypes = Set(scales.compactMap { $0.deviceType })
+            }
+            .store(in: &cancellables)
+
         entryService.entrySaved
             .sink { [weak self] entry in
                 guard let self = self else { return }
