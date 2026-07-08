@@ -63,7 +63,7 @@ struct DashboardChartRulesTests {
         let base = calendar.startOfDay(for: Date())
         let summaries = [summary(dayOffset: 0, from: base)]
 
-        guard let result = DashboardSnapshotChartWindow.make(summaries: summaries) { _ in true } else {
+        guard let result = DashboardSnapshotChartWindow.make(summaries: summaries, include: { _ in true }) else {
             Issue.record("Expected a non-nil window")
             return
         }
@@ -85,7 +85,7 @@ struct DashboardChartRulesTests {
         let latest = summary(dayOffset: 0, from: base, weight: 1800)
         let summaries = [latest, previous, visibleA] // intentionally unsorted
 
-        guard let result = DashboardSnapshotChartWindow.make(summaries: summaries) { _ in true } else {
+        guard let result = DashboardSnapshotChartWindow.make(summaries: summaries, include: { _ in true }) else {
             Issue.record("Expected a non-nil window")
             return
         }
@@ -111,7 +111,7 @@ struct DashboardChartRulesTests {
         let latest = summary(dayOffset: 3, from: base, weight: 1850)
         let summaries = [previous, visibleA, visibleB, latest]
 
-        guard let result = DashboardSnapshotChartWindow.make(summaries: summaries) { _ in true } else {
+        guard let result = DashboardSnapshotChartWindow.make(summaries: summaries, include: { _ in true }) else {
             Issue.record("Expected a non-nil window")
             return
         }
