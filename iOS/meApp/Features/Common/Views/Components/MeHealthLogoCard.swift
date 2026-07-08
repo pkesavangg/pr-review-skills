@@ -64,3 +64,14 @@ struct MeHealthLogoCard: View {
     }
     .environmentObject(Theme.shared)
 }
+
+// Guards this PR's headline fix — the wordmark being invisible in dark mode —
+// so the light-on-dark variant is verifiable at a glance and against regression.
+#Preview("Dark") {
+    ZStack {
+        Color("neutral-900").ignoresSafeArea()
+        MeHealthLogoCard()
+    }
+    .environmentObject(Theme.shared)
+    .preferredColorScheme(.dark)
+}
