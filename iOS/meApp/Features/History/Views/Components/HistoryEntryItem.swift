@@ -20,9 +20,13 @@ struct HistoryEntryItem: View {
     let onTap: () -> Void
     let onDelete: () -> Void
     let onMetricTap: (EntrySnapshot, BodyMetric) -> Void
+    /// Called when the user taps the "+"/pencil icon in the expanded notes section (MOB-1172).
+    var onEditNotes: () -> Void = {}
     var openItemID: Binding<UUID?>? // Optional binding for swipeable open tracking
 
     // MARK: - Computed Properties
+
+    private var hasNotes: Bool { !(entry.note ?? "").isEmpty }
 
     private var combinedAccessibilityLabel: String {
         let day = DateTimeTools.getFormattedDay(entry.entryTimestamp)
@@ -94,17 +98,12 @@ struct HistoryEntryItem: View {
                 .layoutPriority(1)
                 .fixedSize(horizontal: true, vertical: false)
 
-                // Expansion chevron (only if metrics exist); placeholder preserves alignment otherwise
-                if !entry.metricItems.isEmpty {
-                    AppIconView(icon: AppAssets.chevronDown)
-                        .foregroundStyle(isExpanded ? theme.actionInverse : theme.statusIconPrimary)
-                        .rotationEffect(.degrees(isExpanded ? 180 : 0))
-                        .padding(.leading, .spacingSM)
-                } else {
-                    Color.clear
-                        .frame(width: 24, height: 24)
-                        .padding(.leading, .spacingSM)
-                }
+                // Expansion chevron — always shown: every entry expands to reveal its
+                // metrics (if any) and the note add/edit affordance (MOB-1172).
+                AppIconView(icon: AppAssets.chevronDown)
+                    .foregroundStyle(isExpanded ? theme.actionInverse : theme.statusIconPrimary)
+                    .rotationEffect(.degrees(isExpanded ? 180 : 0))
+                    .padding(.leading, .spacingSM)
             }
             .padding(.vertical, .spacingSM)
             .padding(.horizontal, .spacingSM)
@@ -116,10 +115,8 @@ struct HistoryEntryItem: View {
             .accessibilityIdentifier(AccessibilityID.historyEntryRow)
             .accessibilityElement(children: .ignore)
             .accessibilityLabel(combinedAccessibilityLabel)
-            .accessibilityAddTraits(entry.metricItems.isEmpty ? [] : .isButton)
-            .accessibilityHint(entry.metricItems.isEmpty
-                ? ""
-                : (isExpanded ? HistoryListStrings.accEntryCollapseHint : HistoryListStrings.accEntryExpandHint))
+            .accessibilityAddTraits(.isButton)
+            .accessibilityHint(isExpanded ? HistoryListStrings.accEntryCollapseHint : HistoryListStrings.accEntryExpandHint)
             // Swipeable delete action
             .swipeableActions(
                 buttons: [
@@ -145,9 +142,11 @@ struct HistoryEntryItem: View {
             Divider()
                 .foregroundColor(theme.actionPrimary)
 
-            // Expanded metrics section with smooth animation
-            if isExpanded, !entry.metricItems.isEmpty {
+            // Expanded section: note add/edit affordance + body metrics
+            if isExpanded {
                 VStack(spacing: 0) {
+                    notesSection
+
                     ForEach(Array(entry.metricItems.enumerated()), id: \.0) { index, item in
                         if let metricConfig = BodyMetrics.config[item.metric] {
                             HistoryMetricItem(
@@ -167,9 +166,38 @@ struct HistoryEntryItem: View {
         .animation(.easeInOut(duration: 0.25), value: isExpanded)
         .contentShape(Rectangle())
         .onTapGesture {
-            guard !entry.metricItems.isEmpty else { return }
             onTap()
         }
+    }
+
+    // MARK: - Notes Section
+
+    /// Expanded-state note row: shows the saved note (or a placeholder) with a "+" to add
+    /// or a boxed pencil to edit. Tapping opens the edit overlay (MOB-1172).
+    private var notesSection: some View {
+        HStack(alignment: .top, spacing: .spacingXS) {
+            if hasNotes {
+                Text(entry.note ?? "")
+                    .fontOpenSans(.body3)
+                    .foregroundStyle(theme.textBody)
+            } else {
+                Text(HistoryListStrings.noNotesPlaceholder)
+                    .fontOpenSans(.body3)
+                    .foregroundStyle(theme.textSubheading)
+            }
+            Spacer()
+            Button(action: onEditNotes) {
+                // "+" to add when no note exists, boxed pencil to edit once it does.
+                Image(systemName: hasNotes ? "square.and.pencil" : "plus")
+                    .font(.system(size: 18))
+                    .foregroundStyle(theme.actionPrimary)
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel(hasNotes ? HistoryListStrings.accEditNoteLabel : HistoryListStrings.accAddNoteLabel)
+        }
+        .padding(.spacingSM)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(theme.backgroundSecondary)
     }
 }
 

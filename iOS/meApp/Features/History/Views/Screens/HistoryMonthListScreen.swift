@@ -16,6 +16,7 @@ struct HistoryMonthListScreen: View {
     @EnvironmentObject var router: Router<HistoryRoute>
     @State private var selectedEntry: EntrySnapshot?
     @State private var selectedMetric: BodyMetric?
+    @State private var entryToEdit: EntrySnapshot?
     @State private var showDeleteAlert = false
     @State private var entryToDelete: EntrySnapshot?
     @State private var openItemID: UUID?
@@ -88,6 +89,10 @@ struct HistoryMonthListScreen: View {
         .sheet(item: $selectedEntry) { entry in
             RefetchedEntryWrapper(entryId: entry.id, selectedMetric: selectedMetric ?? .bmi)
         }
+        .sheet(item: $entryToEdit) { entry in
+            WeightHistoryEditSheet(entry: entry, isMetric: historyStore.isWeightMetric)
+                .environmentObject(historyStore)
+        }
     }
     
     @ViewBuilder
@@ -108,6 +113,9 @@ struct HistoryMonthListScreen: View {
                         onMetricTap: { entry, metric in
                             selectedEntry = entry
                             selectedMetric = metric
+                        },
+                        onEditNotes: {
+                            entryToEdit = entry
                         },
                         openItemID: $openItemID
                     )

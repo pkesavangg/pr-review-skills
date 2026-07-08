@@ -14,4 +14,10 @@ struct BPHistoryEntry: Identifiable, Equatable {
     let diastolic: Int
     let pulse: Int
     let notes: String?
+    /// Raw entry source (e.g. "manual", "bluetooth monitor"). Drives edit permissions (MOB-1172).
+    var source: String?
+
+    /// True when the reading was typed in manually (values editable); false for a device-synced
+    /// reading, where only the note may be edited.
+    var isManual: Bool { EntrySource.isManualEntry(source) }
 }

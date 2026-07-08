@@ -30,4 +30,11 @@ struct BabyHistoryEntry: Identifiable, Equatable {
     let weightDisplay: String
     /// Pre-formatted length string based on account unit preference (e.g. "18 in" or "45.7 cm")
     let lengthDisplay: String
+    /// Raw entry source (nil/"manual" for hand-entered; a scale graduation code, e.g. "0220",
+    /// for a device reading). Drives edit permissions (MOB-1172).
+    var source: String?
+
+    /// True when the reading was typed in manually (values editable); false for a device-synced
+    /// reading, where only the note may be edited.
+    var isManual: Bool { EntrySource.isManualEntry(source) }
 }
