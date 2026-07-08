@@ -149,7 +149,7 @@ scroll-end-gated: `updateYAxisConfiguration()` hard-guards `!isScrolling` (`Base
 (`DashboardChartManager.swift:227-264`) + `handleScrollPhaseChange(.idle)` drive the settle-time recompute.
 
 **Step 2d (W1 + W2, runtime warnings) — DONE, compiles; awaiting device confirm.** Full write-up in
-[`MOB-518-weight-graph-focus.md`](MOB-518-weight-graph-focus.md) §3.5 + §4.3.
+[`MOB-518-weight-graph-focus.md`](MOB-518-weight-graph/MOB-518-weight-graph-focus.md) §3.5 + §4.3.
 - **W1 (scroll update storm)** — `Publishing changes from within view updates` + `onChange(of:
   ChartScrollPositionConfiguration) … multiple times per frame`. Root: `scrollPosition` was `@Published`, and the
   `.chartScrollPosition` binding writes it *on the view-update pass* → re-entrant re-render every frame. Fix:

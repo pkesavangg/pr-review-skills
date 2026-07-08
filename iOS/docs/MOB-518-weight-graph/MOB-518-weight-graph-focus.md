@@ -78,10 +78,10 @@ can make SwiftUI merge/drop scroll updates → visible jitter), and W2 = a layou
 
 ### 2.3 The scroll lifecycle (verified against code)
 1. **User drags** → SwiftUI Charts drives its internal scroll and calls the
-   `.chartScrollPosition(x:)` binding **set** ([`BaseGraphView+ChartModifiers.swift:28-36`](../meApp/Features/Dashboard/Views/Components/BaseGraphView+ChartModifiers.swift#L28-L36)) → `viewModel.handleScrollPositionChange(newPos)`.
-2. `handleScrollPositionChange` ([`BaseSectionViewModel.swift:416-441`](../meApp/Features/Dashboard/ViewModels/BaseSectionViewModel.swift#L416-L441)): throttles to 16 ms, then (a) `self.scrollPosition = newPos` (`:437`), and (b) `chartManager.handleScrollPositionChange` → `graphManager.handleScrollPositionChange` → `interaction.captureScrollPosition(pos)` — which **only buffers**; it does **NOT** touch `state.xScrollPosition` mid-gesture ([`DashboardGraphManager.swift:45-48`](../meApp/Features/Dashboard/Managers/DashboardGraphManager.swift#L45-L48)).
-3. **Scroll end** → `handleScrollPhaseChange(.idle)` / debounce timer consumes the buffered position and **then** writes `state.xScrollPosition` ([`DashboardGraphManager.swift:68,100`](../meApp/Features/Dashboard/Managers/DashboardGraphManager.swift#L68)), sets `isScrolling=false`, and `DashboardChartManager.handleScrollEndOptimized` ([`:227-264`](../meApp/Features/Dashboard/Managers/DashboardChartManager.swift#L227-L264)) recomputes y-axis/average/metrics.
-4. **Programmatic moves** (period switch, init) → `DashboardChartManager` → `graphManager.updateScrollPosition` → `state.xScrollPosition` ([`DashboardChartManager.swift:199,381`](../meApp/Features/Dashboard/Managers/DashboardChartManager.swift#L199)). The store→VM sync `.onChange(of: xScrollPosition)` ([`BaseGraphView+ChartModifiers.swift:338-341`](../meApp/Features/Dashboard/Views/Components/BaseGraphView+ChartModifiers.swift#L338-L341)) then mirrors it into the VM.
+   `.chartScrollPosition(x:)` binding **set** ([`BaseGraphView+ChartModifiers.swift:28-36`](../../meApp/Features/Dashboard/Views/Components/BaseGraphView+ChartModifiers.swift#L28-L36)) → `viewModel.handleScrollPositionChange(newPos)`.
+2. `handleScrollPositionChange` ([`BaseSectionViewModel.swift:416-441`](../../meApp/Features/Dashboard/ViewModels/BaseSectionViewModel.swift#L416-L441)): throttles to 16 ms, then (a) `self.scrollPosition = newPos` (`:437`), and (b) `chartManager.handleScrollPositionChange` → `graphManager.handleScrollPositionChange` → `interaction.captureScrollPosition(pos)` — which **only buffers**; it does **NOT** touch `state.xScrollPosition` mid-gesture ([`DashboardGraphManager.swift:45-48`](../../meApp/Features/Dashboard/Managers/DashboardGraphManager.swift#L45-L48)).
+3. **Scroll end** → `handleScrollPhaseChange(.idle)` / debounce timer consumes the buffered position and **then** writes `state.xScrollPosition` ([`DashboardGraphManager.swift:68,100`](../../meApp/Features/Dashboard/Managers/DashboardGraphManager.swift#L68)), sets `isScrolling=false`, and `DashboardChartManager.handleScrollEndOptimized` ([`:227-264`](../../meApp/Features/Dashboard/Managers/DashboardChartManager.swift#L227-L264)) recomputes y-axis/average/metrics.
+4. **Programmatic moves** (period switch, init) → `DashboardChartManager` → `graphManager.updateScrollPosition` → `state.xScrollPosition` ([`DashboardChartManager.swift:199,381`](../../meApp/Features/Dashboard/Managers/DashboardChartManager.swift#L199)). The store→VM sync `.onChange(of: xScrollPosition)` ([`BaseGraphView+ChartModifiers.swift:338-341`](../../meApp/Features/Dashboard/Views/Components/BaseGraphView+ChartModifiers.swift#L338-L341)) then mirrors it into the VM.
 
 **Consequence of (2)/(3):** during an active drag the store's `xScrollPosition` does **not** change, so the
 store→VM sync `onChange` does **not** fire mid-scroll. **There is only ONE live writer of `scrollPosition`
@@ -95,7 +95,7 @@ during a gesture** (the chart binding set). So W1 is *not* a two-writers race �
 > the view is invalidated regardless.** The combination with the **"`scrollPosition` not `@Published`"
 > invariant** is what produces the smooth scroll behaviour — neither alone is sufficient.
 
-Confirmed in code: the Equatable `viewHash` ([`BaseGraphView.swift:367-377`](../meApp/Features/Dashboard/Views/Components/BaseGraphView.swift#L367-L377)) **does** exclude `scrollPosition`/`isScrolling`. So the design **intends** that mutating `scrollPosition` does **not** invalidate `BaseGraphView`.
+Confirmed in code: the Equatable `viewHash` ([`BaseGraphView.swift:367-377`](../../meApp/Features/Dashboard/Views/Components/BaseGraphView.swift#L367-L377)) **does** exclude `scrollPosition`/`isScrolling`. So the design **intends** that mutating `scrollPosition` does **not** invalidate `BaseGraphView`.
 
 ---
 
@@ -154,7 +154,7 @@ If W1/W2 ever resurface, these two captures pinpoint a regression fast:
 
 ## 3. W1 — earlier (partial) root cause: a broken `@Published` invariant
 
-**`scrollPosition` is declared `@Published`** ([`BaseSectionViewModel.swift:22`](../meApp/Features/Dashboard/ViewModels/BaseSectionViewModel.swift#L22)):
+**`scrollPosition` is declared `@Published`** ([`BaseSectionViewModel.swift:22`](../../meApp/Features/Dashboard/ViewModels/BaseSectionViewModel.swift#L22)):
 ```swift
 @Published var scrollPosition = Date()   // ← violates the "not @Published" invariant (GraphViewFlow.md:475-477)
 ```
@@ -173,8 +173,8 @@ It was (re)introduced in a refactor (`git log -S` → MA-3964 / MA-3845), silent
 
 **Compounding trigger — the `+0.001` nudge dances** (which only exist *because* the property is `@Published`,
 to force a binding refresh): they write `scrollPosition` **twice in immediate succession**:
-- on appear: [`BaseGraphView.swift:141-145`](../meApp/Features/Dashboard/Views/Components/BaseGraphView.swift#L141-L145)
-- `forceScrollPositionUpdate`: [`BaseSectionViewModel.swift:712-719`](../meApp/Features/Dashboard/ViewModels/BaseSectionViewModel.swift#L712-L719) (comment: *"Force a small change to trigger binding update"*).
+- on appear: [`BaseGraphView.swift:141-145`](../../meApp/Features/Dashboard/Views/Components/BaseGraphView.swift#L141-L145)
+- `forceScrollPositionUpdate`: [`BaseSectionViewModel.swift:712-719`](../../meApp/Features/Dashboard/ViewModels/BaseSectionViewModel.swift#L712-L719) (comment: *"Force a small change to trigger binding update"*).
 These deterministically emit the warning on mount / period switch.
 
 **Why the 16 ms throttle doesn't help:** the throttle limits how often Charts' `set` is *forwarded*, but the
@@ -193,7 +193,7 @@ observers.
 - Route **programmatic** scroll changes through the store's already-`@Published` `state.graph.xScrollPosition`
   (period switch/init already do this; the store→VM `onChange` mirrors it into the VM). The store publish
   re-renders the body, which re-applies `.chartScrollPosition` with the updated VM value → Charts adopts it.
-- **Delete** the `+0.001` nudge dances ([`BaseGraphView.swift:141-145`](../meApp/Features/Dashboard/Views/Components/BaseGraphView.swift#L141-L145), `forceScrollPositionUpdate`) — they exist only to force the `@Published` refresh that we no longer want.
+- **Delete** the `+0.001` nudge dances ([`BaseGraphView.swift:141-145`](../../meApp/Features/Dashboard/Views/Components/BaseGraphView.swift#L141-L145), `forceScrollPositionUpdate`) — they exist only to force the `@Published` refresh that we no longer want.
 - **Risk:** programmatic scroll adoption now depends on the store-publish re-render ordering relative to the
   store→VM `onChange` write. Needs on-device check of: initial position, period-switch anchor, "scroll to
   latest".
@@ -222,8 +222,8 @@ observers.
 > ⛔️ **This was reverted.** It did not remove the `@Published` write (see the "Deliberately NOT changed"
 > bullet), so the storm persisted and it added an `onChange(of: Date)` symptom. The shipped fix is **§3.5**.
 
-- **New local `@State`** in `BaseGraphView` ([`:24-31`](../meApp/Features/Dashboard/Views/Components/BaseGraphView.swift#L24-L31)): `chartScrollX: Date` (the chart's live scroll source) + `isAdoptingProgrammaticScroll: Bool` (echo guard).
-- **Chart binding swapped** to the canonical `@State` form ([`BaseGraphView+ChartModifiers.swift:27-33`](../meApp/Features/Dashboard/Views/Components/BaseGraphView+ChartModifiers.swift#L27)): `.chartScrollPosition(x: $chartScrollX)` — replaces the old manual `Binding{ get: viewModel.scrollPosition; set: handleScrollPositionChange }`. **The throttle no longer sits inside the chart binding**, so get/set identity is preserved → no per-frame config churn.
+- **New local `@State`** in `BaseGraphView` ([`:24-31`](../../meApp/Features/Dashboard/Views/Components/BaseGraphView.swift#L24-L31)): `chartScrollX: Date` (the chart's live scroll source) + `isAdoptingProgrammaticScroll: Bool` (echo guard).
+- **Chart binding swapped** to the canonical `@State` form ([`BaseGraphView+ChartModifiers.swift:27-33`](../../meApp/Features/Dashboard/Views/Components/BaseGraphView+ChartModifiers.swift#L27)): `.chartScrollPosition(x: $chartScrollX)` — replaces the old manual `Binding{ get: viewModel.scrollPosition; set: handleScrollPositionChange }`. **The throttle no longer sits inside the chart binding**, so get/set identity is preserved → no per-frame config churn.
 - **Two boundary `onChange`s** in `BaseGraphView.body`:
   - `.onChange(of: chartScrollX)` → `viewModel.handleScrollPositionChange(newPos)` (user scroll → throttled/buffered app logic), skipped when the change was our own programmatic set.
   - `.onChange(of: dashboardStore.state.graph.xScrollPosition)` → sets `chartScrollX` (programmatic adopt: init / period switch / scroll-end commit), guarded by `>0.1s` and the echo flag.
@@ -281,15 +281,15 @@ seen under Option B were downstream churn of the storm and disappear once the st
 **Confidence: medium. Ruled several suspects out; exact source needs one on-device symbolic breakpoint.**
 
 Ruled OUT statically:
-- `.chartXVisibleDomain(length:)` — `visibleDomainLength` always returns a positive constant ([`GraphRenderingConfiguration.swift:19-26`](../meApp/Features/Dashboard/Managers/Graph/GraphRenderingConfiguration.swift#L19-L26)).
-- `yAxisDomain` fed to `.chartYScale` — frozen during scroll (`updateYAxisConfiguration` guards `!isScrolling`, [`BaseSectionViewModel.swift:355`](../meApp/Features/Dashboard/ViewModels/BaseSectionViewModel.swift#L355)); degenerate-per-frame is unlikely.
+- `.chartXVisibleDomain(length:)` — `visibleDomainLength` always returns a positive constant ([`GraphRenderingConfiguration.swift:19-26`](../../meApp/Features/Dashboard/Managers/Graph/GraphRenderingConfiguration.swift#L19-L26)).
+- `yAxisDomain` fed to `.chartYScale` — frozen during scroll (`updateYAxisConfiguration` guards `!isScrolling`, [`BaseSectionViewModel.swift:355`](../../meApp/Features/Dashboard/ViewModels/BaseSectionViewModel.swift#L355)); degenerate-per-frame is unlikely.
 - Top-level chart frames (`chartContainerHeight` 265, `yAxisLabelWidth` 30/40) are constants.
 
 Remaining candidates (ranked), to bisect on device:
 1. **Overlays computed off `chartFrame` before layout settles.** On the first frames `chartFrame == .zero`, so
    `availableChartHeight = chartFrame.height - 18 = -18` inside `getChartPosition` / `getGoalChipPosition`
-   ([`BaseSectionViewModel.swift:547,565,608`](../meApp/Features/Dashboard/ViewModels/BaseSectionViewModel.swift#L547)). These feed `.position(...)` (tolerates negatives) — but any child that converts them into a `.frame(height:)` would emit W2.
-2. **A callout/label frame handed a NaN** — `GraphSelectionDateCalloutView`, `CachedLabel` (`.frame(width:)`, [`CachedLabel.swift:63`](../meApp/Features/Dashboard/Views/Components/CachedLabel.swift#L63)), `SlashDividerView` (`.frame(height:)`) — if width/height comes from a divide-by-zero.
+   ([`BaseSectionViewModel.swift:547,565,608`](../../meApp/Features/Dashboard/ViewModels/BaseSectionViewModel.swift#L547)). These feed `.position(...)` (tolerates negatives) — but any child that converts them into a `.frame(height:)` would emit W2.
+2. **A callout/label frame handed a NaN** — `GraphSelectionDateCalloutView`, `CachedLabel` (`.frame(width:)`, [`CachedLabel.swift:63`](../../meApp/Features/Dashboard/Views/Components/CachedLabel.swift#L63)), `SlashDividerView` (`.frame(height:)`) — if width/height comes from a divide-by-zero.
 3. **A degenerate y-domain (min == max)** at rest for a single-value window → zero-height plot rect.
 
 > **W2 is likely independent of W1** — different subsystem (layout vs scroll observation). Fixing W1 may or
@@ -335,12 +335,12 @@ Combined with the W1 fix removing the mid-frame re-layout thrash, both the storm
 
 ## 6. Key files (verified 2026-07-08)
 
-- [`BaseGraphView+ChartModifiers.swift`](../meApp/Features/Dashboard/Views/Components/BaseGraphView+ChartModifiers.swift) — `.chartScrollPosition` binding (`:28-36`), store→VM sync (`:338-341`), selection/gesture.
-- [`BaseGraphView.swift`](../meApp/Features/Dashboard/Views/Components/BaseGraphView.swift) — `Equatable` hash excl. scrollPosition (`:363-377`), onAppear nudge (`:141-145`), chart body + frames (`:540-577`), overlays (`:602-672`).
-- [`BaseSectionViewModel.swift`](../meApp/Features/Dashboard/ViewModels/BaseSectionViewModel.swift) — `@Published scrollPosition` (`:22`, **the bug**), `handleScrollPositionChange` (`:416-441`), `updateScrollPosition`/`forceScrollPositionUpdate` (`:707-719`), `getChartPosition`/`getGoalChipPosition` (`:529-623`), y-axis scroll guard (`:355`).
-- [`DashboardGraphManager.swift`](../meApp/Features/Dashboard/Managers/DashboardGraphManager.swift) — scroll buffering (`:45-48`), xScrollPosition committed at scroll-end (`:68,100`).
-- [`DashboardChartManager.swift`](../meApp/Features/Dashboard/Managers/DashboardChartManager.swift) — programmatic scroll (`:199,381`), scroll-end recompute (`:227-264`).
-- [`GraphViewFlow.md`](../meApp/Features/Dashboard/GraphViewFlow.md) — the invariant (`:475-477`), scroll lifecycle (`:931-1000`).
+- [`BaseGraphView+ChartModifiers.swift`](../../meApp/Features/Dashboard/Views/Components/BaseGraphView+ChartModifiers.swift) — `.chartScrollPosition` binding (`:28-36`), store→VM sync (`:338-341`), selection/gesture.
+- [`BaseGraphView.swift`](../../meApp/Features/Dashboard/Views/Components/BaseGraphView.swift) — `Equatable` hash excl. scrollPosition (`:363-377`), onAppear nudge (`:141-145`), chart body + frames (`:540-577`), overlays (`:602-672`).
+- [`BaseSectionViewModel.swift`](../../meApp/Features/Dashboard/ViewModels/BaseSectionViewModel.swift) — `@Published scrollPosition` (`:22`, **the bug**), `handleScrollPositionChange` (`:416-441`), `updateScrollPosition`/`forceScrollPositionUpdate` (`:707-719`), `getChartPosition`/`getGoalChipPosition` (`:529-623`), y-axis scroll guard (`:355`).
+- [`DashboardGraphManager.swift`](../../meApp/Features/Dashboard/Managers/DashboardGraphManager.swift) — scroll buffering (`:45-48`), xScrollPosition committed at scroll-end (`:68,100`).
+- [`DashboardChartManager.swift`](../../meApp/Features/Dashboard/Managers/DashboardChartManager.swift) — programmatic scroll (`:199,381`), scroll-end recompute (`:227-264`).
+- [`GraphViewFlow.md`](../../meApp/Features/Dashboard/GraphViewFlow.md) — the invariant (`:475-477`), scroll lifecycle (`:931-1000`).
 
 ---
 

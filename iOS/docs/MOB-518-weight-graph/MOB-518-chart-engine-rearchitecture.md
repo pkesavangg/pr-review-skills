@@ -26,7 +26,7 @@ the working tree on **2026-07-08** (post W1/W2).
 
 **Diagnosis in one paragraph.** The chart is **frame/settle-driven where the spec is event-driven**, and
 it expresses "the data settled" by *throwing away and rebuilding the whole SwiftUI* `Chart`. The single
-load-bearing mistake is `.id(lastDataHash)` **on the** `Chart` (`[BaseGraphView.swift:556](../meApp/Features/Dashboard/Views/Components/BaseGraphView.swift#L556)`),
+load-bearing mistake is `.id(lastDataHash)` **on the** `Chart` (`[BaseGraphView.swift:556](../../meApp/Features/Dashboard/Views/Components/BaseGraphView.swift#L556)`),
 whose hash **includes the y-axis domain + ticks**. Every scroll-end re-settles the y-axis → the id
 changes → SwiftUI destroys and re-mounts the entire chart → it re-runs its mount animation (Swift Charts
 pops `PointMark`s at final positions while the `.monotone` `LineMark` path *draws in* → "dots first, line
@@ -80,22 +80,22 @@ per point: ONE LineMark + ONE PointMark   ← rendered together, but see S6
 ### A.2 Two scroll positions (deliberately split — keep this idea)
 
 - **VM** `scrollPosition` — plain `var` (post-W1), read live by the `.chartScrollPosition` binding
-(`[BaseSectionViewModel.swift:30](../meApp/Features/Dashboard/ViewModels/BaseSectionViewModel.swift#L30)`).
+(`[BaseSectionViewModel.swift:30](../../meApp/Features/Dashboard/ViewModels/BaseSectionViewModel.swift#L30)`).
 - **Store** `state.graph.xScrollPosition` — the *committed* position, written only at scroll-end
-(`[DashboardGraphManager.swift:66-72](../meApp/Features/Dashboard/Managers/DashboardGraphManager.swift#L66-L72)`).
+(`[DashboardGraphManager.swift:66-72](../../meApp/Features/Dashboard/Managers/DashboardGraphManager.swift#L66-L72)`).
 
 
 
 ### A.3 Y-axis is frozen during scroll, resettled on a timer cascade
 
-`updateYAxisConfiguration` guards `!isScrolling` (`[BaseSectionViewModel.swift:363](../meApp/Features/Dashboard/ViewModels/BaseSectionViewModel.swift#L363)`).
+`updateYAxisConfiguration` guards `!isScrolling` (`[BaseSectionViewModel.swift:363](../../meApp/Features/Dashboard/ViewModels/BaseSectionViewModel.swift#L363)`).
 Resettle fires through **three overlapping paths**: `handleScrollPhaseChange(.idle)` (+50ms),
-`handleScrollEndOptimized` (+100/200/200/200ms cascade, `[DashboardChartManager.swift:227-288](../meApp/Features/Dashboard/Managers/DashboardChartManager.swift#L227-L264)`),
+`handleScrollEndOptimized` (+100/200/200/200ms cascade, `[DashboardChartManager.swift:227-288](../../meApp/Features/Dashboard/Managers/DashboardChartManager.swift#L227-L264)`),
 and the VM's own `handleScrollEnd` (+200ms). They race; the axis visibly lands late → the jerk.
 
 ### A.4 Host / lifecycle
 
-`GraphView` (`[GraphView.swift](../meApp/Features/Dashboard/Views/Components/GraphView.swift)`) owns four
+`GraphView` (`[GraphView.swift](../../meApp/Features/Dashboard/Views/Components/GraphView.swift)`) owns four
 `@StateObject` section VMs (`Week/Month/Year/Total`), renders only the active one, and tears down the
 inactive ones on period switch. Each period wrapper is a thin `BaseGraphView` host.
 
@@ -110,16 +110,16 @@ Ordered by impact. IDs referenced by the migration in Part D.
 
 | ID      | Structural issue                                                                                                                                                                                                                                                             | Evidence                                                                                                                                                                                                                                                         | Symptom it drives                    |
 | ------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------ |
-| **S1**  | `.id(lastDataHash)` **ties** `Chart` **view identity to a hash that includes y-domain+ticks** → full teardown/rebuild on every y-settle                                                                                                                                      | `[BaseGraphView.swift:556](../meApp/Features/Dashboard/Views/Components/BaseGraphView.swift#L556)`; `cacheHash` `[BaseGraphViewCacheSupport.swift:190-206](../meApp/Features/Dashboard/Managers/Graph/BaseGraphViewCacheSupport.swift#L190-L206)`                | ① points-then-lines, ③ stuck, ④ jerk |
-| **S2**  | **Two windowing passes, both stale during a drag.** Store windows by *committed* position; view re-decimates by *stale live* position with a 30/30 buffer cap too small to scroll natively                                                                                   | store `[DashboardStore.swift:755-770](../meApp/Features/Dashboard/Stores/DashboardStore.swift#L755-L770)`; view `pointsToRender` `[BaseGraphViewCacheSupport.swift:70-104](../meApp/Features/Dashboard/Managers/Graph/BaseGraphViewCacheSupport.swift#L70-L104)` | ② coarse/wrong marks while scrolling |
-| **S3**  | **Entire chart-prep pipeline runs on** `@MainActor` — group + O(n log n) sort + `plotXDate` map + full-duplicate `allPlottedPoints`, re-run on every hash change                                                                                                             | `makeCacheUpdate` `[BaseGraphViewCacheSupport.swift:33-58](../meApp/Features/Dashboard/Managers/Graph/BaseGraphViewCacheSupport.swift#L33-L58)`                                                                                                                  | ③ main-thread spike at settle        |
-| **S4**  | **Y-axis settle is timer/delay-driven with 3 overlapping recompute paths** racing on staggered sleeps                                                                                                                                                                        | `[DashboardChartManager.swift:227-288](../meApp/Features/Dashboard/Managers/DashboardChartManager.swift#L227)`, `DashboardGraphManager.handleScrollEnd`*, `BaseSectionViewModel.handleScrollEnd` :468                                                            | ④ late, non-deterministic jerk       |
-| **S5**  | **Competing animations** on the same properties (`.animation` modifier ×3 + `withAnimation` in `syncYAxisFromStore` + `.transaction{animation=nil}`)                                                                                                                         | `[BaseGraphView.swift:581-585](../meApp/Features/Dashboard/Views/Components/BaseGraphView.swift#L581-L585)`; `[BaseSectionViewModel.swift:751](../meApp/Features/Dashboard/ViewModels/BaseSectionViewModel.swift#L751)`                                          | ④ non-deterministic motion           |
-| **S6**  | **LineMark plots** `clampedValue`**, PointMark plots raw value** → dot/line diverge at the domain edge, worse when the frozen domain snaps                                                                                                                                   | `[BaseGraphChartContent.swift:99-118](../meApp/Features/Dashboard/Views/Components/BaseGraphChartContent.swift#L99-L118)`                                                                                                                                        | ①/④ dot vs line mismatch             |
+| **S1**  | `.id(lastDataHash)` **ties** `Chart` **view identity to a hash that includes y-domain+ticks** → full teardown/rebuild on every y-settle                                                                                                                                      | `[BaseGraphView.swift:556](../../meApp/Features/Dashboard/Views/Components/BaseGraphView.swift#L556)`; `cacheHash` `[BaseGraphViewCacheSupport.swift:190-206](../../meApp/Features/Dashboard/Managers/Graph/BaseGraphViewCacheSupport.swift#L190-L206)`                | ① points-then-lines, ③ stuck, ④ jerk |
+| **S2**  | **Two windowing passes, both stale during a drag.** Store windows by *committed* position; view re-decimates by *stale live* position with a 30/30 buffer cap too small to scroll natively                                                                                   | store `[DashboardStore.swift:755-770](../../meApp/Features/Dashboard/Stores/DashboardStore.swift#L755-L770)`; view `pointsToRender` `[BaseGraphViewCacheSupport.swift:70-104](../../meApp/Features/Dashboard/Managers/Graph/BaseGraphViewCacheSupport.swift#L70-L104)` | ② coarse/wrong marks while scrolling |
+| **S3**  | **Entire chart-prep pipeline runs on** `@MainActor` — group + O(n log n) sort + `plotXDate` map + full-duplicate `allPlottedPoints`, re-run on every hash change                                                                                                             | `makeCacheUpdate` `[BaseGraphViewCacheSupport.swift:33-58](../../meApp/Features/Dashboard/Managers/Graph/BaseGraphViewCacheSupport.swift#L33-L58)`                                                                                                                  | ③ main-thread spike at settle        |
+| **S4**  | **Y-axis settle is timer/delay-driven with 3 overlapping recompute paths** racing on staggered sleeps                                                                                                                                                                        | `[DashboardChartManager.swift:227-288](../../meApp/Features/Dashboard/Managers/DashboardChartManager.swift#L227)`, `DashboardGraphManager.handleScrollEnd`*, `BaseSectionViewModel.handleScrollEnd` :468                                                            | ④ late, non-deterministic jerk       |
+| **S5**  | **Competing animations** on the same properties (`.animation` modifier ×3 + `withAnimation` in `syncYAxisFromStore` + `.transaction{animation=nil}`)                                                                                                                         | `[BaseGraphView.swift:581-585](../../meApp/Features/Dashboard/Views/Components/BaseGraphView.swift#L581-L585)`; `[BaseSectionViewModel.swift:751](../../meApp/Features/Dashboard/ViewModels/BaseSectionViewModel.swift#L751)`                                          | ④ non-deterministic motion           |
+| **S6**  | **LineMark plots** `clampedValue`**, PointMark plots raw value** → dot/line diverge at the domain edge, worse when the frozen domain snaps                                                                                                                                   | `[BaseGraphChartContent.swift:99-118](../../meApp/Features/Dashboard/Views/Components/BaseGraphChartContent.swift#L99-L118)`                                                                                                                                        | ①/④ dot vs line mismatch             |
 | **S7**  | **Six+ overlapping caches** with divergent invalidation (VM `cachedSeriesData`/`cachedChartSeriesData`/`cachedPlotXDates`/dead `cachedVisibleSeriesData`; view `cachedPlottedPoints`/`cachedAllPlottedPoints`; manager `cachedChartSeries`; `cacheManager`; store windowing) | across the files above                                                                                                                                                                                                                                           | desync bugs, maintenance trap        |
-| **S8**  | **A11y descriptor sorts the full point set twice per request** (unbounded)                                                                                                                                                                                                   | `[BaseGraphView.swift:716,743](../meApp/Features/Dashboard/Views/Components/BaseGraphView.swift#L716)`                                                                                                                                                           | latent cost on large sets            |
-| **S9**  | **Dead / vestigial code:** `chartRebuildToken` (incremented [:174], never read); `visibleChartSeriesData` (only unit tests read it — MOB-516 "Step 2b" open item); triple scroll-end path                                                                                    | `[BaseGraphView.swift:28,174](../meApp/Features/Dashboard/Views/Components/BaseGraphView.swift#L174)`; `[BaseSectionViewModel.swift:209-239](../meApp/Features/Dashboard/ViewModels/BaseSectionViewModel.swift#L209)`                                            | confusion, wasted effort             |
-| **S10** | **Post-W1 the render window can't track a live drag at all** — `scrollPosition` is a plain var read in `body`, refreshed to the chart only via `scrollAdoptToken` on *programmatic* moves                                                                                    | `[BaseGraphView.swift:44-51,80](../meApp/Features/Dashboard/Views/Components/BaseGraphView.swift#L44-L51)`                                                                                                                                                       | ② (the deep reason)                  |
+| **S8**  | **A11y descriptor sorts the full point set twice per request** (unbounded)                                                                                                                                                                                                   | `[BaseGraphView.swift:716,743](../../meApp/Features/Dashboard/Views/Components/BaseGraphView.swift#L716)`                                                                                                                                                           | latent cost on large sets            |
+| **S9**  | **Dead / vestigial code:** `chartRebuildToken` (incremented [:174], never read); `visibleChartSeriesData` (only unit tests read it — MOB-516 "Step 2b" open item); triple scroll-end path                                                                                    | `[BaseGraphView.swift:28,174](../../meApp/Features/Dashboard/Views/Components/BaseGraphView.swift#L174)`; `[BaseSectionViewModel.swift:209-239](../../meApp/Features/Dashboard/ViewModels/BaseSectionViewModel.swift#L209)`                                            | confusion, wasted effort             |
+| **S10** | **Post-W1 the render window can't track a live drag at all** — `scrollPosition` is a plain var read in `body`, refreshed to the chart only via `scrollAdoptToken` on *programmatic* moves                                                                                    | `[BaseGraphView.swift:44-51,80](../../meApp/Features/Dashboard/Views/Components/BaseGraphView.swift#L44-L51)`                                                                                                                                                       | ② (the deep reason)                  |
 
 
 > **The through-line:** S1 makes "settle" == "rebuild"; S2/S10 make "scroll" == "scroll a stale slice";
@@ -245,7 +245,7 @@ becomes a single, smooth, deterministic transition instead of a late multi-sourc
 ### C6. Scroll lifecycle — one event
 
 - **Start:** `.interacting` → `isScrolling = true`, clear selection (already correct,
-`[DashboardGraphManager.swift:79-84](../meApp/Features/Dashboard/Managers/DashboardGraphManager.swift#L79)`).
+`[DashboardGraphManager.swift:79-84](../../meApp/Features/Dashboard/Managers/DashboardGraphManager.swift#L79)`).
 - **During:** nothing recomputes. Charts scrolls natively over the prepared model.
 - **End (**`.idle`**):** commit the local scroll position to the store **once**; if Y-B, kick **one** off-main
 y-axis recompute → publish new `ChartModel.yAxis` → **one** animated in-place update. Delete the
@@ -256,7 +256,7 @@ y-axis recompute → publish new `ChartModel.yAxis` → **one** animated in-plac
 ### C7. Selection / crosshair
 
 Keep the local-`@State` selection binding (already `guard !isScrolling`-gated,
-`[BaseGraphView+ChartModifiers.swift:110-134](../meApp/Features/Dashboard/Views/Components/BaseGraphView+ChartModifiers.swift#L110-L134)`).
+`[BaseGraphView+ChartModifiers.swift:110-134](../../meApp/Features/Dashboard/Views/Components/BaseGraphView+ChartModifiers.swift#L110-L134)`).
 Crosshair reads the full-resolution model for snapping so taps land on real entries even where the line is
 decimated. No change to the store selection contract.
 
@@ -272,7 +272,12 @@ construction.
 
 
 
-## Part D — Migration (phased, parity-gated; each phase ships independently)
+## Part D — Migration (phased, parity-gated; ONE PR on this branch)
+
+> **Delivery (Kesavan, 2026-07-08): the entire weight-graph rebuild ships as a SINGLE PR** on
+> `MOB-518-chart-engine-scroll-hitch-multi-series`. Phases are ordered, independently-revertable **commits
+> within that one PR** — not separate PRs. Nothing merges to `develop` until the whole weight graph is signed
+> off. (Baby/BPM come later, on their own branch, once weight is approved.)
 
 > **Strategy:** land the highest-leverage, lowest-risk structural fix first (S1), prove parity on device,
 > then progressively hollow out the caches behind the new model. **No big-bang.** Every phase keeps the
@@ -376,9 +381,9 @@ real entry across week/month/year/total.
 ## Part F — Open decisions (edit inline)
 
 1. ✅ **RESOLVED — Y-axis policy: Y-B (adaptive, unchanged behaviour, single settle event).** See §C5.
-2. **Ticket split** — one PR per phase under **MOB-518**, or a child task per phase (MOB-518.x)?
-  Recommendation: **child task per phase** so Phase 1 (the big win) can merge and ship in 5.1.0 while
-  Phases 3–4 bake. *(open — awaiting Kesavan.)*
+2. ✅ **RESOLVED — one single working PR** on `MOB-518-chart-engine-scroll-hitch-multi-series` for the whole
+  weight-graph rebuild. Phases are ordered commits within it; nothing merges to `develop` until the full
+  weight graph is signed off. (No per-phase PRs / child tickets.)
 3. ✅ **RESOLVED — Baby/BPM wait until the weight graph is signed off by Kesavan.** They are NOT touched in
   Phases 0–5; shared-code edits carry `// MULTI-SERIES:` notes so the later pass is guided. Once weight is
   approved, the multi-series pass rides on top of the finished stable-Chart engine.
