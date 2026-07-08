@@ -169,6 +169,39 @@ struct BtWifiScaleSetupScreen: View {
                         setupStore.handleNextButtonClick()
                     }
                 }
+            } else if setupStore.currentStep == .completeProfile {
+                // Complete Profile Setup: Back / Skip / Next (MOB-1388).
+                ButtonView(text: commonLang.back,
+                           type: .inlineTextPrimary,
+                           size: .small,
+                           isDisabled: setupStore.shouldDisableBackButton(),
+                           useFrameForInlineText: true) {
+                    withAnimation {
+                        hideKeyboard()
+                    }
+                    setupStore.handleBackButtonClick()
+                }
+                Spacer()
+                ButtonView(text: commonLang.skip, type: .inlineTextTertiary, size: .small, isDisabled: false) {
+                    withAnimation {
+                        hideKeyboard()
+                    }
+                    setupStore.handleSkipCompleteProfile()
+                }
+                .appAccessibility(id: AccessibilityID.scaleSetupProfileSkipButton)
+                Spacer()
+                ButtonView(text: setupStore.nextButtonText,
+                           type: .filledPrimary,
+                           size: .small,
+                           isDisabled: !setupStore.isNextEnabled,
+                           customHorizontalPadding: setupStore.nextButtonText == commonLang.next ? .spacingXS / 2 : .spacingXS,
+                           customVerticalPadding: .spacingXS / 4) {
+                    withAnimation {
+                        hideKeyboard()
+                    }
+                    setupStore.handleNextButtonClick()
+                }
+                .appAccessibility(id: AccessibilityID.scaleSetupProfileNextButton)
             } else if setupStore.currentStep == .scaleConnected {
                 // Show centered finish button for scaleConnected step
                 Spacer()

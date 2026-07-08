@@ -13,6 +13,9 @@ enum BtWifiScaleSetupStep: Int, CaseIterable {
     case intro = 0
     /// Application permissions required for setup (Bluetooth, Location).
     case permissions
+    /// Collect missing user-profile details (biological sex, height, optional goal).
+    /// Skipped automatically when the account already has these details (MOB-1388).
+    case completeProfile
     /// Wake up the scale via Bluetooth.
     case wakeup
     /// Connecting to the scale via Bluetooth.

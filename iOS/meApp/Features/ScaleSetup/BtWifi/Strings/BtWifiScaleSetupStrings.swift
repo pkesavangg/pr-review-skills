@@ -8,6 +8,18 @@
 import Foundation
 
 struct BtWifiScaleSetupStrings {
+    /// Complete Profile Setup step (MOB-1388).
+    struct CompleteProfileStrings {
+        static let title = "Complete Profile Set Up"
+        static let subtitle = "Add a few details to personalize your profile."
+        static let biologicalSex = "Biological Sex"
+        static let height = "Height"
+        static let setAGoal = "Set a Goal"
+        static let optional = "(optional)"
+        static let startingWeight = "Starting Weight"
+        static let goalWeight = "Goal Weight"
+    }
+
     struct DuplicateUserViewStrings {
         static let title: (Bool) -> String = { isCustomizationSettings in
             isCustomizationSettings ? "Confirm User Name" : "A user with this name already exists on the scale."

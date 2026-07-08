@@ -58,16 +58,19 @@ struct SettingsStrings {
         static let profileSwitchAccountsAction = "Switch Accounts"
     }
 
-    // Unit Type picker
+     // Unit Type picker
     enum UnitType {
         // Section headers (shown when a baby scale is present)
         static let myWeight = "My Weight"
         static let myKids = "My Kids"
 
-        // Weight unit options (shared by the single-section layout and the
-        // "My Weight" rows of the baby-scale layout).
+        // Single-section (no baby scale) weight unit options
         static let lbFeet = "lb & feet"
         static let kgCm = "kg & cm"
+
+        // "My Weight" weight unit options
+        static let lbsIn = "lb & feet"
+        static let metricCm = "kg & cm"
 
         // "My Kids" measurement unit options
         static let lbsOzIn = "lb-oz & in"

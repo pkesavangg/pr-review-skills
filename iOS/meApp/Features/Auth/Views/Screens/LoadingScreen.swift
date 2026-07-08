@@ -14,30 +14,27 @@ struct LoadingScreen: View {
     let lang = LoadingScreenStrings.self
     var body: some View {
         ZStack {
-            theme.actionPrimary
+            theme.backgroundSecondary
                 .ignoresSafeArea()
 
             VStack(alignment: .center) {
                 Spacer()
-                
-                LogoView()
-                    .frame(width: 214, height: 25)
-                    .accessibilityElement(children: .ignore)
-                    .accessibilityLabel(lang.accLogoLabel)
+
+                MeHealthLogoCard()
 
                 HStack(alignment: .center) {
                     Text(lang.loading.lowercased())
                         .fontOpenSans(.subHeading1)
-                        .foregroundColor(theme.backgroundPrimary)
+                        .foregroundColor(theme.textBody)
 
-                    LoadingDotsView(color: theme.backgroundPrimary)
+                    LoadingDotsView(color: theme.textBody)
                         .offset(y: 1)
                         .accessibilityHidden(true)
 
                 }
                 .accessibilityElement(children: .ignore)
                 .accessibilityLabel(lang.accLoadingLabel)
-                .padding(.top, .spacing3XL)
+                .padding(.top, .spacing4XL)
 
                 Spacer()
 
