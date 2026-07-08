@@ -41,6 +41,14 @@ struct BaseGraphView<ViewModel: SectionViewModelProtocol>: View, Equatable {
     @State private var lastSettingsChangeSignature = 0
     @State private var lastChartFrame: CGRect = .zero
     @State private var lastChartHeight: CGFloat = .zero
+    /// Bumped to force a single adoption re-render when a *programmatic* scroll move updates the
+    /// store's `xScrollPosition`. Because `viewModel.scrollPosition` is no longer `@Published`,
+    /// writing it does not re-render on its own; bumping this `@State` re-applies `.chartScrollPosition`
+    /// with the adopted value so Swift Charts moves to it. Zero effect during user drags (no publish,
+    /// no per-frame churn) — it only fires on scroll-end commit / "scroll to latest" / init.
+    /// Not `private`: mutated by the store→VM sync `onChange` in `BaseGraphView+ChartModifiers.swift`
+    /// (same pattern as `localSelectedXValue`), and `private` is file-scoped.
+    @State var scrollAdoptToken = 0
 
     private let cacheUpdateThrottle: TimeInterval = 0.05
     private let goalChipTrailingPadding: CGFloat = 20
@@ -69,6 +77,7 @@ struct BaseGraphView<ViewModel: SectionViewModelProtocol>: View, Equatable {
         #if DEBUG
             Self._logChanges()
         #endif
+        _ = scrollAdoptToken // dependency: programmatic-scroll adoption re-render (see `scrollAdoptToken`)
         return conditionalScrollSyncing(
             ZStack {
                 mainChartView
@@ -134,15 +143,9 @@ struct BaseGraphView<ViewModel: SectionViewModelProtocol>: View, Equatable {
         // MA-3837/MA-3977: on mount (incl. the chart remount after a tab switch), adopt the
         // store's current selection so the auto-selected latest point renders on first frame.
         syncViewModelSelectionFromStore()
-
-        guard isScrollable else { return }
-        Task { @MainActor in
-            try? await Task.sleep(nanoseconds: 100_000_000)
-            let targetPosition = viewModel.scrollPosition
-            viewModel.scrollPosition = targetPosition.addingTimeInterval(0.001)
-            await Task.yield()
-            viewModel.scrollPosition = targetPosition
-        }
+        // No scroll-position "nudge" here: `scrollPosition` is a plain property now, so the chart
+        // adopts the anchor position `configure()` set via its `.chartScrollPosition` binding on this
+        // first render. The old `+0.001` dance only existed to refresh the former `@Published` binding.
     }
 
     private func handleOnDisappear() {
@@ -338,6 +341,14 @@ struct BaseGraphView<ViewModel: SectionViewModelProtocol>: View, Equatable {
         selectedBabyProfile != nil ? babyChartContainerHeight : 265
     }
 
+    /// The Y-axis domain, guaranteed finite with positive width before it reaches `.chartYScale`.
+    /// A zero-width / non-finite domain makes Charts divide by zero when placing marks, which is one
+    /// of the sources of the `Invalid frame dimension` flood (MOB-518 / W2). Used for the scale AND
+    /// the series clamping so plotted points and the scale always agree.
+    private var safeYAxisDomain: ClosedRange<Double> {
+        ChartDomainSanitizer.finiteWidth(viewModel.yAxisDomain)
+    }
+
     private var shouldShowYAxisLabels: Bool {
         if viewModel.hasChartOperations { return true }
         return viewModel.goalWeight != nil
@@ -508,7 +519,7 @@ struct BaseGraphView<ViewModel: SectionViewModelProtocol>: View, Equatable {
         return ChartSeriesContent(
             orderedSeriesNames: cachedOrderedSeriesNames,
             cachedPlottedPoints: cachedPlottedPoints,
-            yAxisDomain: viewModel.yAxisDomain,
+            yAxisDomain: safeYAxisDomain,
             scrollPosition: viewModel.scrollPosition,
             visibleDomainLength: viewModel.visibleDomainLength,
             visibleGridRange: visiblePercentileRange,
@@ -543,7 +554,7 @@ struct BaseGraphView<ViewModel: SectionViewModelProtocol>: View, Equatable {
                         chartBpmReferenceLines
                     }
                     .id(lastDataHash)
-                    .chartYScale(domain: viewModel.yAxisDomain)
+                    .chartYScale(domain: safeYAxisDomain)
                     .chartYAxis { yAxisMarks }
                     .chartLegend(.hidden)
                     .chartScrollTargetBehavior(getChartScrollBehavior(for: viewModel.timePeriod))

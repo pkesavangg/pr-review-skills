@@ -21,7 +21,7 @@ extension BaseGraphView {
         babyScrollDomainCap(
             conditionalEmptyDomain(
                 content
-                    .chartXVisibleDomain(length: viewModel.visibleDomainLength)
+                    .chartXVisibleDomain(length: ChartDomainSanitizer.positiveLength(viewModel.visibleDomainLength))
             )
         )
         .chartScrollableAxes(.horizontal)
@@ -159,7 +159,7 @@ extension BaseGraphView {
     // swiftlint:disable:next function_body_length
     func nonScrollableChartModifiers<Content: View>(_ content: Content) -> some View {
         content
-            .chartXScale(domain: viewModel.dateRange)
+            .chartXScale(domain: ChartDomainSanitizer.orderedDates(viewModel.dateRange))
             .chartXAxis {
                 AxisMarks(position: .bottom) { _ in
                     AxisGridLine().foregroundStyle(.clear)
@@ -272,7 +272,9 @@ extension BaseGraphView {
                 // Shared with DashboardStore's baby reference-curve start via TimePeriod.periodStart
                 // so the chart domain and the reference curves snap to the exact same boundary.
                 let domainMin = viewModel.timePeriod.periodStart(for: minDate)
-                content.chartXScale(domain: domainMin...max(maxDate, cappedMax))
+                content.chartXScale(
+                    domain: ChartDomainSanitizer.orderedDates(domainMin...max(maxDate, cappedMax))
+                )
             } else {
                 content
             }
@@ -338,6 +340,10 @@ extension BaseGraphView {
                 .onChange(of: dashboardStore.state.graph.xScrollPosition) { _, newPosition in
                     guard abs(newPosition.timeIntervalSince(viewModel.scrollPosition)) > 0.1 else { return }
                     viewModel.updateScrollPosition(to: newPosition)
+                    // `scrollPosition` is a plain property (no publish), so force ONE re-render to
+                    // re-apply `.chartScrollPosition` with the adopted value. Runs only on programmatic
+                    // moves (scroll-end commit / "scroll to latest" / init) — never per drag frame.
+                    scrollAdoptToken &+= 1
                 }
                 .onChange(of: dashboardStore.state.graph.isScrolling) { _, newValue in
                     viewModel.isScrolling = newValue
