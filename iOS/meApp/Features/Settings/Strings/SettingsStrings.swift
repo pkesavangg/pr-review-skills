@@ -64,13 +64,10 @@ struct SettingsStrings {
         static let myWeight = "My Weight"
         static let myKids = "My Kids"
 
-        // Single-section (no baby scale) weight unit options
+        // Weight unit options (shared by the single-section layout and the
+        // "My Weight" rows of the baby-scale layout).
         static let lbFeet = "lb & feet"
         static let kgCm = "kg & cm"
-
-        // "My Weight" weight unit options
-        static let lbsIn = "lb & feet"
-        static let metricCm = "kg & cm"
 
         // "My Kids" measurement unit options
         static let lbsOzIn = "lb-oz & in"

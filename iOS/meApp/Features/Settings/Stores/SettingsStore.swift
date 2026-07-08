@@ -437,7 +437,7 @@ class SettingsStore: ObservableObject {
     var unitTypeText: String {
         if hasBabyScale {
             switch selectedMeasurementUnits {
-            case .metric:           return SettingsStrings.UnitType.metricCm
+            case .metric:           return SettingsStrings.UnitType.kgCm
             case .imperialLbOz:     return SettingsStrings.UnitType.lbsOzIn
             case .imperialLbDecimal: return SettingsStrings.UnitType.lbsDecimalIn
             }
