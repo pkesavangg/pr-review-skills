@@ -14,8 +14,12 @@ enum MockEntryWorkerError: Error, Equatable {
 /// `fetchProgressData`), set `backingRepo` so reads stay consistent with the
 /// same `MockEntryRepository` the SUT writes to — in production both hit the
 /// one SwiftData container, so tests that seed `repo.entries` and then read
-/// back through the worker keep working. `@MainActor` keeps all `@Model`
-/// access on the main actor (the mock repo is main-actor-bound).
+/// back through the worker keep working. Errors thrown by the backing repo
+/// propagate (the real `SwiftDataWorker` rethrows fetch failures too), so
+/// failure-injection tests that set `fetchEntriesAsDTOError` /
+/// `fetchEntriesAsDTOResults` still drive the read-failure path through the
+/// worker. `@MainActor` keeps all `@Model` access on the main actor (the mock
+/// repo is main-actor-bound).
 @MainActor
 final class MockEntryWorker: EntryWorkerProtocol {
 
@@ -94,7 +98,7 @@ final class MockEntryWorker: EntryWorkerProtocol {
         fetchEntrySnapshotsCalls += 1
         if let entrySnapshotsError { throw entrySnapshotsError }
         if let backingRepo {
-            let entries = (try? await backingRepo.fetchEntries(forUserId: accountId, operationType: operationType)) ?? []
+            let entries = try await backingRepo.fetchEntries(forUserId: accountId, operationType: operationType)
             return entries.map { $0.toSnapshot() }
         }
         return entrySnapshotsResult
@@ -108,7 +112,7 @@ final class MockEntryWorker: EntryWorkerProtocol {
         fetchEntriesAsDTOCalls += 1
         if let entriesAsDTOError { throw entriesAsDTOError }
         if let backingRepo {
-            return (try? await backingRepo.fetchEntriesAsDTO(forUserId: accountId, operationType: operationType)) ?? []
+            return try await backingRepo.fetchEntriesAsDTO(forUserId: accountId, operationType: operationType)
         }
         return entriesAsDTOResult
     }
@@ -121,7 +125,7 @@ final class MockEntryWorker: EntryWorkerProtocol {
         fetchAllEntryDataCalls += 1
         if let allEntryDataError { throw allEntryDataError }
         if let backingRepo {
-            let entries = (try? await backingRepo.fetchEntries(forUserId: accountId, operationType: operationType)) ?? []
+            let entries = try await backingRepo.fetchEntries(forUserId: accountId, operationType: operationType)
             return entries.map { EntryData(from: $0) }
         }
         return allEntryDataResult
