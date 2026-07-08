@@ -76,4 +76,9 @@ protocol EntryWorkerProtocol: Sendable {
 
     /// Fetches entries as DTOs, newest first (pre-existing worker API).
     func fetchEntriesAsDTO(accountId: String, operationType: String) async throws -> [BathScaleOperationDTO]
+
+    /// Fetches all entries as lightweight `EntryData`, newest first, extracted off
+    /// the main actor. Backs History's off-main month grouping (`getMonthsAll`) so the
+    /// full-table read no longer blocks the main thread on large accounts (MOB-1433).
+    func fetchAllEntryData(accountId: String, operationType: String) async throws -> [EntryData]
 }

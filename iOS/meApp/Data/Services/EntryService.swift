@@ -70,6 +70,11 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
     /// eager pushes coalesce onto one task and a full sync can await it before its
     /// own push, preventing the same unsynced rows from being submitted twice.
     private var pendingPushTask: Task<Void, Never>?
+    /// Coalesces the full-dataset progress/streak recompute (`updateProgressAndStreakInternal`)
+    /// so it runs BEHIND the UI after a local add. Awaiting it inline made the save's loader
+    /// wait seconds on 5k-10k-entry accounts, since it re-reads the whole dataset (MOB-1433).
+    /// Successive adds cancel the pending refresh so a bulk save triggers one recompute, not N.
+    private var progressRefreshTask: Task<Void, Never>?
     /// Tracks in-flight dashboard loads so repeated callers can piggyback on the same work.
     /// The Bool result indicates whether the load succeeded; piggybacked callers retry on failure.
     private var activeDashboardLoadTasks: [EntryType: Task<Bool, Never>] = [:]
@@ -383,18 +388,34 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
     // MARK: - Month/History
 
     func getMonthsAll(entryType: EntryType = .scale) async throws -> [HistoryMonth] {
+        // MOB-1433 read-path follow-up: fetch + group off the main actor. Reading the
+        // full create-history as @Model rows on main (localRepo) blocked the main thread
+        // on 5k-10k-entry accounts, so History froze on open and the shared loader could
+        // not even paint. Fetch lightweight EntryData via the worker, then group/build on
+        // a detached task so none of it runs on main.
         let accountId = try getAccountId()
-        let allEntries = try await localRepo.fetchEntries(forUserId: accountId, operationType: OperationType.create.rawValue)
-        let entries = allEntries.filter { matchesEntryType($0, entryType: entryType) }
+        let allEntries = try await worker.fetchAllEntryData(accountId: accountId, operationType: OperationType.create.rawValue)
+        return await Task.detached(priority: .userInitiated) {
+            Self.buildMonthsAll(from: allEntries, entryType: entryType)
+        }.value
+    }
+
+    /// Groups pre-fetched entry data into monthly summaries. `nonisolated` so it runs
+    /// off the main actor from `getMonthsAll`'s detached task (see there).
+    private nonisolated static func buildMonthsAll(from allEntries: [EntryData], entryType: EntryType) -> [HistoryMonth] {
+        let entries = allEntries.filter { entry in
+            // Mirrors the instance `matchesEntryType(_:entryType:)`: an empty entryType
+            // is legacy weight data and counts as `.scale`.
+            entry.entryType.isEmpty ? (entryType == .scale) : (entry.entryType == entryType.rawValue)
+        }
         // Group by YYYY-MM prefix, converting UTC timestamps to local timezone
         let grouped = Dictionary(grouping: entries) { DateTimeTools.getLocalMonthStringFromUTCDate($0.entryTimestamp) }
-
-        var result: [HistoryMonth] = []
 
         guard let validMonthRegex = try? NSRegularExpression(pattern: "^\\d{4}-\\d{2}$") else {
             return []
         }
 
+        var result: [HistoryMonth] = []
         for (monthKey, monthEntries) in grouped {
             // Skip keys that are not in YYYY-MM format (e.g., malformed keys)
             guard validMonthRegex.firstMatch(in: monthKey, range: NSRange(location: 0, length: monthKey.count)) != nil else { continue }
@@ -2173,18 +2194,40 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
             updateMonthlySummary(monthKey: monthKey, summary: monthlySummary)
         }
 
-        await updateProgressAndStreakInternal()
-
-        // Create notification on MainActor to safely extract relationship data
+        // Notify the UI immediately — the row is written and the affected day/month
+        // summaries are updated, so History/Dashboard can refresh and the save's loader
+        // can dismiss now. The full-dataset progress/streak recompute below re-reads all
+        // entries, so it MUST run behind the UI, not block the save (MOB-1433).
         let notification = EntryNotification(from: entry)
         entrySaved.send(notification)
 
-        // Trigger integration sync for the new entry (e.g., HealthKit)
-        do {
-            try await integrationService.syncNewEntry(entry)
-        } catch {
-            // Log error but don't fail the entry creation process
-            logger.log(level: .error, tag: tag, message: "Failed to sync new entry to integrations: \(error.localizedDescription)")
+        scheduleProgressAndStreakRefresh()
+
+        // Forward to health integrations (e.g. HealthKit) BEHIND the UI — never block the
+        // save on it. On this account HealthKit is off, yet syncNewEntry took ~1.8s: its
+        // single `getStoredIntegrationData()` main-context read was stalled behind a
+        // concurrent worker fetch on the shared store (MOB-1433 §5c). The row is already
+        // persisted and queued for push, so the forward is best-effort.
+        let hkNotification = EntryNotification(from: entry)
+        Task { [weak self] in
+            guard let self else { return }
+            do {
+                try await self.integrationService.syncNewEntry(notification: hkNotification)
+            } catch {
+                self.logger.log(level: .error, tag: self.tag, message: "Failed to sync new entry to integrations: \(error.localizedDescription)")
+            }
+        }
+    }
+
+    /// Schedules the full-dataset progress/streak recompute to run behind the UI,
+    /// coalescing rapid successive adds onto a single trailing run (see
+    /// `progressRefreshTask`). Use this on the local-add path; `performSync` still
+    /// awaits `updateProgressAndStreakInternal()` directly since it runs off the UI's
+    /// critical path already.
+    private func scheduleProgressAndStreakRefresh() {
+        progressRefreshTask?.cancel()
+        progressRefreshTask = Task { [weak self] in
+            await self?.updateProgressAndStreakInternal()
         }
     }
 

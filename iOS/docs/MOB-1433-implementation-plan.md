@@ -196,6 +196,68 @@ Two correctness/robustness fixes plus a dead-path removal landed on the branch a
 
 The private push-then-pull "sync after local changes" path (the one §5 A2 planned to "mirror the rewiring" into) is deleted outright — it had no remaining callers, and its role is now covered by eager push (immediate push, 5b.2) plus the full `syncEntries` (pull).
 
+## 5c. Interactive-flow jerk on a real 10k account (2026-07-08) — IN PROGRESS
+
+Re-tested on a physical device with a real **10,003-entry** account (`barath@icloud.com`) after an uninstall/reinstall (fresh local store → full history pulled by the background sync).
+
+**Kesavan's scope directive for this pass (narrow — honor it):**
+- Goal = a **clean, jerk-free _manual-entry save_ and _History open_**. Nothing else.
+- **Explicitly out of scope for now:** the dashboard graph/metrics recompute and any regression it causes. The durable fix — **incremental aggregation** (stop recomputing streak/progress/summaries over all 10k on every save/sync) — is acknowledged as a larger piece and **deferred**; Kesavan will handle it later. Do NOT block this pass on it.
+
+**Symptoms observed (after the fixes below were already applied):**
+- Home/dashboard opens fine.
+- Manual entry save shows **no loader** and feels jerky — recurs every launch.
+- History tab: on tap, the tab is slow to select and the **loader does not paint**.
+
+Key interpretation: **a loader cannot render while the main thread is blocked.** So "no loader" is either (a) the work is now off the critical path and the save is instant (loader flashes — success), or (b) main is still blocked and the loader never gets a frame. The timing logs below disambiguate.
+
+**Changes already landed this session (uncommitted working-tree edits, not yet committed):**
+1. **`getMonthsAll` moved off-main** — new `SwiftDataWorker.fetchAllEntryData(...)` (`[EntryData]`, mirrors `fetchEntriesAsDTO`) + a shared `EntryData(from: Entry)` init + a `nonisolated static buildMonthsAll(...)` run in a detached task. History no longer materializes 10k `@Model` rows on the main actor (it was the only hot read the initial D1 commit left on main). Added to `EntryWorkerProtocol` + `MockEntryWorker` (projects from `backingRepo`); `getMonthsAll` tests still pass.
+2. **Manual save no longer awaits the full-dataset recompute** — `handleEntryAdded` now emits `entrySaved` + updates the affected day/month summaries **first**, then fires `updateProgressAndStreakInternal()` **behind the UI** via `scheduleProgressAndStreakRefresh()` (coalesced through a new `progressRefreshTask`, so a bulk save = one trailing recompute). The 8 s save-loader was this recompute (`getStreak()` re-reads all 10k) being awaited inline. `performSync` still awaits it directly (already off the UI's critical path).
+3. **Removed redundant launch reload** — `ContentViewModel.startBackgroundDataSync` no longer re-runs `loadDashboardData` + `fetchAllEntrySnapshots` after the sync (both already ran in `loadData`; `performSync` reloads the dashboard itself only when data changes; `ContentViewModel.entries` is consumed by no view). Eliminates one full 10k worker read + one 10k snapshot build per launch. `ContentViewModelTests` updated (`loadDashboardDataCalls`/`fetchAllEntrySnapshotsCalls` 2 → 1).
+
+**Option A — temporary timing instrumentation (added this session; MUST be removed before the PR):**
+Elapsed wall-clock per stage, logged under the **`PERF`** tag (filter device logs by `PERF`). Sites:
+- `EntryStore.saveNewEntry (loader span)` — total user-perceived save time (loader show→dismiss).
+- `EntryService.saveNewEntry`: `localRepo.saveEntry`, `handleEntryAdded`, `checkGoalAlerts`.
+- `EntryService.handleEntryAdded`: `getEntries(day+month)`, `aggregate+updateSummaries`, `syncNewEntry`.
+- `EntryService.getMonthsAll`: `worker.fetchAllEntryData(count=…)`, `buildMonthsAll`.
+- `HistoryStore.getMonthsAll (loader span)` — total History-open time.
+- `ContentViewModel.loadData`: `loadDashboardData`, `fetchAllEntrySnapshots(count=…)`.
+
+**How to read:** do one cold launch, one manual save, one History open; grep the log for `PERF`. The stage with the multi-hundred-ms/second cost is the blocker. Expected suspects: SwiftData main-context vs worker background-context **store contention** while the launch reads churn (both `loadData` reads + the eager push run around the same window), and `getEntries(forDay/forMonth)` still on `localRepo` (main).
+
+**Measured on device (2026-07-08, 10,010-entry account) — `PERF` results:**
+
+| Stage | Time | Verdict |
+|-------|------|---------|
+| `loadData.loadDashboardData` | **4877 ms** | launch critical path — froze the loading dots |
+| `loadData.fetchAllEntrySnapshots(10010)` | **1792 ms** | launch critical path, populates the **UI-unused** `entries` — pure waste |
+| `getMonthsAll.worker.fetchAllEntryData(10010)` | **1804–3822 ms** | History open (the loader span) |
+| `getMonthsAll.buildMonthsAll` | 22–25 ms typical, **3821 ms** once | the 3.8 s instance is pure CPU **starvation** — everything churning at once |
+| save `localRepo.saveEntry` / `getEntries(day+month)` / `aggregate+updateSummaries` / `checkGoalAlerts` | 5 / 14 / 10 / 6 ms | all fine |
+| save `handleEntryAdded.syncNewEntry` | **1794 ms** | the ENTIRE save delay — and HealthKit is OFF on this account |
+
+**Root cause (confirmed):** the `SwiftDataWorker` `@ModelActor`'s big 10k fetches materialize ~10k rows and fault 2 to-one relationships each (~20k store hits), holding the shared persistent store. Every main-context operation serializes behind them — that's why `getStoredIntegrationData()` (one tiny record) cost 1.8 s inside `syncNewEntry`, and why a detached CPU-only `buildMonthsAll` was starved to 3.8 s. It's **store-lock + CPU contention between the worker and the main context**, triggered by full-dataset reads piling onto the launch/interactive window.
+
+**Fixes applied this session (round 2, 2026-07-08) — scoped to the entry + History flow per Kesavan:**
+1. **Save no longer blocks on the HealthKit forward** — `handleEntryAdded` fires `integrationService.syncNewEntry(notification:)` in a detached `Task` (best-effort; row is already persisted + queued for push). Save loader span drops from ~1830 ms to the sum of the fast stages (~35 ms).
+2. **Loading screen no longer does full-dataset reads** — `loadData()` now runs **migrations only**; the ~4.9 s `loadDashboardData` moved into `startBackgroundDataSync()` (behind the visible dashboard) and the ~1.8 s `fetchAllEntrySnapshots` is **deleted** (nothing consumes `ContentViewModel.entries`). `ContentViewModelTests` updated (`fetchAllEntrySnapshotsCalls` 1 → 0; dropped the `entries.count` assertion).
+3. **Relationship prefetch on the 10k reads** — `SwiftDataWorker.fetchAllEntryData` + `fetchEntriesAsDTO` set `relationshipKeyPathsForPrefetching = [\.scaleEntry, \.scaleEntryMetric]` so a full read batch-faults instead of doing ~20k individual store hits — shrinks the lock window that starves main-context work. Pure perf, no behavior change.
+
+**Fixes applied this session (round 3, 2026-07-08):**
+4. **Save shows a success toast** — the save is now ~45 ms, so the loader can't visibly appear; all three manual-entry saves (`saveEntry` weight, `saveBPEntry`, `saveBabyEntry`) show a `ToastStrings.success` / `entryAdded` toast (global overlay, persists across the post-save tab switch). Post-save auto-navigation to the Dashboard is unchanged (Kesavan's call to leave it).
+5. **History off-screen reloads gated** — `HistoryStore` gained `isHistoryScreenActive` (set by `HistoryListScreen` on tab change/appear). The `entrySaved`/`entryDeleted` handlers **and** the product-type / account-unit publishers now eagerly re-read the months list ONLY when History is on screen; off-screen they just invalidate the cache and let the next open reload. This removes a stray full ~10k read on every off-screen save **and** the one the account-refresh publisher fired at launch (which was contending with the dashboard load and starving `buildMonthsAll` to ~1.1 s).
+
+**Still open / expected residual (needs re-measure):**
+- **History first-open** still does one full `fetchAllEntryData` (10k). Prefetch should cut it materially, and removing the launch reads stops it competing — but it will not be *instant* until the durable fix. Re-measure `HistoryStore.getMonthsAll (loader span)` after round 2.
+- **Dashboard is the landing tab** and its own managers (`DashboardLifecycleManager.loadDashboardData`, `DashboardStreakManager.getProgress`, `DashboardMetricsManager.getAllEntriesAsDTO`) still fire full-dataset reads on appear — these can still contend with an immediate History/save. This is **the deferred dashboard/metrics work** Kesavan owns (incremental aggregation); out of scope here, noted as the real durable fix.
+
+**Next steps (data-driven):**
+1. Re-run one cold launch + one save + one History open; compare the `PERF` numbers to the table above.
+2. If History is still heavy, the durable fix is incremental aggregation / denormalizing `weight` onto `Entry` (Kesavan's follow-up) so month/summary reads don't fault 10k relationships.
+3. ~~Remove all `PERF` traces + the two temporary `perfTrace` helpers before committing.~~ **Done (2026-07-08)** — all `PERF` logging, the `perfTrace` helpers (`EntryService`, `ContentViewModel`), and the inline blocks (`EntryStore`, `HistoryStore`) are removed. The `§5c` code comments that remain document the real fixes and stay.
+
 ## 6. Suggested commit sequence (single PR, reviewable commits)
 
 1. `MOB-1433` E1 schema index + A3 repo `fetchLimit`/`fetchCount` + delete dead queue actor

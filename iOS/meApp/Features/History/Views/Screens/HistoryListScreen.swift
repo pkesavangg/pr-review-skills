@@ -73,12 +73,17 @@ struct HistoryListScreen: View {
               tabViewModel.registerReselectHandler(for: .history) {
                   router.navigateToRoot()
               }
+              // Seed the store's on-screen flag so off-screen saves skip the full
+              // months reload (MOB-1433 §5c).
+              store.isHistoryScreenActive = tabViewModel.selectedTab == .history
           }
           .background(theme.backgroundSecondary)
           .screenAccessibilityRoot(AccessibilityID.historyScreenRoot)
           .onChange(of: tabViewModel.selectedTab) {
               guard tabViewModel.selectedTab != lastTabCheck else { return }
               lastTabCheck = tabViewModel.selectedTab
+              // Track on-screen state so off-screen saves skip the full months reload (§5c).
+              store.isHistoryScreenActive = tabViewModel.selectedTab == .history
 
               if tabViewModel.selectedTab == .history {
                   Task {

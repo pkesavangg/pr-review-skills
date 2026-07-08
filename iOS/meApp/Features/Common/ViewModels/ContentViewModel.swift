@@ -270,21 +270,15 @@ final class ContentViewModel: ObservableObject {
     /// `startBackgroundDataSync()` so it never gates the loading screen (MOB-1433).
     private func loadData() async {
         guard currentAccount != nil else { return }
-        // Migration runs before the local read so opStack entries are present.
+        // ONLY one-time migrations gate the dashboard now. Reading + aggregating the full
+        // ~10k dataset here froze the loading screen ~6.7s on a 10k account (MOB-1433 §5c:
+        // loadDashboardData ≈4.9s + fetchAllEntrySnapshots ≈1.8s). The dashboard
+        // aggregation runs behind the visible dashboard (startBackgroundDataSync); the
+        // `entries` snapshot read is dropped — no view consumes ContentViewModel.entries.
         await entryService.migrateFromSQLiteIfNeeded()
         await entryService.migrateBabyEntriesToDecigrams()
-        // Aggregate + read from whatever is already local so the dashboard has
-        // data to show immediately.
-        await entryService.loadDashboardData(entryType: .scale)
         bluetoothService.initialize()
-
-        do {
-            entries = try await entryService.fetchAllEntrySnapshots()
-        } catch {
-            entries = []
-        }
-
-        logger.log(level: .info, tag: tag, message: "Initialization loaded local entries. count=\(entries.count)")
+        logger.log(level: .info, tag: tag, message: "Initialization migrations complete; dashboard load deferred behind the dashboard.")
     }
 
     /// Remote sync + feed/scale refresh, run behind the dashboard so a large
@@ -295,24 +289,22 @@ final class ContentViewModel: ObservableObject {
     private func startBackgroundDataSync() {
         backgroundSyncTask = Task { [weak self] in
             guard let self else { return }
-            await self.entryService.syncAllEntriesWithRemote()
+            // Dashboard aggregation runs HERE, behind the now-visible dashboard, instead of
+            // blocking the loading screen (MOB-1433 §5c). `syncAllEntriesWithRemote`
+            // (performSync) reloads it again only if the sync actually changes data, and
+            // emits `entrySaved` to refresh History. `ContentViewModel.entries` is consumed
+            // by no view, so no snapshot read is done here.
             await self.entryService.loadDashboardData(entryType: .scale)
-            do {
-                self.entries = try await self.entryService.fetchAllEntrySnapshots()
-            } catch {
-                // Keep the locally-loaded entries on a sync/read failure.
-            }
+
+            await self.entryService.syncAllEntriesWithRemote()
+
             await self.feedService.fetchFeedItems()
             self.feedService.checkAndTriggerFeedModal()
 
             // Sync scales with remote so all previously saved scales are loaded.
             await self.deviceService.syncAllScalesWithRemote()
 
-            self.logger.log(
-                level: .info,
-                tag: self.tag,
-                message: "Background data sync completed. entries=\(self.entries.count)"
-            )
+            self.logger.log(level: .info, tag: self.tag, message: "Background data sync completed")
             await self.checkAccountFlagsAfterLogin()
         }
     }

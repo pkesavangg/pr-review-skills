@@ -42,15 +42,15 @@ struct ContentViewModelTests {
         #expect(account.refreshAccountCalls == 1)
         #expect(entry.migrateFromSQLiteCalls == 1)
         #expect(entry.syncAllEntriesCalls == 1)
-        // loadDashboardData + fetchAllEntrySnapshots run once locally (pre-dashboard)
-        // and once more after the background sync completes.
-        #expect(entry.loadDashboardDataCalls == 2)
-        #expect(entry.fetchAllEntrySnapshotsCalls == 2)
+        // Dashboard aggregation now runs behind the dashboard (startBackgroundDataSync),
+        // once — NOT on the loading-screen critical path. The unused entries-snapshot read
+        // is dropped entirely (no view consumes ContentViewModel.entries) (MOB-1433 §5c).
+        #expect(entry.loadDashboardDataCalls == 1)
+        #expect(entry.fetchAllEntrySnapshotsCalls == 0)
         #expect(feed.fetchFeedItemsCalls == 1)
         #expect(feed.checkAndTriggerFeedModalCalls == 1)
         #expect(scale.syncAllScalesWithRemoteCalls == 1)
         #expect(bluetooth.initializeCalls == 1)
-        #expect(viewModel.entries.count == 2)
         #expect(accountFlag.getAccountFlagCalls == 1)
     }
 

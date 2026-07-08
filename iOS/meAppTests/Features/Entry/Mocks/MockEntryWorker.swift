@@ -112,4 +112,18 @@ final class MockEntryWorker: EntryWorkerProtocol {
         }
         return entriesAsDTOResult
     }
+
+    var allEntryDataResult: [EntryData] = []
+    var allEntryDataError: Error?
+    private(set) var fetchAllEntryDataCalls = 0
+
+    func fetchAllEntryData(accountId: String, operationType: String) async throws -> [EntryData] {
+        fetchAllEntryDataCalls += 1
+        if let allEntryDataError { throw allEntryDataError }
+        if let backingRepo {
+            let entries = (try? await backingRepo.fetchEntries(forUserId: accountId, operationType: operationType)) ?? []
+            return entries.map { EntryData(from: $0) }
+        }
+        return allEntryDataResult
+    }
 }
