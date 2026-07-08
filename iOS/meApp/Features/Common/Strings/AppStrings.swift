@@ -31,7 +31,7 @@ struct CommonStrings {
     static let optional = "optional"
     static let connectScale = "Connect Scale"
     static let unitKgCm = "kg & cm"
-    static let unitLbsFeet = "lb & ft"
+    static let unitLbsFeet = "lb & feet"
     static let pickerLbs = "lb & feet"
     static let on = "On"
     static let off = "Off"

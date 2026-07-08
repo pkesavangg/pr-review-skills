@@ -15,7 +15,6 @@ struct SettingsStrings {
     static let addEditScales = "My Devices"
     static let myKids = "My Kids"
     static let integrations = "Integrations"
-    static let exportData = "Export Data"
     static let changePassword = "Change Password"
     static let userProfile = "User Profile"
 
@@ -59,22 +58,22 @@ struct SettingsStrings {
         static let profileSwitchAccountsAction = "Switch Accounts"
     }
 
-    // Unit Type picker
+     // Unit Type picker
     enum UnitType {
         // Section headers (shown when a baby scale is present)
         static let myWeight = "My Weight"
         static let myKids = "My Kids"
 
         // Single-section (no baby scale) weight unit options
-        static let lbFeet = "lb & ft"
+        static let lbFeet = "lb & feet"
         static let kgCm = "kg & cm"
 
         // "My Weight" weight unit options
-        static let lbsIn = "lb / ft"
-        static let metricCm = "kg / cm"
+        static let lbsIn = "lb & feet"
+        static let metricCm = "kg & cm"
 
         // "My Kids" measurement unit options
-        static let lbsOzIn = "lb & oz / in"
-        static let lbsDecimalIn = "lb / in"
+        static let lbsOzIn = "lb-oz & in"
+        static let lbsDecimalIn = "lb & in"
     }
 }
