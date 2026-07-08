@@ -148,6 +148,22 @@ scroll-end-gated: `updateYAxisConfiguration()` hard-guards `!isScrolling` (`Base
 `handleScrollPositionChange` only buffers the position during a gesture, and `handleScrollEndOptimized`
 (`DashboardChartManager.swift:227-264`) + `handleScrollPhaseChange(.idle)` drive the settle-time recompute.
 
+**Step 2d (W1 + W2, runtime warnings) — DONE, compiles; awaiting device confirm.** Full write-up in
+[`MOB-518-weight-graph-focus.md`](MOB-518-weight-graph-focus.md) §3.5 + §4.3.
+- **W1 (scroll update storm)** — `Publishing changes from within view updates` + `onChange(of:
+  ChartScrollPositionConfiguration) … multiple times per frame`. Root: `scrollPosition` was `@Published`, and the
+  `.chartScrollPosition` binding writes it *on the view-update pass* → re-entrant re-render every frame. Fix:
+  **de-`@Published` `scrollPosition`** (`BaseSectionViewModel.swift`) + a `scrollAdoptToken` (`@State` in
+  `BaseGraphView`) for programmatic-scroll adoption re-renders + deleted both `+0.001` nudge hacks. During a drag
+  the body no longer re-runs per frame (Charts scrolls natively) — the 10k-smoothness win. (An earlier Option B
+  attempt kept the `@Published` write and failed on device — reverted.)
+- **W2 (`Invalid frame dimension` flood)** — degenerate/non-finite domains reaching `.chartYScale`/`.chartXScale`
+  (partly downstream of the W1 thrash). Fix: new pure `ChartDomainSanitizer` (`Managers/Graph/`) routes every
+  Charts scale/visible-domain input through finite + positive-width guards; `safeYAxisDomain` feeds both the scale
+  and the series clamp. Unit-tested (`ChartDomainSanitizerTests`).
+- **Build:** app + `build-for-testing` both green (Dev, `generic/platform=iOS`). Device verification checklist:
+  `MOB-518-weight-graph-focus.md` §3.3.
+
 **Step 2b (H3) — OPEN DECISION for Kesavan.** The target property `visibleChartSeriesData`
 (`BaseSectionViewModel.swift:201`, its cache fields `:195-197`, and the `SectionViewModelProtocol` requirement
 `:45`) is **dead for rendering** — grep across the whole iOS tree shows the *only* readers are unit tests
