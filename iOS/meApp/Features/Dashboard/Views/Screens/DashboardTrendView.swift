@@ -54,6 +54,13 @@ struct DashboardTrendView<TopContent: View, ChartFooter: View>: View {
     @ViewBuilder
     private func noBabyFooter() -> some View {
         VStack(spacing: .spacingMD) {
+            Image(AppAssets.babyHeadIcon)
+                .resizable()
+                .renderingMode(.template)
+                .scaledToFit()
+                .frame(width: 56, height: 56)
+                .foregroundStyle(theme.babyScaleColor)
+                .accessibilityHidden(true)
             VStack(spacing: .spacingXS) {
                 Text(BabyDashboardStrings.noBabiesTitle)
                     .fontOpenSans(.heading4)

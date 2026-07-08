@@ -430,17 +430,21 @@ class DashboardStore: ObservableObject, DashboardStateProviding {
                     if case .baby = $0 { return true }
                     return false
                 }
-                // Show the snapshot overview when:
-                //   • Any baby item exists (pending or real) — baby scale paired with or
-                //     without a profile, even after scale/profile removal while productTypes
-                //     still retains "baby". No weight/BPM required.
-                //   • OR two non-baby product types are both paired (weight + BPM).
-                // Multiple baby profiles must NOT inflate the count — they are accessed
-                // via the dropdown inside the baby dashboard.
+                // Show the snapshot overview ONLY when there are 2+ distinct product
+                // categories to choose between (weight / blood pressure / baby). A
+                // single-category account has nothing to pick, so it drills straight into
+                // that product's detail dashboard:
+                //   • Baby-only (with or without a profile) → the baby trend scaffold, which
+                //     renders the empty chart + "No babies added yet" footer for the pending
+                //     state (MOB-1245). Multiple baby profiles are switched via the header
+                //     dropdown, not the overview — see navbarHeader().
+                //   • Weight-only / BP-only → that product's detail dashboard.
+                // Multiple baby profiles must NOT inflate the count — baby is one category.
                 let hasWeight = items.contains { $0 == .myWeight }
                 let hasBpm = items.contains { $0 == .myBloodPressure }
-                self.canShowSnapshotOverview = self.hasBabySnapshotItem
-                    || [hasWeight, hasBpm].filter { $0 }.count > 1
+                let productCategoryCount = [hasWeight, hasBpm, self.hasBabySnapshotItem]
+                    .filter { $0 }.count
+                self.canShowSnapshotOverview = productCategoryCount > 1
             }
             .store(in: &cancellables)
 
