@@ -72,6 +72,10 @@ struct DashboardTrendView<TopContent: View, ChartFooter: View>: View {
                     .multilineTextAlignment(.center)
                     .fixedSize(horizontal: false, vertical: true)
             }
+            // Combine only the title + subtitle into one VoiceOver element; the
+            // ADD A BABY button stays a directly-activatable button of its own
+            // (mirrors noEntriesFooter()).
+            .accessibilityElement(children: .combine)
             .padding(.horizontal, .spacingLG)
             ButtonView(
                 text: BabyDashboardStrings.addBaby,
@@ -85,8 +89,6 @@ struct DashboardTrendView<TopContent: View, ChartFooter: View>: View {
         }
         .padding(.vertical, .spacingMD)
         .frame(maxWidth: .infinity)
-        .accessibilityElement(children: .combine)
-        .accessibilityLabel(BabyDashboardStrings.noBabiesTitle)
     }
 
     init(

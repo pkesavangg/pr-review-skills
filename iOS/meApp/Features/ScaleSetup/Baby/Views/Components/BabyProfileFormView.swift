@@ -167,6 +167,14 @@ struct BabyProfileFormView: View {
         .onChange(of: focusedField) { _, _ in
             showDatePicker = false
         }
+        // Clear a stale "baby name already exists" 409 error as the user edits the
+        // name. This view is shared by Signup, Scale Setup and My Kids; only Signup
+        // re-homes this clear into its store, so the local clear is what keeps the
+        // BabyScaleSetupStore-driven flows correct (the Signup store re-clears on the
+        // same tick, so it stays correct there too).
+        .onChange(of: form.name.value) { _, _ in
+            form.duplicateNameError = nil
+        }
     }
 
     private func dismissKeyboardAndUnfocus() {
