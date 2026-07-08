@@ -15,6 +15,18 @@ struct DashboardTrendView<TopContent: View, ChartFooter: View>: View {
     private let topContent: () -> TopContent
     private let chartFooter: () -> ChartFooter
 
+    /// Footer shown when the selected product has no entries yet. Two variants (MOB-1245):
+    /// a pending baby selection (no profile) shows the "No babies added yet" / ADD A BABY card;
+    /// every other empty state shows the "connect a device" / CONNECT DEVICE card.
+    @ViewBuilder
+    private func emptyStateFooter() -> some View {
+        if dashboardStore.isPendingBabySelection {
+            noBabyFooter()
+        } else {
+            noEntriesFooter()
+        }
+    }
+
     @ViewBuilder
     private func noEntriesFooter() -> some View {
         VStack(spacing: .spacingMD) {
@@ -32,6 +44,46 @@ struct DashboardTrendView<TopContent: View, ChartFooter: View>: View {
                 tabViewModel.pendingSettingsNavigation = .addEditScales
                 tabViewModel.selectedTab = .settings
                 tabViewModel.settingsNavigationSourceTab = .dash
+            }
+            .padding(.horizontal, .spacingLG)
+        }
+        .padding(.vertical, .spacingMD)
+        .frame(maxWidth: .infinity)
+    }
+
+    @ViewBuilder
+    private func noBabyFooter() -> some View {
+        VStack(spacing: .spacingMD) {
+            Image(AppAssets.babyHeadIcon)
+                .resizable()
+                .renderingMode(.template)
+                .scaledToFit()
+                .frame(width: 56, height: 56)
+                .foregroundStyle(theme.babyScaleColor)
+                .accessibilityHidden(true)
+            VStack(spacing: .spacingXS) {
+                Text(BabyDashboardStrings.noBabiesTitle)
+                    .fontOpenSans(.heading4)
+                    .foregroundStyle(theme.textHeading)
+                    .multilineTextAlignment(.center)
+                Text(BabyDashboardStrings.noBabiesSubtitle)
+                    .fontOpenSans(.body2)
+                    .foregroundStyle(theme.textBody)
+                    .multilineTextAlignment(.center)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            // Combine only the title + subtitle into one VoiceOver element; the
+            // ADD A BABY button stays a directly-activatable button of its own
+            // (mirrors noEntriesFooter()).
+            .accessibilityElement(children: .combine)
+            .padding(.horizontal, .spacingLG)
+            ButtonView(
+                text: BabyDashboardStrings.addBaby,
+                type: .filledPrimary,
+                size: .large,
+                isDisabled: false
+            ) {
+                tabViewModel.navigateToSettings(route: .addBaby, sourceTab: .dash)
             }
             .padding(.horizontal, .spacingLG)
         }
@@ -66,7 +118,7 @@ struct DashboardTrendView<TopContent: View, ChartFooter: View>: View {
                 .padding(.horizontal, 15)
                 if !dashboardStore.state.data.hasAnyEntries ||
                    (dashboardStore.isBabySelection && !dashboardStore.hasBabyEntries) {
-                    noEntriesFooter()
+                    emptyStateFooter()
                 }
             }
             .padding(.top, .spacingMD)

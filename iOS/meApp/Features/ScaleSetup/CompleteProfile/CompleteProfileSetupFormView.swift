@@ -7,13 +7,15 @@
 //  sex / height the weight product requires. Pre-filled from the account (or defaults);
 //  the owning flow's footer drives Next (save) / Skip / Back.
 //
+//  Unlike the BtWifi/R4 (0412) flow's own Complete Profile screen, the A3/A6 variant
+//  omits the optional "Set a Goal" section — only biological sex + height are collected.
+//
 
 import SwiftUI
 
 struct CompleteProfileSetupFormView: View {
     @ObservedObject var store: CompleteProfileSetupStore
     @Environment(\.appTheme) private var theme
-    @State private var focusedField: FocusField?
 
     private let lang = ScaleSetupStrings.CompleteProfileStrings.self
     private let identityDisplay: (String) -> String = { $0 }
@@ -25,7 +27,6 @@ struct CompleteProfileSetupFormView: View {
                 header
                 genderRow
                 heightRow
-                goalSection
             }
             .padding(.top, .spacingLG)
             .padding(.bottom, .spacing3XL)
@@ -99,62 +100,5 @@ struct CompleteProfileSetupFormView: View {
             .background(theme.backgroundPrimary)
             .cornerRadius(8)
             .appAccessibility(id: AccessibilityID.scaleSetupProfileHeightRow)
-    }
-
-    private var goalSection: some View {
-        VStack(alignment: .leading, spacing: .spacingSM) {
-            HStack(spacing: .spacingXS) {
-                Text(lang.setAGoal)
-                    .fontOpenSans(.heading5)
-                    .foregroundColor(theme.textHeading)
-                Text(lang.optional)
-                    .fontOpenSans(.body3)
-                    .foregroundColor(theme.textSubheading)
-            }
-
-            SegmentedButtonView(
-                segments: GoalTypeSegment.allCases,
-                selectedSegment: $store.profileGoalSegment
-            ) { segment in
-                segment == .maintain
-                    ? AccessibilityID.scaleSetupProfileGoalMaintainTab
-                    : AccessibilityID.scaleSetupProfileGoalLoseGainTab
-            }
-
-            VStack(spacing: 4) {
-                if store.profileGoalSegment == .loseGain {
-                    MetricInputField(
-                        config: TextInputConfig(
-                            label: lang.startingWeight,
-                            placeholder: "0.0",
-                            inputType: .metric,
-                            focusField: .currentWeight,
-                            maxLength: 4,
-                            maxValue: 999.9,
-                            trailingLabel: store.profileWeightUnitLabel
-                        ),
-                        value: $store.profileCurrentWeight,
-                        focusedField: $focusedField,
-                        accessibilityIdentifier: AccessibilityID.scaleSetupProfileStartingWeightField
-                    ) { focusedField = .goalWeight }
-                }
-
-                MetricInputField(
-                    config: TextInputConfig(
-                        label: lang.goalWeight,
-                        placeholder: "0.0",
-                        inputType: .metric,
-                        focusField: .goalWeight,
-                        maxLength: 4,
-                        maxValue: 999.9,
-                        trailingLabel: store.profileWeightUnitLabel
-                    ),
-                    value: $store.profileGoalWeight,
-                    focusedField: $focusedField,
-                    accessibilityIdentifier: AccessibilityID.scaleSetupProfileGoalWeightField
-                ) { focusedField = nil }
-            }
-        }
-        .padding(.top, .spacingSM)
     }
 }

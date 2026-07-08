@@ -425,17 +425,29 @@ final class SignupStore: ObservableObject {
 
     // MARK: - Baby Management
 
-    /// Returns true and marks the name field with a duplicate error if another baby already has the same name.
-    private func hasDuplicateBabyName() -> Bool {
+    /// Re-evaluates whether the current name duplicates another baby's name and sets or
+    /// clears `duplicateNameError` accordingly. Called on every name change so the error
+    /// surfaces (and the Next button disables) as soon as a duplicate is typed.
+    @discardableResult
+    private func refreshDuplicateBabyNameError() -> Bool {
         let trimmed = babyProfileForm.name.value.trimmingCharacters(in: .whitespaces).lowercased()
-        guard !trimmed.isEmpty else { return false }
+        guard !trimmed.isEmpty else {
+            babyProfileForm.duplicateNameError = nil
+            return false
+        }
         let isDuplicate = babies.enumerated().contains { index, baby in
             index != isEditingBabyIndex &&
             baby.name.trimmingCharacters(in: .whitespaces).lowercased() == trimmed
         }
+        babyProfileForm.duplicateNameError = isDuplicate ? SignupStrings.AddBabyStep.duplicateName : nil
+        return isDuplicate
+    }
+
+    /// Returns true and marks the name field with a duplicate error if another baby already has the same name.
+    private func hasDuplicateBabyName() -> Bool {
+        let isDuplicate = refreshDuplicateBabyNameError()
         if isDuplicate {
             babyProfileForm.name.markAsTouched()
-            babyProfileForm.duplicateNameError = SignupStrings.AddBabyStep.duplicateName
         }
         return isDuplicate
     }
@@ -514,7 +526,7 @@ final class SignupStore: ObservableObject {
         case .pickDevice:
             isNextEnabled = selectedDeviceType != nil
         case .addBaby:
-            isNextEnabled = babyProfileForm.isProfileValid
+            isNextEnabled = babyProfileForm.isProfileValid && babyProfileForm.duplicateNameError == nil
         case .babyList:
             isNextEnabled = !babies.isEmpty
         case .sex:
@@ -1042,7 +1054,9 @@ final class SignupStore: ObservableObject {
             .dropFirst()
             .receive(on: DispatchQueue.main)
             .sink { [weak self] _ in
-                self?.babyProfileForm.duplicateNameError = nil
+                guard let self else { return }
+                self.refreshDuplicateBabyNameError()
+                self.updateNextButtonState()
             }
             .store(in: &cancellables)
 

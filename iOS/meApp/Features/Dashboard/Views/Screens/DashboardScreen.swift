@@ -275,15 +275,11 @@ struct DashboardScreen: View {
 
     @ViewBuilder
     private func babyDashboardContent(babyProfile: BabyProfile) -> some View {
-        if babyProfile.isPendingSelection {
-            NoBabySnapshotCard {
-                tabViewModel.navigateToSettings(route: .addBaby)
-            }
-            .padding(.horizontal, .spacingMD)
-            .padding(.top, .spacingXL)
-        } else {
-            BabyTrendView(dashboardStore: store, babyProfile: babyProfile)
-        }
+        // Render the baby trend scaffold for every baby state (MOB-1245). When no profile
+        // exists yet (placeholder "Baby Scale" selection) the scaffold shows zeroed values,
+        // "no entries", and an empty chart; the trend view's footer swaps CONNECT DEVICE for
+        // the "No babies added yet" / ADD A BABY card based on `isPendingBabySelection`.
+        BabyTrendView(dashboardStore: store, babyProfile: babyProfile)
     }
 
     private func actionButtons() -> some View {
