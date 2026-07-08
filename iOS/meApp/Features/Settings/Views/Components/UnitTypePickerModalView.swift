@@ -77,11 +77,11 @@ struct UnitTypePickerModalView: View {
                 .padding(.bottom, .spacingXS)
 
             radioRow(
-                title: lang.lbsIn,
+                title: lang.lbFeet,
                 isSelected: selectedWeightUnit == .lb
             ) { selectedWeightUnit = .lb }
             radioRow(
-                title: lang.metricCm,
+                title: lang.kgCm,
                 isSelected: selectedWeightUnit == .kg
             ) { selectedWeightUnit = .kg }
 
@@ -102,7 +102,7 @@ struct UnitTypePickerModalView: View {
                 isSelected: selectedMeasurementUnits == .imperialLbDecimal
             ) { selectedMeasurementUnits = .imperialLbDecimal }
             radioRow(
-                title: lang.metricCm,
+                title: lang.kgCm,
                 isSelected: selectedMeasurementUnits == .metric
             ) { selectedMeasurementUnits = .metric }
         }
@@ -132,7 +132,7 @@ struct UnitTypePickerModalView: View {
                 isSelected: selectedMeasurementUnits == .imperialLbDecimal
             ) { selectedMeasurementUnits = .imperialLbDecimal }
             radioRow(
-                title: lang.metricCm,
+                title: lang.kgCm,
                 isSelected: selectedMeasurementUnits == .metric
             ) { selectedMeasurementUnits = .metric }
         }

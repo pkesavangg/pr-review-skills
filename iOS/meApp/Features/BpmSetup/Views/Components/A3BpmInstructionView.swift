@@ -27,31 +27,35 @@ struct A3BpmInstructionView: View {
     var wrapsMediaInCard: Bool = true
 
     var body: some View {
-        ScrollView(.vertical, showsIndicators: false) {
-            VStack(spacing: .spacingLG) {
-                VStack(alignment: .leading, spacing: .spacingXS) {
-                    Text(title)
-                        .fontOpenSans(.heading4)
-                        .foregroundColor(theme.textHeading)
-                        .multilineTextAlignment(.leading)
-                        .lineLimit(nil)
-                        .fixedSize(horizontal: false, vertical: true)
+        GeometryReader { geometry in
+            ScrollView(.vertical, showsIndicators: false) {
+                VStack(spacing: .spacingLG) {
+                    VStack(alignment: .leading, spacing: .spacingXS) {
+                        Text(title)
+                            .fontOpenSans(.heading4)
+                            .foregroundColor(theme.textHeading)
+                            .multilineTextAlignment(.leading)
+                            .lineLimit(nil)
+                            .fixedSize(horizontal: false, vertical: true)
 
-                    Text(description)
-                        .fontOpenSans(.body2)
-                        .foregroundColor(theme.textBody)
-                        .multilineTextAlignment(.leading)
-                        .lineLimit(nil)
-                        .fixedSize(horizontal: false, vertical: true)
+                        Text(description)
+                            .fontOpenSans(.body2)
+                            .foregroundColor(theme.textBody)
+                            .multilineTextAlignment(.leading)
+                            .lineLimit(nil)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                    .accessibilityElement(children: .combine)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+
+                    mediaView
+                        .padding(.horizontal, mediaHorizontalPadding)
+                        .frame(maxWidth: .infinity, alignment: .center)
                 }
-                .accessibilityElement(children: .combine)
-                .frame(maxWidth: .infinity, alignment: .leading)
-
-                mediaView
-                    .padding(.horizontal, mediaHorizontalPadding)
-                    .frame(maxWidth: .infinity, alignment: .center)
+                // MOB-1247: centre setup-slide content to match `ScaleSetupIntroView`.
+                .frame(maxWidth: .infinity)
+                .frame(minHeight: geometry.size.height, alignment: .center)
             }
-            .padding(.top, .spacingLG)
         }
     }
 

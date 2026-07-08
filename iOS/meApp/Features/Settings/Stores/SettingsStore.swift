@@ -426,7 +426,7 @@ class SettingsStore: ObservableObject {
     var unitTypeText: String {
         if hasBabyScale {
             switch selectedMeasurementUnits {
-            case .metric:           return SettingsStrings.UnitType.metricCm
+            case .metric:           return SettingsStrings.UnitType.kgCm
             case .imperialLbOz:     return SettingsStrings.UnitType.lbsOzIn
             case .imperialLbDecimal: return SettingsStrings.UnitType.lbsDecimalIn
             }
@@ -546,23 +546,6 @@ class SettingsStore: ObservableObject {
     /// Checks if there are actual unsaved changes (for exit confirmation)
     var hasWeightlessChanges: Bool {
         (weightlessForm.isOn.value != initialWeightlessToggleState) || weightlessForm.isDirty
-    }
-
-    // MARK: - Handle export
-
-    func handleExport() {
-        let alert = AlertModel(
-            title: alertLang.CsvExportAlert.title,
-            message: alertLang.CsvExportAlert.message,
-            buttons: [
-                AlertButtonModel(title: alertLang.CsvExportAlert.sendButton, type: .primary) { _ in
-                    self.exportData()
-                },
-                AlertButtonModel(title: alertLang.CsvExportAlert.cancelButton, type: .secondary) { _ in
-                }
-            ]
-        )
-        notificationService.showAlert(alert)
     }
 
     // MARK: - Edit Profile Helpers
@@ -820,28 +803,6 @@ class SettingsStore: ObservableObject {
                 }
                 notificationService.showToast(ToastModel(title: toastTitle, message: toastMessage))
                 logger.log(level: .error, tag: tag, message: "Password update failed:", data: error.localizedDescription)
-            }
-            notificationService.dismissLoader()
-        }
-    }
-
-    // MARK: - Export Data
-
-    private func exportData() {
-        Task {
-            notificationService.showLoader(LoaderModel(text: loaderLang.sendingCsv))
-            do {
-                try await entryService.exportCSV()
-                notificationService.showToast(ToastModel(message: toastLang.csvExported))
-            } catch {
-                logger.log(level: .error, tag: tag, message: "CSV export failed:", data: error.localizedDescription)
-                switch error {
-                case HTTPError.noInternet:
-                    break
-                default:
-                    notificationService.showToast(ToastModel(
-                        message: toastLang.csvExportError))
-                }
             }
             notificationService.dismissLoader()
         }

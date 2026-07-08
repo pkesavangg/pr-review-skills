@@ -31,7 +31,7 @@ struct CommonStrings {
     static let optional = "optional"
     static let connectScale = "Connect Scale"
     static let unitKgCm = "kg & cm"
-    static let unitLbsFeet = "lb & ft"
+    static let unitLbsFeet = "lb & feet"
     static let pickerLbs = "lb & feet"
     static let on = "On"
     static let off = "Off"
@@ -823,6 +823,11 @@ struct AppAssets {
     static let meLogoLight = "meLogoLight"
     static let wgLogoDark = "wgLogoDark"
     static let wgLogoLight = "wgLogoLight"
+    /// "my everyday health" wordmark (Phase 2 brand lockup). Single asset with
+    /// light/dark appearance variants baked in, so it resolves against the window
+    /// trait (like the card's `backgroundPrimary`) rather than a possibly-diverging
+    /// SwiftUI `\.colorScheme` — see `MeHealthLogoCard`.
+    static let meHealthLogo = "meHealthLogo"
     static let stamp = "stamp"
     static let stampDark = "stampDark"
     static let phone = "phone"
