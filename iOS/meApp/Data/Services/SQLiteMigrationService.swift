@@ -244,23 +244,7 @@ final class SQLiteMigrationService {
         }
 
         // Scale metric only if extended data exists (from opStack_metric)
-        let hasBmr = sqlite3_column_type(statement, 13) != SQLITE_NULL
-        let hasMetabolicAge = sqlite3_column_type(statement, 14) != SQLITE_NULL
-        var scaleEntryMetric: DeviceMetricData?
-        if hasBmr || hasMetabolicAge {
-            scaleEntryMetric = DeviceMetricData(
-                bmr: hasBmr ? Int(sqlite3_column_int(statement, 13)) : nil,
-                metabolicAge: hasMetabolicAge ? Int(sqlite3_column_int(statement, 14)) : nil,
-                proteinPercent: sqlite3_column_type(statement, 15) != SQLITE_NULL ? Int(sqlite3_column_int(statement, 15)) : nil,
-                pulse: sqlite3_column_type(statement, 16) != SQLITE_NULL ? Int(sqlite3_column_int(statement, 16)) : nil,
-                skeletalMusclePercent: sqlite3_column_type(statement, 17) != SQLITE_NULL ? Int(sqlite3_column_int(statement, 17)) : nil,
-                subcutaneousFatPercent: sqlite3_column_type(statement, 18) != SQLITE_NULL ? Int(sqlite3_column_int(statement, 18)) : nil,
-                visceralFatLevel: sqlite3_column_type(statement, 19) != SQLITE_NULL ? Int(sqlite3_column_int(statement, 19)) : nil,
-                boneMass: sqlite3_column_type(statement, 20) != SQLITE_NULL ? Int(sqlite3_column_int(statement, 20)) : nil,
-                impedance: nil, // opStack_metric doesn't have impedance
-                unit: nil // opStack_metric doesn't have unit
-            )
-        }
+        let scaleEntryMetric = makeScaleMetric(statement: statement)
 
         return EntrySyncData(
             id: UUID(),
@@ -282,6 +266,27 @@ final class SQLiteMigrationService {
             babyEntryBabyId: nil,
             babyEntryLength: nil,
             babyEntryWeight: nil
+        )
+    }
+
+    /// Builds the scale metric row from opStack_metric columns, or nil when the
+    /// extended-metric columns are absent. Extracted to keep `makeEntryRow` within
+    /// the function-length limit.
+    private func makeScaleMetric(statement: OpaquePointer) -> DeviceMetricData? {
+        let hasBmr = sqlite3_column_type(statement, 13) != SQLITE_NULL
+        let hasMetabolicAge = sqlite3_column_type(statement, 14) != SQLITE_NULL
+        guard hasBmr || hasMetabolicAge else { return nil }
+        return DeviceMetricData(
+            bmr: hasBmr ? Int(sqlite3_column_int(statement, 13)) : nil,
+            metabolicAge: hasMetabolicAge ? Int(sqlite3_column_int(statement, 14)) : nil,
+            proteinPercent: sqlite3_column_type(statement, 15) != SQLITE_NULL ? Int(sqlite3_column_int(statement, 15)) : nil,
+            pulse: sqlite3_column_type(statement, 16) != SQLITE_NULL ? Int(sqlite3_column_int(statement, 16)) : nil,
+            skeletalMusclePercent: sqlite3_column_type(statement, 17) != SQLITE_NULL ? Int(sqlite3_column_int(statement, 17)) : nil,
+            subcutaneousFatPercent: sqlite3_column_type(statement, 18) != SQLITE_NULL ? Int(sqlite3_column_int(statement, 18)) : nil,
+            visceralFatLevel: sqlite3_column_type(statement, 19) != SQLITE_NULL ? Int(sqlite3_column_int(statement, 19)) : nil,
+            boneMass: sqlite3_column_type(statement, 20) != SQLITE_NULL ? Int(sqlite3_column_int(statement, 20)) : nil,
+            impedance: nil, // opStack_metric doesn't have impedance
+            unit: nil // opStack_metric doesn't have unit
         )
     }
 }

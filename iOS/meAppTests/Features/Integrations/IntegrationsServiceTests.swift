@@ -550,7 +550,7 @@ struct IntegrationsServiceTests {
     /// HealthKit integration, plus an account-scoped marker key.
     private func makeHealthKitContext(
         accountId: String = "hk-1"
-    ) -> (account: MockAccountService, local: MockIntegrationRepository, markerKey: String) {
+    ) -> (account: MockAccountService, local: MockIntegrationRepository, markerKey: String) { // swiftlint:disable:this large_tuple
         let account = MockAccountService()
         account.activeAccount = AccountTestFixtures.makeAccountSnapshot(
             id: accountId, email: "hk@ex.com", isLoggedIn: true, isActiveAccount: true

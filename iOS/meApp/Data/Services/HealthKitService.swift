@@ -520,73 +520,79 @@ final class HealthKitService: HealthKitServiceProtocol {
 
     /// Converts export items into `HealthKitData` payloads without touching SwiftData models.
     private func buildHealthKitData(from exports: [HealthKitExport]) -> [HealthKitData] {
-        var healthKitData: [HealthKitData] = []
         let formatter = ISO8601DateFormatter()
         formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
-        for item in exports {
-            guard let timestamp = formatter.date(from: item.timestamp) else { continue }
-
-            // A stored `0` for any metric means the scale could not measure it — treat
-            // as missing so we don't push bogus samples or compute derived values from them.
-            if let weight = item.weight, weight > 0 {
-                healthKitData.append(HealthKitData(
-                    type: .weight,
-                    value: ConversionTools.convertStoredToLbs(weight),
-                    timestamp: timestamp
-                ))
-            }
-
-            if let bodyFat = item.bodyFat, bodyFat > 0 {
-                healthKitData.append(HealthKitData(
-                    type: .bodyFat,
-                    value: ConversionTools.convertStoredToLbs(bodyFat),
-                    timestamp: timestamp
-                ))
-            }
-
-            // Prefer the scale's measured muscleMass; only fall back to the
-            // weight×bodyFat derivation when measured value is unavailable.
-            // Emitting both produces duplicate HealthKit samples at the same
-            // timestamp and roughly doubles the leanBodyMass payload.
-            if let muscleMass = item.muscleMass, muscleMass > 0 {
-                healthKitData.append(HealthKitData(
-                    type: .leanBodyMass,
-                    value: ConversionTools.convertStoredToLbs(muscleMass),
-                    timestamp: timestamp
-                ))
-            } else if let weight = item.weight, weight > 0,
-                      let bodyFat = item.bodyFat, bodyFat > 0 {
-                let convertedWeight = ConversionTools.convertStoredToLbs(weight)
-                let convertedBodyFat = ConversionTools.convertStoredToLbs(bodyFat)
-                let leanBodyMass = convertedWeight - (convertedWeight * (convertedBodyFat / 100))
-                healthKitData.append(HealthKitData(
-                    type: .leanBodyMass,
-                    value: leanBodyMass,
-                    timestamp: timestamp
-                ))
-            }
-
-            if let bmi = item.bmi, bmi > 0 {
-                healthKitData.append(HealthKitData(
-                    type: .bmi,
-                    value: ConversionTools.convertStoredToLbs(bmi),
-                    timestamp: timestamp
-                ))
-            }
-
-            // MOB-819: scale entries can carry a measured heart rate on
-            // scaleEntryMetric.pulse. The full-history push dropped it, so
-            // existing entries never wrote heart rate to Apple Health. A stored
-            // `0` means the scale couldn't measure it — skip, like the other metrics.
-            if let pulse = item.pulse, pulse > 0 {
-                healthKitData.append(HealthKitData(
-                    type: .heartRate,
-                    value: Double(pulse),
-                    timestamp: timestamp
-                ))
-            }
+        return exports.flatMap { item -> [HealthKitData] in
+            guard let timestamp = formatter.date(from: item.timestamp) else { return [] }
+            return healthKitSamples(for: item, timestamp: timestamp)
         }
-        return healthKitData
+    }
+
+    /// Builds the HealthKit samples for a single export row. A stored `0` for any metric
+    /// means the scale could not measure it — treated as missing so we don't push bogus
+    /// samples or compute derived values from them.
+    private func healthKitSamples(for item: HealthKitExport, timestamp: Date) -> [HealthKitData] {
+        var samples: [HealthKitData] = []
+
+        if let weight = item.weight, weight > 0 {
+            samples.append(HealthKitData(
+                type: .weight,
+                value: ConversionTools.convertStoredToLbs(weight),
+                timestamp: timestamp
+            ))
+        }
+
+        if let bodyFat = item.bodyFat, bodyFat > 0 {
+            samples.append(HealthKitData(
+                type: .bodyFat,
+                value: ConversionTools.convertStoredToLbs(bodyFat),
+                timestamp: timestamp
+            ))
+        }
+
+        // Prefer the scale's measured muscleMass; only fall back to the
+        // weight×bodyFat derivation when measured value is unavailable.
+        // Emitting both produces duplicate HealthKit samples at the same
+        // timestamp and roughly doubles the leanBodyMass payload.
+        if let muscleMass = item.muscleMass, muscleMass > 0 {
+            samples.append(HealthKitData(
+                type: .leanBodyMass,
+                value: ConversionTools.convertStoredToLbs(muscleMass),
+                timestamp: timestamp
+            ))
+        } else if let weight = item.weight, weight > 0,
+                  let bodyFat = item.bodyFat, bodyFat > 0 {
+            let convertedWeight = ConversionTools.convertStoredToLbs(weight)
+            let convertedBodyFat = ConversionTools.convertStoredToLbs(bodyFat)
+            let leanBodyMass = convertedWeight - (convertedWeight * (convertedBodyFat / 100))
+            samples.append(HealthKitData(
+                type: .leanBodyMass,
+                value: leanBodyMass,
+                timestamp: timestamp
+            ))
+        }
+
+        if let bmi = item.bmi, bmi > 0 {
+            samples.append(HealthKitData(
+                type: .bmi,
+                value: ConversionTools.convertStoredToLbs(bmi),
+                timestamp: timestamp
+            ))
+        }
+
+        // MOB-819: scale entries can carry a measured heart rate on
+        // scaleEntryMetric.pulse. The full-history push dropped it, so
+        // existing entries never wrote heart rate to Apple Health. A stored
+        // `0` means the scale couldn't measure it — skip, like the other metrics.
+        if let pulse = item.pulse, pulse > 0 {
+            samples.append(HealthKitData(
+                type: .heartRate,
+                value: Double(pulse),
+                timestamp: timestamp
+            ))
+        }
+
+        return samples
     }
 
     // MARK: - Local Helper DTO -----------------------------------------------

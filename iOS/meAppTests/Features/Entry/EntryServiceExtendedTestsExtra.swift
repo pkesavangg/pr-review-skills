@@ -370,12 +370,30 @@ extension EntryServiceExtendedTests {
     @Test("sync forwards newly-merged creates to integrations in one batched call")
     func syncForwardsNewCreatesInOneBatch() async {
         let createOp = BathScaleOperationDTO(
-            accountId: "acct-1", bmr: nil, bmi: nil, bodyFat: nil, boneMass: nil,
-            entryTimestamp: "2026-05-01T08:00:00Z", entryType: nil, impedance: nil,
-            metabolicAge: nil, muscleMass: nil, operationType: "create", proteinPercent: nil,
-            pulse: nil, serverTimestamp: "2026-05-01T08:00:05Z", skeletalMusclePercent: nil,
-            source: nil, subcutaneousFatPercent: nil, systolic: nil, diastolic: nil,
-            meanArterial: nil, unit: nil, visceralFatLevel: nil, water: nil, weight: 1800
+            accountId: "acct-1",
+            bmr: nil,
+            bmi: nil,
+            bodyFat: nil,
+            boneMass: nil,
+            entryTimestamp: "2026-05-01T08:00:00Z",
+            entryType: nil,
+            impedance: nil,
+            metabolicAge: nil,
+            muscleMass: nil,
+            operationType: "create",
+            proteinPercent: nil,
+            pulse: nil,
+            serverTimestamp: "2026-05-01T08:00:05Z",
+            skeletalMusclePercent: nil,
+            source: nil,
+            subcutaneousFatPercent: nil,
+            systolic: nil,
+            diastolic: nil,
+            meanArterial: nil,
+            unit: nil,
+            visceralFatLevel: nil,
+            water: nil,
+            weight: 1800
         )
         let repo = MockEntryRepository()
         repo.entries = [EntryTestFixtures.makeEntry(timestamp: "2026-05-01T08:00:00Z", isSynced: true)]
@@ -383,8 +401,11 @@ extension EntryServiceExtendedTests {
         remote.fetchEntriesResult = BathScaleOperationListResponse(operations: [createOp], timestamp: "2026-05-01T10:00:00Z")
         let worker = MockEntryWorker()
         worker.applyRemoteOperationsResult = EntryMergeResult(
-            insertedCount: 1, updatedCount: 0, deletedCount: 0,
-            newlyCreatedOps: [createOp], deletedNotifications: []
+            insertedCount: 1,
+            updatedCount: 0,
+            deletedCount: 0,
+            newlyCreatedOps: [createOp],
+            deletedNotifications: []
         )
         let integration = MockIntegrationService()
         let sut = makeSUT(repo: repo, remote: remote, integration: integration, worker: worker)

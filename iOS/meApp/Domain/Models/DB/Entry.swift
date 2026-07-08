@@ -248,7 +248,13 @@ extension Entry {
         )
         isFailedToSync = data.isFailedToSync
         attempts = data.attempts
+        note = data.note
+        applyChildRelationships(from: data)
+    }
 
+    /// Assigns the child relationships (scale entry/metric, BP, baby) from the
+    /// transfer row. Extracted from `init(from:)` to keep it within the body-length limit.
+    private func applyChildRelationships(from data: EntrySyncData) {
         if let scaleData = data.scaleEntry {
             scaleEntry = BathScaleEntry(
                 weight: scaleData.weight,
@@ -293,8 +299,6 @@ extension Entry {
                 weight: weight
             )
         }
-
-        note = data.note
     }
 }
 

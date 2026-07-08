@@ -1282,27 +1282,9 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
             // Map response rows back positionally: one row per request in order,
             // and each entry owns the row of its FIRST request (the same row the
             // per-entry push read via `entries.first`).
-            var outcomes: [EntryPushOutcome] = []
-            var deletedEntries: [(entryId: UUID, entryTimestamp: String)] = []
-            var responseCursor = 0
-            for entry in chunk {
-                if entry.operationType == OperationType.create.rawValue {
-                    let serverEntryId = responseCursor < submitResponse.entries.count
-                        ? submitResponse.entries[responseCursor].entryId
-                        : nil
-                    outcomes.append(EntryPushOutcome(
-                        entryId: entry.entryId,
-                        outcome: .created(serverEntryId: serverEntryId, attempts: entry.attempts)
-                    ))
-                    tally.hadSuccessfulCreate = true
-                    tally.successfulCreateCount += 1
-                } else {
-                    outcomes.append(EntryPushOutcome(entryId: entry.entryId, outcome: .deleted))
-                    deletedEntries.append((entry.entryId, entry.entryTimestamp))
-                    tally.successfulDeleteCount += 1
-                }
-                responseCursor += entry.requests.count
-            }
+            let (outcomes, deletedEntries) = buildPushOutcomes(
+                for: chunk, submitResponse: submitResponse, tally: &tally
+            )
 
             do {
                 try await worker.applyPushOutcomes(outcomes)
@@ -1332,6 +1314,39 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
                 tally.firstFailureReason = error.localizedDescription
             }
         }
+    }
+
+    /// Builds per-entry push outcomes from a batch response, tallying created/deleted
+    /// counts. Returns the outcomes plus the entries whose delete op succeeded, so the
+    /// caller can fire their delete side effects. Extracted to keep `pushChunk` within
+    /// the function-length limit.
+    private func buildPushOutcomes(
+        for chunk: [PendingPushEntry],
+        submitResponse: UnifiedEntryResponse,
+        tally: inout PushTally
+    ) -> (outcomes: [EntryPushOutcome], deleted: [(entryId: UUID, entryTimestamp: String)]) {
+        var outcomes: [EntryPushOutcome] = []
+        var deletedEntries: [(entryId: UUID, entryTimestamp: String)] = []
+        var responseCursor = 0
+        for entry in chunk {
+            if entry.operationType == OperationType.create.rawValue {
+                let serverEntryId = responseCursor < submitResponse.entries.count
+                    ? submitResponse.entries[responseCursor].entryId
+                    : nil
+                outcomes.append(EntryPushOutcome(
+                    entryId: entry.entryId,
+                    outcome: .created(serverEntryId: serverEntryId, attempts: entry.attempts)
+                ))
+                tally.hadSuccessfulCreate = true
+                tally.successfulCreateCount += 1
+            } else {
+                outcomes.append(EntryPushOutcome(entryId: entry.entryId, outcome: .deleted))
+                deletedEntries.append((entry.entryId, entry.entryTimestamp))
+                tally.successfulDeleteCount += 1
+            }
+            responseCursor += entry.requests.count
+        }
+        return (outcomes, deletedEntries)
     }
 
     /// Lightweight summary for a single month. Avoids computing all months when only one changes.
