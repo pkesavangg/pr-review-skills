@@ -21,12 +21,11 @@ struct WeightHistoryEditSheet: View {
     /// Adult weight unit (kg vs lb), captured from the store at presentation time.
     private let isMetric: Bool
 
-    @State private var weightText: String
-    @State private var bmiText: String
-    @State private var bodyFatText: String
-    @State private var muscleMassText: String
-    @State private var bodyWaterText: String
-    @State private var notesText: String
+    /// Reactive form driving the editable fields. Reusing `ManualEntryForm` (the same form the
+    /// create screen uses) gives the edit sheet identical field-level validation and error
+    /// messages: weight is required / >0 / <= max, and each body metric is clamped to 0–99.9.
+    @StateObject private var form: ManualEntryForm
+
     @State private var entryDate: Date
     @State private var entryTime: Date
     @State private var showMetrics: Bool
@@ -40,6 +39,9 @@ struct WeightHistoryEditSheet: View {
     private let manualLang = ManualEntryStrings.self
     private let commonLang = CommonStrings.self
 
+    /// Weight unit the form validates against, derived from the adult weight preference.
+    private var weightUnit: WeightUnit { isMetric ? .kg : .lb }
+
     init(entry: EntrySnapshot, isMetric: Bool) {
         self.entry = entry
         self.isMetric = isMetric
@@ -47,12 +49,16 @@ struct WeightHistoryEditSheet: View {
         let scale = entry.scaleEntry
         let storedWeight = scale?.weight ?? 0
         let displayWeight = ConversionTools.convertStoredToDisplay(storedWeight, isMetric: isMetric)
-        _weightText = State(initialValue: storedWeight > 0 ? String(format: "%.1f", displayWeight) : "")
-        _bmiText = State(initialValue: Self.tenthsToText(scale?.bmi))
-        _bodyFatText = State(initialValue: Self.tenthsToText(scale?.bodyFat))
-        _muscleMassText = State(initialValue: Self.tenthsToText(scale?.muscleMass))
-        _bodyWaterText = State(initialValue: Self.tenthsToText(scale?.water))
-        _notesText = State(initialValue: entry.note ?? "")
+
+        let form = ManualEntryForm()
+        form.weight.value = storedWeight > 0 ? String(format: "%.1f", displayWeight) : ""
+        form.bmi.value = Self.tenthsToText(scale?.bmi)
+        form.bodyFat.value = Self.tenthsToText(scale?.bodyFat)
+        form.muscleMass.value = Self.tenthsToText(scale?.muscleMass)
+        form.bodyWater.value = Self.tenthsToText(scale?.water)
+        form.notes.value = entry.note ?? ""
+        _form = StateObject(wrappedValue: form)
+
         _entryDate = State(initialValue: parsed)
         _entryTime = State(initialValue: parsed)
         // Expand the metrics accordion when the entry carries any core body metric.
@@ -67,9 +73,9 @@ struct WeightHistoryEditSheet: View {
     /// read-only. Manually-entered readings are fully editable (MOB-1172).
     private var valuesLocked: Bool { !EntrySource.isManualEntry(entry.scaleEntry?.source) }
 
-    private var isValid: Bool {
-        (Double(weightText) ?? 0) > 0
-    }
+    /// Save is gated on the reactive form: weight present and in range, and every filled
+    /// body metric within its allowed bounds.
+    private var isValid: Bool { form.isValid }
 
     var body: some View {
         ScrollView {
@@ -80,13 +86,14 @@ struct WeightHistoryEditSheet: View {
                     config: TextInputConfig(
                         label: labels.weight,
                         inputType: .metric,
+                        errorMessage: form.getError(for: form.weight, weightUnit: weightUnit),
                         isDisabled: valuesLocked,
                         focusField: .weight,
                         maxLength: 4,
                         maxValue: 999.9,
                         trailingLabel: labels.weightUnitSuffix(isMetric)
                     ),
-                    value: $weightText,
+                    value: $form.weight.value,
                     focusedField: $focusedField
                 ) { focusedField = nil }
 
@@ -98,7 +105,7 @@ struct WeightHistoryEditSheet: View {
                         inputType: .notes,
                         focusField: .notes
                     ),
-                    value: $notesText,
+                    value: $form.notes.value,
                     focusedField: $focusedField
                 )
 
@@ -159,25 +166,26 @@ struct WeightHistoryEditSheet: View {
             .accessibilityLabel(manualLang.accBodyMetricsHeader)
 
             if showMetrics {
-                metricField(label: labels.bmi, value: $bmiText, focus: .bmi, next: .bodyFat)
-                metricField(label: labels.bodyFat, value: $bodyFatText, focus: .bodyFat, next: .muscleMass)
-                metricField(label: labels.muscleMass, value: $muscleMassText, focus: .muscleMass, next: .bodyWater)
-                metricField(label: labels.bodyWater, value: $bodyWaterText, focus: .bodyWater, next: .notes)
+                metricField(label: labels.bmi, control: form.bmi, focus: .bmi, next: .bodyFat)
+                metricField(label: labels.bodyFat, control: form.bodyFat, focus: .bodyFat, next: .muscleMass)
+                metricField(label: labels.muscleMass, control: form.muscleMass, focus: .muscleMass, next: .bodyWater)
+                metricField(label: labels.bodyWater, control: form.bodyWater, focus: .bodyWater, next: .notes)
             }
         }
     }
 
-    private func metricField(label: String, value: Binding<String>, focus: FocusField, next: FocusField) -> some View {
+    private func metricField(label: String, control: FormControl<String>, focus: FocusField, next: FocusField) -> some View {
         MetricInputField(
             config: TextInputConfig(
                 label: label,
                 inputType: .metric,
+                errorMessage: form.getError(for: control, weightUnit: weightUnit),
                 isDisabled: valuesLocked,
                 focusField: focus,
                 maxLength: 3,
                 maxValue: 99.9
             ),
-            value: value,
+            value: Binding(get: { control.value }, set: { control.value = $0 }),
             focusedField: $focusedField
         ) { focusedField = next }
     }
@@ -241,7 +249,7 @@ struct WeightHistoryEditSheet: View {
     }
 
     private func saveEntry() {
-        guard let weightDisplay = Double(weightText), weightDisplay > 0 else { return }
+        guard form.isValid, let weightDisplay = Double(form.weight.value), weightDisplay > 0 else { return }
         isSaving = true
         let storedWeight = ConversionTools.convertDisplayToStored(weightDisplay, isMetric: isMetric)
         let timestamp = DateTimeTools.isoString(date: entryDate, time: entryTime, useUTC: true)
@@ -249,11 +257,11 @@ struct WeightHistoryEditSheet: View {
             await historyStore.updateWGEntry(
                 old: entry,
                 weight: storedWeight,
-                bmi: Self.textToTenths(bmiText),
-                bodyFat: Self.textToTenths(bodyFatText),
-                muscleMass: Self.textToTenths(muscleMassText),
-                water: Self.textToTenths(bodyWaterText),
-                note: notesText,
+                bmi: Self.textToTenths(form.bmi.value),
+                bodyFat: Self.textToTenths(form.bodyFat.value),
+                muscleMass: Self.textToTenths(form.muscleMass.value),
+                water: Self.textToTenths(form.bodyWater.value),
+                note: form.notes.value,
                 entryTimestamp: timestamp
             )
             isSaving = false
