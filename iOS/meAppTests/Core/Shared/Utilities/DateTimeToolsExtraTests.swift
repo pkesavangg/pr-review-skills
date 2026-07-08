@@ -18,8 +18,12 @@ struct DateTimeToolsExtraTests {
     // MARK: - Fixtures
 
     private static func localDate(
-        _ year: Int, _ month: Int, _ day: Int,
-        _ hour: Int = 0, _ minute: Int = 0, _ second: Int = 0
+        _ year: Int,
+        _ month: Int,
+        _ day: Int,
+        _ hour: Int = 0,
+        _ minute: Int = 0,
+        _ second: Int = 0
     ) throws -> Date {
         var comps = DateComponents()
         comps.year = year

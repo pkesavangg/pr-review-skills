@@ -1,6 +1,6 @@
 import Foundation
-import SwiftUI
 @testable import meApp
+import SwiftUI
 import Testing
 
 /// Deterministic unit tests for `BaseGraphViewCacheManager` — the pure signature/hash and

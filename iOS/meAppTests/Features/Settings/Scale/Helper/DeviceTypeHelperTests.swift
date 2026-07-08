@@ -18,16 +18,16 @@ struct DeviceTypeHelperTests {
 
     @Test("primitive: nil sku with scaleType routes through DeviceSourceType")
     func primitiveNilSkuScaleTypeBranch() {
-        typealias H = DeviceTypeHelper
-        #expect(H.determineDeviceModelType(sku: nil, scaleType: "wifi", deviceType: nil) == .wifi)
-        #expect(H.determineDeviceModelType(sku: nil, scaleType: "espTouchWifi", deviceType: nil) == .wifi)
-        #expect(H.determineDeviceModelType(sku: nil, scaleType: "bluetooth", deviceType: nil) == .bluetoothA6)
-        #expect(H.determineDeviceModelType(sku: nil, scaleType: "lcbt", deviceType: nil) == .bluetoothA6)
-        #expect(H.determineDeviceModelType(sku: nil, scaleType: "lcbt scale", deviceType: nil) == .bluetoothA6)
-        #expect(H.determineDeviceModelType(sku: nil, scaleType: "bluetooth scale", deviceType: nil) == .bluetoothA6)
-        #expect(H.determineDeviceModelType(sku: nil, scaleType: "appsync", deviceType: nil) == .appsync)
-        #expect(H.determineDeviceModelType(sku: nil, scaleType: "appsync scale", deviceType: nil) == .appsync)
-        #expect(H.determineDeviceModelType(sku: nil, scaleType: "btWifiR4", deviceType: nil) == .bluetoothR4)
+        typealias Helper = DeviceTypeHelper
+        #expect(Helper.determineDeviceModelType(sku: nil, scaleType: "wifi", deviceType: nil) == .wifi)
+        #expect(Helper.determineDeviceModelType(sku: nil, scaleType: "espTouchWifi", deviceType: nil) == .wifi)
+        #expect(Helper.determineDeviceModelType(sku: nil, scaleType: "bluetooth", deviceType: nil) == .bluetoothA6)
+        #expect(Helper.determineDeviceModelType(sku: nil, scaleType: "lcbt", deviceType: nil) == .bluetoothA6)
+        #expect(Helper.determineDeviceModelType(sku: nil, scaleType: "lcbt scale", deviceType: nil) == .bluetoothA6)
+        #expect(Helper.determineDeviceModelType(sku: nil, scaleType: "bluetooth scale", deviceType: nil) == .bluetoothA6)
+        #expect(Helper.determineDeviceModelType(sku: nil, scaleType: "appsync", deviceType: nil) == .appsync)
+        #expect(Helper.determineDeviceModelType(sku: nil, scaleType: "appsync scale", deviceType: nil) == .appsync)
+        #expect(Helper.determineDeviceModelType(sku: nil, scaleType: "btWifiR4", deviceType: nil) == .bluetoothR4)
     }
 
     @Test("primitive: nil sku with unknown scaleType falls back to bluetoothA6")
@@ -58,11 +58,11 @@ struct DeviceTypeHelperTests {
 
     @Test("primitive: missing sku falls through to scaleType branch")
     func primitiveMissingSkuScaleTypeBranch() {
-        typealias H = DeviceTypeHelper
-        #expect(H.determineDeviceModelType(sku: missingSku, scaleType: "wifi", deviceType: nil) == .wifi)
-        #expect(H.determineDeviceModelType(sku: missingSku, scaleType: "appsync scale", deviceType: nil) == .appsync)
-        #expect(H.determineDeviceModelType(sku: missingSku, scaleType: "btWifiR4", deviceType: nil) == .bluetoothR4)
-        #expect(H.determineDeviceModelType(sku: missingSku, scaleType: "bluetooth", deviceType: nil) == .bluetoothA6)
+        typealias Helper = DeviceTypeHelper
+        #expect(Helper.determineDeviceModelType(sku: missingSku, scaleType: "wifi", deviceType: nil) == .wifi)
+        #expect(Helper.determineDeviceModelType(sku: missingSku, scaleType: "appsync scale", deviceType: nil) == .appsync)
+        #expect(Helper.determineDeviceModelType(sku: missingSku, scaleType: "btWifiR4", deviceType: nil) == .bluetoothR4)
+        #expect(Helper.determineDeviceModelType(sku: missingSku, scaleType: "bluetooth", deviceType: nil) == .bluetoothA6)
     }
 
     @Test("primitive: missing sku, nil scaleType, bpm deviceType returns bpm")
@@ -72,14 +72,14 @@ struct DeviceTypeHelperTests {
 
     @Test("primitive: missing sku, nil scaleType, deviceType switch")
     func primitiveMissingSkuDeviceTypeSwitch() {
-        typealias H = DeviceTypeHelper
-        #expect(H.determineDeviceModelType(sku: missingSku, scaleType: nil, deviceType: "bluetooth") == .bluetoothA6)
-        #expect(H.determineDeviceModelType(sku: missingSku, scaleType: nil, deviceType: "bluetoothscale") == .bluetoothA6)
-        #expect(H.determineDeviceModelType(sku: missingSku, scaleType: nil, deviceType: "wifi") == .wifi)
-        #expect(H.determineDeviceModelType(sku: missingSku, scaleType: nil, deviceType: "wifiscale") == .wifi)
-        #expect(H.determineDeviceModelType(sku: missingSku, scaleType: nil, deviceType: "appsync") == .appsync)
-        #expect(H.determineDeviceModelType(sku: missingSku, scaleType: nil, deviceType: "appsyncscale") == .appsync)
-        #expect(H.determineDeviceModelType(sku: missingSku, scaleType: nil, deviceType: "garbage") == .bluetoothA6)
+        typealias Helper = DeviceTypeHelper
+        #expect(Helper.determineDeviceModelType(sku: missingSku, scaleType: nil, deviceType: "bluetooth") == .bluetoothA6)
+        #expect(Helper.determineDeviceModelType(sku: missingSku, scaleType: nil, deviceType: "bluetoothscale") == .bluetoothA6)
+        #expect(Helper.determineDeviceModelType(sku: missingSku, scaleType: nil, deviceType: "wifi") == .wifi)
+        #expect(Helper.determineDeviceModelType(sku: missingSku, scaleType: nil, deviceType: "wifiscale") == .wifi)
+        #expect(Helper.determineDeviceModelType(sku: missingSku, scaleType: nil, deviceType: "appsync") == .appsync)
+        #expect(Helper.determineDeviceModelType(sku: missingSku, scaleType: nil, deviceType: "appsyncscale") == .appsync)
+        #expect(Helper.determineDeviceModelType(sku: missingSku, scaleType: nil, deviceType: "garbage") == .bluetoothA6)
     }
 
     @Test("primitive: missing sku, nil scaleType, nil deviceType hits final default")
@@ -96,14 +96,14 @@ struct DeviceTypeHelperTests {
 
     @Test("primitive: real SKUs resolve via the SCALES catalog setupType")
     func primitiveScalesLookupHits() {
-        typealias H = DeviceTypeHelper
-        #expect(H.determineDeviceModelType(sku: "0375", scaleType: nil, deviceType: nil) == .bluetoothA6) // .bluetooth
-        #expect(H.determineDeviceModelType(sku: "0378", scaleType: nil, deviceType: nil) == .bluetoothA6) // .lcbt
-        #expect(H.determineDeviceModelType(sku: "0385", scaleType: nil, deviceType: nil) == .wifi)         // .wifi
-        #expect(H.determineDeviceModelType(sku: "0384", scaleType: nil, deviceType: nil) == .wifi)         // .espTouchWifi
-        #expect(H.determineDeviceModelType(sku: "0340", scaleType: nil, deviceType: nil) == .appsync)      // .appSync
-        #expect(H.determineDeviceModelType(sku: "0412", scaleType: nil, deviceType: nil) == .bluetoothR4)  // .btWifiR4
-        #expect(H.determineDeviceModelType(sku: "0220", scaleType: nil, deviceType: nil) == .babyScale)    // .babyScale
+        typealias Helper = DeviceTypeHelper
+        #expect(Helper.determineDeviceModelType(sku: "0375", scaleType: nil, deviceType: nil) == .bluetoothA6) // .bluetooth
+        #expect(Helper.determineDeviceModelType(sku: "0378", scaleType: nil, deviceType: nil) == .bluetoothA6) // .lcbt
+        #expect(Helper.determineDeviceModelType(sku: "0385", scaleType: nil, deviceType: nil) == .wifi)         // .wifi
+        #expect(Helper.determineDeviceModelType(sku: "0384", scaleType: nil, deviceType: nil) == .wifi)         // .espTouchWifi
+        #expect(Helper.determineDeviceModelType(sku: "0340", scaleType: nil, deviceType: nil) == .appsync)      // .appSync
+        #expect(Helper.determineDeviceModelType(sku: "0412", scaleType: nil, deviceType: nil) == .bluetoothR4)  // .btWifiR4
+        #expect(Helper.determineDeviceModelType(sku: "0220", scaleType: nil, deviceType: nil) == .babyScale)    // .babyScale
     }
 
     @Test("primitive: SKU 0022 is remapped to 0383 before the SCALES lookup")

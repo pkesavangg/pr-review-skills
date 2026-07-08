@@ -1,6 +1,6 @@
 import Foundation
-import SwiftUI
 @testable import meApp
+import SwiftUI
 import Testing
 
 /// Pure-logic tests for `DashboardChartRules` — the right-aligned 7-day chart window
@@ -46,7 +46,7 @@ struct DashboardChartRulesTests {
 
     @Test("window: empty summaries returns nil")
     func windowEmptyReturnsNil() {
-        let result = DashboardSnapshotChartWindow.make(summaries: [], include: { _ in true })
+        let result = DashboardSnapshotChartWindow.make(summaries: []) { _ in true }
         #expect(result == nil)
     }
 
@@ -54,7 +54,7 @@ struct DashboardChartRulesTests {
     func windowAllExcludedReturnsNil() {
         let base = calendar.startOfDay(for: Date())
         let summaries = [summary(dayOffset: 0, from: base)]
-        let result = DashboardSnapshotChartWindow.make(summaries: summaries, include: { _ in false })
+        let result = DashboardSnapshotChartWindow.make(summaries: summaries) { _ in false }
         #expect(result == nil)
     }
 
@@ -63,7 +63,7 @@ struct DashboardChartRulesTests {
         let base = calendar.startOfDay(for: Date())
         let summaries = [summary(dayOffset: 0, from: base)]
 
-        guard let result = DashboardSnapshotChartWindow.make(summaries: summaries, include: { _ in true }) else {
+        guard let result = DashboardSnapshotChartWindow.make(summaries: summaries) { _ in true } else {
             Issue.record("Expected a non-nil window")
             return
         }
@@ -85,7 +85,7 @@ struct DashboardChartRulesTests {
         let latest = summary(dayOffset: 0, from: base, weight: 1800)
         let summaries = [latest, previous, visibleA] // intentionally unsorted
 
-        guard let result = DashboardSnapshotChartWindow.make(summaries: summaries, include: { _ in true }) else {
+        guard let result = DashboardSnapshotChartWindow.make(summaries: summaries) { _ in true } else {
             Issue.record("Expected a non-nil window")
             return
         }
@@ -111,7 +111,7 @@ struct DashboardChartRulesTests {
         let latest = summary(dayOffset: 3, from: base, weight: 1850)
         let summaries = [previous, visibleA, visibleB, latest]
 
-        guard let result = DashboardSnapshotChartWindow.make(summaries: summaries, include: { _ in true }) else {
+        guard let result = DashboardSnapshotChartWindow.make(summaries: summaries) { _ in true } else {
             Issue.record("Expected a non-nil window")
             return
         }
@@ -131,9 +131,8 @@ struct DashboardChartRulesTests {
     func weightScaleEmptyNoGoal() {
         let scale = DashboardChartScaleProvider.weightScale(
             operations: [],
-            goalWeight: nil,
-            convertStoredWeightToDisplay: { $0 }
-        )
+            goalWeight: nil
+        ) { $0 }
         #expect(scale.min == 0)
         #expect(scale.max == 100)
         #expect(scale.step == 25)
@@ -144,9 +143,8 @@ struct DashboardChartRulesTests {
     func weightScaleEmptyWithGoal() {
         let scale = DashboardChartScaleProvider.weightScale(
             operations: [],
-            goalWeight: 150,
-            convertStoredWeightToDisplay: { $0 }
-        )
+            goalWeight: 150
+        ) { $0 }
         // buildGoalCentricFallback(150): step 2, centered on 150.
         #expect(scale.ticks == [146, 148, 150, 152, 154])
         #expect(scale.step == 2)
@@ -160,9 +158,8 @@ struct DashboardChartRulesTests {
     @Test("babyWeightScale: empty operations returns the 0...30 default scale")
     func babyWeightScaleEmpty() {
         let scale = DashboardChartScaleProvider.babyWeightScale(
-            operations: [],
-            convertStoredWeightToDisplay: { Double($0) }
-        )
+            operations: []
+        ) { Double($0) }
         #expect(scale.min == 0)
         #expect(scale.max == 30)
         #expect(scale.step == 10)
@@ -177,9 +174,8 @@ struct DashboardChartRulesTests {
             DashboardTestFixtures.makeSummary(weight: 0)
         ]
         let scale = DashboardChartScaleProvider.babyWeightScale(
-            operations: ops,
-            convertStoredWeightToDisplay: { Double($0) }
-        )
+            operations: ops
+        ) { Double($0) }
         #expect(scale.ticks == [0, 10, 20, 30])
     }
 
@@ -191,9 +187,8 @@ struct DashboardChartRulesTests {
             DashboardTestFixtures.makeSummary(weight: 30)
         ]
         let scale = DashboardChartScaleProvider.babyWeightScale(
-            operations: ops,
-            convertStoredWeightToDisplay: { Double($0) }
-        )
+            operations: ops
+        ) { Double($0) }
         // min 10, max 30 → padding 3 → paddedMin 7, paddedMax 33 → step 7 → ticks 7...35.
         #expect(scale.min == 7)
         #expect(scale.max == 35)

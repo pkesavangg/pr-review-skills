@@ -151,9 +151,8 @@ struct BaseGraphViewCacheSupportTests {
         let labels = BaseGraphViewCacheSupport.precomputedYAxisLabels(
             ticks: [10, 20],
             goalWeight: 25,
-            existingLabels: [:],
-            formatter: { String(Int($0)) }
-        )
+            existingLabels: [:]
+        ) { String(Int($0)) }
         #expect(labels[10] == "10")
         #expect(labels[20] == "20")
         #expect(labels[25] == "25")
@@ -165,9 +164,8 @@ struct BaseGraphViewCacheSupportTests {
         let labels = BaseGraphViewCacheSupport.precomputedYAxisLabels(
             ticks: [10, 20],
             goalWeight: nil,
-            existingLabels: [10: "TEN"],
-            formatter: { String(Int($0)) }
-        )
+            existingLabels: [10: "TEN"]
+        ) { String(Int($0)) }
         #expect(labels[10] == "TEN")
         #expect(labels[20] == "20")
         #expect(labels.count == 2)
@@ -181,9 +179,8 @@ struct BaseGraphViewCacheSupportTests {
         let d1 = date(1_100_000)
         let labels = BaseGraphViewCacheSupport.precomputedXAxisLabels(
             dates: [d0, d1],
-            existingLabels: [d0: "KEEP"],
-            formatter: { _ in "NEW" }
-        )
+            existingLabels: [d0: "KEEP"]
+        ) { _ in "NEW" }
         #expect(labels[d0] == "KEEP")
         #expect(labels[d1] == "NEW")
         #expect(labels.count == 2)
@@ -195,9 +192,8 @@ struct BaseGraphViewCacheSupportTests {
         let d1 = date(1_100_000)
         let labels = BaseGraphViewCacheSupport.precomputedXAxisLabels(
             dates: [d0, d1],
-            existingLabels: [:],
-            formatter: { $0 == d1 ? nil : "L" }
-        )
+            existingLabels: [:]
+        ) { $0 == d1 ? nil : "L" }
         #expect(labels[d0] == "L")
         #expect(labels[d1] == nil)
         #expect(labels.count == 1)
@@ -259,9 +255,8 @@ struct BaseGraphViewCacheSupportTests {
             BaseGraphViewCacheSupport.makeCacheUpdate(
                 snapshot: snapshot,
                 previousHash: 0,
-                isCacheEmpty: true,
-                plotXDate: { $0 }
-            )
+                isCacheEmpty: true
+            ) { $0 }
         )
 
         // chartPoints mirror the raw input order.
@@ -296,18 +291,16 @@ struct BaseGraphViewCacheSupportTests {
             BaseGraphViewCacheSupport.makeCacheUpdate(
                 snapshot: snapshot,
                 previousHash: 0,
-                isCacheEmpty: true,
-                plotXDate: { $0 }
-            )
+                isCacheEmpty: true
+            ) { $0 }
         )
 
         // Re-running with the just-produced hash and a non-empty cache yields no update.
         let second = BaseGraphViewCacheSupport.makeCacheUpdate(
             snapshot: snapshot,
             previousHash: first.dataHash,
-            isCacheEmpty: false,
-            plotXDate: { $0 }
-        )
+            isCacheEmpty: false
+        ) { $0 }
         #expect(second == nil)
     }
 }

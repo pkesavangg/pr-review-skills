@@ -1,6 +1,6 @@
 import Foundation
 
-enum BodyMetric: String, Codable, Equatable, CaseIterable {
+enum BodyMetric: String, Codable, Equatable {
     case weight
     case bmi
     case bodyFat
