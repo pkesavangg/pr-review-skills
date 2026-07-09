@@ -1046,6 +1046,13 @@ class SettingsStore: ObservableObject {
 
         editProfileForm.height.value = String(storedHeight)
         editProfileForm.height.markAsDirty()
+
+        // Keep the picker selections in sync with the value the user just chose so that
+        // reopening the height picker shows the updated height rather than the last
+        // account-synced value (which only refreshes on an activeAccount push).
+        let selections = ConversionTools.pickerSelections(from: storedHeight)
+        selectedHeightInches = selections.inches
+        selectedHeightCm = selections.cm
     }
 
     /// Checks if the status array contains USER_SELECTION_IN_PROGRESS
