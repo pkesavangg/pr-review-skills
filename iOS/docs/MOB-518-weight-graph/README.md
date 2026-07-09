@@ -7,13 +7,18 @@ The whole rebuild ships as **one working PR** on branch `MOB-518-chart-engine-sc
 
 | Doc | What it is |
 |-----|-----------|
-| [MOB-518-chart-engine-rearchitecture.md](MOB-518-chart-engine-rearchitecture.md) | **The plan.** Target architecture, root-cause inventory (S1–S10), phased migration, decisions. Read this first. |
-| [MOB-518-weight-graph-implementation-guide.md](MOB-518-weight-graph-implementation-guide.md) | **The how-to.** File-by-file, phase-by-phase changes + per-phase device QA + touch map. Execute against this. |
-| [MOB-518-weight-graph-focus.md](MOB-518-weight-graph-focus.md) | **The baseline.** W1 (de-`@Published` scrollPosition) + W2 (`ChartDomainSanitizer`) root-cause + shipped fixes that Phase 0 starts from. |
+| [MOB-518-weight-graph-v2-engine-design.md](MOB-518-weight-graph-v2-engine-design.md) | **★ CURRENT PLAN.** The greenfield "strangler" rebuild — a new weight-chart engine built alongside the old graph, reusing the domain math, flipped over at parity. Read this first. |
+| [MOB-518-chart-engine-rearchitecture.md](MOB-518-chart-engine-rearchitecture.md) | **The diagnosis + target architecture.** Root-cause inventory (S1–S10) and the engine design the v2 doc delivers. Still valid; the *delivery mechanism* moved to v2. |
+| [MOB-518-weight-graph-implementation-guide.md](MOB-518-weight-graph-implementation-guide.md) | **The (superseded) in-place how-to.** Phase 0 + Phase 1 were executed from this; Phases 2–5 are replaced by the v2 build order. Kept for the S1/animation analysis. |
+| [MOB-518-weight-graph-focus.md](MOB-518-weight-graph-focus.md) | **The baseline.** W1 (de-`@Published` scrollPosition) + W2 (`ChartDomainSanitizer`) root-cause + shipped fixes that carry into v2. |
 
 ## Locked decisions
 
-- **Delivery:** single working PR on this branch; phases = ordered commits (no per-phase PRs).
+- **Approach (2026-07-09):** **greenfield strangler rebuild** — a NEW weight-chart engine (`ChartModel` +
+  off-main `ChartPrep` + stable `WeightChartView`) built *alongside* the old graph, reusing the domain math,
+  flipped over only at device parity. Not an in-place morph. Executed: Phase 0 (dead code) + Phase 1 (`.id`
+  removal) shipped; those learnings carry into v2. See the v2 design doc.
+- **Delivery:** single working PR on this branch; steps = ordered commits (no per-phase PRs).
 - **Y-axis:** stays **adaptive** (Y-B) — same behaviour as today, just one clean settle event.
 - **Tests:** none written until the whole weight graph is signed off (Phase T); verify on device + temp `#if DEBUG` probes until then.
 - **Baby/BPM:** not touched until weight graph is approved; shared-code edits carry `// MULTI-SERIES:` notes.
