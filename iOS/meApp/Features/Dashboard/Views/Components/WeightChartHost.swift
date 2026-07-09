@@ -37,6 +37,7 @@ struct WeightChartHost: View {
                     scrollX: $scrollX,
                     selectedX: $selectedX,
                     crosshairDate: crosshairDate,
+                    goalLabel: goalLabel,
                     yLabel: { dashboardStore.displayManager.formatYAxisTickLabel($0) },
                     xLabel: formatXAxisLabel,
                     theme: theme
@@ -153,6 +154,14 @@ struct WeightChartHost: View {
             return
         }
         dashboardStore.selectWeightPoint(at: nearest.original.date)
+    }
+
+    /// V4 (6c): formatted goal-weight chip label (nil → no chip), matching the legacy
+    /// `formatWeightDisplayText(roundedGoalWeight(goal))`.
+    private var goalLabel: String? {
+        guard let goal = dashboardStore.goalWeightForDisplay else { return nil }
+        let rounded = dashboardStore.displayManager.roundedGoalWeight(goal)
+        return dashboardStore.displayManager.formatWeightDisplayText(rounded)
     }
 
     private func nearestEntry(to date: Date, in model: ChartModel) -> PlottedGraphSeries? {

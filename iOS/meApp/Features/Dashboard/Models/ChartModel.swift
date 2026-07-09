@@ -56,6 +56,10 @@ struct ChartModel: Equatable, Sendable {
     /// Pre-generated x-axis tick dates for the period.
     let xAxisTicks: [Date]
 
+    /// Goal weight in DISPLAY units (same space as `yAxis.domain`), or `nil` if no goal is set. Drives the
+    /// goal chip. V4 (6c).
+    let goalWeight: Double?
+
     /// Adaptive y-axis (domain + ticks + window average). Updated in place on settle.
     let yAxis: YAxisModel
 
@@ -86,6 +90,7 @@ struct ChartModel: Equatable, Sendable {
             xDomain: xDomain,
             visibleDomainLength: visibleDomainLength,
             xAxisTicks: xAxisTicks,
+            goalWeight: goalWeight,
             yAxis: newYAxis,
             dataFingerprint: dataFingerprint
         )

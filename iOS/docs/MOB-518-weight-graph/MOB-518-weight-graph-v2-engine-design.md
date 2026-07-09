@@ -340,9 +340,18 @@ reusing all existing scroll-end/average/selection/anchor wiring.
   `showCrosshair` per period), and the crosshair is **derived from the store's validated selection**
   (`crosshairDate`) so it reflects taps + programmatic auto-select and auto-clears when the store clears on
   scroll-start. Option A honoured: host owns the raw selection, store owns the validated lifecycle.
-- **Next: V4-6b** — header value + label (selected point → interpolated → window average → latest; "day
-  average" vs "{period} average") + average-settles-on-lift. Then 6c goal, 6d weightless, 6e metric co-plot,
-  6f active-month greying.
+- **V4-6b — header value + label + tab-switch-latest-select. ✅ DONE (no engine code, 2026-07-09).** Verified
+  by analysis: the header (`WeightTrendView`, `@ObservedObject dashboardStore`) renders `displayManager`
+  values which read **store** state — so 6a's tap routing already drives the selected value + selection-prefix
+  label, and the scroll-committed `xScrollPosition` drives the window average (the visible-ops cache only
+  applies mid-scroll, so it recomputes fresh on lift). Tab-switch-latest-select flows through
+  `DashboardTrendView.updateSelectedPeriod` → `applyChartSelectionSync` (NOT gated by V-A4), which the new
+  engine's `crosshairDate` + the header both read. No engine-specific code needed. *Verify on device.*
+- **V4-6c — goal chip. ✅ DONE (2026-07-09).** `ChartModel` carries `goalWeight` (display units, from
+  `ChartPrep`); `WeightChartView` draws a trailing-edge `GoalWeightChipView` via a clear `RuleMark(y:)`
+  annotation at the goal's y-level, clamped into the y-domain so it stays visible (parity with the legacy
+  clamp-to-edge chip). Label = `formatWeightDisplayText(roundedGoalWeight(goal))`.
+- **Next: V4-6d** — weightless label/formatting. Then 6e metric co-plot + switching, 6f active-month greying.
 
 ---
 
@@ -371,7 +380,7 @@ command).
 | 4a | ~~**V-A5a — full-domain scroll-independent x-geometry**~~ ✅ **DONE** | `fullXDomain`/`fullXAxisValues` from config; ticks span the whole scroll range; x-geometry identical at every scroll position. | scroll extent + ticks parity |
 | 4b | ~~**V-A5b — snap-to-window + start-at-latest**~~ ✅ **DONE** | Host reflects committed month snap in visual `scrollX`; one-shot `isGraphReady` adopt lands cold-open/tab-back on latest. | month **visual** snap, initial position |
 | 5 | ~~**V3 — rendering parity (gridlines + x-axis labels)**~~ ✅ **DONE** | Vertical gridlines (solid at boundaries / light between) + labels per period, parity with the legacy `gridTicks`/`adjustedLabelTicks`. Selected-point sizes ride with V4. | **#1** (verify on device) |
-| 6 | **V4 — selection + header + goal + weightless + metrics** | ~~6a tap-selection + crosshair~~ ✅ · **6b header value + label + average-on-lift** *(next)* · 6c goal chip + line · 6d weightless label · 6e metric co-plot + switching · 6f active-month greying. | **#4** selection |
+| 6 | **V4 — selection + header + goal + weightless + metrics** | ~~6a crosshair~~ ✅ · ~~6b header value/label + tab-latest~~ ✅ (no code) · ~~6c goal chip~~ ✅ · **6d weightless label** *(next)* · 6e metric co-plot + switching · 6f active-month greying. | **#4** selection |
 | 7 | **V6 — flip + delete old weight path** | Make the new engine the default (retire the DEBUG toggle); delete the now-dead weight-only `BaseGraphView` code + caches + cascade. **Baby/BPM stay on the old engine.** | — |
 | 8 | **Sweep + verify** | Walk the [known-issues log](MOB-518-weight-graph-known-issues.md) (all closed?), run the full [feature-spec parity gate](MOB-518-weight-graph-feature-spec.md) on device + Instruments Animation Hitches (< 5 ms/s, no frame > 16.7 ms) on a large account. | all |
 | 9 | **(Optional) off-main `ChartPrep`** | Only if step 8's trace shows a main-thread hit at settle — extract Sendable snapshot + hop off-main (S3). Likely unnecessary (data is small). | perf tail |

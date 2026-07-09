@@ -30,6 +30,8 @@ struct WeightChartView: View {
     /// V4 (6a): plotted x-date of the currently-selected (snapped) point — draws the crosshair + enlarges the
     /// matching point. `nil` when nothing is selected / crosshair hidden (e.g. during a scroll).
     let crosshairDate: Date?
+    /// V4 (6c): formatted goal-weight label for the goal chip (nil → no chip). The value is `model.goalWeight`.
+    let goalLabel: String?
     let yLabel: (Double) -> String
     let xLabel: (Date) -> String
     let theme: AppColors.Palette
@@ -45,6 +47,12 @@ struct WeightChartView: View {
     /// Finite, positive-width y-domain (W2 guard) — used for the scale AND the mark clamp so points and
     /// scale always agree (the S6 fix: plot the same value in `LineMark` and `PointMark`).
     private var yDomain: ClosedRange<Double> { ChartDomainSanitizer.finiteWidth(model.yAxis.domain) }
+
+    /// V4 (6c): goal value clamped into the y-domain so the chip stays visible (parity with the legacy
+    /// clamp-to-edge). `nil` when no goal is set.
+    private var clampedGoalValue: Double? {
+        model.goalWeight.map { min(max($0, yDomain.lowerBound), yDomain.upperBound) }
+    }
 
     /// Window width. Total isn't scrollable → show the whole span.
     private var visibleLength: TimeInterval {
@@ -116,6 +124,16 @@ struct WeightChartView: View {
                     .zIndex(-100)
                     .foregroundStyle(theme.actionPrimary)
                     .lineStyle(StrokeStyle(lineWidth: 1))
+            }
+
+            // V4 (6c) — goal chip: a trailing-edge pill at the goal's y-level (no visible rule, matching the
+            // legacy floating chip). Clamped into the y-domain so it stays on-screen when the goal is far off.
+            if let goalLabel, let goalValue = clampedGoalValue {
+                RuleMark(y: .value("Goal", goalValue))
+                    .foregroundStyle(.clear)
+                    .annotation(position: .trailing, alignment: .center, spacing: 0) {
+                        GoalWeightChipView(label: goalLabel, theme: theme)
+                    }
             }
         }
         .chartXSelection(value: $selectedX)

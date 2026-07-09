@@ -98,6 +98,7 @@ enum ChartPrep {
             xDomain: xDomain,
             visibleDomainLength: visibleLength,
             xAxisTicks: config.fullXAxisValues(for: period, from: operations),
+            goalWeight: goalWeight,
             yAxis: yAxis,
             dataFingerprint: fingerprint(orderedSeriesNames: [seriesName], points: [seriesName: plotted])
         )
