@@ -25,7 +25,6 @@ struct BaseGraphView<ViewModel: SectionViewModelProtocol>: View, Equatable {
     @State private var lastCacheUpdateTime: Date = .distantPast
     @State private var cacheUpdateTask: Task<Void, Never>?
     @State private var isInScrollEndTransition = false
-    @State private var chartRebuildToken = 0
     @State private var previousYAxisDomain: ClosedRange<Double>?
     @State private var previousDataHash: Int?
     @State private var isDomainChangeOnly = false
@@ -171,7 +170,6 @@ struct BaseGraphView<ViewModel: SectionViewModelProtocol>: View, Equatable {
     private func handleScrollStateChange(_ oldValue: Bool, _ newValue: Bool) {
         guard oldValue && !newValue else { return }
         isInScrollEndTransition = true
-        chartRebuildToken += 1
 
         Task { @MainActor in
             try? await Task.sleep(nanoseconds: 5_000_000)
