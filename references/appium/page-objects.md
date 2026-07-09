@@ -93,3 +93,11 @@ The same interaction (wait-then-click, wait-then-setValue) reimplemented in ever
 Action methods without explicit `Promise<…>` return types, or naming that drifts from the project's `clickX` / `inputX` / `btnX` conventions.
 
 **Fix.** Match the established naming and annotate async return types for clarity and tooling.
+
+---
+
+*This doctrine — selectors centralized as `get`-prefixed getters, page objects holding **no**
+assertions and **no** per-test state, pages exported as already-instantiated singletons, and specs
+kept free of selectors — is the [official WebdriverIO Page Object pattern](https://webdriver.io/docs/pageobjects/).
+These rules enforce it against this project's `test/pageobjects/` layout (base `Page` + `private get`
+selectors + `public async` actions).*

@@ -1,6 +1,6 @@
 # pr-review-skills
 
-A team-shared Claude Code reviewer for **SwiftUI** and **Jetpack Compose** code, plus a PR description writer. Two slash commands and one auto-triggering skill sharing one rule set:
+A team-shared Claude Code reviewer for **SwiftUI**, **Jetpack Compose**, and **Appium / WebdriverIO E2E** test code, plus a PR description writer. Two slash commands and one auto-triggering skill sharing one rule set:
 
 | Trigger          | Type     | Who runs it | When                       | Input                                              | Output                                                                       |
 | ---------------- | -------- | ----------- | -------------------------- | -------------------------------------------------- | ---------------------------------------------------------------------------- |
@@ -59,6 +59,17 @@ pr-review-skills/
     │   ├── modifier-conventions.md
     │   ├── accessibility.md
     │   └── api-guidelines.md
+    ├── appium/                  ← WebdriverIO + Appium E2E test-automation rules (run instead of SwiftUI/Compose)
+    │   ├── locators.md                      ← selector tiers, platformLocator, duplicated literals
+    │   ├── waits-and-synchronization.md     ← pause / bumped-timeout band-aids, TIMEOUTS / WAIT constants
+    │   ├── gestures-and-scrolling.md        ← scroll-into-view, deprecated touchAction, fixed-pixel offsets
+    │   ├── page-objects.md                  ← POM boundaries: assertions / selectors / data in the right layer
+    │   ├── test-structure-and-assertions.md ← test independence, clean state, real assertions
+    │   ├── reliability-and-flakiness.md     ← swallowed catches, .catch(()=>false) feeding an assertion
+    │   ├── typescript-and-async.md          ← missing await (P0), floating promises, type safety
+    │   ├── config-and-secrets.md            ← committed secrets in test/data, lint-gate recommendation
+    │   ├── helpers-and-reuse.md             ← reuse AppHelper / AuthHelper / ElementHelper vs re-rolling
+    │   └── mobile-commands-and-context.md   ← native↔WebView context restore, appium* legacy commands
     └── ios/                     ← project-tuned iOS rules on top of swiftui-pro
         ├── concurrency.md               ← Swift Concurrency footguns
         ├── logging-hygiene.md           ← log-in-body / log-in-onChange / empty-catch

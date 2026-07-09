@@ -213,7 +213,7 @@ flowchart TD
 
     AndroidGate -- no --> S43
 
-    PlatBranch -- Appium E2E --> S46[4a.6: Appium/E2E<br/>9 rule files · skip SwiftUI/Compose<br/>diff-added + carve-outs]
+    PlatBranch -- Appium E2E --> S46[4a.6: Appium/E2E<br/>10 rule files · skip SwiftUI/Compose<br/>diff-added + carve-outs]
     S46 --> S43
 
     S43[4a.3: Cross-cutting<br/>tests · PR description ·<br/>Jira ID · description-match]
@@ -251,7 +251,7 @@ flowchart TD
 | | [references/compose/modifier-conventions.md](references/compose/modifier-conventions.md) | Modifier chain order, accept-and-pass-through pattern |
 | | [references/compose/accessibility.md](references/compose/accessibility.md) | `contentDescription` on interactive `Icon`/`Image`, semantics, hit targets |
 | | [references/compose/api-guidelines.md](references/compose/api-guidelines.md) | Compose API conventions |
-| **4a.6 Appium / E2E** (fires *instead of* 4a.1/4a.2 when Appium detected) | [references/appium/](references/appium/) — 9 files: `locators`, `waits-and-synchronization`, `gestures-and-scrolling`, `page-objects`, `test-structure-and-assertions`, `reliability-and-flakiness`, `typescript-and-async`, `config-and-secrets`, `helpers-and-reuse` | Brittle/index/text selectors & `platformLocator` use, pause/bumped-timeout/`.catch(()=>false)` band-aids (diff-added only, with accepted-pattern carve-outs), POM boundaries (assertions/selectors/data in the right layer), test independence & clean state, missing-`await` (P0) & type safety, committed secrets in `test/data`, and re-rolling the project's helper toolbox (`tapWhenReady`, `AuthHelper`, `ElementHelper`, `TIMEOUTS`/`WAIT`, `selectors.ts`). Each rule prescribes its own severity; the reviewer names the real project symbol in the fix. Note: § 4a.3's "code without tests" and "missing screenshot" rules don't apply (the diff *is* tests, and E2E evidence is the Allure/video run, not the PR body) — Jira-link and description-match rules still apply. |
+| **4a.6 Appium / E2E** (fires *instead of* 4a.1/4a.2 when Appium detected) | [references/appium/](references/appium/) — 10 files: `locators`, `waits-and-synchronization`, `gestures-and-scrolling`, `page-objects`, `test-structure-and-assertions`, `reliability-and-flakiness`, `typescript-and-async`, `config-and-secrets`, `helpers-and-reuse`, `mobile-commands-and-context` | Brittle/index/text selectors & `platformLocator` use, pause/bumped-timeout/`.catch(()=>false)` band-aids (diff-added only, with accepted-pattern carve-outs), POM boundaries (assertions/selectors/data in the right layer), test independence & clean state, missing-`await` (P0) & type safety, committed secrets in `test/data`, re-rolling the project's helper toolbox (`tapWhenReady`, `AuthHelper`, `ElementHelper`, `TIMEOUTS`/`WAIT`, `selectors.ts`), and native↔WebView context restore + `appium*`-legacy-command currency. Each rule prescribes its own severity; the reviewer names the real project symbol in the fix. Note: § 4a.3's "code without tests" and "missing screenshot" rules don't apply (the diff *is* tests, and E2E evidence is the Allure/video run, not the PR body) — Jira-link and description-match rules still apply. |
 | **4a.3 Cross-cutting** | Inline rules in [review-pr.md](.claude/commands/review-pr.md) | Raw `print`/`Log.d` outside logger wrapper · missing tests for non-trivial code · **P1: PR description missing or doesn't match the diff** · **P1: Jira issue link required** (must be a clickable link in the body — branch-name ID alone fails) · **P2: MOB ticket on an active Dev/Test sprint** (MOB-keys only, when Atlassian MCP available; flags backlog / closed / wrong-track via `customfield_10020`) · **P2: missing screenshot/recording on a user-facing change** (waived for docs-only / version-bump / config-only; recording must depict the actual changed flow) · **P2: unrelated / out-of-scope changes bundled in one PR — scope creep, all platforms** |
 | **4a.4 De-dup** | Inline logic in [review-pr.md](.claude/commands/review-pr.md) | For each candidate: same file + within ±5 lines + overlapping substance with any existing inline comment from any author → drop |
 | **4a.5 Post** | Inline logic | Post via `gh api .../pulls/<N>/comments` with mandatory `P0 — ` / `P1 — ` / `P2 — ` / `Nit — ` prefix |
@@ -774,7 +774,7 @@ Full copy-paste snippet is in [INSTALL.md](INSTALL.md).
 | Privacy rules | [`references/privacy/store-compliance.md`](references/privacy/store-compliance.md) |
 | iOS rules | [`references/ios/*.md`](references/ios/) |
 | Compose rules (project-tuned) | [`references/compose/*.md`](references/compose/) |
-| Appium / E2E rules | [`references/appium/*.md`](references/appium/) (9 files) |
+| Appium / E2E rules | [`references/appium/*.md`](references/appium/) (10 files) |
 | SwiftUI rules (upstream, vendored) | [`references/vendored/swiftui-pro/`](references/vendored/swiftui-pro/) |
 | Compose rules (upstream, vendored) | [`references/vendored/compose-expert/`](references/vendored/compose-expert/) |
 | Vendored skill attribution + sync routine | [`references/vendored/UPSTREAM.md`](references/vendored/UPSTREAM.md) |
