@@ -551,7 +551,20 @@ struct BaseGraphView<ViewModel: SectionViewModelProtocol>: View, Equatable {
                         chartSeriesContent
                         chartBpmReferenceLines
                     }
-                    .id(lastDataHash)
+                    // S1 (MOB-518): NO `.id` on the Chart. A stable view identity lets Swift Charts diff
+                    // marks and animate the y-axis settle IN PLACE, instead of tearing down + re-mounting the
+                    // whole chart on every settle. The old `.id(lastDataHash)` hashed the y-domain, so each
+                    // scroll-end resettle changed the id → full teardown/rebuild → "points render, then the
+                    // line attaches" + the settle jerk/hitch. Marks stay correct without an id because
+                    // `chartSeriesContent` is a pure function of the caches (re-derives on any data change).
+                    // Period switches still remount correctly: each period is a distinct generic type
+                    // (BaseGraphView<WeekSectionViewModel> vs <MonthSectionViewModel>…), so SwiftUI replaces
+                    // the view on period change on its own — the `.id` was never what drove that.
+                    // FALLBACK: if a same-count value edit (e.g. weight→BMI metric switch, add/edit/delete)
+                    // ever fails to visually refresh on device, add a VALUE-ONLY fingerprint id (series
+                    // endpoints only, NOT the y-domain). Never re-add a y-domain-inclusive hash — that is S1.
+                    // MULTI-SERIES: baby/BPM add more series to cachedPlottedPoints; a value-only fingerprint
+                    // (if used) must fold in every series, and percentile series change only on profile/DOB/unit.
                     .chartYScale(domain: safeYAxisDomain)
                     .chartYAxis { yAxisMarks }
                     .chartLegend(.hidden)
