@@ -201,7 +201,7 @@ flowchart TD
     S405 --> PlatBranch{Which platform?}
 
     PlatBranch -- iOS or Both --> S41[4a.1: SwiftUI rules<br/>via vendored swiftui-pro]
-    S41 --> S415[4a.1.5: iOS cross-cutting<br/>concurrency / logging / tests]
+    S41 --> S415[4a.1.5: iOS cross-cutting<br/>concurrency / logging / tests / a11y-ids]
     S415 --> AndroidGate
 
     PlatBranch -- Android only --> AndroidGate{Android?}
@@ -238,6 +238,7 @@ flowchart TD
 | **4a.1.5 iOS cross-cutting** | [references/ios/concurrency.md](references/ios/concurrency.md) | `nonisolated` on `@MainActor`, `Task.detached` self capture, `DispatchQueue.main.async` mixed with `await`, `@Sendable` non-Sendable capture, stateless `actor`, `.sink/.store` for new code, `@MainActor` on non-UI services |
 | | [references/ios/logging-hygiene.md](references/ios/logging-hygiene.md) | Logging in `var body`, `.onChange` per keystroke, hot `for await`, empty `catch`, `.handleEvents` on hot publisher, back-to-back fragmented logs |
 | | [references/ios/test-hygiene.md](references/ios/test-hygiene.md) | `Thread.sleep` / `Task.sleep` for timing, production `.shared` singletons in tests, disk-backed store where in-memory exists, `as!` in mocks, framework mixing, behaviour-vs-method-name test naming |
+| | [references/ios/accessibility-identifiers.md](references/ios/accessibility-identifiers.md) | MOB-1131 automation ids: interactive control with no `.appAccessibility(id:)`, repeated-row shared id, iOS id vs Android `testTag` divergence, missing `.screenAccessibilityRoot(_:)`, literal instead of `AccessibilityID` constant, `id ?? ""` empty-id, contract test not extended — complements swiftui-pro (VoiceOver) and the `.swiftlint.yml` mechanical gate |
 | **4a.2 Compose** | [references/vendored/compose-expert/](references/vendored/compose-expert/) | 32 ref files: PR-review, state-management, side-effects, performance, modifiers, accessibility, lists/scrolling, view-composition, deprecated-patterns, composition-locals, animation, navigation, theming-material3, plus androidx source receipts |
 | **4a.2.5 Compose project-tuned** | [references/compose/recomposition.md](references/compose/recomposition.md) | Self-triggering recomposition, unstable effect keys, `LaunchedEffect(Unit)` with stateful body, expensive work without `remember`, missing `derivedStateOf`, lambda stability, unstable params |
 | | [references/compose/state-management.md](references/compose/state-management.md) | `runBlocking` in UI, business logic in leaf composables, state ownership, GlobalScope, lifecycle-aware Flow collection |
