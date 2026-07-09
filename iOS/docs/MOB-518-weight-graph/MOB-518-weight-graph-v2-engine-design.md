@@ -167,7 +167,7 @@ deleting the `if` branch.
 
 | Step | What | Shippable behind the flag? | Device check |
 |------|------|:--:|--------------|
-| **V1** | `ChartModel` + `ChartPrep` + `ChartDecimator`, pure/off-main. No UI yet; a `#if DEBUG` harness logs the built model per period. | n/a | model counts/domain/ticks match the current graph for the same account (console parity). |
+| **V1 ✅ DONE (2026-07-09)** | `ChartModel` + `ChartPrep` + `ChartDecimator`, pure. No UI yet; unreferenced → zero risk to the live app. **Built on the MAIN actor, once per change** (not off-main): the win is "once per change, not per frame" + no `.id` teardown; aggregated summaries are small, so off-main is a later isolated optimization. Reuses `GraphDataPreparer` / `YAxisCalculator` / `GraphRenderingConfiguration` verbatim. | n/a (compile-verified) | build green; parity of the built model is checked when the view lands in V2. |
 | **V2** | `WeightChartView` + `WeightChartHost`; store publishes `chartModel`; wire the `productType == .scale` branch **for WEEK only** (other periods fall through to the old engine). | ✅ | week renders from the model: no blank-then-pop, points+line together, finger 1:1, y-axis adapts on lift. |
 | **V3** | Extend the new view to month / year / total (x-axis ticks + domain per period from `GraphRenderingConfiguration`; decimation engages on `total`). | ✅ | all four periods smooth; long `total` scroll full-resolution, crosshair snaps to real points. |
 | **V4** | Selection/crosshair + goal chip/line + adaptive single-event y-axis settle (Y-B). | ✅ | crosshair callout, average-on-lift, goal overlays, one clean settle — all at parity. |
@@ -194,9 +194,12 @@ Weight is "done" when, on a large weight account across week/month/year/total:
 
 ## 7. Open items (fill from the pipeline map / decide inline)
 
-- [ ] Exact `buildWeightSeries` signature + whether unit conversion must be precomputed before the off-main hop
-      (extract as pure values, no main-actor closure across the boundary).
-- [ ] Y-axis calculator entry point to call from `ChartPrep` with pure inputs.
+- [x] **RESOLVED — `buildWeightSeries` takes `convertWeight: (Double) -> Double`** so unit + weightless
+      handling is reused as-is. V1 builds on main, so no actor boundary to cross yet; when we move off-main,
+      pre-convert weights and extract `BathScaleWeightSummary` primitives into a Sendable struct first.
+- [x] **RESOLVED — y-axis entry point: `YAxisCalculator.calculateYAxis(...)`** fed the visible-window ops
+      (`GraphDataPreparer.strictlyVisibleOperations`, bracket fallback), matching today's adaptive Y-B.
+- [x] **RESOLVED — decimation 800/600** (`ChartDecimator.decimate` min/max bucket); no-op for the usual
+      few-hundred-point weight series, engages only on long `total`. Undecimated kept in `fullResolution`.
 - [ ] Does `WeightChartView` keep the section VM for scroll/selection, or fully own them as local `@State`
       (preferred)? Decide at V2 based on what the store boundary sync needs.
-- [ ] Decimation threshold/target (default ≈ plottable pixel width per window; only engages on long `total`).
