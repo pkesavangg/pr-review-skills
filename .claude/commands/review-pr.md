@@ -178,7 +178,7 @@ Use each rule's prescribed severity — do not re-classify the way you do for `c
 
 When the PR is **Appium E2E** (§ Step 2), skip the SwiftUI (4a.1/4a.1.5) and Compose (4a.2/4a.2.5) pipelines — they target native app source, not test-automation code. Instead, review like a **senior mobile test-automation engineer**: first build a mental model of the project (WebdriverIO + Appium + TypeScript, Page Object Model — base `Page`, `*.page.ts` selector getters switching on `driver.isAndroid`, Mocha specs, Allure/video reporting), then apply both **technical** rules (locators, waits, async correctness) and **logical** rules (does each test actually verify behavior, is it independent, can it fail).
 
-Read these nine reference files and apply them to the changed `.ts` / config files:
+Read these ten reference files and apply them to the changed `.ts` / config files:
 
 - `$REFS_DIR/appium/locators.md`
 - `$REFS_DIR/appium/waits-and-synchronization.md`
@@ -189,6 +189,7 @@ Read these nine reference files and apply them to the changed `.ts` / config fil
 - `$REFS_DIR/appium/typescript-and-async.md`
 - `$REFS_DIR/appium/config-and-secrets.md`
 - `$REFS_DIR/appium/helpers-and-reuse.md`
+- `$REFS_DIR/appium/mobile-commands-and-context.md` — native↔WebView context restore + `appium*`-prefixed legacy-command currency (from the official [WebdriverIO Appium API](https://webdriver.io/docs/api/appium)); fires only when those commands appear in the diff.
 
 Each rule states its own severity, a **Sniff** pattern (grep/`rg` over `.ts`), and a **Fix** with before/after — **use the severity each rule prescribes**, do not re-classify. Pull whole files from the checked-out branch for context (e.g. confirm a selector getter has no real assertion downstream, or that an action method is actually awaited at the call site) rather than judging from the diff alone.
 
