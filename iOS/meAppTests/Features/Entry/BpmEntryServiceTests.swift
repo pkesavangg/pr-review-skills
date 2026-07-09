@@ -215,11 +215,18 @@ struct BpmEntryServiceTests {
         DependencyContainer.shared.register(goalAlert as GoalAlertServiceProtocol)
         DependencyContainer.shared.register(integration as IntegrationServiceProtocol)
 
+        let localRepo = repo ?? MockEntryRepository()
+        // MOB-1433: dashboard-summary reads now run through the worker. Back it with
+        // the same repo the SUT writes to so seeded/created BPM entries are visible
+        // to loadDashboardData (a default SwiftDataWorker would hit an empty container).
+        let worker = MockEntryWorker()
+        worker.backingRepo = localRepo
         return EntryService(
             accountService: account,
-            localRepo: repo ?? MockEntryRepository(),
+            localRepo: localRepo,
             localKVRepo: syncStore ?? MockEntrySyncStore(),
-            remoteRepo: remote ?? MockEntryRepositoryAPI()
+            remoteRepo: remote ?? MockEntryRepositoryAPI(),
+            worker: worker
         )
     }
 }

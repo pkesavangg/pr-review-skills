@@ -40,6 +40,11 @@ public enum KvStorageKeys: String {
     /// Key for tracking if baby entry weight/length have been migrated to decigrams/mm
     case babyEntryDecigramsMigrated = "babyEntryDecigramsMigrated"
 
+    // MARK: - HealthKit Forwarding Keys
+    /// Base key for the per-account high-water mark of entries already forwarded
+    /// to HealthKit. Gates historical backfill on first full sync (MOB-1433).
+    case lastHealthKitForwardTimestamp = "lastHealthKitForwardTimestamp"
+
     // MARK: - Account-Scoped Keys
     /// Goal met flag key suffix (per account)
     case goalMetFlag
@@ -188,5 +193,12 @@ public enum KvStorageKeys: String {
     /// - Returns: The full key for baby entry decigrams migration flag
     public static func babyEntryDecigramsMigratedKey(for accountId: String) -> String {
         return "\(Self.babyEntryDecigramsMigrated.rawValue)_\(accountId)"
+    }
+
+    /// Creates an account-scoped key for the HealthKit forward high-water mark.
+    /// - Parameter accountId: The account identifier
+    /// - Returns: The full key for the last-forwarded-to-HealthKit timestamp
+    public static func lastHealthKitForwardTimestampKey(for accountId: String) -> String {
+        return "\(Self.lastHealthKitForwardTimestamp.rawValue)_\(accountId)"
     }
 }
