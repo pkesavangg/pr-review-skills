@@ -300,11 +300,17 @@ No test file. Capture the current behaviour as the parity oracle **by hand**: sc
 later phases can diff against it in the console. Delete dead `chartRebuildToken` (S9). Keep the screenshots/logs
 in the ticket, not the repo.
 
-**Phase 1 — Kill** `.id(lastDataHash)` **(S1). ★ biggest single win, smallest diff.**
-Remove the `.id`, split the change signal so a y-axis change updates the scale/ticks **without** changing the
-series identity (introduce `dataFingerprint` that excludes y-axis; drive `.chartYScale` off `yAxis` directly).
-Collapse the competing animations (S5) to one. Verify on device: no points-then-lines on settle, no rebuild
-flash. *This is shippable on its own and likely resolves symptoms ①③④ substantially.*
+**Phase 1 — Kill** `.id(lastDataHash)` **(S1). ★ biggest single win, smallest diff. ✅ DONE (2026-07-09,**
+`439b3b6fb`**).**
+Remove the `.id` so the `Chart` keeps one stable identity and Swift Charts diffs/animates marks in place
+instead of tearing down + re-mounting on every y-settle. Marks stay correct because `chartSeriesContent` is a
+pure function of the caches; period switches still remount via the distinct generic specialization.
+**Animations were deliberately left untouched** — reading the code showed the y-domain is *not* double-animated
+today (`isDomainChangeOnly` mutes the `.animation` modifier so `syncYAxisFromStore`'s `withAnimation(0.15)` is
+the *sole* settle animator; the `.id` teardown was what stopped it easing). Removing `.id` lets that existing
+animation ease the settle for free; removing the `withAnimation` too would leave the muted modifier → the axis
+would *snap*. **So the S5 animation-owner collapse moved to Phase 4** (done with the settle-path collapse, where
+it can be reasoned about whole). *Shippable on its own; expected to resolve symptoms ①③④ substantially.*
 
 **Phase 2 — One decimation, native scroll (S2, S10).**
 Replace `pointsToRender`'s 30/30 buffer + the store's re-window with a single prep-time decimation over the
@@ -332,11 +338,11 @@ once, no re-derivation during scroll. Remove every temporary `#if DEBUG` probe a
 
 | Phase | Fixes                      | Risk     | Shippable alone? | Resolves            |
 | ----- | -------------------------- | -------- | ---------------- | ------------------- |
-| 0     | manual parity ref + S9 (partial) | none | n/a          | —                   |
-| 1     | S1, S5                     | Low–Med  | ✅                | ①③④ (most)          |
+| 0     | manual parity ref + S9 (partial) ✅ | none | n/a          | —                   |
+| 1     | S1 ✅                       | Low–Med  | ✅                | ①③④ (most)          |
 | 2     | S2, S10                    | Med      | ✅                | ②                   |
 | 3     | S3, S7                     | Med–High | ✅                | ③ (residual), scale |
-| 4     | S4 (Y-B)                   | Med      | ✅                | ④ (residual)        |
+| 4     | S4, S5 (Y-B)               | Med      | ✅                | ④ (residual)        |
 | 5     | S8, S9                     | Low      | ✅                | maintainability     |
 | T     | all tests                  | Low      | n/a (final)      | regression lock-in  |
 

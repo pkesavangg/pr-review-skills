@@ -65,7 +65,7 @@ Phases 1–5.
 
 ---
 
-## Phase 1 — Kill `.id(lastDataHash)` + one animation driver (S1, S5) ★ biggest win
+## Phase 1 — Kill `.id(lastDataHash)` (S1) ★ biggest win
 
 **Goal:** stop rebuilding the whole `Chart` on every y-settle. This is what causes "points render, then the
 line attaches," the settle jerk, and the rebuild hitch.
@@ -89,16 +89,33 @@ line attaches," the settle jerk, and the rebuild hitch.
   ```
   Prefer **no id at all** first; only add the value-only id if device testing proves it necessary.
 
-### 1.2 One animation driver — [`BaseGraphView.swift`](../../meApp/Features/Dashboard/Views/Components/BaseGraphView.swift) (`:581-585`) + [`BaseSectionViewModel.swift`](../../meApp/Features/Dashboard/ViewModels/BaseSectionViewModel.swift)
+### 1.2 Animations — leave them ALONE in Phase 1 (corrected 2026-07-09 after reading the actual code)
 
-- Keep exactly **one** y-domain animation: `.animation(coordinatedChartAnimation, value: viewModel.yAxisDomain)`
-  (`:581`). Leave `.animation(.none, value: scrollPosition)` / `.animation(.none, value: isScrolling)` (they
-  *suppress* animation — correct).
-- **Remove the competing `withAnimation(.easeInOut(0.15))` in `syncYAxisFromStore`** (`:749-754`): set
-  `self.yAxisDomain = cachedDomain` plainly and let the `.animation(...)` modifier own the transition. Two
-  animators on the same property is S5.
-- Leave `updateYAxisConfiguration` as-is for now (`:404-408`) — its `Transaction(animation: nil)` on ticks is
-  fine. The full settle-path collapse is Phase 4.
+> **Correction to the original plan.** The first draft said to *also* remove the
+> `withAnimation(.easeInOut(0.15))` in `syncYAxisFromStore` here, calling it a competing animator (S5).
+> **Reading the code proved that wrong** and doing it would cause a **regression**, so Phase 1 leaves all
+> animation code untouched. Here is why:
+>
+> - The y-domain is *not* double-animated today. `handleYAxisDomainChange` sets `isDomainChangeOnly = true`
+>   for a domain-only change (`BaseGraphView.swift:209-224`), and `coordinatedChartAnimation` returns **`nil`**
+>   whenever `isDomainChangeOnly` is true (`BaseGraphViewCacheManager.swift:100-102`). So during a settle the
+>   `.animation(coordinatedChartAnimation, value: viewModel.yAxisDomain)` modifier (`:581`) is **muted**, and
+>   the `withAnimation(0.15)` in `syncYAxisFromStore` (`BaseSectionViewModel.swift:751`) is the **sole**
+>   settle animator. They cooperate; they don't compete.
+> - What actually broke the settle animation is the **`.id` teardown** (S1): re-mounting the Chart on every
+>   settle discards the in-flight `withAnimation`, so the axis *snaps* instead of easing. **Removing `.id`
+>   (§1.1) lets that existing `withAnimation` finally animate the settle smoothly** — for free, no animation
+>   edit needed.
+> - If you *also* removed the `withAnimation` now, the modifier would still be muted by `isDomainChangeOnly`
+>   → **nothing** would animate the domain → the axis snaps. That is a parity regression, not a fix.
+>
+> **Phase 1 = the `.id` removal in §1.1 only.** The genuine S5 work — collapsing the multi-*path* settle
+> (`syncYAxisFromStore` **and** the manager cascades all recomputing the y-axis) into one event with one
+> animation owner — is **Phase 4**, done together with the settle-path collapse where it can be reasoned
+> about as a whole. Touching one animator in isolation here just risks a snap.
+>
+> Leave `.animation(.none, value: scrollPosition)` / `.animation(.none, value: isScrolling)` (`:584-585`) —
+> they *suppress* animation and are correct. Leave `updateYAxisConfiguration` (`:404-408`) as-is.
 
 **MULTI-SERIES:** at the `.id` removal, note that baby/BPM add more series to `cachedPlottedPoints`; the
 value-only fingerprint (if used) must fold in every series, and percentile series change only on
@@ -306,7 +323,7 @@ the orphaned `visibleChartSeriesData` tests as deletions. Confirm all `#if DEBUG
 | `BaseGraphChartContent.swift` | — | — | weight uses full decimated set; keep percentile | — | — | — |
 | `BaseGraphViewCacheSupport.swift` | — | — | `pointsToRender`→`decimatedForDisplay` | folded into `ChartPrep` | — | — |
 | `BaseGraphViewCacheManager.swift` | — | (opt) value-only fingerprint | — | mostly deleted | — | — |
-| `BaseSectionViewModel.swift` | — | del `withAnimation` in `syncYAxisFromStore` | — | **del cache set**, shrink to UI state | del `handleScrollEnd` timer | — |
+| `BaseSectionViewModel.swift` | — | — (animations untouched — see §1.2) | — | **del cache set**, shrink to UI state | del `handleScrollEnd` timer + `withAnimation` in `syncYAxisFromStore` | — |
 | `DashboardStore.swift` | — | — | full-domain series | add `chartModel` + `rebuildChartModel()` | settle triggers rebuild | — |
 | `DashboardChartManager.swift` | — | — | — | — | **del cascade**, single settle | — |
 | `DashboardGraphManager.swift` | — | — | — | — | `.idle` = single settle | del dead series cache |
