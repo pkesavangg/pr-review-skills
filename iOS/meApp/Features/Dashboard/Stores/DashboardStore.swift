@@ -910,6 +910,17 @@ class DashboardStore: ObservableObject, DashboardStateProviding {
         chartModel = current.withYAxis(newYAxis)
     }
 
+    /// V4 (6a): apply a validated weight-chart selection at `date` (already snapped to a real entry by the
+    /// host), resolving `selectedPoint`/`selectedXValue`/`showCrosshair` per period exactly as the legacy
+    /// programmatic auto-select does (`applyChartSelectionSync`). `nil` clears the selection. Weight only.
+    func selectWeightPoint(at date: Date?) {
+        guard let date else {
+            graphManager.state.clearSelection()
+            return
+        }
+        graphManager.applyChartSelectionSync(at: date, operations: continuousOperations)
+    }
+
     var hasAnyEntries: Bool { state.data.hasAnyEntries }
 
     /// True when the selected baby profile has at least one real (non-dummy) scale reading.

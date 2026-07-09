@@ -25,14 +25,19 @@ struct WeightChartView: View {
 
     let model: ChartModel
     @Binding var scrollX: Date
+    /// V4 (6a): raw x-value from `.chartXSelection`; the host snaps it to a real entry and drives `crosshairDate`.
+    @Binding var selectedX: Date?
+    /// V4 (6a): plotted x-date of the currently-selected (snapped) point — draws the crosshair + enlarges the
+    /// matching point. `nil` when nothing is selected / crosshair hidden (e.g. during a scroll).
+    let crosshairDate: Date?
     let yLabel: (Double) -> String
     let xLabel: (Date) -> String
     let theme: AppColors.Palette
 
     private var isScrollable: Bool { model.period != .total }
     private var lineWidth: CGFloat { isScrollable ? 3 : 2 }
-    private var pointArea: CGFloat {
-        let diameter: CGFloat = isScrollable ? 8 : 4
+    private func pointArea(selected: Bool) -> CGFloat {
+        let diameter: CGFloat = selected ? (isScrollable ? 12 : 8) : (isScrollable ? 8 : 4)
         let radius = diameter / 2
         return .pi * radius * radius
     }
@@ -84,6 +89,7 @@ struct WeightChartView: View {
                 )
                 ForEach(model.seriesPoints[name] ?? []) { plotted in
                     let value = min(max(plotted.original.value, yDomain.lowerBound), yDomain.upperBound)
+                    let isSelected = crosshairDate.map { plotted.xDate == $0 } ?? false
 
                     LineMark(
                         x: .value("Date", plotted.xDate),
@@ -98,11 +104,21 @@ struct WeightChartView: View {
                         x: .value("Date", plotted.xDate),
                         y: .value(name, value)
                     )
-                    .symbolSize(pointArea)
+                    .symbolSize(pointArea(selected: isSelected))
                     .foregroundStyle(colors.point)
                 }
             }
+
+            // V4 (6a) — vertical crosshair at the selected (snapped) point. High-contrast neutral rule,
+            // behind the marks (zIndex −100), width 1 — parity with the legacy `CrosshairContent`.
+            if let crosshairDate {
+                RuleMark(x: .value("Selected", crosshairDate))
+                    .zIndex(-100)
+                    .foregroundStyle(theme.actionPrimary)
+                    .lineStyle(StrokeStyle(lineWidth: 1))
+            }
         }
+        .chartXSelection(value: $selectedX)
         .chartYScale(domain: yDomain)
         .chartXScale(domain: ChartDomainSanitizer.orderedDates(model.xDomain))
         .chartYAxis {

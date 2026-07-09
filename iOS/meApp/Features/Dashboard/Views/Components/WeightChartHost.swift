@@ -27,6 +27,7 @@ struct WeightChartHost: View {
     // published model + the scroll lifecycle; this view reports gestures and observes the model.
     @State private var scrollX = Date()
     @State private var isAdopting = false   // suppress the buffer path when WE move scrollX (init/period)
+    @State private var selectedX: Date?     // V4 (6a): raw x from `.chartXSelection`; snapped + reported below
 
     var body: some View {
         Group {
@@ -34,6 +35,8 @@ struct WeightChartHost: View {
                 WeightChartView(
                     model: model,
                     scrollX: $scrollX,
+                    selectedX: $selectedX,
+                    crosshairDate: crosshairDate,
                     yLabel: { dashboardStore.displayManager.formatYAxisTickLabel($0) },
                     xLabel: formatXAxisLabel,
                     theme: theme
@@ -76,12 +79,20 @@ struct WeightChartHost: View {
             if isAdopting { isAdopting = false; return }   // WE moved scrollX (init/period), not the user
             dashboardStore.graphManager.handleScrollPositionChange(newValue)
         }
+        // V4 (6a) — tap/drag selection: snap the raw x to the nearest real entry and report it to the store
+        // (which resolves `selectedPoint`/`showCrosshair` per period). Ignored mid-scroll. The crosshair
+        // itself is derived from the store's validated selection via `crosshairDate`.
+        .onChange(of: selectedX) { _, raw in
+            handleSelectionChange(raw)
+        }
         // Phase 4 — on the real scroll-end (isScrolling→false) resettle ONLY the adaptive y-axis in place.
         // A full rebuild here re-emitted scroll-dependent x-geometry (per-month `visibleDomainLength`,
         // windowed `xAxisTicks`), which made Swift Charts rebuild its scroll view → the "can't scroll for
         // ~1 s after it stops" hitch. Resettling only `yAxis` keeps the scroll region stable (one animation).
         .onChange(of: dashboardStore.state.graph.isScrolling) { _, isScrolling in
-            guard !isScrolling else { return }
+            // Scroll START clears any selection (the store also clears its own on `.interacting`); drop the
+            // local raw value so the next tap re-triggers `onChange(selectedX)`.
+            guard !isScrolling else { selectedX = nil; return }
             let committed = dashboardStore.state.graph.xScrollPosition
             dashboardStore.resettleWeightYAxis(scrollPosition: committed)
             // V-A5b — the store committed the snapped window (month → the 1st) into `xScrollPosition`, but
@@ -109,6 +120,46 @@ struct WeightChartHost: View {
 
     private func rebuild(at position: Date) {
         dashboardStore.rebuildWeightChartModel(scrollPosition: position)
+    }
+
+    // MARK: - V4 (6a) selection / crosshair
+
+    /// Plotted x-date of the store's currently-selected entry — drives the crosshair rule + point highlight.
+    /// Derived from the store's validated selection so it reflects both taps and programmatic auto-select,
+    /// and clears automatically when the store clears selection (e.g. on scroll-start). `nil` when unselected.
+    private var crosshairDate: Date? {
+        guard dashboardStore.state.graph.showCrosshair,
+              let selectedDate = dashboardStore.state.graph.selectedXValue,
+              let model = dashboardStore.chartModel else { return nil }
+        let calendar = Calendar.current
+        let points = model.fullResolution[DashboardStrings.weight] ?? []
+        let match = points.first { point in
+            switch model.period {
+            case .week, .month: return calendar.isDate(point.original.date, inSameDayAs: selectedDate)
+            case .year, .total: return calendar.isDate(point.original.date, equalTo: selectedDate, toGranularity: .month)
+            }
+        }
+        return match?.xDate
+    }
+
+    /// Snap the raw selected x to the nearest real (undecimated) entry and report it to the store; a `nil`
+    /// selection (or a tap while scrolling / on an empty chart) clears it.
+    private func handleSelectionChange(_ raw: Date?) {
+        guard !dashboardStore.state.graph.isScrolling else { return }
+        guard let raw,
+              let model = dashboardStore.chartModel,
+              let nearest = nearestEntry(to: raw, in: model) else {
+            dashboardStore.selectWeightPoint(at: nil)
+            return
+        }
+        dashboardStore.selectWeightPoint(at: nearest.original.date)
+    }
+
+    private func nearestEntry(to date: Date, in model: ChartModel) -> PlottedGraphSeries? {
+        let points = model.fullResolution[DashboardStrings.weight] ?? []
+        return points.min {
+            abs($0.xDate.timeIntervalSince(date)) < abs($1.xDate.timeIntervalSince(date))
+        }
     }
 
     private func formatXAxisLabel(_ date: Date) -> String {
