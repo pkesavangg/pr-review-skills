@@ -34,7 +34,7 @@ flowchart LR
     style Verdict fill:#ddf,stroke:#33a
 ```
 
-**Shared:** rule references (security, privacy, swiftui-pro, compose-expert, ios/, compose/), platform detection, P0/P1/P2/Nit taxonomy.
+**Shared:** rule references (security, privacy, swiftui-pro, compose-expert, ios/, compose/, appium/), platform detection, P0/P1/P2/Nit taxonomy.
 
 **Differ on I/O:**
 
@@ -61,7 +61,7 @@ flowchart TD
     NextPR -- yes --> S1[Step 1: Fetch PR state]
     NextPR -- no --> Done([All PRs processed])
 
-    S1 --> S2[Step 2: Detect platform<br/>iOS / Android / Both / Other]
+    S1 --> S2[Step 2: Detect platform<br/>iOS / Android / Both / Appium E2E / Other]
     S2 --> S3{Step 3: Mode}
     S3 -- prior priority<br/>comments by me<br/>+ newer commit --> ModeRR[Re-review]
     S3 -- otherwise --> ModeFR[First-review]
@@ -125,11 +125,13 @@ What it considers:
 
 ```mermaid
 flowchart LR
-    F[files] --> CheckIOS{any path matches<br/>.swift / .xcodeproj/ /<br/>Package.swift / Info.plist /<br/>.xcconfig / .entitlements /<br/>.swiftlint.yml?}
+    F[files] --> CheckAppium{any path matches<br/>wdio*.conf.* / *.page.ts /<br/>*.spec.ts under test·e2e /<br/>pageobjects/ / package.json<br/>with appium·webdriverio·@wdio?}
+    CheckAppium -- yes --> AppiumOut[Detected: Appium E2E<br/>→ run § 4a.6 rule set,<br/>skip SwiftUI/Compose]
+    CheckAppium -- no --> CheckIOS{any path matches<br/>.swift / .xcodeproj/ /<br/>Package.swift / Info.plist /<br/>.xcconfig / .entitlements /<br/>.swiftlint.yml?}
     CheckIOS -- yes --> iOS[iOS = true]
     CheckIOS -- no --> NoIOS[iOS = false]
 
-    F --> CheckAnd{any path matches<br/>.kt / .kts / build.gradle* /<br/>AndroidManifest.xml /<br/>res/ / proguard-rules.pro /<br/>gradle.properties?}
+    CheckAppium -- no --> CheckAnd{any path matches<br/>.kt / .kts / build.gradle* /<br/>AndroidManifest.xml /<br/>res/ / proguard-rules.pro /<br/>gradle.properties?}
     CheckAnd -- yes --> And[Android = true]
     CheckAnd -- no --> NoAnd[Android = false]
 
@@ -144,7 +146,7 @@ flowchart LR
     Combine -- both false --> Out4[Detected: Other<br/>→ leave a top-level<br/>'outside scope' comment<br/>skip to next PR]
 ```
 
-The result determines which platform-specific rule branches fire in Step 4a.
+**Appium E2E is checked first and short-circuits.** A PR of WebdriverIO + TypeScript test code (page objects, specs, `wdio.*.conf.ts`, or a `package.json` pulling in `appium`/`webdriverio`/`@wdio/*`) runs the § 4a.6 Appium pipeline **instead of** the SwiftUI (4a.1/4a.1.5) and Compose (4a.2/4a.2.5) pipelines — the native `.swift`/`.kt` rules don't apply to test-automation code. Otherwise the result determines which platform-specific rule branches fire in Step 4a.
 
 ---
 
@@ -211,6 +213,9 @@ flowchart TD
 
     AndroidGate -- no --> S43
 
+    PlatBranch -- Appium E2E --> S46[4a.6: Appium/E2E<br/>9 rule files · skip SwiftUI/Compose<br/>diff-added + carve-outs]
+    S46 --> S43
+
     S43[4a.3: Cross-cutting<br/>tests · PR description ·<br/>Jira ID · description-match]
     S43 --> S44[4a.4: De-dup vs prior reviewers<br/>±5 lines + substance match]
     S44 --> S45[4a.5: Post inline comments<br/>or print dry-run table]
@@ -221,6 +226,7 @@ flowchart TD
     style S415 fill:#ddf,stroke:#33a,color:#000
     style S42 fill:#dfd,stroke:#3a3,color:#000
     style S425 fill:#dfd,stroke:#3a3,color:#000
+    style S46 fill:#cff,stroke:#0aa,color:#000
     style S43 fill:#fdf,stroke:#a3a,color:#000
     style S44 fill:#ffd,stroke:#a83,color:#000
     style S45 fill:#bdf,stroke:#37a,color:#000
@@ -245,7 +251,8 @@ flowchart TD
 | | [references/compose/modifier-conventions.md](references/compose/modifier-conventions.md) | Modifier chain order, accept-and-pass-through pattern |
 | | [references/compose/accessibility.md](references/compose/accessibility.md) | `contentDescription` on interactive `Icon`/`Image`, semantics, hit targets |
 | | [references/compose/api-guidelines.md](references/compose/api-guidelines.md) | Compose API conventions |
-| **4a.3 Cross-cutting** | Inline rules in [review-pr.md](.claude/commands/review-pr.md) | Raw `print`/`Log.d` outside logger wrapper · missing tests for non-trivial code · **P1: PR description missing or doesn't match the diff** · **P1: Jira issue link required** (must be a clickable link in the body — branch-name ID alone fails) · **P2: missing screenshot/recording on a user-facing change** (waived for docs-only / version-bump / config-only; recording must depict the actual changed flow) |
+| **4a.6 Appium / E2E** (fires *instead of* 4a.1/4a.2 when Appium detected) | [references/appium/](references/appium/) — 9 files: `locators`, `waits-and-synchronization`, `gestures-and-scrolling`, `page-objects`, `test-structure-and-assertions`, `reliability-and-flakiness`, `typescript-and-async`, `config-and-secrets`, `helpers-and-reuse` | Brittle/index/text selectors & `platformLocator` use, pause/bumped-timeout/`.catch(()=>false)` band-aids (diff-added only, with accepted-pattern carve-outs), POM boundaries (assertions/selectors/data in the right layer), test independence & clean state, missing-`await` (P0) & type safety, committed secrets in `test/data`, and re-rolling the project's helper toolbox (`tapWhenReady`, `AuthHelper`, `ElementHelper`, `TIMEOUTS`/`WAIT`, `selectors.ts`). Each rule prescribes its own severity; the reviewer names the real project symbol in the fix. Note: § 4a.3's "code without tests" and "missing screenshot" rules don't apply (the diff *is* tests, and E2E evidence is the Allure/video run, not the PR body) — Jira-link and description-match rules still apply. |
+| **4a.3 Cross-cutting** | Inline rules in [review-pr.md](.claude/commands/review-pr.md) | Raw `print`/`Log.d` outside logger wrapper · missing tests for non-trivial code · **P1: PR description missing or doesn't match the diff** · **P1: Jira issue link required** (must be a clickable link in the body — branch-name ID alone fails) · **P2: MOB ticket on an active Dev/Test sprint** (MOB-keys only, when Atlassian MCP available; flags backlog / closed / wrong-track via `customfield_10020`) · **P2: missing screenshot/recording on a user-facing change** (waived for docs-only / version-bump / config-only; recording must depict the actual changed flow) · **P2: unrelated / out-of-scope changes bundled in one PR — scope creep, all platforms** |
 | **4a.4 De-dup** | Inline logic in [review-pr.md](.claude/commands/review-pr.md) | For each candidate: same file + within ±5 lines + overlapping substance with any existing inline comment from any author → drop |
 | **4a.5 Post** | Inline logic | Post via `gh api .../pulls/<N>/comments` with mandatory `P0 — ` / `P1 — ` / `P2 — ` / `Nit — ` prefix |
 
@@ -611,7 +618,7 @@ Same rule-application graph as `/review-pr` Step 4a, minus the PR-only cross-cut
 | **4.1.5 iOS cross-cutting** | [references/ios/](references/ios/) | Same as 4a.1.5 in Part 1 |
 | **4.2 Compose** | [references/vendored/compose-expert/](references/vendored/compose-expert/) | Same as 4a.2 in Part 1 |
 | **4.2.5 Compose project-tuned** | [references/compose/](references/compose/) | Same as 4a.2.5 in Part 1 |
-| **4.3 Cross-cutting** | Inline rules in [review.md](.claude/commands/review.md) | Raw `print`/`Log.d` outside logger wrapper · missing tests for non-trivial code. **No** PR-title Jira check or description-mismatch check — those don't apply pre-commit. |
+| **4.3 Cross-cutting** | Inline rules in [review.md](.claude/commands/review.md) | Raw `print`/`Log.d` outside logger wrapper · missing tests for non-trivial code · **P2: staged changes spanning unrelated concerns (scope creep, best-effort — infers scope from branch name)**. **No** PR-title Jira check or description-mismatch check — those don't apply pre-commit. |
 | **4.4 De-dup vs prior report** | Inline logic in [review.md](.claude/commands/review.md) | (Re-pass only.) For each candidate: same file + within ±5 lines + same rule category as an existing entry → carry over its `Status:` instead of writing a new one. Mark removed-from-scope entries `stale`, mark entries whose issue no longer matches `resolved`. |
 | **4.5 Write report** | Inline logic | Write the full `.claude-review/report.md` (not append). Ordered P0 → P1 → P2 → Nit, then alphabetically by path. |
 
@@ -767,6 +774,7 @@ Full copy-paste snippet is in [INSTALL.md](INSTALL.md).
 | Privacy rules | [`references/privacy/store-compliance.md`](references/privacy/store-compliance.md) |
 | iOS rules | [`references/ios/*.md`](references/ios/) |
 | Compose rules (project-tuned) | [`references/compose/*.md`](references/compose/) |
+| Appium / E2E rules | [`references/appium/*.md`](references/appium/) (9 files) |
 | SwiftUI rules (upstream, vendored) | [`references/vendored/swiftui-pro/`](references/vendored/swiftui-pro/) |
 | Compose rules (upstream, vendored) | [`references/vendored/compose-expert/`](references/vendored/compose-expert/) |
 | Vendored skill attribution + sync routine | [`references/vendored/UPSTREAM.md`](references/vendored/UPSTREAM.md) |

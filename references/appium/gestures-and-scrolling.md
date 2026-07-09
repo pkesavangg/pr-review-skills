@@ -86,9 +86,11 @@ for (let i = 0; i < 10; i++) {                    // brittle, no real stop condi
 }
 ```
 
-**Sniff.** A loop containing a swipe/scroll gesture gated on `isDisplayed()`/`isExisting()` in changed files (overlaps the reliability conditional-flow and waits `isDisplayed`-as-wait rules — post one comment).
+**Sniff.** A loop containing a swipe/scroll gesture gated on `isDisplayed()`/`isExisting()`, on `+` lines in a changed **spec or a leaf page object** (overlaps the reliability conditional-flow and waits `isDisplayed`-as-wait rules — post one comment).
 
-**Fix.** Use `el.scrollIntoView()` (WDIO finds the scrollable ancestor and stops when the element is in view) or an `-android uiautomator new UiScrollable(new UiSelector().scrollable(true)).scrollIntoView(...)` selector that scrolls-and-finds atomically and fails with a clear error if the element never appears.
+**Fix.** Call the project's shared scroller — base `Page.scrollToElement(label)` or `GestureHelper` — instead of hand-rolling a swipe loop in a spec/leaf page. Where a WDIO/native primitive fits, `el.scrollIntoView()` (WDIO finds the scrollable ancestor and stops when the element is in view) or an `-android uiautomator new UiScrollable(new UiSelector().scrollable(true)).scrollIntoView(...)` selector scrolls-and-finds atomically and fails with a clear error if the element never appears.
+
+**Do NOT flag the shared scrollers themselves.** The base `Page.scrollToElement` and `GestureHelper` deliberately contain swipe/predicate loops with documented rationale (WDA predicate-scroll flinging past mid-list rows, `UiScrollable` leaving elements just off-screen, button-nav device tuning). Those are the *sanctioned* home for this logic — a new leaf page re-rolling the loop is the defect; the helper owning it is not.
 
 ---
 

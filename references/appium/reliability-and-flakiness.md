@@ -35,9 +35,41 @@ try {
 }
 ```
 
-**Sniff.** `try { … } catch` in test/page files where the `catch` doesn't re-throw or `expect.fail` — particularly `catch {}` empty blocks or `catch` that only logs.
+**Sniff.** On `+` lines: `try { … } catch` in test/page files where the `catch` doesn't re-throw or `expect.fail` — particularly `catch {}` empty blocks or `catch` that only `console.log`/`warn`s and continues.
 
-**Fix.** Let the error propagate, or convert it into an explicit assertion failure with context. Only catch when you genuinely handle and re-assert (e.g. expected-error scenarios), and comment why.
+**Fix.** Let the error propagate, or convert it into an explicit assertion failure with context. When you must catch to tolerate an *absent* element, use the project's `ElementHelper.isElementNotFoundError(e)` guard so a genuine session/protocol failure still re-throws:
+
+```typescript
+try { await driver.hideKeyboard(); }
+catch (e) { if (!isElementNotFoundError(e)) throw e; }   // absent keyboard OK; dead session isn't
+```
+
+**Do NOT flag** a catch that guards on `isElementNotFoundError` (or re-throws non-absent errors), or a documented expected-error scenario that re-asserts. The defect is the *unconditional* swallow, not every catch.
+
+---
+
+## P1 — `.catch(() => false)` whose result feeds a test assertion
+
+The inline form of a swallowed failure, and the single highest-leverage root-cause fix in this suite. `await el.isDisplayed().catch(() => false)` returns `false` for **every** rejection — including a crashed Appium session or a protocol error. When that boolean flows into an assertion, a *dead driver reads as "element not present" and the test passes green on a broken session*. The project wrote `ElementHelper` specifically to close this hole (its docstrings say so): `isDisplayedSafe` / `isDisplayedNow` return `false` only for genuine "not found", and re-throw session/protocol errors.
+
+```typescript
+// login.spec.ts — a session crash here makes the test PASS, not fail
+const loggedOut = await LoginPage.landing.isDisplayed().catch(() => false);
+expect(loggedOut).toBe(true);
+```
+
+**Sniff.** On `+` lines: `.catch(() => false)`, `.catch(() => {})`, `.catch(() => undefined)` where the value flows into an `expect(` / `return` / `if` that gates a test outcome. Also flag a **retry hidden inside a `.catch`** (`.catch(async () => { await reset(); await retry(); })`) — that's the `retries`-masking defect in disguise.
+
+**Fix.** Route the check through `ElementHelper`, which surfaces real failures:
+
+```typescript
+import { isDisplayedSafe, isDisplayedNow, swallowNotFound } from "../helpers/ElementHelper";
+
+const loggedOut = await isDisplayedNow(LoginPage.landing);   // absent → false; session error → throws
+expect(loggedOut).toBe(true);
+```
+
+**Do NOT flag** a `.catch(() => false)` used as a **probe inside a scroll/settle loop** (e.g. the base `Page.scrollToElement` "is the target on screen yet?" checks) where the boolean only drives *whether to keep scrolling*, not a pass/fail assertion — that's an accepted pattern in this repo.
 
 ---
 

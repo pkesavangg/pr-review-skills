@@ -20,7 +20,13 @@ expect(text).toBe("LOG IN");                     // always fails / misleads
 
 **Sniff.** Calls to WDIO commands / Page Object async methods on a statement line with no leading `await` (and not deliberately stored as a promise to await later): `.click()`, `.setValue()`, `.addValue()`, `.waitForDisplayed()`, `.waitForExist()`, `.isDisplayed()`, `.getText()`, `.getAttribute(`, `$(`, `$$(`, and calls to project page methods (`LandingPage.clickLogin()`, `this.waitForElement(`). Also flag `expect(<unawaited promise>)`.
 
-**Fix.** `await` every command and async helper. Enable `@typescript-eslint/no-floating-promises` + `await-thenable` and `eslint-plugin-wdio` so CI catches these mechanically. Reserve P0 for cases that change behavior (skipped action, assertion on a promise); a harmless missing await on a final fire-and-forget line is **P1**.
+**Fix.** `await` every command and async helper.
+
+**This rule carries extra weight in this repo because the lint gate is currently blind to it** — the ESLint config uses `typescript-eslint`'s plain `recommended` preset, so `no-floating-promises` is off and a missing `await` ships unflagged (see `config-and-secrets.md` → "Lint gate can't catch the P0/P1 bug classes", and the reviewer should recommend enabling `@typescript-eslint/no-floating-promises` + `await-thenable` + `eslint-plugin-wdio`). Until that lands, the human/AI reviewer is the only backstop.
+
+**Do NOT flag a deliberate `void`-prefixed call.** `void somePromise()` is the sanctioned way to mark an intentional fire-and-forget (the repo uses it, e.g. `void composeSetValue(...)` with a `// intentional fire-and-forget` comment) — the `void` operator explicitly discards the promise, so it isn't a *floating* one. Flag only truly unhandled promises.
+
+Reserve P0 for cases that change behavior (skipped action, assertion on a promise); a harmless missing await on a final fire-and-forget line is **P1**.
 
 ---
 

@@ -179,7 +179,7 @@ Use each rule's prescribed severity — do not re-classify the way you do for `c
 
 When the PR is **Appium E2E** (§ Step 2), skip the SwiftUI (4a.1/4a.1.5) and Compose (4a.2/4a.2.5) pipelines — they target native app source, not test-automation code. Instead, review like a **senior mobile test-automation engineer**: first build a mental model of the project (WebdriverIO + Appium + TypeScript, Page Object Model — base `Page`, `*.page.ts` selector getters switching on `driver.isAndroid`, Mocha specs, Allure/video reporting), then apply both **technical** rules (locators, waits, async correctness) and **logical** rules (does each test actually verify behavior, is it independent, can it fail).
 
-Read these eight reference files and apply them to the changed `.ts` / config files:
+Read these nine reference files and apply them to the changed `.ts` / config files:
 
 - `$REFS_DIR/appium/locators.md`
 - `$REFS_DIR/appium/waits-and-synchronization.md`
@@ -189,8 +189,16 @@ Read these eight reference files and apply them to the changed `.ts` / config fi
 - `$REFS_DIR/appium/reliability-and-flakiness.md`
 - `$REFS_DIR/appium/typescript-and-async.md`
 - `$REFS_DIR/appium/config-and-secrets.md`
+- `$REFS_DIR/appium/helpers-and-reuse.md`
 
 Each rule states its own severity, a **Sniff** pattern (grep/`rg` over `.ts`), and a **Fix** with before/after — **use the severity each rule prescribes**, do not re-classify. Pull whole files from the checked-out branch for context (e.g. confirm a selector getter has no real assertion downstream, or that an action method is actually awaited at the call site) rather than judging from the diff alone.
+
+**Review discipline — this matters as much as the rules.** A mature Appium suite contains thousands of `driver.pause`, `.catch(() => false)`, and inline `driver.isAndroid ?` uses that are *deliberate, documented, accepted patterns*. Reviewing like a senior automation engineer means not drowning the author in noise:
+
+- **Flag on the diff, not the codebase.** Every band-aid rule (added-pause, bumped-timeout, `.catch`-swallow) fires only on `+`/modified lines in *this* PR — never on pre-existing infra.
+- **Honor each rule's "Do NOT flag" carve-outs.** Documented post-gesture settles, loop probes, the base-`Page`/`GestureHelper` scrollers, `assertNever`, `void`-prefixed fire-and-forget, single-use inline selectors, and platform branches with real per-branch logic are all accepted — the rule files spell out which.
+- **Name the real fix.** When a rule's fix references a project helper (`tapWhenReady`, `AuthHelper.loginAs`, `ElementHelper.swallowNotFound`, `platformLocator`, `TIMEOUTS`/`WAIT`, `selectors.ts`), cite that exact symbol — grep `test/helpers/` and `test/pageobjects/page.ts` to confirm it exists in the branch before recommending it.
+- **Surface the lint gate once.** If a PR adds a missing-`await` or `pause` bug that `eslint-plugin-wdio` / type-checked `typescript-eslint` would catch mechanically, note it in the Step 5 summary (per `config-and-secrets.md`) rather than as a blocking per-line comment.
 
 **De-duplicate** Appium findings against each other by `file:line` before posting (e.g. a missing-`await` and an action-without-wait on the same line → one comment). The full de-dup against prior reviewer comments still happens at Step 4a.4.
 
@@ -209,7 +217,15 @@ Security and privacy live in their own sections (4a.0 and 4a.0.5). The remaining
      - **No ticket reference anywhere** → **P1** (untraceable change): `P1 — Missing Jira issue link · This PR has no ticket reference. Add the Jira ID as a link in the description, e.g. \`[MA-1234](https://<jira-host>/browse/MA-1234)\`, so the change is traceable.`
      - **ID present in the branch/title but the body has no link to it** → **P1**: `P1 — Jira issue not linked in the description · Ticket <ID> appears in the <branch/title> but the PR body has no link. Add \`[<ID>](https://<jira-host>/browse/<ID>)\` to the description.`
      - **Body has the ID but as plain text (no link)** → **P1**: `P1 — Jira ID is not a clickable link · The body mentions <ID> but doesn't link it. Wrap it as \`[<ID>](https://<jira-host>/browse/<ID>)\`.`
-  4. Use the project's Jira host when known (default `https://dmdbrands.atlassian.net/browse/<ID>` for DMD-brands repos; otherwise leave the host as a placeholder in the suggestion). If a repo-local `CLAUDE.md`/`README` documents a different tracker convention, prefer it and adjust the required link form accordingly.
+  4. Use the project's Jira host when known: **MOB** tickets (the mobile board) live at `https://greatergoods.atlassian.net/browse/MOB-XXXX`; other DMD-brands projects at `https://dmdbrands.atlassian.net/browse/<ID>`. If unsure, leave the host as a placeholder in the suggestion. If a repo-local `CLAUDE.md`/`README` documents a different tracker convention, prefer it and adjust the required link form accordingly.
+- **P2** — **MOB ticket must sit on an active Dev or Test sprint (not the backlog).** Runs **only** when (a) the linked ticket is a MOB-project key (`MOB-\d+`, board `greatergoods.atlassian.net`) **and** (b) the Atlassian MCP is available this session — look for a Jira read tool in the tool list (`getJiraIssue` / `searchJiraIssuesUsingJql`; the name is `mcp__claude_ai_Atlassian__*` in an interactive session, `mcp__Atlassian__*` in the cloud routine). A PR whose ticket is stranded in the backlog isn't being tracked on the active board.
+  1. **Read the ticket's sprint field.** Call `getJiraIssue` for the `MOB-XXXX` key (cloudId `68a7a0bf-33f1-45fb-9849-37c89267c1da`) requesting `fields: ["customfield_10020"]`. That field is an array of sprint objects, each carrying `id`, `name`, and `state` (`active` / `closed` / `future`). MOB runs parallel 2-week tracks: `MOB Dev Sprint N`, `MOB Test Sprint N`, `MOB UI/UX Sprint N`.
+  2. **Pass** when the ticket has at least one sprint with `state == "active"` whose `name` begins with `MOB Dev Sprint` **or** `MOB Test Sprint` (either track is acceptable for a code PR). Don't flag.
+  3. **Flag** otherwise, naming the exact state observed:
+     - No sprint at all (`customfield_10020` empty / absent) → `P2 — Jira ticket is in the backlog · <MOB-XXXX> isn't on any active sprint. Place it on the current active MOB Dev or Test sprint so the work is tracked on the board.`
+     - Only closed / future sprints, none active → `P2 — Jira ticket not on the current sprint · <MOB-XXXX> is only on a closed/future sprint ("<name>"). Move it onto the active MOB Dev or Test sprint.`
+     - Active sprint is UI/UX (not Dev/Test) → `P2 — Jira ticket on the wrong track · <MOB-XXXX> is on "<name>" (UI/UX). A code PR's ticket belongs on the active MOB Dev (or Test) sprint.`
+  4. If the Atlassian MCP is **not** available, skip this check and note in the Step 5 summary that sprint placement couldn't be verified (no Jira tooling) — never flag what you couldn't check. (Setting the right sprint is the `mob-jira-issue` skill's § 9 job; this reviewer only flags the gap.)
 - **P1** — **PR description must be present, current, and match the actual code changes.** The body has to describe what this PR actually does — an empty, stale, or contradicting description is a blocker for merge because reviewers and future readers rely on it. Read the PR `title` + `body` and compare against the file list and diff content from Step 1. There are two failure modes:
 
   **(a) Missing or empty description.** The body is empty, a single line, only the Jira ID, or a bare title with no explanation of *what changed and why*. Post one top-level comment: `P1 — PR description is missing · Add a description covering what this PR changes and why (a Summary + Changes list). The pr-description skill can generate one.`
@@ -224,6 +240,14 @@ Security and privacy live in their own sections (4a.0 and 4a.0.5). The remaining
   When flagging (b), quote the specific gap. Post one top-level comment: `P1 — PR description doesn't match the changes · <concrete gap — e.g., "Body lists 'added unit tests for X' but no test files appear in the diff. Either add the tests or remove that bullet.">`.
 
   Failure mode (b) is judgment-based — do not flag for minor wording drift, only when there's a material disconnect. Post **one** description comment per PR (either (a) or (b), not both).
+
+- **P2** — **PR bundles unrelated / out-of-scope changes (scope creep).** Applies to **every** platform (iOS, Android, Appium/E2E). A PR should do one thing — the task named in its title / linked Jira ticket. When the diff also carries changes unrelated to that task — a second, unrelated screen or feature; an opportunistic refactor or rename in a module the task doesn't touch; a drive-by reformat, dependency bump, or "while I was here" fix slipped in with a feature — it becomes hard to review, hard to revert, muddies the ticket↔code trace, and hides risky changes in the noise. Decide in three steps:
+
+  1. **Establish the stated scope.** From the PR title, body, and linked Jira ticket, determine what this PR is *supposed* to change (e.g. "MOB-1234: fix the login error message").
+  2. **Compare the diff against it.** Group the changed files by area / feature / screen. Flag when one or more changed areas clearly fall **outside** the stated scope with nothing tying them back — e.g. the ticket is about Login but the diff also rewrites an unrelated Settings screen; a bug-fix PR also renames symbols across an untouched module; a test PR for one spec also edits three unrelated specs.
+  3. **Flag with specifics**, naming the out-of-scope area: `P2 — PR mixes unrelated changes · This PR is scoped to <stated task> but also changes <the unrelated area, e.g. "SettingsView / the profile screen">, which looks out of scope. Split unrelated changes into their own PR (linked to their own ticket) so each is reviewable and revertable on its own.`
+
+  **Judgment-based — do NOT flag genuinely-related changes.** A shared component/util edit that necessarily touches several screens, a cross-cutting rename that *is* the task, test + code for the same feature, or a small necessary incidental fix carrying a one-line "unrelated but needed because…" note are all legitimately one PR. The signal is *unrelated to the stated task*, **not** *touches many files* — a large but cohesive change is fine. If the PR has no stated scope at all, that's already the missing-description / Jira checks above — don't double-flag. Post **one** scope comment per PR.
 
 - **P2** — **Missing screenshot / screen recording for a user-facing change.** A PR that changes what the user sees or does should prove it with a screenshot (static UI) or a screen recording (interactive flow), so reviewers and QA can verify the result without checking out and building the branch. Decide in three steps:
 
@@ -275,7 +299,7 @@ gh api repos/{owner}/{repo}/pulls/<PR>/comments \
   -f side=RIGHT
 ```
 
-For findings without a single line (missing tests, missing Jira reference, description mismatch, weak PR description, missing screenshot/recording), use `gh pr comment <PR> -b "P2 — …"`. Prefix every finding with the exact priority string — the format `P0 — ` / `P1 — ` / `P2 — ` / `Nit — ` (priority, space, em-dash, space) is **mandatory** so Step 3 can identify these on future runs.
+For findings without a single line (missing tests, missing Jira reference/link, Jira sprint placement, description mismatch, weak PR description, missing screenshot/recording), use `gh pr comment <PR> -b "P2 — …"`. Prefix every finding with the exact priority string — the format `P0 — ` / `P1 — ` / `P2 — ` / `Nit — ` (priority, space, em-dash, space) is **mandatory** so Step 3 can identify these on future runs.
 
 If `--dry-run` was passed, **skip this step entirely**: instead print the findings to chat as a numbered table — `# | priority | file:line | one-line issue` — followed by `(dry-run; nothing posted)`. Wait for the user's reply. Only post if they explicitly say to publish.
 
@@ -308,6 +332,7 @@ If the first-round review flagged the PR description (missing / mismatched) or t
 
 - **Description** — re-read the current `body` against § 4a.3's two failure modes. If it now explains the work and matches the diff, post `✅ PR description updated.`; if still missing or still contradicting the diff, re-post the `P1` top-level comment quoting what's still wrong.
 - **Jira link** — re-check whether the body now contains the ticket as a clickable link per § 4a.3. If yes, post `✅ Jira issue now linked in the description.`; if still absent or still unlinked, re-post the `P1` comment.
+- **MOB sprint placement** — if the first round flagged the ticket as backlogged / off-track, re-read its `customfield_10020` per § 4a.3. If it's now on an active MOB Dev or Test sprint, post `✅ Jira ticket now on the active <sprint name> sprint.`; if still in the backlog or off-track, re-post the `P2` comment.
 
 ### 4b.3 — Review the NEW code
 
@@ -368,7 +393,7 @@ Use these prefixes verbatim — they are the structural marker re-review uses to
 
 - **`P0` — Blocker.** Crash risk, hardcoded secret, data loss, PII/PHI leak, completely broken accessibility (control unreachable to VoiceOver/TalkBack), broken auth.
 - **`P1` — High.** Correctness bugs, missing error handling at system boundaries, accessibility regressions (missing labels, broken font scaling, hit target too small), missing tests for non-trivial logic, concurrency footguns, performance hazards, missing/contradicting PR description, missing or unlinked Jira issue (required).
-- **`P2` — Medium.** Clarity, duplication, naming, deprecated APIs, hardcoded strings, raw values where a token system exists, missing previews, missing screenshot/recording on a user-facing change.
+- **`P2` — Medium.** Clarity, duplication, naming, deprecated APIs, hardcoded strings, raw values where a token system exists, missing previews, missing screenshot/recording on a user-facing change, PR scope creep (unrelated / out-of-scope changes bundled together).
 - **`Nit` — Style/preference.** Subjective polish. Never blocking.
 
 ## § Re-review verdicts
