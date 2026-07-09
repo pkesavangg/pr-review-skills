@@ -381,6 +381,40 @@ struct HistoryStoreBabyAndDeleteTests {
         #expect(store.isLoadingPage == false)
         #expect(logger.messages.contains { $0.contains("Failed to load entries page") })
     }
+
+    // MARK: - updateWGEntry partial-failure
+
+    @Test("updateWGEntry: delete-after-save failure keeps the replacement, logs a distinct duplicate warning, and surfaces an error toast")
+    func updateWGEntryDeleteAfterSaveFailureLogsDuplicateAndShowsErrorToast() async {
+        let (store, entryService, notificationService, accountService, logger) = makeHistoryStoreSUT()
+        let account = AccountTestFixtures.makeAccountSnapshot(id: "acct-1", email: "a@b.com", isActiveAccount: true)
+        accountService.seedAccounts([account], active: account)
+
+        let old = EntryTestFixtures.makeEntrySnapshot(entryTimestamp: "2026-03-10T08:00:00Z")
+        // The replacement save succeeds, but deleting the original throws — so both the old
+        // and the new reading now persist (the duplicate the P1 fix must make detectable).
+        entryService.deleteEntryByIdError = HistoryStoreTestError.loadMonthsFailed
+
+        await store.updateWGEntry(
+            old: old,
+            weight: 1800,
+            bmi: nil,
+            bodyFat: nil,
+            muscleMass: nil,
+            water: nil,
+            note: "",
+            entryTimestamp: "2026-03-10T08:00:00Z"
+        )
+
+        // Replacement persisted, delete attempted-and-failed.
+        #expect(entryService.savedEntries.count == 1)
+        #expect(entryService.deleteEntryByIdCalls == 1)
+        // User is told saving failed rather than seeing a silent duplicate.
+        #expect(notificationService.showToastCalls >= 1)
+        // A distinct duplicate-created error is logged so support can reconcile it
+        // (a blind retry would otherwise create a third copy).
+        #expect(logger.messages.contains { $0.contains("delete-after-save failed") })
+    }
 }
 
 @MainActor

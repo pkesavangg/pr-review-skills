@@ -744,7 +744,16 @@ final class HistoryStore: ObservableObject {
 
         do {
             try await entryService.saveNewEntry(entry)
-            try await entryService.deleteEntry(entryId: old.id)
+            do {
+                try await entryService.deleteEntry(entryId: old.id)
+            } catch {
+                // Save succeeded but the delete of the original failed — both the old and the
+                // replacement now exist. Bubble a distinct log so support can distinguish this
+                // duplicate from a plain save error (a blind retry would create a third copy).
+                logger.log(level: .error, tag: tag, message: "Weight entry delete-after-save failed (duplicate created), original id \(old.id): \(error.localizedDescription)")
+                notificationService.showToast(ToastModel(message: toastLang.errorSavingEntry))
+                return
+            }
             logger.log(level: .info, tag: tag, message: "Weight entry updated: \(entryTimestamp)")
         } catch {
             logger.log(level: .error, tag: tag, message: "Failed to update weight entry: \(error.localizedDescription)")

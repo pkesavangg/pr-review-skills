@@ -280,6 +280,8 @@ struct WeightHistoryEditSheet: View {
     /// Display text → stored tenths, mirroring the manual-entry save path.
     private static func textToTenths(_ text: String) -> Int? {
         guard let value = Double(text) else { return nil }
-        return Int(floor(value * 10))
+        // Round rather than floor: `value * 10` on a Double can land just under the
+        // intended tenth (e.g. 12.3 → 122.9999…), so `floor` would truncate to the wrong tenth.
+        return Int((value * 10).rounded())
     }
 }
