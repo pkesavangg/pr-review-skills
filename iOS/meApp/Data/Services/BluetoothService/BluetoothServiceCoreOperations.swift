@@ -477,7 +477,8 @@ extension BluetoothService {
             logger.log(
                 level: .info,
                 tag: tag,
-                message: "isBpmDevice: \(broadcastId) not yet tracked in bluetoothScales — failing closed (treating as BPM) to avoid getScaleUserList crash"
+                message: "isBpmDevice: \(broadcastId) not yet tracked in bluetoothScales — "
+                    + "failing closed (treating as BPM) to avoid getScaleUserList crash"
             )
             return true
         }
