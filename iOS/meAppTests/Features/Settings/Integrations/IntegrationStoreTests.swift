@@ -127,10 +127,15 @@ struct IntegrationStoreTests {
 
         store.selectIntegration(item: IntegrationItem(type: .fitbit, isSelected: true))
         notification.alertData?.buttons.last?.action(nil)
+        // Wait for the whole disconnect flow to settle — not just dismissLoader. The
+        // publisher-driven integrations refresh and the completion alert are the states
+        // this test asserts, so gate on them too to avoid a flaky read mid-flow.
         let completed = await waitUntil {
             integrationService.removeIntegrationCalls == [.fitbit]
                 && account.refreshAccountCalls == 1
                 && notification.dismissLoaderCalls == 1
+                && store.integrations.first { $0.type == .fitbit }?.isSelected == false
+                && notification.alertData?.buttons.count == 1
         }
 
         #expect(completed == true)
