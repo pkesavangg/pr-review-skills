@@ -880,8 +880,16 @@ class DashboardStore: ObservableObject, DashboardStateProviding {
             isWeightlessMode: isWeightlessModeEnabled,
             anchorWeight: weightlessAnchorWeight,
             convertWeight: goalManager.convertWeightToDisplay,
-            chartHeight: state.graph.chartHeight
+            chartHeight: state.graph.chartHeight,
+            selectedMetric: coPlottedMetric
         )
+    }
+
+    /// V4 (6e): the co-plotted body-comp metric (nil / "weight" → weight only). Drives whether a scroll-end
+    /// settle can update the y-axis in place or must re-normalize the metric via a full rebuild.
+    private var coPlottedMetric: String? {
+        let metric = state.ui.selectedMetricLabel
+        return metric == DashboardStrings.weight ? nil : metric
     }
 
     /// Scroll-END settle: recompute ONLY the adaptive y-axis for the landed window and update `chartModel`
@@ -891,6 +899,12 @@ class DashboardStore: ObservableObject, DashboardStateProviding {
     /// `visibleDomainLength` so the axis matches the on-screen window. No-op if the model isn't built yet.
     /// Weight only; baby/BPM stay on the legacy engine.
     func resettleWeightYAxis(scrollPosition: Date) {
+        // 6e: a co-plotted metric is normalized to the y-domain, so a settle must re-normalize it → full
+        // rebuild. x-geometry is scroll-independent (V-A5a), so the scroll region still stays stable.
+        guard coPlottedMetric == nil else {
+            rebuildWeightChartModel(scrollPosition: scrollPosition)
+            return
+        }
         guard let current = chartModel else {
             rebuildWeightChartModel(scrollPosition: scrollPosition)
             return

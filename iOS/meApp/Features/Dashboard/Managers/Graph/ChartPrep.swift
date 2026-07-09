@@ -36,9 +36,10 @@ enum ChartPrep {
         goalWeight: Double?,
         isWeightlessMode: Bool,
         anchorWeight: Double?,
-        convertWeight: (Double) -> Double,
+        convertWeight: @escaping (Double) -> Double,
         chartHeight: CGFloat = 265,
         lastYAxis: YAxisScale? = nil,
+        selectedMetric: String? = nil,
         calendar: Calendar = .current,
         config: GraphRenderingConfiguration = GraphRenderingConfiguration()
     ) -> ChartModel {
@@ -60,9 +61,6 @@ enum ChartPrep {
             .map { PlottedGraphSeries(original: $0, xDate: plotXDate($0.date, period: period, calendar: plotCalendar)) }
             .sorted { $0.xDate < $1.xDate }
 
-        // 3. One full-domain decimation (no-op for the usual few-hundred-point weight series).
-        let decimated = ChartDecimator.decimate(plotted)
-
         // V-A5: x-geometry (window length, full scrollable domain, ticks) is FULL-DOMAIN and
         //    scroll-INDEPENDENT — sourced from `GraphRenderingConfiguration`, not `data.min…max`. It is
         //    identical at every scroll position, so Swift Charts scrolls natively within it and a y-settle
@@ -72,35 +70,63 @@ enum ChartPrep {
         let xDomain = config.fullXDomain(for: period, from: operations)
             ?? xDomainRange(plotted: plotted, scrollPosition: scrollPosition, visibleLength: visibleLength)
 
-        // 4. Adaptive y-axis over the visible window (Y-B) — the ONLY scroll-position-dependent output.
-        //    Factored out so a scroll-end settle recomputes JUST this and updates the model in place — see
-        //    `weightYAxis` / `ChartModel.withYAxis`.
-        let yAxis = weightYAxis(
-            operations: operations,
-            period: period,
-            scrollPosition: scrollPosition,
-            visibleDomainLength: visibleLength,
-            goalWeight: goalWeight,
-            isWeightlessMode: isWeightlessMode,
-            anchorWeight: anchorWeight,
-            convertWeight: convertWeight,
-            chartHeight: chartHeight,
-            lastYAxis: lastYAxis,
-            preparer: preparer
+        // 3. Adaptive y-axis over the visible window (Y-B) — the ONLY scroll-position-dependent output.
+        //    Computed inline (rather than via `weightYAxis`) so the domain AND the window ops can also
+        //    normalize the co-plotted metric series consistently. (`weightYAxis` stays for the in-place
+        //    weight-only settle in `resettleWeightYAxis`.)
+        let yAxisOps = weightYAxisOperations(
+            operations: operations, period: period, scrollPosition: scrollPosition,
+            visibleDomainLength: visibleLength, preparer: preparer
         )
+        let scale = YAxisCalculator.calculateYAxis(
+            operations: yAxisOps, goalWeight: goalWeight, isWeightlessMode: isWeightlessMode,
+            anchorWeight: anchorWeight, convertStoredWeightToDisplay: convertWeight,
+            chartHeight: chartHeight, lastScale: lastYAxis
+        )
+        let yAxis = YAxisModel(domain: scale.domain, ticks: scale.ticks, average: scale.average)
+
+        // 4. Series dicts. Weight is always present; a selected body-comp metric (6e) is co-plotted as a
+        //    2nd line NORMALIZED into the weight y-domain (so it overlays the same axis). That normalization
+        //    is scroll-dependent (keyed off the y-domain + window ops), so a scroll-end settle must
+        //    re-normalize it — `DashboardStore.resettleWeightYAxis` does a full rebuild when a metric is
+        //    active (x-geometry is scroll-independent since V-A5a, so the scroll region still stays stable).
+        var orderedNames: [String] = plotted.isEmpty ? [] : [seriesName]
+        var full: [String: [PlottedGraphSeries]] = [seriesName: plotted]
+
+        if let metric = selectedMetric, metric != seriesName, !plotted.isEmpty {
+            let plottedMetric = preparer.buildNormalizedMetricSeriesWithDomain(
+                for: metric,
+                from: operations,
+                visibleOperations: [],
+                operationsForYAxis: yAxisOps,
+                toWeightDomain: scale.domain,
+                isWeightlessMode: isWeightlessMode,
+                anchorWeight: anchorWeight,
+                convertWeight: convertWeight
+            )
+            .map { PlottedGraphSeries(original: $0, xDate: plotXDate($0.date, period: period, calendar: plotCalendar)) }
+            .sorted { $0.xDate < $1.xDate }
+            if !plottedMetric.isEmpty {
+                orderedNames.append(metric)
+                full[metric] = plottedMetric
+            }
+        }
+
+        // 5. One full-domain decimation per series (no-op for the usual few-hundred-point series).
+        let decimated = full.mapValues { ChartDecimator.decimate($0) }
 
         return ChartModel(
             period: period,
             productType: .scale,
-            orderedSeriesNames: plotted.isEmpty ? [] : [seriesName],
-            seriesPoints: [seriesName: decimated],
-            fullResolution: [seriesName: plotted],
+            orderedSeriesNames: orderedNames,
+            seriesPoints: decimated,
+            fullResolution: full,
             xDomain: xDomain,
             visibleDomainLength: visibleLength,
             xAxisTicks: config.fullXAxisValues(for: period, from: operations),
             goalWeight: goalWeight,
             yAxis: yAxis,
-            dataFingerprint: fingerprint(orderedSeriesNames: [seriesName], points: [seriesName: plotted])
+            dataFingerprint: fingerprint(orderedSeriesNames: orderedNames, points: full)
         )
     }
 

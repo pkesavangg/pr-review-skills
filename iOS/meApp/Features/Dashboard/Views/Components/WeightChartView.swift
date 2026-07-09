@@ -32,6 +32,11 @@ struct WeightChartView: View {
     let crosshairDate: Date?
     /// V4 (6c): formatted goal-weight label for the goal chip (nil → no chip). The value is `model.goalWeight`.
     let goalLabel: String?
+    /// V4 (6f): month-view active-month interval (nil outside month view / while scrolling) — points whose
+    /// entry date falls outside it are drawn in the muted "outside month" colour.
+    let activeMonthInterval: DateInterval?
+    /// V4 (6f): suppresses greying mid-scroll (parity with the legacy `guard !isScrolling`).
+    let isScrolling: Bool
     let yLabel: (Double) -> String
     let xLabel: (Date) -> String
     let theme: AppColors.Palette
@@ -76,6 +81,13 @@ struct WeightChartView: View {
         return model.period == .total ? model.xAxisTicks : Array(model.xAxisTicks.dropLast())
     }
 
+    /// V4 (6f): a point's entry date falls outside the active month (month view only, not while scrolling)
+    /// — mirrors the legacy `isOutsideActiveMonth`.
+    private func isOutsideActiveMonth(_ date: Date) -> Bool {
+        guard model.period == .month, !isScrolling, let interval = activeMonthInterval else { return false }
+        return date < interval.start || date >= interval.end
+    }
+
     /// A "major" boundary that gets a solid vertical rule — start of week / 1st of month / Jan 1st
     /// (mirrors `BaseSectionViewModel.shouldShowSolidLine`, incl. its use of `Calendar.current`).
     private func isPeriodBoundary(_ date: Date) -> Bool {
@@ -92,12 +104,17 @@ struct WeightChartView: View {
     var body: some View {
         Chart {
             ForEach(model.orderedSeriesNames, id: \.self) { name in
-                let colors = DashboardChartStyleProvider.seriesColors(
-                    for: name, productType: model.productType, theme: theme
+                let regularColors = DashboardChartStyleProvider.seriesColors(
+                    for: name, productType: model.productType, theme: theme, isOutsideMonthInterval: false
+                )
+                let outsideColors = DashboardChartStyleProvider.seriesColors(
+                    for: name, productType: model.productType, theme: theme, isOutsideMonthInterval: true
                 )
                 ForEach(model.seriesPoints[name] ?? []) { plotted in
                     let value = min(max(plotted.original.value, yDomain.lowerBound), yDomain.upperBound)
                     let isSelected = crosshairDate.map { plotted.xDate == $0 } ?? false
+                    // V4 (6f): dim points/segments outside the active month (month view, when not scrolling).
+                    let colors = isOutsideActiveMonth(plotted.original.date) ? outsideColors : regularColors
 
                     LineMark(
                         x: .value("Date", plotted.xDate),

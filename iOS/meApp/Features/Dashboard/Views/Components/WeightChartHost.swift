@@ -30,34 +30,7 @@ struct WeightChartHost: View {
     @State private var selectedX: Date?     // V4 (6a): raw x from `.chartXSelection`; snapped + reported below
 
     var body: some View {
-        Group {
-            if let model = dashboardStore.chartModel {
-                WeightChartView(
-                    model: model,
-                    scrollX: $scrollX,
-                    selectedX: $selectedX,
-                    crosshairDate: crosshairDate,
-                    goalLabel: goalLabel,
-                    yLabel: { dashboardStore.displayManager.formatYAxisTickLabel($0) },
-                    xLabel: formatXAxisLabel,
-                    theme: theme
-                )
-                // A2 — native scroll phase is the REAL start/commit/end signal (same path the legacy graph
-                // uses via `ScrollDetectionModifier`), so there is no view-side timer to approximate it.
-                // V-A4 — routed straight to `graphManager` (not `chartManager`): we want only the commit +
-                // `isScrolling` flip + selection-clear, NOT the chartManager's `.idle` 50 ms legacy settle
-                // (`updateYAxisCache`/`updateWeightDisplay`/metrics) — the new engine gets its y-axis from
-                // `resettleWeightYAxis` and ignores that legacy work. `graphManager.handleScrollPhaseChange`
-                // commits the landed window (with month snapping) into `state.graph.xScrollPosition`.
-                .onScrollPhaseChange { _, newPhase in
-                    Task { @MainActor in
-                        await dashboardStore.graphManager.handleScrollPhaseChange(newPhase)
-                    }
-                }
-            } else {
-                Color.clear.frame(height: 265)
-            }
-        }
+        chartContent
         .onAppear { adopt(dashboardStore.state.graph.xScrollPosition) }
         // V-A5b — start-at-latest safety net: if the host mounted before `initializeChart` set the latest
         // window, `onAppear` adopted the default `Date()`. When the chart becomes ready (init done →
@@ -104,6 +77,39 @@ struct WeightChartHost: View {
                 isAdopting = true
                 scrollX = committed
             }
+        }
+    }
+
+    /// The chart (or an empty placeholder) — extracted from `body` to keep the modifier chain type-checkable.
+    @ViewBuilder
+    private var chartContent: some View {
+        if let model = dashboardStore.chartModel {
+            WeightChartView(
+                model: model,
+                scrollX: $scrollX,
+                selectedX: $selectedX,
+                crosshairDate: crosshairDate,
+                goalLabel: goalLabel,
+                activeMonthInterval: dashboardStore.displayManager.activeMonthInterval,
+                isScrolling: dashboardStore.state.graph.isScrolling,
+                yLabel: { dashboardStore.displayManager.formatYAxisTickLabel($0) },
+                xLabel: formatXAxisLabel,
+                theme: theme
+            )
+            // A2 — native scroll phase is the REAL start/commit/end signal (same path the legacy graph
+            // uses via `ScrollDetectionModifier`), so there is no view-side timer to approximate it.
+            // V-A4 — routed straight to `graphManager` (not `chartManager`): we want only the commit +
+            // `isScrolling` flip + selection-clear, NOT the chartManager's `.idle` 50 ms legacy settle
+            // (`updateYAxisCache`/`updateWeightDisplay`/metrics) — the new engine gets its y-axis from
+            // `resettleWeightYAxis` and ignores that legacy work. `graphManager.handleScrollPhaseChange`
+            // commits the landed window (with month snapping) into `state.graph.xScrollPosition`.
+            .onScrollPhaseChange { _, newPhase in
+                Task { @MainActor in
+                    await dashboardStore.graphManager.handleScrollPhaseChange(newPhase)
+                }
+            }
+        } else {
+            Color.clear.frame(height: 265)
         }
     }
 
