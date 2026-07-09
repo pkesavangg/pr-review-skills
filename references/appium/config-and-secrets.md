@@ -13,9 +13,11 @@ await LoginPage.login("real.user@greatergoods.com", "Sup3rSecret!");   // commit
 const apiToken = "ghp_xxxxxxxxxxxx";                                    // secret in test code
 ```
 
-**Sniff.** On `+` lines in any changed `.ts`/config file: things that look like passwords, `token`/`secret`/`apiKey`/`password` assigned a literal, private keys, or real-looking user emails. Cross-check against the security reference (`secrets-and-storage.md`) too.
+**Sniff.** On `+` lines in any changed `.ts`/config file — **including `test/data/*.data.ts` and `test/data/constants.ts`** (fixtures are a common home for committed passwords): things that look like passwords, `token`/`secret`/`apiKey`/`password` assigned a literal, private keys, or real-looking user emails. Cross-check against the security reference (`secrets-and-storage.md`) too.
 
-**Fix.** Pull secrets from environment variables / a secrets manager / CI secrets (`process.env.TEST_USER`, `process.env.TEST_PASS`), never literals. Use dedicated **non-production** test accounts. If a secret was already committed, it must be rotated, not just deleted.
+**Fix.** Pull secrets from environment variables / a secrets manager / CI secrets (`process.env.TEST_USER`, `process.env.TEST_PASS`), never literals — this repo already does this correctly in places (e.g. `login.data.ts` uses `process.env.TEST_PASSWORD_2`). Follow that pattern for all credentials. Use dedicated **non-production** test accounts. If a secret was already committed, it must be rotated, not just deleted.
+
+**Real credential vs. throwaway fixture.** A synthetic value for a *local/emulator* account that never authenticates against production (e.g. a dummy signup password on a disposable account) is lower-risk than a real user's live credential — but the safe default is still env-sourcing, and a value that could log into a real backend is always **P0**. When in doubt, treat it as real and flag it.
 
 ---
 
@@ -71,6 +73,21 @@ Device name, platform version, and app path baked into the config prevent runnin
 Usernames, search terms, and expected values scattered as literals across specs are hard to maintain and easy to leak.
 
 **Fix.** Centralize test data in a fixtures module or env, separated from test logic.
+
+---
+
+## P2 — Lint gate can't mechanically catch the P0/P1 bug classes
+
+Two of the highest-severity Appium rules — **missing `await` on a WDIO command** (P0, `typescript-and-async.md`) and **`pause` as a wait substitute** (P1, `waits-and-synchronization.md`) — are mechanically catchable, but only if the lint config is wired for it. This repo runs ESLint v9 (`eslint.config.mjs`) with `typescript-eslint`'s **`recommended`** preset, which does **not** enable type-aware promise rules — so a floating (un-awaited) promise ships unflagged today (git history confirms real "add missing inner await" fixes). When a PR touches the ESLint/CI config, check whether these are on; when a PR *adds a floating-promise or pause bug*, note that the gate would have caught it if enabled.
+
+**Sniff.** In `eslint.config.*` / `package.json`: absence of `@typescript-eslint/no-floating-promises` (needs `recommendedTypeChecked` or `strictTypeChecked` + `parserOptions.projectService`) and/or `eslint-plugin-wdio`'s recommended config.
+
+**Fix.** Recommend (don't block on) enabling a mechanical backstop in the meApp repo's CI:
+
+- **`eslint-plugin-wdio`** (official WebdriverIO plugin) — its recommended config adds `wdio/no-pause` (bans `pause(<number>)`) and, when TypeScript is detected, `wdio/no-floating-promise`. Flat-config ready.
+- **`typescript-eslint` type-checked preset** — upgrade `configs.recommended` → `configs.recommendedTypeChecked` so `no-floating-promises` / `no-misused-promises` / `await-thenable` run.
+
+With those on, the reviewer stops being the only line of defense against a class of bug that a linter catches for free. Note it in the Step 5 summary rather than blocking a test PR on a lint-config change.
 
 ---
 

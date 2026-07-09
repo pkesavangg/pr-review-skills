@@ -165,7 +165,7 @@ Read and apply (use each rule's prescribed severity):
 
 When the scope is **Appium E2E** (§ Step 2), skip the SwiftUI (§ 4.1) and Compose (§ 4.2) pipelines — they target native app source, not test-automation code. Instead, review like a **senior mobile test-automation engineer**: first build a mental model of the project (WebdriverIO + Appium + TypeScript, Page Object Model — base `Page`, `*.page.ts` selector getters switching on `driver.isAndroid`, Mocha specs, Allure/video reporting), then apply both **technical** rules (locators, waits, gestures, async correctness) and **logical** rules (does each test actually verify behavior, is it independent, can it fail).
 
-Read these eight reference files and apply them to the changed `.ts` / config files:
+Read these nine reference files and apply them to the changed `.ts` / config files:
 
 - `$REFS_DIR/appium/locators.md`
 - `$REFS_DIR/appium/waits-and-synchronization.md`
@@ -175,8 +175,11 @@ Read these eight reference files and apply them to the changed `.ts` / config fi
 - `$REFS_DIR/appium/reliability-and-flakiness.md`
 - `$REFS_DIR/appium/typescript-and-async.md`
 - `$REFS_DIR/appium/config-and-secrets.md`
+- `$REFS_DIR/appium/helpers-and-reuse.md`
 
 Each rule states its own severity, a **Sniff** pattern (grep/`rg` over `.ts`), and a **Fix** with before/after — **use the severity each rule prescribes**, do not re-classify. Read whole files from the working tree for context (e.g. confirm a selector getter has no real assertion downstream, or that an action method is actually awaited at the call site) rather than judging from the diff alone.
+
+**Review discipline (same as `/review-pr` § 4a.6).** A mature suite has thousands of deliberate `driver.pause` / `.catch(() => false)` / inline `driver.isAndroid ?` uses. Flag band-aid rules (added-pause, bumped-timeout, `.catch`-swallow) only on `+`/modified lines in the current scope, honor each rule's "Do NOT flag" carve-outs (documented settles, loop probes, base-`Page`/`GestureHelper` scrollers, `assertNever`, `void`-prefixed fire-and-forget, single-use inline selectors), and name the real project symbol in the fix (`tapWhenReady`, `AuthHelper.loginAs`, `ElementHelper.swallowNotFound`, `platformLocator`, `TIMEOUTS`/`WAIT`, `selectors.ts`) after confirming it exists in the working tree.
 
 **De-duplicate** Appium findings against each other by `file:line` before writing (e.g. a missing-`await` and an action-without-wait on the same line → one finding; a deprecated-`touchAction` and a manual-swipe-loop on the same gesture → one finding). For findings that overlap the security reference (a committed secret is both `config-and-secrets.md` P0 and `security/secrets-and-storage.md`), write a single finding.
 
@@ -187,6 +190,7 @@ For Appium scope, the § 4.3 "non-trivial production code without tests" check d
 - **P1** — `print` / `NSLog` (Swift) or `Log.d/i/w/e` / `println` (Kotlin) outside an explicit logger wrapper
 - **P1** — non-trivial production code added without any test file added in the same scope
 - **P2** — leftover `console.log` (TypeScript/Appium) in `*.spec.ts` / `*.page.ts` outside an explicit logger/reporter wrapper
+- **P2** — **staged changes span unrelated concerns (scope creep).** Applies to every platform. When the change set clearly bundles unrelated work — two unrelated screens/features, or an opportunistic refactor/rename mixed into a feature — flag it so the author can split into focused commits/PRs *before* pushing. Best-effort pre-commit: there's no PR body to compare against, so infer the intended scope from the branch name and the dominant change, and flag only a clear mismatch. Do **not** flag genuinely-related multi-file changes (a shared component, a cross-cutting rename that *is* the task, test + code for one feature).
 
 **Skip the `/review-pr`-only cross-cutting checks** (PR-title Jira reference, PR-description-vs-diff mismatch, missing screenshot/screen recording) — those need a PR body and make no sense pre-commit.
 

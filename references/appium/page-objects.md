@@ -18,9 +18,11 @@ public async login(u: string, p: string) {
 }
 ```
 
-**Sniff.** `expect(` / `assert(` / `.should` in changed `*.page.ts` files.
+**Sniff.** `expect(` / `assert(` / `.should` on `+` lines in changed `*.page.ts` files.
 
 **Fix.** Return state the spec can assert on (e.g. `isLoggedIn(): Promise<boolean>`, or return the next Page Object), and move the `expect` into the `it(...)`. A page method that *waits* for readiness is fine; one that *judges pass/fail* is not.
+
+**Do NOT flag:** `assertNever(...)` (the `TypeGuards` exhaustiveness helper — it's a compile-time guard, not a test assertion), or an `expect`/`.should` that appears inside a comment. Match the real call, not the substring.
 
 ---
 
@@ -60,9 +62,11 @@ Specs reaching past the Page Object to `$()`, `driver.*`, or raw selectors defea
 await $('~login_button').click();   // spec shouldn't know selectors
 ```
 
-**Sniff.** `$(`, `$$(`, `driver.`, or selector literals in `*.spec.ts` files.
+**Sniff.** `$(`, `$$(`, or a selector literal (XPath / `UiSelector` / `-ios predicate`/`class chain`) on `+` lines in `*.spec.ts` files; also a `driver.action`/`driver.getWindowSize` pair building a gesture, or a `driver.waitUntil` polling a UI selector, inside a spec.
 
-**Fix.** Add/extend a Page Object method and call that from the spec. Specs should read as a sequence of intent: `await LandingPage.clickLogin()`.
+**Fix.** Add/extend a Page Object method (or a helper) and call that from the spec. Specs should read as a sequence of intent: `await LandingPage.clickLogin()`.
+
+**Distinguish leaked locators from legitimate driver calls.** A spec building or querying a **selector** (`$('//XCUIElementTypePickerWheel')`, `$$('//android.widget.NumberPicker')`) is a POM breach — move it to a page. A **selectorless device primitive** — `await driver.back()`, `await driver.pause(...)`, `driver.isKeyboardShown()`, `browser.waitUntil(...)` on a page-object query — is control flow the spec may legitimately own; don't flag those as locator leaks (though re-rollable ones may hit `helpers-and-reuse.md`).
 
 ---
 
@@ -80,7 +84,7 @@ Selectors exposed as public fields/getters let callers bypass the page's action 
 
 The same interaction (wait-then-click, wait-then-setValue) reimplemented in every page should live on the base `Page`.
 
-**Fix.** Promote shared interaction patterns to the base `Page` class (it already hosts `waitForElement`); subclasses call them.
+**Fix.** Use the base `Page` methods that already exist — `tapWhenReady` (waitForDisplayed → click), `waitForElement`, `scrollToElement`, `verifyErrorMessage` — instead of re-rolling the sequence. If a genuinely new shared interaction is needed, promote it to the base `Page` so every subclass gets it. See `helpers-and-reuse.md` for the full toolbox and the re-rolling rule.
 
 ---
 

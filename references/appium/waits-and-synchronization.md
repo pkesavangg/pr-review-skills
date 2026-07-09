@@ -6,25 +6,34 @@ This project has a base `waitForElement(selector, timeout)` helper — prefer it
 
 ---
 
-## P1 — Hardcoded sleep / `pause` instead of an explicit wait
+## P1 — `pause` added as a substitute for a wait condition
 
-`driver.pause(2000)` either wastes 2s when the element is ready in 200ms, or fails when a slow CI runner needs 2.5s. It encodes a guess about timing, not a condition.
+`driver.pause(3000)` before an interaction either wastes 3s when the element is ready in 200ms, or fails when a slow CI runner needs 3.5s. It encodes a guess about timing, not a condition — and a pause *added in a PR right before a `click`/`setValue`/`expect`* is the classic band-aid for a race the author should instead wait out.
 
 ```typescript
-await driver.pause(3000);            // flake + slow
+await driver.pause(3000);            // guessing the button is ready — flake + slow
 await (await this.buttonLogin).click();
 ```
 
-**Sniff.** `driver.pause(`, `browser.pause(`, `await pause(`, `setTimeout(`, `new Promise(r => setTimeout` in changed test/page files.
+**Scope this to the diff, and only the band-aid shape.** This repo legitimately uses `driver.pause` in the thousands, almost all as *deliberate settles* (the `WAIT` constants module in `test/data/constants.ts` exists for exactly this). Do **not** sweep every pause. Flag a pause only when it is:
+
+- **Added or modified on a `+` line** in this PR (pre-existing settles are out of scope), **and**
+- Standing in for a wait — it sits *immediately before* a `.click()` / `.setValue()` / `.addValue()` / `expect(` / navigation, gating readiness the code should instead poll for.
+
+**Sniff.** On `+` lines: `driver.pause(`, `browser.pause(`, `await pause(`, `setTimeout(`, `new Promise(r => setTimeout` — then check the *next* statement is an interaction/assertion on a not-yet-waited element.
 
 **Fix.** Wait for the *condition* you actually depend on:
 
 ```typescript
-await this.waitForElement(await this.buttonLogin);   // waitForDisplayed under the hood
+await this.tapWhenReady(await this.buttonLogin);     // base Page: waitForDisplayed → click
+// or, for a non-tap dependency:
+await this.waitForElement(await this.buttonLogin);
 await (await this.buttonLogin).click();
 ```
 
-Exception: a deliberately tiny settle after an animation with no observable end-state — flag as **Nit** and ask for a `waitUntil` on a real signal instead.
+For app-state settles, poll the real signal — `AppHelper` already models this (`queryAppState`, `waitForKeyboardHidden`) instead of a fixed sleep.
+
+**Do NOT flag (accepted patterns):** a small, **documented** settle *after* a fling/animation/native transition with no observable end-state (e.g. `await driver.pause(WAIT.SETTLE); // settle after slide animation, no end-state to waitFor`); pauses inside the base `Page` scroll helpers or `GestureHelper`; a `WAIT.*`-named settle whose comment explains why a condition wait isn't possible. When such a settle uses a raw number instead of a `WAIT.*` key, that's the magic-number Nit below, not this P1.
 
 ---
 
@@ -43,7 +52,7 @@ await (await this.btnSubmit).click();   // no guarantee it's rendered & enabled 
 - Before **tap/click** → `waitForClickable()` (an element can be *displayed* but still overlapped, animating, or disabled — `waitForDisplayed` alone lets "element not interactable" through).
 - Before **assertions and `setValue`/typing** → `waitForDisplayed()` (and `waitForEnabled()` for inputs).
 
-This project's base `waitForElement` wraps `waitForDisplayed`; add a `waitForClickable` helper for tap targets.
+This project's base `Page` already provides `tapWhenReady` (waitForDisplayed → click) — use it for buttons/rows instead of an unguarded `.click()`. `waitForElement` wraps `waitForDisplayed` for the assert/typing case. For tap targets prone to overlap/animation, prefer a `waitForClickable` before the tap (add a base-`Page` helper if one isn't there yet).
 
 ---
 
@@ -78,13 +87,33 @@ await row.getText();        // STALE — `row` points at a detached element
 
 ---
 
+## P2 — Timeout raised instead of fixing the wait condition
+
+A timeout *bumped upward in a PR* — `timeout: 15000 → 120000`, a larger `waitforTimeout`/`connectionRetryTimeout` in config, or a new pause bigger than the `TIMEOUTS.LONG` tier — is a band-aid tell. A senior reviewer's question is *"what got slower, or which race are you hiding?"* Padding the timeout makes the symptom disappear locally while the underlying sync gap ships (and every future run pays the longer worst-case). This is distinct from the pause rule: here the wait *exists*, the author just widened its budget instead of fixing what it waits on.
+
+```typescript
+// diff: was { timeout: 15000 }
+await el.waitForDisplayed({ timeout: 120000 });   // why 8× longer now?
+```
+
+**Sniff.** A `timeout:` / `waitforTimeout` / `connectionRetryTimeout` numeric literal that *increased* across a `-`/`+` diff pair, or a new wait/pause whose value exceeds the project's `TIMEOUTS.LONG`. Watch commit messages too ("bump timeouts", "raise … for slow … flow").
+
+**Fix.** Find what the wait is racing — a missing `waitForClickable`, a screen that isn't ready, an element that re-renders (stale) — and wait on *that* signal. If a longer wait is genuinely warranted (documented cold-start, a known-slow native picker), use a **named** `TIMEOUTS` tier and justify the choice in the PR so the reason travels with the number. A bare bumped literal with no rationale should not merge.
+
+---
+
 ## P2 — Magic timeout numbers scattered inline
 
-`waitForDisplayed({ timeout: 15000 })`, `30000`, `5000` sprinkled across files make tuning impossible and hide inconsistent expectations.
+`waitForDisplayed({ timeout: 15000 })`, `30000`, `5000` sprinkled across files make tuning impossible and hide inconsistent expectations. This project already centralizes both wait tiers and settle durations — raw numbers duplicate what those modules exist to hold.
 
-**Sniff.** Numeric `timeout:` literals (or bare ms numbers passed to waits) repeated across changed files.
+**Sniff.** Numeric `timeout:` literals (or bare ms numbers passed to waits), or raw `driver.pause(<number>)` durations, on `+` lines where a named constant applies.
 
-**Fix.** Centralize in a `timeouts` constants module and reference named tiers instead of magic numbers — a workable convention: `SHORT ≈ 5s` (a control that should already be present), `MEDIUM ≈ 10–15s` (normal element appearance — the base `waitForElement` default), `LONG ≈ 30s` (app launch / cold start / first network call). Bump thresholds (or rely on a higher `waitforTimeout`) on CI, where hardware is slower than a dev laptop.
+**Fix.** Reference the project's existing constants instead of a literal:
+
+- **Wait timeouts** → `TIMEOUTS` (`test/helpers/timeouts.ts`): `SHORT ≈ 5s` (a control that should already be present), `MEDIUM ≈ 15s` (normal element appearance — the base `waitForElement` default), `LONG ≈ 25s` (launch / auth routing / multi-step dialogs).
+- **Settle durations** → `WAIT` (`test/data/constants.ts`): `WAIT.SETTLE`, `WAIT.NETWORK`, `WAIT.DIALOG`, etc.
+
+Don't introduce a third constants object — see `helpers-and-reuse.md` (Nit — wrong module). Rely on a higher `waitforTimeout` on CI, where hardware is slower than a dev laptop, rather than bumping individual call sites.
 
 ---
 
