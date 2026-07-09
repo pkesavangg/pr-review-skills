@@ -21,9 +21,10 @@ final class MyKidsStore: ObservableObject {
     /// Form used by the add/edit baby sheet.
     @Published var babyProfileForm = BabyProfileSetupForm()
 
-    /// Save is enabled when the form is valid AND (adding a new baby OR the form has been edited).
+    /// Save is enabled when the form is valid, the name isn't a duplicate, AND
+    /// (adding a new baby OR the form has been edited).
     var isSaveEnabled: Bool {
-        guard babyProfileForm.isProfileValid else { return false }
+        guard babyProfileForm.isProfileValid, babyProfileForm.duplicateNameError == nil else { return false }
         if editingBaby != nil { return isFormDirty }
         return true
     }
@@ -60,6 +61,7 @@ final class MyKidsStore: ObservableObject {
         babyProfileForm.formDidChange
             .receive(on: DispatchQueue.main)
             .sink { [weak self] in
+                self?.refreshDuplicateBabyNameError()
                 self?.objectWillChange.send()
             }
             .store(in: &cancellables)
@@ -87,6 +89,13 @@ final class MyKidsStore: ObservableObject {
     func saveBabyProfile() async {
         let name = babyProfileForm.name.value.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !name.isEmpty else { return }
+
+        // A locally-detected duplicate already disables SAVE, but guard here too in case
+        // the check hasn't re-run yet.
+        guard !refreshDuplicateBabyNameError() else { return }
+
+        // Clear any stale duplicate-name error before a new attempt.
+        babyProfileForm.duplicateNameError = nil
 
         let birthday = babyProfileForm.birthday.value
         let biologicalSex = babyProfileForm.biologicalSex.value.isEmpty
@@ -125,10 +134,43 @@ final class MyKidsStore: ObservableObject {
             isShowingAddBaby = false
             editingBaby = nil
         } catch {
-            // Surface the failure instead of silently swallowing it — otherwise SAVE looks unresponsive.
             notificationService.dismissLoader()
-            notificationService.showToast(ToastModel(title: ToastStrings.somethingWentWrongTitle, message: lang.saveFailed))
             LoggerService.shared.log(level: .error, tag: "MyKidsStore", message: "Failed to save baby: \(error)")
+            if isDuplicateNameError(error) {
+                // Surface the server 409 as an inline field error rather than a generic toast.
+                babyProfileForm.duplicateNameError = BabyScaleSetupStrings.BabyProfile.duplicateNameError
+            } else {
+                // Surface the failure instead of silently swallowing it — otherwise SAVE looks unresponsive.
+                notificationService.showToast(ToastModel(title: ToastStrings.somethingWentWrongTitle, message: lang.saveFailed))
+            }
+        }
+    }
+
+    /// Re-evaluates whether the current name duplicates an already-saved baby's name and sets or
+    /// clears `duplicateNameError` accordingly. Called on every name change so the error surfaces
+    /// (and SAVE disables) as soon as a duplicate is typed — without waiting for the server 409.
+    @discardableResult
+    func refreshDuplicateBabyNameError() -> Bool {
+        let trimmed = babyProfileForm.name.value.trimmingCharacters(in: .whitespaces).lowercased()
+        guard !trimmed.isEmpty else {
+            babyProfileForm.duplicateNameError = nil
+            return false
+        }
+        let isDuplicate = babies.contains { baby in
+            baby.id != editingBaby?.id &&
+            baby.name.trimmingCharacters(in: .whitespaces).lowercased() == trimmed
+        }
+        babyProfileForm.duplicateNameError = isDuplicate
+            ? BabyScaleSetupStrings.BabyProfile.duplicateNameError : nil
+        return isDuplicate
+    }
+
+    /// Returns true when the server rejected the request because the baby name is already taken (HTTP 409 Conflict).
+    private func isDuplicateNameError(_ error: Error) -> Bool {
+        switch error as? HTTPError {
+        case .statusCode(409): return true
+        case .apiError(_, let code): return code == 409
+        default: return false
         }
     }
 

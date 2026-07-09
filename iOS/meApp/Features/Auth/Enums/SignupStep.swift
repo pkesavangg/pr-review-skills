@@ -30,8 +30,11 @@ enum SignupDeviceStatus {
 
 /// The device type the user selects during signup.
 enum SignupDeviceType: String, CaseIterable, Identifiable {
-    case bpm
+    // Case order drives the on-screen order of the "Pick a Device" and
+    // "Connect Another Device" lists (both iterate `allCases`). Must match the
+    // approved design: Weight Scale → Blood Pressure Monitor → Baby Scale (MOB-1465).
     case weightScale
+    case bpm
     case babyScale
 
     var id: String { rawValue }

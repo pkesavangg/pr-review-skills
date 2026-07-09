@@ -75,9 +75,12 @@ struct A3BpmInstructionView: View {
                 Image(uiImage: resourceImage)
                     .resizable()
                     .scaledToFit()
+                    // Cap the size but allow the image to shrink on narrower pages.
+                    // A fixed width here would force the whole content column wider
+                    // than the page, clipping the heading and bleeding to the next slide.
                     .frame(
-                        width: imageMediaSize.width,
-                        height: imageMediaSize.height
+                        maxWidth: imageMediaSize.width,
+                        maxHeight: imageMediaSize.height
                     )
                     .accessibilityLabel(BpmSetupStrings.A11y.deviceImageLabel)
             }
@@ -87,8 +90,8 @@ struct A3BpmInstructionView: View {
                     .resizable()
                     .scaledToFit()
                     .frame(
-                        width: imageMediaSize.width,
-                        height: imageMediaSize.height
+                        maxWidth: imageMediaSize.width,
+                        maxHeight: imageMediaSize.height
                     )
                     .accessibilityLabel(BpmSetupStrings.A11y.deviceImageLabel)
             }
@@ -109,17 +112,20 @@ struct A3BpmInstructionView: View {
     }
 
     private func measurementGifView(gifName: String) -> some View {
+        // Fill the available page width rather than a fixed 370pt. A hard width
+        // wider than the page's inner width forced the whole content block off-centre
+        // (left/right clipped) on larger devices like iPhone 17 Pro. The GIF uses
+        // object-fit: contain, so it keeps its aspect ratio within this frame.
         GifView(
             gifName: gifName,
             subdirectory: gifSubdirectory,
-            width: gifMediaSize.width,
-            height: 250
+            verticalAlignment: gifVerticalAlignment
         )
         .accessibilityLabel(BpmSetupStrings.A11y.gifLabel)
-        .frame(width: gifMediaSize.width, height: 250)
+        .frame(maxWidth: .infinity)
+        .frame(height: 250)
         .clipped()
         .clipShape(RoundedRectangle(cornerRadius: .radiusLG))
-        .frame(maxWidth: .infinity, minHeight: 250, maxHeight: 250)
     }
 
     private var resourceImage: UIImage? {
@@ -144,17 +150,6 @@ struct A3BpmInstructionView: View {
         case .center: return .center
         case .bottom: return .bottom
         }
-    }
-
-    private var gifMediaSize: CGSize {
-        if wrapsMediaInCard {
-            return BpmSetupMediaMetrics.cardContentSize
-        }
-
-        return CGSize(
-            width: DevicePlatform.isMiniPhone ? 350 : 370,
-            height: DevicePlatform.isMiniPhone ? 200 : 250
-        )
     }
 
     private var imageMediaSize: CGSize {
