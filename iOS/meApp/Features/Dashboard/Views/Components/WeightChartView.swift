@@ -49,6 +49,33 @@ struct WeightChartView: View {
         return max(model.visibleDomainLength, 1)
     }
 
+    // MARK: - X-axis ticks (V3 — parity with the legacy `gridTicks` / `adjustedLabelTicks`)
+
+    /// Gridline ticks — drop the trailing phantom tick the generators append (matches `gridTicks`).
+    private var gridTicks: [Date] {
+        model.xAxisTicks.isEmpty ? [] : Array(model.xAxisTicks.dropLast())
+    }
+
+    /// Label ticks — week/month/year drop the phantom so labels stop at the last real unit; total keeps it
+    /// (matches the legacy `adjustedLabelTicks`).
+    private var labelTicks: [Date] {
+        guard !model.xAxisTicks.isEmpty else { return [] }
+        return model.period == .total ? model.xAxisTicks : Array(model.xAxisTicks.dropLast())
+    }
+
+    /// A "major" boundary that gets a solid vertical rule — start of week / 1st of month / Jan 1st
+    /// (mirrors `BaseSectionViewModel.shouldShowSolidLine`, incl. its use of `Calendar.current`).
+    private func isPeriodBoundary(_ date: Date) -> Bool {
+        let calendar = Calendar.current
+        let components = calendar.dateComponents([.weekday, .day, .month], from: date)
+        switch model.period {
+        case .week:  return components.weekday == calendar.firstWeekday
+        case .month: return components.day == 1
+        case .year:  return components.month == 1 && components.day == 1
+        case .total: return false
+        }
+    }
+
     var body: some View {
         Chart {
             ForEach(model.orderedSeriesNames, id: \.self) { name in
@@ -87,9 +114,36 @@ struct WeightChartView: View {
             }
         }
         .chartXAxis {
-            AxisMarks(values: model.xAxisTicks) { value in
-                if let date = value.as(Date.self) {
-                    AxisValueLabel { Text(xLabel(date)) }
+            // V3 — vertical gridlines: solid rule at period boundaries (week start / month 1st / Jan 1),
+            // light default rule between. Parity with the legacy `.chartXAxis` first `AxisMarks` block.
+            AxisMarks(values: gridTicks) { value in
+                if let date = value.as(Date.self), isPeriodBoundary(date) {
+                    AxisGridLine(stroke: StrokeStyle(lineWidth: 1))
+                        .foregroundStyle(theme.statusIconSecondaryDisabled)
+                    AxisTick(stroke: StrokeStyle(lineWidth: 1))
+                        .foregroundStyle(theme.statusIconSecondaryDisabled)
+                } else {
+                    AxisGridLine()
+                    AxisTick()
+                }
+            }
+            // Labels only (no gridline here → no double rule). Month gets a background chip, like the legacy.
+            AxisMarks(values: labelTicks) { value in
+                AxisValueLabel {
+                    if let date = value.as(Date.self) {
+                        if model.period == .month {
+                            Text(xLabel(date))
+                                .font(.caption)
+                                .foregroundStyle(theme.textSubheading)
+                                .fixedSize(horizontal: true, vertical: false)
+                                .padding(.horizontal, 2)
+                                .background(theme.textInverse)
+                        } else {
+                            Text(xLabel(date))
+                                .font(.caption)
+                                .foregroundStyle(theme.textSubheading)
+                        }
+                    }
                 }
             }
         }

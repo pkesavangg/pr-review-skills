@@ -327,8 +327,14 @@ reusing all existing scroll-end/average/selection/anchor wiring.
   optimal (latest) window, but if the host mounted before that, `onAppear` had adopted the default `Date()`;
   a one-shot `onChange(isGraphReady:false→true)` adopt now lands cold-open / tab-back / post-reset on the
   latest window. Both mount orderings covered.
-- **Next: V3** rendering parity (vertical gridlines + x-axis labels — now that ticks span the full domain),
-  then **V4** (selection/crosshair/header/goal — closes #4).
+- **V3 — rendering parity (vertical gridlines + x-axis labels). ✅ DONE (2026-07-09).** `WeightChartView`'s
+  `.chartXAxis` now draws vertical gridlines over `gridTicks` (`xAxisTicks.dropLast`) — solid rule at period
+  boundaries (`isPeriodBoundary`: week start / month 1st / Jan 1, mirroring `shouldShowSolidLine`), light
+  default rule between — plus labels over `labelTicks` (month gets the background chip), a two-`AxisMarks`
+  split matching the legacy graph. Unblocked by V-A5a (ticks now span the full domain). Selected-point sizing
+  rides with V4. Closes #1.
+- **Next: V4** (selection/crosshair + header value/label + average-on-lift + goal chip/line + weightless +
+  metric co-plot + active-month greying — closes #4). The biggest remaining piece; sub-steps 6a–6f in §10.
 
 ---
 
@@ -356,8 +362,8 @@ command).
 | 3 | ~~**V-A4 — drop legacy machinery for weight**~~ ✅ **DONE** | GraphView period-switch `guard !usesNewWeightEngine`; host scroll phase → `graphManager` (no chartManager `.idle` settle). Single owner. | **#2** (verify on device) |
 | 4a | ~~**V-A5a — full-domain scroll-independent x-geometry**~~ ✅ **DONE** | `fullXDomain`/`fullXAxisValues` from config; ticks span the whole scroll range; x-geometry identical at every scroll position. | scroll extent + ticks parity |
 | 4b | ~~**V-A5b — snap-to-window + start-at-latest**~~ ✅ **DONE** | Host reflects committed month snap in visual `scrollX`; one-shot `isGraphReady` adopt lands cold-open/tab-back on latest. | month **visual** snap, initial position |
-| 5 | **V3 — rendering parity (cosmetics)** *(next)* | Vertical gridlines (solid at boundaries / dashed between), x-axis labels + ticks per period, selected-point sizes. Now unblocked — V-A5a made ticks span the full domain. | **#1** vertical lines |
-| 6 | **V4 — selection + header + goal + weightless + metrics** (sub-steps 6a–6f) | 6a tap-selection + crosshair · 6b header value + label + average-on-lift · 6c goal chip + line · 6d weightless label · 6e metric co-plot + switching · 6f active-month greying. | **#4** selection |
+| 5 | ~~**V3 — rendering parity (gridlines + x-axis labels)**~~ ✅ **DONE** | Vertical gridlines (solid at boundaries / light between) + labels per period, parity with the legacy `gridTicks`/`adjustedLabelTicks`. Selected-point sizes ride with V4. | **#1** (verify on device) |
+| 6 | **V4 — selection + header + goal + weightless + metrics** (sub-steps 6a–6f) *(next)* | 6a tap-selection + crosshair · 6b header value + label + average-on-lift · 6c goal chip + line · 6d weightless label · 6e metric co-plot + switching · 6f active-month greying. | **#4** selection |
 | 7 | **V6 — flip + delete old weight path** | Make the new engine the default (retire the DEBUG toggle); delete the now-dead weight-only `BaseGraphView` code + caches + cascade. **Baby/BPM stay on the old engine.** | — |
 | 8 | **Sweep + verify** | Walk the [known-issues log](MOB-518-weight-graph-known-issues.md) (all closed?), run the full [feature-spec parity gate](MOB-518-weight-graph-feature-spec.md) on device + Instruments Animation Hitches (< 5 ms/s, no frame > 16.7 ms) on a large account. | all |
 | 9 | **(Optional) off-main `ChartPrep`** | Only if step 8's trace shows a main-thread hit at settle — extract Sendable snapshot + hop off-main (S3). Likely unnecessary (data is small). | perf tail |
