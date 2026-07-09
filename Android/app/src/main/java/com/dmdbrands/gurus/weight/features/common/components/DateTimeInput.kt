@@ -347,6 +347,8 @@ object DateTimeInputDefaults {
  * @param minValue Optional minimum value (Date, Time, or DateTime).
  * @param maxValue Optional maximum value (Date, Time, or DateTime).
  */
+// Pre-existing long composable (also carried in the detekt baseline before it gained a parameter).
+@Suppress("LongMethod")
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun DateTimeInput(

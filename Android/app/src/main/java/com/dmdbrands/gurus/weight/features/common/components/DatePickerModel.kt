@@ -95,6 +95,8 @@ private fun utcDateMillisToLocalMillis(utcMillis: Long): Long {
   return localCal.timeInMillis
 }
 
+// Pre-existing long composable (also carried in the detekt baseline before it gained a parameter).
+@Suppress("LongMethod")
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun DatePickerDialogContent(
