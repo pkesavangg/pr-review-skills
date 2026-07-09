@@ -65,21 +65,16 @@ enum ChartPrep {
 
         let visibleLength = config.visibleDomainLength(for: period, at: scrollPosition)
 
-        // 4. Adaptive y-axis over the VISIBLE window (bracket fallback when the window is empty), exactly
-        //    as today. Total isn't scrollable → the whole dataset defines the axis.
-        let yAxisOperations: [BathScaleWeightSummary]
-        if period == .total {
-            yAxisOperations = operations
-        } else {
-            let visible = preparer.strictlyVisibleOperations(
-                from: operations, scrollPosition: scrollPosition, visibleDomainLength: visibleLength
-            )
-            yAxisOperations = visible.isEmpty
-                ? preparer.bracketingOperations(
-                    from: operations, scrollPosition: scrollPosition, visibleDomainLength: visibleLength
-                )
-                : visible
-        }
+        // 4. Adaptive y-axis over the visible window ∪ bracketing ops (deduped by entryTimestamp),
+        //    exactly as `DashboardChartManager.updateYAxisCache`. Total isn't scrollable → the whole
+        //    dataset defines the axis.
+        let yAxisOperations = weightYAxisOperations(
+            operations: operations,
+            period: period,
+            scrollPosition: scrollPosition,
+            visibleDomainLength: visibleLength,
+            preparer: preparer
+        )
 
         let scale = YAxisCalculator.calculateYAxis(
             operations: yAxisOperations,
@@ -103,6 +98,30 @@ enum ChartPrep {
             yAxis: YAxisModel(domain: scale.domain, ticks: scale.ticks, average: scale.average),
             dataFingerprint: fingerprint(orderedSeriesNames: [seriesName], points: [seriesName: plotted])
         )
+    }
+
+    /// Mirrors `DashboardChartManager.updateYAxisCache`: visible-window ops (with edge buffer) combined
+    /// with the bracketing ops, deduped by `entryTimestamp`; falls back to bracket, then all ops.
+    private static func weightYAxisOperations(
+        operations: [BathScaleWeightSummary],
+        period: TimePeriod,
+        scrollPosition: Date,
+        visibleDomainLength: TimeInterval,
+        preparer: GraphDataPreparer
+    ) -> [BathScaleWeightSummary] {
+        guard period != .total else { return operations }
+
+        let visible = preparer.visibleOperations(
+            from: operations, scrollPosition: scrollPosition, visibleDomainLength: visibleDomainLength
+        )
+        let bracket = preparer.bracketingOperations(
+            from: operations, scrollPosition: scrollPosition, visibleDomainLength: visibleDomainLength
+        )
+        guard !visible.isEmpty else {
+            return bracket.isEmpty ? operations : bracket
+        }
+        let visibleTimestamps = Set(visible.map(\.entryTimestamp))
+        return visible + bracket.filter { !visibleTimestamps.contains($0.entryTimestamp) }
     }
 
     // MARK: - Plot-X normalization (matches the section VMs' `plotXDate`)

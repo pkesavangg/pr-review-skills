@@ -25,6 +25,11 @@ struct GraphView: View {
     // back doesn't override a user's intentional manual clear.
     @State private var didInitialSelect = false
 
+    // MOB-518: DEBUG-only A/B toggle to preview the new v2 weight-chart engine (WeightChartHost)
+    // against the current graph on the same account, WITHOUT replacing the working graph. Weight only;
+    // default off. Removed when the new engine is flipped on at parity (v2 build order V6).
+    @AppStorage("mob518_useNewWeightChart") private var useNewWeightChart = false
+
     /// Latest entry date in the active period — used to drive first-appear / initial-load auto-select.
     private var latestEntryDate: Date? {
         // A baby with no real readings would otherwise auto-select a phantom point from the
@@ -70,6 +75,14 @@ struct GraphView: View {
 
             // Actual graph content
             VStack(alignment: .leading) {
+                #if DEBUG
+                // MOB-518: A/B switch for the new v2 weight engine (weight product only).
+                if dashboardStore.productType == .scale {
+                    Toggle("MOB-518 · new weight engine", isOn: $useNewWeightChart)
+                        .font(.caption2)
+                        .padding(.horizontal, .spacingSM)
+                }
+                #endif
                 // Preserve layout height: fade the label out instead of removing it to avoid jump
                 Text(dashboardStore.displayManager.weightLabel.lowercased())
                     .fontOpenSans(.subHeading2)
@@ -215,6 +228,9 @@ struct GraphView: View {
             // No real baby readings yet — show the empty grid instead of plotting the
             // dummy summaries that `continuousOperations` falls back to (matches design mock).
             BabyEmptyGraphView()
+        } else if dashboardStore.productType == .scale && useNewWeightChart {
+            // MOB-518 v2 engine (weight only, DEBUG A/B). Baby/BPM never reach here.
+            WeightChartHost(dashboardStore: dashboardStore)
         } else {
             HStack(spacing: 0) {
                 switch dashboardStore.state.graph.selectedPeriod {

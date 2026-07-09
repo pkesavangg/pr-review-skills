@@ -858,6 +858,26 @@ class DashboardStore: ObservableObject, DashboardStateProviding {
         )
     }
 
+    // MARK: - v2 Weight-Chart Engine (MOB-518)
+
+    /// Builds the immutable v2 `ChartModel` for the weight graph at `scrollPosition`, on the main actor,
+    /// from the same inputs the legacy series/y-axis paths use (`continuousOperations`, `goalWeightForDisplay`,
+    /// weightless flags, `convertWeightToDisplay`, `state.graph.chartHeight`) — so output is at parity.
+    /// Called by `WeightChartHost` only when a rebuild-relevant input changes (data / period / unit / goal /
+    /// scroll-settle) — never per scroll frame. Weight only for now; baby/BPM stay on the legacy engine.
+    func makeWeightChartModel(scrollPosition: Date) -> ChartModel {
+        ChartPrep.buildWeight(
+            operations: continuousOperations,
+            period: state.graph.selectedPeriod,
+            scrollPosition: scrollPosition,
+            goalWeight: goalWeightForDisplay,
+            isWeightlessMode: isWeightlessModeEnabled,
+            anchorWeight: weightlessAnchorWeight,
+            convertWeight: goalManager.convertWeightToDisplay,
+            chartHeight: state.graph.chartHeight
+        )
+    }
+
     var hasAnyEntries: Bool { state.data.hasAnyEntries }
 
     /// True when the selected baby profile has at least one real (non-dummy) scale reading.
