@@ -25,16 +25,12 @@ struct GraphView: View {
     // back doesn't override a user's intentional manual clear.
     @State private var didInitialSelect = false
 
-    // MOB-518: DEBUG-only A/B toggle to preview the new v2 weight-chart engine (WeightChartHost)
-    // against the current graph on the same account, WITHOUT replacing the working graph. Weight only;
-    // default off. Removed when the new engine is flipped on at parity (v2 build order V6).
-    @AppStorage("mob518_useNewWeightChart") private var useNewWeightChart = false
-
-    /// MOB-518 V-A4: true when the DEBUG A/B new weight engine (`WeightChartHost`) is the chart on screen
-    /// (weight product only). When it is, that host owns period/scroll/model — the legacy section-VM
-    /// machinery below must NOT run, or it does wasted work on every switch (the #2 heaviness).
+    /// MOB-518 V6: the v2 weight-chart engine (`WeightChartHost`) is now the weight renderer. Baby/BPM
+    /// keep the legacy `BaseGraphView` engine below (the two share it), so this is gated on the product
+    /// type, not a toggle. When true, the host owns period/scroll/model and the legacy section-VM machinery
+    /// must NOT run for weight (see the `selectedPeriod` handler / `chartView`).
     private var usesNewWeightEngine: Bool {
-        dashboardStore.productType == .scale && useNewWeightChart
+        dashboardStore.productType == .scale
     }
 
     /// Latest entry date in the active period — used to drive first-appear / initial-load auto-select.
@@ -82,14 +78,6 @@ struct GraphView: View {
 
             // Actual graph content
             VStack(alignment: .leading) {
-                #if DEBUG
-                // MOB-518: A/B switch for the new v2 weight engine (weight product only).
-                if dashboardStore.productType == .scale {
-                    Toggle("MOB-518 · new weight engine", isOn: $useNewWeightChart)
-                        .font(.caption2)
-                        .padding(.horizontal, .spacingSM)
-                }
-                #endif
                 // Preserve layout height: fade the label out instead of removing it to avoid jump
                 Text(dashboardStore.displayManager.weightLabel.lowercased())
                     .fontOpenSans(.subHeading2)
@@ -242,7 +230,8 @@ struct GraphView: View {
             // dummy summaries that `continuousOperations` falls back to (matches design mock).
             BabyEmptyGraphView()
         } else if usesNewWeightEngine {
-            // MOB-518 v2 engine (weight only, DEBUG A/B). Baby/BPM never reach here.
+            // MOB-518 v2 engine — the weight renderer (V6). Baby/BPM never reach here (they use the
+            // legacy BaseGraphView engine in the else branch below).
             WeightChartHost(dashboardStore: dashboardStore)
         } else {
             HStack(spacing: 0) {

@@ -365,8 +365,18 @@ reusing all existing scroll-end/average/selection/anchor wiring.
   date is outside `displayManager.activeMonthInterval` (month view, not while scrolling) via the color
   provider's `isOutsideMonthInterval` — a render-time decision from store state, mirroring the legacy
   `isOutsideActiveMonth`. (Also extracted the host's chart into `chartContent` to keep `body` type-checkable.)
-- **V4 COMPLETE — closes #4.** **Next: V6** (flip default + delete legacy weight path) — *gated on your
-  device parity sign-off; not started.* Then the sweep + Phase T (tests) + PR.
+- **V4 COMPLETE — closes #4.**
+- **V6 (flip) — DONE (2026-07-09, Kesavan: "delete the legacy" → "flip weight, keep shared code").** Weight
+  now ALWAYS renders via `WeightChartHost` — removed the DEBUG `@AppStorage` toggle + its UI;
+  `usesNewWeightEngine` is now just `productType == .scale`. **Discovery:** the legacy engine (`BaseGraphView`
+  + the 4 section views/VMs + managers) is **shared with baby/BPM** (49 baby/BPM refs in `BaseGraphView`;
+  baby/BPM render through the same `else`-branch section views), so it **cannot be deleted** without breaking
+  them (the standing "don't touch baby/BPM" rule). It stays in place, now dead-for-weight only. **The
+  wholesale delete of `BaseGraphView` + section views waits until baby/BPM also migrate to the new engine
+  (a separate epic).**
+- **Remaining: device parity sign-off → Phase T (tests) → PR.** *Caveat:* the flip ships the new engine as
+  the weight default on `develop` before device verification — easily reverted (re-add the `productType`
+  gate + toggle) if the parity pass finds a blocker.
 
 ---
 
@@ -396,7 +406,7 @@ command).
 | 4b | ~~**V-A5b — snap-to-window + start-at-latest**~~ ✅ **DONE** | Host reflects committed month snap in visual `scrollX`; one-shot `isGraphReady` adopt lands cold-open/tab-back on latest. | month **visual** snap, initial position |
 | 5 | ~~**V3 — rendering parity (gridlines + x-axis labels)**~~ ✅ **DONE** | Vertical gridlines (solid at boundaries / light between) + labels per period, parity with the legacy `gridTicks`/`adjustedLabelTicks`. Selected-point sizes ride with V4. | **#1** (verify on device) |
 | 6 | ~~**V4 — selection + header + goal + weightless + metrics**~~ ✅ **DONE** | ~~6a crosshair~~ · ~~6b header/label + tab-latest (no code)~~ · ~~6c goal chip~~ · ~~6d weightless (no code)~~ · ~~6e metric co-plot~~ · ~~6f active-month greying~~. | **#4** (verify on device) |
-| 7 | **V6 — flip + delete old weight path** *(gated on device sign-off)* | Make the new engine the default (retire the DEBUG toggle); delete the now-dead weight-only `BaseGraphView` code + caches + cascade. **Baby/BPM stay on the old engine.** | — |
+| 7 | **V6 — flip** ✅ **DONE** / **delete deferred** | Flipped: weight always uses the new engine; DEBUG toggle removed. Delete deferred — the legacy `BaseGraphView` + section views are **shared with baby/BPM** so they can't be deleted until baby/BPM migrate too (separate epic). | — |
 | 8 | **Sweep + verify** | Walk the [known-issues log](MOB-518-weight-graph-known-issues.md) (all closed?), run the full [feature-spec parity gate](MOB-518-weight-graph-feature-spec.md) on device + Instruments Animation Hitches (< 5 ms/s, no frame > 16.7 ms) on a large account. | all |
 | 9 | **(Optional) off-main `ChartPrep`** | Only if step 8's trace shows a main-thread hit at settle — extract Sendable snapshot + hop off-main (S3). Likely unnecessary (data is small). | perf tail |
 | 10 | **Phase T — tests** | After sign-off: golden model parity per period, decimation-preserves-shape, settle-once, prep runs 0× during scroll. Remove `#if DEBUG` probes. | — |

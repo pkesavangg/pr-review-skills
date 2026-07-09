@@ -11,9 +11,9 @@
 //  `.idle` event) — never per scroll frame. During a drag, Swift Charts scrolls natively over the prepared
 //  model and nothing recomputes.
 //
-//  Wired behind a DEBUG A/B toggle in `GraphView` for weight (`EntryType.scale`) only. Baby/BPM keep the
-//  legacy engine until weight is signed off. Selection/crosshair, header average, and the goal chip are
-//  V4 — this host renders the read-only line/points/axis for evaluating render + scroll quality.
+//  The weight (`EntryType.scale`) renderer (V6 — flipped on for weight). Baby/BPM keep the legacy
+//  `BaseGraphView` engine (the two share it) until they migrate too. Selection/crosshair, header value,
+//  goal chip, weightless, metric co-plot, and active-month greying are all wired (V4).
 //
 
 import SwiftUI
