@@ -61,6 +61,41 @@ struct GraphRenderingConfiguration {
         }
     }
 
+    // MARK: - Full-Domain Geometry (MOB-518 v2 engine)
+
+    /// Full scrollable x-domain for the v2 weight engine — the buffered data span using the *fixed-domain*
+    /// semantics of `axisRange`, so it is INDEPENDENT of the current scroll position. The v2 engine scrolls
+    /// natively within this once-computed domain (no live re-windowing), which keeps the scroll region
+    /// stable across a y-settle. Returns `nil` for an empty dataset. `operations` must be sorted ascending.
+    func fullXDomain(for period: TimePeriod, from operations: [BathScaleWeightSummary]) -> ClosedRange<Date>? {
+        guard let minDate = operations.first?.date, let maxDate = operations.last?.date else { return nil }
+        let (start, end) = axisRange(
+            period: period,
+            minDate: minDate,
+            maxDate: maxDate,
+            scrollPosition: maxDate,
+            domainLength: visibleDomainLength(for: period, at: maxDate),
+            useFixedDomain: true
+        )
+        return start <= end ? start...end : end...start
+    }
+
+    /// All x-axis tick dates across the FULL domain (scroll-independent) for the v2 engine — unlike
+    /// `xAxisValues`, which windows ticks around the scroll position for large spans. The v2 engine needs
+    /// ticks over the whole scrollable range so gridlines/labels appear everywhere the user scrolls, and so
+    /// a scroll-settle never regenerates them (which would rebuild the chart's scroll view). `operations`
+    /// must be sorted ascending.
+    func fullXAxisValues(for period: TimePeriod, from operations: [BathScaleWeightSummary]) -> [Date] {
+        guard let domain = fullXDomain(for: period, from: operations) else { return [] }
+        let shouldRepeat = DateTimeTools.shouldRepeatXAxisLabels(for: period, entryCount: operations.count)
+        switch period {
+        case .week:  return weeklyTicks(from: domain.lowerBound, to: domain.upperBound)
+        case .month: return monthlyTicks(from: domain.lowerBound, to: domain.upperBound)
+        case .year:  return yearlyTicks(from: domain.lowerBound, to: domain.upperBound)
+        case .total: return totalTicks(from: domain.lowerBound, to: domain.upperBound, operations: operations, shouldRepeat: shouldRepeat)
+        }
+    }
+
     // MARK: - Period-Specific Tick Generators
 
     func weeklyTicks(from start: Date, to end: Date) -> [Date] {

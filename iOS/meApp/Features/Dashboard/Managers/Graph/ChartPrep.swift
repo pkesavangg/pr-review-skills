@@ -63,10 +63,18 @@ enum ChartPrep {
         // 3. One full-domain decimation (no-op for the usual few-hundred-point weight series).
         let decimated = ChartDecimator.decimate(plotted)
 
-        let visibleLength = config.visibleDomainLength(for: period, at: scrollPosition)
+        // V-A5: x-geometry (window length, full scrollable domain, ticks) is FULL-DOMAIN and
+        //    scroll-INDEPENDENT — sourced from `GraphRenderingConfiguration`, not `data.min…max`. It is
+        //    identical at every scroll position, so Swift Charts scrolls natively within it and a y-settle
+        //    never rebuilds the scroll region. `visibleDomainLength(for:)` (no position) → month uses the
+        //    constant window, not the per-month duration, so scrolling between months doesn't re-lay-out.
+        let visibleLength = config.visibleDomainLength(for: period)
+        let xDomain = config.fullXDomain(for: period, from: operations)
+            ?? xDomainRange(plotted: plotted, scrollPosition: scrollPosition, visibleLength: visibleLength)
 
-        // 4. Adaptive y-axis over the visible window (Y-B). Factored out so a scroll-end settle can
-        //    recompute JUST this and update the model in place — see `weightYAxis` / `ChartModel.withYAxis`.
+        // 4. Adaptive y-axis over the visible window (Y-B) — the ONLY scroll-position-dependent output.
+        //    Factored out so a scroll-end settle recomputes JUST this and updates the model in place — see
+        //    `weightYAxis` / `ChartModel.withYAxis`.
         let yAxis = weightYAxis(
             operations: operations,
             period: period,
@@ -87,9 +95,9 @@ enum ChartPrep {
             orderedSeriesNames: plotted.isEmpty ? [] : [seriesName],
             seriesPoints: [seriesName: decimated],
             fullResolution: [seriesName: plotted],
-            xDomain: xDomainRange(plotted: plotted, scrollPosition: scrollPosition, visibleLength: visibleLength),
+            xDomain: xDomain,
             visibleDomainLength: visibleLength,
-            xAxisTicks: config.xAxisValues(for: period, from: operations, scrollPosition: scrollPosition),
+            xAxisTicks: config.fullXAxisValues(for: period, from: operations),
             yAxis: yAxis,
             dataFingerprint: fingerprint(orderedSeriesNames: [seriesName], points: [seriesName: plotted])
         )

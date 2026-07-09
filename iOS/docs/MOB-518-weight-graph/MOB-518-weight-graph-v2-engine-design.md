@@ -310,8 +310,25 @@ reusing all existing scroll-end/average/selection/anchor wiring.
   (`updateYAxisCache`/`updateWeightDisplay`/metrics) the new engine ignores. Safe because the legacy graph's
   `BaseGraphView.handleOnAppear` reconfigures its VM on mount, so toggling the A/B back to legacy re-mounts +
   reconfigures. Single owner now: store publishes model + owns scroll lifecycle; host renders + reports.
-- **Next: V-A5** (real scroll geometry — visual month snap + start-at-latest + x-domain/extent), then **V3**
-  rendering parity.
+- **V-A5a — full-domain, scroll-independent x-geometry. ✅ DONE (2026-07-09).** Replaced the `data.min…max`
+  placeholder + windowed per-scroll ticks with real config geometry: new
+  `GraphRenderingConfiguration.fullXDomain(for:from:)` (buffered data span, fixed-domain semantics) and
+  `fullXAxisValues(for:from:)` (ticks across the WHOLE scrollable span, not windowed around the scroll
+  position). `ChartPrep.buildWeight` now uses them + `visibleDomainLength(for:)` (no position → month uses
+  the constant window, not the per-month duration). Net: x-geometry (`xDomain`/`visibleDomainLength`/
+  `xAxisTicks`) is identical at every scroll position, so the chart scrolls natively within a stable region
+  and older regions now carry ticks/gridlines (sets up V3). The y-axis stays the only scroll-dependent
+  output. *Trade-off:* month window is now a fixed ~30.4 d (needed for scroll-stability) — verify the month
+  view still reads right; exact per-month fit + visual snap is V-A5b.
+- **V-A5b — snap-to-window + start-at-latest. ✅ DONE (2026-07-09).** (1) On scroll-end the host now reflects
+  the store's committed (month-snapped) `xScrollPosition` in the visual `scrollX` (guarded by `isAdopting`),
+  so the month window aligns to the 1st exactly as the legacy graph writes its committed position back to the
+  scroll binding. (2) Start-at-latest safety net: `initializeChart` sets `xScrollPosition` to the snapped
+  optimal (latest) window, but if the host mounted before that, `onAppear` had adopted the default `Date()`;
+  a one-shot `onChange(isGraphReady:false→true)` adopt now lands cold-open / tab-back / post-reset on the
+  latest window. Both mount orderings covered.
+- **Next: V3** rendering parity (vertical gridlines + x-axis labels — now that ticks span the full domain),
+  then **V4** (selection/crosshair/header/goal — closes #4).
 
 ---
 
@@ -337,14 +354,15 @@ command).
 | 1 | ~~**A2 — real rebuild signals**~~ ✅ **DONE** | Store rebuilds from its own change/scroll signals; view's 150 ms timer + `dataSettingsKey` hash deleted; native `.onScrollPhaseChange` drives start/commit/end (no `handleScrollEndOptimized` cascade). | V-A2 |
 | 2 | ~~**Phase 4 — single-event settle (in-place y-axis)**~~ ✅ **DONE** | Scroll-end resettles ONLY `yAxis` (`resettleWeightYAxis` → `ChartModel.withYAxis`); series + x-geometry byte-identical → Swift Charts never rebuilds its scroll view on settle. Real cause of #3 (rebuild re-emitting scroll-dependent x-geometry). | **#3** (verify on device) |
 | 3 | ~~**V-A4 — drop legacy machinery for weight**~~ ✅ **DONE** | GraphView period-switch `guard !usesNewWeightEngine`; host scroll phase → `graphManager` (no chartManager `.idle` settle). Single owner. | **#2** (verify on device) |
-| 4 | **V-A5 — real scroll geometry** *(next)* | Snap-to-window (week/month/year), correct "start at latest" position, x-domain/extent from `GraphRenderingConfiguration` (not `data.min…max`). | month **visual** snap, initial position |
-| 5 | **V4 — selection + header + goal + weightless + metrics** (sub-steps 5a–5f) | 5a tap-selection + crosshair · 5b header value + label + average-on-lift · 5c goal chip + line · 5d weightless label · 5e metric co-plot + switching · 5f active-month greying. | **#4** selection |
-| 6 | **V3 — rendering parity (cosmetics)** | Vertical gridlines (solid at boundaries / dashed between), x-axis labels + ticks per period, selected-point sizes. | **#1** vertical lines |
+| 4a | ~~**V-A5a — full-domain scroll-independent x-geometry**~~ ✅ **DONE** | `fullXDomain`/`fullXAxisValues` from config; ticks span the whole scroll range; x-geometry identical at every scroll position. | scroll extent + ticks parity |
+| 4b | ~~**V-A5b — snap-to-window + start-at-latest**~~ ✅ **DONE** | Host reflects committed month snap in visual `scrollX`; one-shot `isGraphReady` adopt lands cold-open/tab-back on latest. | month **visual** snap, initial position |
+| 5 | **V3 — rendering parity (cosmetics)** *(next)* | Vertical gridlines (solid at boundaries / dashed between), x-axis labels + ticks per period, selected-point sizes. Now unblocked — V-A5a made ticks span the full domain. | **#1** vertical lines |
+| 6 | **V4 — selection + header + goal + weightless + metrics** (sub-steps 6a–6f) | 6a tap-selection + crosshair · 6b header value + label + average-on-lift · 6c goal chip + line · 6d weightless label · 6e metric co-plot + switching · 6f active-month greying. | **#4** selection |
 | 7 | **V6 — flip + delete old weight path** | Make the new engine the default (retire the DEBUG toggle); delete the now-dead weight-only `BaseGraphView` code + caches + cascade. **Baby/BPM stay on the old engine.** | — |
 | 8 | **Sweep + verify** | Walk the [known-issues log](MOB-518-weight-graph-known-issues.md) (all closed?), run the full [feature-spec parity gate](MOB-518-weight-graph-feature-spec.md) on device + Instruments Animation Hitches (< 5 ms/s, no frame > 16.7 ms) on a large account. | all |
 | 9 | **(Optional) off-main `ChartPrep`** | Only if step 8's trace shows a main-thread hit at settle — extract Sendable snapshot + hop off-main (S3). Likely unnecessary (data is small). | perf tail |
 | 10 | **Phase T — tests** | After sign-off: golden model parity per period, decimation-preserves-shape, settle-once, prep runs 0× during scroll. Remove `#if DEBUG` probes. | — |
 | 11 | **Commit + raise PR** | Fold the held working-tree changes into the phased commits; single PR to `develop`. | — |
 
-**Shorthand:** 1–4 = architecture + perf finish (closes #2/#3) · 5 = behaviour parity (closes #4) ·
-6 = visual parity (closes #1) · 7 makes it the real graph · 8–11 verify, test, ship.
+**Shorthand:** 1–4 = architecture + perf finish (closes #2/#3, done) · 5 = visual parity (closes #1) ·
+6 = behaviour parity (closes #4) · 7 makes it the real graph · 8–11 verify, test, ship.

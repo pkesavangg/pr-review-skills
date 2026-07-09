@@ -55,6 +55,14 @@ struct WeightChartHost: View {
             }
         }
         .onAppear { adopt(dashboardStore.state.graph.xScrollPosition) }
+        // V-A5b — start-at-latest safety net: if the host mounted before `initializeChart` set the latest
+        // window, `onAppear` adopted the default `Date()`. When the chart becomes ready (init done →
+        // `xScrollPosition` is the snapped latest window) adopt it, so cold-open / tab-back / post-reset
+        // land on the latest window. One-shot per ready transition; the user hasn't scrolled at that point.
+        .onChange(of: dashboardStore.state.graph.isGraphReady) { wasReady, isReady in
+            guard !wasReady, isReady else { return }
+            adopt(dashboardStore.state.graph.xScrollPosition)
+        }
         // A2 — data / metric / unit / goal / weightless changes → rebuild from the store's canonical change
         // signals (not a view-side endpoint hash that can go stale). See `rebuildSignal`.
         .onChange(of: rebuildSignal) { _, _ in rebuild(at: dashboardStore.state.graph.xScrollPosition) }
@@ -73,7 +81,17 @@ struct WeightChartHost: View {
         // windowed `xAxisTicks`), which made Swift Charts rebuild its scroll view → the "can't scroll for
         // ~1 s after it stops" hitch. Resettling only `yAxis` keeps the scroll region stable (one animation).
         .onChange(of: dashboardStore.state.graph.isScrolling) { _, isScrolling in
-            if !isScrolling { dashboardStore.resettleWeightYAxis(scrollPosition: dashboardStore.state.graph.xScrollPosition) }
+            guard !isScrolling else { return }
+            let committed = dashboardStore.state.graph.xScrollPosition
+            dashboardStore.resettleWeightYAxis(scrollPosition: committed)
+            // V-A5b — the store committed the snapped window (month → the 1st) into `xScrollPosition`, but
+            // the native scroll rested wherever the finger lifted. Reflect the snap in the visual scroll so
+            // the window aligns to the month, exactly as the legacy graph writes the committed position back
+            // to its scroll binding. Guarded by `isAdopting` so this write doesn't re-enter the buffer path.
+            if abs(committed.timeIntervalSince(scrollX)) > 0.5 {
+                isAdopting = true
+                scrollX = committed
+            }
         }
     }
 
