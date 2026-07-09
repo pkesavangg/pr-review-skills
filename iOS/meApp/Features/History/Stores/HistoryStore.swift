@@ -750,7 +750,9 @@ final class HistoryStore: ObservableObject {
                 // Save succeeded but the delete of the original failed — both the old and the
                 // replacement now exist. Bubble a distinct log so support can distinguish this
                 // duplicate from a plain save error (a blind retry would create a third copy).
-                logger.log(level: .error, tag: tag, message: "Weight entry delete-after-save failed (duplicate created), original id \(old.id): \(error.localizedDescription)")
+                let duplicateMessage = "Weight entry delete-after-save failed (duplicate created), "
+                    + "original id \(old.id): \(error.localizedDescription)"
+                logger.log(level: .error, tag: tag, message: duplicateMessage)
                 notificationService.showToast(ToastModel(message: toastLang.errorSavingEntry))
                 return
             }
