@@ -477,6 +477,9 @@ struct HistoryStoreTests {
     @Test("entrySaved refreshes months and entries when viewing same month")
     func entrySavedRefreshesWhenViewingSameMonth() async {
         let (store, entryService, _, _, _) = makeHistoryStoreSUT()
+        // MOB-1433 §5c: eager entrySaved reloads only fire while History is on screen
+        // (which is the scenario this test models — the user is viewing a month).
+        store.isHistoryScreenActive = true
         entryService.getMonthsAllResult = .success([makeHistoryMonth(id: "2026-03")])
         entryService.fetchEntrySnapshotsForMonthResult = .success([EntryTestFixtures.makeEntrySnapshot(entryTimestamp: "2026-03-01T08:00:00Z")])
         store.loadMonths()
@@ -498,6 +501,9 @@ struct HistoryStoreTests {
     @Test("entryDeleted refreshes months and entries when viewing same month")
     func entryDeletedRefreshesWhenViewingSameMonth() async {
         let (store, entryService, _, _, _) = makeHistoryStoreSUT()
+        // MOB-1433 §5c: eager entryDeleted reloads only fire while History is on screen
+        // (which is the scenario this test models — the user is viewing a month).
+        store.isHistoryScreenActive = true
         entryService.getMonthsAllResult = .success([makeHistoryMonth(id: "2026-03")])
         entryService.fetchEntrySnapshotsForMonthResult = .success([EntryTestFixtures.makeEntrySnapshot(entryTimestamp: "2026-03-01T08:00:00Z")])
         store.loadMonths()

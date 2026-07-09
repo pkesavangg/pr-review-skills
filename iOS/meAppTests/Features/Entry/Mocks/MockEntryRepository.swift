@@ -112,6 +112,13 @@ final class MockEntryRepository: EntryRepositoryProtocol {
         return entries.filter { $0.accountId == userId && !$0.isSynced }
     }
 
+    func fetchUnsyncedEntriesAsSnapshots(forUserId userId: String) async throws -> [(EntrySnapshot, BathScaleOperationDTO)] {
+        if let fetchUnsyncedEntriesError { throw fetchUnsyncedEntriesError }
+        return entries
+            .filter { $0.accountId == userId && !$0.isSynced }
+            .map { ($0.toSnapshot(), $0.toOperationDTO()) }
+    }
+
     func fetchLatestEntry(forUserId userId: String) async throws -> Entry? {
         if let fetchLatestEntryError { throw fetchLatestEntryError }
         return entries

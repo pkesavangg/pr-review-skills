@@ -6,40 +6,13 @@
 import Foundation
 import SwiftData
 
-/// Serialises every background-context operation against the shared
-/// `ModelContainer`. Two `ModelContext` instances churning concurrently against
-/// the same container corrupt SwiftData's container-internal tracking
-/// dictionary and trap inside `__RawDictionaryStorage.find` (MA-3898).
-///
-/// Each enqueued work item awaits the previously-enqueued one before creating
-/// its own `ModelContext`, so at most one background context is live at any
-/// time across the whole app — independent of how many `EntryRepository`
-/// instances exist.
-private actor EntryRepositoryBackgroundQueue {
-    static let shared = EntryRepositoryBackgroundQueue()
-
-    private var lastTask: Task<Void, Never>?
-
-    func run<T: Sendable>(
-        container: ModelContainer,
-        _ work: @escaping @Sendable (ModelContext) throws -> T
-    ) async throws -> T {
-        let previous = lastTask
-        let task = Task.detached(priority: .userInitiated) { () throws -> T in
-            await previous?.value
-            let ctx = ModelContext(container)
-            return try work(ctx)
-        }
-        lastTask = Task { _ = try? await task.value }
-        return try await task.value
-    }
-}
-
 /// Concrete implementation of EntryRepositoryProtocol for local storage using SwiftData.
-/// Handles CRUD operations for Entry entities in a thread-safe manner.
+/// Handles CRUD operations for Entry entities.
 ///
-/// - Note: This repository uses background contexts for all operations to avoid blocking the main thread.
-///   Methods that need MainActor access are explicitly marked.
+/// - Note: This repository is `@MainActor`-isolated — every operation, including
+///   `performTask`, runs on the main actor. It is suitable for cheap, single-row,
+///   UI-initiated CRUD only. Bulk work (full-history merge, batch inserts, whole-table
+///   reads) belongs on `SwiftDataWorker`, the app's `@ModelActor` (MOB-1433).
 @MainActor
 // swiftlint:disable:next type_body_length
 final class EntryRepository: EntryRepositoryProtocol {
@@ -51,12 +24,16 @@ final class EntryRepository: EntryRepositoryProtocol {
         self.container = container ?? PersistenceController.shared.container
     }
     
-    /// Executes work on a background ModelContext to avoid blocking the main actor.
-    /// - Parameter work: Closure that performs the work using the provided background context.
+    /// Executes work in a fresh `ModelContext` **on the main actor** — the class is
+    /// `@MainActor` and the closure is non-escaping, so nothing here hops off main.
+    /// The separate context only isolates unsaved changes from the shared UI context.
+    /// Keep the work cheap (single-row lookups/writes); bulk operations belong on
+    /// `SwiftDataWorker` (MOB-1433).
+    /// - Parameter work: Closure that performs the work using the provided context.
     /// - Returns: The result of the work.
-    private func performBackgroundTask<T>(_ work: (ModelContext) throws -> T) async throws -> T {
-        let backgroundContext = ModelContext(container)
-        return try work(backgroundContext)
+    private func performTask<T>(_ work: (ModelContext) throws -> T) async throws -> T {
+        let taskContext = ModelContext(container)
+        return try work(taskContext)
     }
 
     // MARK: - CRUD
@@ -66,7 +43,7 @@ final class EntryRepository: EntryRepositoryProtocol {
     /// - Returns: The Entry object, or nil if not found.
     func fetchEntry(byId id: String) async throws -> Entry? {
         guard let uuid = UUID(uuidString: id) else { return nil }
-        return try await performBackgroundTask { ctx in
+        return try await performTask { ctx in
             let descriptor = FetchDescriptor<Entry>(predicate: #Predicate { $0.id == uuid })
             return try ctx.fetch(descriptor).first
         }
@@ -75,7 +52,7 @@ final class EntryRepository: EntryRepositoryProtocol {
     /// Fetches all entries stored locally.
     /// - Returns: An array of all Entry objects.
     func fetchAllEntries() async throws -> [Entry] {
-        return try await performBackgroundTask { ctx in
+        return try await performTask { ctx in
             let descriptor = FetchDescriptor<Entry>()
             return try ctx.fetch(descriptor)
         }
@@ -130,7 +107,7 @@ final class EntryRepository: EntryRepositoryProtocol {
         let babyEntryLength = entry.babyEntry?.length
         let babyEntryWeight = entry.babyEntry?.weight
 
-        try await performBackgroundTask { ctx in
+        try await performTask { ctx in
             let newEntry = Entry(
                 id: id,
                 entryTimestamp: entryTimestamp,
@@ -214,7 +191,7 @@ final class EntryRepository: EntryRepositoryProtocol {
         let isFailedToSync = entry.isFailedToSync
         let attempts = entry.attempts
 
-        try await performBackgroundTask { ctx in
+        try await performTask { ctx in
             let descriptor = FetchDescriptor<Entry>(predicate: #Predicate { $0.id == id })
             if let existing = try ctx.fetch(descriptor).first {
                 existing.accountId = accountId
@@ -238,7 +215,7 @@ final class EntryRepository: EntryRepositoryProtocol {
     /// Use this instead of mutating @Model directly then calling updateEntry (R7/R9).
     func updateEntrySyncStatus(entryId: String, isSynced: Bool, isFailedToSync: Bool, attempts: Int) async throws {
         guard let uuid = UUID(uuidString: entryId) else { return }
-        try await performBackgroundTask { ctx in
+        try await performTask { ctx in
             let descriptor = FetchDescriptor<Entry>(predicate: #Predicate { $0.id == uuid })
             if let existing = try ctx.fetch(descriptor).first {
                 existing.isSynced = isSynced
@@ -253,7 +230,7 @@ final class EntryRepository: EntryRepositoryProtocol {
     /// Deletes an entry by its unique UUID string.
     /// - Parameter id: The UUID string of the entry to delete.
     func deleteEntry(byId id: String) async throws {
-        try await performBackgroundTask { ctx in
+        try await performTask { ctx in
             guard let uuid = UUID(uuidString: id) else { return () }
             let descriptor = FetchDescriptor<Entry>(predicate: #Predicate { $0.id == uuid })
             if let entry = try ctx.fetch(descriptor).first {
@@ -272,7 +249,7 @@ final class EntryRepository: EntryRepositoryProtocol {
     /// Stores the server-assigned entryId after a successful create sync.
     func updateEntryServerEntryId(entryId: String, serverEntryId: String) async throws {
         guard let uuid = UUID(uuidString: entryId) else { return }
-        try await performBackgroundTask { ctx in
+        try await performTask { ctx in
             let descriptor = FetchDescriptor<Entry>(predicate: #Predicate { $0.id == uuid })
             if let existing = try ctx.fetch(descriptor).first {
                 existing.serverEntryId = serverEntryId
@@ -288,7 +265,7 @@ final class EntryRepository: EntryRepositoryProtocol {
     /// not on the @MainActor.
     /// - Parameter id: The UUID string of the entry to mark as deleted.
     func markEntryAsDeleted(byId id: String) async throws {
-        try await performBackgroundTask { ctx in
+        try await performTask { ctx in
             guard let uuid = UUID(uuidString: id) else { return () }
             let descriptor = FetchDescriptor<Entry>(predicate: #Predicate { $0.id == uuid })
             if let existing = try ctx.fetch(descriptor).first {
@@ -302,7 +279,7 @@ final class EntryRepository: EntryRepositoryProtocol {
 
     /// Deletes all entries from the local data store.
     func deleteAllEntries() async throws {
-        try await performBackgroundTask { ctx in
+        try await performTask { ctx in
             let descriptor = FetchDescriptor<Entry>()
             let all = try ctx.fetch(descriptor)
             for entry in all {
@@ -319,7 +296,7 @@ final class EntryRepository: EntryRepositoryProtocol {
     /// - Parameter userId: The user ID to filter entries by.
     /// - Returns: An array of Entry objects for the user.
     func fetchEntries(forUserId userId: String, operationType: String? = nil) async throws -> [Entry] {
-        return try await performBackgroundTask { ctx in
+        return try await performTask { ctx in
             let descriptor: FetchDescriptor<Entry>
             if let opType = operationType {
                 descriptor = FetchDescriptor<Entry>(predicate: #Predicate {
@@ -338,7 +315,7 @@ final class EntryRepository: EntryRepositoryProtocol {
     ///   - timestamp: The timestamp to filter entries by.
     /// - Returns: An array of Entry objects for the user and timestamp.
     func fetchEntriesOfTimestamp(forUserId userId: String, timestamp: String) async throws -> [Entry] {
-        return try await performBackgroundTask { ctx in
+        return try await performTask { ctx in
             let descriptor = FetchDescriptor<Entry>(predicate: #Predicate { $0.accountId == userId && $0.entryTimestamp == timestamp })
             return try ctx.fetch(descriptor)
         }
@@ -347,7 +324,7 @@ final class EntryRepository: EntryRepositoryProtocol {
     /// Fetches the local entry matching a server-assigned entryId for a user, if any.
     /// Used by the sync/merge engine to key on entry identity rather than entryTimestamp.
     func fetchEntry(byServerEntryId serverEntryId: String, forUserId userId: String) async throws -> Entry? {
-        return try await performBackgroundTask { ctx in
+        return try await performTask { ctx in
             let descriptor = FetchDescriptor<Entry>(predicate: #Predicate {
                 $0.accountId == userId && $0.serverEntryId == serverEntryId
             })
@@ -373,7 +350,7 @@ final class EntryRepository: EntryRepositoryProtocol {
         let isoFormatter = ISO8601DateFormatter()
         let startString = isoFormatter.string(from: startDate)
         let endString = isoFormatter.string(from: endDate)
-        return try await performBackgroundTask { ctx in
+        return try await performTask { ctx in
             let descriptor = FetchDescriptor<Entry>(predicate: #Predicate {
                 $0.accountId == userId &&
                 $0.entryTimestamp >= startString &&
@@ -398,7 +375,7 @@ final class EntryRepository: EntryRepositoryProtocol {
       let isoFormatter = ISO8601DateFormatter()
       let startString = isoFormatter.string(from: startDate)
       let endString = isoFormatter.string(from: endDate)
-      return try await performBackgroundTask { ctx in
+      return try await performTask { ctx in
           let descriptor = FetchDescriptor<Entry>(predicate: #Predicate {
             $0.accountId == userId &&
             $0.entryTimestamp >= startString &&
@@ -411,7 +388,7 @@ final class EntryRepository: EntryRepositoryProtocol {
     /// Fetches all unsynced entries from the local data store.
     /// - Returns: An array of Entry objects that are not synced.
     func fetchUnsyncedEntries(forUserId userId: String) async throws -> [Entry] {
-        return try await performBackgroundTask { ctx in
+        return try await performTask { ctx in
             let descriptor = FetchDescriptor<Entry>(predicate: #Predicate { $0.accountId == userId && $0.isSynced == false })
             return try ctx.fetch(descriptor)
         }
@@ -422,7 +399,7 @@ final class EntryRepository: EntryRepositoryProtocol {
     /// so the caller never reads SwiftData relationships off-actor — see MA-3898.
     /// Use this in the unsynced-push loop instead of `fetchUnsyncedEntries`.
     func fetchUnsyncedEntriesAsSnapshots(forUserId userId: String) async throws -> [(EntrySnapshot, BathScaleOperationDTO)] {
-        return try await performBackgroundTask { ctx in
+        return try await performTask { ctx in
             let descriptor = FetchDescriptor<Entry>(predicate: #Predicate { $0.accountId == userId && $0.isSynced == false })
             return try ctx.fetch(descriptor).map { ($0.toSnapshot(), $0.toOperationDTO()) }
         }
@@ -432,11 +409,12 @@ final class EntryRepository: EntryRepositoryProtocol {
     /// - Parameter userId: The user ID to filter entries by.
     /// - Returns: The latest Entry object, or nil if none exist.
     func fetchLatestEntry(forUserId userId: String) async throws -> Entry? {
-        return try await performBackgroundTask { ctx in
-            let descriptor = FetchDescriptor<Entry>(
+        return try await performTask { ctx in
+            var descriptor = FetchDescriptor<Entry>(
                 predicate: #Predicate { $0.accountId == userId },
                 sortBy: [SortDescriptor(\Entry.entryTimestamp, order: .reverse)]
             )
+            descriptor.fetchLimit = 1
             return try ctx.fetch(descriptor).first
         }
     }
@@ -452,7 +430,7 @@ final class EntryRepository: EntryRepositoryProtocol {
         guard let earliest = calendar.date(byAdding: .day, value: -lastNDays, to: now) else { return [] }
         let earliestString = ISO8601DateFormatter().string(from: earliest)
         let nowString = ISO8601DateFormatter().string(from: now)
-        return try await performBackgroundTask { ctx in
+        return try await performTask { ctx in
             let descriptor = FetchDescriptor<Entry>(predicate: #Predicate {
                 $0.accountId == userId && $0.entryTimestamp >= earliestString && $0.entryTimestamp <= nowString
             })
@@ -464,19 +442,22 @@ final class EntryRepository: EntryRepositoryProtocol {
     /// - Parameter userId: The user ID to filter entries by.
     /// - Returns: The number of entries for the user.
     func fetchEntryCount(forUserId userId: String) async throws -> Int {
-        let entries = try await fetchEntries(forUserId: userId)
-        return entries.count
+        return try await performTask { ctx in
+            let descriptor = FetchDescriptor<Entry>(predicate: #Predicate { $0.accountId == userId })
+            return try ctx.fetchCount(descriptor)
+        }
     }
 
     /// Fetches the oldest entry for a specific user.
     /// - Parameter userId: The user ID to filter entries by.
     /// - Returns: The oldest Entry object, or nil if none exist.
     func fetchOldestEntry(forUserId userId: String) async throws -> Entry? {
-        return try await performBackgroundTask { ctx in
-            let descriptor = FetchDescriptor<Entry>(
+        return try await performTask { ctx in
+            var descriptor = FetchDescriptor<Entry>(
                 predicate: #Predicate { $0.accountId == userId },
                 sortBy: [SortDescriptor(\Entry.entryTimestamp, order: .forward)]
             )
+            descriptor.fetchLimit = 1
             return try ctx.fetch(descriptor).first
         }
     }
@@ -487,7 +468,7 @@ final class EntryRepository: EntryRepositoryProtocol {
     ///   - entryTimestamp: The timestamp to check for.
     /// - Returns: True if the entry exists, false otherwise.
     func checkEntryTimestampExists(forUserId userId: String, entryTimestamp: String) async throws -> Bool {
-        return try await performBackgroundTask { ctx in
+        return try await performTask { ctx in
             let descriptor = FetchDescriptor<Entry>(predicate: #Predicate { $0.accountId == userId && $0.entryTimestamp == entryTimestamp })
             return try ctx.fetch(descriptor).first != nil
         }
@@ -502,7 +483,7 @@ final class EntryRepository: EntryRepositoryProtocol {
     ///   - operationType: Optional operation type filter.
     /// - Returns: Array of BathScaleOperationDTO with all data extracted.
     func fetchEntriesAsDTO(forUserId userId: String, operationType: String? = nil) async throws -> [BathScaleOperationDTO] {
-        return try await performBackgroundTask { ctx in
+        return try await performTask { ctx in
             let descriptor: FetchDescriptor<Entry>
             if let opType = operationType {
                 descriptor = FetchDescriptor<Entry>(
@@ -527,7 +508,7 @@ final class EntryRepository: EntryRepositoryProtocol {
         // for legacy rows. Wrap the comparison constant in Optional to keep the
         // #Predicate types aligned.
         let bpmEntryType: String? = EntryType.bpm.rawValue
-        return try await performBackgroundTask { backgroundContext in
+        return try await performTask { backgroundContext in
             let descriptor: FetchDescriptor<Entry>
             if let opType = operationType {
                 descriptor = FetchDescriptor<Entry>(
@@ -556,7 +537,7 @@ final class EntryRepository: EntryRepositoryProtocol {
     ///   - operationType: Optional operation type filter.
     /// - Returns: Array of PersistentIdentifier for later refetch on MainActor.
     func fetchEntryIdentifiers(forUserId userId: String, operationType: String? = nil) async throws -> [PersistentIdentifier] {
-        return try await performBackgroundTask { ctx in
+        return try await performTask { ctx in
             let descriptor: FetchDescriptor<Entry>
             if let opType = operationType {
                 descriptor = FetchDescriptor<Entry>(
@@ -579,7 +560,7 @@ final class EntryRepository: EntryRepositoryProtocol {
     /// - Returns: BathScaleOperationDTO or nil if not found.
     func fetchEntryAsDTO(byId id: String) async throws -> BathScaleOperationDTO? {
         guard let uuid = UUID(uuidString: id) else { return nil }
-        return try await performBackgroundTask { ctx in
+        return try await performTask { ctx in
             let descriptor = FetchDescriptor<Entry>(predicate: #Predicate { $0.id == uuid })
             guard let entry = try ctx.fetch(descriptor).first else { return nil }
             // Extract ALL data inside the background context
@@ -591,8 +572,8 @@ final class EntryRepository: EntryRepositoryProtocol {
     /// - Parameter userId: The user ID to filter entries by.
     /// - Returns: BathScaleOperationDTO or nil if none exist.
     func fetchLatestEntryAsDTO(forUserId userId: String, operationType: String? = nil) async throws -> BathScaleOperationDTO? {
-        return try await performBackgroundTask { ctx in
-            let descriptor: FetchDescriptor<Entry>
+        return try await performTask { ctx in
+            var descriptor: FetchDescriptor<Entry>
             if let opType = operationType {
                 descriptor = FetchDescriptor<Entry>(
                     predicate: #Predicate { $0.accountId == userId && $0.operationType == opType },
@@ -604,6 +585,7 @@ final class EntryRepository: EntryRepositoryProtocol {
                     sortBy: [SortDescriptor(\Entry.entryTimestamp, order: .reverse)]
                 )
             }
+            descriptor.fetchLimit = 1
             guard let entry = try ctx.fetch(descriptor).first else { return nil }
             return entry.toOperationDTO()
         }
@@ -746,77 +728,12 @@ final class EntryRepository: EntryRepositoryProtocol {
     
     /// Creates entries in background context from extracted data
     private func createEntriesInBackground(entriesData: [EntrySyncData]) async throws {
-        try await performBackgroundTask { [self] ctx in
+        try await performTask { ctx in
             for data in entriesData {
-                let newEntry = self.createEntry(from: data)
-                ctx.insert(newEntry)
+                ctx.insert(Entry(from: data))
             }
             try ctx.save()
             return ()
         }
-    }
-    
-    /// Creates an Entry instance from EntrySyncData
-    private func createEntry(from data: EntrySyncData) -> Entry { // swiftlint:disable:this function_body_length
-        let newEntry = Entry(
-            id: data.id,
-            entryTimestamp: data.entryTimestamp,
-            accountId: data.accountId,
-            operationType: data.operationType,
-            serverTimestamp: data.serverTimestamp,
-            entryType: data.entryType,
-            isSynced: data.isSynced
-        )
-        newEntry.isFailedToSync = data.isFailedToSync
-        newEntry.attempts = data.attempts
-
-        if let seData = data.scaleEntry {
-            newEntry.scaleEntry = BathScaleEntry(
-                weight: seData.weight,
-                bodyFat: seData.bodyFat,
-                muscleMass: seData.muscleMass,
-                water: seData.water,
-                bmi: seData.bmi,
-                source: seData.source
-            )
-        }
-
-        if let mData = data.scaleEntryMetric {
-            newEntry.scaleEntryMetric = BathScaleMetric(
-                bmr: mData.bmr,
-                metabolicAge: mData.metabolicAge,
-                proteinPercent: mData.proteinPercent,
-                pulse: mData.pulse,
-                skeletalMusclePercent: mData.skeletalMusclePercent,
-                subcutaneousFatPercent: mData.subcutaneousFatPercent,
-                visceralFatLevel: mData.visceralFatLevel,
-                boneMass: mData.boneMass,
-                impedance: mData.impedance,
-                unit: mData.unit
-            )
-        }
-
-        if let systolic = data.bpmSystolic, let diastolic = data.bpmDiastolic,
-           let meanArterial = data.bpmMeanArterial, let pulse = data.bpmPulse {
-            newEntry.bpmEntry = BPMEntry(
-                systolic: systolic,
-                diastolic: diastolic,
-                meanArterial: meanArterial,
-                pulse: pulse
-            )
-        }
-
-        if let entryBabyId = data.babyEntryBabyId, let length = data.babyEntryLength,
-           let weight = data.babyEntryWeight {
-            newEntry.babyEntry = BabyEntry(
-                babyId: entryBabyId,
-                length: length,
-                weight: weight
-            )
-        }
-
-        newEntry.note = data.note
-
-        return newEntry
     }
 }
