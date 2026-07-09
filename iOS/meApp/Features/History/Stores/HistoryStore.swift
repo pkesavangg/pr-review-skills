@@ -985,7 +985,9 @@ final class HistoryStore: ObservableObject {
 
     /// Returns `true` when a day (`"yyyy-MM-dd"`) matches the baby's birthday
     /// month + day. Returns `false` when no birthday is set (MOB-1164).
-    static func isBirthday(dayId: String, birthdayComponents: DateComponents?) -> Bool {
+    /// `nonisolated`: a pure function of its arguments (no actor state), so it can be
+    /// called from any context — including the synchronous, nonisolated unit tests.
+    nonisolated static func isBirthday(dayId: String, birthdayComponents: DateComponents?) -> Bool {
         guard let birthdayComponents,
               let birthMonth = birthdayComponents.month,
               let birthDay = birthdayComponents.day else { return false }
