@@ -29,9 +29,12 @@ it("TC001 - should login with valid credentials", async () => {
 
 Tests must pass in isolation and in any order. A test that only works because a previous test left the app on a certain screen is a latent flake (and breaks under `--shard`, retries, or `.only`). This is the *spec* side of the same defect `reliability-and-flakiness.md` flags as **P1 — No clean state between tests** (the *config/lifecycle* side); both are P1 — when they fire on one PR, post a single comment.
 
-**Sniff.** A spec that starts mid-flow with no `before`/`beforeEach` to establish state, or relies on a global/module variable mutated by an earlier `it`.
+**Sniff.** A spec that starts mid-flow with no `before`/`beforeEach` to establish state, or relies on a global/module variable mutated by an earlier `it`. Two additional signals in this suite:
 
-**Fix.** Reset to a known state in `beforeEach` (relaunch/reset the app or navigate home). Each `it` should set up its own preconditions.
+- **Weak-reset shape** — a large spec (many `it`s) with a single `beforeEach` and **no `afterEach`**, where individual tests mutate persistent state (add/edit/delete a record). The one-time reset doesn't undo per-test mutations, so `it` N sees `it` N-1's residue.
+- **Shared-state admission** — `this.retries(0)` accompanied by a comment like *"retry inherits changed DB state"* / *"mutates backend"*. The author is telling you the test isn't isolated; treat the underlying coupling (not the `retries(0)`, which is correct here) as the finding.
+
+**Fix.** Reset to a known state per test — relaunch/reset in `beforeEach`, and add an `afterEach` (or per-test cleanup) that reverses any mutation the `it` made. When tests share backend state, isolate their data with unique identifiers (per-run user/email/record) so order and re-runs can't collide. Each `it` should set up *and tear down* its own preconditions.
 
 ---
 

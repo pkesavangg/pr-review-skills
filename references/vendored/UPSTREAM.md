@@ -29,6 +29,20 @@ By vendoring them here, the `/review-pr` reviewer needs **no additional plugin i
 
 ---
 
+## Cross-checked references (not vendored)
+
+The `references/appium/*.md` rules are **built in-house**, not vendored — there is no off-the-shelf Appium/WebdriverIO *review* skill to redistribute (the ecosystem is all test-*generation* skills). A few rules cite or were cross-checked against third-party sources that are **not** copied into this repo, so no `LICENSE` file or version-pinned snapshot is needed. They're recorded here for provenance.
+
+| Source | Used by | License | How it's used |
+|---|---|---|---|
+| [WebdriverIO `eslint-plugin-wdio`](https://github.com/webdriverio/webdriverio/tree/main/packages/eslint-plugin-wdio) (v9.x — `no-pause`, `no-floating-promise`, `await-expect`, `no-debug`) | `appium/config-and-secrets.md`, `appium/typescript-and-async.md`, `appium/waits-and-synchronization.md` | MIT (WebdriverIO monorepo) | Named as the **recommended mechanical lint backstop** for the P0 missing-`await` and P1 pause rules. The reviewer recommends the *target* repo adopt it in CI; nothing is copied here. |
+| [WebdriverIO Best Practices & Selectors docs](https://webdriver.io/docs/bestpractices/) | `appium/locators.md`, `appium/waits-and-synchronization.md` | Docs (webdriver.io) | Authoritative source for accessibility-id-over-class selectors, avoid-`pause`, retrying `expect`, don't-cache-element-handles (stale). Cited, not copied. |
+| [`LambdaTest/agent-skills` webdriverio-skill](https://github.com/LambdaTest/agent-skills) | footers of `appium/waits-and-synchronization.md`, `appium/gestures-and-scrolling.md`, `appium/reliability-and-flakiness.md` | MIT (verified) | A code-**generation** skill, not a reviewer. A few rules cross-checked their currency (Appium 2 `touchAction` deprecation, clickable-vs-displayed waits, stale re-query) against it; browser-only items were excluded. Not vendored because it provides no review rules. |
+
+If a future upgrade *copies* content from one of these verbatim, promote it to a full vendored entry above (LICENSE file + version pin + sync routine), following the swiftui-pro / compose-expert model.
+
+---
+
 ## Sync instructions (maintainer routine)
 
 These snapshots are pinned. The upstream projects continue to evolve. Plan to re-sync **quarterly** (or on demand if either upstream lands a notable improvement).
