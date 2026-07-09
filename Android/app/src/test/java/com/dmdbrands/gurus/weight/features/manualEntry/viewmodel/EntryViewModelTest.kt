@@ -3,6 +3,7 @@ package com.dmdbrands.gurus.weight.features.manualEntry.viewmodel
 import com.dmdbrands.gurus.weight.core.navigation.AppRoute
 import com.dmdbrands.gurus.weight.core.rules.MainDispatcherRule
 import com.dmdbrands.gurus.weight.core.shared.utilities.ConversionTools
+import com.dmdbrands.gurus.weight.core.shared.utilities.DateTimeConverter
 import com.dmdbrands.gurus.weight.core.service.IAppNavigationService
 import com.dmdbrands.gurus.weight.domain.enums.DashboardType
 import com.dmdbrands.gurus.weight.domain.interfaces.IDialogQueueService
@@ -271,6 +272,47 @@ class EntryViewModelTest {
             .map { it.content }.filterIsInstance<ReadingToast>().single()
         assertThat(reading.reading).isEqualTo(expectedLbOz)
     }
+
+    // -------------------------------------------------------------------------
+    // Save — blood pressure custom date/time (MOB-1427)
+    // -------------------------------------------------------------------------
+
+    @Test
+    fun `Save BP entry persists the user-selected date-time, not the current time`() =
+        runTest(mainDispatcherRule.scheduler) {
+            every { productSelectionManager.selectedProduct } returns
+                MutableStateFlow(ProductSelection.BloodPressure)
+            viewModel = createViewModel()
+
+            // A deterministic past instant. DateTimeValue.Date carries the exact millis through
+            // getTimestamp() unchanged (DateTime would re-stamp seconds from "now"), so the
+            // assertion is stable.
+            val selectedMillis = LocalDate.parse("2026-05-10")
+                .atStartOfDay(ZoneId.of("UTC"))
+                .toInstant()
+                .toEpochMilli()
+
+            val form = MultiFormGroup.create(forms = BloodPressureEntryForm.create())
+            form.forms.bloodPressure.controls.systolic.onValueChange("140")
+            form.forms.bloodPressure.controls.diastolic.onValueChange("90")
+            form.forms.bloodPressure.controls.pulse.onValueChange("65")
+            form.forms.bloodPressure.controls.dateTime.onValueChange(DateTimeValue.Date(selectedMillis))
+            viewModel.handleIntent(EntryIntent.UpdateActiveForm(ActiveEntryForm.BloodPressure(form)))
+
+            val captured = mutableListOf<Entry>()
+            coEvery { entryService.addEntry(entry = capture(captured)) } returns Unit
+
+            viewModel.handleIntent(EntryIntent.Save)
+            advanceUntilIdle()
+
+            val entry = captured.single() as BpmEntry
+            // The persisted timestamp is the chosen date, not System.currentTimeMillis(). (MOB-1427)
+            assertThat(entry.entry.entryTimestamp)
+                .isEqualTo(DateTimeConverter.timestampToIso(selectedMillis))
+            assertThat(entry.systolic).isEqualTo(140)
+            assertThat(entry.diastolic).isEqualTo(90)
+            assertThat(entry.pulse).isEqualTo(65)
+        }
 
     @Test
     fun `Save shows loader and dismisses it after success`() = runTest(mainDispatcherRule.scheduler) {

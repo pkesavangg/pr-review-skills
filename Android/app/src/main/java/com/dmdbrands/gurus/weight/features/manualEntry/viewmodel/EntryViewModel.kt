@@ -448,7 +448,10 @@ constructor(
         )
         val entryEntity = EntryEntity(
           accountId = accountId,
-          entryTimestamp = DateTimeConverter.timestampToIso(System.currentTimeMillis()),
+          // Persist the user's chosen date/time from the form, not "now" — otherwise a back-dated
+          // reading was silently stamped with the current time and mis-grouped in History (MOB-1427).
+          // Matches the weight (EntryHelper.toScaleEntry) and baby (buildBabyEntry) save paths.
+          entryTimestamp = DateTimeConverter.timestampToIso(controls.dateTime.value.getTimestamp()),
           operationType = "create",
           deviceType = "manual",
           deviceId = "",
