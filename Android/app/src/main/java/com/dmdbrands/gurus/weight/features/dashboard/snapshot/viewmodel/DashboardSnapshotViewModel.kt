@@ -64,27 +64,27 @@ class DashboardSnapshotViewModel @Inject constructor(
   /**
    * Mirrors [IProductSelectionManager.availableProducts] into [snapshotProducts], collapsing all
    * baby profiles down to one card for the active baby (so multiple kids don't render as
-   * double/triple baby cards). Leaves the empty "Baby Scale" card untouched (baby product owned,
-   * no profile yet). (MOB-598)
+   * double/triple baby cards). Falls back to the first baby when no active id is set; leaves the
+   * empty "Baby Scale" card untouched (baby product owned, no profile yet). (MOB-598)
    *
-   * Combines with [IProductSelectionManager.selectedProduct] so the single baby card re-scopes to
-   * whichever baby the user picks in the switcher bottom sheet — that sheet updates selectedProduct,
-   * not the Room activeBabyId, and the availableProducts list is unchanged by a switch, so keying
-   * off availableProducts alone left the snapshot stuck on the previously-selected baby (MOB-1449).
-   * Falls back to the persisted active baby, then the first baby, when no baby is currently selected.
+   * Recomputes on BOTH the product list AND the current selection: switching to a baby via the
+   * detail-dashboard "Timmy ⌄" dropdown updates [IProductSelectionManager.selectedProduct] (and
+   * the persisted active baby) without changing [availableProducts], so the snapshot card must
+   * follow the selection to reflect the last-active baby. (MOB-436)
    */
   private fun observeSnapshotProducts() {
     viewModelScope.launch {
       combine(
         productSelectionManager.availableProducts,
         productSelectionManager.selectedProduct,
-      ) { products, selected ->
-        val selectedBabyId = (selected as? ProductSelection.Baby)?.profile?.id
-          ?: accountRepository.getActiveBabyId()
-        collapseBabiesToActive(products, selectedBabyId)
-      }
-        .distinctUntilChanged()
-        .collect { _snapshotProducts.value = it }
+      ) { products, selected -> products to selected }
+        .collect { (products, selected) ->
+          // The currently-selected baby IS the active baby; otherwise fall back to the persisted
+          // last-active baby so the card stays put while the user views weight/BP.
+          val activeBabyId = (selected as? ProductSelection.Baby)?.profile?.id
+            ?: accountRepository.getActiveBabyId()
+          _snapshotProducts.value = collapseBabiesToActive(products, activeBabyId)
+        }
     }
   }
 
