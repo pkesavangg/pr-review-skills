@@ -48,6 +48,11 @@ object DashboardString {
     const val KgsToGoal = "kgs to goal"
     const val CurrentStreak = "current streak"
     const val LongestStreak = "longest streak"
+    // Streak unit labels (MOB-1168): singular / plural / abbreviated to avoid truncation
+    const val StreakDaySingular = "day"
+    const val StreakDayPlural = "days"
+    const val StreakDayAbbrev = "d"
+    const val StreakZeroDays = "0 days"
     const val LbsPerWeek = "lbs/week"
     const val KgsPerWeek = "kg/week"
     const val LbsPerMonth = "lbs/month"
