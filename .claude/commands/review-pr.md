@@ -129,11 +129,12 @@ This is a verbatim MIT-licensed snapshot of [swiftui-pro v1.0.0](https://github.
 
 ### 4a.1.5 — iOS cross-cutting (if iOS detected)
 
-`swiftui-pro` covers SwiftUI API usage and force-unwraps. It does **not** cover Swift concurrency footguns, logging placement, or test-flake patterns. Read these three reference files and apply them to the same diff:
+`swiftui-pro` covers SwiftUI API usage and force-unwraps. It does **not** cover Swift concurrency footguns, logging placement, test-flake patterns, or the house automation-identifier contract. Read these four reference files and apply them to the same diff:
 
 - `$REFS_DIR/ios/concurrency.md`
 - `$REFS_DIR/ios/logging-hygiene.md`
 - `$REFS_DIR/ios/test-hygiene.md`
+- `$REFS_DIR/ios/accessibility-identifiers.md` — MOB-1131 automation-facing `accessibilityIdentifier` contract (a stable snake_case id per interactive control, mirrored to the Android `testTag`, applied via `.appAccessibility(id:)` / `.screenAccessibilityRoot(_:)`). This is the *automation* concern; swiftui-pro's `accessibility.md` is the separate *VoiceOver-UX* concern (labels, Dynamic Type). The file flags only what a regex can't see — a control with no id, an id that resolves to many nodes, an id that diverges from its Android twin — and does **not** re-flag the two cases the repo's `.swiftlint.yml` gate already blocks mechanically.
 
 Each file defines rules with their own severity, sniff pattern, and fix. **Use the severity each rule prescribes** — don't re-classify the way you do for swiftui-pro.
 

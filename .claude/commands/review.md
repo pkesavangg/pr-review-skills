@@ -130,6 +130,7 @@ Read and apply (use each rule's prescribed severity — don't re-classify):
 - `$REFS_DIR/ios/concurrency.md`
 - `$REFS_DIR/ios/logging-hygiene.md`
 - `$REFS_DIR/ios/test-hygiene.md`
+- `$REFS_DIR/ios/accessibility-identifiers.md` — MOB-1131 automation-facing `accessibilityIdentifier` contract (stable snake_case id per interactive control, mirrored to the Android `testTag`, via `.appAccessibility(id:)` / `.screenAccessibilityRoot(_:)`). The *automation* concern, distinct from swiftui-pro's *VoiceOver-UX* `accessibility.md`; catches only what a regex can't (no id, many-node id, Android-twin divergence) — not the two cases the repo's `.swiftlint.yml` gate already blocks.
 
 **De-dup against swiftui-pro:** if swiftui-pro already raised a finding at the same `file:line` with overlapping substance, drop the duplicate.
 

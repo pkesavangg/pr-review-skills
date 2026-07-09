@@ -12,7 +12,7 @@ Both commands:
 
 - Auto-detect whether the change touches iOS (Swift / SwiftUI), Android (Kotlin / Compose), both, or Appium/WebdriverIO E2E test code (TypeScript).
 - Run cross-platform **security** ([references/security/](references/security/)) and **privacy compliance** ([references/privacy/](references/privacy/)) checks — secrets, insecure storage, TLS bypass, weak crypto, PII/PHI in logs, exposure surfaces, App Store / Play Store submission gates.
-- Apply Paul Hudson's [`swiftui-pro`](https://github.com/twostraws/SwiftUI-Agent-Skill) rules (vendored under [references/vendored/swiftui-pro/](references/vendored/swiftui-pro/), MIT licensed) for SwiftUI quality, then add iOS cross-cutting checks (concurrency, logging placement, test flake) from [references/ios/](references/ios/).
+- Apply Paul Hudson's [`swiftui-pro`](https://github.com/twostraws/SwiftUI-Agent-Skill) rules (vendored under [references/vendored/swiftui-pro/](references/vendored/swiftui-pro/), MIT licensed) for SwiftUI quality, then add iOS cross-cutting checks (concurrency, logging placement, test flake, and the MOB-1131 accessibility-identifier automation contract) from [references/ios/](references/ios/).
 - Apply aldefy's [`compose-expert`](https://github.com/aldefy/compose-skill) rules (vendored under [references/vendored/compose-expert/](references/vendored/compose-expert/), MIT licensed) for Compose quality, then add project-tuned Compose rules from [references/compose/](references/compose/).
 - For Appium/WebdriverIO E2E code, run the mobile test-automation pipeline from [references/appium/](references/appium/) (locators, waits, gestures, Page Object discipline, test structure, flakiness, TypeScript/async, config & secrets) **instead of** the SwiftUI/Compose pipelines.
 - Tag findings `P0` / `P1` / `P2` / `Nit`.
@@ -60,9 +60,10 @@ pr-review-skills/
     │   ├── accessibility.md
     │   └── api-guidelines.md
     └── ios/                     ← project-tuned iOS rules on top of swiftui-pro
-        ├── concurrency.md       ← Swift Concurrency footguns
-        ├── logging-hygiene.md   ← log-in-body / log-in-onChange / empty-catch
-        └── test-hygiene.md      ← sleep / .shared singletons / framework mixing
+        ├── concurrency.md               ← Swift Concurrency footguns
+        ├── logging-hygiene.md           ← log-in-body / log-in-onChange / empty-catch
+        ├── test-hygiene.md              ← sleep / .shared singletons / framework mixing
+        └── accessibility-identifiers.md ← MOB-1131 automation ids: missing / non-unique row / Android-testTag divergence (complements swiftui-pro VoiceOver + .swiftlint.yml gate)
 ```
 
 The two upstream SwiftUI / Compose rule sets are vendored verbatim under [references/vendored/](references/vendored/) per their MIT licenses. This means teammates need only `git clone` this repo — no separate plugin installs. Vendored versions are pinned and re-synced quarterly; see [references/vendored/UPSTREAM.md](references/vendored/UPSTREAM.md) for the routine.
