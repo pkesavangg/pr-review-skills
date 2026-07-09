@@ -20,6 +20,7 @@ import com.dmdbrands.gurus.weight.domain.model.common.ProductSelection
 import com.dmdbrands.gurus.weight.domain.model.storage.entry.BabyEntry
 import com.dmdbrands.gurus.weight.domain.model.storage.entry.BpmEntry
 import com.dmdbrands.gurus.weight.domain.services.IEntryService
+import com.dmdbrands.gurus.weight.features.common.helper.AccountHelper.isMetricUnit
 import com.dmdbrands.gurus.weight.features.common.helper.form.MultiFormGroup
 import com.dmdbrands.gurus.weight.domain.enums.ProductType
 import com.dmdbrands.gurus.weight.features.common.model.DialogModel
@@ -322,13 +323,17 @@ constructor(
    * Baby manual-entry confirmation: show the rich "saved to your log" card (with VIEW) like the
    * weight/BP flow when a weight was entered; fall back to the plain toast for a length-only entry.
    */
-  private fun showBabySavedToast(babyEntry: BabyEntry?) {
+  private fun showBabySavedToast(babyEntry: BabyEntry?, babyName: String?) {
     val weightDecigrams = babyEntry?.babyWeightDecigrams
     if (babyEntry != null && weightDecigrams != null) {
+      // Format with the account's real unit preference so the card matches History/dashboard
+      // (kg for metric users) instead of always showing lb/oz. (MOB-598)
+      val isMetric = accountService.activeAccount.value?.isMetricUnit() ?: false
       showSavedToLogToast(
-        reading = ConversionTools.convertBabyWeightToDisplay(weightDecigrams, source = null, isMetric = false),
+        reading = ConversionTools.convertBabyWeightToDisplay(weightDecigrams, source = null, isMetric = isMetric),
         type = ProductType.BABY,
         entryTimestamp = babyEntry.entry.entryTimestamp,
+        babyName = babyName,
       )
     } else {
       dialogQueueService.showToast(
@@ -340,7 +345,7 @@ constructor(
     }
   }
 
-  private fun showSavedToLogToast(reading: String, type: ProductType, entryTimestamp: String) {
+  private fun showSavedToLogToast(reading: String, type: ProductType, entryTimestamp: String, babyName: String? = null) {
     // VIEW opens this entry's History detail, whose query matches the bucketed key the History list
     // passes (a "Mon YYYY" month label for weight/BP, a "yyyy-MM-dd" day key for baby) — not the raw
     // entryTimestamp, which lands on an empty detail. See EntryHelper.historyDetailKey.
@@ -352,6 +357,9 @@ constructor(
           type = type,
           timestamp = "Just now",
           savedToLog = true,
+          // Baby manual entry names the selected baby in the card title ("New Reading Received for
+          // NAME"), mirroring the device-sync single-baby card. Weight/BP stay unnamed.
+          assignedTo = babyName,
           onView = {
             appScope.launch {
               navigationService.navigateTo(AppRoute.History.MonthDetails(detailKey, type))
@@ -520,7 +528,7 @@ constructor(
         val babyEntry = buildBabyEntry(babyForm.forms.baby.controls, accountId, babyId)
         babyEntry?.let { entryService.addEntry(it) }
         analyticsService.logEvent(IAnalyticsService.Events.MANUAL_ENTRY_CREATED)
-        showBabySavedToast(babyEntry)
+        showBabySavedToast(babyEntry, babyProfile.name)
         handleIntent(
           EntryIntent.UpdateActiveForm(
             ActiveEntryForm.Baby(form = MultiFormGroup.create(forms = BabyEntryForm.create())),

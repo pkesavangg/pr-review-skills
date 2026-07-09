@@ -180,6 +180,46 @@ struct UnifiedEntriesReadTests {
         #expect(response.hasMore == nil)
     }
 
+    @Test("decodes a numeric entryId and stringifies it (read side of GET /v3/entries/) — MOB-1277")
+    func decodeNumericEntryId() throws {
+        // Regression: the read side of GET /v3/entries/ returns entryId as a JSON *number*.
+        // The synthesized decoder used to throw typeMismatch on it, so the whole response
+        // failed to decode and History silently emptied. The custom decoder must stringify it.
+        let json = Data("""
+        {
+          "entries": [
+            { "category": "weight", "entryId": 12345, "operationType": "create",
+              "entryTimestamp": "2026-05-06T10:00:00.000Z", "serverTimestamp": "2026-05-06T10:00:05.000Z",
+              "source": "btWifiR4", "weight": 1723, "bodyFat": 225, "unit": "lb" }
+          ],
+          "hasMore": false
+        }
+        """.utf8)
+
+        let response = try JSONDecoder().decode(BathScaleOperationListResponse.self, from: json)
+
+        #expect(response.entries.count == 1)
+        #expect(response.entries.first?.entryId == "12345")
+        #expect(response.entries.first?.weight == 1723)
+    }
+
+    @Test("decodes a string entryId unchanged (write side of /v3/entries/)")
+    func decodeStringEntryId() throws {
+        let json = Data("""
+        {
+          "entries": [
+            { "category": "weight", "entryId": "12345", "operationType": "create",
+              "entryTimestamp": "2026-05-06T10:00:00.000Z", "weight": 1723 }
+          ],
+          "hasMore": false
+        }
+        """.utf8)
+
+        let response = try JSONDecoder().decode(BathScaleOperationListResponse.self, from: json)
+
+        #expect(response.entries.first?.entryId == "12345")
+    }
+
     @Test("operations accessor: maps weight + bp + baby categories (baby wired in MOB-386)")
     func operationsMapsAllCategories() {
         let response = BathScaleOperationListResponse(entries: [
@@ -374,11 +414,15 @@ struct UnifiedEntriesReadTests {
         DependencyContainer.shared.register(goalAlert as GoalAlertServiceProtocol)
         DependencyContainer.shared.register(integration as IntegrationServiceProtocol)
 
+        let readLocalRepo = MockEntryRepository()
+        let readWorker = MockEntryWorker()
+        readWorker.backingRepo = readLocalRepo
         let sut = EntryService(
             accountService: account,
-            localRepo: MockEntryRepository(),
+            localRepo: readLocalRepo,
             localKVRepo: MockEntrySyncStore(),
-            remoteRepo: remote
+            remoteRepo: remote,
+            worker: readWorker
         )
         sut.logger = logger
         sut.goalAlertService = goalAlert

@@ -69,7 +69,9 @@ struct BpmSnapshotCard: View {
                     .padding(.horizontal, .spacingSM)
                     .padding(.top, .spacingSM)
 
-                Text(cachedDateRangeLabel)
+                // No readings yet → show "no entries" in place of the week range (the "mmhg"/"pulse"
+                // unit labels stay), matching the weight/baby snapshot cards and the empty-state mock.
+                Text(latestReading == nil ? BpmDashboardStrings.noEntries : cachedDateRangeLabel)
                     .fontOpenSans(.subHeading2)
                     .foregroundColor(theme.textSubheading)
                     .padding(.horizontal, .spacingSM)

@@ -10,8 +10,8 @@ import SwiftUI
 // MARK: - UnitSelectionToggle
 /// A compact pill-style two-option unit selector used in the signup flow.
 ///
-/// The leading option represents the **imperial** unit (e.g. `Ft / In`, `lbs`) and the
-/// trailing option the **metric** unit (e.g. `CM`, `kg`). Both options are driven by a
+/// The leading option represents the **imperial** unit (e.g. `ft/in`, `lbs`) and the
+/// trailing option the **metric** unit (e.g. `cm`, `kg`). Both options are driven by a
 /// single `isMetric` flag, so the Height and Goal screens — which bind the same
 /// `useMetric` form control — stay in sync: picking a metric unit on one screen flips the
 /// other to its metric counterpart automatically (Imperial ↔ Metric stay paired).
@@ -64,23 +64,14 @@ struct UnitSelectionToggle: View {
     }
 }
 
-// MARK: - View helpers
-
-private extension View {
-    @ViewBuilder
-    func accessibilityIdentifierIfPresent(_ id: String?) -> some View {
-        if let id { accessibilityIdentifier(id) } else { self }
-    }
-}
-
 // MARK: - Preview
 #Preview {
     struct PreviewWrapper: View {
         @State private var isMetric = false
         var body: some View {
             VStack(spacing: 24) {
-                UnitSelectionToggle(imperialTitle: "Ft / In", metricTitle: "CM", isMetric: $isMetric)
-                UnitSelectionToggle(imperialTitle: "lbs", metricTitle: "kg", isMetric: $isMetric)
+                UnitSelectionToggle(imperialTitle: "ft/in", metricTitle: "cm", isMetric: $isMetric)
+                UnitSelectionToggle(imperialTitle: "lb", metricTitle: "kg", isMetric: $isMetric)
             }
             .padding()
             .background(Color.gray.opacity(0.2))

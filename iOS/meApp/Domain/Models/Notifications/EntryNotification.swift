@@ -77,6 +77,14 @@ struct EntryNotification: Sendable, Identifiable, Equatable {
     /// Must be called on MainActor to safely access Entry relationships.
     @MainActor
     init(from entry: Entry, batchCount: Int = 1) {
+        self.init(extracting: entry, batchCount: batchCount)
+    }
+
+    /// Creates a notification by extracting all data from an Entry.
+    /// Isolation contract: call from whichever executor owns the entry's
+    /// ModelContext — the main actor for UI-context models, or inside
+    /// `SwiftDataWorker` for actor-owned models (MOB-1433 merge path).
+    init(extracting entry: Entry, batchCount: Int = 1) {
         self.id = entry.id
         self.persistentId = entry.persistentModelID
         self.accountId = entry.accountId

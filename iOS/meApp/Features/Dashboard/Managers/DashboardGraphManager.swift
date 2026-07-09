@@ -31,7 +31,12 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
     private var isChangingPeriod = false
     private var lastYAxisScale: YAxisScale?
 
-    init(initialState: GraphState = GraphState()) { self.state = initialState }
+    init(initialState: GraphState = GraphState()) {
+        self.state = initialState
+        // Cache DI-backed services during construction so later container mutations
+        // continue using the intended dependencies for this manager instance.
+        _ = logger
+    }
 
     // MARK: - Scroll Handling
 
@@ -250,7 +255,8 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
         metric: BabyMetric,
         convertWeight: @escaping (Double) -> Double,
         convertDecigramsToDisplay: @escaping (Int) -> Double,
-        yAxisDomain: ClosedRange<Double>
+        yAxisDomain: ClosedRange<Double>,
+        percentileDateRange: ClosedRange<Date>
     ) -> [GraphSeries] {
         switch metric {
         case .weight:
@@ -264,9 +270,11 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
                 yAxisDomain: yAxisDomain
             )
 
+            // Span the percentile reference curves across the visible window — not the sparse
+            // operations' date range — so the WHO/CDC curves fill the chart with a single entry.
             let percentileSeries = BabyDashboardChartSupport.percentileSeries(
                 for: babyProfile,
-                operations: allOperations,
+                dateRange: percentileDateRange,
                 convertDecigramsToDisplay: convertDecigramsToDisplay
             )
 
@@ -278,7 +286,7 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
             )
             let percentileSeries = BabyDashboardChartSupport.heightPercentileSeries(
                 for: babyProfile,
-                operations: allOperations
+                dateRange: percentileDateRange
             )
             return heightSeries + percentileSeries
         }

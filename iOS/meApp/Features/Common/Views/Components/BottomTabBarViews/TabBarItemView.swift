@@ -36,6 +36,9 @@ struct TabBarItemView: View {
                 .fontOpenSans(.body5)
                 .foregroundColor(isSelected ? theme.textHeading : theme.textDisabled)
         }
+        // Expose each tab as a single addressable node (icon + label combined).
+        .accessibilityElement(children: .combine)
+        .accessibilityIdentifier(tab.accessibilityIdentifier)
     }
 }
 

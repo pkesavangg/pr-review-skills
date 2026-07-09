@@ -161,6 +161,9 @@ extension HistoryStoreBPBabyTests {
     @Test("product type switch reloads history after debounce")
     func productTypeSwitchReloads() async {
         let sut = makeSUT(selection: .myWeight)
+        // MOB-1433 §5c: the product-type switch reloads history eagerly only while History
+        // is on screen; this test exercises that on-screen reload path.
+        sut.store.isHistoryScreenActive = true
         sut.entryService.getMonthsAllResult = .success([])
         sut.entryService.fetchBpmEntriesResult = .success([
             EntryTestFixtures.makeBpmDTO(entryTimestamp: "2026-03-10T08:00:00Z")

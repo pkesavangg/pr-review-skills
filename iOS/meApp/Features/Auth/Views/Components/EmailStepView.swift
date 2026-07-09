@@ -30,6 +30,7 @@ struct EmailStepView: View {
                     ),
                     value: $signupStore.signupForm.email.value,
                     focusedField: $focusedField,
+                    accessibilityIdentifier: AccessibilityID.signupEmailField,
                     onCommit: {
                         focusedField = nil
                         if signupStore.isNextEnabled {

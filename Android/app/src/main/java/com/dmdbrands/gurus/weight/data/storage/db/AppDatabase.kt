@@ -270,7 +270,9 @@ abstract class AppDatabase : RoomDatabase() {
     // Phase 2 (MOB-377): per-account product settings (productTypes + measurementUnits).
     // Renumbered to 7→8 from the original 6→7 to resolve a version collision with the
     // MOB-438 note migration above during the dev → phase2-dev merge.
-    private val MIGRATION_7_8 = object : Migration(7, 8) {
+    // `internal` (not `private`) so MigrationTest can drive the full 1→8 chain — matches the
+    // other MIGRATION_* siblings above.
+    internal val MIGRATION_7_8 = object : Migration(7, 8) {
       override fun migrate(db: SupportSQLiteDatabase) {
         db.execSQL(
           """

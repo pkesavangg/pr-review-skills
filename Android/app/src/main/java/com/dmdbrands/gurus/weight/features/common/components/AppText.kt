@@ -85,15 +85,17 @@ object TextTypeDefaults {
           color = if (enabled) colorScheme.textBody else colorScheme.utility,
         )
 
+      // Links are the interactive brand-blue, not the neutral primaryAction. meApp has no dedicated
+      // link token, so use wgPrimary (Action/primary #1565C0 light / #2B8AEB dark). (MOB-1260)
       TextType.Link ->
         TextAppearance(
           style = typography.link1,
-          color = colorScheme.primaryAction,
+          color = colorScheme.wgPrimary,
         )
 
       TextType.Link2 -> TextAppearance(
         style = typography.link2,
-        color = colorScheme.primaryAction,
+        color = colorScheme.wgPrimary,
       )
       TextType.SubHeading ->
         TextAppearance(

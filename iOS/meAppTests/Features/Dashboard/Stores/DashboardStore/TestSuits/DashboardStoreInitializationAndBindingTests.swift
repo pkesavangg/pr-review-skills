@@ -194,13 +194,15 @@ extension DashboardStoreTests {
         // `noActiveAccount` catch path (which defaults dashboardType to .dashboard12). With a non-nil
         // account throughout, the only source of dashboardType is the account's own value, so the
         // $activeAccount subscription is the deterministic writer — no init-vs-subscription race.
-        let (store, accountService, _) = DashboardStoreTestSupport.makeSUT(
+        let sutBundle = DashboardStoreTestSupport.makeSUT(
             lightweight: false,
             initialAccount: DashboardStoreTestSupport.makeActiveAccount(
                 dashboardMetrics: "bmi,bodyFat,muscleMass,water,pulse,boneMass",
                 dashboardType: "dashboard12"
             )
         )
+        let store = sutBundle.store
+        let accountService = sutBundle.accountService
 
         // Let the full init pipeline settle on the seeded baseline (dashboard12).
         await DashboardTestFixtures.waitUntil(timeoutNanoseconds: 5_000_000_000) {

@@ -48,7 +48,7 @@ struct BabyHistoryEntryItem: View {
                 VStack(alignment: .leading, spacing: 2) {
                     Text(entry.weightDisplay)
                         .fontOpenSans(.heading5)
-                        .foregroundStyle(isExpanded ? theme.textInverse : theme.textHeading)
+                        .foregroundStyle(isExpanded ? theme.textInverse : theme.babyScaleColor)
 
                     Text(HistoryListStrings.weight)
                         .fontOpenSans(.body3)
@@ -60,7 +60,7 @@ struct BabyHistoryEntryItem: View {
                 VStack(alignment: .leading, spacing: 2) {
                     Text(entry.lengthDisplay)
                         .fontOpenSans(.heading5)
-                        .foregroundStyle(isExpanded ? theme.textInverse : theme.textHeading)
+                        .foregroundStyle(isExpanded ? theme.textInverse : theme.babyScaleColor)
 
                     Text(HistoryListStrings.length)
                         .fontOpenSans(.body3)
@@ -72,7 +72,7 @@ struct BabyHistoryEntryItem: View {
                 VStack(alignment: .leading, spacing: 2) {
                     Text(BabyWeightPercentileCalculator.percentileDisplayText(entry.percentile))
                         .fontOpenSans(.heading5)
-                        .foregroundStyle(isExpanded ? theme.textInverse : theme.actionPrimary)
+                        .foregroundStyle(isExpanded ? theme.textInverse : theme.babyScaleColor)
 
                     Text(HistoryListStrings.percentile)
                         .fontOpenSans(.body3)
@@ -154,11 +154,13 @@ struct BabyHistoryEntryItem: View {
                     Spacer()
 
                     Button(action: onEditNotes) {
-                        Image(systemName: "square.and.pencil")
+                        // "+" to add when no note exists, boxed pencil to edit once it does.
+                        Image(systemName: hasNotes ? "square.and.pencil" : "plus")
                             .font(.system(size: 18))
                             .foregroundColor(theme.actionPrimary)
                     }
                     .buttonStyle(.plain)
+                    .accessibilityLabel(hasNotes ? HistoryListStrings.accEditNoteLabel : HistoryListStrings.accAddNoteLabel)
                 }
                 .padding(.spacingSM)
                 .frame(maxWidth: .infinity, alignment: .leading)

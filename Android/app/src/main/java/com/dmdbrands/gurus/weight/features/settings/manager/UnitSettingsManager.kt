@@ -86,31 +86,41 @@ constructor(
     val adultUnit = state.account?.weightUnit ?: WeightUnit.LB
     val babyUnit = state.babyWeightUnit
 
+    // Per MOB-1175 both sections always render; each is editable only when the account
+    // owns the relevant product, otherwise it's locked to the system default with an
+    // unlock message. My Weight ⟺ weight scale, My Kids ⟺ baby scale or baby profile.
+    val myWeightEnabled = state.isMyWeightEnabled
+    val myKidsEnabled = state.isMyKidsEnabled
+
     // Legacy accounts can still carry weightUnit = "lb_oz" (a baby scale used to
     // overwrite the adult unit). lbs & oz is no longer a My Weight option, so
-    // fall back to LB to keep a radio selected rather than rendering blank.
-    val adultSelection = if (adultUnit in MY_WEIGHT_OPTIONS) adultUnit.value else WeightUnit.LB.value
-
-    val sections = buildList {
-      add(
-        RadioGroupSection(
-          key = SECTION_MY_WEIGHT,
-          label = RadioGroupModalStrings.UnitType.MyWeightSection,
-          options = MY_WEIGHT_OPTIONS.map { it.toRadioOption(it.unit) },
-          selectedItem = adultSelection,
-        ),
-      )
-      if (state.isBabyProduct) {
-        add(
-          RadioGroupSection(
-            key = SECTION_MY_KIDS,
-            label = RadioGroupModalStrings.UnitType.MyKidsSection,
-            options = MY_KIDS_OPTIONS.map { it.toRadioOption(it.babyUnit) },
-            selectedItem = babyUnit.value,
-          ),
-        )
-      }
+    // fall back to LB to keep a radio selected rather than rendering blank. A locked
+    // section is likewise pinned to the default (DISPLAY_DEFAULT = LB, baby = LB_OZ).
+    val adultSelection = when {
+      !myWeightEnabled -> WeightUnit.DISPLAY_DEFAULT.value
+      adultUnit in MY_WEIGHT_OPTIONS -> adultUnit.value
+      else -> WeightUnit.LB.value
     }
+    val babySelection = if (myKidsEnabled) babyUnit.value else WeightUnit.LB_OZ.value
+
+    val sections = listOf(
+      RadioGroupSection(
+        key = SECTION_MY_WEIGHT,
+        label = RadioGroupModalStrings.UnitType.MyWeightSection,
+        options = MY_WEIGHT_OPTIONS.map { it.toRadioOption(it.unit) },
+        selectedItem = adultSelection,
+        enabled = myWeightEnabled,
+        lockedMessage = RadioGroupModalStrings.UnitType.MyWeightLockedMessage.takeUnless { myWeightEnabled },
+      ),
+      RadioGroupSection(
+        key = SECTION_MY_KIDS,
+        label = RadioGroupModalStrings.UnitType.MyKidsSection,
+        options = MY_KIDS_OPTIONS.map { it.toRadioOption(it.babyUnit) },
+        selectedItem = babySelection,
+        enabled = myKidsEnabled,
+        lockedMessage = RadioGroupModalStrings.UnitType.MyKidsLockedMessage.takeUnless { myKidsEnabled },
+      ),
+    )
 
     showSectionedRadioGroupModal(
       dialogService = dialogQueueService,
@@ -142,10 +152,12 @@ constructor(
       return
     }
 
+    // Locked sections are pinned to the default and must never persist — saving one
+    // would overwrite the stored unit with the default. Only enabled sections commit. (MOB-1175)
     val newAdultUnit = adultSelection?.let { WeightUnit.from(it) }
-      ?.takeIf { it != currentAccount.weightUnit && it in MY_WEIGHT_OPTIONS }
+      ?.takeIf { state.isMyWeightEnabled && it != currentAccount.weightUnit && it in MY_WEIGHT_OPTIONS }
     val newBabyUnit = babySelection?.let { WeightUnit.from(it) }
-      ?.takeIf { it != state.babyWeightUnit && it in MY_KIDS_OPTIONS }
+      ?.takeIf { state.isMyKidsEnabled && it != state.babyWeightUnit && it in MY_KIDS_OPTIONS }
 
     if (newAdultUnit == null && newBabyUnit == null) {
       AppLog.d(TAG, "No unit type changes to persist")
@@ -220,7 +232,7 @@ constructor(
   }
 
   // [label] is supplied per section: My Weight uses [WeightUnit.unit] (adult
-  // height "/ ft"), My Kids uses [WeightUnit.babyUnit] (baby height "/ in").
+  // height "& ft"), My Kids uses [WeightUnit.babyUnit] (baby length "& in").
   private fun WeightUnit.toRadioOption(label: String): RadioButtonOption<String> =
     RadioButtonOption(id = this.value, label = label)
 }

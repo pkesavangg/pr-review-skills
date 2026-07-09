@@ -75,6 +75,43 @@ struct EntryData: Sendable {
     }
 }
 
+extension EntryData {
+    /// Builds a snapshot from a SwiftData `Entry`. Must be called in the model's
+    /// isolation domain (the worker's `@ModelActor`, or the main actor) since it
+    /// faults the to-one `scaleEntry` / `scaleEntryMetric` relationships. Defined
+    /// as an extension init so the memberwise initializer is preserved.
+    init(from entry: Entry) {
+        self.init(
+            id: entry.persistentModelID,
+            entryId: entry.id,
+            accountId: entry.accountId,
+            entryTimestamp: entry.entryTimestamp,
+            serverTimestamp: entry.serverTimestamp,
+            operationType: entry.operationType,
+            entryType: entry.entryType ?? EntryType.scale.rawValue,
+            isSynced: entry.isSynced,
+            // BathScaleEntry relationship - safe to access in the model's isolation domain
+            weight: entry.scaleEntry?.weight,
+            bodyFat: entry.scaleEntry?.bodyFat,
+            muscleMass: entry.scaleEntry?.muscleMass,
+            water: entry.scaleEntry?.water,
+            bmi: entry.scaleEntry?.bmi,
+            source: entry.scaleEntry?.source,
+            // BathScaleMetric relationship - safe to access in the model's isolation domain
+            bmr: entry.scaleEntryMetric?.bmr,
+            metabolicAge: entry.scaleEntryMetric?.metabolicAge,
+            proteinPercent: entry.scaleEntryMetric?.proteinPercent,
+            pulse: entry.scaleEntryMetric?.pulse,
+            skeletalMusclePercent: entry.scaleEntryMetric?.skeletalMusclePercent,
+            subcutaneousFatPercent: entry.scaleEntryMetric?.subcutaneousFatPercent,
+            visceralFatLevel: entry.scaleEntryMetric?.visceralFatLevel,
+            boneMass: entry.scaleEntryMetric?.boneMass,
+            impedance: entry.scaleEntryMetric?.impedance,
+            unit: entry.scaleEntryMetric?.unit
+        )
+    }
+}
+
 /// Result of fetching progress data - contains all data needed for progress calculations.
 struct ProgressFetchResult: Sendable {
     let latestEntry: EntryData?
@@ -190,15 +227,37 @@ actor SwiftDataWorker {
     ///   - operationType: The operation type filter (e.g., "create", "delete")
     /// - Returns: Array of BathScaleOperationDTO
     func fetchEntriesAsDTO(accountId: String, operationType: String) async throws -> [BathScaleOperationDTO] {
-        let descriptor = FetchDescriptor<Entry>(
+        var descriptor = FetchDescriptor<Entry>(
             predicate: #Predicate<Entry> { entry in
                 entry.accountId == accountId && entry.operationType == operationType
             },
             sortBy: [SortDescriptor(\Entry.entryTimestamp, order: .reverse)]
         )
+        // Batch-fault relationships so a 10k read isn't ~20k separate store hits
+        // (MOB-1433 §5c) — shrinks the store lock that stalls main-context work.
+        descriptor.relationshipKeyPathsForPrefetching = [\Entry.scaleEntry, \Entry.scaleEntryMetric]
 
         let entries = try modelContext.fetch(descriptor)
         return entries.map { extractEntryData($0).toDTO() }
+    }
+
+    /// Fetches all entries for the account as lightweight `EntryData` value types,
+    /// newest first, extracted off the main actor. Backs History's month grouping
+    /// (`getMonthsAll`) so the full-table read + row materialization no longer runs
+    /// on the main actor — that main-thread read froze History on open for 5k-10k
+    /// entry accounts, blocking even the loading spinner (MOB-1433 read-path follow-up).
+    func fetchAllEntryData(accountId: String, operationType: String) async throws -> [EntryData] {
+        var descriptor = FetchDescriptor<Entry>(
+            predicate: #Predicate<Entry> { entry in
+                entry.accountId == accountId && entry.operationType == operationType
+            },
+            sortBy: [SortDescriptor(\Entry.entryTimestamp, order: .reverse)]
+        )
+        // Batch-fault the to-one relationships EntryData reads. Without this, 10k rows
+        // trigger ~20k individual relationship faults, each a store hit that lengthens
+        // the store lock and starves every main-context read/save (MOB-1433 §5c).
+        descriptor.relationshipKeyPathsForPrefetching = [\Entry.scaleEntry, \Entry.scaleEntryMetric]
+        return try modelContext.fetch(descriptor).map { EntryData(from: $0) }
     }
 
     /// Fetches only entry identifiers for later MainActor refetch.
@@ -267,34 +326,7 @@ actor SwiftDataWorker {
 
     /// Extracts all data from Entry including relationships - safe within ModelActor
     private func extractEntryData(_ entry: Entry) -> EntryData {
-        EntryData(
-            id: entry.persistentModelID,
-            entryId: entry.id,
-            accountId: entry.accountId,
-            entryTimestamp: entry.entryTimestamp,
-            serverTimestamp: entry.serverTimestamp,
-            operationType: entry.operationType,
-            entryType: entry.entryType ?? EntryType.scale.rawValue,
-            isSynced: entry.isSynced,
-            // BathScaleEntry relationship - safe to access here
-            weight: entry.scaleEntry?.weight,
-            bodyFat: entry.scaleEntry?.bodyFat,
-            muscleMass: entry.scaleEntry?.muscleMass,
-            water: entry.scaleEntry?.water,
-            bmi: entry.scaleEntry?.bmi,
-            source: entry.scaleEntry?.source,
-            // BathScaleMetric relationship - safe to access here
-            bmr: entry.scaleEntryMetric?.bmr,
-            metabolicAge: entry.scaleEntryMetric?.metabolicAge,
-            proteinPercent: entry.scaleEntryMetric?.proteinPercent,
-            pulse: entry.scaleEntryMetric?.pulse,
-            skeletalMusclePercent: entry.scaleEntryMetric?.skeletalMusclePercent,
-            subcutaneousFatPercent: entry.scaleEntryMetric?.subcutaneousFatPercent,
-            visceralFatLevel: entry.scaleEntryMetric?.visceralFatLevel,
-            boneMass: entry.scaleEntryMetric?.boneMass,
-            impedance: entry.scaleEntryMetric?.impedance,
-            unit: entry.scaleEntryMetric?.unit
-        )
+        EntryData(from: entry)
     }
 
     /// Extracts all data from Device including R4ScalePreference - safe within ModelActor

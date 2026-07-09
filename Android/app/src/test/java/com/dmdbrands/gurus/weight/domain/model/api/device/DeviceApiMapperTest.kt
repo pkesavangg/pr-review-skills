@@ -23,6 +23,79 @@ class DeviceApiMapperTest {
         every { this@mockk.identifier } returns identifier
     }
 
+    private fun apiModel(
+        id: String = "srv-1",
+        type: String? = "bluetooth",
+        mac: String? = null,
+        scaleToken: String? = null,
+        peripheralIdentifier: String? = null,
+        name: String? = "Scale",
+        sku: String? = "0220",
+    ) = DeviceApiModel(
+        id = id,
+        nickname = null,
+        type = type,
+        createdAt = null,
+        userNumber = null,
+        mac = mac,
+        broadcastId = null,
+        password = null,
+        sku = sku,
+        name = name,
+        scaleToken = scaleToken,
+        peripheralIdentifier = peripheralIdentifier,
+        preference = null,
+        latestVersion = null,
+        productType = null,
+    )
+
+    // ── toDomainModel — local-value preservation when the server omits fields ─
+
+    @Test
+    fun `toDomainModel preserves local mac, peripheralId, deviceType and token when overrides are supplied`() {
+        // Server response omits mac/scaleToken/peripheralIdentifier and reports the connection type.
+        val server = apiModel(type = "bluetooth", mac = null, scaleToken = null, peripheralIdentifier = null)
+
+        val d = server.toDomainModel(
+            macAddressOverride = "AA:BB:CC",
+            peripheralIdentifierOverride = "pid-1",
+            deviceTypeOverride = "babyScale",
+            scaleTokenOverride = "tok-9",
+        )
+
+        assertThat(d.device?.macAddress).isEqualTo("AA:BB:CC")
+        assertThat(d.device?.identifier).isEqualTo("pid-1")
+        assertThat(d.deviceType).isEqualTo("babyScale") // NOT demoted to the connection type "bluetooth"
+        assertThat(d.token).isEqualTo("tok-9")
+    }
+
+    @Test
+    fun `toDomainModel uses server values when no overrides are given`() {
+        val server = apiModel(type = "weight_scale", mac = "SRV:MAC", scaleToken = "srv-tok", peripheralIdentifier = "srv-pid")
+
+        val d = server.toDomainModel()
+
+        assertThat(d.device?.macAddress).isEqualTo("SRV:MAC")
+        assertThat(d.device?.identifier).isEqualTo("srv-pid")
+        assertThat(d.deviceType).isEqualTo("weight_scale")
+        assertThat(d.token).isEqualTo("srv-tok")
+    }
+
+    @Test
+    fun `toDomainModel ignores blank overrides and falls back to server values`() {
+        val server = apiModel(type = "bluetooth", mac = "SRV:MAC", scaleToken = "srv-tok", peripheralIdentifier = "srv-pid")
+
+        val d = server.toDomainModel(
+            macAddressOverride = "",
+            peripheralIdentifierOverride = "",
+            scaleTokenOverride = "",
+        )
+
+        assertThat(d.device?.macAddress).isEqualTo("SRV:MAC")
+        assertThat(d.device?.identifier).isEqualTo("srv-pid")
+        assertThat(d.token).isEqualTo("srv-tok")
+    }
+
     // ── toPairedDeviceRequest ─────────────────────────────────────────────────
 
     @Test

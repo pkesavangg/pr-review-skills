@@ -3,7 +3,6 @@ package com.dmdbrands.gurus.weight.features.common.components.chart
 import android.text.Layout
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontFamily
@@ -37,7 +36,9 @@ fun rememberGoalMarker(
   }
   val openSansFamily = FontFamily(Font(R.font.open_sans_semi_bold))
 
-  val fill = Fill(Color(0xFF458239))
+  // Goal marker pill uses the design-system goal token (was a hardcoded green that didn't
+  // adapt to dark). (MOB-1263)
+  val fill = Fill(MeTheme.colorScheme.goal)
   val labelComponent =
     rememberTextComponent(
       style = TextStyle(

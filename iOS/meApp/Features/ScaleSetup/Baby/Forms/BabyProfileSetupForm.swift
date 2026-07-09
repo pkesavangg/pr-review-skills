@@ -100,8 +100,8 @@ class BabyProfileSetupForm: ObservableForm {
 
     // MARK: - Error Messages
 
-    /// Set externally to surface a duplicate-name validation error.
-    /// Cleared automatically when the name field value changes.
+    /// Set externally (by the signup store) to surface a duplicate-name validation error.
+    /// Re-evaluated on every name change — set when the name matches another baby, cleared otherwise.
     var duplicateNameError: String?
 
     func getNameError() -> String? {

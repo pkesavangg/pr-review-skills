@@ -19,7 +19,7 @@ extension BabyHistoryEntry {
 
     var weightText: String {
         guard weightLbs > 0 || weightOz > 0 else { return "--" }
-        return "\(weightLbs) \(HistoryListStrings.lbs) \(String(format: "%.1f", weightOz)) \(HistoryListStrings.oz)"
+        return "\(weightLbs) \(HistoryListStrings.lb) \(String(format: "%.1f", weightOz)) \(HistoryListStrings.oz)"
     }
 
     var lengthText: String {

@@ -620,7 +620,7 @@ struct BaseSectionViewModelTests {
 
     @Test("shouldShowSolidLine for week returns true on first weekday")
     func shouldShowSolidLineWeekFirstDay() {
-        let vm = TestSectionViewModel(period: .week)
+        let vm = BaseSectionVMTestsSectionViewModel(period: .week)
         let calendar = Calendar.current
         // Find the next date whose weekday matches firstWeekday
         let today = Date()
@@ -637,7 +637,7 @@ struct BaseSectionViewModelTests {
 
     @Test("shouldShowSolidLine for month returns true on 1st of month")
     func shouldShowSolidLineMonthFirst() {
-        let vm = TestSectionViewModel(period: .month)
+        let vm = BaseSectionVMTestsSectionViewModel(period: .month)
         let calendar = Calendar.current
         var comps = calendar.dateComponents([.year, .month], from: Date())
         comps.day = 1
@@ -647,7 +647,7 @@ struct BaseSectionViewModelTests {
 
     @Test("shouldShowSolidLine for month returns false on 15th")
     func shouldShowSolidLineMonthMiddle() {
-        let vm = TestSectionViewModel(period: .month)
+        let vm = BaseSectionVMTestsSectionViewModel(period: .month)
         let calendar = Calendar.current
         var comps = calendar.dateComponents([.year, .month], from: Date())
         comps.day = 15
@@ -657,7 +657,7 @@ struct BaseSectionViewModelTests {
 
     @Test("shouldShowSolidLine for year returns true on January 1")
     func shouldShowSolidLineYearJanFirst() {
-        let vm = TestSectionViewModel(period: .year)
+        let vm = BaseSectionVMTestsSectionViewModel(period: .year)
         let calendar = Calendar.current
         var comps = DateComponents()
         comps.year = 2026
@@ -669,7 +669,7 @@ struct BaseSectionViewModelTests {
 
     @Test("shouldShowSolidLine for year returns false for non-Jan-1 dates")
     func shouldShowSolidLineYearMidYear() {
-        let vm = TestSectionViewModel(period: .year)
+        let vm = BaseSectionVMTestsSectionViewModel(period: .year)
         let calendar = Calendar.current
         var comps = DateComponents()
         comps.year = 2026
@@ -681,7 +681,7 @@ struct BaseSectionViewModelTests {
 
     @Test("shouldShowSolidLine for total always returns false")
     func shouldShowSolidLineTotalAlwaysFalse() {
-        let vm = TestSectionViewModel(period: .total)
+        let vm = BaseSectionVMTestsSectionViewModel(period: .total)
         let calendar = Calendar.current
         var comps = DateComponents()
         comps.year = 2026
@@ -695,7 +695,7 @@ struct BaseSectionViewModelTests {
 
     @Test("invalidateCache clears cached series data")
     func invalidateCacheClearsData() {
-        let (sut, _, _) = makeConfiguredSUT()
+        let (sut, _, _) = baseSectionVMTestsMakeConfiguredSUT()
         sut.updateCachedSeriesData()
         sut.invalidateCache()
         // After invalidation, getCachedGroupedSeries returns fresh computation
@@ -706,7 +706,7 @@ struct BaseSectionViewModelTests {
 
     @Test("getCachedSeriesData returns chartSeriesData when cache is empty")
     func getCachedSeriesDataFallback() {
-        let (sut, _, _) = makeConfiguredSUT()
+        let (sut, _, _) = baseSectionVMTestsMakeConfiguredSUT()
         sut.invalidateCache()
         let data = sut.getCachedSeriesData()
         #expect(data == sut.chartSeriesData)
@@ -714,7 +714,7 @@ struct BaseSectionViewModelTests {
 
     @Test("updateCachedSeriesData populates cache")
     func updateCachedSeriesDataPopulates() {
-        let (sut, _, _) = makeConfiguredSUT()
+        let (sut, _, _) = baseSectionVMTestsMakeConfiguredSUT()
         sut.updateCachedSeriesData()
         // After update, getCachedGroupedSeries should return data without re-computing
         _ = sut.getCachedGroupedSeries()
@@ -725,7 +725,7 @@ struct BaseSectionViewModelTests {
 
     @Test("invalidateXAxisCache clears cached X-axis values")
     func invalidateXAxisCacheClearsValues() {
-        let (sut, _, _) = makeConfiguredSUT()
+        let (sut, _, _) = baseSectionVMTestsMakeConfiguredSUT()
         _ = sut.xAxisValues // populate cache
         sut.invalidateXAxisCache()
         // Next access should regenerate
@@ -737,7 +737,7 @@ struct BaseSectionViewModelTests {
 
     @Test("refreshData invalidates cache and updates Y-axis config")
     func refreshDataInvalidatesAndUpdates() {
-        let (sut, _, _) = makeConfiguredSUT()
+        let (sut, _, _) = baseSectionVMTestsMakeConfiguredSUT()
         sut.updateCachedSeriesData()
         sut.refreshData()
         // Cache should have been invalidated (empty hash)
@@ -747,7 +747,7 @@ struct BaseSectionViewModelTests {
     @Test("configure caches whether the chart has data")
     func configureCachesChartPresence() {
         let summaries = DashboardTestFixtures.makeSortedDailySummaries()
-        let (sut, _, _) = makeConfiguredSUT(summaries: summaries)
+        let (sut, _, _) = baseSectionVMTestsMakeConfiguredSUT(summaries: summaries)
 
         #expect(sut.hasChartOperations == true)
 
@@ -758,7 +758,7 @@ struct BaseSectionViewModelTests {
 
     @Test("refreshData maintains selection if still valid")
     func refreshDataMaintainsSelection() {
-        let (sut, _, _) = makeConfiguredSUT()
+        let (sut, _, _) = baseSectionVMTestsMakeConfiguredSUT()
         let date = Date()
         sut.selectedDate = date
         sut.showCrosshair = true
@@ -773,7 +773,7 @@ struct BaseSectionViewModelTests {
     func handleSettingsChangePreservesSelection() {
         // MA-3891: unit / weightless toggles change displayed values but not which date is
         // selected, so the crosshair selection must be preserved across a settings change.
-        let (sut, _, _) = makeConfiguredSUT()
+        let (sut, _, _) = baseSectionVMTestsMakeConfiguredSUT()
         let selected = Date()
         sut.selectedDate = selected
         sut.showCrosshair = true
@@ -788,7 +788,7 @@ struct BaseSectionViewModelTests {
 
     @Test("forceScrollPositionUpdate temporarily changes and restores scroll position")
     func forceScrollPositionUpdateSetsValue() async {
-        let (sut, _, _) = makeConfiguredSUT()
+        let (sut, _, _) = baseSectionVMTestsMakeConfiguredSUT()
         let target = Date().addingTimeInterval(5000)
         sut.forceScrollPositionUpdate(to: target)
         // The scroll position should eventually settle on target
@@ -802,7 +802,7 @@ struct BaseSectionViewModelTests {
     func visibleDomainLengthFallback() {
         // The week visible domain carries a small padding factor (7.15 days) so the trailing
         // phantom tick is reachable; assert against the production constant rather than a raw 7 days.
-        let (sut, _) = makeSUT()
+        let (sut, _) = baseSectionVMTestsMakeSUT()
         #expect(sut.visibleDomainLength == DashboardConstants.TimeInterval.week)
     }
 
@@ -810,7 +810,7 @@ struct BaseSectionViewModelTests {
 
     @Test("pointSize returns 64 by default")
     func pointSizeDefault() {
-        let (sut, _) = makeSUT()
+        let (sut, _) = baseSectionVMTestsMakeSUT()
         #expect(sut.pointSize == 64)
     }
 
@@ -818,13 +818,13 @@ struct BaseSectionViewModelTests {
 
     @Test("fallbackXAxisDomain returns nil for total period")
     func fallbackXAxisDomainNilForTotal() {
-        let vm = TestSectionViewModel(period: .total)
+        let vm = BaseSectionVMTestsSectionViewModel(period: .total)
         #expect(vm.fallbackXAxisDomain() == nil)
     }
 
     @Test("fallbackXAxisDomain returns a valid range for week period")
     func fallbackXAxisDomainWeek() {
-        let vm = TestSectionViewModel(period: .week)
+        let vm = BaseSectionVMTestsSectionViewModel(period: .week)
         let domain = vm.fallbackXAxisDomain()
         #expect(domain != nil)
         if let range = domain {
@@ -834,7 +834,7 @@ struct BaseSectionViewModelTests {
 
     @Test("fallbackXAxisDomain returns a valid range for month period")
     func fallbackXAxisDomainMonth() {
-        let vm = TestSectionViewModel(period: .month)
+        let vm = BaseSectionVMTestsSectionViewModel(period: .month)
         let domain = vm.fallbackXAxisDomain()
         #expect(domain != nil)
         if let range = domain {
@@ -844,7 +844,7 @@ struct BaseSectionViewModelTests {
 
     @Test("fallbackXAxisDomain returns a valid range for year period")
     func fallbackXAxisDomainYear() {
-        let vm = TestSectionViewModel(period: .year)
+        let vm = BaseSectionVMTestsSectionViewModel(period: .year)
         let domain = vm.fallbackXAxisDomain()
         #expect(domain != nil)
         if let range = domain {
@@ -856,7 +856,7 @@ struct BaseSectionViewModelTests {
 
     @Test("formatXAxisLabel for week with no ops returns lowercased weekday")
     func formatXAxisLabelWeekEmpty() {
-        let vm = TestSectionViewModel(period: .week)
+        let vm = BaseSectionVMTestsSectionViewModel(period: .week)
         let calendar = Calendar.current
         // Use a known Sunday
         var comps = DateComponents()
@@ -871,7 +871,7 @@ struct BaseSectionViewModelTests {
 
     @Test("formatXAxisLabel for year with no ops returns single-letter month initial")
     func formatXAxisLabelYearEmpty() {
-        let vm = TestSectionViewModel(period: .year)
+        let vm = BaseSectionVMTestsSectionViewModel(period: .year)
         let calendar = Calendar.current
         var comps = DateComponents()
         comps.year = 2026
@@ -885,7 +885,7 @@ struct BaseSectionViewModelTests {
 
     @Test("formatXAxisLabel for month with no ops returns day number on Sunday")
     func formatXAxisLabelMonthEmptySunday() {
-        let vm = TestSectionViewModel(period: .month)
+        let vm = BaseSectionVMTestsSectionViewModel(period: .month)
         let calendar = Calendar.current
         var comps = DateComponents()
         comps.year = 2026
@@ -900,7 +900,7 @@ struct BaseSectionViewModelTests {
     func formatXAxisLabelMonthEmptyNonSunday() {
         // Month empty-state ticks are generated weekly (1, 8, 15, 22, 29) and may not fall on a
         // Sunday, so the label is the day-of-month for whatever tick date it is given.
-        let vm = TestSectionViewModel(period: .month)
+        let vm = BaseSectionVMTestsSectionViewModel(period: .month)
         let calendar = Calendar.current
         var comps = DateComponents()
         comps.year = 2026
@@ -915,14 +915,14 @@ struct BaseSectionViewModelTests {
 
     @Test("formatSelectedXAxisLabel returns nil when store is nil")
     func formatSelectedXAxisLabelNilStore() {
-        let (sut, _) = makeSUT()
+        let (sut, _) = baseSectionVMTestsMakeSUT()
         #expect(sut.formatSelectedXAxisLabel() == nil)
     }
 
     @Test("formatSelectedXAxisLabel falls back to store selectedXValue")
     func formatSelectedXAxisLabelUsesSelectedXValue() {
-        let (sut, store, _) = makeConfiguredSUT()
-        let selected = makeDate(day: 5)
+        let (sut, store, _) = baseSectionVMTestsMakeConfiguredSUT()
+        let selected = baseSectionVMTestsMakeDate(day: 5)
         store.state.graph.selectedXValue = selected
 
         let label = sut.formatSelectedXAxisLabel()
@@ -932,8 +932,8 @@ struct BaseSectionViewModelTests {
 
     @Test("formatSelectedXAxisLabel falls back to selectedPoint date")
     func formatSelectedXAxisLabelUsesSelectedPointDate() {
-        let (sut, store, _) = makeConfiguredSUT()
-        let summary = DashboardTestFixtures.makeSummary(period: "2026-03-06", date: makeDate(day: 6), weight: 1830)
+        let (sut, store, _) = baseSectionVMTestsMakeConfiguredSUT()
+        let summary = DashboardTestFixtures.makeSummary(period: "2026-03-06", date: baseSectionVMTestsMakeDate(day: 6), weight: 1830)
         store.state.graph.selectedPoint = summary
 
         let label = sut.formatSelectedXAxisLabel()
@@ -945,7 +945,7 @@ struct BaseSectionViewModelTests {
 
     @Test("handleScrollPositionChange ignores nil position")
     func handleScrollPositionChangeIgnoresNil() {
-        let (sut, _, _) = makeConfiguredSUT()
+        let (sut, _, _) = baseSectionVMTestsMakeConfiguredSUT()
         let original = sut.scrollPosition
         sut.handleScrollPositionChange(nil)
         #expect(sut.scrollPosition == original)
@@ -953,7 +953,7 @@ struct BaseSectionViewModelTests {
 
     @Test("handleScrollPositionChange ignores tiny position changes")
     func handleScrollPositionChangeIgnoresTiny() {
-        let (sut, _, _) = makeConfiguredSUT()
+        let (sut, _, _) = baseSectionVMTestsMakeConfiguredSUT()
         let original = sut.scrollPosition
         // Change by 0.05 seconds — below 0.1 threshold
         sut.handleScrollPositionChange(original.addingTimeInterval(0.05))
@@ -962,7 +962,7 @@ struct BaseSectionViewModelTests {
 
     @Test("getChartPosition returns nil when visible domain length is invalid")
     func chartPositionNilInvalidVisibleDomainLength() {
-        let vm = InvalidDomainSectionViewModel(period: .week, visibleDomainLength: 0)
+        let vm = BaseSectionVMTestsInvalidDomainViewModel(period: .week, visibleDomainLength: 0)
         vm.updateChartFrame(CGRect(x: 0, y: 0, width: 300, height: 200))
 
         #expect(vm.getChartPosition(for: Date(), value: 150) == nil)
@@ -972,7 +972,7 @@ struct BaseSectionViewModelTests {
 
     @Test("getGoalChipPosition returns top placement when goal is above domain")
     func goalChipTopPlacement() {
-        let (sut, store, accountService) = makeConfiguredSUT()
+        let (sut, store, accountService) = baseSectionVMTestsMakeConfiguredSUT()
         let account = DashboardStoreTestSupport.makeActiveAccount(goalWeight: 3000)
         accountService.activeAccount = account
 
@@ -986,7 +986,7 @@ struct BaseSectionViewModelTests {
 
     @Test("getGoalChipPosition returns bottom placement when goal is below domain")
     func goalChipBottomPlacement() {
-        let (sut, store, accountService) = makeConfiguredSUT()
+        let (sut, store, accountService) = baseSectionVMTestsMakeConfiguredSUT()
         let account = DashboardStoreTestSupport.makeActiveAccount(goalWeight: 50)
         accountService.activeAccount = account
 
@@ -1000,7 +1000,7 @@ struct BaseSectionViewModelTests {
 
     @Test("syncYAxisFromStore applies cached domain and ticks from dashboard state")
     func syncYAxisFromStoreAppliesCachedValues() {
-        let (sut, store, _) = makeConfiguredSUT()
+        let (sut, store, _) = baseSectionVMTestsMakeConfiguredSUT()
         store.state.graph.cachedYAxisDomain = 140...240
         store.state.graph.cachedYAxisTicks = [140, 190, 240]
 
@@ -1013,11 +1013,11 @@ struct BaseSectionViewModelTests {
     @Test("getCachedGroupedSeries groups and sorts series points by date")
     func getCachedGroupedSeriesGroupsAndSorts() {
         let summaries = [
-            DashboardTestFixtures.makeSummary(period: "2026-03-03", date: makeDate(day: 3), weight: 1820),
-            DashboardTestFixtures.makeSummary(period: "2026-03-01", date: makeDate(day: 1), weight: 1800),
-            DashboardTestFixtures.makeSummary(period: "2026-03-02", date: makeDate(day: 2), weight: 1810)
+            DashboardTestFixtures.makeSummary(period: "2026-03-03", date: baseSectionVMTestsMakeDate(day: 3), weight: 1820),
+            DashboardTestFixtures.makeSummary(period: "2026-03-01", date: baseSectionVMTestsMakeDate(day: 1), weight: 1800),
+            DashboardTestFixtures.makeSummary(period: "2026-03-02", date: baseSectionVMTestsMakeDate(day: 2), weight: 1810)
         ]
-        let (sut, _, _) = makeConfiguredSUT(period: .week, summaries: summaries)
+        let (sut, _, _) = baseSectionVMTestsMakeConfiguredSUT(period: .week, summaries: summaries)
 
         let grouped = sut.getCachedGroupedSeries()
         let weightSeries = grouped["weight"] ?? []

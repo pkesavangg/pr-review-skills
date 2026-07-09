@@ -14,7 +14,9 @@ extension BluetoothScaleSetupStoreTests {
 
             store.moveToNextStep()
 
-            #expect(store.currentStep == .selectUser)
+            // Permissions is skipped when already granted; the Bluetooth flow then always
+            // presents the Complete Profile step (MOB-1388) before user selection.
+            #expect(store.currentStep == .completeProfile)
         }
 
         @Test("intro routes to permissions when bluetooth permissions are missing")
@@ -92,6 +94,10 @@ extension BluetoothScaleSetupStoreTests {
 
             store.currentStepIndex = BluetoothScaleSetupStep.permissions.index
 
+            // permissions → completeProfile (always presented, MOB-1388) → stepOn once the
+            // Complete Profile step is passed, since the scale is already saved & synced.
+            store.moveToNextStep()
+            #expect(store.currentStep == .completeProfile)
             store.moveToNextStep()
 
             #expect(store.currentStep == .stepOn)

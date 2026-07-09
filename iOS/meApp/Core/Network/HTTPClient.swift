@@ -7,6 +7,15 @@
 
 import Foundation
 
+// Isolation note (MOB-1433): this client stays @MainActor. Its heavy cost on a
+// large sync — decoding the full-history JSON — is moved off the main actor via
+// `decodeOffMain`. Fully de-isolating the network stack was deliberately NOT
+// done here: `@Injector` resolves from the non-thread-safe `DependencyContainer`
+// singleton, which is race-free only because every consumer is main-actor
+// bound; making HTTPClient (and the 10 API repositories) nonisolated would move
+// that shared-dictionary access off main and require de-isolating the DI
+// container too. The URLSession I/O already runs off the main thread; only its
+// cheap continuation resumes on main.
 @MainActor
 final class HTTPClient: HTTPClientProtocol {
     static let shared = HTTPClient()
@@ -185,14 +194,27 @@ final class HTTPClient: HTTPClientProtocol {
             return string
         }
 
-        // Attempt to decode response
+        // Attempt to decode response.
+        // MOB-1433: `performRequest` is main-actor-isolated (the class is
+        // @MainActor), so decoding a full-history payload here would parse
+        // thousands of entries on the UI thread. Hand the CPU-bound decode to a
+        // nonisolated helper so it runs off the main actor.
         do {
             logRawResponse(data: data)
-            return try JSONDecoder().decode(T.self, from: data)
+            return try await Self.decodeOffMain(T.self, from: data)
         } catch {
             logger.log(level: .error, tag: "HTTPClient", message: "Decoding error", data: error)
             throw HTTPError.decodingError
         }
+    }
+
+    /// Decodes a response body off the main actor. `nonisolated` + `async`
+    /// means this does not adopt the caller's main-actor isolation (SE-0338);
+    /// it runs on the cooperative pool, keeping large-payload JSON parsing off
+    /// the UI thread (MOB-1433). The full network stack stays @MainActor for
+    /// now — see the isolation note in the class header.
+    nonisolated private static func decodeOffMain<T: Decodable>(_ type: T.Type, from data: Data) async throws -> T {
+        try JSONDecoder().decode(T.self, from: data)
     }
 
     private func parseErrorResponse(data: Data, status: HTTPStatusCode, statusCode: Int) -> HTTPError {

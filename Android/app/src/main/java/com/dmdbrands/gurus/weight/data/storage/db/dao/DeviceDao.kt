@@ -90,6 +90,20 @@ interface DeviceDao {
   suspend fun getDeviceByBroadcastIdString(broadcastIdString: String, accountId: String): DeviceDetails?
 
   /**
+   * Resolves the exact paired row for a monitor + user slot. A monitor can be paired under multiple
+   * user slots (same broadcastId, different userNumber), so a live reading must match BOTH to be
+   * attributed to the right slot.
+   */
+  @Query(
+    "SELECT * FROM device WHERE broadcastIdString = :broadcastIdString AND userNumber = :userNumber AND accountId = :accountId",
+  )
+  suspend fun getDeviceByBroadcastIdStringAndUser(
+    broadcastIdString: String,
+    userNumber: String,
+    accountId: String,
+  ): DeviceDetails?
+
+  /**
    * Backfills the broadcast id on a paired device. Devices loaded from GET /v3/paired-device carry
    * no broadcastId (the server omits it), so a live reading can't match them; this heals the row
    * from the reading's broadcastId so it (and future readings) resolve. (MOB-596)

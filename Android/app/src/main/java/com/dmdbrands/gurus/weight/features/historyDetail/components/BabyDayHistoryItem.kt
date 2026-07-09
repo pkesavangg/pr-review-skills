@@ -2,6 +2,7 @@ package com.dmdbrands.gurus.weight.features.historyDetail.components
 
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -120,7 +121,15 @@ fun BabyDayHistoryItem(
         HistoryDetailScreenStrings.accCollapsedState
     }
 
-    Column(modifier = Modifier.testTag("entry_row")) {
+    // Opaque row fill (white collapsed, grey when expanded) so the red swipe-to-delete action
+    // behind the row can't bleed through the content — the row had no background. (MOB-1259)
+    Column(
+        modifier = Modifier
+            .testTag("entry_row")
+            .background(
+                if (isExpanded) MeTheme.colorScheme.secondaryBackground else MeTheme.colorScheme.primaryBackground,
+            ),
+    ) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -188,7 +197,8 @@ fun BabyDayHistoryItem(
             )
         }
 
-        // Expandable note — shows the saved note or an add-note prompt, plus an edit pencil.
+        // Expandable note — shows the saved note or an add-note prompt. The trailing icon is a
+        // "+" when no note exists (add) and the boxed pencil once a note is present (edit) (MOB-1163).
         AnimatedVisibility(visible = isExpanded) {
             Column(
                 modifier = Modifier.padding(
@@ -201,16 +211,23 @@ fun BabyDayHistoryItem(
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     verticalAlignment = Alignment.CenterVertically,
+                    // Empty state centres the placeholder + "+" affordance; an existing note stays
+                    // left-aligned with the pencil pinned to the end (MOB-1163).
+                    horizontalArrangement = if (hasNote) Arrangement.Start else Arrangement.Center,
                 ) {
                     Text(
                         text = if (hasNote) item.entryNote.orEmpty() else HistoryItemStrings.NoNoteYet,
                         style = MeTheme.typography.subHeading2,
                         color = if (hasNote) MeTheme.colorScheme.textBody else MeTheme.colorScheme.textSubheading,
-                        modifier = Modifier.weight(1f),
+                        modifier = if (hasNote) Modifier.weight(1f) else Modifier,
                     )
                     AppIcon(
-                        id = AppIcons.Default.EditPencil,
-                        contentDescription = HistoryItemStrings.EditNoteContentDescription,
+                        id = if (hasNote) AppIcons.Default.EditPencil else AppIcons.Default.Plus,
+                        contentDescription = if (hasNote) {
+                            HistoryItemStrings.EditNoteContentDescription
+                        } else {
+                            HistoryItemStrings.AddNoteContentDescription
+                        },
                         onClick = { onEditEntry() },
                         modifier = Modifier.padding(start = MeTheme.spacing.sm),
                     )

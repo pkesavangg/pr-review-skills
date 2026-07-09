@@ -11,6 +11,7 @@ struct NavbarHeaderView<Leading: View, Trailing: View>: View {
     @Environment(\.appTheme) var theme
 
     var title: String?
+    var titleColor: Color?
     var leadingContent: (() -> Leading)?
     var trailingContent: (() -> Trailing)?
     var onLeadingTap: (() -> Void)?
@@ -20,7 +21,10 @@ struct NavbarHeaderView<Leading: View, Trailing: View>: View {
     var canShowTitleChevron = false
     var canShowPresentationIndicator = false
     var shouldShowBackground: Bool = true
-    
+    /// Optional accessibility identifier applied to the leading button this header builds.
+    /// Lets callers expose a stable automation hook (e.g. a Close button) on the leaf control.
+    var leadingAccessibilityID: String?
+
     var body: some View {
         ZStack {
             // Center Title
@@ -30,7 +34,7 @@ struct NavbarHeaderView<Leading: View, Trailing: View>: View {
                     Text(title)
                         .fontOpenSans(.heading5)
                         .fontWeight(.bold)
-                        .foregroundColor(theme.textHeading)
+                        .foregroundColor(titleColor ?? theme.textHeading)
                         .lineLimit(1)
                         .accessibilityAddTraits(.isHeader)
                     if canShowTitleChevron {
@@ -55,6 +59,7 @@ struct NavbarHeaderView<Leading: View, Trailing: View>: View {
                         leadingContent()
                             .foregroundColor(theme.actionPrimary)
                     })
+                    .accessibilityIdentifierIfPresent(leadingAccessibilityID)
                 }
 
                 Spacer()

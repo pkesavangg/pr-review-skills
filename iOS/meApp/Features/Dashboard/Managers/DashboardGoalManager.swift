@@ -16,7 +16,11 @@ class DashboardGoalManager: ObservableObject, DashboardGoalManaging {
     // MARK: - Initialization
     init(initialState: GoalState = GoalState()) {
         self.state = initialState
-
+        // Cache DI-backed services during construction so later container mutations
+        // continue using the intended dependencies for this manager instance.
+        _ = accountService
+        _ = entryService
+        _ = logger
     }
 
     // MARK: - Goal Data Loading
@@ -351,7 +355,7 @@ class DashboardGoalManager: ObservableObject, DashboardGoalManaging {
     
     /// Returns the current weight unit as a string (e.g., "lbs" or "kg")
     func getUnitText() -> String {
-        return accountService.activeAccount?.weightUnit.rawValue ?? "lbs"
+        return accountService.activeAccount?.weightUnit.rawValue ?? "lb"
     }
 
     /// Returns the weight display label for the current period

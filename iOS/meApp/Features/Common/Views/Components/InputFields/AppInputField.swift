@@ -142,7 +142,7 @@ struct AppInputField: View {
             .accentColor(accentColor)
         }
         .frame(height: 56)
-        .background(theme.backgroundPrimary)
+        .background(inputBoxBackground)
         .cornerRadius(.radiusSM)
         .overlay(alignment: .trailing) { trailingIconView }
         .overlay { disabledOverlay }
@@ -207,7 +207,14 @@ struct AppInputField: View {
         )
         .focused($fieldIsFocused)
         .padding(.leading, .spacingSM)
-        .accessibilityLabel(config.label)
+        // Fold the trailing unit suffix (e.g. "lb"/"kg") into the a11y label so VoiceOver
+        // users editing the field can still tell which unit the value is in (MOB-1170).
+        .accessibilityLabel([config.label, config.trailingLabel].compactMap { $0 }.joined(separator: " "))
+    }
+
+    // Disabled fields use the secondary-disabled fill per Figma; enabled fields keep the primary background.
+    private var inputBoxBackground: Color {
+        config.isDisabled ? theme.actionSecondaryDisabled : theme.backgroundPrimary
     }
 
     private var disabledOverlay: some View {
@@ -283,6 +290,8 @@ struct AppInputField: View {
             AppIconView(icon: AppAssets.closeCircle)
                 .foregroundColor(config.errorMessage != nil ? theme.textError : theme.actionPrimary)
         })
+        .accessibilityIdentifierIfPresent(accessibilityIdentifier.map { "\($0)_clear_button" })
+        .accessibilityLabel(InputFieldLabels.A11y.clearButton)
     }
 }
 

@@ -77,14 +77,14 @@ struct GraphRenderingConfigurationTests {
             shouldRepeat: false
         )
 
-        #expect(weekTicks.count == 15)
+        #expect(weekTicks.count == 8)
         #expect(monthTicks.count >= 5)
-        #expect(yearTicks.count == 25)
-        #expect(totalSameEra.count == 5)
+        #expect(yearTicks.count == 13)
+        #expect(totalSameEra.count == 13)
         #expect(totalMultiEra.count >= 4)
-        #expect(weekTicks.first == isoDate("2026-02-22T12:00:00Z"))
+        #expect(weekTicks.first == isoDate("2026-03-01T12:00:00Z"))
         #expect(weekTicks.last == isoDate("2026-03-08T12:00:00Z"))
-        #expect(yearTicks.first == isoDate("2025-01-01T12:00:00Z"))
+        #expect(yearTicks.first == isoDate("2026-01-01T12:00:00Z"))
         #expect(yearTicks.last == isoDate("2027-01-01T12:00:00Z"))
     }
 
@@ -162,11 +162,11 @@ struct GraphRenderingConfigurationTests {
         let year = sut.snapScrollPosition(date("2026-03-16"), for: .year)
         let clamped = sut.clampScrollPosition(date("2026-05-01"), for: .week, minDate: date("2026-03-01"), maxDate: date("2026-03-10"))
 
-        #expect(week == isoDate("2026-03-03T12:00:00Z"))
+        #expect(week == isoDate("2026-03-04T12:00:00Z"))
         #expect(month == isoDate("2026-03-01T00:00:00Z"))
         #expect(sut.snapScrollPosition(date("2026-03-20"), for: .month) == isoDate("2026-03-01T00:00:00Z"))
         #expect(year == isoDate("2026-03-01T12:00:00Z"))
-        #expect(clamped == isoDate("2026-03-16T22:06:00Z"))
+        #expect(clamped == isoDate("2026-03-17T03:36:00Z"))
     }
 
     @Test("formatting helpers: selected dates ranges fallback labels and x-axis labels are period aware")
@@ -179,8 +179,8 @@ struct GraphRenderingConfigurationTests {
 
         #expect(sut.formatSelectedDate(date("2026-03-10"), for: .week) == "Mar 10, 2026")
         #expect(sut.formatSelectedDate(date("2026-03-10"), for: .year) == "Mar 2026")
-        #expect(sut.formatDateRange(minDate: date("2026-03-01"), maxDate: date("2026-03-07"), for: .week) == "feb 28 - mar 5, 2026")
-        #expect(sut.formatDateRange(minDate: date("2026-03-01"), maxDate: date("2026-03-31"), for: .month) == "Feb 28 – Mar 30, 2026")
+        #expect(sut.formatDateRange(minDate: date("2026-03-01"), maxDate: date("2026-03-07"), for: .week) == "mar 1 - mar 6, 2026")
+        #expect(sut.formatDateRange(minDate: date("2026-03-01"), maxDate: date("2026-03-31"), for: .month) == "Mar 2026")
         #expect(sut.fallbackTimeLabel(for: .month).contains(" "))
         #expect(sut.formatXAxisLabel(for: date("2026-03-01"), period: .week, operations: ops) != nil)
     }
@@ -206,17 +206,30 @@ struct GraphRenderingConfigurationTests {
         #expect(anchored <= cachedBounds.max)
         #expect(totalClamp == date("2026-03-10"))
         #expect(sut.snapScrollPosition(date("2026-03-04"), for: .total) == date("2026-03-04"))
-        #expect(sut.formatDateRange(minDate: date("2026-03-01"), maxDate: date("2026-03-01"), for: .total) == "Feb 2026")
-        #expect(sut.formatDateRange(minDate: date("2025-12-01"), maxDate: date("2026-03-01"), for: .month) == "Nov 30, 2025 – Feb 28, 2026")
-        #expect(sut.formatDateRange(minDate: date("2026-01-01"), maxDate: date("2026-12-01"), for: .year) == "Dec 2025 – Nov 2026")
-        #expect(sut.formatDateRange(minDate: date("2025-01-01"), maxDate: date("2026-12-01"), for: .year) == "Dec 2024 – Nov 2026")
+        #expect(sut.formatDateRange(minDate: date("2026-03-01"), maxDate: date("2026-03-01"), for: .total) == "Mar 2026")
+        #expect(sut.formatDateRange(minDate: date("2025-12-01"), maxDate: date("2026-03-01"), for: .month) == "Dec 1, 2025 – Mar 1, 2026")
+        #expect(sut.formatDateRange(minDate: date("2026-01-01"), maxDate: date("2026-12-01"), for: .year) == "2026")
+        #expect(sut.formatDateRange(minDate: date("2025-01-01"), maxDate: date("2026-12-01"), for: .year) == "Jan 2025 – Dec 2026")
         #expect(!sut.fallbackTimeLabel(for: .week).isEmpty)
         #expect(!sut.fallbackTimeLabel(for: .year).isEmpty)
         #expect(!sut.fallbackTimeLabel(for: .total).isEmpty)
     }
 
+    // Parse in GMT (not the device timezone) so `date("2026-03-01")` is exactly 2026-03-01T00:00:00Z.
+    // The SUT is built with a GMT calendar and assertions compare against UTC `isoDate(...)` values,
+    // so building inputs in the device timezone (as DateTimeTools.getDateFromDateString does) would
+    // shift every boundary on any CI machine whose timezone isn't UTC — the cause of the CI-only flakes.
     private func date(_ value: String) -> Date {
-        DateTimeTools.getDateFromDateString(value, format: "yyyy-MM-dd")
+        let formatter = DateFormatter()
+        formatter.calendar = Calendar(identifier: .gregorian)
+        formatter.timeZone = TimeZone(secondsFromGMT: 0)
+        formatter.locale = Locale(identifier: "en_US_POSIX")
+        formatter.dateFormat = "yyyy-MM-dd"
+        guard let date = formatter.date(from: value) else {
+            Issue.record("unexpected nil date from \(value)")
+            return Date()
+        }
+        return date
     }
 
     private func isoDate(_ value: String) -> Date {

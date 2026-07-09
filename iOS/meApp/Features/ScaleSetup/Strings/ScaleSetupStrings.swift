@@ -40,6 +40,19 @@ struct ScaleSetupStrings {
         static let title = "Choose your user number."
         static let description = "Pick one that no one else is using for this scale."
     }
+
+    /// Complete Profile Setup step. Shared across the Bluetooth scale-setup flows
+    /// (A6/LCBT, Bluetooth/A3, and BtWifi/R4) — see `CompleteProfileSetupStore`.
+    struct CompleteProfileStrings {
+        static let title = "Complete Profile Set Up"
+        static let subtitle = "Add a few details to personalize your profile."
+        static let biologicalSex = "Biological Sex"
+        static let height = "Height"
+        static let setAGoal = "Set a Goal"
+        static let optional = "(optional)"
+        static let startingWeight = "Starting Weight"
+        static let goalWeight = "Goal Weight"
+    }
     
     /// Finish view strings
     struct FinishViewStrings {

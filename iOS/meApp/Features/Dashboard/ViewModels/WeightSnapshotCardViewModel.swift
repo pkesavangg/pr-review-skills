@@ -19,7 +19,7 @@ final class WeightSnapshotCardViewModel: ObservableObject {
     }
 
     var unitText: String {
-        activeAccount?.weightUnit.rawValue ?? "lbs"
+        activeAccount?.weightUnit.rawValue ?? "lb"
     }
 
     func convertStoredWeightToDisplay(_ storedWeight: Int) -> Double {

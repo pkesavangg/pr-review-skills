@@ -149,8 +149,11 @@ class GoalCardCell: UICollectionViewCell {
 
         let viewWithOverlay: AnyView
         if store.state.ui.isEditMode {
-            let isDragging = store.state.ui.isGoalCardBeingDragged || isLongPressed || currentIsBeingDragged || suppressOverlay
-            
+            // MOB-187: keep the remove icon visible while the goal card is long-pressed/dragged,
+            // matching the metric grid. The lift no longer hides the icon (previously suppressed
+            // via the drag flags); only an active drop target hides it.
+            let isDropTarget = store.state.ui.dropHoverId == "goalCard"
+
             viewWithOverlay = AnyView(
                 goalCardView
                     .editModeOverlay(
@@ -159,15 +162,15 @@ class GoalCardCell: UICollectionViewCell {
                         onToggleRemoval: {
                             store.gridEditingManager.toggleGoalCardRemoval()
                         },
-                        isBeingDragged: isDragging, // Let overlay handle icon visibility during drag
-                        isDropTarget: store.state.ui.dropHoverId == "goalCard",
+                        isBeingDragged: false,
+                        isDropTarget: isDropTarget,
                         rowIndex: rowIndex,
                         disableWiggle: store.state.ui.isGoalCardRemoved,
                         iconOffset: CGSize(width: 20, height: -28),
                         dimWhenRemoved: true
                     )
             )
-            overlayButtonVisible = !isDragging && !(store.state.ui.dropHoverId == "goalCard")
+            overlayButtonVisible = !isDropTarget
             overlayButtonAction = { store.gridEditingManager.toggleGoalCardRemoval() }
         } else {
             viewWithOverlay = AnyView(goalCardView)

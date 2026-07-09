@@ -134,6 +134,10 @@ final class DashboardDisplayManager: DashboardDisplayManaging {
         self.getVisibleOperations = getVisibleOperations
         self.getIsWeightlessModeEnabled = getIsWeightlessModeEnabled
         self.getWeightlessAnchorWeight = getWeightlessAnchorWeight
+        // Cache DI-backed services during construction so later container mutations
+        // continue using the intended dependencies for this manager instance.
+        _ = accountService
+        _ = logger
     }
 
     // MARK: - Weight Display
@@ -263,8 +267,7 @@ final class DashboardDisplayManager: DashboardDisplayManaging {
 
     var displayUnitText: String {
         let unit: WeightUnit = accountService.activeAccount?.weightUnit ?? .lb
-        let displayValue = displayWeight ?? getCurrentAverageWeight()
-        return WeightValueConvertor.unitForDisplay(value: displayValue, unit: unit)
+        return WeightValueConvertor.unitForDisplay(unit: unit)
     }
 
     func updateVisibleDataAfterScroll() {

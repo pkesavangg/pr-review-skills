@@ -12,8 +12,12 @@ import com.dmdbrands.gurus.weight.features.DeviceSetup.reducer.MonitorSetupInten
 import com.dmdbrands.gurus.weight.features.DeviceSetup.reducer.DeviceSetupIntent
 import com.dmdbrands.gurus.weight.features.DeviceSetup.viewmodel.BLESetupDependencies
 import com.dmdbrands.gurus.weight.features.DeviceSetup.viewmodel.MonitorSetupViewModel
+import com.dmdbrands.gurus.weight.features.DeviceSetup.modal.DeviceSearchInfo
 import com.dmdbrands.gurus.weight.features.common.model.DialogModel
+import com.dmdbrands.gurus.weight.domain.model.storage.Device
 import com.dmdbrands.gurus.weight.testutil.initTestDependencies
+import com.dmdbrands.library.ggbluetooth.model.GGDeviceDetail
+import io.mockk.mockk
 import com.google.common.truth.Truth.assertThat
 import com.greatergoods.blewrapper.GGDeviceService
 import com.greatergoods.blewrapper.GGPermissionService
@@ -477,5 +481,71 @@ class MonitorSetupViewModelTest {
     val a6ViewModel = createA6ViewModel("0661")
     assertThat(a6ViewModel.state.value.selectedUser).isEqualTo("A")
     assertThat(a6ViewModel.state.value.hasNumericUsers).isFalse()
+  }
+
+  // -------------------------------------------------------------------------
+  // checkIfDeviceExists — already-paired detection by peripheralIdentifier + userNumber
+  // -------------------------------------------------------------------------
+
+  private fun pairedMonitor(identifier: String, userNumber: Int): Device {
+    val detail: GGDeviceDetail = mockk(relaxed = true)
+    every { detail.identifier } returns identifier
+    every { detail.macAddress } returns "AA:BB:CC:DD:EE:FF"
+    return Device(id = "id-$identifier-$userNumber", device = detail, sku = TEST_SKU, userNumber = userNumber)
+  }
+
+  private fun viewModelWithPaired(devices: List<Device>): MonitorSetupViewModel {
+    every { deviceService.pairedScales } returns MutableStateFlow(devices)
+    val dependencies = BLESetupDependencies(
+      ggDeviceService = ggDeviceService,
+      connectivityObserver = connectivityObserver,
+      deviceService = deviceService,
+      permissionService = permissionService,
+      dialogUtility = dialogUtility,
+    )
+    val vm = MonitorSetupViewModel(
+      monitorInit = SetupInitData(sku = TEST_SKU, initialStep = MonitorSetupStep.MONITOR_DETAIL),
+      dependencies = dependencies,
+    ).initTestDependencies()
+    advanceScheduler()
+    return vm
+  }
+
+  private fun invokeCheckIfDeviceExists(vm: MonitorSetupViewModel, key: String, userNumber: Int?): DeviceSearchInfo {
+    val method = MonitorSetupViewModel::class.java
+      .getDeclaredMethod("checkIfDeviceExists", String::class.java, Integer::class.java)
+    method.isAccessible = true
+    return method.invoke(vm, key, userNumber) as DeviceSearchInfo
+  }
+
+  @Test
+  fun `checkIfDeviceExists flags same-user when peripheralIdentifier and userNumber match`() {
+    val vm = viewModelWithPaired(listOf(pairedMonitor("periph-1", userNumber = 1)))
+    val result = invokeCheckIfDeviceExists(vm, key = "periph-1", userNumber = 1)
+    assertThat(result.isMonitorExistsWithSameUser).isTrue()
+    assertThat(result.isMonitorExistsWithDifferentUser).isFalse()
+  }
+
+  @Test
+  fun `checkIfDeviceExists flags different-user when same monitor but other user slot`() {
+    val vm = viewModelWithPaired(listOf(pairedMonitor("periph-1", userNumber = 1)))
+    val result = invokeCheckIfDeviceExists(vm, key = "periph-1", userNumber = 2)
+    assertThat(result.isMonitorExistsWithDifferentUser).isTrue()
+    assertThat(result.isMonitorExistsWithSameUser).isFalse()
+  }
+
+  @Test
+  fun `checkIfDeviceExists matches peripheralIdentifier case-insensitively`() {
+    val vm = viewModelWithPaired(listOf(pairedMonitor("PERIPH-1", userNumber = 1)))
+    // peripheralKey lowercases both sides, so an upper-cased stored id still matches.
+    val result = invokeCheckIfDeviceExists(vm, key = "periph-1", userNumber = 1)
+    assertThat(result.isMonitorExistsWithSameUser).isTrue()
+  }
+
+  @Test
+  fun `checkIfDeviceExists reports no match for an unknown monitor`() {
+    val vm = viewModelWithPaired(listOf(pairedMonitor("periph-1", userNumber = 1)))
+    val result = invokeCheckIfDeviceExists(vm, key = "periph-unknown", userNumber = 1)
+    assertThat(result.isMonitorExists).isFalse()
   }
 }

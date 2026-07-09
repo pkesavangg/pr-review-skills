@@ -113,6 +113,7 @@ enum EntryTestFixtures {
         accountId: String = "acct-1",
         entryTimestamp: String = "2026-03-01T08:00:00Z",
         serverTimestamp: String? = nil,
+        serverEntryId: String? = nil,
         opTimestamp: String? = nil,
         operationType: OperationType = .create,
         entryType: EntryType = .scale,
@@ -144,6 +145,7 @@ enum EntryTestFixtures {
             accountId: accountId,
             entryTimestamp: entryTimestamp,
             serverTimestamp: serverTimestamp,
+            serverEntryId: serverEntryId,
             opTimestamp: opTimestamp,
             operationType: operationType.rawValue,
             entryType: entryType.rawValue,
@@ -199,6 +201,7 @@ enum EntryTestFixtures {
             accountId: accountId,
             entryTimestamp: entryTimestamp,
             serverTimestamp: serverTimestamp,
+            serverEntryId: nil,
             opTimestamp: nil,
             operationType: operationType.rawValue,
             entryType: EntryType.bpm.rawValue,
@@ -256,6 +259,7 @@ enum EntryTestFixtures {
             accountId: accountId,
             entryTimestamp: entryTimestamp,
             serverTimestamp: serverTimestamp,
+            serverEntryId: nil,
             opTimestamp: nil,
             operationType: operationType.rawValue,
             entryType: EntryType.baby.rawValue,
@@ -300,6 +304,36 @@ enum EntryTestFixtures {
             entryTimestamp: entryTimestamp,
             operationType: operationType,
             serverTimestamp: serverTimestamp
+        )
+    }
+
+    /// A weight-category row as returned by `POST /v3/entries/` — used to
+    /// stub batched-push submit responses.
+    static func makeUnifiedResult(
+        entryId: String,
+        timestamp: String,
+        operationType: String = "create",
+        weight: Int? = 1800
+    ) -> UnifiedEntryResult {
+        UnifiedEntryResult(
+            category: EntryCategory.weight.rawValue,
+            entryId: entryId,
+            operationType: operationType,
+            entryTimestamp: timestamp,
+            serverTimestamp: timestamp,
+            source: "manual",
+            weight: weight,
+            bodyFat: nil,
+            muscleMass: nil,
+            water: nil,
+            bmi: nil,
+            boneMass: nil,
+            impedance: nil,
+            unit: nil,
+            systolic: nil,
+            diastolic: nil,
+            pulse: nil,
+            note: nil
         )
     }
 }

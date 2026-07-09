@@ -84,6 +84,13 @@ class DashboardStore: ObservableObject, DashboardStateProviding {
         return nil
     }
 
+    /// True when the baby product is selected but no real baby profile exists yet — i.e. the
+    /// "Baby Scale" placeholder selection. Drives the "No babies added yet" / ADD A BABY empty
+    /// state (a profile, not a device, is the blocker per MOB-1245).
+    var isPendingBabySelection: Bool {
+        selectedBabyProfile?.isPendingSelection ?? false
+    }
+
     var selectedBabyMetric: BabyMetric {
         state.ui.selectedMetricLabel == BabyMetric.height.rawValue ? .height : .weight
     }
@@ -423,17 +430,21 @@ class DashboardStore: ObservableObject, DashboardStateProviding {
                     if case .baby = $0 { return true }
                     return false
                 }
-                // Show the snapshot overview when:
-                //   • Any baby item exists (pending or real) — baby scale paired with or
-                //     without a profile, even after scale/profile removal while productTypes
-                //     still retains "baby". No weight/BPM required.
-                //   • OR two non-baby product types are both paired (weight + BPM).
-                // Multiple baby profiles must NOT inflate the count — they are accessed
-                // via the dropdown inside the baby dashboard.
+                // Show the snapshot overview ONLY when there are 2+ distinct product
+                // categories to choose between (weight / blood pressure / baby). A
+                // single-category account has nothing to pick, so it drills straight into
+                // that product's detail dashboard:
+                //   • Baby-only (with or without a profile) → the baby trend scaffold, which
+                //     renders the empty chart + "No babies added yet" footer for the pending
+                //     state (MOB-1245). Multiple baby profiles are switched via the header
+                //     dropdown, not the overview — see navbarHeader().
+                //   • Weight-only / BP-only → that product's detail dashboard.
+                // Multiple baby profiles must NOT inflate the count — baby is one category.
                 let hasWeight = items.contains { $0 == .myWeight }
                 let hasBpm = items.contains { $0 == .myBloodPressure }
-                self.canShowSnapshotOverview = self.hasBabySnapshotItem
-                    || [hasWeight, hasBpm].filter { $0 }.count > 1
+                let productCategoryCount = [hasWeight, hasBpm, self.hasBabySnapshotItem]
+                    .filter { $0 }.count
+                self.canShowSnapshotOverview = productCategoryCount > 1
             }
             .store(in: &cancellables)
 
@@ -523,6 +534,25 @@ class DashboardStore: ObservableObject, DashboardStateProviding {
     }
 
     // MARK: - Baby Data Access
+
+    /// Date range the baby percentile reference curves should span: the visible chart window
+    /// (scroll position → one visible-domain length later), unioned with the actual data extent.
+    /// Spanning the window — instead of the sparse operations' min/max — keeps the WHO/CDC curves
+    /// filling the chart even when the baby has a single weight entry.
+    private func babyChartVisibleDateRange() -> ClosedRange<Date> {
+        let period = state.graph.selectedPeriod
+        let start = state.graph.xScrollPosition
+        let end = start.addingTimeInterval(visibleDomainLength(for: period))
+        let operationDates = continuousOperations.map(\.date)
+        let rawLower = min(start, end, operationDates.min() ?? start)
+        let rawUpper = max(start, end, operationDates.max() ?? end)
+        // Snap the lower bound to the period boundary so the percentile curves fill the chart
+        // from the same edge the X-axis domain starts at (see babyScrollDomainCap) — otherwise
+        // the leading portion of the grid (e.g. the 1st–29th) renders without reference curves.
+        // Shared with the chart's domainMin via TimePeriod.periodStart so the two can't drift.
+        let lower = period.periodStart(for: rawLower)
+        return lower...max(rawUpper, lower)
+    }
 
     /// Returns real baby summaries from EntryService for the given profile and period.
     /// Uses daily summaries for week/month and monthly summaries for year/total.
@@ -768,7 +798,8 @@ class DashboardStore: ObservableObject, DashboardStateProviding {
                     metric: selectedBabyMetric,
                     convertWeight: goalManager.convertWeightToDisplay,
                     convertDecigramsToDisplay: convertBabyDecigramsToDisplay,
-                    yAxisDomain: chartManager.yAxisDomain
+                    yAxisDomain: chartManager.yAxisDomain,
+                    percentileDateRange: babyChartVisibleDateRange()
                 )
             }
         }
@@ -798,18 +829,21 @@ class DashboardStore: ObservableObject, DashboardStateProviding {
         }
 
         if let babyProfile = selectedBabyProfile {
+            let percentileDateRange = babyChartVisibleDateRange()
             switch selectedBabyMetric {
             case .weight:
                 return BabyDashboardChartSupport.yAxisScale(
                     for: operations,
                     babyProfile: babyProfile,
+                    dateRange: percentileDateRange,
                     convertStoredWeightToDisplay: goalManager.convertWeightToDisplay,
                     convertDecigramsToDisplay: convertBabyDecigramsToDisplay
                 )
             case .height:
                 return BabyDashboardChartSupport.heightYAxisScale(
                     for: operations,
-                    babyProfile: babyProfile
+                    babyProfile: babyProfile,
+                    dateRange: percentileDateRange
                 )
             }
         }
@@ -878,7 +912,7 @@ class DashboardStore: ObservableObject, DashboardStateProviding {
 
     var currentUnit: WeightUnit { accountService.activeAccount?.weightUnit ?? .lb }
     var currentUnitString: String { currentUnit.rawValue }
-    var currentUnitText: String { accountService.activeAccount?.weightUnit.rawValue ?? "lbs" }
+    var currentUnitText: String { accountService.activeAccount?.weightUnit.rawValue ?? "lb" }
     var currentWeightlessMode: Bool { accountService.activeAccount?.isWeightlessOn ?? false }
     var currentMeasurementUnits: MeasurementUnits {
         guard let raw = accountService.activeAccount?.measurementUnits,

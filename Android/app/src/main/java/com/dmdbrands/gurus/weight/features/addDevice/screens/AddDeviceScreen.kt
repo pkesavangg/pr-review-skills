@@ -10,6 +10,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -54,6 +55,11 @@ import kotlinx.coroutines.launch
 @Composable
 fun AddDeviceScreen(viewModel: AddDeviceViewModel = hiltViewModel()) {
   val state by viewModel.state.collectAsStateWithLifecycle()
+  // Re-pull paired devices from the server each time this screen is shown, so a scale paired
+  // on another phone appears without an app restart. (MOB-1201)
+  LaunchedEffect(Unit) {
+    viewModel.refreshSavedScales()
+  }
   AddScaleScreenContent(state, viewModel::handleIntent)
 }
 

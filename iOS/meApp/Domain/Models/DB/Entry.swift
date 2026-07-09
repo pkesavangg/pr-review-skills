@@ -16,6 +16,17 @@ import SwiftData
 
 @Model
 final class Entry {
+    // Every hot predicate filters on accountId, serverEntryId (merge identity),
+    // entryTimestamp (sorting/range reads), or accountId+operationType. Without
+    // these, each lookup is a full-table scan (MOB-1433). Additive change —
+    // SwiftData applies it via lightweight migration.
+    #Index<Entry>(
+        [\.accountId],
+        [\.serverEntryId],
+        [\.entryTimestamp],
+        [\.accountId, \.operationType]
+    )
+
     /// Unique entry ID (PK)
     @Attribute(.unique) var id: UUID
     /// Foreign key referencing account.accountId
@@ -76,6 +87,7 @@ final class Entry {
             self.accountId = accountId
             self.operationType = dto.operationType ?? ""
             self.serverTimestamp = dto.serverTimestamp
+            self.serverEntryId = dto.serverEntryId
             self.attempts = 0
             self.isFailedToSync = false
 
@@ -217,6 +229,76 @@ final class Entry {
             arr.append((metabolicAge, .metabolicAge))
         }
         return arr
+    }
+}
+
+extension Entry {
+    /// Builds a full Entry (with child relationships) from the Sendable
+    /// transfer row used to cross actor boundaries. Shared by
+    /// `EntryRepository` (main actor) and `SwiftDataWorker` (@ModelActor).
+    convenience init(from data: EntrySyncData) {
+        self.init(
+            id: data.id,
+            entryTimestamp: data.entryTimestamp,
+            accountId: data.accountId,
+            operationType: data.operationType,
+            serverTimestamp: data.serverTimestamp,
+            entryType: data.entryType,
+            isSynced: data.isSynced
+        )
+        isFailedToSync = data.isFailedToSync
+        attempts = data.attempts
+        note = data.note
+        applyChildRelationships(from: data)
+    }
+
+    /// Assigns the child relationships (scale entry/metric, BP, baby) from the
+    /// transfer row. Extracted from `init(from:)` to keep it within the body-length limit.
+    private func applyChildRelationships(from data: EntrySyncData) {
+        if let scaleData = data.scaleEntry {
+            scaleEntry = BathScaleEntry(
+                weight: scaleData.weight,
+                bodyFat: scaleData.bodyFat,
+                muscleMass: scaleData.muscleMass,
+                water: scaleData.water,
+                bmi: scaleData.bmi,
+                source: scaleData.source
+            )
+        }
+
+        if let metricData = data.scaleEntryMetric {
+            scaleEntryMetric = BathScaleMetric(
+                bmr: metricData.bmr,
+                metabolicAge: metricData.metabolicAge,
+                proteinPercent: metricData.proteinPercent,
+                pulse: metricData.pulse,
+                skeletalMusclePercent: metricData.skeletalMusclePercent,
+                subcutaneousFatPercent: metricData.subcutaneousFatPercent,
+                visceralFatLevel: metricData.visceralFatLevel,
+                boneMass: metricData.boneMass,
+                impedance: metricData.impedance,
+                unit: metricData.unit
+            )
+        }
+
+        if let systolic = data.bpmSystolic, let diastolic = data.bpmDiastolic,
+           let meanArterial = data.bpmMeanArterial, let pulse = data.bpmPulse {
+            bpmEntry = BPMEntry(
+                systolic: systolic,
+                diastolic: diastolic,
+                meanArterial: meanArterial,
+                pulse: pulse
+            )
+        }
+
+        if let babyId = data.babyEntryBabyId, let length = data.babyEntryLength,
+           let weight = data.babyEntryWeight {
+            babyEntry = BabyEntry(
+                babyId: babyId,
+                length: length,
+                weight: weight
+            )
+        }
     }
 }
 

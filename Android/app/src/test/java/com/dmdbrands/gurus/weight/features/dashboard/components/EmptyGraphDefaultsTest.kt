@@ -57,4 +57,18 @@ class EmptyGraphDefaultsTest {
   fun `weightGoal returns null for a non-positive goal`() {
     assertThat(EmptyGraphDefaults.weightGoal(goalDisplay = 0.0, isKg = false)).isNull()
   }
+
+  // ── weightDefault — shown when no goal, so the weight empty grid still has a Y axis (like BP/Baby)
+
+  @Test
+  fun `weightDefault lbs range is 100 to 250 step 50`() {
+    assertThat(EmptyGraphDefaults.weightDefault(isKg = false))
+      .isEqualTo(EmptyGraphRange(100.0, 250.0, 50.0))
+  }
+
+  @Test
+  fun `weightDefault kg range is 40 to 120 step 20`() {
+    assertThat(EmptyGraphDefaults.weightDefault(isKg = true))
+      .isEqualTo(EmptyGraphRange(40.0, 120.0, 20.0))
+  }
 }

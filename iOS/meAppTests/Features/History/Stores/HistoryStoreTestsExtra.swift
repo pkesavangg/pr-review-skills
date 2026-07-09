@@ -46,7 +46,7 @@ struct HistoryStoreBabyAndDeleteTests {
         babyId: String = "baby-1",
         babyName: String = "Test Baby"
     ) -> BabyStoreBundle {
-        let (store, entryService, _, _, _) = makeSUT()
+        let (store, entryService, _, _, _) = makeHistoryStoreSUT()
         let productTypeStore = MockProductTypeStore()
         productTypeStore.selectedItem = .baby(profile: BabyProfile(id: babyId, name: babyName))
         store.productTypeStore = productTypeStore
@@ -126,7 +126,7 @@ struct HistoryStoreBabyAndDeleteTests {
     @Test("updateBabyEntry pending profile: skips all service calls")
     func updateBabyEntryPendingProfileSkips() async {
         let old = makeBabyEntry()
-        let (store, entryService, _, _, _) = makeSUT()
+        let (store, entryService, _, _, _) = makeHistoryStoreSUT()
         let productTypeStore = MockProductTypeStore()
         productTypeStore.selectedItem = .baby(profile: BabyProfile(id: BabyProfile.pendingSelectionId, name: ""))
         store.productTypeStore = productTypeStore
@@ -146,7 +146,7 @@ struct HistoryStoreBabyAndDeleteTests {
     @Test("updateBabyEntry non-baby product: skips all service calls")
     func updateBabyEntryNonBabyProductSkips() async {
         let old = makeBabyEntry()
-        let (store, entryService, _, _, _) = makeSUT()
+        let (store, entryService, _, _, _) = makeHistoryStoreSUT()
 
         await store.updateBabyEntry(
             old: old,
@@ -163,7 +163,7 @@ struct HistoryStoreBabyAndDeleteTests {
     @Test("updateBabyEntry create failure: does not attempt delete, shows error toast")
     func updateBabyEntryCreateFailureSkipsDelete() async {
         let old = makeBabyEntry()
-        let (store, entryService, notificationService, _, _) = makeSUT()
+        let (store, entryService, notificationService, _, _) = makeHistoryStoreSUT()
         let productTypeStore = MockProductTypeStore()
         productTypeStore.selectedItem = .baby(profile: BabyProfile(id: "baby-1", name: "Test Baby"))
         store.productTypeStore = productTypeStore
@@ -192,7 +192,7 @@ struct HistoryStoreBabyAndDeleteTests {
 
     @Test("confirmWGDelete: removes entry from list and shows undo toast")
     func confirmWGDeleteRemovesEntryAndShowsUndoToast() async {
-        let (store, entryService, notificationService, _, _) = makeSUT()
+        let (store, entryService, notificationService, _, _) = makeHistoryStoreSUT()
         let entry = EntryTestFixtures.makeEntrySnapshot(entryTimestamp: "2026-03-10T08:00:00Z")
         await loadWGEntry(entry, into: store, entryService: entryService)
         #expect(store.entries.count == 1)
@@ -211,7 +211,7 @@ struct HistoryStoreBabyAndDeleteTests {
 
     @Test("undoWGDelete: restores the entry and shows restore toast")
     func undoWGDeleteRestoresEntry() async {
-        let (store, entryService, notificationService, _, _) = makeSUT()
+        let (store, entryService, notificationService, _, _) = makeHistoryStoreSUT()
         let entry = EntryTestFixtures.makeEntrySnapshot(entryTimestamp: "2026-03-10T08:00:00Z")
         await loadWGEntry(entry, into: store, entryService: entryService)
 
@@ -232,7 +232,7 @@ struct HistoryStoreBabyAndDeleteTests {
 
     @Test("commitWGDelete: calls deleteEntry after toast dismiss")
     func commitWGDeleteCallsDeleteService() async {
-        let (store, entryService, notificationService, _, _) = makeSUT()
+        let (store, entryService, notificationService, _, _) = makeHistoryStoreSUT()
         let entry = EntryTestFixtures.makeEntrySnapshot(entryTimestamp: "2026-03-10T08:00:00Z")
         await loadWGEntry(entry, into: store, entryService: entryService)
 
@@ -252,7 +252,7 @@ struct HistoryStoreBabyAndDeleteTests {
 
     @Test("deleteWGEntryInternal failure: shows error toast with retry button")
     func deleteWGEntryInternalFailureShowsErrorToast() async {
-        let (store, entryService, notificationService, _, _) = makeSUT()
+        let (store, entryService, notificationService, _, _) = makeHistoryStoreSUT()
         let entry = EntryTestFixtures.makeEntrySnapshot(entryTimestamp: "2026-03-10T08:00:00Z")
         await loadWGEntry(entry, into: store, entryService: entryService)
         entryService.deleteEntryByIdError = HistoryStoreTestError.deleteFailed
@@ -305,7 +305,7 @@ struct HistoryStoreBabyAndDeleteTests {
 
     @Test("loadFirstPage: populates pagedEntries and hasMorePages from the first page")
     func loadFirstPagePopulates() async {
-        let (store, entryService, _, _, _) = makeSUT()
+        let (store, entryService, _, _, _) = makeHistoryStoreSUT()
         entryService.fetchEntriesPageResults = [
             EntriesPage(entries: [makePageEntry(timestamp: "2026-03-02T08:00:00Z")], nextCursor: "2026-03-01T08:00:00Z", hasMore: true)
         ]
@@ -321,7 +321,7 @@ struct HistoryStoreBabyAndDeleteTests {
 
     @Test("loadNextPage: appends the next page and forwards the cursor")
     func loadNextPageAppends() async {
-        let (store, entryService, _, _, _) = makeSUT()
+        let (store, entryService, _, _, _) = makeHistoryStoreSUT()
         entryService.fetchEntriesPageResults = [
             EntriesPage(entries: [makePageEntry(timestamp: "2026-03-02T08:00:00Z")], nextCursor: "2026-03-01T08:00:00Z", hasMore: true),
             EntriesPage(entries: [makePageEntry(timestamp: "2026-03-01T08:00:00Z")], nextCursor: nil, hasMore: false)
@@ -338,7 +338,7 @@ struct HistoryStoreBabyAndDeleteTests {
 
     @Test("loadNextPage: no-ops once the server reports no more pages")
     func loadNextPageStopsWhenExhausted() async {
-        let (store, entryService, _, _, _) = makeSUT()
+        let (store, entryService, _, _, _) = makeHistoryStoreSUT()
         entryService.fetchEntriesPageResults = [
             EntriesPage(entries: [makePageEntry(timestamp: "2026-03-02T08:00:00Z")], nextCursor: nil, hasMore: false)
         ]
@@ -354,7 +354,7 @@ struct HistoryStoreBabyAndDeleteTests {
 
     @Test("loadFirstPage: resets accumulated state before reloading")
     func loadFirstPageResets() async {
-        let (store, entryService, _, _, _) = makeSUT()
+        let (store, entryService, _, _, _) = makeHistoryStoreSUT()
         entryService.fetchEntriesPageResults = [
             EntriesPage(entries: [makePageEntry(timestamp: "2026-03-02T08:00:00Z")], nextCursor: "c1", hasMore: true)
         ]
@@ -371,7 +371,7 @@ struct HistoryStoreBabyAndDeleteTests {
 
     @Test("loadNextPage: on error clears hasMorePages and logs")
     func loadNextPageError() async {
-        let (store, entryService, _, _, logger) = makeSUT()
+        let (store, entryService, _, _, logger) = makeHistoryStoreSUT()
         entryService.fetchEntriesPageError = HistoryStoreTestError.loadMonthsFailed
 
         await store.loadFirstPage()
@@ -381,4 +381,13 @@ struct HistoryStoreBabyAndDeleteTests {
         #expect(store.isLoadingPage == false)
         #expect(logger.messages.contains { $0.contains("Failed to load entries page") })
     }
+}
+
+@MainActor
+private func waitUntil(timeoutIterations: Int = 200, condition: @escaping @MainActor () -> Bool) async -> Bool {
+    for _ in 0..<timeoutIterations {
+        if condition() { return true }
+        await Task.yield()
+    }
+    return false
 }

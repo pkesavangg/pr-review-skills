@@ -63,7 +63,7 @@ struct AppSyncEntryMetrics {
         self.rawDisplayWeightKg = rawDisplayWeightKg
 
         // --- Display string computation ---
-        let unit = isMetric ? "kg" : "lbs"
+        let unit = isMetric ? "kg" : "lb"
         let displayWeight = ConversionTools.convertStoredToDisplay(storedWeight, isMetric: isMetric)
         self.weight = String(format: "%.1f %@", displayWeight, unit)
 

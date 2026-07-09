@@ -211,7 +211,7 @@ struct AccountFlagServiceTests {
         let result = try await sut.checkAccountFlag(trigger: "login")
 
         #expect(result == true)
-        #expect(receivedEvent?.sku?.isEmpty == true)
+        #expect(receivedEvent?.sku.isEmpty == true)
         #expect(receivedEvent?.flagId == "flag-scale")
         _ = cancellable
     }

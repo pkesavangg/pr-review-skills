@@ -42,7 +42,18 @@ struct GoalStreakGridUIKitView: UIViewRepresentable {
 
         // Avoid reloading/invalidating layout while a drag operation is active to prevent mid-drag resizing
         if coordinator.interactiveMovingIndexPath != nil {
-            coordinator.lastIsEditMode = store.state.ui.isEditMode
+            let newIsEditMode = store.state.ui.isEditMode
+            // MOB-187: A long-press that starts an interactive move also turns edit mode ON
+            // (e.g. the first drag after a dashboard reset, which leaves edit mode OFF). By the
+            // time this update runs, `interactiveMovingIndexPath` is already set, so the reload
+            // that would surface the edit-mode overlay (remove icon) is skipped and the milestone
+            // cards show no remove icon. A full `reloadData` here would cancel the in-flight
+            // interactive movement, so instead reconfigure the visible cells in place — mirroring
+            // what `MetricGridUIKitView` already does on the edit-mode transition.
+            if newIsEditMode, newIsEditMode != coordinator.lastIsEditMode {
+                applyEditModeOverlayToVisibleCells(collectionView)
+            }
+            coordinator.lastIsEditMode = newIsEditMode
             // Keep system drag disabled; we use interactive movement with strict clamping
             collectionView.dragInteractionEnabled = false
             return
@@ -208,6 +219,24 @@ struct GoalStreakGridUIKitView: UIViewRepresentable {
         return GoalStreakGridBuilder.build(inputs: inputs)
     }
     
+    /// Reconfigures the currently visible milestone cells so the edit-mode overlay (remove icon)
+    /// and wiggle appear immediately when edit mode is entered mid-drag (MOB-187) — e.g. the first
+    /// long-press after a dashboard reset, which leaves edit mode OFF. Reconfiguration swaps only
+    /// the hosted SwiftUI content; it does not reload the collection view, so the in-flight
+    /// interactive movement is preserved. The dragged cell is reconfigured too: its remove icon
+    /// must stay visible during the lift, matching the metric grid.
+    private func applyEditModeOverlayToVisibleCells(_ collectionView: UICollectionView) {
+        for cell in collectionView.visibleCells {
+            if let goalCell = cell as? GoalCardCell {
+                goalCell.isWiggling = true
+                goalCell.configure(with: store)
+            } else if let streakCell = cell as? StreakCardCell, let item = streakCell.representedItem {
+                streakCell.isWiggling = true
+                streakCell.configure(with: item, store: store)
+            }
+        }
+    }
+
     // MARK: - Coordinator
 
     // swiftlint:disable:next type_body_length

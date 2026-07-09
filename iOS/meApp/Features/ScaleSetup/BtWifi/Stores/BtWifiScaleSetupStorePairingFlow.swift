@@ -18,6 +18,8 @@ extension BtWifiScaleSetupStore {
             break
         case .permissions:
             break
+        case .completeProfile:
+            prefillCompleteProfile()
         case .wakeup:
             self.pair()
         case .connectingBluetooth:

@@ -24,7 +24,7 @@ enum HistoryListStrings {
     static let systolic = "systolic"
     static let diastolic = "diastolic"
     static let notes = "Notes"
-    static let noNotesPlaceholder = "no notes yet — tap edit icon to add one."
+    static let noNotesPlaceholder = "no notes yet — tap plus icon to add one."
     static let downloadBPHistory = "Download BP History"
     static let downloadBabyHistory = "Download Baby History"
 
@@ -33,7 +33,6 @@ enum HistoryListStrings {
     static let length = "length"
     static let percentile = "percent"
     static let week = "week"
-    static let lbs = "lbs"
     static let oz = "oz"
     static let kg = "kg"
     static let lb = "lb"
@@ -64,4 +63,6 @@ enum HistoryListStrings {
     static let accDayRowHint = "Double tap to view entries"
     static let accEntryExpandHint = "Double tap to expand metrics"
     static let accEntryCollapseHint = "Double tap to collapse metrics"
+    static let accAddNoteLabel = "Add note"
+    static let accEditNoteLabel = "Edit note"
 }

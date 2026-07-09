@@ -226,7 +226,7 @@ final class BabyTrendViewModel {
             if roundedOz >= 16.0 { wholeLbs += 1; remainingOz = 0.0 }
             return BabyWeightDisplay(
                 primary: "\(wholeLbs)",
-                primaryUnit: BabyDashboardStrings.lbs,
+                primaryUnit: BabyDashboardStrings.lb,
                 secondary: String(format: "%.1f", remainingOz),
                 secondaryUnit: BabyDashboardStrings.oz
             )
@@ -234,7 +234,7 @@ final class BabyTrendViewModel {
     }
 
     private func heightDisplayText(for height: Double) -> String {
-        height > 0 ? String(format: "%.1f", height) : "--.-"
+        height > 0 ? String(format: "%.1f", height) : "0.0"
     }
 
     private func percentileText(_ percentile: Int?) -> String {

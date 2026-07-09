@@ -12,6 +12,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import com.dmdbrands.gurus.weight.theme.MeAppTheme
 import com.dmdbrands.gurus.weight.theme.MeTheme
 import com.dmdbrands.gurus.weight.theme.MeTheme.spacing
@@ -45,6 +46,7 @@ fun <T> AppRadioGroup(
     onOptionSelected: (T) -> Unit,
     modifier: Modifier = Modifier,
     groupLabel: String? = null,
+    groupLabelColor: Color = MeTheme.colorScheme.textHeading,
 ) {
     Column(
         // selectableGroup() tells TalkBack these radios are one single-choice group
@@ -55,10 +57,12 @@ fun <T> AppRadioGroup(
         verticalArrangement = Arrangement.spacedBy(spacing.xs),
     ) {
         groupLabel?.let {
+            // Section header — Figma "Unit Type" dialog: Heading 6 (Bold, 14sp, 20 line-height),
+            // Text/heading colour for an active section (caller passes textSubheading when locked).
             Text(
                 text = it,
-                style = MeTheme.typography.subHeading1,
-                color = MeTheme.colorScheme.textSubheading,
+                style = MeTheme.typography.heading6,
+                color = groupLabelColor,
                 modifier = Modifier.padding(bottom = spacing.xs),
             )
         }

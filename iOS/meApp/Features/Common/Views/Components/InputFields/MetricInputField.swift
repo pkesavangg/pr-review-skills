@@ -157,7 +157,7 @@ struct MetricInputTestingView: View {
                     // Bank input examples
                     MetricInputField(
                         config: TextInputConfig(
-                            label: "weight (lbs)",
+                            label: "weight (lb)",
                             placeholder: "0.0",
                             inputType: .metric,
                             focusField: .weight,

@@ -20,6 +20,7 @@ final class HistoryStore: ObservableObject {
     @Injector var logger: LoggerServiceProtocol
     @Injector var accountService: AccountServiceProtocol
     @Injector var productTypeStore: ProductTypeStoreProtocol
+    @Injector var deviceService: PairedDeviceServiceProtocol
 
     // MARK: - Summary Screen State
     @Published private(set) var months: [HistoryMonth] = []
@@ -72,6 +73,24 @@ final class HistoryStore: ObservableObject {
     // MARK: - UI Flags
     @Published var isEmptyState: Bool = false
 
+    /// Whether the History screen is currently on-screen. Set by `HistoryListScreen`
+    /// on tab change. When false, `entrySaved`/`entryDeleted` only invalidate the months
+    /// cache instead of eagerly re-reading the full ~10k dataset — the next History open
+    /// reloads fresh. This removes a full-dataset read from every off-screen save on a
+    /// large account (MOB-1433 §5c).
+    var isHistoryScreenActive = false
+
+    /// The local `DeviceType.rawValue`s of every currently paired device, mirrored from
+    /// `deviceService.scalesPublisher` so the empty state re-renders when a device is
+    /// paired/unpaired. Drives the "no device" vs. "no measurement" empty-state split.
+    @Published private(set) var pairedDeviceTypes: Set<String> = []
+
+    /// Whether a device matching the currently selected product is paired.
+    /// `.myWeight` → weight scale, `.myBloodPressure` → BP monitor, `.baby` → baby scale.
+    var hasPairedDeviceForCurrentProduct: Bool {
+        pairedDeviceTypes.contains(productTypeStore.selectedItem.deviceType.rawValue)
+    }
+
     // MARK: - Cursor Pagination State (Remote Read)
     /// Accumulated entries pulled from the unified `GET /v3/entries/` cursor endpoint.
     @Published private(set) var pagedEntries: [BathScaleOperationDTO] = []
@@ -102,6 +121,16 @@ final class HistoryStore: ObservableObject {
 
     // swiftlint:disable:next cyclomatic_complexity function_body_length
     init() {
+        // Seed + track paired devices so the empty state can distinguish "no device"
+        // from "device paired, no measurement" and update live as devices are paired.
+        pairedDeviceTypes = Set(deviceService.scales.compactMap { $0.deviceType })
+        deviceService.scalesPublisher
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] scales in
+                self?.pairedDeviceTypes = Set(scales.compactMap { $0.deviceType })
+            }
+            .store(in: &cancellables)
+
         entryService.entrySaved
             .sink { [weak self] entry in
                 guard let self = self else { return }
@@ -117,6 +146,12 @@ final class HistoryStore: ObservableObject {
                     if entry.entryType == EntryType.baby.rawValue {
                         self.loadedProductTypes = self.loadedProductTypes.filter { !$0.hasPrefix("baby_") }
                     }
+                    // MOB-1433 §5c: only eagerly re-read the months list (a full ~10k read on
+                    // a large account) when History is on screen. Off-screen — e.g. saving
+                    // from the Entry tab — the cache invalidation above is enough; the next
+                    // History open reloads fresh. Removes a full-dataset read from every
+                    // off-screen save.
+                    guard self.isHistoryScreenActive else { return }
                     await self.loadMonthsInternal(canShowLoader: false)
                     // If we're viewing a month and the saved entry belongs to that month, refresh entries inline
                     if let selectedMonth = self.selectedMonth {
@@ -144,6 +179,10 @@ final class HistoryStore: ObservableObject {
                     self.monthsLoadTask?.cancel()
                     self.monthsLoadTask = nil
                     self.invalidateCacheForCurrentType()
+                    // MOB-1433 §5c: eager months-list reload only when History is on screen
+                    // (deletes happen from within History, so this stays correct); otherwise
+                    // just invalidate and let the next open reload fresh.
+                    guard self.isHistoryScreenActive else { return }
                     await self.loadMonthsInternal(canShowLoader: false)
                     // If we're viewing a month and the deleted entry belongs to that month, refresh entries inline
                     if let selectedMonth = self.selectedMonth {
@@ -175,6 +214,9 @@ final class HistoryStore: ObservableObject {
                 // Always force a fresh load when product type changes — the selected baby
                 // may have received new entries since we last viewed it.
                 self.loadedProductTypes.remove(newItem.id)
+                // Reload now only when History is on screen; otherwise the invalidation
+                // above is enough and the next open reloads fresh (MOB-1433 §5c).
+                guard self.isHistoryScreenActive else { return }
                 self.loadMonths()
             }
             .store(in: &cancellables)
@@ -193,6 +235,11 @@ final class HistoryStore: ObservableObject {
                 self.monthsLoadTask?.cancel()
                 self.monthsLoadTask = nil
                 self.loadedProductTypes.removeAll()
+                // The account refresh at launch republishes the account while the user is on
+                // the Dashboard — reloading the full months list here fired a stray ~10k read
+                // that contended with the dashboard load (MOB-1433 §5c). Only reload when
+                // History is on screen (e.g. a live unit change while viewing it).
+                guard self.isHistoryScreenActive else { return }
                 self.loadMonths()
                 if let selectedBabyDay = self.selectedBabyDay {
                     self.selectBabyDay(selectedBabyDay)
@@ -242,8 +289,16 @@ final class HistoryStore: ObservableObject {
         try? await accountService.refreshAccount()
         await entryService.syncAllEntriesWithRemote()
         await loadMonthsInternal(canShowLoader: false)
+        // Refresh whichever product detail is currently open so pull-to-refresh
+        // updates the visible detail screen for weight, BP, and baby alike.
         if let selectedMonth {
             await loadEntries(for: selectedMonth, showLoader: false)
+        }
+        if let selectedBPMonth {
+            selectBPMonth(selectedBPMonth)
+        }
+        if let selectedBabyDay {
+            selectBabyDay(selectedBabyDay)
         }
     }
 
@@ -379,6 +434,11 @@ final class HistoryStore: ObservableObject {
                 let result = try await self.entryService.getMonthsAll()
                 self.months = result
                 self.isEmptyState = result.isEmpty
+                self.logger.log(
+                    level: .info,
+                    tag: self.tag,
+                    message: "Loaded weight history months: count=\(result.count), isEmptyState=\(result.isEmpty)"
+                )
             } catch {
                 self.logger.log(level: .error, tag: self.tag, message: "Failed to load history months: \(error.localizedDescription)")
                 self.months = []
@@ -396,13 +456,16 @@ final class HistoryStore: ObservableObject {
             let fetched = try await entryService.fetchEntrySnapshots(forMonth: selectedMonth.id)
 
             // UI-level deduplication:
-            // Group by entryTimestamp and keep the latest operation by serverTimestamp.
-            let grouped = Dictionary(grouping: fetched) { $0.entryTimestamp }
-            let latestPerTimestamp: [EntrySnapshot] = grouped.compactMap { _, values in
+            // Group by entry identity (serverEntryId when present, else the unique local id)
+            // and keep the latest operation by serverTimestamp. Keying on entry identity —
+            // NOT entryTimestamp — ensures distinct entries that share an entryTimestamp are
+            // each shown, while multiple operations of the same entry still collapse to one.
+            let grouped = Dictionary(grouping: fetched) { $0.serverEntryId ?? $0.id.uuidString }
+            let latestPerEntry: [EntrySnapshot] = grouped.compactMap { _, values in
                 values.max { ($0.serverTimestamp ?? "") < ($1.serverTimestamp ?? "") }
             }
             // Show only final creates; hide deletes
-            let visible = latestPerTimestamp.filter { $0.operationType == OperationType.create.rawValue }
+            let visible = latestPerEntry.filter { $0.operationType == OperationType.create.rawValue }
             // Sort newest first by entryTimestamp
             let pairs = visible.map { entry -> (EntrySnapshot, Int64) in
                 (entry, DateTimeTools.getTimestamp(entry.entryTimestamp))
@@ -858,7 +921,7 @@ final class HistoryStore: ObservableObject {
             return "\(String(format: "%.1f", lb)) \(HistoryListStrings.lb)"
         case .imperialLbOz:
             let lbsOz = ConversionTools.convertBabyDecigramsToLbsOz(graduatedDecigrams)
-            return "\(lbsOz.lbs) \(HistoryListStrings.lbs) \(String(format: "%.1f", lbsOz.oz)) \(HistoryListStrings.oz)"
+            return "\(lbsOz.lbs) \(HistoryListStrings.lb) \(String(format: "%.1f", lbsOz.oz)) \(HistoryListStrings.oz)"
         }
     }
 

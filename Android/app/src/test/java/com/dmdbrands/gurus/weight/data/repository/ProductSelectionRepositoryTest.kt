@@ -147,24 +147,31 @@ class ProductSelectionRepositoryTest {
     }
 
     // ── hasBpmDevice ────────────────────────────────────────────────────────────
+    // A paired BPM is stored with its setup type ("bpmBluetooth" for A3, "bpmA6Bluetooth" for A6),
+    // never the API product category "BPM" — so the query must match both connection variants.
 
     @Test
-    fun `hasBpmDevice returns true when BPM devices exist`() = runTest {
-        val device = mockk<DeviceDetails>()
-        every { deviceDao.getDevicesByTypeWithAccount("BPM", ACCOUNT_ID) } returns flowOf(listOf(device))
+    fun `hasBpmDevice returns true for an A3 (bpmBluetooth) device`() = runTest {
+        every { deviceDao.getDevicesByTypeWithAccount("bpmBluetooth", ACCOUNT_ID) } returns flowOf(listOf(mockk<DeviceDetails>()))
+        every { deviceDao.getDevicesByTypeWithAccount("bpmA6Bluetooth", ACCOUNT_ID) } returns flowOf(emptyList())
 
-        val result = repository.hasBpmDevice(ACCOUNT_ID)
-
-        assertThat(result).isTrue()
+        assertThat(repository.hasBpmDevice(ACCOUNT_ID)).isTrue()
     }
 
     @Test
-    fun `hasBpmDevice returns false when no BPM devices`() = runTest {
-        every { deviceDao.getDevicesByTypeWithAccount("BPM", ACCOUNT_ID) } returns flowOf(emptyList())
+    fun `hasBpmDevice returns true for an A6 (bpmA6Bluetooth) device`() = runTest {
+        every { deviceDao.getDevicesByTypeWithAccount("bpmBluetooth", ACCOUNT_ID) } returns flowOf(emptyList())
+        every { deviceDao.getDevicesByTypeWithAccount("bpmA6Bluetooth", ACCOUNT_ID) } returns flowOf(listOf(mockk<DeviceDetails>()))
 
-        val result = repository.hasBpmDevice(ACCOUNT_ID)
+        assertThat(repository.hasBpmDevice(ACCOUNT_ID)).isTrue()
+    }
 
-        assertThat(result).isFalse()
+    @Test
+    fun `hasBpmDevice returns false when neither BPM variant exists`() = runTest {
+        every { deviceDao.getDevicesByTypeWithAccount("bpmBluetooth", ACCOUNT_ID) } returns flowOf(emptyList())
+        every { deviceDao.getDevicesByTypeWithAccount("bpmA6Bluetooth", ACCOUNT_ID) } returns flowOf(emptyList())
+
+        assertThat(repository.hasBpmDevice(ACCOUNT_ID)).isFalse()
     }
 
     // ── hasBabyScaleDevice (MOB-416) ────────────────────────────────────────────

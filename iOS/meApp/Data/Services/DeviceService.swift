@@ -487,6 +487,17 @@ final class DeviceService: ObservableObject, @preconcurrency PairedDeviceService
         isConnected: Bool = false,
         skipDuplicateCheck: Bool = false
     ) async throws -> Device {
+        // createR4Scale serves both the AccuCheck R4 weight scale (e.g. 0412) and the
+        // R4-based baby scale (e.g. 0222). Derive the device type, display name, and
+        // body-composition support from the SKU catalog instead of hardcoding weight-scale
+        // values — otherwise a baby scale is persisted as deviceType "scale" named
+        // "AccuCheck Verve Smart Scale", which classifies it as a weight scale and suppresses
+        // the "baby" product type / dashboard baby card.
+        let catalogInfo = DeviceInfoUtils.shared.getDeviceInfo(bySku: sku ?? "")
+        let resolvedDeviceType = DeviceType.fromSku(sku)
+        let resolvedNickname = catalogInfo?.productName ?? "AccuCheck Verve Smart Scale"
+        let supportsBodyComp = catalogInfo?.bodyComp ?? true
+
         // Create the main device
         let device = Device(
             id: scaleId,
@@ -494,7 +505,7 @@ final class DeviceService: ObservableObject, @preconcurrency PairedDeviceService
             sku: sku,
             mac: mac,
             deviceName: deviceName,
-            deviceType: DeviceType.scale.rawValue,
+            deviceType: resolvedDeviceType.rawValue,
             broadcastId: broadcastId,
             broadcastIdString: broadcastIdString,
             userNumber: "0",
@@ -505,13 +516,13 @@ final class DeviceService: ObservableObject, @preconcurrency PairedDeviceService
             token: token,
             metaData: deviceMetadata
         )
-        device.nickname = "AccuCheck Verve Smart Scale"
+        device.nickname = resolvedNickname
         device.peripheralIdentifier = mac?.replacingOccurrences(of: ":", with: "") ?? ""
 
         // Create bath scale relationship
         let bathScale = BathScale(
             scaleType: DeviceSourceType.btWifiR4.rawValue,
-            bodyComp: true
+            bodyComp: supportsBodyComp
         )
         device.bathScale = bathScale
 

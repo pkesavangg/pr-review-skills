@@ -14,7 +14,9 @@ extension A6ScaleSetupStoreTests {
 
             store.moveToNextStep()
 
-            #expect(store.currentStep == .wakeUp)
+            // Permissions is skipped when already granted; the A6 flow then always
+            // presents the Complete Profile step (MOB-1388) before wake-up.
+            #expect(store.currentStep == .completeProfile)
         }
 
         @Test("intro routes to permissions when bluetooth permissions are missing")
@@ -56,8 +58,8 @@ extension A6ScaleSetupStoreTests {
             #expect(enabledStore.isNextEnabled == true)
         }
 
-        @Test("permissions next moves to wake up")
-        func permissionsNextMovesToWakeUp() {
+        @Test("permissions next moves to complete profile")
+        func permissionsNextMovesToCompleteProfile() {
             let harness = A6ScaleSetupStoreTestFixtures.makeSUT()
             let store = harness.store
             A6ScaleSetupStoreTestFixtures.configureDefaultScale(store)
@@ -65,7 +67,9 @@ extension A6ScaleSetupStoreTests {
             store.currentStepIndex = A6ScaleSetupStep.permissions.index
             store.moveToNextStep()
 
-            #expect(store.currentStep == .wakeUp)
+            // The A6 flow always presents the Complete Profile step after permissions
+            // (MOB-1388); wake-up follows once it is completed or skipped.
+            #expect(store.currentStep == .completeProfile)
         }
 
         @Test("next from setup finished invokes dismiss action")
@@ -83,7 +87,7 @@ extension A6ScaleSetupStoreTests {
             #expect(dismissCalls == 1)
         }
 
-        @Test("moveToPreviousStep from wake up returns to permissions or intro")
+        @Test("moveToPreviousStep from wake up returns to complete profile")
         func moveToPreviousFromWakeUp() {
             let permissions = MockPermissionsService()
             permissions.setPermissions(A6ScaleSetupStoreTestFixtures.disabledPermissions())
@@ -94,7 +98,9 @@ extension A6ScaleSetupStoreTests {
 
             store.moveToPreviousStep()
 
-            #expect(store.currentStep == .permissions)
+            // Complete Profile sits between permissions and wake-up (MOB-1388), so
+            // stepping back from wake-up lands there rather than on permissions.
+            #expect(store.currentStep == .completeProfile)
         }
 
         @Test("moveToPreviousStep from intro is no-op")

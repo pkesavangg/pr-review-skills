@@ -10,7 +10,7 @@ object AppBuildConfig {
    * Current build number for the application.
    * This should be incremented with each new build.
    */
-  const val BUILD_NUMBER = "5.1.0"
+  const val BUILD_NUMBER = "5.0.2"
 
   /**
    * Gets the formatted version string based on build type.

@@ -15,6 +15,7 @@ import com.dmdbrands.gurus.weight.domain.repository.IDeviceRepository
 import com.dmdbrands.gurus.weight.features.common.enums.DeviceSetupType
 import com.dmdbrands.gurus.weight.features.common.model.DialogModel
 import com.dmdbrands.library.ggbluetooth.model.GGDeviceDetail
+import com.greatergoods.ggbluetoothsdk.external.enums.GGDeviceProtocolType
 import com.google.common.truth.Truth.assertThat
 import io.mockk.Runs
 import io.mockk.coEvery
@@ -113,6 +114,17 @@ class DeviceServiceTest {
         return Device(id = id, device = detail, isSynced = true, hasServerID = true, sku = sku)
     }
 
+    /** A paired baby scale whose [GGDeviceDetail.broadcastIdString] is stubbed, for baby-scale heal tests. */
+    private fun fakeBabyDevice(id: String, sku: String = "0220", broadcastId: String?): Device {
+        val detail: GGDeviceDetail = mockk(relaxed = true)
+        every { detail.macAddress } returns "BA:B0:00:00:00:0$id".take(17)
+        every { detail.isWifiConfigured } returns false
+        every { detail.wifiMacAddress } returns null
+        every { detail.impedanceSwitchState } returns null
+        every { detail.broadcastIdString } returns broadcastId
+        return Device(id = id, device = detail, isSynced = true, hasServerID = true, sku = sku)
+    }
+
     @BeforeEach
     fun setUp() {
         every { connectivityObserver.getCurrentNetworkState() } returns
@@ -127,6 +139,8 @@ class DeviceServiceTest {
         coEvery { deviceRepository.deleteAllDevicesForAccount(any()) } just Runs
         coEvery { deviceRepository.deleteDeviceFromDb(any()) } just Runs
         coEvery { deviceRepository.deleteDeviceFromApi(any()) } returns true
+        coEvery { deviceRepository.deletePairedDevice(any()) } returns true
+        coEvery { deviceRepository.updateDeviceBroadcastId(any(), any(), any()) } just Runs
         coEvery { deviceRepository.updateDevice(any(), any()) } just Runs
         coEvery { deviceRepository.updateDeviceNickname(any(), any()) } returns fakeDevice()
         coEvery { deviceRepository.saveScalePreferencesToApi(any()) } returns fakeR4Preferences
@@ -193,6 +207,104 @@ class DeviceServiceTest {
 
         coVerify { deviceRepository.getDevicesFromApi(accountId) }
     }
+
+    // -------------------------------------------------------------------------
+    // onAppForegrounded — passive foreground refresh (MOB-1201)
+    // -------------------------------------------------------------------------
+
+    @Test
+    fun `onAppForegrounded skips the initial foreground but refreshes on later foregrounds`() =
+        runTest(mainDispatcherRule.scheduler) {
+            service.setAccountId(accountId) // cold-start sync (#1)
+            advanceUntilIdle()
+
+            service.onAppForegrounded() // initial foreground -> skipped (cold start already synced)
+            advanceUntilIdle()
+            coVerify(exactly = 1) { deviceRepository.getDevicesFromApi(accountId) }
+
+            service.onAppForegrounded() // real background -> foreground -> refresh (#2)
+            advanceUntilIdle()
+            coVerify(exactly = 2) { deviceRepository.getDevicesFromApi(accountId) }
+        }
+
+    @Test
+    fun `onAppForegrounded does not refresh when no account is set`() =
+        runTest(mainDispatcherRule.scheduler) {
+            service.onAppForegrounded() // consumes the initial-foreground skip
+            service.onAppForegrounded() // would refresh, but no active account
+            advanceUntilIdle()
+
+            coVerify(exactly = 0) { deviceRepository.getDevicesFromApi(any()) }
+        }
+
+    @Test
+    fun `onAppForegrounded does not refresh when offline`() =
+        runTest(mainDispatcherRule.scheduler) {
+            service.setAccountId(accountId) // cold-start sync (#1)
+            advanceUntilIdle()
+            every { connectivityObserver.getCurrentNetworkState() } returns
+                NetworkState(available = false, unAvailable = true)
+
+            service.onAppForegrounded() // initial-foreground skip
+            service.onAppForegrounded() // offline -> skip
+            advanceUntilIdle()
+
+            coVerify(exactly = 1) { deviceRepository.getDevicesFromApi(accountId) }
+        }
+
+    @Test
+    fun `onAppForegrounded throttles rapid consecutive foregrounds`() =
+        runTest(mainDispatcherRule.scheduler) {
+            service.setAccountId(accountId) // cold-start sync (#1)
+            advanceUntilIdle()
+
+            service.onAppForegrounded() // initial-foreground skip
+            advanceUntilIdle()
+            service.onAppForegrounded() // refresh (#2)
+            service.onAppForegrounded() // within throttle window -> skip
+            advanceUntilIdle()
+
+            coVerify(exactly = 2) { deviceRepository.getDevicesFromApi(accountId) }
+        }
+
+    // -------------------------------------------------------------------------
+    // refreshPairedDevices — on-demand refresh when My Devices opens (MOB-1201)
+    // -------------------------------------------------------------------------
+
+    @Test
+    fun `refreshPairedDevices fetches from API when account set and online`() =
+        runTest(mainDispatcherRule.scheduler) {
+            service.setAccountId(accountId) // cold-start sync (#1)
+            advanceUntilIdle()
+
+            service.refreshPairedDevices() // on My Devices open -> refresh (#2)
+            advanceUntilIdle()
+
+            coVerify(exactly = 2) { deviceRepository.getDevicesFromApi(accountId) }
+        }
+
+    @Test
+    fun `refreshPairedDevices does not fetch when no account is set`() =
+        runTest(mainDispatcherRule.scheduler) {
+            service.refreshPairedDevices()
+            advanceUntilIdle()
+
+            coVerify(exactly = 0) { deviceRepository.getDevicesFromApi(any()) }
+        }
+
+    @Test
+    fun `refreshPairedDevices does not fetch when offline`() =
+        runTest(mainDispatcherRule.scheduler) {
+            service.setAccountId(accountId) // cold-start sync (#1)
+            advanceUntilIdle()
+            every { connectivityObserver.getCurrentNetworkState() } returns
+                NetworkState(available = false, unAvailable = true)
+
+            service.refreshPairedDevices() // offline -> skip
+            advanceUntilIdle()
+
+            coVerify(exactly = 1) { deviceRepository.getDevicesFromApi(accountId) }
+        }
 
     // -------------------------------------------------------------------------
     // updateConnectionStatus — map update
@@ -518,6 +630,83 @@ class DeviceServiceTest {
         }
     }
 
+    /** A BPM device with a stubbed broadcastId + user slot, for syncAllData gating tests. */
+    private fun bpmSlotDevice(id: String, broadcastId: String, userNumber: Int, sku: String): Device {
+        val detail: GGDeviceDetail = mockk(relaxed = true)
+        every { detail.macAddress } returns "AA:BB:CC:DD:EE:FF"
+        every { detail.broadcastId } returns broadcastId
+        every { detail.isWifiConfigured } returns false
+        every { detail.wifiMacAddress } returns null
+        every { detail.impedanceSwitchState } returns null
+        return Device(id = id, device = detail, isSynced = true, hasServerID = true, sku = sku, userNumber = userNumber)
+    }
+
+    @Test
+    fun `getGGBTDevices sets syncAllData true only for A6 monitor with multiple user slots`() =
+        runTest(mainDispatcherRule.scheduler) {
+            // Same A6 monitor (broadcastId "bc-a6") paired under two user slots.
+            val slot1 = bpmSlotDevice("a6-1", "bc-a6", userNumber = 1, sku = "0663")
+            val slot2 = bpmSlotDevice("a6-2", "bc-a6", userNumber = 2, sku = "0663")
+            every { deviceRepository.getDevices(accountId, any()) } returns flowOf(listOf(slot1, slot2))
+            service.setAccountId(accountId)
+
+            service.getGGBTDevices().test {
+                val result = awaitItem()
+                assertThat(result.all { it.syncAllData == true }).isTrue()
+                cancelAndIgnoreRemainingEvents()
+            }
+        }
+
+    @Test
+    fun `getGGBTDevices never sets syncAllData for A3 duplicates`() = runTest(mainDispatcherRule.scheduler) {
+        val slot1 = bpmSlotDevice("a3-1", "bc-a3", userNumber = 1, sku = "0603")
+        val slot2 = bpmSlotDevice("a3-2", "bc-a3", userNumber = 2, sku = "0603")
+        every { deviceRepository.getDevices(accountId, any()) } returns flowOf(listOf(slot1, slot2))
+        service.setAccountId(accountId)
+
+        service.getGGBTDevices().test {
+            val result = awaitItem()
+            assertThat(result.none { it.syncAllData == true }).isTrue()
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    @Test
+    fun `getGGBTDevices leaves syncAllData false for a single A6 monitor`() = runTest(mainDispatcherRule.scheduler) {
+        val only = bpmSlotDevice("a6-1", "bc-a6", userNumber = 1, sku = "0663")
+        every { deviceRepository.getDevices(accountId, any()) } returns flowOf(listOf(only))
+        service.setAccountId(accountId)
+
+        service.getGGBTDevices().test {
+            val result = awaitItem()
+            assertThat(result.single().syncAllData).isFalse()
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    // -------------------------------------------------------------------------
+    // getScaleByBroadcastIdAndUser — reading attribution by broadcastId + user slot
+    // -------------------------------------------------------------------------
+
+    @Test
+    fun `getScaleByBroadcastIdAndUser delegates to repository`() = runTest(mainDispatcherRule.scheduler) {
+        val device = fakeDevice()
+        every { deviceRepository.getDeviceByBroadcastIdAndUser("bc-1", 2, accountId) } returns flowOf(device)
+
+        val result = service.getScaleByBroadcastIdAndUser("bc-1", 2, accountId)
+
+        assertThat(result).isEqualTo(device)
+    }
+
+    @Test
+    fun `getScaleByBroadcastIdAndUser returns null on exception`() = runTest(mainDispatcherRule.scheduler) {
+        every { deviceRepository.getDeviceByBroadcastIdAndUser(any(), any(), any()) } throws RuntimeException("error")
+
+        val result = service.getScaleByBroadcastIdAndUser("bc-1", 1, accountId)
+
+        assertThat(result).isNull()
+    }
+
     // -------------------------------------------------------------------------
     // getScaleToken
     // -------------------------------------------------------------------------
@@ -563,6 +752,44 @@ class DeviceServiceTest {
         coVerify { deviceRepository.deleteAllDevicesForAccount(accountId) }
         coVerify { deviceRepository.saveDeviceToDb(any(), accountId) }
     }
+
+    /** A BPM device carrying a user slot + broadcastId + peripheralIdentifier, for the sync-preservation test. */
+    private fun bpmDeviceWith(id: String, broadcastIdString: String?, userNumber: Int?, identifier: String): Device {
+        val detail: GGDeviceDetail = mockk(relaxed = true)
+        every { detail.macAddress } returns "AA:BB:CC:DD:EE:FF"
+        every { detail.broadcastId } returns null
+        every { detail.broadcastIdString } returns broadcastIdString
+        every { detail.identifier } returns identifier
+        every { detail.isWifiConfigured } returns false
+        every { detail.wifiMacAddress } returns null
+        every { detail.impedanceSwitchState } returns null
+        return Device(id = id, device = detail, isSynced = true, hasServerID = true, sku = "0663", userNumber = userNumber)
+    }
+
+    @Test
+    fun `syncDevices preserves userNumber from the POST copy when the GET omits it`() =
+        runTest(mainDispatcherRule.scheduler) {
+            // Local device paired THIS run (unsynced) carries the user slot.
+            val localUnsynced = bpmDeviceWith("dev-1", broadcastIdString = "bc-1", userNumber = 2, identifier = "periph-1")
+                .copy(isSynced = false)
+            every { deviceRepository.getDevices(accountId, false) } returns flowOf(listOf(localUnsynced))
+            // POST /v3/paired-device echoes userNumber back...
+            coEvery { deviceRepository.createPairedDevice(any(), accountId) } returns
+                bpmDeviceWith("dev-1", broadcastIdString = "bc-1", userNumber = 2, identifier = "periph-1")
+            // ...but the GET omits userNumber (top-level → null).
+            coEvery { deviceRepository.getDevicesFromApi(accountId) } returns
+                listOf(bpmDeviceWith("dev-1", broadcastIdString = null, userNumber = null, identifier = ""))
+            // Not in the DB yet at merge time — preservation must fall back to the in-memory POST copy.
+            every { deviceRepository.getDevice("dev-1") } returns flowOf(null)
+            val saved = slot<Device>()
+            coEvery { deviceRepository.saveDeviceToDb(capture(saved), accountId) } just Runs
+
+            service.setAccountId(accountId)
+            advanceUntilIdle()
+
+            // The persisted row keeps the user slot instead of being nulled by the GET.
+            assertThat(saved.captured.userNumber).isEqualTo(2)
+        }
 
     @Test
     fun `syncDevices syncs unsynced device to API`() = runTest(mainDispatcherRule.scheduler) {
@@ -640,21 +867,24 @@ class DeviceServiceTest {
     }
 
     @Test
-    fun `syncDevices deletes device from API and DB on delete`() = runTest(mainDispatcherRule.scheduler) {
+    fun `syncDevices deletes device via the unified paired-device endpoint and DB on delete`() = runTest(mainDispatcherRule.scheduler) {
         val deletedDevice = fakeDevice(id = "del-1", isDeleted = true, isSynced = true)
         every { deviceRepository.getDevices(accountId, false) } returns flowOf(listOf(deletedDevice))
         service.setAccountId(accountId)
         advanceUntilIdle()
 
-        coVerify { deviceRepository.deleteDeviceFromApi("del-1") }
+        // Devices are registered via the unified POST, so they must be deleted via the unified
+        // DELETE (deletePairedDevice) — not the legacy deleteDeviceFromApi.
+        coVerify { deviceRepository.deletePairedDevice("del-1") }
         coVerify { deviceRepository.deleteDeviceFromDb("del-1") }
+        coVerify(exactly = 0) { deviceRepository.deleteDeviceFromApi(any()) }
     }
 
     @Test
     fun `syncDevices handles Not Found delete response by marking synced and deleting locally`() = runTest(mainDispatcherRule.scheduler) {
         val deletedDevice = fakeDevice(id = "del-notfound", isDeleted = true, isSynced = true)
         every { deviceRepository.getDevices(accountId, false) } returns flowOf(listOf(deletedDevice))
-        coEvery { deviceRepository.deleteDeviceFromApi("del-notfound") } throws RuntimeException("404 Not Found")
+        coEvery { deviceRepository.deletePairedDevice("del-notfound") } throws RuntimeException("404 Not Found")
         service.setAccountId(accountId)
         advanceUntilIdle()
 
@@ -667,11 +897,83 @@ class DeviceServiceTest {
     fun `syncDevices updates device with isDeleted+unsynced on non-NotFound delete error`() = runTest(mainDispatcherRule.scheduler) {
         val deletedDevice = fakeDevice(id = "del-err", isDeleted = true, isSynced = true)
         every { deviceRepository.getDevices(accountId, false) } returns flowOf(listOf(deletedDevice))
-        coEvery { deviceRepository.deleteDeviceFromApi("del-err") } throws RuntimeException("500 Server Error")
+        coEvery { deviceRepository.deletePairedDevice("del-err") } throws RuntimeException("500 Server Error")
         service.setAccountId(accountId)
         advanceUntilIdle()
 
         coVerify { deviceRepository.updateDevice(any(), accountId = accountId) }
+    }
+
+    @Test
+    fun `syncDevices does not resurrect a synced device that was just deleted`() = runTest(mainDispatcherRule.scheduler) {
+        val x = fakeDevice(id = "X", isSynced = true)
+        every { deviceRepository.getDevices(accountId, any()) } returns flowOf(listOf(x))
+        every { deviceRepository.getDevice("X") } returns flowOf(x)
+        // Initially the server still returns X.
+        coEvery { deviceRepository.getDevicesFromApi(accountId) } returns listOf(x)
+        val saved = mutableListOf<Device>()
+        coEvery { deviceRepository.saveDeviceToDb(capture(saved), accountId) } just Runs
+
+        service.setAccountId(accountId)
+        advanceUntilIdle()
+
+        // User deletes X → server no longer returns it. The just-deleted id must NOT be resurrected
+        // by the "keep devices the GET omitted" (localOnlySynced) step.
+        coEvery { deviceRepository.getDevicesFromApi(accountId) } returns emptyList()
+        saved.clear()
+
+        service.deleteScale("X")
+        advanceUntilIdle()
+
+        coVerify { deviceRepository.deletePairedDevice("X") }
+        assertThat(saved.any { it.id == "X" }).isFalse()
+    }
+
+    // -------------------------------------------------------------------------
+    // healBabyScaleBroadcastId — baby-scale analog of the BPM broadcastId heal
+    // -------------------------------------------------------------------------
+
+    @Test
+    fun `healBabyScaleBroadcastId heals the lone un-identified baby scale`() = runTest(mainDispatcherRule.scheduler) {
+        val baby = fakeBabyDevice(id = "baby-1", sku = "0220", broadcastId = null)
+        every { deviceRepository.getDevices(accountId, any()) } returns flowOf(listOf(baby))
+        val healed = fakeBabyDevice(id = "baby-1", sku = "0220", broadcastId = "bc-new")
+        every { deviceRepository.getDeviceByBroadcastId("bc-new", accountId) } returns flowOf(healed)
+        service.setAccountId(accountId)
+        Thread.sleep(2000) // fetchScales runs on IO — wait for _pairedScales to populate
+
+        val result = service.healBabyScaleBroadcastId("bc-new", accountId)
+
+        coVerify { deviceRepository.updateDeviceBroadcastId("baby-1", "bc-new", accountId) }
+        assertThat(result?.id).isEqualTo("baby-1")
+    }
+
+    @Test
+    fun `healBabyScaleBroadcastId returns null when no un-identified baby scale exists`() = runTest(mainDispatcherRule.scheduler) {
+        // Already carries a broadcastId → not a heal candidate.
+        val baby = fakeBabyDevice(id = "baby-1", sku = "0220", broadcastId = "existing")
+        every { deviceRepository.getDevices(accountId, any()) } returns flowOf(listOf(baby))
+        service.setAccountId(accountId)
+        Thread.sleep(2000)
+
+        val result = service.healBabyScaleBroadcastId("bc-new", accountId)
+
+        assertThat(result).isNull()
+        coVerify(exactly = 0) { deviceRepository.updateDeviceBroadcastId(any(), any(), any()) }
+    }
+
+    @Test
+    fun `healBabyScaleBroadcastId returns null when multiple un-identified baby scales exist (ambiguous)`() = runTest(mainDispatcherRule.scheduler) {
+        val b1 = fakeBabyDevice(id = "baby-1", sku = "0220", broadcastId = null)
+        val b2 = fakeBabyDevice(id = "baby-2", sku = "0222", broadcastId = null)
+        every { deviceRepository.getDevices(accountId, any()) } returns flowOf(listOf(b1, b2))
+        service.setAccountId(accountId)
+        Thread.sleep(2000)
+
+        val result = service.healBabyScaleBroadcastId("bc-new", accountId)
+
+        assertThat(result).isNull()
+        coVerify(exactly = 0) { deviceRepository.updateDeviceBroadcastId(any(), any(), any()) }
     }
 
     @Test
@@ -1145,5 +1447,43 @@ class DeviceServiceTest {
 
         assertThat(result).isNull()
         coVerify(exactly = 0) { deviceRepository.updateDeviceBroadcastId(any(), any(), any()) }
+    }
+
+    @Test
+    fun `healBpmDeviceBroadcastId skips a protocol-mismatched candidate`() = runTest {
+        // Reading is A6, but the only un-identified BPM row is an A3 (0603) — never stamp across
+        // protocols. Candidate is excluded → nothing to heal → null, no write.
+        populatePairedScales(
+            listOf(fakeBpmDevice(id = "bpm-a3", mac = "AA:AA:AA:AA:AA:AA", sku = "0603", broadcastId = null)),
+        )
+
+        val result = service.healBpmDeviceBroadcastId(
+            "11:22:33:44:55:66",
+            accountId,
+            protocolType = GGDeviceProtocolType.GG_DEVICE_PROTOCOL_A6.value,
+        )
+
+        assertThat(result).isNull()
+        coVerify(exactly = 0) { deviceRepository.updateDeviceBroadcastId(any(), any(), any()) }
+    }
+
+    @Test
+    fun `healBpmDeviceBroadcastId heals when reading protocol matches candidate`() = runTest {
+        val broadcastId = "11:22:33:44:55:66"
+        val healed = fakeBpmDevice(id = "bpm-a6", mac = "AA:AA:AA:AA:AA:AA", sku = "0663", broadcastId = broadcastId)
+        coEvery { deviceRepository.updateDeviceBroadcastId(any(), any(), any()) } just Runs
+        every { deviceRepository.getDeviceByBroadcastId(broadcastId, accountId) } returns flowOf(healed)
+        populatePairedScales(
+            listOf(fakeBpmDevice(id = "bpm-a6", mac = "AA:AA:AA:AA:AA:AA", sku = "0663", broadcastId = null)),
+        )
+
+        val result = service.healBpmDeviceBroadcastId(
+            broadcastId,
+            accountId,
+            protocolType = GGDeviceProtocolType.GG_DEVICE_PROTOCOL_A6.value,
+        )
+
+        assertThat(result?.id).isEqualTo("bpm-a6")
+        coVerify(exactly = 1) { deviceRepository.updateDeviceBroadcastId("bpm-a6", broadcastId, accountId) }
     }
 }

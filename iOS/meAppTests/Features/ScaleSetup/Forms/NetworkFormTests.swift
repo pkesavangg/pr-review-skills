@@ -126,7 +126,7 @@ struct NetworkFormTests {
     @Test("isValidApModeSSID returns true for AP mode SSID prefix")
     func apModeSSIDValid() {
         let form = NetworkForm()
-        form.setSSID("gg_SmartDeviceSetup_abc123")
+        form.setSSID("gg_SmartScale_abc123")
         #expect(form.isValidApModeSSID() == true)
     }
 

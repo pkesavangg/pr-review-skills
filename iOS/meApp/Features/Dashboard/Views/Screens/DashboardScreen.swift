@@ -91,7 +91,11 @@ struct DashboardScreen: View {
                 isInProductDashboard = false
             }
         }
-        .ignoresSafeArea(.all, edges: canShowSnapshotOverview ? .bottom : .all)
+        // Snapshot overview: full-bleed only at the bottom so the WG logo sits below the
+        // status bar. Product dashboard: keep horizontal full-bleed for the graph but respect
+        // the top safe area, otherwise navbarHeader() (the product-tinted title) slides under
+        // the status bar/notch and the title is hidden (MOB-1377).
+        .ignoresSafeArea(.all, edges: canShowSnapshotOverview ? .bottom : [.horizontal, .bottom])
         .background(theme.backgroundSecondary)
         .sheet(item: $selectedEntry) { entry in
             RefetchedEntryWrapper(entryId: entry.id, selectedMetric: selectedMetric ?? .bmi, dashboardStore: store)
@@ -183,8 +187,16 @@ struct DashboardScreen: View {
         //      profiles exist — no snapshot overview shows, but the dropdown is still needed.
         let showProductSelector = isProductDashboardFromSnapshot ||
             (!canShowSnapshotOverview && store.availableProductItems.count > 1)
+        // Per Me.Health 2.0: single-product accounts show no snapshot. Instead the header
+        // always carries a product-tinted title (My Weight / My BP / baby name). When there
+        // is no snapshot overview there is only one product, so the title is static (no
+        // chevron/selector). When a selector is warranted the chevron is added below.
+        let showTitle = showProductSelector || !canShowSnapshotOverview
         return NavbarHeaderView<AppIconView, EmptyView>(
-            title: showProductSelector ? store.selectedProductItem.dashboardTitle : nil,
+            title: showTitle ? store.selectedProductItem.dashboardTitle : nil,
+            // Per Me.Health 2.0: the product-type title is tinted by product
+            // (weight → blue, BP → green, baby → purple).
+            titleColor: showTitle ? theme.productAccentColor(for: store.productType) : nil,
             leadingContent: isProductDashboardFromSnapshot
                 ? { AppIconView(icon: AppAssets.chevronLeft) }
                 : nil,
@@ -195,7 +207,8 @@ struct DashboardScreen: View {
             onTitleTap: showProductSelector ? {
                 isProductTypeSelectorPresented = true
             } : nil,
-            canShowBorder: false,
+            // Per mock: a bottom border/divider sits under the product title header.
+            canShowBorder: showTitle,
             canShowTitleChevron: showProductSelector
         )
         .sheet(isPresented: $isProductTypeSelectorPresented) {
@@ -262,15 +275,11 @@ struct DashboardScreen: View {
 
     @ViewBuilder
     private func babyDashboardContent(babyProfile: BabyProfile) -> some View {
-        if babyProfile.isPendingSelection {
-            NoBabySnapshotCard {
-                tabViewModel.navigateToSettings(route: .addBaby)
-            }
-            .padding(.horizontal, .spacingMD)
-            .padding(.top, .spacingXL)
-        } else {
-            BabyTrendView(dashboardStore: store, babyProfile: babyProfile)
-        }
+        // Render the baby trend scaffold for every baby state (MOB-1245). When no profile
+        // exists yet (placeholder "Baby Scale" selection) the scaffold shows zeroed values,
+        // "no entries", and an empty chart; the trend view's footer swaps CONNECT DEVICE for
+        // the "No babies added yet" / ADD A BABY card based on `isPendingBabySelection`.
+        BabyTrendView(dashboardStore: store, babyProfile: babyProfile)
     }
 
     private func actionButtons() -> some View {

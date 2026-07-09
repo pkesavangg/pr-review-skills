@@ -18,7 +18,9 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
     private let localKVRepo: EntrySyncStoreProtocol
     private let remoteRepo: EntryRepositoryAPIProtocol
     private let migrationService: SQLiteMigrationService
-    private let swiftDataWorker: SwiftDataWorker
+    /// Batched off-main persistence (merge/insert/push bookkeeping/hot reads).
+    /// `SwiftDataWorker` in production; injectable for tests (MOB-1433).
+    private let worker: any EntryWorkerProtocol
     private let kvStorage: KvStorageServiceProtocol
     @MainActor static let shared = EntryService(accountService: AccountService.shared)
 
@@ -32,6 +34,12 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
     let entryDeleted = PassthroughSubject<EntryNotification, Never>()
 
     let tag = "EntryService"
+
+    /// `start` value used for a full sync (no prior sync timestamp). The unified
+    /// `GET /v3/entries/` only returns the complete history in sync mode when a `start`
+    /// is supplied; sending no `start` triggers a 20-row cursor page instead. Using the
+    /// epoch pulls every entry so History/Dashboard reflect the full server dataset.
+    private static let fullSyncStart = "1970-01-01T00:00:00Z"
 
     @Published var isSyncing: Bool = false
     @Published var lastSyncTime: Date?
@@ -58,6 +66,16 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
     private var lastLoggedEntryCountByAccount: [String: Int] = [:]
     /// Tracks the active sync task so concurrent callers can await it instead of skipping.
     private var activeSyncTask: Task<Void, Never>?
+    /// Tracks an in-flight eager push (fired after a local mutation) so concurrent
+    /// eager pushes coalesce onto one task and a full sync can await it before its
+    /// own push, preventing the same unsynced rows from being submitted twice.
+    private var pendingPushTask: Task<Void, Never>?
+    /// Coalesces the behind-the-UI post-add work (`updateProgressAndStreakInternal` then
+    /// `checkGoalAlerts`) so it runs BEHIND the UI after a local add. Awaiting this inline made
+    /// the save's loader wait seconds on 5k-10k-entry accounts, since the recompute re-reads the
+    /// whole dataset and the goal-alert reads then contend with it (MOB-1433 §5c).
+    /// Successive adds cancel the pending refresh so a bulk save triggers one run, not N.
+    private var progressRefreshTask: Task<Void, Never>?
     /// Tracks in-flight dashboard loads so repeated callers can piggyback on the same work.
     /// The Bool result indicates whether the load succeeded; piggybacked callers retry on failure.
     private var activeDashboardLoadTasks: [EntryType: Task<Bool, Never>] = [:]
@@ -74,14 +92,17 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
         localKVRepo: EntrySyncStoreProtocol? = nil,
         remoteRepo: EntryRepositoryAPIProtocol? = nil,
         migrationService: SQLiteMigrationService? = nil,
-        kvStorage: KvStorageServiceProtocol? = nil
+        kvStorage: KvStorageServiceProtocol? = nil,
+        worker: (any EntryWorkerProtocol)? = nil
     ) {
         self.accountService = accountService
         self.localRepo = localRepo ?? EntryRepository()
         self.localKVRepo = localKVRepo ?? EntryRepositoryLocal()
         self.remoteRepo = remoteRepo ?? EntryRepositoryAPI()
-        self.migrationService = migrationService ?? SQLiteMigrationService()
-        self.swiftDataWorker = SwiftDataWorker(modelContainer: PersistenceController.shared.container)
+        let resolvedWorker = worker ?? SwiftDataWorker(modelContainer: PersistenceController.shared.container)
+        self.worker = resolvedWorker
+        // The migration shares the worker so its batch inserts run off main too.
+        self.migrationService = migrationService ?? SQLiteMigrationService(entryWorker: resolvedWorker)
         self.kvStorage = kvStorage ?? KvStorageService.shared
 
         Task { @MainActor in
@@ -108,6 +129,25 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
                     }
                     .store(in: &self.cancellables)
             }
+
+            // Eager push after a local mutation. Every mutation (weight/BP/baby
+            // create or delete) emits on entrySaved/entryDeleted, so subscribing
+            // here covers all of them — and any future mutation — in one place.
+            // Debounce a short window so an edit (delete + add → two emissions)
+            // collapses into a single push, then flush unsynced rows to the server
+            // right away instead of waiting for the next Dashboard/History/foreground
+            // sync. This shrinks the window where a just-made add/edit/delete would
+            // be lost on app kill/uninstall (MOB-1433). The push is push-only,
+            // coalesced, and offline-guarded — see `pushPendingEntries()`.
+            Publishers.Merge(self.entrySaved, self.entryDeleted)
+                .debounce(for: .milliseconds(500), scheduler: DispatchQueue.main)
+                .sink { [weak self] _ in
+                    guard let self else { return }
+                    Task { @MainActor in
+                        await self.pushPendingEntries()
+                    }
+                }
+                .store(in: &self.cancellables)
         }
     }
 
@@ -164,8 +204,12 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
             )
 
             try await handleEntryAdded(entry)
-
-            await checkGoalAlerts()
+            // Goal alerts are evaluated BEHIND the UI via scheduleProgressAndStreakRefresh()
+            // (invoked from handleEntryAdded), not awaited here. Awaiting them inline put their
+            // main-context reads (getLatestEntry/getEntryCount) on the save's critical path,
+            // where they were starved for ~1.8s by the concurrent full-dataset progress/streak
+            // worker read on the shared store — delaying the save's success toast by seconds on
+            // 5k-10k-entry accounts once the HealthKit forward was moved off the path (MOB-1433 §5c).
         } catch {
             logger.log(
                 level: .error,
@@ -269,8 +313,11 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
     }
 
     func fetchAllEntrySnapshots() async throws -> [EntrySnapshot] {
-        let entries = try await getAllEntries()
-        return entries.map { $0.toSnapshot() }
+        // MOB-1433: read + snapshot-map off the main actor via the worker.
+        // History/Content open this on a large account; doing the full-table
+        // fetch and per-row snapshot build on main was a re-open stutter source.
+        let accountId = try getAccountId()
+        return try await worker.fetchEntrySnapshots(accountId: accountId, operationType: OperationType.create.rawValue)
     }
 
     func fetchEntrySnapshots(forMonth month: String, entryType: EntryType = .scale) async throws -> [EntrySnapshot] {
@@ -298,8 +345,11 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
     /// Use this instead of getAllEntries() when you only need to read entry data
     /// to avoid blocking the main thread with toOperationDTO() calls.
     func getAllEntriesAsDTO() async throws -> [BathScaleOperationDTO] {
+        // MOB-1433: fetch + DTO-map off the main actor via the worker. This
+        // feeds the dashboard load, streak, and metrics — the heaviest read on
+        // a 5k-10k-entry account.
         let accountId = try getAccountId()
-        return try await localRepo.fetchEntriesAsDTO(forUserId: accountId, operationType: OperationType.create.rawValue)
+        return try await worker.fetchEntriesAsDTO(accountId: accountId, operationType: OperationType.create.rawValue)
     }
 
     func checkEntryTimestampExists(_ entryTimestamp: String) async throws -> Bool {
@@ -343,18 +393,34 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
     // MARK: - Month/History
 
     func getMonthsAll(entryType: EntryType = .scale) async throws -> [HistoryMonth] {
+        // MOB-1433 read-path follow-up: fetch + group off the main actor. Reading the
+        // full create-history as @Model rows on main (localRepo) blocked the main thread
+        // on 5k-10k-entry accounts, so History froze on open and the shared loader could
+        // not even paint. Fetch lightweight EntryData via the worker, then group/build on
+        // a detached task so none of it runs on main.
         let accountId = try getAccountId()
-        let allEntries = try await localRepo.fetchEntries(forUserId: accountId, operationType: OperationType.create.rawValue)
-        let entries = allEntries.filter { matchesEntryType($0, entryType: entryType) }
+        let allEntries = try await worker.fetchAllEntryData(accountId: accountId, operationType: OperationType.create.rawValue)
+        return await Task.detached(priority: .userInitiated) {
+            Self.buildMonthsAll(from: allEntries, entryType: entryType)
+        }.value
+    }
+
+    /// Groups pre-fetched entry data into monthly summaries. `nonisolated` so it runs
+    /// off the main actor from `getMonthsAll`'s detached task (see there).
+    private nonisolated static func buildMonthsAll(from allEntries: [EntryData], entryType: EntryType) -> [HistoryMonth] {
+        let entries = allEntries.filter { entry in
+            // Mirrors the instance `matchesEntryType(_:entryType:)`: an empty entryType
+            // is legacy weight data and counts as `.scale`.
+            entry.entryType.isEmpty ? (entryType == .scale) : (entry.entryType == entryType.rawValue)
+        }
         // Group by YYYY-MM prefix, converting UTC timestamps to local timezone
         let grouped = Dictionary(grouping: entries) { DateTimeTools.getLocalMonthStringFromUTCDate($0.entryTimestamp) }
-
-        var result: [HistoryMonth] = []
 
         guard let validMonthRegex = try? NSRegularExpression(pattern: "^\\d{4}-\\d{2}$") else {
             return []
         }
 
+        var result: [HistoryMonth] = []
         for (monthKey, monthEntries) in grouped {
             // Skip keys that are not in YYYY-MM format (e.g., malformed keys)
             guard validMonthRegex.firstMatch(in: monthKey, range: NSRange(location: 0, length: monthKey.count)) != nil else { continue }
@@ -407,7 +473,7 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
         let accountId = try getAccountId()
 
         // Reuse the worker so progress refreshes do not keep creating fresh model contexts.
-        let fetchResult = try await swiftDataWorker.fetchProgressData(accountId: accountId)
+        let fetchResult = try await worker.fetchProgressData(accountId: accountId)
         let goalInitial = await getGoalInitialWeight()
         let datasetSignature = Self.makeEntryDataSignature(fetchResult.allEntries)
 
@@ -967,6 +1033,14 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
             return
         }
 
+        // Let a just-fired eager push finish first so its rows are marked synced
+        // before this sync's own push runs — otherwise both could submit the same
+        // unsynced entries. (`pushPendingEntries()` piggybacks the other way while a
+        // full sync is active, so the two never push concurrently.)
+        if let existingPush = pendingPushTask {
+            await existingPush.value
+        }
+
         let task = Task { [weak self] in
             guard let self else { return }
             await self.performSync()
@@ -978,6 +1052,49 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
 
         activeSyncTask = nil
         isSyncing = false
+    }
+
+    /// Pushes locally-saved-but-unsynced changes to the server immediately after a
+    /// mutation (add/edit/delete), so they survive an app kill/uninstall instead of
+    /// waiting for the next Dashboard/History/foreground sync (MOB-1433). Fired
+    /// automatically off `entrySaved`/`entryDeleted` — see the subscription in `init`.
+    ///
+    /// Push-only (no remote pull), so it stays cheap enough to run per mutation.
+    /// Safety:
+    /// - If a full sync is running it piggybacks on that task (whose first step is a
+    ///   push) instead of pushing concurrently — no double-submit.
+    /// - Concurrent eager pushes coalesce onto one in-flight task.
+    /// - Skips entirely when offline: a failed push increments each entry's attempt
+    ///   count and abandons it after 8 tries (isSynced/isFailedToSync flipped true),
+    ///   so firing doomed pushes offline would burn the retry budget. Offline entries
+    ///   stay queued at their current attempt count for the next online trigger.
+    func pushPendingEntries() async {
+        // A full sync pushes unsynced rows as its first step — ride it, don't race it.
+        if let existingSync = activeSyncTask {
+            await existingSync.value
+            return
+        }
+        // Coalesce bursts (an edit is delete + add → two mutations → one push).
+        if let existingPush = pendingPushTask {
+            await existingPush.value
+            return
+        }
+        guard NetworkMonitor.shared.isConnected else {
+            logger.log(level: .info, tag: tag, message: "Eager push skipped — offline; entries remain queued for next sync")
+            return
+        }
+        guard let accountId = try? getAccountId() else {
+            logger.log(level: .error, tag: tag, message: "Eager push skipped — no active account")
+            return
+        }
+
+        let task = Task { [weak self] in
+            guard let self else { return }
+            _ = await self.pushUnsyncedEntriesToRemote(accountId: accountId)
+        }
+        pendingPushTask = task
+        await task.value
+        pendingPushTask = nil
     }
 
     /// The actual sync work — only one instance runs at a time.
@@ -1003,11 +1120,23 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
             }
 
             // Sync mode of the unified GET /v3/entries/ — all entries since the last sync.
+            // On a full sync (no prior timestamp) send the epoch so the server returns the
+            // entire history in sync mode rather than a partial 20-row cursor page.
+            let syncStart = lastSyncTimestamp ?? Self.fullSyncStart
             let remoteOps = try await remoteRepo.fetchEntries(
-                start: lastSyncTimestamp, cursor: nil, limit: nil, category: nil
+                start: syncStart, cursor: nil, limit: nil, category: nil
             )
-            let hadMergedNewCreates = await mergeRemoteOperations(remoteOps.operations, accountId: accountId)
-            let dashboardDataChanged = hadPushedCreates || hadMergedNewCreates
+            // `.operations` recomputes its DTO remap on every access — hold it once.
+            let operations = remoteOps.operations
+
+            // Batched merge runs on the @ModelActor, off the main thread (MOB-1433).
+            let mergeResult = try await worker.applyRemoteOperations(operations, accountId: accountId)
+            await applyMergeSideEffects(mergeResult)
+
+            // Remote deletes/updates refresh the dashboard too: the old per-row
+            // merge patched summaries inline as it deleted; the batched merge
+            // defers to one full reload instead.
+            let dashboardDataChanged = hadPushedCreates || mergeResult.hadChanges
             if dashboardDataChanged {
                 await loadDashboardData()
             }
@@ -1018,7 +1147,9 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
 
             if dashboardDataChanged {
                 await updateProgressAndStreakInternal()
-                try? await Task.sleep(nanoseconds: 3_000_000_000)
+            }
+            // Goal alerts fire only when new entries appeared (previous semantics).
+            if hadPushedCreates || mergeResult.hadNewCreates {
                 await checkGoalAlerts()
             }
             logger.log(
@@ -1026,7 +1157,8 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
                 tag: tag,
                 message: """
                 Full entry sync completed successfully: accountId=\(accountId), hadPushedCreates=\(hadPushedCreates), \
-                hadMergedNewCreates=\(hadMergedNewCreates), remoteOperationCount=\(remoteOps.operations.count)
+                merged(inserted=\(mergeResult.insertedCount), updated=\(mergeResult.updatedCount), \
+                deleted=\(mergeResult.deletedCount)), remoteOperationCount=\(operations.count)
                 """
             )
 
@@ -1035,122 +1167,191 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
         }
     }
 
-    /// Pushes unsynced local entries to the remote API.
-    ///
-    /// - Returns: `true` if at least one create operation was successfully synced.
-    ///   The caller uses this to decide whether to show the goal met card: we only show it when
-    ///   the user actually added new entries in this sync (not on every login or pull-to-refresh).
-    private func pushUnsyncedEntriesToRemote(accountId: String) async -> Bool { // swiftlint:disable:this cyclomatic_complexity function_body_length
-        // 1. Get all unsynced entries (both new and delete operations)
-        let unsynced = try? await localRepo.fetchUnsyncedEntries(forUserId: accountId)
+    /// Maximum unified requests per batched `POST /v3/entries/` call.
+    private static let pushChunkMaxRequests = 100
 
-        // Tracks whether we successfully synced at least one create to the API; drives goal met card visibility.
+    /// One unsynced local entry prepared for pushing: its identity/bookkeeping
+    /// fields plus the 1–2 unified requests it expands to (baby: weight + length).
+    private struct PendingPushEntry {
+        let entryId: UUID
+        let operationType: String
+        let entryTimestamp: String
+        let attempts: Int
+        let requests: [UnifiedEntryRequest]
+    }
+
+    /// Running counters for a push pass, shared across chunks.
+    private struct PushTally {
         var hadSuccessfulCreate = false
         var successfulCreateCount = 0
         var successfulDeleteCount = 0
         var failedSyncCount = 0
         var firstFailureReason: String?
+    }
 
-        // 2. Try to sync with backend. Baby entries expand into baby-category
-        // weight + measureLength requests (MOB-386) and are pushed alongside
-        // weight/BP entries.
-        if let unsyncedEntries = unsynced, !unsyncedEntries.isEmpty {
-            for operation in unsyncedEntries {
-                // R7/R9: Extract all @Model data BEFORE any await calls
-                let entryId = operation.id
-                let entryIdString = entryId.uuidString
-                let operationType = operation.operationType
-                let entryTimestamp = operation.entryTimestamp
-                let currentAttempts = operation.attempts
-                let note = operation.note
-                let serverEntryId = operation.serverEntryId
-                let dto = operation.toOperationDTO()
+    /// Pushes unsynced local entries to the remote API in chunked batch POSTs
+    /// (MOB-1433) — N unsynced entries no longer cost N HTTP round trips and
+    /// N per-row saves.
+    ///
+    /// - Returns: `true` if at least one create operation was successfully synced.
+    ///   The caller uses this to decide whether to show the goal met card: we only show it when
+    ///   the user actually added new entries in this sync (not on every login or pull-to-refresh).
+    private func pushUnsyncedEntriesToRemote(accountId: String) async -> Bool {
+        // 1. All unsynced entries (creates and deletes) as Sendable snapshot+DTO
+        // pairs, extracted inside the repository context (MA-3898).
+        let unsynced = (try? await localRepo.fetchUnsyncedEntriesAsSnapshots(forUserId: accountId)) ?? []
+        guard !unsynced.isEmpty else { return false }
 
-                // Map to the unified request(s). Weight/BP produce one request; a baby entry
-                // can expand into a `weight` and a `measureLength` request (MOB-386).
-                let requests: [UnifiedEntryRequest]
-                if dto.entryType == EntryType.baby.rawValue {
-                    requests = BabyEntryRequest.makeRequests(from: dto, entryId: entryIdString, note: note)
-                } else if let request = UnifiedEntryRequest(from: dto, serverEntryId: serverEntryId, note: note) {
-                    requests = [request]
-                } else {
-                    requests = []
-                }
-                guard !requests.isEmpty else { continue }
-
-                do {
-                    // POST /v3/entries/ — atomic batch; baby entries submit their sub-type rows together.
-                    let submitResponse = try await remoteRepo.submitEntries(requests)
-                    logger.log(
-                        level: .info,
-                        tag: tag,
-                        message: "API submitEntries response: entryId=\(entryIdString), responseEntries.count=\(submitResponse.entries.count)"
-                    )
-
-                    if operationType == "create" {
-                        hadSuccessfulCreate = true
-                        // Store server-assigned entryId so future delete requests can include it.
-                        if let responseEntryId = submitResponse.entries.first?.entryId {
-                            do {
-                                try await localRepo.updateEntryServerEntryId(
-                                    entryId: entryIdString,
-                                    serverEntryId: responseEntryId
-                                )
-                            } catch {
-                                logger.log(
-                                    level: .error,
-                                    tag: tag,
-                                    message: "Failed to persist serverEntryId for entryId=\(entryIdString): " +
-                                        "\(error.localizedDescription)"
-                                )
-                            }
-                        }
-                        // R9: Use primitive-based update instead of mutating @Model
-                        try await localRepo.updateEntrySyncStatus(
-                            entryId: entryIdString,
-                            isSynced: true,
-                            isFailedToSync: false,
-                            attempts: currentAttempts
-                        )
-                        successfulCreateCount += 1
-                    } else {
-                        try await localRepo.deleteEntry(byId: entryIdString)
-                        try await handleEntryDeleted(entryId: entryId, entryTimestamp: entryTimestamp)
-                        successfulDeleteCount += 1
-                    }
-                } catch {
-                    // R9: Compute new sync values from extracted primitives (no @Model mutation)
-                    let newAttempts = currentAttempts + 1
-                    let markAsFailed = newAttempts > 8
-
-                    try? await localRepo.updateEntrySyncStatus(
-                        entryId: entryIdString,
-                        isSynced: markAsFailed,
-                        isFailedToSync: markAsFailed,
-                        attempts: newAttempts
-                    )
-                    failedSyncCount += 1
-                    if firstFailureReason == nil {
-                        firstFailureReason = error.localizedDescription
-                    }
-                }
+        // 2. Map every entry to its unified request(s) up front. Weight/BP produce
+        // one request; a baby entry can expand into a `weight` and a
+        // `measureLength` request (MOB-386).
+        let pending: [PendingPushEntry] = unsynced.compactMap { snapshot, dto in
+            let requests: [UnifiedEntryRequest]
+            if dto.entryType == EntryType.baby.rawValue {
+                requests = BabyEntryRequest.makeRequests(from: dto, entryId: snapshot.id.uuidString, note: snapshot.note)
+            } else if let request = UnifiedEntryRequest(from: dto, serverEntryId: snapshot.serverEntryId, note: snapshot.note) {
+                requests = [request]
+            } else {
+                requests = []
             }
+            guard !requests.isEmpty else { return nil }
+            return PendingPushEntry(
+                entryId: snapshot.id,
+                operationType: snapshot.operationType,
+                entryTimestamp: snapshot.entryTimestamp,
+                attempts: snapshot.attempts,
+                requests: requests
+            )
+        }
+        guard !pending.isEmpty else { return false }
+
+        // 3. POST in chunks of ≤100 requests; an entry's requests never split
+        // across chunks so response rows can be mapped back per entry.
+        var tally = PushTally()
+        for chunk in Self.chunkForPush(pending, maxRequests: Self.pushChunkMaxRequests) {
+            await pushChunk(chunk, accountId: accountId, tally: &tally)
+        }
+
+        logger.log(
+            level: .info,
+            tag: tag,
+            message: "Unsynced entry push completed for accountId=\(accountId): "
+                + "createsSynced=\(tally.successfulCreateCount), deletesSynced=\(tally.successfulDeleteCount), failures=\(tally.failedSyncCount)"
+        )
+        if tally.failedSyncCount > 0 {
+            logger.log(
+                level: .error,
+                tag: tag,
+                message: "Unsynced entry push had failures: accountId=\(accountId), failures=\(tally.failedSyncCount), "
+                    + "firstFailure=\(tally.firstFailureReason ?? "unknown")"
+            )
+        }
+        return tally.hadSuccessfulCreate
+    }
+
+    /// Splits pending entries into chunks whose combined request count stays
+    /// within `maxRequests`, keeping each entry's requests contiguous.
+    private static func chunkForPush(_ entries: [PendingPushEntry], maxRequests: Int) -> [[PendingPushEntry]] {
+        var chunks: [[PendingPushEntry]] = []
+        var current: [PendingPushEntry] = []
+        var requestCount = 0
+        for entry in entries {
+            if !current.isEmpty, requestCount + entry.requests.count > maxRequests {
+                chunks.append(current)
+                current = []
+                requestCount = 0
+            }
+            current.append(entry)
+            requestCount += entry.requests.count
+        }
+        if !current.isEmpty {
+            chunks.append(current)
+        }
+        return chunks
+    }
+
+    /// POSTs one chunk and applies its bookkeeping in a single batched worker
+    /// call (mark-synced + server ids + deletes, or failure attempts).
+    private func pushChunk(_ chunk: [PendingPushEntry], accountId: String, tally: inout PushTally) async {
+        let requests = chunk.flatMap { $0.requests }
+        do {
+            // POST /v3/entries/ — atomic batch; baby entries submit their sub-type rows together.
+            let submitResponse = try await remoteRepo.submitEntries(requests)
             logger.log(
                 level: .info,
                 tag: tag,
-                message: "Unsynced entry push completed for accountId=\(accountId): "
-                    + "createsSynced=\(successfulCreateCount), deletesSynced=\(successfulDeleteCount), failures=\(failedSyncCount)"
+                message: "API submitEntries batch response: requests=\(requests.count), "
+                    + "responseEntries.count=\(submitResponse.entries.count)"
             )
-            if failedSyncCount > 0 {
+
+            // Map response rows back positionally: one row per request in order,
+            // and each entry owns the row of its FIRST request (the same row the
+            // per-entry push read via `entries.first`).
+            let (outcomes, deletedEntries) = buildPushOutcomes(
+                for: chunk, submitResponse: submitResponse, tally: &tally
+            )
+
+            do {
+                try await worker.applyPushOutcomes(outcomes)
+            } catch {
                 logger.log(
                     level: .error,
                     tag: tag,
-                    message: "Unsynced entry push had failures: accountId=\(accountId), failures=\(failedSyncCount), "
-                        + "firstFailure=\(firstFailureReason ?? "unknown")"
+                    message: "Failed to persist push outcomes for accountId=\(accountId): \(error.localizedDescription)"
                 )
             }
+            for deleted in deletedEntries {
+                try? await handleEntryDeleted(entryId: deleted.entryId, entryTimestamp: deleted.entryTimestamp)
+            }
+        } catch {
+            // The batch is atomic, so a failed chunk marks every entry in it
+            // with one more attempt (the per-entry semantics, applied per chunk).
+            let outcomes = chunk.map { entry -> EntryPushOutcome in
+                let newAttempts = entry.attempts + 1
+                return EntryPushOutcome(
+                    entryId: entry.entryId,
+                    outcome: .failed(attempts: newAttempts, markAsFailed: newAttempts > 8)
+                )
+            }
+            try? await worker.applyPushOutcomes(outcomes)
+            tally.failedSyncCount += chunk.count
+            if tally.firstFailureReason == nil {
+                tally.firstFailureReason = error.localizedDescription
+            }
         }
-        return hadSuccessfulCreate
+    }
+
+    /// Builds per-entry push outcomes from a batch response, tallying created/deleted
+    /// counts. Returns the outcomes plus the entries whose delete op succeeded, so the
+    /// caller can fire their delete side effects. Extracted to keep `pushChunk` within
+    /// the function-length limit.
+    private func buildPushOutcomes(
+        for chunk: [PendingPushEntry],
+        submitResponse: UnifiedEntryResponse,
+        tally: inout PushTally
+    ) -> (outcomes: [EntryPushOutcome], deleted: [(entryId: UUID, entryTimestamp: String)]) {
+        var outcomes: [EntryPushOutcome] = []
+        var deletedEntries: [(entryId: UUID, entryTimestamp: String)] = []
+        var responseCursor = 0
+        for entry in chunk {
+            if entry.operationType == OperationType.create.rawValue {
+                let serverEntryId = responseCursor < submitResponse.entries.count
+                    ? submitResponse.entries[responseCursor].entryId
+                    : nil
+                outcomes.append(EntryPushOutcome(
+                    entryId: entry.entryId,
+                    outcome: .created(serverEntryId: serverEntryId, attempts: entry.attempts)
+                ))
+                tally.hadSuccessfulCreate = true
+                tally.successfulCreateCount += 1
+            } else {
+                outcomes.append(EntryPushOutcome(entryId: entry.entryId, outcome: .deleted))
+                deletedEntries.append((entry.entryId, entry.entryTimestamp))
+                tally.successfulDeleteCount += 1
+            }
+            responseCursor += entry.requests.count
+        }
+        return (outcomes, deletedEntries)
     }
 
     /// Lightweight summary for a single month. Avoids computing all months when only one changes.
@@ -1160,182 +1361,28 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
         return Self.buildHistoryMonth(monthKey: monthKey, monthEntries: monthEntries)
     }
 
-    /// Internal: Sync only unsynced entries (used after local changes)
-    private func syncUnsyncedEntries() async {
-        guard !isSyncing else { return }
-
-        isSyncing = true
-        defer { isSyncing = false }
-
-        guard let accountId = try? getAccountId() else {
-            logger.log(level: .error, tag: tag, message: "Unsynced entries sync failed: No account ID available")
-            return
-        }
-
-        do {
-            // 1. Push unsynced entries to remote (return value unused; goal alerts handled by saveNewEntry)
-            _ = await pushUnsyncedEntriesToRemote(accountId: accountId)
-
-            // After syncing, update last sync timestamp and local state
-            var lastSyncTimestamp = try? await localKVRepo.getLastSyncTimestamp(accountId: accountId)
-            if (try? await localRepo.fetchEntryCount(forUserId: accountId)) == 0 {
-                try? await localKVRepo.clearLastSyncTimestamp(accountId: accountId)
-                lastSyncTimestamp = nil
-            }
-
-            let remoteOps = try await remoteRepo.fetchEntries(
-                start: lastSyncTimestamp, cursor: nil, limit: nil, category: nil
-            )
-            if !remoteOps.operations.isEmpty {
-                _ = await mergeRemoteOperations(remoteOps.operations, accountId: accountId)
-                let syncTimestamp = remoteOps.timestamp ?? ISO8601DateFormatter().string(from: Date())
-                try await localKVRepo.setLastSyncTimestamp(accountId: accountId, timestamp: syncTimestamp)
-            } else {
-                try await localKVRepo.setLastSyncTimestamp(accountId: accountId, timestamp: ISO8601DateFormatter().string(from: Date()))
-            }
-
-            lastSyncTime = Date()
-            // Update progress, streak, and check for goal alerts
-            await updateProgressAndStreakInternal()
-            await loadDashboardData()
-        } catch {
-            logger.log(
-                level: .error,
-                tag: tag,
-                message: "Unsynced entries sync failed: accountId=\(accountId), error=\(error.localizedDescription)"
-            )
-        }
-    }
-
-    /// Merge remote operations into local DB, resolving conflicts (latest wins by timestamp).
-    ///
-    /// - Returns: `true` if at least one new entry was inserted (create from remote that didn't exist locally).
-    ///   The caller uses this to decide whether to show the goal met card: we only show it when
-    ///   new entries arrived from the server in this sync (not on every login or pull-to-refresh).
-    private func mergeRemoteOperations( // swiftlint:disable:this cyclomatic_complexity function_body_length
-        _ remoteOps: [BathScaleOperationDTO],
-        accountId: String
-    ) async -> Bool {
-        var hadNewCreates = false
-        // MA-3886: collect each newly-created remote op so we can forward only those entries
-        // to health integrations after the merge. Pushing the overall "latest" entry alone is
-        // insufficient when multiple Wi-Fi/R4 entries arrive in a single sync.
-        var newlyCreatedOps: [BathScaleOperationDTO] = []
-        // Group operations by timestamp to determine final state for each timestamp
-        let groupedOps = Dictionary(grouping: remoteOps) { op in
-            op.entryTimestamp ?? ""
-        }
-        for (timestamp, ops) in groupedOps {
-            guard !timestamp.isEmpty else { continue }
-
-            // Sort operations by serverTimestamp to process in chronological order
-            let sortedOps = ops.sorted {
-                ($0.serverTimestamp ?? "") < ($1.serverTimestamp ?? "")
-            }
-
-            // Find the final operation for this timestamp (the latest one)
-            guard let finalOp = sortedOps.last else { continue }
-
-            // Check if local entry exists with this timestamp
-            // Normalize timestamp format variants to improve matching reliability
-            // Some entries may be stored with millisecond precision (".000Z"); others without.
-            let normalizedTimestamp = timestamp.replacingOccurrences(of: ".000Z", with: "Z")
-            let tsCandidates = timestamp == normalizedTimestamp ? [timestamp] : [timestamp, normalizedTimestamp]
-
-            // Fetch ALL entries with this timestamp (including both create and delete operations)
-            var localEntry: Entry?
-            var localEntries: [Entry]?
-            for ts in tsCandidates {
-                if let fetched = try? await localRepo.fetchEntriesOfTimestamp(forUserId: accountId, timestamp: ts), !fetched.isEmpty {
-                    localEntries = fetched
-                    localEntry = fetched.first { $0.operationType == OperationType.create.rawValue } ?? fetched.first
-                    break
-                }
-            }
-
-            // Additional check: Look for entries with same timestamp AND weight to prevent race condition duplicates
-            let potentialDuplicates = localEntries?.filter { entry in
-                if let entryWeight = entry.scaleEntry?.weight, let opWeight = finalOp.weight {
-                    return entryWeight == Int(opWeight) && tsCandidates.contains(entry.entryTimestamp)
-                }
-                return false
-            } ?? []
-
-            // If no entries found by timestamp but we have a weight, check all entries for this user to find potential duplicates
-            // This handles the case where the entry was just synced but not yet visible in the timestamp query
-            var allEntriesForUser: [Entry] = []
-            if localEntries?.isEmpty == true && finalOp.weight != nil {
-                do {
-                    allEntriesForUser = try await localRepo.fetchEntries(forUserId: accountId, operationType: OperationType.create.rawValue)
-                } catch {
-                    allEntriesForUser = []
-                }
-            }
-
-            // Determine the entry to work with - either from timestamp search or weight-based search
-            let entryToProcess = localEntry ?? allEntriesForUser.first { entry in
-                if let entryWeight = entry.scaleEntry?.weight, let opWeight = finalOp.weight {
-                    return entryWeight == Int(opWeight) && entry.entryTimestamp == normalizedTimestamp
-                }
-                return false
-            }
-
-            if let localEntry = entryToProcess {
-                // Local entry exists - compare server timestamps
-                let localServerTS = localEntry.serverTimestamp ?? ""
-                let remoteServerTS = finalOp.serverTimestamp ?? ""
-
-                let shouldApplyRemote = localServerTS.isEmpty || remoteServerTS > localServerTS
-
-                if shouldApplyRemote {
-                    if finalOp.operationType == OperationType.delete.rawValue {
-                        let entriesToDelete = localEntries ?? [localEntry]
-                        for entry in entriesToDelete {
-                            try? await localRepo.deleteEntry(byId: entry.id.uuidString)
-                        }
-                        try? await handleEntryDeleted(localEntry)
-                    } else {
-                        await cleanupDuplicates(localEntries: localEntries, keepId: localEntry.id)
-                        let updated = Entry(from: finalOp, accountId: accountId, isSynced: true)
-                        updated.id = localEntry.id
-                        try? await localRepo.updateEntry(updated)
-                    }
-                } else if !localServerTS.isEmpty {
-                    if !localEntry.isSynced {
-                        localEntry.isSynced = true
-                        try? await localRepo.updateEntry(localEntry)
-                    }
-                    await cleanupDuplicates(localEntries: localEntries, keepId: localEntry.id)
-                }
-            } else if !potentialDuplicates.isEmpty {
-                // Found potential duplicate by weight - update the existing one instead of creating new
-                guard let duplicateEntry = potentialDuplicates.first else {
-                    continue
-                }
-                let updated = Entry(from: finalOp, accountId: accountId, isSynced: true)
-                updated.id = duplicateEntry.id
-                try? await localRepo.updateEntry(updated)
-            } else {
-                // No local entry - only create if final operation is create
-                if finalOp.operationType == OperationType.create.rawValue {
-                    hadNewCreates = true
-                    newlyCreatedOps.append(finalOp)
-                    // Final state is create - add to local storage
-                    let newEntry = Entry(from: finalOp, accountId: accountId, isSynced: true)
-                    try? await localRepo.saveEntry(newEntry)
-                    // Notify downstream listeners/UI about the new entry so lists refresh
-                }
-                // If final operation is delete and no local entry exists, nothing to do
-                // (entry was already deleted or never existed locally)
+    /// Applies the UI/integration side effects the merge used to perform per
+    /// row, now driven by the worker's Sendable result (MOB-1433):
+    /// `entryDeleted` emissions + integration deletes for removed rows, ONE
+    /// `entrySaved` emission for the whole batch of new creates, and
+    /// integration forwarding of each newly-created entry (MA-3886).
+    private func applyMergeSideEffects(_ result: EntryMergeResult) async {
+        for notification in result.deletedNotifications {
+            entryDeleted.send(notification)
+            do {
+                try await integrationService.deleteEntry(notification: notification)
+            } catch {
+                logger.log(
+                    level: .error,
+                    tag: tag,
+                    message: "Failed to delete merged entry from integrations: \(error.localizedDescription)"
+                )
             }
         }
 
-        // MA-3851: only notify UI listeners when the remote merge actually inserted
-        // new entries locally. Calling handleEntryAdded here would re-route the overall
-        // latest entry through integrationService.syncNewEntry on every sync — pushing
-        // previously-unsynced historical entries into Apple Health after operations like
-        // deletes. New creates are synced to integrations by the MA-3886 loop below.
-        if hadNewCreates {
+        // MA-3851: only notify UI listeners when the remote merge actually
+        // inserted new entries locally — one emission for the whole batch.
+        if result.hadNewCreates {
             do {
                 if let entry = try await getLatestEntry() {
                     let notification = EntryNotification(from: entry)
@@ -1346,38 +1393,22 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
             }
         }
 
-        // MA-3886: forward each newly-created entry to active health integrations
+        // MA-3886: forward newly-created entries to active health integrations
         // (e.g., Apple Health). Without this, Wi-Fi/R4 entries arriving via push-triggered
         // remote sync never reach HealthKit because the scale uploads to the server, not the phone.
-        for op in newlyCreatedOps {
-            let notification = EntryNotification(from: op)
-            do {
-                try await integrationService.syncNewEntry(notification: notification)
-            } catch {
-                logger.log(
-                    level: .error,
-                    tag: tag,
-                    message: "Failed to sync remote-merged entry to integrations: " +
-                        "timestamp=\(notification.entryTimestamp), error=\(error.localizedDescription)"
-                )
-            }
-        }
-        return hadNewCreates
-    }
-
-    private func cleanupDuplicates(localEntries: [Entry]?, keepId: UUID) async {
-        guard let allEntries = localEntries, allEntries.count > 1 else { return }
-        for entry in allEntries where entry.id != keepId {
-            do {
-                try await localRepo.deleteEntry(byId: entry.id.uuidString)
-                try await self.handleEntryDeleted(entry)
-            } catch {
-                logger.log(
-                    level: .error,
-                    tag: tag,
-                    message: "Failed to delete duplicate entry \(entry.id): \(error.localizedDescription)"
-                )
-            }
+        // MOB-1433: ONE batched call — settings read once, and a per-account marker
+        // skips the historical backfill on the first full sync instead of flooding
+        // HealthKit with thousands of writes.
+        guard !result.newlyCreatedOps.isEmpty else { return }
+        let notifications = result.newlyCreatedOps.map { EntryNotification(from: $0) }
+        do {
+            try await integrationService.syncNewEntries(notifications: notifications)
+        } catch {
+            logger.log(
+                level: .error,
+                tag: tag,
+                message: "Failed to forward remote-merged entries to integrations: \(error.localizedDescription)"
+            )
         }
     }
 
@@ -2183,18 +2214,46 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
             updateMonthlySummary(monthKey: monthKey, summary: monthlySummary)
         }
 
-        await updateProgressAndStreakInternal()
-
-        // Create notification on MainActor to safely extract relationship data
+        // Notify the UI immediately — the row is written and the affected day/month
+        // summaries are updated, so History/Dashboard can refresh and the save's loader
+        // can dismiss now. The full-dataset progress/streak recompute below re-reads all
+        // entries, so it MUST run behind the UI, not block the save (MOB-1433).
         let notification = EntryNotification(from: entry)
         entrySaved.send(notification)
 
-        // Trigger integration sync for the new entry (e.g., HealthKit)
-        do {
-            try await integrationService.syncNewEntry(entry)
-        } catch {
-            // Log error but don't fail the entry creation process
-            logger.log(level: .error, tag: tag, message: "Failed to sync new entry to integrations: \(error.localizedDescription)")
+        scheduleProgressAndStreakRefresh()
+
+        // Forward to health integrations (e.g. HealthKit) BEHIND the UI — never block the
+        // save on it. On this account HealthKit is off, yet syncNewEntry took ~1.8s: its
+        // single `getStoredIntegrationData()` main-context read was stalled behind a
+        // concurrent worker fetch on the shared store (MOB-1433 §5c). The row is already
+        // persisted and queued for push, so the forward is best-effort.
+        let hkNotification = EntryNotification(from: entry)
+        Task { [weak self] in
+            guard let self else { return }
+            do {
+                try await self.integrationService.syncNewEntry(notification: hkNotification)
+            } catch {
+                self.logger.log(level: .error, tag: self.tag, message: "Failed to sync new entry to integrations: \(error.localizedDescription)")
+            }
+        }
+    }
+
+    /// Schedules the full-dataset progress/streak recompute — and the goal-alert check —
+    /// to run behind the UI, coalescing rapid successive adds onto a single trailing run
+    /// (see `progressRefreshTask`). Use this on the local-add path; `performSync` still
+    /// awaits `updateProgressAndStreakInternal()` directly since it runs off the UI's
+    /// critical path already.
+    private func scheduleProgressAndStreakRefresh() {
+        progressRefreshTask?.cancel()
+        progressRefreshTask = Task { [weak self] in
+            await self?.updateProgressAndStreakInternal()
+            // Check goal alerts AFTER the progress/streak recompute so their cheap
+            // main-context reads (getLatestEntry/getEntryCount) don't contend with that
+            // full-dataset worker read on the shared store. That contention was pushing the
+            // save's success toast out by seconds once the HealthKit forward was moved off
+            // the critical path (MOB-1433 §5c).
+            await self?.checkGoalAlerts()
         }
     }
 

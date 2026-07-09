@@ -31,8 +31,8 @@ struct CommonStrings {
     static let optional = "optional"
     static let connectScale = "Connect Scale"
     static let unitKgCm = "kg & cm"
-    static let unitLbsFeet = "lbs & ft"
-    static let pickerLbs = "lbs & feet"
+    static let unitLbsFeet = "lb & feet"
+    static let pickerLbs = "lb & feet"
     static let on = "On"
     static let off = "Off"
     static let dark = "Dark"
@@ -268,9 +268,9 @@ struct FormErrorMessages {
     static let passwordMatch = "both passwords must match"
     static let valueShouldNotBeEqual = "value should not be equal to starting weight"
     static let minWeightKg = "value should be greater than 0 kg"
-    static let minWeightLb = "value should be greater than 0 lbs"
+    static let minWeightLb = "value should be greater than 0 lb"
     static let maxWeightKg = "value should be less than 450 kg"
-    static let maxWeightLb = "value should be less than 999 lbs"
+    static let maxWeightLb = "value should be less than 999 lb"
     static let minValue = "value should be greater than 0"
     static let maxValue99 = "value should be less than 99"
     static let maxValue = { (value: Int) in "value should be less than \(value)" }
@@ -298,26 +298,18 @@ struct InputFieldLabels {
     static let currentPassword = "current password"
     static let height = "height"
     static let startingWeight = "starting weight"
-    static let startingWeightLabel: (Bool) -> String = { isKg in
-        return isKg ? "starting weight (kg)" : "starting weight (lbs)"
-    }
-    static let goalWeightLabel: (Bool) -> String = { isKg in
-        return isKg ? "goal weight (kg)" : "goal weight (lbs)"
-    }
     static let goalWeight = "goal weight"
     static let useMetric = "Use Metric Units"
-    /// Unit suffix shown on the right of a unit-value input field, e.g. "(kg)" / "(lbs)".
+    /// Unit suffix shown on the right of a unit-value input field, e.g. "(kg)" / "(lb)".
     static let weightUnitSuffix: (Bool) -> String = { isKg in
-        return isKg ? "(kg)" : "(lbs)"
+        return isKg ? "(kg)" : "(lb)"
     }
     static let zipCode = "zipcode"
     static let birthday = "birthday"
-    static let weightLabel: (Bool) -> String = { isKg in
-        return isKg ? "weight (kg)" : "weight (lbs)"
-    }
-    static let weightLessLabel: (Bool) -> String = { isKg in
-        return isKg ? "weightless weight (kg)" : "weightless weight (lbs)"
-    }
+    /// Plain "weight" label for fields that show the unit as a fixed trailing
+    /// suffix (`weightUnitSuffix`) on the right rather than baked into the label (MOB-1170).
+    static let weight = "weight"
+    static let weightLess = "weightless weight"
     static let date = "Date"
     static let bmi = "bmi"
     static let bodyFat = "body fat (%)"
@@ -335,6 +327,15 @@ struct InputFieldLabels {
     static let babyBirthLength = "birth length"
     static let babyBirthWeight = "birth weight"
     static let biologicalSex = "Biological sex"
+
+    /// VoiceOver accessibility labels for input-field controls (distinct from the field
+    /// placeholder labels above). Centralised so shared input components don't inline raw
+    /// English string literals (MOB-1132).
+    struct A11y {
+        static let clearButton = "Clear"
+        static let showPassword = "Show password"
+        static let hidePassword = "Hide password"
+    }
 }
 
 // Constants for Alert strings used in the app
@@ -822,6 +823,11 @@ struct AppAssets {
     static let meLogoLight = "meLogoLight"
     static let wgLogoDark = "wgLogoDark"
     static let wgLogoLight = "wgLogoLight"
+    /// "my everyday health" wordmark (Phase 2 brand lockup). Single asset with
+    /// light/dark appearance variants baked in, so it resolves against the window
+    /// trait (like the card's `backgroundPrimary`) rather than a possibly-diverging
+    /// SwiftUI `\.colorScheme` — see `MeHealthLogoCard`.
+    static let meHealthLogo = "meHealthLogo"
     static let stamp = "stamp"
     static let stampDark = "stampDark"
     static let phone = "phone"
@@ -932,6 +938,8 @@ struct AppAssets {
     static let babyAppIcon = "babyAppIcon"
     static let bpmIcon = "bpmIcon"
     static let weightScaleIcon = "weightScaleIcon"
+    /// Outlined baby-head glyph used for the "No babies added yet" empty state (baby profile absent).
+    static let babyHeadIcon = "babyHeadIcon"
 
     // MARK: - Baby scale series
     static let scale0220 = "0220"

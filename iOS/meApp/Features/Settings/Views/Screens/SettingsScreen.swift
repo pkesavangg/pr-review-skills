@@ -171,13 +171,13 @@ struct SettingsScreen: View {
             })
             .listRowInsets()
             .accessibilityIdentifier(AccessibilityID.settingsRowUserProfile)
-            ActionListItemView(config: ActionListItemConfig(
-                title: settingsLang.myKids,
-                isDisabled: !settingsStore.isMyKidsEnabled
-            ) {
+            // MOB-1226: "My Kids" is always enabled for every user — there is no disabled
+            // state. Users with no baby profile land on the "No babies added yet" empty state.
+            ActionListItemView(config: ActionListItemConfig(title: settingsLang.myKids) {
                 router.navigate(to: .myKids)
             })
             .listRowInsets()
+            .appAccessibility(id: AccessibilityID.settingsRowMyKids)
             ActionListItemView(config: ActionListItemConfig(title: settingsLang.addEditScales) { router.navigate(to: .addEditScales) })
             .listRowInsets()
             .accessibilityIdentifier(AccessibilityID.accountSettingsAddScalesRow)
@@ -206,11 +206,13 @@ struct SettingsScreen: View {
                     value: settingsStore.unitTypeText,
                     chevronType: .upDown) { settingsStore.presentUnitPicker() })
                 .listRowInsets()
+                .appAccessibility(id: AccessibilityID.settingsRowUnitType)
             }
             ActionListItemView(config: ActionListItemConfig(title: settingsLang.appPermissions) {
                 router.navigate(to: .appPermissions)
             })
             .listRowInsets()
+            .appAccessibility(id: AccessibilityID.settingsRowAppPermissions)
             // Notifications moved to the product-scoped "My Weight" section (MOB-417).
             ActionListItemView(config: ActionListItemConfig(
                 title: settingsStore.messagesTitleText,
@@ -220,16 +222,19 @@ struct SettingsScreen: View {
             })
             .id(settingsStore.canShowFeedNotificationBadge)
             .listRowInsets()
+            .appAccessibility(id: AccessibilityID.settingsRowMessages)
             ActionListItemView(config: ActionListItemConfig(
                 title: settingsLang.appearance,
                 value: settingsStore.appearanceModeText,
                 chevronType: .upDown) { settingsStore.presentAppearancePicker() })
             .listRowInsets()
+            .appAccessibility(id: AccessibilityID.settingsRowAppearance)
             ActionListItemView(config: ActionListItemConfig(
                 title: settingsLang.defaultGraphView,
                 value: settingsStore.defaultGraphPeriodText,
                 chevronType: .upDown) { settingsStore.presentDefaultGraphPeriodPicker() })
             .listRowInsets()
+            .appAccessibility(id: AccessibilityID.settingsRowDefaultGraphView)
         }
         .listRowBackground(theme.backgroundPrimary)
         .listRowSeparatorTint(theme.statusUtilityPrimary)
@@ -242,6 +247,7 @@ struct SettingsScreen: View {
                 value: settingsStore.notificationsOnText,
                 chevronType: .upDown) { settingsStore.presentNotificationPicker() })
             .listRowInsets()
+            .appAccessibility(id: AccessibilityID.settingsRowNotifications)
             ActionListItemView(config: ActionListItemConfig(
                 title: settingsLang.goalSetting) {
                     router.navigate(to: .goal)
@@ -276,6 +282,7 @@ struct SettingsScreen: View {
                     router.navigate(to: .help)
                 })
             .listRowInsets()
+            .appAccessibility(id: AccessibilityID.settingsRowHelp)
 
             ActionListItemView(config: ActionListItemConfig(
                 title: settingsLang.privacyPolicy
@@ -310,6 +317,7 @@ struct SettingsScreen: View {
                     router.navigate(to: .myAccounts)
                 })
             .listRowInsets()
+            .appAccessibility(id: AccessibilityID.settingsRowSwitchAccounts)
 
             ActionListItemView(config: ActionListItemConfig(
                 title: settingsLang.logOut,
@@ -338,6 +346,7 @@ struct SettingsScreen: View {
                     settingsStore.handleDeleteAccount()
                 })
             .listRowInsets()
+            .appAccessibility(id: AccessibilityID.settingsRowDeleteAccount)
         }
         .listRowBackground(theme.backgroundPrimary)
         .listRowSeparatorTint(theme.statusUtilityPrimary)

@@ -35,6 +35,10 @@ class DashboardDataManager: ObservableObject, DashboardDataManaging {
     // MARK: - Initialization
     init(initialState: DataState = DataState()) {
         self.state = initialState
+        // Cache DI-backed services during construction so later container mutations
+        // continue using the intended dependencies for this manager instance.
+        _ = entryService
+        _ = logger
         setupEntryServiceBindings()
     }
 

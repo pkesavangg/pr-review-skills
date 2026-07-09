@@ -172,7 +172,7 @@ fun <T> AppRadioGroupModal(
         Box(
           modifier = Modifier
                 .fillMaxSize()
-                .background(MeTheme.colorScheme.glow),
+                .background(MeTheme.colorScheme.overlay),
         ) {
             Box(modifier = Modifier.align(Alignment.Center)) {
                 BaseModal(
