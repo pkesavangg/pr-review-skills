@@ -77,6 +77,7 @@ class DashboardSnapshotViewModelTest {
         every { accountService.activeAccountFlow } returns flowOf(TestFixtures.activeAccount)
         every { entryReadService.snapshots } returns MutableStateFlow(emptyMap())
         every { productSelectionManager.availableProducts } returns MutableStateFlow(emptyList())
+        every { productSelectionManager.selectedProduct } returns MutableStateFlow(ProductSelection.MyWeight)
     }
 
     private fun createViewModel(): DashboardSnapshotViewModel =
@@ -108,6 +109,25 @@ class DashboardSnapshotViewModelTest {
         assertThat(babies.first().profile.id).isEqualTo("b2")
         // Non-baby products are untouched.
         assertThat(products.any { it is ProductSelection.MyWeight }).isTrue()
+    }
+
+    @Test
+    fun `snapshot scopes the baby card to the selected baby over a stale active id`() = runTest(mainDispatcherRule.scheduler) {
+        val baby1 = ProductSelection.Baby(BabyProfile(id = "b1", name = "Ann", accountId = "acc"))
+        val baby2 = ProductSelection.Baby(BabyProfile(id = "b2", name = "Bob", accountId = "acc"))
+        every { productSelectionManager.availableProducts } returns
+            MutableStateFlow(listOf(baby1, baby2))
+        // The switcher bottom sheet selected baby-2; the persisted Room activeBabyId is still baby-1.
+        every { productSelectionManager.selectedProduct } returns MutableStateFlow(baby2)
+        coEvery { accountRepository.getActiveBabyId() } returns "b1"
+
+        viewModel = createViewModel()
+        advanceUntilIdle()
+
+        val babies = viewModel.snapshotProducts.value.filterIsInstance<ProductSelection.Baby>()
+        assertThat(babies).hasSize(1)
+        // MOB-1449: the snapshot follows the live selection, not the stale active id.
+        assertThat(babies.first().profile.id).isEqualTo("b2")
     }
 
     @Test

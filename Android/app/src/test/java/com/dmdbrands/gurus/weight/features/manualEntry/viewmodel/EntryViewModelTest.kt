@@ -202,7 +202,7 @@ class EntryViewModelTest {
         form.forms.baby.controls.pounds.onValueChange("7")
         form.forms.baby.controls.ounces.onValueChange("4")
         form.forms.baby.controls.inches.onValueChange("20")
-        viewModel.handleIntent(EntryIntent.UpdateActiveForm(ActiveEntryForm.Baby(form)))
+        viewModel.handleIntent(EntryIntent.UpdateActiveForm(ActiveEntryForm.Baby(form, baby.profile)))
 
         val captured = mutableListOf<Entry>()
         coEvery { entryService.addEntry(entry = capture(captured)) } returns Unit
@@ -231,7 +231,7 @@ class EntryViewModelTest {
         val form = MultiFormGroup.create(forms = BabyEntryForm.create())
         form.forms.baby.controls.pounds.onValueChange("7")
         form.forms.baby.controls.ounces.onValueChange("4")
-        viewModel.handleIntent(EntryIntent.UpdateActiveForm(ActiveEntryForm.Baby(form)))
+        viewModel.handleIntent(EntryIntent.UpdateActiveForm(ActiveEntryForm.Baby(form, babyProfile().profile)))
 
         val toasts = mutableListOf<Toast>()
         every { dialogQueueService.showToast(capture(toasts)) } returns Unit
@@ -256,7 +256,7 @@ class EntryViewModelTest {
         val form = MultiFormGroup.create(forms = BabyEntryForm.create())
         form.forms.baby.controls.pounds.onValueChange("7")
         form.forms.baby.controls.ounces.onValueChange("4")
-        viewModel.handleIntent(EntryIntent.UpdateActiveForm(ActiveEntryForm.Baby(form)))
+        viewModel.handleIntent(EntryIntent.UpdateActiveForm(ActiveEntryForm.Baby(form, babyProfile().profile)))
 
         val toasts = mutableListOf<Toast>()
         every { dialogQueueService.showToast(capture(toasts)) } returns Unit
@@ -410,7 +410,9 @@ class EntryViewModelTest {
         form.forms.baby.controls.pounds.onValueChange("7")
         form.forms.baby.controls.ounces.onValueChange("4")
         form.forms.baby.controls.dateTime.onValueChange(DateTimeValue.Date(entryMillis))
-        viewModel.handleIntent(EntryIntent.UpdateActiveForm(ActiveEntryForm.Baby(form)))
+        // Capture the birthdate-carrying profile in the form — saveBabyEntry's pre-birthdate guard
+        // reads the form's profile, not the global selection (MOB-1449).
+        viewModel.handleIntent(EntryIntent.UpdateActiveForm(ActiveEntryForm.Baby(form, baby.profile)))
     }
 
     // -------------------------------------------------------------------------
@@ -791,20 +793,26 @@ class EntryViewModelTest {
         ProductSelection.Baby(BabyProfile(id = id, name = "Timmy", birthdate = null, accountId = "acc-1"))
 
     @Test
-    fun `Save with baby form but no profile selected does not persist`() = runTest(mainDispatcherRule.scheduler) {
-        // Active form is Baby, but the selected product is NOT a Baby → babyId is null.
-        every { productSelectionManager.selectedProduct } returns
-            MutableStateFlow(ProductSelection.MyWeight)
-        viewModel = createViewModel()
-        val form = MultiFormGroup.create(forms = BabyEntryForm.create())
-        form.forms.baby.controls.pounds.onValueChange("7")
-        viewModel.handleIntent(EntryIntent.UpdateActiveForm(ActiveEntryForm.Baby(form)))
+    fun `Save files the entry against the baby captured in the form, not the shifted global selection`() =
+        runTest(mainDispatcherRule.scheduler) {
+            // MOB-1449 regression: the form was built for baby-1, but the global selection has since
+            // shifted to baby-2. The save must still land on baby-1 (the form's captured baby).
+            every { productSelectionManager.selectedProduct } returns MutableStateFlow(babyProfile(id = "baby-2"))
+            viewModel = createViewModel()
+            val form = MultiFormGroup.create(forms = BabyEntryForm.create())
+            form.forms.baby.controls.pounds.onValueChange("7")
+            viewModel.handleIntent(
+                EntryIntent.UpdateActiveForm(ActiveEntryForm.Baby(form, babyProfile(id = "baby-1").profile)),
+            )
 
-        viewModel.handleIntent(EntryIntent.Save)
-        advanceUntilIdle()
+            val captured = mutableListOf<Entry>()
+            coEvery { entryService.addEntry(entry = capture(captured)) } returns Unit
 
-        coVerify(exactly = 0) { entryService.addEntry(entry = any()) }
-    }
+            viewModel.handleIntent(EntryIntent.Save)
+            advanceUntilIdle()
+
+            assertThat((captured.single() as BabyEntry).babyId).isEqualTo("baby-1")
+        }
 
     @Test
     fun `Save with baby form returns early when activeAccount id is null`() = runTest(mainDispatcherRule.scheduler) {
@@ -814,7 +822,7 @@ class EntryViewModelTest {
         viewModel = createViewModel()
         val form = MultiFormGroup.create(forms = BabyEntryForm.create())
         form.forms.baby.controls.pounds.onValueChange("7")
-        viewModel.handleIntent(EntryIntent.UpdateActiveForm(ActiveEntryForm.Baby(form)))
+        viewModel.handleIntent(EntryIntent.UpdateActiveForm(ActiveEntryForm.Baby(form, babyProfile().profile)))
 
         viewModel.handleIntent(EntryIntent.Save)
         advanceUntilIdle()
@@ -831,7 +839,7 @@ class EntryViewModelTest {
         form.forms.baby.controls.pounds.onValueChange("7")
         form.forms.baby.controls.ounces.onValueChange("4")
         // No inches → no length entry
-        viewModel.handleIntent(EntryIntent.UpdateActiveForm(ActiveEntryForm.Baby(form)))
+        viewModel.handleIntent(EntryIntent.UpdateActiveForm(ActiveEntryForm.Baby(form, babyProfile().profile)))
 
         val captured = mutableListOf<Entry>()
         coEvery { entryService.addEntry(entry = capture(captured)) } returns Unit
@@ -850,7 +858,7 @@ class EntryViewModelTest {
         val form = MultiFormGroup.create(forms = BabyEntryForm.create())
         // No pounds/ounces (both 0) → no weight entry, only length
         form.forms.baby.controls.inches.onValueChange("20")
-        viewModel.handleIntent(EntryIntent.UpdateActiveForm(ActiveEntryForm.Baby(form)))
+        viewModel.handleIntent(EntryIntent.UpdateActiveForm(ActiveEntryForm.Baby(form, babyProfile().profile)))
 
         val captured = mutableListOf<Entry>()
         coEvery { entryService.addEntry(entry = capture(captured)) } returns Unit
@@ -867,7 +875,7 @@ class EntryViewModelTest {
         every { productSelectionManager.selectedProduct } returns MutableStateFlow(babyProfile())
         viewModel = createViewModel()
         val form = MultiFormGroup.create(forms = BabyEntryForm.create())
-        viewModel.handleIntent(EntryIntent.UpdateActiveForm(ActiveEntryForm.Baby(form)))
+        viewModel.handleIntent(EntryIntent.UpdateActiveForm(ActiveEntryForm.Baby(form, babyProfile().profile)))
 
         viewModel.handleIntent(EntryIntent.Save)
         advanceUntilIdle()
@@ -882,7 +890,7 @@ class EntryViewModelTest {
         viewModel = createViewModel()
         val form = MultiFormGroup.create(forms = BabyEntryForm.create())
         form.forms.baby.controls.pounds.onValueChange("7")
-        viewModel.handleIntent(EntryIntent.UpdateActiveForm(ActiveEntryForm.Baby(form)))
+        viewModel.handleIntent(EntryIntent.UpdateActiveForm(ActiveEntryForm.Baby(form, babyProfile().profile)))
         coEvery { entryService.addEntry(entry = any()) } throws RuntimeException(NETWORK_ERROR)
 
         viewModel.handleIntent(EntryIntent.Save)
