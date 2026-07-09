@@ -125,10 +125,14 @@ struct BluetoothServiceCoreOperationsTests {
         #expect(firstTask != nil)
     }
 
-    @Test("deleteCurrentUserFromScaleIfPossible returns deviceNotFound when scale is not in bluetooth scales")
+    @Test("deleteCurrentUserFromScaleIfPossible returns deviceNotFound when no matching scale user exists")
     func deleteCurrentUserFromScaleIfPossibleDisconnectedDevice() async {
         let sut = makeSUT()
+        // Tracked weight scale (non-BPM so getScaleUserList runs, non-R4 so findUserToDelete finds
+        // no match) with no persisted token — the delete resolves to deviceNotFound.
         let disconnectedDevice = makeDevice(id: "offline-1", broadcastIdString: "AA11", isConnected: false)
+        disconnectedDevice.sku = "0375"
+        sut.bluetoothScales = [disconnectedDevice.toSnapshot(isConnected: false)]
 
         let result = await sut.deleteCurrentUserFromScaleIfPossible(broadcastId: disconnectedDevice.broadcastIdString ?? "", disconnect: true)
 
@@ -620,6 +624,7 @@ struct BluetoothServiceCoreOperationsTests {
         let sdk = MockBluetoothSDKClient()
         let sut = makeSUT(sdk: sdk)
         let device = makeDevice(id: "users-1", broadcastIdString: "USER11", isConnected: true)
+        device.sku = "0375" // weight scale; isBpmDevice() must be false so the user-list fetch runs
         sut.bluetoothScales = [device.toSnapshot(isConnected: true)]
 
         let result = await sut.getScaleUserList(broadcastId: device.broadcastIdString ?? "")
@@ -686,6 +691,11 @@ struct BluetoothServiceCoreOperationsTests {
     @Test("getScaleUserList without connection returns deviceNotConnected")
     func getScaleUserListWithoutConnectionFails() async {
         let sut = makeSUT()
+        // Tracked weight scale (non-BPM) that is not connected: isBpmDevice() is false, so the
+        // flow reaches the connection guard rather than failing closed as a BPM monitor.
+        let device = makeDevice(id: "offline-user-1", broadcastIdString: "ABC123", isConnected: false)
+        device.sku = "0375"
+        sut.bluetoothScales = [device.toSnapshot(isConnected: false)]
 
         let result = await sut.getScaleUserList(broadcastId: "ABC123")
 
