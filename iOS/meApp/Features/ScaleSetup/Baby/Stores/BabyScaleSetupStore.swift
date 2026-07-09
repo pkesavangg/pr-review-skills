@@ -150,7 +150,7 @@ final class BabyScaleSetupStore: ObservableObject {
         case .scaleName:
             isNextEnabled = scaleNicknameForm.isValid
         case .babyProfile:
-            isNextEnabled = babyProfileForm.isProfileValid
+            isNextEnabled = babyProfileForm.isProfileValid && babyProfileForm.duplicateNameError == nil
         }
     }
 

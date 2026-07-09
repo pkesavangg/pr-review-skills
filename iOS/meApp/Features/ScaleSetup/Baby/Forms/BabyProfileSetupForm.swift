@@ -100,9 +100,11 @@ class BabyProfileSetupForm: ObservableForm {
 
     // MARK: - Error Messages
 
-    /// Set externally (by the signup store) to surface a duplicate-name validation error.
+    /// Set externally (by the signup / scale-setup store) to surface a duplicate-name validation error.
     /// Re-evaluated on every name change — set when the name matches another baby, cleared otherwise.
-    var duplicateNameError: String?
+    /// `@Published` so the field re-renders the moment it is set, even when the Next-button state
+    /// does not change on that keystroke.
+    @Published var duplicateNameError: String?
 
     func getNameError() -> String? {
         guard name.isDirty || name.isTouched else { return nil }

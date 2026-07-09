@@ -68,6 +68,26 @@ extension BabyScaleSetupStore {
         }
     }
 
+    /// Re-evaluates whether the current name duplicates an already-saved baby's name and sets or
+    /// clears `duplicateNameError` accordingly. Called on every name change so the error surfaces
+    /// (and the Next button disables) as soon as a duplicate is typed — without waiting for the
+    /// server 409 on submit.
+    @discardableResult
+    func refreshDuplicateBabyNameError() -> Bool {
+        let trimmed = babyProfileForm.name.value.trimmingCharacters(in: .whitespaces).lowercased()
+        guard !trimmed.isEmpty else {
+            babyProfileForm.duplicateNameError = nil
+            return false
+        }
+        let isDuplicate = savedBabies.contains { baby in
+            baby.id != editingBaby?.id &&
+            baby.name.trimmingCharacters(in: .whitespaces).lowercased() == trimmed
+        }
+        babyProfileForm.duplicateNameError = isDuplicate
+            ? BabyScaleSetupStrings.BabyProfile.duplicateNameError : nil
+        return isDuplicate
+    }
+
     /// Returns true when the server rejected the request because the baby name is already taken (HTTP 409 Conflict).
     private func isDuplicateNameError(_ error: Error) -> Bool {
         switch error as? HTTPError {

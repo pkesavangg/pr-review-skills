@@ -6,6 +6,53 @@ extension SettingsStoreTests {
     @Suite("Account Actions")
     @MainActor
     struct AccountActions {
+        @Test("handleExport shows alert and primary action exports csv")
+        func handleExportRunsExportFlow() async {
+            let notification = TestNotificationHelperService()
+            let entryService = MockEntryService()
+            let (store, _, _, _, _) = SettingsStoreTestFixtures.makeSUT(notification: notification, entryService: entryService)
+
+            store.handleExport()
+            notification.alertData?.buttons.first?.action(nil)
+            await SettingsStoreTestFixtures.waitUntil {
+                entryService.exportCSVCalls == 1 && notification.dismissLoaderCalls == 1
+            }
+
+            #expect(notification.showAlertCalls == 1)
+            #expect(entryService.exportCSVCalls == 1)
+            #expect(notification.showToastCalls == 1)
+        }
+
+        @Test("handleExport failure shows csv error toast")
+        func handleExportFailureShowsErrorToast() async {
+            let notification = TestNotificationHelperService()
+            let entryService = MockEntryService()
+            entryService.exportCSVResult = .failure(AccountTestError.apiFailed)
+            let (store, _, _, _, _) = SettingsStoreTestFixtures.makeSUT(notification: notification, entryService: entryService)
+
+            store.handleExport()
+            notification.alertData?.buttons.first?.action(nil)
+            await SettingsStoreTestFixtures.waitUntil {
+                entryService.exportCSVCalls == 1 && notification.dismissLoaderCalls == 1
+            }
+
+            #expect(notification.showToastCalls == 1)
+            #expect(notification.toastData?.message == ToastStrings.csvExportError)
+        }
+
+        @Test("handleExport cancel does not export")
+        func handleExportCancelDoesNotExport() async {
+            let notification = TestNotificationHelperService()
+            let entryService = MockEntryService()
+            let (store, _, _, _, _) = SettingsStoreTestFixtures.makeSUT(notification: notification, entryService: entryService)
+
+            store.handleExport()
+            notification.alertData?.buttons.last?.action(nil)
+            await Task.yield()
+
+            #expect(entryService.exportCSVCalls == 0)
+        }
+
         @Test("handleLogout shows alert and primary action logs out")
         func handleLogoutRunsLogoutFlow() async {
             let notification = TestNotificationHelperService()
@@ -196,6 +243,22 @@ extension SettingsStoreTests {
             #expect(bluetooth.deleteR4ScalesCalls == 1)
             #expect(integration.clearIntegrationCalls == 1)
             #expect(accountService.deleteAccountCalls == 1)
+        }
+
+        @Test("handleExport no internet skips error toast")
+        func handleExportNoInternetSkipsErrorToast() async {
+            let notification = TestNotificationHelperService()
+            let entryService = MockEntryService()
+            entryService.exportCSVResult = .failure(HTTPError.noInternet)
+            let (store, _, _, _, _) = SettingsStoreTestFixtures.makeSUT(notification: notification, entryService: entryService)
+
+            store.handleExport()
+            notification.alertData?.buttons.first?.action(nil)
+            await SettingsStoreTestFixtures.waitUntil {
+                entryService.exportCSVCalls == 1 && notification.dismissLoaderCalls == 1
+            }
+
+            #expect(notification.showToastCalls == 0)
         }
     }
 }
