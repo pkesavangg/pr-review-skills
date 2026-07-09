@@ -65,14 +65,59 @@ enum ChartPrep {
 
         let visibleLength = config.visibleDomainLength(for: period, at: scrollPosition)
 
-        // 4. Adaptive y-axis over the visible window ∪ bracketing ops (deduped by entryTimestamp),
-        //    exactly as `DashboardChartManager.updateYAxisCache`. Total isn't scrollable → the whole
-        //    dataset defines the axis.
-        let yAxisOperations = weightYAxisOperations(
+        // 4. Adaptive y-axis over the visible window (Y-B). Factored out so a scroll-end settle can
+        //    recompute JUST this and update the model in place — see `weightYAxis` / `ChartModel.withYAxis`.
+        let yAxis = weightYAxis(
             operations: operations,
             period: period,
             scrollPosition: scrollPosition,
             visibleDomainLength: visibleLength,
+            goalWeight: goalWeight,
+            isWeightlessMode: isWeightlessMode,
+            anchorWeight: anchorWeight,
+            convertWeight: convertWeight,
+            chartHeight: chartHeight,
+            lastYAxis: lastYAxis,
+            preparer: preparer
+        )
+
+        return ChartModel(
+            period: period,
+            productType: .scale,
+            orderedSeriesNames: plotted.isEmpty ? [] : [seriesName],
+            seriesPoints: [seriesName: decimated],
+            fullResolution: [seriesName: plotted],
+            xDomain: xDomainRange(plotted: plotted, scrollPosition: scrollPosition, visibleLength: visibleLength),
+            visibleDomainLength: visibleLength,
+            xAxisTicks: config.xAxisValues(for: period, from: operations, scrollPosition: scrollPosition),
+            yAxis: yAxis,
+            dataFingerprint: fingerprint(orderedSeriesNames: [seriesName], points: [seriesName: plotted])
+        )
+    }
+
+    /// The adaptive y-axis (Y-B) for one visible window: visible ∪ bracketing ops (deduped) → `YAxisScale`,
+    /// exactly as `DashboardChartManager.updateYAxisCache`. Total isn't scrollable → the whole dataset
+    /// defines the axis. This is the ONLY scroll-position-dependent output of the weight model, so a
+    /// scroll-end settle recomputes just this and calls `ChartModel.withYAxis` — leaving the (scroll-stable)
+    /// series + x-geometry untouched so the chart never rebuilds its scroll view on settle.
+    static func weightYAxis( // swiftlint:disable:this function_parameter_count
+        operations: [BathScaleWeightSummary],
+        period: TimePeriod,
+        scrollPosition: Date,
+        visibleDomainLength: TimeInterval,
+        goalWeight: Double?,
+        isWeightlessMode: Bool,
+        anchorWeight: Double?,
+        convertWeight: (Double) -> Double,
+        chartHeight: CGFloat = 265,
+        lastYAxis: YAxisScale? = nil,
+        preparer: GraphDataPreparer = GraphDataPreparer()
+    ) -> YAxisModel {
+        let yAxisOperations = weightYAxisOperations(
+            operations: operations,
+            period: period,
+            scrollPosition: scrollPosition,
+            visibleDomainLength: visibleDomainLength,
             preparer: preparer
         )
 
@@ -86,18 +131,7 @@ enum ChartPrep {
             lastScale: lastYAxis
         )
 
-        return ChartModel(
-            period: period,
-            productType: .scale,
-            orderedSeriesNames: plotted.isEmpty ? [] : [seriesName],
-            seriesPoints: [seriesName: decimated],
-            fullResolution: [seriesName: plotted],
-            xDomain: xDomainRange(plotted: plotted, scrollPosition: scrollPosition, visibleLength: visibleLength),
-            visibleDomainLength: visibleLength,
-            xAxisTicks: config.xAxisValues(for: period, from: operations, scrollPosition: scrollPosition),
-            yAxis: YAxisModel(domain: scale.domain, ticks: scale.ticks, average: scale.average),
-            dataFingerprint: fingerprint(orderedSeriesNames: [seriesName], points: [seriesName: plotted])
-        )
+        return YAxisModel(domain: scale.domain, ticks: scale.ticks, average: scale.average)
     }
 
     /// Mirrors `DashboardChartManager.updateYAxisCache`: visible-window ops (with edge buffer) combined

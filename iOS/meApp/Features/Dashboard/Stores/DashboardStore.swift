@@ -42,6 +42,11 @@ class DashboardStore: ObservableObject, DashboardStateProviding {
     @Published private(set) var availableProductItems: [ProductSelection] = []
     @Published private(set) var selectedProductItem: ProductSelection = .myWeight
 
+    /// MOB-518 v2 (A3): the single published source of truth for the new weight chart. Built by
+    /// `rebuildWeightChartModel(scrollPosition:)`; `WeightChartHost` observes it (no local `@State` copy).
+    /// Weight (`.scale`) only for now — baby/BPM stay on the legacy engine. `nil` until first build.
+    @Published private(set) var chartModel: ChartModel?
+
     // MARK: - Private Properties
 
     private var cancellables = Set<AnyCancellable>()
@@ -860,13 +865,14 @@ class DashboardStore: ObservableObject, DashboardStateProviding {
 
     // MARK: - v2 Weight-Chart Engine (MOB-518)
 
-    /// Builds the immutable v2 `ChartModel` for the weight graph at `scrollPosition`, on the main actor,
-    /// from the same inputs the legacy series/y-axis paths use (`continuousOperations`, `goalWeightForDisplay`,
-    /// weightless flags, `convertWeightToDisplay`, `state.graph.chartHeight`) — so output is at parity.
-    /// Called by `WeightChartHost` only when a rebuild-relevant input changes (data / period / unit / goal /
-    /// scroll-settle) — never per scroll frame. Weight only for now; baby/BPM stay on the legacy engine.
-    func makeWeightChartModel(scrollPosition: Date) -> ChartModel {
-        ChartPrep.buildWeight(
+    /// Rebuilds the immutable v2 `ChartModel` for the weight graph at `scrollPosition` and publishes it into
+    /// `chartModel`, on the main actor, from the same inputs the legacy series/y-axis paths use
+    /// (`continuousOperations`, `goalWeightForDisplay`, weightless flags, `convertWeightToDisplay`,
+    /// `state.graph.chartHeight`) — so output is at parity. Called by `WeightChartHost` only when a
+    /// rebuild-relevant input changes (data / period / unit / goal / scroll-settle) — never per scroll frame.
+    /// Weight only for now; baby/BPM stay on the legacy engine.
+    func rebuildWeightChartModel(scrollPosition: Date) {
+        chartModel = ChartPrep.buildWeight(
             operations: continuousOperations,
             period: state.graph.selectedPeriod,
             scrollPosition: scrollPosition,
@@ -876,6 +882,32 @@ class DashboardStore: ObservableObject, DashboardStateProviding {
             convertWeight: goalManager.convertWeightToDisplay,
             chartHeight: state.graph.chartHeight
         )
+    }
+
+    /// Scroll-END settle: recompute ONLY the adaptive y-axis for the landed window and update `chartModel`
+    /// in place via `ChartModel.withYAxis` — the series + x-geometry (`xDomain` / `visibleDomainLength` /
+    /// `xAxisTicks`) are left byte-identical so Swift Charts does NOT rebuild its scroll view (which was the
+    /// "can't scroll for ~1 s after a scroll stops" hitch). The y-window reuses the model's frozen
+    /// `visibleDomainLength` so the axis matches the on-screen window. No-op if the model isn't built yet.
+    /// Weight only; baby/BPM stay on the legacy engine.
+    func resettleWeightYAxis(scrollPosition: Date) {
+        guard let current = chartModel else {
+            rebuildWeightChartModel(scrollPosition: scrollPosition)
+            return
+        }
+        let newYAxis = ChartPrep.weightYAxis(
+            operations: continuousOperations,
+            period: state.graph.selectedPeriod,
+            scrollPosition: scrollPosition,
+            visibleDomainLength: current.visibleDomainLength,
+            goalWeight: goalWeightForDisplay,
+            isWeightlessMode: isWeightlessModeEnabled,
+            anchorWeight: weightlessAnchorWeight,
+            convertWeight: goalManager.convertWeightToDisplay,
+            chartHeight: state.graph.chartHeight
+        )
+        guard newYAxis != current.yAxis else { return }
+        chartModel = current.withYAxis(newYAxis)
     }
 
     var hasAnyEntries: Bool { state.data.hasAnyEntries }

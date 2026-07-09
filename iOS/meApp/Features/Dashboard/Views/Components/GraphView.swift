@@ -30,6 +30,13 @@ struct GraphView: View {
     // default off. Removed when the new engine is flipped on at parity (v2 build order V6).
     @AppStorage("mob518_useNewWeightChart") private var useNewWeightChart = false
 
+    /// MOB-518 V-A4: true when the DEBUG A/B new weight engine (`WeightChartHost`) is the chart on screen
+    /// (weight product only). When it is, that host owns period/scroll/model — the legacy section-VM
+    /// machinery below must NOT run, or it does wasted work on every switch (the #2 heaviness).
+    private var usesNewWeightEngine: Bool {
+        dashboardStore.productType == .scale && useNewWeightChart
+    }
+
     /// Latest entry date in the active period — used to drive first-appear / initial-load auto-select.
     private var latestEntryDate: Date? {
         // A baby with no real readings would otherwise auto-select a phantom point from the
@@ -100,6 +107,12 @@ struct GraphView: View {
         .onChange(of: dashboardStore.state.graph.selectedPeriod) { _, newValue in
             // PERFORMANCE: Cancel any pending period change configuration
             periodChangeTask?.cancel()
+
+            // MOB-518 V-A4: the new weight engine's host (`WeightChartHost`) reacts to the period change
+            // itself (adopts the new anchor + rebuilds its model), so skip the entire legacy section-VM
+            // machinery (clear ×4 / tearDown / configure / forceScrollPositionUpdate / updateYAxisCache).
+            // Running it here for the new engine was pure wasted work on every switch — the #2 heaviness.
+            guard !usesNewWeightEngine else { return }
 
             // Note: The anchor-based scroll position is already calculated and set by
             // WeightTrendView.onChange(of: localSelectedPeriod) before this handler runs.
@@ -228,7 +241,7 @@ struct GraphView: View {
             // No real baby readings yet — show the empty grid instead of plotting the
             // dummy summaries that `continuousOperations` falls back to (matches design mock).
             BabyEmptyGraphView()
-        } else if dashboardStore.productType == .scale && useNewWeightChart {
+        } else if usesNewWeightEngine {
             // MOB-518 v2 engine (weight only, DEBUG A/B). Baby/BPM never reach here.
             WeightChartHost(dashboardStore: dashboardStore)
         } else {

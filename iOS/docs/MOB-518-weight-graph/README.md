@@ -7,7 +7,9 @@ The whole rebuild ships as **one working PR** on branch `MOB-518-chart-engine-sc
 
 | Doc | What it is |
 |-----|-----------|
-| [MOB-518-weight-graph-v2-engine-design.md](MOB-518-weight-graph-v2-engine-design.md) | **★ CURRENT PLAN.** The greenfield "strangler" rebuild — a new weight-chart engine built alongside the old graph, reusing the domain math, flipped over at parity. Read this first. |
+| [MOB-518-weight-graph-v2-engine-design.md](MOB-518-weight-graph-v2-engine-design.md) | **★ CURRENT PLAN.** The greenfield "strangler" rebuild — a new weight-chart engine built alongside the old graph, reusing the domain math, flipped over at parity. Read this first. §8 = architectural backlog (V-A1…V-A6), §9 = the V-A4 decision (Option A locked), **§10 = the single canonical remaining-work roadmap** (wins when the V-/A-/Phase- numbering schemes disagree). |
+| [MOB-518-weight-graph-feature-spec.md](MOB-518-weight-graph-feature-spec.md) | **★ PARITY CHECKLIST.** Every behaviour the weight graph must reproduce (periods, aggregation, y-axis, scroll, selection, header, goal, weightless, metrics…) with a ✅/◑/✗ v2-coverage marker each. |
+| [MOB-518-weight-graph-known-issues.md](MOB-518-weight-graph-known-issues.md) | **★ DEVICE PUNCH-LIST.** Running log of issues seen on device, each mapped to the step that fixes it. Swept + verified at the end before sign-off. |
 | [MOB-518-chart-engine-rearchitecture.md](MOB-518-chart-engine-rearchitecture.md) | **The diagnosis + target architecture.** Root-cause inventory (S1–S10) and the engine design the v2 doc delivers. Still valid; the *delivery mechanism* moved to v2. |
 | [MOB-518-weight-graph-implementation-guide.md](MOB-518-weight-graph-implementation-guide.md) | **The (superseded) in-place how-to.** Phase 0 + Phase 1 were executed from this; Phases 2–5 are replaced by the v2 build order. Kept for the S1/animation analysis. |
 | [MOB-518-weight-graph-focus.md](MOB-518-weight-graph-focus.md) | **The baseline.** W1 (de-`@Published` scrollPosition) + W2 (`ChartDomainSanitizer`) root-cause + shipped fixes that carry into v2. |

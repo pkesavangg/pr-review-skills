@@ -201,5 +201,150 @@ Weight is "done" when, on a large weight account across week/month/year/total:
       (`GraphDataPreparer.strictlyVisibleOperations`, bracket fallback), matching today's adaptive Y-B.
 - [x] **RESOLVED — decimation 800/600** (`ChartDecimator.decimate` min/max bucket); no-op for the usual
       few-hundred-point weight series, engages only on long `total`. Undecimated kept in `fullResolution`.
-- [ ] Does `WeightChartView` keep the section VM for scroll/selection, or fully own them as local `@State`
-      (preferred)? Decide at V2 based on what the store boundary sync needs.
+- [→] **MOVED — "does the view own scroll/selection or keep the section VM?" is now the explicit decision
+      V-A4 in §9.** It must be decided before A1–A3 (see §8).
+
+---
+
+## 8. Architectural backlog (current v2 state — 2026-07-09)
+
+V1/V2 deliberately cut corners to get an A/B preview on screen fast: the new view is currently a
+**self-contained island** driven by view-side heuristics, not wired to the store. These are the high-level
+issues to fix **before** any rendering-parity work (vertical gridlines, x-axis labels, point hiding — those
+are V3 cosmetics). Highest priority first.
+
+| ID | Architectural issue | Pri | Fix direction |
+|----|---------------------|-----|---------------|
+| **V-A1** | New view is disconnected from the store's scroll/selection/lifecycle. `WeightChartHost` keeps a purely local `scrollX`; never writes `state.graph.xScrollPosition`, never sets `isScrolling`, never clears selection, never triggers average/metrics. → wrong header average, no crosshair, no goal chip, no period anchor. | **P0** | Boundary contract (§C6/C7): view reports gestures → store commits / settles / selects. View becomes a pure renderer + reporter. |
+| **V-A2** | Rebuild cadence = a hand-rolled `dataSettingsKey` hash + a `Task.sleep(150ms)` settle **in the view**. The hash can miss real data changes (→ stale graph); the timer is a **new instance of the S4 timer-settle anti-pattern**, not the real `isScrolling → false` event. | **P0** | The **store** rebuilds from its real change signals (`dataChangeSignature`/`settingsChangeSignature`) + the real scroll-end event. |
+| **V-A3** | No single source of truth: `makeWeightChartModel(...)` is a method the *view* calls into local `@State`, not `@Published` on the store. → the store's own state (VM caches, `cachedYAxisDomain`, average) and the new model are two parallel truths that diverge (the 32.4-vs-61 header). | **P0** | `@Published private(set) var chartModel` on `DashboardStore`; one builder; view observes. |
+| **V-A4** | Two owners of period/scroll state — the section VMs **and** the host's local `@State` — unreconciled. | **P1 (decide FIRST)** | **See the decision in §9.** A1–A3 hinge on it. |
+| **V-A5** | Scroll geometry (x-domain, visible window, initial position, snapping) is ad-hoc in the new view (`xDomain = data.min…max`, Total's visible length hacked), not sourced from `GraphRenderingConfiguration` (`axisRange` + buffers + `optimalScrollPosition` + `snapScrollPosition`). → extent / start-at-latest / month-year snap / x-tick alignment not at parity. | **P1** | The model carries the real scroll geometry, not the simplified range. |
+| **V-A6** | A settle rebuilds the **whole** model (series + decimation + y-axis) when only the y-axis window changed — the `dataFingerprint`-vs-`yAxis` split exists precisely to update the axis in place. | **P2** | Split "data rebuild" from "y-axis resettle," keyed off the respective signals. |
+
+> **Already solved in v2 (do not re-litigate):** S1 (no `.id`), S2/S10 (single decimation + native scroll),
+> S6 (line/point plot the same value). The remaining architecture is all **store integration + lifecycle**
+> = A1–A4. Off-main `ChartPrep` (S3) folds into V-A3 when the store owns the model; not urgent (small data).
+>
+> **Through-line:** *the store owns a published `ChartModel` and the scroll/selection lifecycle; the view is
+> a dumb renderer that reports gestures back through the store's boundary contract.* Crosshair, average, goal,
+> anchor, and even the gridlines all fall out once that's true.
+
+---
+
+## 9. Decision needed — V-A4: who owns scroll + selection?  (pick one below)
+
+Today the four `Week/Month/Year/Total` section VMs own scroll/selection/`isScrolling` **and** drive the
+store's scroll-end commit, average recompute, y-axis resettle, selection validation, and period anchor.
+`WeightChartHost` currently ignores all of it and keeps its own local scroll. This must be resolved before
+A1–A3, because it decides *where* the boundary wiring lives.
+
+**Option A — View owns scroll + selection (local `@State`); store owns lifecycle + published model.**
+The new view holds `@State scrollX` + `@State selection`; reports to the **store** at boundaries only
+(start → `isScrolling` + clear selection; end → commit + settle; tap → store validated selection). The four
+section VMs are **not used for weight** (kept for baby/BPM until they migrate).
+- Pros: the design's stated direction (§C6/C7); pure-renderer view; sheds the `scrollAdoptToken`/binding
+  dance; single truth via the store; **A1–A3 fall out cleanly.**
+- Cons: wire the host's boundary events to existing store/manager entry points (re-pointing, not rewriting —
+  the lifecycle logic already lives in the managers); must confirm header average/goal still driven at settle.
+- Effort: medium · Regression risk: medium.
+
+**Option B — Section VM keeps scroll + selection; the new view is a renderer bound to it.**
+`WeightChartView` binds scroll/selection to the active `BaseSectionViewModel` (like the old `BaseGraphView`),
+reusing all existing scroll-end/average/selection/anchor wiring.
+- Pros: reuse everything that works → fastest to crosshair/average/goal parity, lowest *behaviour* regression.
+- Cons: re-couples to the VM the rebuild set out to shed; drags the plain-var-scroll + `scrollAdoptToken`
+  re-render dance and `@ObservedObject` publish invalidations into the new view; still needs the store to
+  publish `ChartModel` (A3) anyway → half-in/half-out, carrying old complexity forward.
+- Effort: low–medium · Architecture-debt risk: high.
+
+> **Recommendation (Claude): Option A** — the only option that actually removes the coupling; the "extra
+> wiring" is just calling existing store/manager methods from the host's boundary events. B is faster to a
+> demo but re-imports the tangle we're escaping.
+
+**Pick one (edit the boxes):**
+
+- [x] **Option A** — view owns scroll/selection (local `@State`); store owns lifecycle + published model *(Recommended)* — **CHOSEN (Kesavan, 2026-07-09).**
+- [ ] **Option B** — section VM keeps scroll/selection; new view is a renderer bound to the VM
+
+**Sequence (one at a time, device-verify each):**
+- **A3 — store owns the published model. ✅ DONE (2026-07-09).** `DashboardStore.chartModel` is now
+  `@Published private(set)`, built by `rebuildWeightChartModel(scrollPosition:)`; `WeightChartHost` observes it
+  instead of holding a local `@State` copy. (Triggers are still the view's for now — that's A2.)
+- **A1 — scroll-boundary wiring. ✅ DONE (2026-07-09).** `WeightChartHost` now feeds the gesture into the
+  store's existing lifecycle: scroll-start → `chartManager.handleScrollStart()` (`isScrolling` + clear
+  selection); during → `handleScrollPositionChange` (buffers); end (150 ms) → `handleScrollEndOptimized()`
+  (commit + header average + y-axis) + rebuild the model at the landed window. An `isAdopting` guard keeps
+  programmatic moves (init/period) from tripping the gesture path. **Scope:** scroll boundary only —
+  **tap-selection/crosshair rides with V4** (there's no crosshair binding yet to route). *Known A1 limit:*
+  month doesn't visually snap the scroll to the window yet (V-A5); the header commit lags by the store's
+  scroll-end debounce (collapsed in Phase 4).
+- **A2 — rebuild on the store's real signals. ✅ DONE (2026-07-09).** Killed the view's 150 ms `Task.sleep`
+  settle + `dataSettingsKey` endpoint hash. Scroll start/commit/end now come from the **native
+  `.onScrollPhaseChange`** routed to `chartManager.handleScrollPhaseChange(to:)` — the same real signal the
+  legacy graph uses via `ScrollDetectionModifier` — which commits the landed window (month-snapped) into
+  `state.graph.xScrollPosition` and flips `isScrolling`, with **no `handleScrollEndOptimized` /
+  `isProcessingScrollEnd` cascade** (that was the source of #3). The host rebuilds the model once when
+  `isScrolling → false`, and on data/settings change via the store's canonical
+  `dataChangeSignature`+`settingsChangeSignature`(+goal) — `dataChangeRevision` bumps on every real mutation,
+  so it can't go stale like the endpoint hash could. *Known A2 limit:* month still doesn't **visually** snap
+  the scroll (V-A5); the chartManager's `.idle` 50 ms settle (updateYAxisCache/updateWeightDisplay/metrics)
+  still runs but the new engine doesn't read it — trimmed in V-A4/Phase 4.
+- **Phase 4 — single-event settle (in-place y-axis). ✅ DONE (2026-07-09).** *Root-cause correction:* the
+  ~1 s scroll-lock (#3) was **not** the `handleScrollEndOptimized` cascade (A2 removed that with no effect) —
+  it was the scroll-END **full model rebuild** re-emitting scroll-dependent x-geometry (`visibleDomainLength`
+  is per-month for `.month`; `xAxisTicks` is windowed for large spans), which forced Swift Charts to rebuild
+  its scroll view on every stop. Fix: split the settle from the rebuild. `ChartPrep.weightYAxis(...)` now
+  computes just the adaptive y-axis; `ChartModel.withYAxis(_:)` returns a copy with ONLY `yAxis` swapped
+  (series + `xDomain`/`visibleDomainLength`/`xAxisTicks`/`dataFingerprint` byte-identical); the store's
+  `resettleWeightYAxis(scrollPosition:)` calls it and `WeightChartHost` invokes that on `isScrolling → false`
+  instead of a full rebuild. Result: the scroll region never re-lays-out on settle — only `.chartYScale`
+  animates (one clean Y-B transition). This is V-A6 delivered. *Still deferred:* the chartManager's `.idle`
+  50 ms legacy settle (`updateYAxisCache`/`updateWeightDisplay`/metrics) still fires but the new engine
+  ignores it — dropped in **V-A4** (route the new host's phase straight to `graphManager`).
+- **V-A4 — drop legacy machinery for weight. ✅ DONE (2026-07-09).** Two cuts: (1) `GraphView`'s
+  period-switch handler now `guard !usesNewWeightEngine`s out **before** any section-VM work (clear ×4 /
+  tearDown / configure / forceScrollPositionUpdate / updateYAxisCache) — the host owns period handling, so
+  that was pure waste on every switch (#2). (2) `WeightChartHost` routes its scroll phase + position straight
+  to `graphManager` (not `chartManager`), dropping the chartManager `.idle` 50 ms legacy settle
+  (`updateYAxisCache`/`updateWeightDisplay`/metrics) the new engine ignores. Safe because the legacy graph's
+  `BaseGraphView.handleOnAppear` reconfigures its VM on mount, so toggling the A/B back to legacy re-mounts +
+  reconfigures. Single owner now: store publishes model + owns scroll lifecycle; host renders + reports.
+- **Next: V-A5** (real scroll geometry — visual month snap + start-at-latest + x-domain/extent), then **V3**
+  rendering parity.
+
+---
+
+## 10. Remaining roadmap — the single ordered list (2026-07-09)
+
+> The docs carry three overlapping numbering schemes (V1–V6 build order, V-A1–V-A6 architecture backlog,
+> Phase 0–T from the old in-place guide). **This section is the one canonical execution order for what's
+> left** — every remaining item, in the order we do it, with the device issue(s)/feature(s) each closes.
+> When they disagree, this list wins.
+
+**✅ Done:** Phase 0 (dead code) · Phase 1 (`.id` removal, old engine) · V1 (`ChartModel` + `ChartPrep` +
+`ChartDecimator`) · V2 (`WeightChartView` + `WeightChartHost` + DEBUG A/B toggle) · **A3** (store-published
+model) · **A1** (scroll-boundary wiring) · **A2** (real rebuild signals — native scroll-phase + canonical
+data/settings signals; view timer + hash deleted) · **Phase 4 / V-A6** (in-place y-axis settle — scroll-end
+resettles only `yAxis`, x-geometry frozen, no scroll-view rebuild) · **V-A4** (drop legacy machinery for
+weight — period-switch guard + scroll phase → `graphManager`). All uncommitted (holding for Kesavan's commit
+command).
+
+**Remaining — in order:**
+
+| # | Step | What it does | Closes |
+|---|------|--------------|--------|
+| 1 | ~~**A2 — real rebuild signals**~~ ✅ **DONE** | Store rebuilds from its own change/scroll signals; view's 150 ms timer + `dataSettingsKey` hash deleted; native `.onScrollPhaseChange` drives start/commit/end (no `handleScrollEndOptimized` cascade). | V-A2 |
+| 2 | ~~**Phase 4 — single-event settle (in-place y-axis)**~~ ✅ **DONE** | Scroll-end resettles ONLY `yAxis` (`resettleWeightYAxis` → `ChartModel.withYAxis`); series + x-geometry byte-identical → Swift Charts never rebuilds its scroll view on settle. Real cause of #3 (rebuild re-emitting scroll-dependent x-geometry). | **#3** (verify on device) |
+| 3 | ~~**V-A4 — drop legacy machinery for weight**~~ ✅ **DONE** | GraphView period-switch `guard !usesNewWeightEngine`; host scroll phase → `graphManager` (no chartManager `.idle` settle). Single owner. | **#2** (verify on device) |
+| 4 | **V-A5 — real scroll geometry** *(next)* | Snap-to-window (week/month/year), correct "start at latest" position, x-domain/extent from `GraphRenderingConfiguration` (not `data.min…max`). | month **visual** snap, initial position |
+| 5 | **V4 — selection + header + goal + weightless + metrics** (sub-steps 5a–5f) | 5a tap-selection + crosshair · 5b header value + label + average-on-lift · 5c goal chip + line · 5d weightless label · 5e metric co-plot + switching · 5f active-month greying. | **#4** selection |
+| 6 | **V3 — rendering parity (cosmetics)** | Vertical gridlines (solid at boundaries / dashed between), x-axis labels + ticks per period, selected-point sizes. | **#1** vertical lines |
+| 7 | **V6 — flip + delete old weight path** | Make the new engine the default (retire the DEBUG toggle); delete the now-dead weight-only `BaseGraphView` code + caches + cascade. **Baby/BPM stay on the old engine.** | — |
+| 8 | **Sweep + verify** | Walk the [known-issues log](MOB-518-weight-graph-known-issues.md) (all closed?), run the full [feature-spec parity gate](MOB-518-weight-graph-feature-spec.md) on device + Instruments Animation Hitches (< 5 ms/s, no frame > 16.7 ms) on a large account. | all |
+| 9 | **(Optional) off-main `ChartPrep`** | Only if step 8's trace shows a main-thread hit at settle — extract Sendable snapshot + hop off-main (S3). Likely unnecessary (data is small). | perf tail |
+| 10 | **Phase T — tests** | After sign-off: golden model parity per period, decimation-preserves-shape, settle-once, prep runs 0× during scroll. Remove `#if DEBUG` probes. | — |
+| 11 | **Commit + raise PR** | Fold the held working-tree changes into the phased commits; single PR to `develop`. | — |
+
+**Shorthand:** 1–4 = architecture + perf finish (closes #2/#3) · 5 = behaviour parity (closes #4) ·
+6 = visual parity (closes #1) · 7 makes it the real graph · 8–11 verify, test, ship.
