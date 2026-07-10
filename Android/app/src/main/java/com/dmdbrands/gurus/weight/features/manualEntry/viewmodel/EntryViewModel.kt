@@ -161,6 +161,9 @@ constructor(
           EntryIntent.UpdateActiveForm(
             ActiveEntryForm.Baby(
               form = MultiFormGroup.create(forms = BabyEntryForm.create()),
+              // Capture the baby this form is being built for, so the save uses it instead of the
+              // global selection at save time (MOB-1449).
+              profile = product.profile,
             ),
           ),
         )
@@ -486,13 +489,13 @@ constructor(
   }
 
   private fun saveBabyEntry() {
-    val babyForm = (_state.value.activeForm as? ActiveEntryForm.Baby)?.form ?: return
-    val babyProfile = (productSelectionManager.selectedProduct.value as? ProductSelection.Baby)?.profile
-    val babyId = babyProfile?.id
-    if (babyId == null) {
-      AppLog.w(TAG, "No baby selected; cannot save baby entry")
-      return
-    }
+    val activeBabyForm = _state.value.activeForm as? ActiveEntryForm.Baby ?: return
+    val babyForm = activeBabyForm.form
+    // Use the baby captured when the form was built, NOT the global selection at save time — the
+    // selection can shift between opening and saving and would file the entry on the wrong baby
+    // (MOB-1449).
+    val babyProfile = activeBabyForm.profile
+    val babyId = babyProfile.id
 
     // Match Smart Baby (babyApp): reject entries dated before the baby's birthdate. The
     // comparison is calendar-day only (time-of-day ignored), and surfaces a toast without
@@ -531,7 +534,10 @@ constructor(
         showBabySavedToast(babyEntry, babyProfile.name)
         handleIntent(
           EntryIntent.UpdateActiveForm(
-            ActiveEntryForm.Baby(form = MultiFormGroup.create(forms = BabyEntryForm.create())),
+            ActiveEntryForm.Baby(
+              form = MultiFormGroup.create(forms = BabyEntryForm.create()),
+              profile = babyProfile,
+            ),
           ),
         )
         // Match the weight/BP save flow: just deactivate + pop back to where the

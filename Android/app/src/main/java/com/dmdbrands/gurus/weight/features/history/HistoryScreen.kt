@@ -35,6 +35,7 @@ import com.dmdbrands.gurus.weight.features.history.viewmodel.HistoryViewModel
 import com.dmdbrands.gurus.weight.resources.AppIcons
 import com.dmdbrands.gurus.weight.theme.MeAppTheme
 import com.dmdbrands.gurus.weight.theme.MeTheme.spacing
+import kotlinx.collections.immutable.persistentListOf
 import kotlinx.collections.immutable.toImmutableList
 import kotlinx.coroutines.launch
 
@@ -140,14 +141,15 @@ fun HistoryScreenContent(
         }
 
         is ProductSelection.Baby -> {
-          if (state.babyHistoryItems.isEmpty()) {
+          val babyGroups = state.babyHistoryItems[currentProduct.profile.id] ?: persistentListOf()
+          if (babyGroups.isEmpty()) {
             HistoryEmptyState(
               onRetry = { handleIntent(HistoryIntent.Retry) },
               onConnectScale = { handleIntent(HistoryIntent.OnConnectScale) },
             )
           } else {
             BabyHistoryList(
-              groups = state.babyHistoryItems,
+              groups = babyGroups,
               onItemClick = {  item ->
                 coroutineScope.launch {
                 navBackStack.addRoute(

@@ -3,6 +3,7 @@ package com.dmdbrands.gurus.weight.features.manualEntry.viewmodel
 import com.dmdbrands.gurus.weight.core.shared.utilities.ConversionTools
 import com.dmdbrands.gurus.weight.domain.enums.DashboardType
 import com.dmdbrands.gurus.weight.domain.interfaces.IReducer
+import com.dmdbrands.gurus.weight.domain.model.common.BabyProfile
 import com.dmdbrands.gurus.weight.domain.model.common.WeightUnit
 import com.dmdbrands.gurus.weight.features.common.components.DateTimeValue
 import com.dmdbrands.gurus.weight.features.common.helper.form.AppValidatorConfig
@@ -343,7 +344,12 @@ sealed class ActiveEntryForm {
     override val isDirty get() = form.isDirty || form.isTouched
   }
 
-  data class Baby(val form: MultiFormGroup<BabyEntryForm>) : ActiveEntryForm() {
+  // Captures the baby the form was built for so a save lands on THAT baby, not whatever the
+  // global productSelectionManager.selectedProduct happens to be at save time (MOB-1449).
+  data class Baby(
+    val form: MultiFormGroup<BabyEntryForm>,
+    val profile: BabyProfile,
+  ) : ActiveEntryForm() {
     override val isValid get() = form.isValid
     override val isDirty get() = form.isDirty || form.isTouched
   }
