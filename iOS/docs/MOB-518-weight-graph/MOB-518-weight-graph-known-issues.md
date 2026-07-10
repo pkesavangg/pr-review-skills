@@ -159,6 +159,33 @@ verbatim, with a closed trailing frame.
 
 ---
 
+## Section-switch feel + selection date callout (2026-07-10, fourth pass) ✅ built
+
+1. **Section switch "felt like it scrolled to the recent window."** With a single persistent `WeightChartView`
+   across periods, a switch changed the model (domain / window / points / y-axis) AND the scroll position on
+   the SAME chart, so Swift Charts animated the scroll + y from the old period into the new one — a visible
+   "scroll to recent." **Fix:** `.id(model.period)` on the chart so a period switch **remounts a fresh
+   instance** (the per-period view identity the legacy engine had via distinct generic types). A fresh chart
+   lands directly at the new period's latest window with no cross-period scroll/y animation. The id is keyed
+   ONLY on period — never on scroll / y-settle — so it does NOT reintroduce S1 (a y-settle within a period
+   still animates in place, no teardown). The model is built synchronously (in `adopt` → `rebuild`) before the
+   remount renders, so the fresh chart mounts WITH data (no blank-then-pop). (`WeightChartHost.chartContent`.)
+
+2. **Selected date now floats ABOVE the crosshair line.** The selected date was only reflected in the header;
+   the ask was a floating callout above the selected line, like Health, that stays on-screen at the edges.
+   **Fix:** an `.annotation(position: .top, overflowResolution: .init(x: .fit(to: .chart), y: .disabled))` on
+   the crosshair `RuleMark` renders the formatted date ("jul 7, 2026" / "jul 2026", via
+   `GraphRenderingConfiguration.formatSelectedDate`, lowercased) above the plot; `.fit(to: .chart)`
+   auto-clamps it inside the chart at the leading/trailing edges (no manual pixel/width math). (`WeightChartView`
+   + `WeightChartHost.selectionDateLabel`.)
+
+**Verify on device:** section switch lands instantly on the latest window (no scroll animation); selecting a
+point shows the date above the line, and the label stays fully visible when the point is near the left/right
+edge. *(Watch for a slight vertical adjustment when the top annotation reserves space on select — if it reads
+as a jump, reserve the top headroom permanently.)*
+
+---
+
 ## Sweep plan (do at the end, before sign-off)
 
 1. After **A2** + **Phase 4** (single-event settle) → re-check **#3** (scroll-lock) and **#2** (switch heaviness).

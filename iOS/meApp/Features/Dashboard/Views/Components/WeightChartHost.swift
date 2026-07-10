@@ -87,6 +87,7 @@ struct WeightChartHost: View {
                 scrollX: $scrollX,
                 selectedX: $selectedX,
                 crosshairDate: crosshairDate,
+                selectionDateLabel: selectionDateLabel,
                 goalLabel: goalLabel,
                 activeMonthInterval: dashboardStore.displayManager.activeMonthInterval,
                 isScrolling: dashboardStore.state.graph.isScrolling,
@@ -106,6 +107,12 @@ struct WeightChartHost: View {
                     await dashboardStore.graphManager.handleScrollPhaseChange(newPhase)
                 }
             }
+            // Issue #1 — remount the chart on a PERIOD switch (id keyed ONLY on period, never on scroll /
+            // y-settle → safe from S1). A fresh instance lands directly at the new period's latest window with
+            // no cross-period scroll/y animation — killing the "feels like it scrolls to the recent window" on
+            // a section switch — the same per-period view identity the legacy engine had (distinct generic
+            // types). Within a period the id is stable, so a y-settle still animates in place (no teardown).
+            .id(model.period)
         } else {
             Color.clear.frame(height: 265)
         }
@@ -145,6 +152,18 @@ struct WeightChartHost: View {
             }
         }
         return match?.xDate
+    }
+
+    /// Issue #2 — formatted date of the store's selected point, for the callout above the crosshair line.
+    /// Mirrors the legacy `formatSelectedDate` (week/month → "MMM d, yyyy", year/total → "MMM yyyy"),
+    /// lowercased. `nil` when there is no active selection (no crosshair), so the callout hides with it.
+    private var selectionDateLabel: String? {
+        guard dashboardStore.state.graph.showCrosshair,
+              let date = dashboardStore.state.graph.selectedPoint?.date
+                  ?? dashboardStore.state.graph.selectedXValue else { return nil }
+        return GraphRenderingConfiguration()
+            .formatSelectedDate(date, for: dashboardStore.state.graph.selectedPeriod)
+            .lowercased()
     }
 
     /// Snap the raw selected x to the nearest real (undecimated) entry and report it to the store. A `nil`

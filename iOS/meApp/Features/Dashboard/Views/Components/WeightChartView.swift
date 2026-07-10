@@ -30,6 +30,9 @@ struct WeightChartView: View {
     /// V4 (6a): plotted x-date of the currently-selected (snapped) point — draws the crosshair + enlarges the
     /// matching point. `nil` when nothing is selected / crosshair hidden (e.g. during a scroll).
     let crosshairDate: Date?
+    /// Issue #2: the selected point's date, formatted + lowercased ("jul 7, 2026" / "jul 2026"), shown as a
+    /// callout ABOVE the crosshair line at the top of the plot. `nil` when nothing is selected.
+    let selectionDateLabel: String?
     /// V4 (6c): formatted goal-weight label for the goal chip (nil → no chip). The value is `model.goalWeight`.
     let goalLabel: String?
     /// V4 (6f): month-view active-month interval (nil outside month view / while scrolling) — points whose
@@ -200,6 +203,24 @@ struct WeightChartView: View {
                     .zIndex(-100)
                     .foregroundStyle(theme.actionPrimary)
                     .lineStyle(StrokeStyle(lineWidth: 1))
+                    // Issue #2 — the selected date floats ABOVE the crosshair line at the top of the plot
+                    // (not under the header weight). `overflowResolution: x .fit(to: .chart)` keeps the label
+                    // inside the chart at the leading/trailing edges, so a selection near the left/right edge
+                    // shifts the label in instead of clipping it (the "handle the left/right edge" ask) — no
+                    // manual pixel/width math needed.
+                    .annotation(
+                        position: .top,
+                        alignment: .center,
+                        spacing: 2,
+                        overflowResolution: .init(x: .fit(to: .chart), y: .disabled)
+                    ) {
+                        if let selectionDateLabel {
+                            Text(selectionDateLabel)
+                                .fontOpenSans(.subHeading2)
+                                .foregroundStyle(theme.textSubheading)
+                                .fixedSize()
+                        }
+                    }
             }
 
             // V4 (6c) — goal chip: a trailing-edge pill at the goal's y-level (no visible rule, matching the

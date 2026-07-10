@@ -102,7 +102,9 @@
 - **Selection clears when a scroll starts** (store clears on `.interacting`), and **persists after
   finger-lift** — Swift Charts resets `.chartXSelection` to `nil` on gesture-end but the host ignores that so
   the crosshair stays until the next scroll, like Apple Health (2026-07-10, third pass). ✅
-- **Selection callout** shows the selected date + value near the point. ✗ (V4)
+- **Selection callout** shows the selected date **above the crosshair line** (floating at the top of the plot
+  via a Swift Charts `.annotation`, auto-clamped inside the chart at the left/right edges), and the value in
+  the header. ✅ (2026-07-10)
 - Tapping the middle/approx area snaps to the nearest real entry (never a phantom point). ✗ (V4)
 
 ## 8. Header value & label (above the chart)
@@ -154,8 +156,9 @@
   from the model it plots whenever the current selection doesn't resolve to a crosshair, which closed the gap
   where **year/total** stayed unselected (the shared auto-select read a different operations source than the
   model; 2026-07-10, third pass). ✅
-- **Period switch:** anchors the new period around the old period's visible midpoint, recomputes scroll +
-  y-axis, clears the previous selection. ◑ (host reseeds from store; anchor parity — V-A5)
+- **Period switch:** lands **instantly** on the new period's latest window — the chart is keyed `.id(period)`
+  so it remounts fresh per section (no cross-period "scroll to recent" scroll/y animation), reseeding scroll +
+  y-axis + latest selection from the store. ✅ (2026-07-10)
 - Inactive section VMs are torn down on switch; product/baby-profile change tears down all. ✅ (unchanged)
 
 ## 14. Empty / edge states
