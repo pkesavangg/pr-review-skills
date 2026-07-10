@@ -171,18 +171,26 @@ verbatim, with a closed trailing frame.
    still animates in place, no teardown). The model is built synchronously (in `adopt` → `rebuild`) before the
    remount renders, so the fresh chart mounts WITH data (no blank-then-pop). (`WeightChartHost.chartContent`.)
 
-2. **Selected date now floats ABOVE the crosshair line.** The selected date was only reflected in the header;
-   the ask was a floating callout above the selected line, like Health, that stays on-screen at the edges.
-   **Fix:** an `.annotation(position: .top, overflowResolution: .init(x: .fit(to: .chart), y: .disabled))` on
-   the crosshair `RuleMark` renders the formatted date ("jul 7, 2026" / "jul 2026", via
-   `GraphRenderingConfiguration.formatSelectedDate`, lowercased) above the plot; `.fit(to: .chart)`
-   auto-clamps it inside the chart at the leading/trailing edges (no manual pixel/width math). (`WeightChartView`
-   + `WeightChartHost.selectionDateLabel`.)
+2. **Selected date now floats ABOVE the line, in the gap over the plot.** The selected date was only in the
+   header; the ask was a floating callout above the selected line, like Health, that stays on-screen at the
+   edges. **Two dead ends first, then the fix:**
+   - A mark `.annotation(position: .top)` on the full-height crosshair `RuleMark` was **clipped** — its top
+     anchor is the plot's top edge, and with no headroom there the label rendered outside the chart frame
+     and never showed.
+   - Reserving headroom with `.chartPlotStyle { $0.padding(.top,) }` made it visible but **compressed the
+     plot** inside the fixed 265 pt frame → cramped x-axis labels + section buttons ("no gap").
+   - **Shipped fix:** don't touch the plot. A `.chartBackground` publishes the selected point's clamped
+     x-position as a `PreferenceKey`; an `.overlayPreferenceValue` renders the date label positioned at
+     `y: -12` so it **overflows the chart's top edge into the header gap** (verified no ancestor clips the
+     chain, so it renders instead of being cut). The x is clamped ≥ 55 pt from each plot edge so the label
+     stays fully visible at the leading/trailing edges (the "handle the left/right edge" ask). Date via
+     `GraphRenderingConfiguration.formatSelectedDate` ("jul 9, 2026" / "jul 2026"), lowercased. No plot
+     compression, no frame change. (`WeightChartView` + `WeightChartHost.selectionDateLabel`.)
 
 **Verify on device:** section switch lands instantly on the latest window (no scroll animation); selecting a
-point shows the date above the line, and the label stays fully visible when the point is near the left/right
-edge. *(Watch for a slight vertical adjustment when the top annotation reserves space on select — if it reads
-as a jump, reserve the top headroom permanently.)*
+point shows the date in the gap ABOVE the plot (not inside it), the plot stays full-size with normal spacing
+to the day labels + section buttons, and the label stays fully visible when the point is near the left/right
+edge. *(If `y: -12` sits slightly high/low, it's a one-number tweak.)*
 
 ---
 

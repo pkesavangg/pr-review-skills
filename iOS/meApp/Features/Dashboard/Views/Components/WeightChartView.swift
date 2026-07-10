@@ -21,6 +21,16 @@
 import Charts
 import SwiftUI
 
+/// Carries the selected point's (already-clamped) x-position out of the chart so the date callout can be
+/// floated ABOVE the plot as an overlay (issue #2) — without reserving in-plot space that would compress
+/// the graph.
+private struct SelectionCalloutXKey: PreferenceKey {
+    static let defaultValue: CGFloat? = nil
+    static func reduce(value: inout CGFloat?, nextValue: () -> CGFloat?) {
+        if let next = nextValue() { value = next }
+    }
+}
+
 struct WeightChartView: View {
 
     let model: ChartModel
@@ -163,6 +173,20 @@ struct WeightChartView: View {
         }
     }
 
+    /// Issue #2 — the selected point's x-position (in the chart's coordinate space), clamped so a label near
+    /// the leading/trailing edge shifts inward instead of clipping. `nil` when nothing is selected.
+    private func calloutX(_ proxy: ChartProxy, _ geo: GeometryProxy) -> CGFloat? {
+        guard let crosshairDate,
+              let anchor = proxy.plotFrame,
+              let xInPlot = proxy.position(forX: crosshairDate) else { return nil }
+        let plot = geo[anchor]
+        // Keep the label center ≥ `inset` from each plot edge so a ≤ 2·inset-wide label never clips.
+        let inset: CGFloat = 55
+        let lower = plot.minX + inset
+        let upper = max(lower, plot.maxX - inset)
+        return min(max(plot.minX + xInPlot, lower), upper)
+    }
+
     var body: some View {
         Chart {
             ForEach(model.orderedSeriesNames, id: \.self) { name in
@@ -203,24 +227,6 @@ struct WeightChartView: View {
                     .zIndex(-100)
                     .foregroundStyle(theme.actionPrimary)
                     .lineStyle(StrokeStyle(lineWidth: 1))
-                    // Issue #2 — the selected date floats ABOVE the crosshair line at the top of the plot
-                    // (not under the header weight). `overflowResolution: x .fit(to: .chart)` keeps the label
-                    // inside the chart at the leading/trailing edges, so a selection near the left/right edge
-                    // shifts the label in instead of clipping it (the "handle the left/right edge" ask) — no
-                    // manual pixel/width math needed.
-                    .annotation(
-                        position: .top,
-                        alignment: .center,
-                        spacing: 2,
-                        overflowResolution: .init(x: .fit(to: .chart), y: .disabled)
-                    ) {
-                        if let selectionDateLabel {
-                            Text(selectionDateLabel)
-                                .fontOpenSans(.subHeading2)
-                                .foregroundStyle(theme.textSubheading)
-                                .fixedSize()
-                        }
-                    }
             }
 
             // V4 (6c) — goal chip: a trailing-edge pill at the goal's y-level (no visible rule, matching the
@@ -295,6 +301,14 @@ struct WeightChartView: View {
                     .frame(width: 1)
             }
         }
+        // Issue #2 — publish the selected point's (clamped) x so the overlay below can float the date label
+        // ABOVE the chart. `.chartBackground` only emits a preference here (Color.clear) — it doesn't render
+        // the label and doesn't reserve plot space, so the graph is NOT compressed.
+        .chartBackground { proxy in
+            GeometryReader { geo in
+                Color.clear.preference(key: SelectionCalloutXKey.self, value: calloutX(proxy, geo))
+            }
+        }
         .chartLegend(.hidden)
         .chartScrollableAxes(isScrollable ? .horizontal : [])
         .chartXVisibleDomain(length: ChartDomainSanitizer.positiveLength(visibleLength))
@@ -307,5 +321,18 @@ struct WeightChartView: View {
         // single, smooth, adaptive settle (Y-B). No animation fires during a drag (nothing changes then).
         .animation(.easeInOut(duration: 0.25), value: yDomain)
         .frame(height: 265)
+        // Issue #2 — the date callout floats in the gap ABOVE the plot, at the selected x (from the preference
+        // above). It OVERFLOWS the chart's top edge into the header gap (no ancestor clips it), so it does NOT
+        // compress the plot or crowd the x-axis labels / section buttons — it reads as "above the graph", like
+        // Health, with the x clamped so it stays fully visible at the leading/trailing edges.
+        .overlayPreferenceValue(SelectionCalloutXKey.self) { calloutX in
+            if let calloutX, let selectionDateLabel {
+                Text(selectionDateLabel)
+                    .fontOpenSans(.subHeading2)
+                    .foregroundStyle(theme.textSubheading)
+                    .fixedSize()
+                    .position(x: calloutX, y: -12)
+            }
+        }
     }
 }
