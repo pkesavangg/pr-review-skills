@@ -178,6 +178,60 @@ object FormValidations {
       }
     }
 
+  /**
+   * Advisory (non-blocking) cross-field warning for the systolic field: systolic should be
+   * higher than diastolic. Mirrors Balance Health (bpmMobileApp4) exactly — it only fires when
+   * systolic is inside its typical range [warnMin, warnMax], so it never collides with the
+   * range warning (which only fires outside that range). Returns null otherwise.
+   *
+   * @param diastolic the sibling control to compare against (read live at validation time)
+   * @param message the advisory copy to surface (WARNING severity — value still saves)
+   */
+  fun systolicCrossFieldWarning(
+    diastolic: FormControl<String>,
+    warnMin: Int,
+    warnMax: Int,
+    message: String,
+  ): Validator<String> =
+    { value ->
+      val systolicValue = value.toIntOrNull()
+      val diastolicValue = diastolic.value.toIntOrNull()
+      if (systolicValue != null && systolicValue in warnMin..warnMax &&
+        diastolicValue != null && diastolicValue > systolicValue
+      ) {
+        ValidationError(ValidationType.WARNING, message, ValidationSeverity.WARNING)
+      } else {
+        null
+      }
+    }
+
+  /**
+   * Advisory (non-blocking) cross-field warning for the diastolic field: diastolic should be
+   * lower than systolic. Mirrors Balance Health (bpmMobileApp4): fires only when diastolic is
+   * inside its typical range [warnMin, warnMax] and either systolic is lower than diastolic or
+   * systolic is still empty. Returns null otherwise.
+   *
+   * @param systolic the sibling control to compare against (read live at validation time)
+   * @param message the advisory copy to surface (WARNING severity — value still saves)
+   */
+  fun diastolicCrossFieldWarning(
+    systolic: FormControl<String>,
+    warnMin: Int,
+    warnMax: Int,
+    message: String,
+  ): Validator<String> =
+    { value ->
+      val diastolicValue = value.toIntOrNull()
+      val systolicValue = systolic.value.toIntOrNull()
+      if (diastolicValue != null && diastolicValue in warnMin..warnMax &&
+        ((systolicValue != null && systolicValue < diastolicValue) || systolic.value.isEmpty())
+      ) {
+        ValidationError(ValidationType.WARNING, message, ValidationSeverity.WARNING)
+      } else {
+        null
+      }
+    }
+
   fun futureTime(): Validator<Calendar> =
     { value ->
       val currTime = Calendar.getInstance()
