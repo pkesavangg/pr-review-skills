@@ -21,6 +21,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.unit.dp
 import com.dmdbrands.gurus.weight.features.common.components.AppIcon
@@ -38,6 +39,7 @@ import com.dmdbrands.gurus.weight.theme.MeTheme
 fun DeviceCatalogSection(
   title: String,
   iconId: Int,
+  iconTint: Color,
   devices: List<DeviceModelInfo>,
   onDeviceSelected: (DeviceModelInfo) -> Unit,
 ) {
@@ -60,6 +62,7 @@ fun DeviceCatalogSection(
         AppIcon(
           id = iconId,
           contentDescription = title,
+          tintColor = iconTint,
           modifier = Modifier.size(24.dp),
           onClick = null,
         )

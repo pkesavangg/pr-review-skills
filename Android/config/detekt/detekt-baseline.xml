@@ -93,7 +93,7 @@
     <ID>LongMethod:DashboardSnapshotScreen.kt$@Composable fun DashboardSnapshotScreen( viewModel: DashboardSnapshotViewModel = hiltViewModel(), )</ID>
     <ID>LongMethod:DashboardSnapshotViewModel.kt$DashboardSnapshotViewModel$private suspend fun updateBabyChart(profile: BabyProfile, points: List&lt;PeriodBabySummary&gt;)</ID>
     <ID>LongMethod:DecimalInputVisualTransformation.kt$DecimalInputVisualTransformation$override fun filter(text: AnnotatedString): TransformedText</ID>
-    <ID>LongMethod:DeviceCatalogSection.kt$@Composable fun DeviceCatalogSection( title: String, iconId: Int, devices: List&lt;DeviceModelInfo&gt;, onDeviceSelected: (DeviceModelInfo) -&gt; Unit, )</ID>
+    <ID>LongMethod:DeviceCatalogSection.kt$@Composable fun DeviceCatalogSection( title: String, iconId: Int, iconTint: Color, devices: List&lt;DeviceModelInfo&gt;, onDeviceSelected: (DeviceModelInfo) -&gt; Unit, )</ID>
     <ID>LongMethod:DeviceDetailsScreen.kt$@OptIn(ExperimentalMaterial3Api::class) @Composable fun DeviceDetailsScreenContent( state: DeviceDetailsState, handleIntent: (DeviceDetailsIntent) -&gt; Unit, )</ID>
     <ID>LongMethod:DeviceDisplayMetricsScreen.kt$@Composable fun DeviceDisplayMetricsScreenContent( state: DeviceDisplayMetricsState, handleIntent: (DeviceDisplayMetricsIntent) -&gt; Unit, )</ID>
     <ID>LongMethod:DeviceList.kt$@Composable fun DeviceList( onScaleSelected: (DeviceModelInfo) -&gt; Unit, modifier: Modifier = Modifier, enableLazyLoading: Boolean = true, lazyListState: LazyListState = rememberLazyListState(), initialSelectedType: DeviceSegmentType = DeviceSegmentType.All, header: (@Composable () -&gt; Unit)? = null, // NEW footer: (@Composable () -&gt; Unit)? = null, // NEW )</ID>
@@ -130,6 +130,7 @@
     <ID>LongMethod:HealthConnectService.kt$HealthConnectService$override suspend fun checkHealthConnectPermissionDisabled()</ID>
     <ID>LongMethod:HealthConnectService.kt$HealthConnectService$override suspend fun healthConnectOutOfSync(): Boolean</ID>
     <ID>LongMethod:HelpContent.kt$@Composable fun ContactUsContent(handleIntent: (HelpIntent) -&gt; Unit)</ID>
+    <ID>LongMethod:HelpScreen.kt$@Composable private fun HelpContent( viewModel: HelpViewModel, handleIntent: (HelpIntent) -&gt; Unit )</ID>
     <ID>LongMethod:HistoryDetailMetrics.kt$@OptIn(ExperimentalLayoutApi::class) @Composable fun WeightHistoryDetailItemDetails( item: ScaleEntry, onEditEntry: () -&gt; Unit = {}, )</ID>
     <ID>LongMethod:HistoryDetailScreen.kt$@Composable fun HistoryDetailScreenContent( state: HistoryDetailState, productType: ProductType = ProductType.MY_WEIGHT, isRefreshing: Boolean = false, onRefresh: (() -&gt; Unit)? = null, handleIntent: (HistoryDetailIntent) -&gt; Unit, )</ID>
     <ID>LongMethod:HistoryDetailScreen.kt$@PreviewTheme @Composable fun HistoryDetailScreenPreview()</ID>
