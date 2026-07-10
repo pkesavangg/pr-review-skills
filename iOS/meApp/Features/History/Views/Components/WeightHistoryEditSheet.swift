@@ -105,7 +105,8 @@ struct WeightHistoryEditSheet: View {
                         trailingLabel: labels.weightUnitSuffix(isMetric)
                     ),
                     value: $form.weight.value,
-                    focusedField: $focusedField
+                    focusedField: $focusedField,
+                    accessibilityIdentifier: AccessibilityID.weightHistoryEditWeightField
                 ) { focusedField = nil }
 
                 metricsAccordion
@@ -117,7 +118,8 @@ struct WeightHistoryEditSheet: View {
                         focusField: .notes
                     ),
                     value: $form.notes.value,
-                    focusedField: $focusedField
+                    focusedField: $focusedField,
+                    accessibilityIdentifier: AccessibilityID.weightHistoryEditNoteField
                 )
 
                 datePicker
@@ -130,6 +132,7 @@ struct WeightHistoryEditSheet: View {
                         size: .large,
                         isDisabled: !isValid || isSaving
                     ) { saveEntry() }
+                    .appAccessibility(id: AccessibilityID.weightHistoryEditSaveButton)
                     Spacer()
                 }
             }
@@ -139,6 +142,7 @@ struct WeightHistoryEditSheet: View {
         .background(theme.backgroundSecondary.ignoresSafeArea())
         .presentationDetents([.large])
         .presentationDragIndicator(.visible)
+        .screenAccessibilityRoot(AccessibilityID.weightHistoryEditScreenRoot)
     }
 
     // MARK: - Subviews
@@ -152,6 +156,8 @@ struct WeightHistoryEditSheet: View {
                     .foregroundStyle(theme.textBody)
             }
             .buttonStyle(.plain)
+            .accessibilityLabel(lang.accCloseLabel)
+            .appAccessibility(id: AccessibilityID.weightHistoryEditCloseButton)
         }
     }
 
@@ -211,9 +217,11 @@ struct WeightHistoryEditSheet: View {
                 DateLabelView(date: entryDate, isSelected: showDatePicker) {
                     toggleDatePicker()
                 }
+                .appAccessibility(id: AccessibilityID.weightHistoryEditDateButton)
                 TimeLabelView(time: entryTime, isSelected: showTimePicker) {
                     toggleTimePicker()
                 }
+                .appAccessibility(id: AccessibilityID.weightHistoryEditTimeButton)
             }
             .padding(.leading, 2)
 

@@ -684,6 +684,13 @@ final class HistoryStore: ObservableObject {
 
     // MARK: - Weight Edit (delete-old + create-new)
 
+    /// Trims a note and collapses a blank/whitespace-only value to nil, matching the manual
+    /// create path (EntryStore.saveEntry) so an empty edit clears the note rather than storing "".
+    private static func normalizedNote(_ note: String) -> String? {
+        let trimmed = note.trimmingCharacters(in: .whitespacesAndNewlines)
+        return trimmed.isEmpty ? nil : trimmed
+    }
+
     // swiftlint:disable function_parameter_count
     /// Updates a weight-scale entry. Editable core fields (weight + bmi/body-fat/muscle-mass/
     /// body-water) come from the edit sheet; all other body metrics on the original entry are
@@ -738,7 +745,7 @@ final class HistoryStore: ObservableObject {
             entryType: EntryType.scale.rawValue,
             isSynced: false
         )
-        entry.note = note.isEmpty ? nil : note
+        entry.note = Self.normalizedNote(note)
         entry.scaleEntry = scaleEntry
         entry.scaleEntryMetric = scaleMetric
 

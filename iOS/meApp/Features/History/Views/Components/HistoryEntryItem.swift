@@ -198,6 +198,7 @@ struct HistoryEntryItem: View {
             }
             .buttonStyle(.plain)
             .accessibilityLabel(hasNotes ? HistoryListStrings.accEditNoteLabel : HistoryListStrings.accAddNoteLabel)
+            .appAccessibility(id: AccessibilityID.historyEditNoteButton)
         }
         .padding(.spacingSM)
         .frame(maxWidth: .infinity, alignment: .leading)
