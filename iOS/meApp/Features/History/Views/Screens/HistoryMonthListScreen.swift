@@ -92,17 +92,21 @@ struct HistoryMonthListScreen: View {
         .sheet(item: $selectedEntry) { entry in
             RefetchedEntryWrapper(entryId: entry.id, selectedMetric: selectedMetric ?? .bmi)
         }
-        .sheet(item: $entryToEdit, onDismiss: {
-            if popToListAfterEdit {
-                popToListAfterEdit = false
-                router.navigateBack()
+        .sheet(
+            item: $entryToEdit,
+            onDismiss: {
+                if popToListAfterEdit {
+                    popToListAfterEdit = false
+                    router.navigateBack()
+                }
+            },
+            content: { entry in
+                WeightHistoryEditSheet(entry: entry, isMetric: historyStore.isWeightMetric) { dateChanged in
+                    popToListAfterEdit = dateChanged
+                }
+                .environmentObject(historyStore)
             }
-        }) { entry in
-            WeightHistoryEditSheet(entry: entry, isMetric: historyStore.isWeightMetric) { dateChanged in
-                popToListAfterEdit = dateChanged
-            }
-            .environmentObject(historyStore)
-        }
+        )
     }
     
     @ViewBuilder
