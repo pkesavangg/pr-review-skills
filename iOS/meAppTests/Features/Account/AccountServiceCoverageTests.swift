@@ -65,9 +65,12 @@ struct AccountServiceCoverageTests {
 
         try await sut.logOut(accountId: "acct-1")
 
-        // The account is no longer marked as active/logged-in after logout.
+        // logOut retains the local record (unlike removeAccountFromDevice) but clears its
+        // logged-in and active flags so it no longer drives the session.
         let stored = try await local.fetchAccount(byId: "acct-1")
-        #expect(stored?.isLoggedIn == false || stored == nil)
+        #expect(stored != nil)
+        #expect(stored?.isLoggedIn == false)
+        #expect(stored?.isActiveAccount == false)
     }
 
     // MARK: - removeAccountFromDevice

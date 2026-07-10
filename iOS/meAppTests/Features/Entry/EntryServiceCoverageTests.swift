@@ -192,21 +192,28 @@ struct EntryServiceCoverageTests {
 
         await sut.syncAllEntriesWithRemote()
 
-        // Drives the remote fetch + mergeRemoteOperations path. The merge persists via the
-        // SwiftData worker (not the mock's in-memory array), so we assert the sync ran to
-        // completion rather than inspecting the mock repo.
+        // Drives the remote fetch + mergeRemoteOperations path. `mergeRemoteOperations`
+        // persists new remote creates through `localRepo.saveEntry`, so the two server-only
+        // creates must land in local storage tagged with their serverEntryIds.
         #expect(remote.fetchEntriesCalls >= 1)
         #expect(sut.isSyncing == false)
+        #expect(repo.entries.count == 2)
+        #expect(Set(repo.entries.compactMap(\.serverEntryId)) == Set(["srv-1", "srv-2"]))
+        #expect(repo.entries.allSatisfy { $0.accountId == "acct-1" })
     }
 
     @Test("syncAllEntriesWithRemote: concurrent calls piggyback on the in-flight sync")
     func syncConcurrentCallsCoalesce() async {
-        let sut = makeSUT()
+        let remote = MockEntryRepositoryAPI()
+        let sut = makeSUT(remote: remote)
 
         async let first: Void = sut.syncAllEntriesWithRemote()
         async let second: Void = sut.syncAllEntriesWithRemote()
         _ = await (first, second)
 
+        // The second call must piggyback on the in-flight sync rather than start its own,
+        // so the underlying remote fetch happens exactly once across both invocations.
+        #expect(remote.fetchEntriesCalls == 1)
         #expect(sut.isSyncing == false)
     }
 }

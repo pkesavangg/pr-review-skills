@@ -39,6 +39,11 @@ extension DeviceServiceTests {
         await sut.syncAllScalesWithRemote()
 
         #expect(remote.listScalesCalls >= 1)
+        // The synced orphan is absent from the server list, so the replace/prune pass must
+        // drop it from local storage and from the published snapshots.
+        let remaining = try await repo.listScales()
+        #expect(!remaining.contains { $0.id == "orphan" })
+        #expect(!sut.scales.contains { $0.id == "orphan" })
     }
 
     @Test("syncDevices skips creating a temp device that duplicates an existing local device")
