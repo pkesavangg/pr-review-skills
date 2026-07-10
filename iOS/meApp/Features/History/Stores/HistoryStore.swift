@@ -699,6 +699,10 @@ final class HistoryStore: ObservableObject {
     ///
     /// No PATCH endpoint exists, so this creates the replacement first, then deletes the
     /// original by its id (a distinct UUID, so a shared timestamp can't collapse them).
+    ///
+    /// Returns `true` only when the replacement saved AND the original was deleted, so the caller
+    /// can gate post-save navigation (e.g. popping back to the list) on a confirmed success.
+    @discardableResult
     func updateWGEntry(
         old: EntrySnapshot,
         weight: Int,
@@ -708,8 +712,8 @@ final class HistoryStore: ObservableObject {
         water: Int?,
         note: String,
         entryTimestamp: String
-    ) async {
-        guard let accountId = accountService.activeAccount?.accountId else { return }
+    ) async -> Bool {
+        guard let accountId = accountService.activeAccount?.accountId else { return false }
         notificationService.showLoader(LoaderModel(text: loaderLang.savingEntry))
         defer { notificationService.dismissLoader() }
 
@@ -724,19 +728,7 @@ final class HistoryStore: ObservableObject {
 
         // Preserve every non-core metric from the original entry — the edit sheet does not
         // expose them, so they must round-trip untouched.
-        let oldMetric = old.scaleEntryMetric
-        let scaleMetric = BathScaleMetric(
-            bmr: oldMetric?.bmr,
-            metabolicAge: oldMetric?.metabolicAge,
-            proteinPercent: oldMetric?.proteinPercent,
-            pulse: oldMetric?.pulse,
-            skeletalMusclePercent: oldMetric?.skeletalMusclePercent,
-            subcutaneousFatPercent: oldMetric?.subcutaneousFatPercent,
-            visceralFatLevel: oldMetric?.visceralFatLevel,
-            boneMass: oldMetric?.boneMass,
-            impedance: oldMetric?.impedance,
-            unit: oldMetric?.unit
-        )
+        let scaleMetric = Self.preservedMetric(from: old.scaleEntryMetric)
 
         let entry = Entry(
             entryTimestamp: entryTimestamp,
@@ -761,15 +753,34 @@ final class HistoryStore: ObservableObject {
                     + "original id \(old.id): \(error.localizedDescription)"
                 logger.log(level: .error, tag: tag, message: duplicateMessage)
                 notificationService.showToast(ToastModel(message: toastLang.errorSavingEntry))
-                return
+                return false
             }
             logger.log(level: .info, tag: tag, message: "Weight entry updated: \(entryTimestamp)")
+            return true
         } catch {
             logger.log(level: .error, tag: tag, message: "Failed to update weight entry: \(error.localizedDescription)")
             notificationService.showToast(ToastModel(message: toastLang.errorSavingEntry))
+            return false
         }
     }
     // swiftlint:enable function_parameter_count
+
+    /// Rebuilds a `BathScaleMetric` from the original entry's snapshot so the non-core metrics the
+    /// weight edit sheet does not expose round-trip untouched onto the replacement entry.
+    private static func preservedMetric(from oldMetric: BathScaleMetricSnapshot?) -> BathScaleMetric {
+        BathScaleMetric(
+            bmr: oldMetric?.bmr,
+            metabolicAge: oldMetric?.metabolicAge,
+            proteinPercent: oldMetric?.proteinPercent,
+            pulse: oldMetric?.pulse,
+            skeletalMusclePercent: oldMetric?.skeletalMusclePercent,
+            subcutaneousFatPercent: oldMetric?.subcutaneousFatPercent,
+            visceralFatLevel: oldMetric?.visceralFatLevel,
+            boneMass: oldMetric?.boneMass,
+            impedance: oldMetric?.impedance,
+            unit: oldMetric?.unit
+        )
+    }
 
     // MARK: - Baby Edit (delete-old + create-new)
 

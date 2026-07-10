@@ -395,7 +395,7 @@ struct HistoryStoreBabyAndDeleteTests {
         // and the new reading now persist (the duplicate the P1 fix must make detectable).
         entryService.deleteEntryByIdError = HistoryStoreTestError.loadMonthsFailed
 
-        await store.updateWGEntry(
+        let didSave = await store.updateWGEntry(
             old: old,
             weight: 1800,
             bmi: nil,
@@ -406,6 +406,8 @@ struct HistoryStoreBabyAndDeleteTests {
             entryTimestamp: "2026-03-10T08:00:00Z"
         )
 
+        // Reports failure so the caller does not navigate away on a delete-after-save duplicate.
+        #expect(didSave == false)
         // Replacement persisted, delete attempted-and-failed.
         #expect(entryService.savedEntries.count == 1)
         #expect(entryService.deleteEntryByIdCalls == 1)
@@ -513,7 +515,7 @@ struct HistoryStoreBabyAndDeleteTests {
 
         let old = EntryTestFixtures.makeEntrySnapshot(source: "manual")
 
-        await store.updateWGEntry(
+        let didSave = await store.updateWGEntry(
             old: old,
             weight: 1900,
             bmi: nil,
@@ -524,6 +526,8 @@ struct HistoryStoreBabyAndDeleteTests {
             entryTimestamp: "2026-03-11T08:00:00Z"
         )
 
+        // Reports success so the caller may safely navigate away / pop back to the list.
+        #expect(didSave == true)
         #expect(entryService.savedEntries.count == 1)
         #expect(entryService.deleteEntryByIdCalls == 1)
         #expect(logger.messages.contains { $0.contains("Weight entry updated") })

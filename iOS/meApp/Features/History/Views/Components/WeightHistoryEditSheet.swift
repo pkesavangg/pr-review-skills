@@ -274,7 +274,7 @@ struct WeightHistoryEditSheet: View {
         let timestamp = DateTimeTools.isoString(date: entryDate, time: entryTime, useUTC: true)
         let dateChanged = !Calendar.current.isDate(entryDate, inSameDayAs: originalDate)
         Task {
-            await historyStore.updateWGEntry(
+            let didSave = await historyStore.updateWGEntry(
                 old: entry,
                 weight: storedWeight,
                 bmi: Self.textToTenths(form.bmi.value),
@@ -285,6 +285,9 @@ struct WeightHistoryEditSheet: View {
                 entryTimestamp: timestamp
             )
             isSaving = false
+            guard didSave else { return }
+            // Only pop back to the list / dismiss after a confirmed successful save —
+            // a failed save keeps the sheet open (with its toast) so the user can retry.
             onSaved?(dateChanged)
             dismiss()
         }
