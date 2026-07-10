@@ -211,8 +211,9 @@ data class BloodPressureEntryForm(
     fun create(): BloodPressureEntryForm {
       val calendar = Calendar.getInstance()
       val controls = BloodPressureFormControls(
-        // Warn-but-save (Balance Health parity): block only above the hard cap,
-        // show an advisory warning outside the typical range, still allow save.
+        // Warn-but-save (Balance Health parity): block at the hard cap and above
+        // (exclusive cap — 500 is blocked, MOB-1431), show an advisory warning
+        // outside the typical range, still allow save.
         systolic = FormControl.create(
           "",
           listOf(

@@ -337,8 +337,10 @@ object FormValidations {
 
   /**
    * Blocking upper-bound check for manual entry. Returns an ERROR when an integer
-   * value exceeds [max] (or isn't a valid whole number). Mirrors Balance Health's
-   * hard 500 cap on systolic/diastolic/pulse. Blank is left to [required].
+   * value reaches [max] or above (or isn't a valid whole number). The bound is
+   * exclusive so it matches the "value should be less than [max]" copy — e.g. 500
+   * is blocked, not just 501 (MOB-1431). Mirrors Balance Health's hard cap on
+   * systolic/diastolic/pulse. Blank is left to [required].
    */
   fun hardMaxValidator(max: Int): Validator<String> =
     { value ->
@@ -348,7 +350,7 @@ object FormValidations {
         val v = value.toIntOrNull()
         when {
           v == null -> ValidationError(ValidationType.NOT_IN_RANGE, ValidationMessages.INVALID_NUMBER)
-          v > max -> ValidationError(
+          v >= max -> ValidationError(
             ValidationType.MAX_LIMIT,
             String.format(ValidationMessages.LESS_THAN, max),
           )

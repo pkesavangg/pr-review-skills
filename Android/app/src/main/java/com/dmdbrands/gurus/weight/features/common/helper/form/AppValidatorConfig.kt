@@ -87,7 +87,8 @@ class AppValidatorConfig {
 
     // Blood-pressure manual entry mirrors Balance Health (bpmMobileApp4):
     // values outside WARN_MIN..WARN_MAX show an advisory warning but still save;
-    // only values above HARD_MAX are blocked.
+    // values at HARD_MAX or above are blocked (the cap is exclusive, so the
+    // "less than 500" copy matches — 500 is blocked, see MOB-1431).
     object Systolic {
         const val WARN_MIN = 60
         const val WARN_MAX = 250
