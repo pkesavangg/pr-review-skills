@@ -440,7 +440,11 @@ jobs:
   android-lint:
     docker:
       - image: cimg/android:2024.11.1
-    resource_class: large
+    # xlarge (16 GB): :app:lintAnalyzeDebug loads the whole app-module UAST and,
+    # with the 4 GB Gradle daemon heap + Kotlin daemon + parallel workers, peaks
+    # past the 8 GB `large` limit, so the kernel OOM-killer kills the Gradle
+    # daemon ("daemon disappeared unexpectedly"). Give lint headroom.
+    resource_class: xlarge
     steps:
       - checkout
       - run:
