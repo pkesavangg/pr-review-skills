@@ -958,6 +958,21 @@ class DashboardStore: ObservableObject, DashboardStateProviding {
         chartModel = updated
     }
 
+    /// Scroll-END commit for the v2 weight engine (single source of truth). `landed` is where the native
+    /// scroll actually rested. We snap it to the nearest period boundary (round-to-nearest month, not the
+    /// legacy floor → no backward jerk), commit that ONE value as the scroll position, and settle the chart
+    /// (in-place y-axis + windowed ticks) for it. Returns the snapped position so `WeightChartHost` can
+    /// animate the visual scroll to match — collapsing the "native rest vs committed" split that made the
+    /// header / active-month greying / y-axis compute for a window that wasn't on screen. Weight only;
+    /// baby/BPM stay on the legacy manager path (which keeps its own floor snap in `handleScrollPhaseChange`).
+    func commitWeightScroll(landedAt landed: Date) -> Date {
+        let snapped = GraphRenderingConfiguration()
+            .snapWeightScrollPosition(landed, for: state.graph.selectedPeriod)
+        graphManager.updateScrollPosition(to: snapped)
+        settleWeightChart(scrollPosition: snapped)
+        return snapped
+    }
+
     /// V4 (6a): apply a validated weight-chart selection at `date` (already snapped to a real entry by the
     /// host), resolving `selectedPoint`/`selectedXValue`/`showCrosshair` per period exactly as the legacy
     /// programmatic auto-select does (`applyChartSelectionSync`). `nil` clears the selection. Weight only.

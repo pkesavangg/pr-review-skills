@@ -59,20 +59,32 @@ struct WeightChartHost: View {
         .onChange(of: selectedX) { _, raw in
             handleSelectionChange(raw)
         }
-        // Scroll-END settle. `settleWeightChart` normally resettles ONLY the adaptive y-axis in place
-        // (no x-geometry change → Swift Charts doesn't rebuild its scroll view → no "~1 s can't scroll
-        // again" hitch, #3). The x-domain is a BOUNDED ±N-window span (fixes the canvas-width hang); when
-        // the finger lifts near that window's edge and more data lies beyond, it re-centers the window on
-        // the committed position via a (cheap, bounded) full rebuild so all history stays scrollable.
+        // Scroll-END: commit + settle, off the ONE landed value (`scrollX`, where the native value-aligned
+        // scroll rested). Native `.chartScrollTargetBehavior` decelerates ONTO the period boundary
+        // (Sunday / 1st / Jan 1) in a single motion, so `scrollX` is already on the boundary here.
+        // `commitWeightScroll` snaps it to the nearest boundary (a no-op when native landed exactly),
+        // commits that as the single scroll position, and settles the y-axis + windowed ticks IN PLACE
+        // (no scroll-view rebuild → no "~1 s can't scroll" hitch, #3). The animated reflect is a SAFETY NET:
+        // its correction is ~0 when native aligned (so it doesn't fire), and it only glides the scroll onto
+        // the boundary if the OS ever fails to align — keeping the visual == the committed window (header /
+        // active-month greying / y-axis all match what's on screen).
         .onChange(of: dashboardStore.state.graph.isScrolling) { _, isScrolling in
             // Scroll START clears any selection (the store also clears its own on `.interacting`); drop the
             // local raw value so the next tap re-triggers `onChange(selectedX)`.
             guard !isScrolling else { selectedX = nil; return }
-            // Native paged scroll (`WeightChartView.scrollBehavior`) already landed the scroll ON a period
-            // boundary and left `scrollX` there, so we do NOT re-snap the visual scroll. The old V-A5b
-            // `scrollX = committed` reflect fought that native landing → the month "jerk to the wrong month".
-            // Just settle the y-axis + windowed ticks for the landed window.
-            dashboardStore.settleWeightChart(scrollPosition: dashboardStore.state.graph.xScrollPosition)
+            let landed = scrollX
+            let snapped = dashboardStore.commitWeightScroll(landedAt: landed)
+            // Reflect the visual scroll to the committed boundary in one smooth motion. `isAdopting` keeps
+            // the resulting `scrollX` write off the buffer path (it's our programmatic move, not the user's).
+            let correction = abs(snapped.timeIntervalSince(landed))
+            if correction > 0.5 {
+                isAdopting = true
+                // Distance-aware settle: a tiny nudge snaps fast; a larger correction eases a bit longer so
+                // it reads as a deliberate glide, not a lurch. `easeOut` decelerates INTO the boundary.
+                let window = dashboardStore.chartModel?.visibleDomainLength ?? correction
+                let frac = min(1, correction / max(window, 1))
+                withAnimation(.easeOut(duration: 0.22 + 0.30 * frac)) { scrollX = snapped }
+            }
         }
     }
 

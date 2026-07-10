@@ -69,16 +69,32 @@ struct WeightChartView: View {
 
     // MARK: - X-axis ticks (V3 — parity with the legacy `gridTicks` / `adjustedLabelTicks`)
 
-    /// Gridline ticks — drop the trailing phantom tick the generators append (matches `gridTicks`).
+    /// Gridline ticks — drop the trailing phantom tick the generators append (matches `gridTicks`), then
+    /// snap each to its day boundary (midnight). The tick generators place ticks at NOON (so labels read
+    /// centered under each day), but the scroll decelerates onto a midnight/day boundary (value-aligned
+    /// only snaps to `hour: 0`; noon is a device-proven no-op). Drawing the *gridlines* at midnight makes
+    /// the leading period rule coincide with the left edge → no gap between the edge and the Sunday/1st
+    /// line. On week (7-day window) that 12 h shift is the ~7% gap being closed; on month/year it's <2%,
+    /// invisible. Labels stay at noon (see `labelTicks`) so they remain centered, like Apple Health.
     private var gridTicks: [Date] {
-        model.xAxisTicks.isEmpty ? [] : Array(model.xAxisTicks.dropLast())
+        guard !model.xAxisTicks.isEmpty else { return [] }
+        let calendar = Calendar.current
+        return model.xAxisTicks.dropLast().map { calendar.startOfDay(for: $0) }
     }
 
     /// Label ticks — week/month/year drop the phantom so labels stop at the last real unit; total keeps it
     /// (matches the legacy `adjustedLabelTicks`).
     private var labelTicks: [Date] {
         guard !model.xAxisTicks.isEmpty else { return [] }
-        return model.period == .total ? model.xAxisTicks : Array(model.xAxisTicks.dropLast())
+        let base = model.period == .total ? model.xAxisTicks : Array(model.xAxisTicks.dropLast())
+        // Week only: snap labels to the same day boundary (midnight) as the gridlines so each day label
+        // sits ON its rule — matching month/year, where "1"/"Jan" sit on the boundary rule. Without this the
+        // label stays at the noon tick, half a column right of the midnight gridline → the "wrong side" look.
+        // Month/year keep the noon tick (their 12 h vs the midnight gridline is <2% of the window → the label
+        // already reads on the rule), so they're untouched.
+        guard model.period == .week else { return base }
+        let calendar = Calendar.current
+        return base.map { calendar.startOfDay(for: $0) }
     }
 
     /// V4 (6f): a point's entry date falls outside the active month (month view only, not while scrolling)
@@ -101,30 +117,40 @@ struct WeightChartView: View {
         }
     }
 
-    /// Native paged + date-aligned scroll landing per period — copied from the legacy
-    /// `BaseGraphView.getChartScrollBehavior` so the new engine snaps to period boundaries during
-    /// deceleration exactly as the shipped graph did (fixes the month post-release snap jerk).
-    private func scrollBehavior(for period: TimePeriod) -> PagedChartScrollBehavior {
+    /// Native value-aligned paging so the scroll DECELERATES onto a period boundary (Apple Health style) —
+    /// the boundary landing is part of the fling, not a correction applied after it rests. Per Swift Charts
+    /// (Majid, Apple docs): `matching` is the FINE alignment grid (day starts), `majorAlignment` is the
+    /// COARSE boundary a swipe lands on (week start / 1st / Jan 1) — `.matching(DateComponents(day: 1))`
+    /// means "always land on the 1st." The earlier config had this backwards (it put the *boundary* in
+    /// `matching`, with an `hour: 12` that isn't on the day grid), which is why it never aligned. Everything
+    /// is midnight/day-grid-consistent so `majorAlignment` sits on the `matching` grid. The host's snap +
+    /// reflect stays a safety net: if this lands exactly on the boundary the correction is ~0 (no hop); if
+    /// the OS ignores the behavior, the snap still catches it.
+    private func scrollBehavior(for period: TimePeriod) -> ValueAlignedChartScrollTargetBehavior {
+        let firstWeekday = Calendar.current.firstWeekday
         switch period {
         case .week:
-            return PagedChartScrollBehavior(
-                matching: DateComponents(hour: 12),
-                majorAlignment: DateComponents(hour: 6, weekday: 1)
+            // `matching` IS the weekly grid (Sunday-midnight) so EVERY release snaps straight to a week
+            // boundary — not the nearest day (which then needed a second host move to reach Sunday).
+            return ValueAlignedChartScrollTargetBehavior(
+                matching: DateComponents(hour: 0, weekday: firstWeekday),
+                majorAlignment: .matching(DateComponents(hour: 0, weekday: firstWeekday))
             )
         case .month:
-            return PagedChartScrollBehavior(
-                matching: DateComponents(hour: 12),
-                majorAlignment: DateComponents(day: 31, hour: 12)
+            // `matching` IS the monthly grid (1st-midnight) → release lands on the 1st in one motion.
+            return ValueAlignedChartScrollTargetBehavior(
+                matching: DateComponents(day: 1, hour: 0),
+                majorAlignment: .matching(DateComponents(day: 1, hour: 0))
             )
         case .year:
-            return PagedChartScrollBehavior(
-                matching: DateComponents(day: 1, hour: 12),
-                majorAlignment: DateComponents(month: 1, day: 1, hour: 12)
+            return ValueAlignedChartScrollTargetBehavior(
+                matching: DateComponents(month: 1, day: 1, hour: 0),
+                majorAlignment: .matching(DateComponents(month: 1, day: 1, hour: 0))
             )
         case .total:
-            return PagedChartScrollBehavior(
+            return ValueAlignedChartScrollTargetBehavior(
                 matching: DateComponents(hour: 0),
-                majorAlignment: DateComponents(hour: 0)
+                majorAlignment: .page
             )
         }
     }
@@ -230,11 +256,9 @@ struct WeightChartView: View {
         .chartScrollableAxes(isScrollable ? .horizontal : [])
         .chartXVisibleDomain(length: ChartDomainSanitizer.positiveLength(visibleLength))
         .chartScrollPosition(x: $scrollX)
-        // MOB-518 — native paged + date-aligned scroll landing per period (parity with the legacy
-        // `BaseGraphView.getChartScrollBehavior`). Lands the scroll smoothly ON a period boundary during
-        // deceleration, instead of free-scrolling and letting the manual `snapScrollPosition` yank it after
-        // release — which was the month "scroll a little → jerk to the wrong month" (week's day-grained snap
-        // hid the missing behavior; month's coarse month-1st snap did not).
+        // MOB-518 — native value-aligned paging: the deceleration itself lands ON the period boundary
+        // (Sunday / 1st / Jan 1), like Apple Health, instead of resting anywhere and being corrected after.
+        // See `scrollBehavior(for:)` for why the earlier config never aligned (boundary was in `matching`).
         .chartScrollTargetBehavior(scrollBehavior(for: model.period))
         // The model is only rebuilt at scroll-END, so the y-domain changes once per settle → this is the
         // single, smooth, adaptive settle (Y-B). No animation fires during a drag (nothing changes then).

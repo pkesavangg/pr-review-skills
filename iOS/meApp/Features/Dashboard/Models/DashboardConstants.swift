@@ -15,8 +15,12 @@ enum DashboardConstants {
     enum TimeInterval {
         static let day: Foundation.TimeInterval = 24 * 60 * 60
         /// Week viewport length used for chart scrolling/visible-domain behavior.
-        /// Intentionally wider than 7 days for UX spacing.
-        static let week: Foundation.TimeInterval = 7.15 * 24 * 60 * 60
+        /// MOB-518: exactly 7 days so the visible window == the weekly alignment stride
+        /// (Sunday→Sunday). This makes `page == period == alignment unit`, the property that
+        /// lets `ValueAlignedChartScrollTargetBehavior` land the scroll on a week boundary
+        /// during deceleration (Apple Health parity) instead of needing a post-release snap.
+        /// The old 7.15 (extra ~3.6 h of right-edge padding) broke that commensurability.
+        static let week: Foundation.TimeInterval = 7 * 24 * 60 * 60
         /// Strict calendar week length (7 days) for week-boundary calculations.
         static let calendarWeek: Foundation.TimeInterval = 7 * 24 * 60 * 60
         static let month: Foundation.TimeInterval = 32 * 24 * 60 * 60
