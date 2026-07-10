@@ -43,7 +43,8 @@ struct WifiMacAddressScreen: View {
                 trailingContent: { EmptyView() },
                 onLeadingTap: { router.navigateBack() },
                 onTrailingTap: {},
-                canShowBorder: true
+                canShowBorder: true,
+                leadingAccessibilityID: AccessibilityID.wifiMacBackButton
             )
 
             VStack(alignment: .leading, spacing: .spacingMD) {
@@ -69,6 +70,7 @@ struct WifiMacAddressScreen: View {
                         ) {
                                 viewModel.copyMacAddress()
                             }
+                            .appAccessibility(id: AccessibilityID.wifiMacCopyButton)
                     }
                     .frame(maxWidth: .infinity, alignment: .center)
                 }
@@ -83,7 +85,7 @@ struct WifiMacAddressScreen: View {
         .frame(maxHeight: .infinity, alignment: .top)
         .background(theme.backgroundSecondary.ignoresSafeArea())
         .navigationBarBackButtonHidden(true)
-        
+        .screenAccessibilityRoot(AccessibilityID.wifiMacScreenRoot)
     }
 }
 

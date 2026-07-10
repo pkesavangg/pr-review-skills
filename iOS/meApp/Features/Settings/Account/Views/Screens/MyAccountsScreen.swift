@@ -64,8 +64,9 @@ struct MyAccountsScreen: View {
                 .interactiveDismissDisabled()
         }
         .navigationBarBackButtonHidden(true)
+        .screenAccessibilityRoot(AccessibilityID.myAccountsScreenRoot)
     }
-    
+
     // MARK: Account List
     @ViewBuilder
     private var accountList: some View {
@@ -88,6 +89,8 @@ struct MyAccountsScreen: View {
                     }
                 )
                 .listRowInsets(top: 0, bottom: 0, leading: 0, trailing: 0)
+                .accessibilityElement(children: .contain)
+                .appAccessibility(id: AccessibilityID.accountCardRow + "_" + account.accountID)
             }
         }
         .listRowBackground(theme.backgroundPrimary)
@@ -100,7 +103,7 @@ struct MyAccountsScreen: View {
             ButtonView(text: strings.logIntoExistingAccount, type: .outlinedPrimary, size: .large, isDisabled: false) {
                 accountsStore.handleLoginCTA()
             }
-            
+            .appAccessibility(id: AccessibilityID.myAccountsLoginButton)
         }
         .frame(maxWidth: .infinity)
         .listRowInsets(top: 0, bottom: 0, leading: 0, trailing: 0)
@@ -113,6 +116,7 @@ struct MyAccountsScreen: View {
             ButtonView(text: strings.createNewAccount, type: .inlineTextPrimary, size: .large, isDisabled: false) {
                 accountsStore.handleSignupCTA()
             }
+            .appAccessibility(id: AccessibilityID.myAccountsSignupButton)
         }
         .frame(maxWidth: .infinity)
         .listRowInsets(top: 0, bottom: 0, leading: 0, trailing: 0)

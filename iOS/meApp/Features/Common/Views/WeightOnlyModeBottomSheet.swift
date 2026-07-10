@@ -37,6 +37,7 @@ struct WeightOnlyModeBottomSheet: View {
                     AppIconView(icon: AppAssets.close, size: IconSize(width: 16, height: 16))
                         .foregroundColor(theme.statusIconPrimary)
                 }
+                .appAccessibility(id: AccessibilityID.weightOnlyModeCloseButton)
             }
 
             VStack(spacing: .spacingMD) {
@@ -50,6 +51,7 @@ struct WeightOnlyModeBottomSheet: View {
         .padding([.horizontal, .top], .spacingLG)
         .frame(maxWidth: .infinity)
         .background(theme.backgroundPrimary)
+        .screenAccessibilityRoot(AccessibilityID.weightOnlyModeScreenRoot)
         .onAppear {
             store.loadWeightOnlyScales()
         }
@@ -93,6 +95,7 @@ struct WeightOnlyModeBottomSheet: View {
                   onEnableAllBodyMetrics()
                   store.handleEnableBodyMetrics()
                 }
+                .appAccessibility(id: AccessibilityID.weightOnlyModeEnableButton)
 
             ButtonView(
                 text: commonLang.dismiss,
@@ -105,6 +108,7 @@ struct WeightOnlyModeBottomSheet: View {
                     dismiss()
                   }
                 }
+                .appAccessibility(id: AccessibilityID.weightOnlyModeDismissButton)
         }
     }
 }

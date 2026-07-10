@@ -45,6 +45,7 @@ struct DashboardTrendView<TopContent: View, ChartFooter: View>: View {
                 tabViewModel.selectedTab = .settings
                 tabViewModel.settingsNavigationSourceTab = .dash
             }
+            .appAccessibility(id: AccessibilityID.dashboardConnectDeviceButton)
             .padding(.horizontal, .spacingLG)
         }
         .padding(.vertical, .spacingMD)
@@ -85,6 +86,7 @@ struct DashboardTrendView<TopContent: View, ChartFooter: View>: View {
             ) {
                 tabViewModel.navigateToSettings(route: .addBaby, sourceTab: .dash)
             }
+            .appAccessibility(id: AccessibilityID.dashboardAddBabyButton)
             .padding(.horizontal, .spacingLG)
         }
         .padding(.vertical, .spacingMD)
@@ -112,7 +114,8 @@ struct DashboardTrendView<TopContent: View, ChartFooter: View>: View {
                     // MA-3839: scale all period tabs (Week/Month/Year/Total) to one shared
                     // font size so they stay uniform and don't truncate under Dynamic Type.
                     selectedSegment: $localSelectedPeriod,
-                    useUniformFontScaling: true
+                    useUniformFontScaling: true,
+                    accessibilityIdentifierProvider: { "\(AccessibilityID.dashboardPeriodTab)_\($0.rawValue)" }
                 )
                 .padding(.vertical, .spacingSM)
                 .padding(.horizontal, 15)

@@ -39,6 +39,7 @@ struct A3BpmModelSelectionView: View {
                             ) {
                                 onSelect(model.sku)
                             }
+                            .appAccessibility(id: AccessibilityID.bpmModelCard(model.sku))
                         }
                     }
                 }

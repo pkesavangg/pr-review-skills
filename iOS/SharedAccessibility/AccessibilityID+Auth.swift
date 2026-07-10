@@ -48,3 +48,18 @@ extension AccessibilityID {
     static let accountCardDeleteButton = "account_card_delete_button"
     static let accountCardLogInButton = "account_card_log_in_button"
 }
+
+// MARK: - MOB-1489 accessibility-id sweep (declared centrally)
+extension AccessibilityID {
+    static let babyListAddButton = "baby_list_add_button"
+    static let loadingScreenRoot = "loading_screen_root"
+    static let signupDeviceCard = "signup_device_card"
+    static let signupDobField = "signup_dob_field"
+    static let signupErrorFinishButton = "signup_error_finish_button"
+    static let signupGoalTypeLoseGainTab = "signup_goal_type_lose_gain_tab"
+    static let signupGoalTypeMaintainTab = "signup_goal_type_maintain_tab"
+    static let signupHeightField = "signup_height_field"
+    static let signupHeightUnitToggle = "signup_height_unit_toggle"
+    static let signupScreenRoot = "signup_screen_root"
+    static let signupSexButton = "signup_sex_button"
+}

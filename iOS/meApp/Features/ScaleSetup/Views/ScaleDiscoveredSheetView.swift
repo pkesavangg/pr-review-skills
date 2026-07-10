@@ -47,6 +47,7 @@ struct ScaleDiscoveredSheetView: View {
                 }
                 .accessibilityLabel(ScaleSetupStrings.A11y.closeButtonLabel)
                 .accessibilityHint(ScaleSetupStrings.A11y.closeButtonHint)
+                .appAccessibility(id: AccessibilityID.scaleDiscoveredCloseButton)
             }
 
             VStack(spacing: .spacingMD) {
@@ -94,6 +95,7 @@ struct ScaleDiscoveredSheetView: View {
         .onDisappear {
             viewModel.clearTimer()
         }
+        .screenAccessibilityRoot(AccessibilityID.scaleDiscoveredSheetRoot)
     }
 }
 

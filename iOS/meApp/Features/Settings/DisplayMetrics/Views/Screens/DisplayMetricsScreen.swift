@@ -40,6 +40,7 @@ struct DisplayMetricsScreen: View {
                                 router.navigateBack()
                             }
                         }
+                        .appAccessibility(id: AccessibilityID.displayMetricsSaveButton)
                 },
                 onLeadingTap: {
                     // MA-3582: gate the back button through allowExit() so unsaved
@@ -111,6 +112,7 @@ struct DisplayMetricsScreen: View {
         .frame(maxHeight: .infinity, alignment: .top)
         .background(theme.backgroundSecondary.ignoresSafeArea())
         .navigationBarBackButtonHidden(true)
+        .screenAccessibilityRoot(AccessibilityID.displayMetricsScreenRoot)
         .task {
             await viewModel.loadDisplayMetricsData()
         }
@@ -167,6 +169,7 @@ struct DisplayMetricsScreen: View {
                     router.navigate(to: .deviceModes(scale: scale, isWeighOnlyModeEnabledByOthers: isWeighOnlyModeEnabledByOthers))
                 }
                 .padding(.leading, 5)
+                .appAccessibility(id: AccessibilityID.displayMetricsWeightOnlyUpdateButton)
             }
         }
     }

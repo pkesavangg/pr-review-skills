@@ -52,7 +52,8 @@ struct DeviceBluetoothScreen: View {
                 trailingContent: { EmptyView() },
                 onLeadingTap: { router.navigateBack() },
                 onTrailingTap: {},
-                canShowBorder: true
+                canShowBorder: true,
+                leadingAccessibilityID: AccessibilityID.deviceBluetoothBackButton
             )
 
             VStack(alignment: .leading, spacing: 0) {
@@ -73,6 +74,7 @@ struct DeviceBluetoothScreen: View {
         .frame(maxHeight: .infinity, alignment: .top)
         .background(theme.backgroundSecondary.ignoresSafeArea())
         .navigationBarBackButtonHidden(true)
+        .screenAccessibilityRoot(AccessibilityID.deviceBluetoothScreenRoot)
     }
 
     // MARK: - Subviews
@@ -117,11 +119,13 @@ struct DeviceBluetoothScreen: View {
                 title: lang.bluetoothAuthorized,
                 isEnabled: permissionsStore.isBluetoothAuthorized
             ) { permissionsStore.handleBluetoothAuthorizationTap() }
+            .appAccessibility(id: AccessibilityID.deviceBluetoothAuthorizedRow)
             divider()
             permissionRow(
                 title: lang.bluetoothOn,
                 isEnabled: permissionsStore.isBluetoothOn
             ) { permissionsStore.handleBluetoothSwitchTap() }
+            .appAccessibility(id: AccessibilityID.deviceBluetoothOnRow)
         }
         .background(theme.backgroundPrimary)
         .cornerRadius(.spacingXS)

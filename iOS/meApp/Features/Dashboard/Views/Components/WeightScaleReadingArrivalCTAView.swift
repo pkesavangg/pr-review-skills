@@ -27,6 +27,7 @@ struct WeightScaleReadingArrivalCTAView: View {
                     isDisabled: false,
                     action: onDiscard
                 )
+                .appAccessibility(id: AccessibilityID.weightReadingDiscardButton)
                 Spacer()
                 ButtonView(
                     text: DashboardStrings.weightReadingArrivalSave,
@@ -35,6 +36,7 @@ struct WeightScaleReadingArrivalCTAView: View {
                     isDisabled: false,
                     action: onSave
                 )
+                .appAccessibility(id: AccessibilityID.weightReadingSaveButton)
             }
         }
     }

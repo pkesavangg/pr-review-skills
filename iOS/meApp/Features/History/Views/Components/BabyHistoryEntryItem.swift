@@ -32,6 +32,11 @@ struct BabyHistoryEntryItem: View {
         "\(timeText), \(HistoryListStrings.weight) \(entry.weightDisplay), \(HistoryListStrings.length) \(entry.lengthDisplay)"
     }
 
+    /// Per-row automation id, suffixed with the entry's stable id so each row resolves to one node.
+    private var rowAccessibilityID: String {
+        "\(AccessibilityID.babyHistoryEntryRow)_\(entry.id.uuidString)"
+    }
+
     var body: some View {
         VStack(spacing: 0) {
             // Main entry row
@@ -92,6 +97,7 @@ struct BabyHistoryEntryItem: View {
             // background must be the dark actionPrimary. actionSecondary is the same light
             // token as textInverse, which made the values invisible.
             .background(isExpanded ? theme.actionPrimary : Color.clear)
+            .accessibilityIdentifier(rowAccessibilityID)
             .accessibilityElement(children: .ignore)
             .accessibilityLabel(combinedAccessibilityLabel)
             .accessibilityAddTraits(.isButton)
@@ -142,6 +148,7 @@ struct BabyHistoryEntryItem: View {
                                         .foregroundColor(theme.actionPrimary)
                                 }
                                 .buttonStyle(.plain)
+                                .appAccessibility(id: AccessibilityID.babyHistoryEntryMoreButton)
                             }
                         }
                     } else {
@@ -161,6 +168,7 @@ struct BabyHistoryEntryItem: View {
                     }
                     .buttonStyle(.plain)
                     .accessibilityLabel(hasNotes ? HistoryListStrings.accEditNoteLabel : HistoryListStrings.accAddNoteLabel)
+                    .appAccessibility(id: AccessibilityID.babyHistoryEntryEditNoteButton)
                 }
                 .padding(.spacingSM)
                 .frame(maxWidth: .infinity, alignment: .leading)

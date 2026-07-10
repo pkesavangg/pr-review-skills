@@ -115,6 +115,7 @@ struct BluetoothConnectionView: View {
                                 action: onTryAgain
                             )
                             .accessibilityHint(ScaleSetupStrings.A11y.tryAgainHint)
+                            .appAccessibility(id: AccessibilityID.bluetoothConnectionTryAgainButton)
 
                             ButtonView(
                                 text: commonStrings.support,
@@ -124,6 +125,7 @@ struct BluetoothConnectionView: View {
                                 action: onSupport
                             )
                             .accessibilityHint(ScaleSetupStrings.A11y.supportHint)
+                            .appAccessibility(id: AccessibilityID.bluetoothConnectionSupportButton)
                         }
                         .padding(.top, .spacingXL)
                     }

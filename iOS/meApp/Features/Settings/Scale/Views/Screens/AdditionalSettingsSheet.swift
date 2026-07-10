@@ -35,10 +35,12 @@ struct AdditionalSettingsSheet: View {
                         AppIconView(icon: AppAssets.helpCircle)
                             .foregroundColor(theme.statusIconPrimary)
                     }
+                    .appAccessibility(id: AccessibilityID.additionalSettingsHelpButton)
                 },
                 onLeadingTap: { dismiss() },
                 onTrailingTap: {},
                 canShowPresentationIndicator: true, // Show back button only if not opening from saved scale
+                leadingAccessibilityID: AccessibilityID.additionalSettingsCloseButton
             )
             
             List {
@@ -55,7 +57,8 @@ struct AdditionalSettingsSheet: View {
                                 Task { await viewModel.setStartAnimation(viewModel.startAnimationEnabled) }
                             }
                     )
-                    
+                    .appAccessibility(id: AccessibilityID.additionalSettingsStartAnimationToggle)
+
                     ActionListItemView(
                         config: ActionListItemConfig(
                             title: lang.endAnimation,
@@ -68,27 +71,32 @@ struct AdditionalSettingsSheet: View {
                                 Task { await viewModel.setEndAnimation(viewModel.endAnimationEnabled) }
                             }
                     )
+                    .appAccessibility(id: AccessibilityID.additionalSettingsEndAnimationToggle)
                     ActionListItemView(
                         config: ActionListItemConfig(
                             title: lang.clearData
                         ) { showClearDataPicker = true }
                     )
+                    .appAccessibility(id: AccessibilityID.additionalSettingsClearDataRow)
                     ActionListItemView(
                         config: ActionListItemConfig(
                             title: lang.timeFormat,
                             value: viewModel.timeFormat + "H"
                         ) { showTimeFormatPicker = true }
                     )
+                    .appAccessibility(id: AccessibilityID.additionalSettingsTimeFormatRow)
                     ActionListItemView(
                         config: ActionListItemConfig(
                             title: lang.resetFirmware
                         ) { Task { await viewModel.resetFirmware() } }
                     )
+                    .appAccessibility(id: AccessibilityID.additionalSettingsResetFirmwareRow)
                     ActionListItemView(
                         config: ActionListItemConfig(
                             title: lang.restoreFactorySettings
                         ) { Task { await viewModel.restoreFactorySettings() } }
                     )
+                    .appAccessibility(id: AccessibilityID.additionalSettingsRestoreFactoryRow)
                 }
                 .listRowInsets()
                 .listRowBackground(theme.backgroundPrimary)
@@ -168,5 +176,6 @@ struct AdditionalSettingsSheet: View {
                 Button("Cancel", role: .cancel) {}
             }
         }
+        .screenAccessibilityRoot(AccessibilityID.additionalSettingsScreenRoot)
     }
 }

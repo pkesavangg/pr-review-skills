@@ -38,6 +38,7 @@ struct AppPermissionsScreen: View {
             }
         }
         .navigationBarBackButtonHidden(true)
+        .screenAccessibilityRoot(AccessibilityID.appPermissionsScreenRoot)
     }
 }
 

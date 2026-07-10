@@ -47,6 +47,7 @@ struct A3BpmUserSelectionView: View {
                             .accessibilityLabel(BpmSetupStrings.A11y.userSlotNumericLabel(1))
                             .accessibilityHint(BpmSetupStrings.A11y.userSlotButtonHint)
                             .accessibilityAddTraits(selectedUser == 1 ? .isSelected : [])
+                            .appAccessibility(id: AccessibilityID.bpmUserSlot1Button)
 
                             BpmUserIconButton(
                                 iconName: AppAssets.a3BpmUser2,
@@ -57,6 +58,7 @@ struct A3BpmUserSelectionView: View {
                             .accessibilityLabel(BpmSetupStrings.A11y.userSlotNumericLabel(2))
                             .accessibilityHint(BpmSetupStrings.A11y.userSlotButtonHint)
                             .accessibilityAddTraits(selectedUser == 2 ? .isSelected : [])
+                            .appAccessibility(id: AccessibilityID.bpmUserSlot2Button)
                         }
                         .frame(maxWidth: .infinity, alignment: .center)
                     } else {
@@ -70,6 +72,7 @@ struct A3BpmUserSelectionView: View {
                             .accessibilityLabel(BpmSetupStrings.A11y.userSlotAlphaLabel("A"))
                             .accessibilityHint(BpmSetupStrings.A11y.userSlotButtonHint)
                             .accessibilityAddTraits(selectedUser == 1 ? .isSelected : [])
+                            .appAccessibility(id: AccessibilityID.bpmUserSlot1Button)
 
                             BpmUserIconButton(
                                 iconName: AppAssets.a6BpmUserB,
@@ -80,6 +83,7 @@ struct A3BpmUserSelectionView: View {
                             .accessibilityLabel(BpmSetupStrings.A11y.userSlotAlphaLabel("B"))
                             .accessibilityHint(BpmSetupStrings.A11y.userSlotButtonHint)
                             .accessibilityAddTraits(selectedUser == 2 ? .isSelected : [])
+                            .appAccessibility(id: AccessibilityID.bpmUserSlot2Button)
                         }
                         .frame(maxWidth: .infinity, alignment: .center)
                     }

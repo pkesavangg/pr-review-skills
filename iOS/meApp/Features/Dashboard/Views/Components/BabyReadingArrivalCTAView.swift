@@ -33,6 +33,7 @@ struct BabyReadingArrivalCTAView: View {
                     isDisabled: false,
                     action: onDiscard
                 )
+                .appAccessibility(id: AccessibilityID.babyReadingDontAssignButton)
                 Spacer()
                 ButtonView(
                     text: DashboardStrings.babyReadingArrivalAssign,
@@ -41,6 +42,7 @@ struct BabyReadingArrivalCTAView: View {
                     isDisabled: false,
                     action: onAssign
                 )
+                .appAccessibility(id: AccessibilityID.babyReadingAssignButton)
             }
         }
     }

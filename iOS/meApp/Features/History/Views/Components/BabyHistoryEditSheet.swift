@@ -83,7 +83,8 @@ struct BabyHistoryEditSheet: View {
                             decimalPlaces: 3
                         ),
                         value: $form.kg.value,
-                        focusedField: $focusedField
+                        focusedField: $focusedField,
+                        accessibilityIdentifier: AccessibilityID.babyHistoryEditKgField
                     ) { focusedField = .inches }
 
                     MetricInputField(
@@ -95,7 +96,8 @@ struct BabyHistoryEditSheet: View {
                             allowWholeNumbers: false
                         ),
                         value: $form.cm.value,
-                        focusedField: $focusedField
+                        focusedField: $focusedField,
+                        accessibilityIdentifier: AccessibilityID.babyHistoryEditCmField
                     ) { focusedField = .notes }
                 } else {
                     MetricInputField(
@@ -108,7 +110,8 @@ struct BabyHistoryEditSheet: View {
                             allowWholeNumbers: true
                         ),
                         value: $form.pounds.value,
-                        focusedField: $focusedField
+                        focusedField: $focusedField,
+                        accessibilityIdentifier: AccessibilityID.babyHistoryEditPoundsField
                     ) { focusedField = .ounces }
 
                     MetricInputField(
@@ -119,7 +122,8 @@ struct BabyHistoryEditSheet: View {
                             allowWholeNumbers: false
                         ),
                         value: $form.ounces.value,
-                        focusedField: $focusedField
+                        focusedField: $focusedField,
+                        accessibilityIdentifier: AccessibilityID.babyHistoryEditOuncesField
                     ) { focusedField = .inches }
 
                     MetricInputField(
@@ -131,7 +135,8 @@ struct BabyHistoryEditSheet: View {
                             allowWholeNumbers: false
                         ),
                         value: $form.inches.value,
-                        focusedField: $focusedField
+                        focusedField: $focusedField,
+                        accessibilityIdentifier: AccessibilityID.babyHistoryEditInchesField
                     ) { focusedField = .notes }
                 }
 
@@ -142,7 +147,8 @@ struct BabyHistoryEditSheet: View {
                         focusField: .notes
                     ),
                     value: $form.notes.value,
-                    focusedField: $focusedField
+                    focusedField: $focusedField,
+                    accessibilityIdentifier: AccessibilityID.babyHistoryEditNotesField
                 )
 
                 datePicker
@@ -155,6 +161,7 @@ struct BabyHistoryEditSheet: View {
                         size: .large,
                         isDisabled: !isValid || isSaving
                     ) { saveEntry() }
+                    .appAccessibility(id: AccessibilityID.babyHistoryEditSaveButton)
                     Spacer()
                 }
             }
@@ -164,6 +171,7 @@ struct BabyHistoryEditSheet: View {
         .background(theme.backgroundSecondary.ignoresSafeArea())
         .presentationDetents([.large])
         .presentationDragIndicator(.visible)
+        .screenAccessibilityRoot(AccessibilityID.babyHistoryEditSheetRoot)
     }
 
     // MARK: - Private Views
@@ -177,6 +185,7 @@ struct BabyHistoryEditSheet: View {
                     .foregroundStyle(theme.textBody)
             }
             .buttonStyle(.plain)
+            .appAccessibility(id: AccessibilityID.babyHistoryEditCloseButton)
         }
     }
 
@@ -190,9 +199,11 @@ struct BabyHistoryEditSheet: View {
                 DateLabelView(date: form.date.value, isSelected: showDatePicker) {
                     toggleDatePicker()
                 }
+                .appAccessibility(id: AccessibilityID.babyHistoryEditDateButton)
                 TimeLabelView(time: form.time.value, isSelected: showTimePicker) {
                     toggleTimePicker()
                 }
+                .appAccessibility(id: AccessibilityID.babyHistoryEditTimeButton)
             }
             .padding(.leading, 2)
 
