@@ -136,7 +136,7 @@ final class MyKidsStore: ObservableObject {
         } catch {
             notificationService.dismissLoader()
             LoggerService.shared.log(level: .error, tag: "MyKidsStore", message: "Failed to save baby: \(error)")
-            if isDuplicateNameError(error) {
+            if HTTPError.isConflict(error) {
                 // Surface the server 409 as an inline field error rather than a generic toast.
                 babyProfileForm.duplicateNameError = BabyScaleSetupStrings.BabyProfile.duplicateNameError
             } else {
@@ -149,29 +149,13 @@ final class MyKidsStore: ObservableObject {
     /// Re-evaluates whether the current name duplicates an already-saved baby's name and sets or
     /// clears `duplicateNameError` accordingly. Called on every name change so the error surfaces
     /// (and SAVE disables) as soon as a duplicate is typed — without waiting for the server 409.
+    /// Delegates the comparison to the shared `BabyProfileSetupForm` helper.
     @discardableResult
     func refreshDuplicateBabyNameError() -> Bool {
-        let trimmed = babyProfileForm.name.value.trimmingCharacters(in: .whitespaces).lowercased()
-        guard !trimmed.isEmpty else {
-            babyProfileForm.duplicateNameError = nil
-            return false
-        }
-        let isDuplicate = babies.contains { baby in
-            baby.id != editingBaby?.id &&
-            baby.name.trimmingCharacters(in: .whitespaces).lowercased() == trimmed
-        }
-        babyProfileForm.duplicateNameError = isDuplicate
-            ? BabyScaleSetupStrings.BabyProfile.duplicateNameError : nil
-        return isDuplicate
-    }
-
-    /// Returns true when the server rejected the request because the baby name is already taken (HTTP 409 Conflict).
-    private func isDuplicateNameError(_ error: Error) -> Bool {
-        switch error as? HTTPError {
-        case .statusCode(409): return true
-        case .apiError(_, let code): return code == 409
-        default: return false
-        }
+        let otherNames = babies
+            .filter { $0.id != editingBaby?.id }
+            .map(\.name)
+        return babyProfileForm.refreshDuplicateNameError(against: otherNames)
     }
 
     // MARK: - Delete

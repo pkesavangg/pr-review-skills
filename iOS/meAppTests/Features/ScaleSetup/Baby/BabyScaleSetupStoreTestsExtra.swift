@@ -10,6 +10,44 @@ import Testing
 @MainActor
 extension BabyScaleSetupStoreTests {
 
+    // MARK: - refreshDuplicateBabyNameError
+
+    @Test("refreshDuplicateBabyNameError flags a name matching an already-saved baby")
+    func refreshDuplicate_matchesSavedBaby_setsError() {
+        let (store, _, _, _, _, _, _) = makeBabyScaleSUT()
+        store.savedBabies = [Baby(accountId: "acct-1", name: "Aria")]
+        store.babyProfileForm.name.value = "  aria "
+
+        let isDuplicate = store.refreshDuplicateBabyNameError()
+
+        #expect(isDuplicate == true)
+        #expect(store.babyProfileForm.duplicateNameError == BabyScaleSetupStrings.BabyProfile.duplicateNameError)
+    }
+
+    @Test("refreshDuplicateBabyNameError excludes the baby being edited")
+    func refreshDuplicate_excludesEditingBaby() {
+        let (store, _, _, _, _, _, _) = makeBabyScaleSUT()
+        let baby = Baby(accountId: "acct-1", name: "Aria")
+        store.savedBabies = [baby]
+        store.editingBaby = baby
+        store.babyProfileForm.name.value = "Aria"
+
+        let isDuplicate = store.refreshDuplicateBabyNameError()
+
+        #expect(isDuplicate == false)
+        #expect(store.babyProfileForm.duplicateNameError == nil)
+    }
+
+    @Test("refreshDuplicateBabyNameError clears the error for a unique name")
+    func refreshDuplicate_uniqueName_clearsError() {
+        let (store, _, _, _, _, _, _) = makeBabyScaleSUT()
+        store.savedBabies = [Baby(accountId: "acct-1", name: "Aria")]
+        store.babyProfileForm.name.value = "Bella"
+
+        #expect(store.refreshDuplicateBabyNameError() == false)
+        #expect(store.babyProfileForm.duplicateNameError == nil)
+    }
+
     // MARK: - Skip Edit Baby Dialog
 
     @Test("showSkipBabyProfileDialog with editingBaby sets showSkipEditDialog")
