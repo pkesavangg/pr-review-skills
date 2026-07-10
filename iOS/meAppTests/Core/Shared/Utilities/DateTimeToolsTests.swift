@@ -114,3 +114,55 @@ struct DateTimeToolsArrivalRelativeTimeTests {
         #expect(result == "5 min ago")
     }
 }
+
+@Suite(.serialized)
+struct DateTimeToolsParseCalendarDateTests {
+
+    /// "yyyy-MM-dd" of `date` read back in the same zone the value was built for.
+    private func ymd(_ date: Date, in timeZone: TimeZone) -> String {
+        var cal = Calendar(identifier: .gregorian)
+        cal.timeZone = timeZone
+        let comps = cal.dateComponents([.year, .month, .day], from: date)
+        return String(format: "%04d-%02d-%02d", comps.year ?? 0, comps.month ?? 0, comps.day ?? 0)
+    }
+
+    private static func zone(_ secondsFromGMT: Int) throws -> TimeZone {
+        try #require(TimeZone(secondsFromGMT: secondsFromGMT))
+    }
+
+    @Test("Clean UTC-midnight dob keeps its calendar day east of UTC (+05:30)")
+    func cleanUtcMidnight_east() throws {
+        let tz = try Self.zone(5 * 3600 + 1800)
+        let date = try #require(DateTimeTools.parseCalendarDate("2000-03-01T00:00:00.000Z", timeZone: tz))
+        #expect(ymd(date, in: tz) == "2000-03-01")
+    }
+
+    @Test("Clean UTC-midnight dob keeps its calendar day west of UTC (-08:00)")
+    func cleanUtcMidnight_west() throws {
+        let tz = try Self.zone(-8 * 3600)
+        let date = try #require(DateTimeTools.parseCalendarDate("2000-03-01T00:00:00.000Z", timeZone: tz))
+        #expect(ymd(date, in: tz) == "2000-03-01")
+    }
+
+    @Test("Local-midnight-expressed-in-UTC dob resolves to the picked day, not a day early (+05:30)")
+    func localMidnightInUtc_east() throws {
+        // 2000-02-29T18:30:00Z is 2000-03-01 00:00 local for +05:30 — must read as March 1.
+        let tz = try Self.zone(5 * 3600 + 1800)
+        let date = try #require(DateTimeTools.parseCalendarDate("2000-02-29T18:30:00.000Z", timeZone: tz))
+        #expect(ymd(date, in: tz) == "2000-03-01")
+    }
+
+    @Test("Bare yyyy-MM-dd string parses to the same calendar day")
+    func bareDateString() throws {
+        // The bare-date path parses in the local calendar (the injected zone does not apply to it),
+        // so read the result back in the same local zone.
+        let date = try #require(DateTimeTools.parseCalendarDate("1999-09-09"))
+        #expect(ymd(date, in: .current) == "1999-09-09")
+    }
+
+    @Test("Unparseable input returns nil")
+    func unparseableReturnsNil() {
+        #expect(DateTimeTools.parseCalendarDate("not-a-date") == nil)
+        #expect(DateTimeTools.parseCalendarDate("") == nil)
+    }
+}

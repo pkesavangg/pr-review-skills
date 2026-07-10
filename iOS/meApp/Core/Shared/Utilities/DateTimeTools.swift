@@ -361,14 +361,17 @@ final class DateTimeTools { // swiftlint:disable:this type_body_length
     /// while rendering the instant in local time makes the first shape land a day early west of UTC.
     /// Snapping the instant to the NEAREST local calendar day (offset by 12h, then truncated) recovers
     /// the intended day for both shapes across all practical timezones.
-    static func parseCalendarDate(_ dateString: String) -> Date? {
+    ///
+    /// `timeZone` defaults to the device's zone; it is injectable so the timezone-sensitive snap
+    /// can be unit-tested deterministically without depending on the CI machine's zone.
+    static func parseCalendarDate(_ dateString: String, timeZone: TimeZone = .current) -> Date? {
         // Bare "yyyy-MM-dd" — no time component to drift, interpret in the local calendar.
         if let date = formatter("yyyy-MM-dd").date(from: dateString) {
             return date
         }
         guard let instant = parse(dateString) else { return nil }
         var localCal = Calendar(identifier: .gregorian)
-        localCal.timeZone = .current
+        localCal.timeZone = timeZone
         let snapped = instant.addingTimeInterval(12 * 60 * 60)
         let comps = localCal.dateComponents([.year, .month, .day], from: snapped)
         return localCal.date(from: DateComponents(year: comps.year, month: comps.month, day: comps.day))
