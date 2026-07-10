@@ -875,6 +875,11 @@ final class SignupStore: ObservableObject {
             ? MeasurementUnits.metric.rawValue
             : MeasurementUnits.imperialLbOz.rawValue
 
+        // The height step is skipped for non-weight products (baby/BPM), so guarantee a
+        // valid default (770 == 6'5", mirroring the signup form's default) rather than
+        // persisting a 0 that Settings would render as "0' 0"".
+        let height = signupForm.height.value > 0 ? signupForm.height.value : 770
+
         return Profile(
             firstName: removeWhiteSpace(signupForm.firstName.value),
             lastName: removeWhiteSpace(signupForm.lastName.value),
@@ -882,7 +887,7 @@ final class SignupStore: ObservableObject {
             zipcode: removeWhiteSpace(signupForm.zipcode.value),
             dob: formattedDOB,
             weightUnit: signupForm.useMetric.value ? .kg : .lb,
-            height: signupForm.height.value,
+            height: height,
             activityLevel: .normal,
             productTypes: signupForm.productTypes,
             measurementUnits: measurementUnits
