@@ -389,7 +389,7 @@ internal object StatMeta {
     ),
     MilestoneKey.TO_GOAL to StatMeta(
       labelProvider = { isLb -> if (isLb) DashboardString.MileStone.LbsToGoal else DashboardString.MileStone.KgsToGoal },
-      unit = "lbs",
+      unit = "lb",
     ),
   )
 

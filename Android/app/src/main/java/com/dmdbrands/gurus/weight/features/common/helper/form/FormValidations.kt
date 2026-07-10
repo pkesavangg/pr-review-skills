@@ -43,7 +43,7 @@ object ValidationMessages {
   const val BLANK = "this field is required"
   const val INVALID_WEIGHT = "invalid weight"
   const val KG_RANGE = "Value should be between 0 kg and 450 kg"
-  const val LB_RANGE = "Value should be between 0 lbs and 999 lbs"
+  const val LB_RANGE = "Value should be between 0 lb and 999 lb"
   const val WEIGHT_MATCH = "value should not be equal to starting weight"
   const val DUPLICATE = "value already exists"
 }
@@ -229,7 +229,7 @@ object FormValidations {
               else -> null
             }
           } else {
-            val unit = "lbs"
+            val unit = "lb"
             when {
               v <= AppValidatorConfig.WeightLb.MIN  ->
                 ValidationError(
