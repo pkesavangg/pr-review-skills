@@ -74,7 +74,7 @@ struct ScaleDiscoveredSheetViewModelTests {
     // `try? await Task.sleep(...)` and then unconditionally runs the callback — so cancelling
     // actually *fires* `onTimeout` immediately (the swallowed `CancellationError` falls through).
     // This test asserts the current behaviour; the "clearTimer should suppress the callback"
-    // expectation is tracked as a separate production defect, not asserted here.
+    // expectation is tracked as a separate production defect in MOB-1512, not asserted here.
     @Test("clearTimer resolves the auto-dismiss task without leaving it pending")
     func clearTimerResolvesAutoDismiss() async {
         var timeoutCount = 0
