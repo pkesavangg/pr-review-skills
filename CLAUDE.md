@@ -29,6 +29,30 @@ Phase 1 shipped Weight Gurus (weight + body composition) as `v5.0.0`–`v5.0.2`.
 
 ## Build & Run Commands
 
+### Run on a device (interactive)
+
+`scripts/run.sh` is an interactive runner that builds, installs, and launches the app on a real device or simulator/emulator. Run it and answer three prompts:
+
+```bash
+./scripts/run.sh
+#   1) Which platform?  → iOS / Android
+#   2) Which build?     → dev (default, press Enter) / production
+#   3) Select device    → numbered list of connected devices (physical first, then simulators/emulators)
+```
+
+You can also skip prompts by passing args: `./scripts/run.sh ios dev` or `./scripts/run.sh android production` (still prompts for the device).
+
+Build → config mapping:
+
+| Build | iOS configuration | Android build type | API base URL |
+|-------|-------------------|--------------------|--------------|
+| `dev` (default) | `Dev` | `debug` → `installDebug` | dev server |
+| `production` | `Production` | `release` → `installRelease` | `api.weightgurus.com` |
+
+Notes:
+- **iOS** lists connected physical devices (via `xcrun devicectl`, filtered to currently-connected) plus available simulators (`xcrun simctl`). Physical-device builds need a valid signing team configured in the project; simulator builds disable signing automatically.
+- **Android** `production`/`release` requires a signing config + `google-services.json`; if none is set up, use `dev` (the default). Devices are listed via `adb devices`.
+
 ### Android
 
 ```bash
