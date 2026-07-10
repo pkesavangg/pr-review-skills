@@ -110,9 +110,56 @@ run_android(){
   local task
   if [[ "$BUILD" == "dev" ]]; then task=":app:installDebug"; else task=":app:installRelease"; fi
 
+  # Pre-flight: Android production = release, which this repo gates behind google-services.json
+  # (a CI-injected secret) and needs a signing config. Fail fast with a clear message instead of
+  # a Gradle stack trace, and offer the dev/debug path that actually works on a local checkout.
+  if [[ "$BUILD" == "production" ]]; then
+    local gs="$REPO_ROOT/Android/app/google-services.json"
+    if [[ ! -f "$gs" ]]; then
+      printf "\n%s⚠ Android production builds can't run on a local checkout.%s\n" "$bold" "$reset"
+      printf "  release requires google-services.json (a CI-injected secret) + a signing config.\n"
+      printf "  %sMissing:%s %s\n" "$dim" "$reset" "$gs"
+      read -rp "Build dev (debug) instead? [Y/n]: " ans; ans="${ans:-y}"
+      case "$ans" in
+        y|Y|yes) BUILD=dev; task=":app:installDebug"; step "Falling back to dev (debug)" ;;
+        *) die "release needs google-services.json — inject the CI secret to build release locally" ;;
+      esac
+    fi
+  fi
+
   step "Installing ($task) on ${labels[$((sel-1))]} …"
-  ( cd "$REPO_ROOT/Android" && ANDROID_SERIAL="$serial_sel" ./gradlew "$task" ) \
-    || die "gradle $task failed"
+
+  # Install, teeing Gradle output to a log so we can recognise a signing-certificate collision:
+  # a differently-signed build of the same applicationId already on the device (typically the
+  # Play Store app) makes Android reject the install with INSTALL_FAILED_UPDATE_INCOMPATIBLE.
+  # Offer to uninstall it and retry once, instead of surfacing a raw Gradle stack trace.
+  local gradle_log; gradle_log="$(mktemp "${TMPDIR:-/tmp}/run-android.XXXXXX")"
+  local attempt rc ans
+  for attempt in 1 2; do
+    ( cd "$REPO_ROOT/Android" && ANDROID_SERIAL="$serial_sel" ./gradlew "$task" ) 2>&1 | tee "$gradle_log"
+    rc=${PIPESTATUS[0]}
+    [[ $rc -eq 0 ]] && break
+
+    if [[ $attempt -eq 1 ]] && grep -q "INSTALL_FAILED_UPDATE_INCOMPATIBLE\|signatures do not match" "$gradle_log"; then
+      printf "\n%s⚠ %s is already installed with a different signature%s (likely the Play Store build).\n" \
+        "$bold" "$APP_ID_ANDROID" "$reset"
+      printf "  Android won't replace a store-signed app with this locally-signed build.\n"
+      read -rp "Uninstall it and retry? Local app data is wiped; account data re-syncs on login. [Y/n]: " ans
+      case "${ans:-y}" in
+        y|Y|yes)
+          step "Uninstalling $APP_ID_ANDROID …"
+          "$adb" -s "$serial_sel" uninstall "$APP_ID_ANDROID" >/dev/null 2>&1 \
+            || { rm -f "$gradle_log"; die "couldn't uninstall $APP_ID_ANDROID — remove it manually and re-run"; }
+          continue
+          ;;
+        *) rm -f "$gradle_log"; die "aborted — uninstall $APP_ID_ANDROID to install a local build on this device" ;;
+      esac
+    fi
+
+    rm -f "$gradle_log"
+    die "gradle $task failed"
+  done
+  rm -f "$gradle_log"
 
   step "Launching $APP_ID_ANDROID …"
   "$adb" -s "$serial_sel" shell am start -n "$APP_ID_ANDROID/$APP_ID_ANDROID$ANDROID_LAUNCHER" >/dev/null \
