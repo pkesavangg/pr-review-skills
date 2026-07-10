@@ -46,7 +46,6 @@ constructor(
     dataSettingsManager.loadCurrentThemeMode(viewModelScope, ::dispatchIntent)
     scaleSettingsManager.loadMacAddressSettings(viewModelScope, ::dispatchIntent)
     notificationSettingsManager.initFeedNotificationListener(viewModelScope, ::dispatchIntent)
-    dataSettingsManager.observeExportEnabled(viewModelScope, ::dispatchIntent)
     observeWeightScalePairing()
     unitSettingsManager.observeBabyWeightUnit(viewModelScope, ::dispatchIntent)
   }
@@ -65,10 +64,6 @@ constructor(
 
       SettingsIntent.OpenHelp -> {
         navigateTo(AppRoute.AccountSettings.HelpScreen)
-      }
-
-      SettingsIntent.ExportData -> {
-        dataSettingsManager.onExportDataClick(viewModelScope)
       }
 
       SettingsIntent.Logout -> {

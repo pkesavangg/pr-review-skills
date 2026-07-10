@@ -9,7 +9,6 @@ object SettingsScreenStrings {
     const val MyKids = "My Kids"
     const val MyDevices = "My Devices"
     const val Integrations = "Integrations"
-    const val ExportData = "Export Data"
     const val ChangePassword = "Change Password"
     const val UserProfile = "User Profile"
     const val DefaultGraphRange = "Default Graph View"
