@@ -59,24 +59,20 @@ struct WeightChartHost: View {
         .onChange(of: selectedX) { _, raw in
             handleSelectionChange(raw)
         }
-        // Phase 4 — on the real scroll-end (isScrolling→false) resettle ONLY the adaptive y-axis in place.
-        // A full rebuild here re-emitted scroll-dependent x-geometry (per-month `visibleDomainLength`,
-        // windowed `xAxisTicks`), which made Swift Charts rebuild its scroll view → the "can't scroll for
-        // ~1 s after it stops" hitch. Resettling only `yAxis` keeps the scroll region stable (one animation).
+        // Scroll-END settle. `settleWeightChart` normally resettles ONLY the adaptive y-axis in place
+        // (no x-geometry change → Swift Charts doesn't rebuild its scroll view → no "~1 s can't scroll
+        // again" hitch, #3). The x-domain is a BOUNDED ±N-window span (fixes the canvas-width hang); when
+        // the finger lifts near that window's edge and more data lies beyond, it re-centers the window on
+        // the committed position via a (cheap, bounded) full rebuild so all history stays scrollable.
         .onChange(of: dashboardStore.state.graph.isScrolling) { _, isScrolling in
             // Scroll START clears any selection (the store also clears its own on `.interacting`); drop the
             // local raw value so the next tap re-triggers `onChange(selectedX)`.
             guard !isScrolling else { selectedX = nil; return }
-            let committed = dashboardStore.state.graph.xScrollPosition
-            dashboardStore.resettleWeightYAxis(scrollPosition: committed)
-            // V-A5b — the store committed the snapped window (month → the 1st) into `xScrollPosition`, but
-            // the native scroll rested wherever the finger lifted. Reflect the snap in the visual scroll so
-            // the window aligns to the month, exactly as the legacy graph writes the committed position back
-            // to its scroll binding. Guarded by `isAdopting` so this write doesn't re-enter the buffer path.
-            if abs(committed.timeIntervalSince(scrollX)) > 0.5 {
-                isAdopting = true
-                scrollX = committed
-            }
+            // Native paged scroll (`WeightChartView.scrollBehavior`) already landed the scroll ON a period
+            // boundary and left `scrollX` there, so we do NOT re-snap the visual scroll. The old V-A5b
+            // `scrollX = committed` reflect fought that native landing → the month "jerk to the wrong month".
+            // Just settle the y-axis + windowed ticks for the landed window.
+            dashboardStore.settleWeightChart(scrollPosition: dashboardStore.state.graph.xScrollPosition)
         }
     }
 

@@ -924,6 +924,40 @@ class DashboardStore: ObservableObject, DashboardStateProviding {
         chartModel = current.withYAxis(newYAxis)
     }
 
+    /// Scroll-END settle for the v2 weight engine. The scroll domain is FULL and scroll-independent, so a
+    /// settle only needs to (a) resettle the adaptive y-axis for the landed window and (b) refresh the
+    /// WINDOWED x-axis ticks so gridlines follow the scroll. Both are swapped IN PLACE via
+    /// `ChartModel.withYAxisAndTicks`, leaving `xDomain`/`visibleDomainLength`/`seriesPoints` byte-identical
+    /// → Swift Charts never rebuilds its scroll view (no "~1 s can't scroll again" hitch, #3; no jump; no
+    /// wall). A co-plotted metric normalizes to the y-domain, so it still needs a full rebuild. Weight only.
+    func settleWeightChart(scrollPosition: Date) {
+        guard coPlottedMetric == nil, let current = chartModel else {
+            rebuildWeightChartModel(scrollPosition: scrollPosition)
+            return
+        }
+        let config = GraphRenderingConfiguration()
+        let newYAxis = ChartPrep.weightYAxis(
+            operations: continuousOperations,
+            period: state.graph.selectedPeriod,
+            scrollPosition: scrollPosition,
+            visibleDomainLength: current.visibleDomainLength,
+            goalWeight: goalWeightForDisplay,
+            isWeightlessMode: isWeightlessModeEnabled,
+            anchorWeight: weightlessAnchorWeight,
+            convertWeight: goalManager.convertWeightToDisplay,
+            chartHeight: state.graph.chartHeight
+        )
+        let newTicks = config.boundedXAxisValues(
+            for: state.graph.selectedPeriod,
+            from: continuousOperations,
+            around: scrollPosition,
+            windows: ChartPrep.tickWindowRadius
+        )
+        let updated = current.withYAxisAndTicks(newYAxis, ticks: newTicks)
+        guard updated != current else { return }
+        chartModel = updated
+    }
+
     /// V4 (6a): apply a validated weight-chart selection at `date` (already snapped to a real entry by the
     /// host), resolving `selectedPoint`/`selectedXValue`/`showCrosshair` per period exactly as the legacy
     /// programmatic auto-select does (`applyChartSelectionSync`). `nil` clears the selection. Weight only.

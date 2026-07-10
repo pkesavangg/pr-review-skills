@@ -28,6 +28,15 @@ import Foundation
 
 enum ChartPrep {
 
+    /// Half-width (in visible-windows) of the WINDOWED x-axis tick set. The scroll domain stays FULL (so
+    /// scrolling is continuous with no walls/jumps), but only ticks within ±this-many windows of the scroll
+    /// position are generated. The dominant scroll-hang cost was the `AxisMarks` count, not the canvas: a
+    /// small canvas with the full ~1000-tick span still hung, while the same canvas with ~50 ticks was
+    /// smooth. So we cap the ticks, not the domain. Refreshed in place at scroll-end
+    /// (`DashboardStore.settleWeightChart`) so gridlines follow the scroll without rebuilding the scroll
+    /// view. Clamped to the data span, so short-history accounts just get their whole span.
+    static let tickWindowRadius: Double = 10
+
     /// Build the weight `ChartModel` for one period at one scroll position.
     static func buildWeight( // swiftlint:disable:this function_parameter_count
         operations: [BathScaleWeightSummary],
@@ -67,6 +76,9 @@ enum ChartPrep {
         //    never rebuilds the scroll region. `visibleDomainLength(for:)` (no position) → month uses the
         //    constant window, not the per-month duration, so scrolling between months doesn't re-lay-out.
         let visibleLength = config.visibleDomainLength(for: period)
+        // MOB-518 — FULL scroll domain (scroll-independent, V-A5a): continuous scrolling through all history
+        // with no walls and no scroll-view rebuild on settle. The hang is avoided by WINDOWING the ticks
+        // (below), not the domain — the AxisMarks count was the real cost, not the canvas.
         let xDomain = config.fullXDomain(for: period, from: operations)
             ?? xDomainRange(plotted: plotted, scrollPosition: scrollPosition, visibleLength: visibleLength)
 
@@ -123,7 +135,12 @@ enum ChartPrep {
             fullResolution: full,
             xDomain: xDomain,
             visibleDomainLength: visibleLength,
-            xAxisTicks: config.fullXAxisValues(for: period, from: operations),
+            // MOB-518 — WINDOWED ticks (±tickWindowRadius windows around the scroll position, clamped to the
+            // data span): only ~dozens of AxisMarks instead of ~1000 across a multi-year span → the fix for
+            // the scroll hang. Refreshed in place at scroll-end so gridlines follow the scroll.
+            xAxisTicks: config.boundedXAxisValues(
+                for: period, from: operations, around: scrollPosition, windows: tickWindowRadius
+            ),
             goalWeight: goalWeight,
             yAxis: yAxis,
             dataFingerprint: fingerprint(orderedSeriesNames: orderedNames, points: full)

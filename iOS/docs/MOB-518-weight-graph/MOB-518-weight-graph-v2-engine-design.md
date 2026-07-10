@@ -395,6 +395,20 @@ resettles only `yAxis`, x-geometry frozen, no scroll-view rebuild) · **V-A4** (
 weight — period-switch guard + scroll phase → `graphManager`). All uncommitted (holding for Kesavan's commit
 command).
 
+**Post-flip scroll-hang fix (2026-07-10).** After the flip, device testing showed **Week/Month/Total scroll
+hung while Year was smooth**. Investigation **root-caused it to the x-axis TICK COUNT, not the canvas width**:
+the full-dataset x-domain made `fullXAxisValues` emit ~1000 `AxisMarks`, which Swift Charts evaluates per
+value even off-screen. (Isolation proof: small canvas + ~1000 ticks still hung; small canvas + ~50 ticks was
+smooth; full canvas + ~50 windowed ticks was smooth.) **Fix (shipped in the working tree):** keep the **full
+scroll domain** (continuous scroll, no walls/jumps) but hand Charts **windowed ticks** only
+(`GraphRenderingConfiguration.boundedXAxisValues`, ±`ChartPrep.tickWindowRadius`=10 windows, clamped to the
+data span), refreshed **in place** at scroll-end via `ChartModel.withYAxisAndTicks` (`DashboardStore.settleWeightChart`)
+so the scroll region never rebuilds. A **bounded-domain + re-center-at-edge** variant was tried and
+**rejected** (hard wall mid-drag + re-center jerk). Separately, the **Month "jerk to the wrong month"** was
+fixed by restoring the legacy **native paged scroll** (`.chartScrollTargetBehavior(PagedChartScrollBehavior)`
+per period) on `WeightChartView` and dropping the V-A5b manual `scrollX = committed` re-snap that fought it.
+Full detail + the still-open items are in the [known-issues log](MOB-518-weight-graph-known-issues.md#scroll-hang-deep-dive-2026-07-09--2026-07-10). Week verified smooth on device; Month improved, residual items deferred.
+
 **Remaining — in order:**
 
 | # | Step | What it does | Closes |

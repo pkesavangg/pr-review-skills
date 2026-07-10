@@ -71,7 +71,10 @@
 ## 6. Scroll behaviour
 
 - **Native horizontal scroll** over the full series (no per-frame re-windowing). ✅
-- **Snap** on release: Week → day boundary; Month → 1st of the month; Year → month boundary; Total → n/a. ✗ (V-A5)
+- **Snap** on release: Week → day boundary; Month → 1st of the month; Year → month boundary; Total → n/a. ◑
+  (2026-07-10: native `PagedChartScrollBehavior` restored on `WeightChartView` → lands on boundaries during
+  deceleration; week verified, month improved. Residual: native-landed `scrollX` vs the store's snapped
+  `xScrollPosition` can differ slightly — verify header/active-month-greying window matches the visible one.)
 - **Start position = latest window** ("scroll to latest") on first open. ◑ (seeds from store, snap/anchor not
   at parity — V-A5)
 - Committed scroll position is written to the store **only at scroll-end**, not per frame. ✗ (new view never

@@ -101,6 +101,34 @@ struct WeightChartView: View {
         }
     }
 
+    /// Native paged + date-aligned scroll landing per period — copied from the legacy
+    /// `BaseGraphView.getChartScrollBehavior` so the new engine snaps to period boundaries during
+    /// deceleration exactly as the shipped graph did (fixes the month post-release snap jerk).
+    private func scrollBehavior(for period: TimePeriod) -> PagedChartScrollBehavior {
+        switch period {
+        case .week:
+            return PagedChartScrollBehavior(
+                matching: DateComponents(hour: 12),
+                majorAlignment: DateComponents(hour: 6, weekday: 1)
+            )
+        case .month:
+            return PagedChartScrollBehavior(
+                matching: DateComponents(hour: 12),
+                majorAlignment: DateComponents(day: 31, hour: 12)
+            )
+        case .year:
+            return PagedChartScrollBehavior(
+                matching: DateComponents(day: 1, hour: 12),
+                majorAlignment: DateComponents(month: 1, day: 1, hour: 12)
+            )
+        case .total:
+            return PagedChartScrollBehavior(
+                matching: DateComponents(hour: 0),
+                majorAlignment: DateComponents(hour: 0)
+            )
+        }
+    }
+
     var body: some View {
         Chart {
             ForEach(model.orderedSeriesNames, id: \.self) { name in
@@ -202,6 +230,12 @@ struct WeightChartView: View {
         .chartScrollableAxes(isScrollable ? .horizontal : [])
         .chartXVisibleDomain(length: ChartDomainSanitizer.positiveLength(visibleLength))
         .chartScrollPosition(x: $scrollX)
+        // MOB-518 — native paged + date-aligned scroll landing per period (parity with the legacy
+        // `BaseGraphView.getChartScrollBehavior`). Lands the scroll smoothly ON a period boundary during
+        // deceleration, instead of free-scrolling and letting the manual `snapScrollPosition` yank it after
+        // release — which was the month "scroll a little → jerk to the wrong month" (week's day-grained snap
+        // hid the missing behavior; month's coarse month-1st snap did not).
+        .chartScrollTargetBehavior(scrollBehavior(for: model.period))
         // The model is only rebuilt at scroll-END, so the y-domain changes once per settle → this is the
         // single, smooth, adaptive settle (Y-B). No animation fires during a drag (nothing changes then).
         .animation(.easeInOut(duration: 0.25), value: yDomain)

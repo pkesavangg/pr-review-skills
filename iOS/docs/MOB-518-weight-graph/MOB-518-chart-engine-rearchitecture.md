@@ -48,6 +48,14 @@ the y-axis on **one** `isScrolling → false` event with **one** animation (or m
 remove the jerk entirely — see §C5, a product decision). Selection/crosshair stays local `@State`. The four
 period charts and the three product types (weight / BPM / baby) all render through the same clean path.
 
+> **Update (2026-07-10) — a second, independent scroll cost surfaced on device after the v2 flip.** Beyond the
+> `.id`-teardown hitch above, the biggest post-flip scroll hang (Week/Month/Total; Year smooth) was the
+> **x-axis tick COUNT** — a full-dataset x-domain feeds Swift Charts ~1000 `AxisMarks`, which it evaluates per
+> value even off-screen. It was **not** the scroll-canvas width (that hypothesis was tested and ruled out).
+> Fix: keep the full domain, hand Charts **windowed ticks** only. See the
+> [known-issues deep dive](MOB-518-weight-graph-known-issues.md#scroll-hang-deep-dive-2026-07-09--2026-07-10)
+> and [v2 design §10](MOB-518-weight-graph-v2-engine-design.md#10-remaining-roadmap--the-single-ordered-list-2026-07-09).
+
 ---
 
 

@@ -23,7 +23,36 @@
 
 | # | Observation (device) | Suspected cause | Planned fix / step | Status |
 |---|----------------------|-----------------|--------------------|--------|
-| 5 | _(add)_ | | | |
+| 5 | **Scroll hangs / hitches badly on Week & Month (and Total); Year alone is smooth.** Dragging stutters, finger doesn't track. | **Root cause = x-axis TICK COUNT, not canvas width.** With the full-dataset x-domain, `GraphRenderingConfiguration.fullXAxisValues` generated ~1000 `AxisMarks` (weekly ticks across a multi-year span). Swift Charts evaluates the `AxisMarks` closure per value even for off-screen ticks → the hang. Year was smooth only because it plots monthly data (few points **and** few ticks). See the deep-dive below for how canvas-width was ruled out. | **Full domain KEPT** (continuous scroll, no walls/jumps) + **windowed ticks**: `GraphRenderingConfiguration.boundedXAxisValues(±`ChartPrep.tickWindowRadius`=10 windows, clamped to data span)` → ~dozens of ticks. Refreshed **in place** at scroll-end via `ChartModel.withYAxisAndTicks` (`DashboardStore.settleWeightChart`) so `xDomain`/`visibleDomainLength`/`seriesPoints` stay byte-identical → no scroll-view rebuild (no #3), no jump. | **Week verified smooth on device (2026-07-10).** Month improved (see #6). |
+| 6 | **Month "jerk to the wrong month" on release.** From e.g. May 2026, a small scroll expecting April lands on **March** with a visible jerk. Week does not do this. | New `WeightChartView` **lacked the legacy native scroll snapping** (`PagedChartScrollBehavior`). It free-scrolled, then the shared manual `DashboardGraphManager.snapScrollPosition` (month → 1st) yanked `scrollX` **after** release. Week hid it (day-grained snap = tiny nudge); month's coarse month-1st snap could jump ~2 weeks → the jerk/overshoot. | Add `.chartScrollTargetBehavior(scrollBehavior(for:))` to `WeightChartView` (per-period `PagedChartScrollBehavior`, copied from legacy `BaseGraphView.getChartScrollBehavior`) so the scroll lands ON a boundary **during deceleration**; and **remove** the V-A5b manual `scrollX = committed` reflect in `WeightChartHost` that fought it. | **Better on device (2026-07-10); residual items open — see below.** |
+
+---
+
+## Scroll-hang deep dive (2026-07-09 → 2026-07-10) — how we found the real cause
+
+The hang looked like the canvas-width problem (full-dataset x-domain ÷ tiny visible window = a scroll canvas ~150× the viewport). It was **not**. The evidence:
+
+1. **Clamp the domain only** (canvas ~8×) but leave ticks full (~1000) → **still hung.**
+2. **Clamp domain + ticks** (canvas ~8×, ~50 ticks) → **smooth.**
+   → the only difference was the tick count, so **the ~1000 `AxisMarks` were the cost, not the canvas.**
+3. **Full domain + windowed ticks** (canvas back to ~150×, ~50 ticks) → **still smooth** — the clean isolation: the *original hanging config* was full-domain + full-ticks, and changing only the ticks fixed it.
+
+**Discarded approach (do not retry): bounded domain + re-center at scroll-end.** Capping the x-domain to ±N windows and re-centering the window when the finger lifts near an edge *did* fix the hang, but it made the domain edge a **hard wall mid-drag** and the re-center **jerked** the position on release. Full-domain + windowed-ticks is strictly better (no walls, no re-center jerk) and is the shipped shape.
+
+### Files changed (2026-07-10)
+- `Managers/Graph/GraphRenderingConfiguration.swift` — new `boundedXDomain(...)` + `boundedXAxisValues(...)` (windowed, clamped to data span).
+- `Managers/Graph/ChartPrep.swift` — `buildWeight` uses `fullXDomain` (kept) + `boundedXAxisValues` (windowed); new `tickWindowRadius = 10` constant.
+- `Models/ChartModel.swift` — new `withYAxisAndTicks(_:ticks:)` in-place settle (y-axis + ticks only; scroll geometry frozen).
+- `Stores/DashboardStore.swift` — `settleWeightChart(scrollPosition:)` replaces the plain `resettleWeightYAxis` call at scroll-end (in-place y-axis + windowed-tick refresh; full rebuild only when a metric is co-plotted).
+- `Views/Components/WeightChartView.swift` — `.chartScrollTargetBehavior(scrollBehavior(for:))` (native paged/aligned landing per period).
+- `Views/Components/WeightChartHost.swift` — dropped the V-A5b manual `scrollX = committed` reflect (fought native paging).
+
+### Still open (handle later — 2026-07-10)
+- [x] ~~Remove the temporary `#if DEBUG` `🟣 MOB518-clamp` / `🟣 MOB518-settle` `print`s in `DashboardStore`~~ — **DONE (2026-07-10)**, removed before commit.
+- [ ] **Month visual-vs-store position mismatch:** native paging lands `scrollX` at its aligned target, but `settleWeightChart` / header / active-month greying use the store's `snapScrollPosition`-committed `xScrollPosition` (month → 1st, midnight) — the two alignments differ slightly. Verify the greying + header window match what's visible; if off, reconcile (commit the native-landed position, or align the snap target to the paging `majorAlignment`).
+- [ ] **Windowed ticks are finite (±10 windows):** a very long single fling can outrun the gridlines until the scroll-end refresh. Confirm acceptable or widen.
+- [ ] **`boundedXDomain` is now only used internally by `boundedXAxisValues`** (the domain path uses `fullXDomain`) — keep or inline.
+- [ ] **Full device parity pass** across all four periods + Instruments Animation Hitches (< 5 ms/s, no frame > 16.7 ms) on a large account.
 
 ---
 

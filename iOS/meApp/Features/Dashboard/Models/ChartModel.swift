@@ -95,4 +95,26 @@ struct ChartModel: Equatable, Sendable {
             dataFingerprint: dataFingerprint
         )
     }
+
+    /// Scroll-end settle for the FULL-domain / windowed-ticks engine: returns a copy with ONLY `yAxis` and
+    /// `xAxisTicks` replaced. `xDomain`, `visibleDomainLength`, `seriesPoints`, and `dataFingerprint` stay
+    /// byte-identical, so the scroll region (`.chartXScale`/`.chartXVisibleDomain`/`.chartScrollPosition`)
+    /// does NOT re-lay-out — the ticks are a windowed set that follows the scroll (~dozens of `AxisMarks`
+    /// instead of ~1000 across the whole span, which was the real scroll-hang cost) and the y-axis animates.
+    /// No walls, no jump, no "can't scroll for ~1 s" rebuild.
+    func withYAxisAndTicks(_ newYAxis: YAxisModel, ticks newTicks: [Date]) -> ChartModel {
+        ChartModel(
+            period: period,
+            productType: productType,
+            orderedSeriesNames: orderedSeriesNames,
+            seriesPoints: seriesPoints,
+            fullResolution: fullResolution,
+            xDomain: xDomain,
+            visibleDomainLength: visibleDomainLength,
+            xAxisTicks: newTicks,
+            goalWeight: goalWeight,
+            yAxis: newYAxis,
+            dataFingerprint: dataFingerprint
+        )
+    }
 }
