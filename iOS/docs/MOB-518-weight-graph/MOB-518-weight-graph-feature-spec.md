@@ -48,9 +48,11 @@
 - **Ticks per period:** Week = 7 daily ticks + 1 phantom trailing (+1 day); Month = Sunday-based weekly ticks
   (1, 8, 15, 22, 29) + phantom trailing Sunday; Year = one tick/month + phantom trailing month; Total =
   yearly (same-era) or quarterly ticks, **no labels**. ◑ (ticks generated; labels/format not at parity — V3)
-- **Grid lines:** solid vertical rule at period boundaries (week/month/year start), dashed/faint at
-  intermediate ticks; horizontal rules at y-ticks. ✗ (new view draws y-gridlines only — the "vertical lines
-  missing" you saw; V3)
+- **Grid lines:** solid vertical rule at period boundaries (week/month/year start), light rule at
+  intermediate ticks; horizontal rules at y-ticks; plus a fixed 1 pt **trailing closing rule** at the plot's
+  right edge so the last window reads as a closed frame (2026-07-10). ✅ (V3 + third pass)
+- **Y-axis label gap:** each y-axis number is centered in a fixed 40 pt box so it sits off the trailing screen
+  edge with a gap (parity with the legacy `yAxisLabelWidth`). ✅
 - **Label formats:** Week = weekday letters (or dates); Month = day numbers; Year = month initials;
   Total = none. Labels may repeat/condense on dense ranges. ✗ (V3)
 
@@ -71,13 +73,17 @@
 ## 6. Scroll behaviour
 
 - **Native horizontal scroll** over the full series (no per-frame re-windowing). ✅
-- **Snap** on release: Week → **week boundary (Sunday)**; Month → 1st of the month; Year → Jan; Total → n/a. ✅
-  (2026-07-10, verified on device: a correctly-configured `ValueAlignedChartScrollTargetBehavior` — `matching`
-  set to the *period* grid, at `hour: 0` — decelerates ONTO the boundary in one Apple-Health-style motion;
-  gridlines/labels drawn at the day boundary (midnight) so the boundary rule + label sit flush at the left
-  edge with no gap. `DashboardStore.commitWeightScroll` commits the landed boundary as the single source of
-  truth (visual == store), with a distance-aware reflect kept only as a safety net. Note: week now snaps to
-  the *week start*, not just any *day* boundary — closer to Apple Health than the original spec wording.)
+- **Snap / paging** (Apple-Health-style; 2026-07-10, third pass): a **fling** decelerates onto the period
+  boundary (Week → week start / Sunday; Month → 1st; Year → Jan 1) via
+  `ValueAlignedChartScrollTargetBehavior`'s `majorAlignment`; a **slow drag** rests on the fine `matching`
+  grid (any day for week/month, any month-1st for year), so the window can be placed **mid-period** (Wed→Wed,
+  mid-month) exactly like Health. The landed position is committed **verbatim** by
+  `DashboardStore.commitWeightScroll` — no re-snap, no animated reflect — so stored == visible: nothing moves
+  after release and leaving/returning re-adopts the exact window. Gridlines/labels are drawn at the day
+  boundary (midnight) so the leading boundary rule sits flush at the left edge with no gap. Total → n/a
+  (not scrollable). ✅ (Earlier passes used a coarse `matching` that force-snapped every release to the
+  boundary + a `snapWeightScrollPosition` reflect that drifted a unit — both removed; see the known-issues
+  "Snap rework — third pass".)
 - **Start position = latest window** ("scroll to latest") on first open. ◑ (seeds from store, snap/anchor not
   at parity — V-A5)
 - Committed scroll position is written to the store **only at scroll-end**, not per frame. ✅
@@ -93,7 +99,9 @@
   - Year → nearest month tick within `[firstMonth, lastMonth]`.
   - Total → nearest real data point within `[firstPoint, lastPoint]` + small right slack.  ✗ (all — V4)
 - **Crosshair** = vertical rule at the selected x (+ callout). Hidden outside the drawn line's range. ✗ (V4)
-- **Selection clears when a scroll starts.** ✗ (V-A1)
+- **Selection clears when a scroll starts** (store clears on `.interacting`), and **persists after
+  finger-lift** — Swift Charts resets `.chartXSelection` to `nil` on gesture-end but the host ignores that so
+  the crosshair stays until the next scroll, like Apple Health (2026-07-10, third pass). ✅
 - **Selection callout** shows the selected date + value near the point. ✗ (V4)
 - Tapping the middle/approx area snaps to the nearest real entry (never a phantom point). ✗ (V4)
 
@@ -141,8 +149,11 @@
 
 - **Skeleton loader** shows until the graph is ready (`isGraphReady`, ~300 ms after init). ◑ (still driven by
   the old path)
-- **Cold start / tab-back:** auto-select the **latest entry** so the header + crosshair show the most recent
-  point. ✗ (V-A1/V4)
+- **Cold start / tab-back / period switch:** auto-select the **latest entry** so the header + crosshair show
+  the most recent point — for **all four periods**. The host's `selectLatestIfNeeded()` seeds the latest point
+  from the model it plots whenever the current selection doesn't resolve to a crosshair, which closed the gap
+  where **year/total** stayed unselected (the shared auto-select read a different operations source than the
+  model; 2026-07-10, third pass). ✅
 - **Period switch:** anchors the new period around the old period's visible midpoint, recomputes scroll +
   y-axis, clears the previous selection. ◑ (host reseeds from store; anchor parity — V-A5)
 - Inactive section VMs are torn down on switch; product/baby-profile change tears down all. ✅ (unchanged)

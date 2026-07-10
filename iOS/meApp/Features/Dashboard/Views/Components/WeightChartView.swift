@@ -43,6 +43,9 @@ struct WeightChartView: View {
 
     private var isScrollable: Bool { model.period != .total }
     private var lineWidth: CGFloat { isScrollable ? 3 : 2 }
+    /// Fixed width the y-axis number is centered in, so it sits off the trailing screen edge with a gap
+    /// (parity with the legacy `BaseGraphView.yAxisLabelWidth`).
+    private let yAxisLabelWidth: CGFloat = 40
     private func pointArea(selected: Bool) -> CGFloat {
         let diameter: CGFloat = selected ? (isScrollable ? 12 : 8) : (isScrollable ? 8 : 4)
         let radius = diameter / 2
@@ -117,34 +120,36 @@ struct WeightChartView: View {
         }
     }
 
-    /// Native value-aligned paging so the scroll DECELERATES onto a period boundary (Apple Health style) —
-    /// the boundary landing is part of the fling, not a correction applied after it rests. Per Swift Charts
-    /// (Majid, Apple docs): `matching` is the FINE alignment grid (day starts), `majorAlignment` is the
-    /// COARSE boundary a swipe lands on (week start / 1st / Jan 1) — `.matching(DateComponents(day: 1))`
-    /// means "always land on the 1st." The earlier config had this backwards (it put the *boundary* in
-    /// `matching`, with an `hour: 12` that isn't on the day grid), which is why it never aligned. Everything
-    /// is midnight/day-grid-consistent so `majorAlignment` sits on the `matching` grid. The host's snap +
-    /// reflect stays a safety net: if this lands exactly on the boundary the correction is ~0 (no hop); if
-    /// the OS ignores the behavior, the snap still catches it.
+    /// Native value-aligned scrolling, Apple-Health style. Per Swift Charts (Majid / Apple docs):
+    /// `matching` is the FINE grid of valid resting positions; `majorAlignment` is the COARSE boundary a
+    /// *fling* decelerates onto. We set `matching` to the DAY grid (month grid for year) so a slow drag can
+    /// rest the window on ANY unit — e.g. Wed→Wed, or mid-month — and `majorAlignment` to the period boundary
+    /// (week start / 1st / Jan 1) so a fling still lands on a clean full week/month/year window in one motion.
+    /// (Issue #1: the earlier config put the period boundary in BOTH `matching` and `majorAlignment`, which
+    /// force-snapped EVERY release to the boundary and made mid-window placement impossible.) `majorAlignment`
+    /// is a subset of `matching` (a Sunday-midnight is a day-midnight; Jan-1 is a month-1st), as the API
+    /// requires. The host (`commitWeightScroll`) records wherever native rested VERBATIM — no re-snap, no
+    /// reflect — so visual == committed with no post-release hop whether the user flung (→ boundary) or
+    /// nudged (→ any day), and re-adopting the stored position on return never drifts by a unit.
     private func scrollBehavior(for period: TimePeriod) -> ValueAlignedChartScrollTargetBehavior {
         let firstWeekday = Calendar.current.firstWeekday
         switch period {
         case .week:
-            // `matching` IS the weekly grid (Sunday-midnight) so EVERY release snaps straight to a week
-            // boundary — not the nearest day (which then needed a second host move to reach Sunday).
+            // Fine grid = any day (rest on Wed→Wed); a fling lands on the week start.
             return ValueAlignedChartScrollTargetBehavior(
-                matching: DateComponents(hour: 0, weekday: firstWeekday),
+                matching: DateComponents(hour: 0),
                 majorAlignment: .matching(DateComponents(hour: 0, weekday: firstWeekday))
             )
         case .month:
-            // `matching` IS the monthly grid (1st-midnight) → release lands on the 1st in one motion.
+            // Fine grid = any day (rest mid-month); a fling lands on the 1st.
             return ValueAlignedChartScrollTargetBehavior(
-                matching: DateComponents(day: 1, hour: 0),
+                matching: DateComponents(hour: 0),
                 majorAlignment: .matching(DateComponents(day: 1, hour: 0))
             )
         case .year:
+            // Fine grid = any month-1st (rest on any month); a fling lands on Jan 1.
             return ValueAlignedChartScrollTargetBehavior(
-                matching: DateComponents(month: 1, day: 1, hour: 0),
+                matching: DateComponents(day: 1, hour: 0),
                 majorAlignment: .matching(DateComponents(month: 1, day: 1, hour: 0))
             )
         case .total:
@@ -214,7 +219,13 @@ struct WeightChartView: View {
             AxisMarks(values: model.yAxis.ticks) { value in
                 AxisGridLine()
                 if let doubleValue = value.as(Double.self) {
-                    AxisValueLabel { Text(yLabel(doubleValue)) }
+                    AxisValueLabel {
+                        // Parity with the legacy `yAxisMarks`: center the number in a fixed-width box so it
+                        // sits off the right screen edge with a gap, instead of the bare label hugging the
+                        // trailing edge.
+                        Text(yLabel(doubleValue))
+                            .frame(width: yAxisLabelWidth, alignment: .center)
+                    }
                 }
             }
         }
@@ -252,13 +263,24 @@ struct WeightChartView: View {
                 }
             }
         }
+        // Trailing "closing" rule: a fixed 1 pt vertical line at the plot's right edge (where the y-axis
+        // begins), so the last week/month/year window reads as a closed frame instead of an open right side.
+        // `.chartPlotStyle` styles the FIXED viewport (content scrolls within it), so the line stays put at
+        // the window's right edge as you scroll — matching the leading period-boundary rule on the left.
+        .chartPlotStyle { plot in
+            plot.overlay(alignment: .trailing) {
+                Rectangle()
+                    .fill(theme.statusIconSecondaryDisabled)
+                    .frame(width: 1)
+            }
+        }
         .chartLegend(.hidden)
         .chartScrollableAxes(isScrollable ? .horizontal : [])
         .chartXVisibleDomain(length: ChartDomainSanitizer.positiveLength(visibleLength))
         .chartScrollPosition(x: $scrollX)
-        // MOB-518 — native value-aligned paging: the deceleration itself lands ON the period boundary
-        // (Sunday / 1st / Jan 1), like Apple Health, instead of resting anywhere and being corrected after.
-        // See `scrollBehavior(for:)` for why the earlier config never aligned (boundary was in `matching`).
+        // MOB-518 — native value-aligned scrolling (Apple Health): a fling decelerates onto the period
+        // boundary (Sunday / 1st / Jan 1) in one motion; a slow drag rests on any day/month, so the user can
+        // place the window mid-period (Wed→Wed). See `scrollBehavior(for:)`.
         .chartScrollTargetBehavior(scrollBehavior(for: model.period))
         // The model is only rebuilt at scroll-END, so the y-domain changes once per settle → this is the
         // single, smooth, adaptive settle (Y-B). No animation fires during a drag (nothing changes then).

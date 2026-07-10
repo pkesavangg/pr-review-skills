@@ -317,36 +317,12 @@ struct GraphRenderingConfiguration {
         }
     }
 
-    /// MOB-518 (v2 weight engine): snap a landed scroll position to the NEAREST period boundary, so the
-    /// committed position can be reflected back into the visual scroll as one short animated settle — the
-    /// "single source of truth" that removes the month jerk. Both week and month snap to the START of their
-    /// period (week → `calendar.firstWeekday`; month → the 1st) so every page shows a clean, boundary-aligned
-    /// window like Apple Health — NOT a random weekday / mid-month rest. ROUNDS to the nearest boundary (not
-    /// the legacy FLOOR), so a window resting late in a period lands on the period the user flung *toward*
-    /// (e.g. May 21 → Jun 1, not back to May 1) and the correction stays ≤ ~½ window. Legacy baby/BPM keep
-    /// `snapScrollPosition` (floor / same-day) unchanged.
-    func snapWeightScrollPosition(_ position: Date, for period: TimePeriod) -> Date {
-        switch period {
-        case .week:
-            // Nearest start-of-week at MIDNIGHT (`.weekOfYear` honours `calendar.firstWeekday`). Midnight —
-            // not noon — so this matches the value-aligned `majorAlignment` (`hour: 0, weekday: firstWeekday`)
-            // the chart decelerates onto: when native alignment lands the scroll on Sunday-midnight, this
-            // snap agrees → correction ≈ 0 → no visible hop. If the OS ignores the behavior, this still
-            // rounds to the nearest Sunday-midnight.
-            guard let week = calendar.dateInterval(of: .weekOfYear, for: position) else {
-                return snapScrollPosition(position, for: period)
-            }
-            return position.timeIntervalSince(week.start) <= week.end.timeIntervalSince(position)
-                ? week.start : week.end
-        case .month:
-            // Nearest month-1st. `.start` = this month's 1st (midnight); `.end` = next month's 1st.
-            guard let month = calendar.dateInterval(of: .month, for: position) else { return position }
-            return position.timeIntervalSince(month.start) <= month.end.timeIntervalSince(position)
-                ? month.start : month.end
-        default:
-            return snapScrollPosition(position, for: period)   // year / total
-        }
-    }
+    // NOTE (MOB-518, v2 weight engine): there is deliberately NO weight-specific scroll snap. Native
+    // `ValueAlignedChartScrollTargetBehavior` (see `WeightChartView.scrollBehavior`) rests the window on the
+    // fine grid — a fling on the period boundary, a slow drag on any day / month — and `commitWeightScroll`
+    // records that landed position verbatim. An earlier `snapWeightScrollPosition` re-rounded it here and
+    // caused a one-unit drift on release / on leave-and-return, so it was removed. Legacy baby/BPM still use
+    // `snapScrollPosition` above.
 
     func clampScrollPosition(_ position: Date, for period: TimePeriod, minDate: Date, maxDate: Date) -> Date {
         let padding = periodPadding(for: period)

@@ -39,13 +39,15 @@ struct WeightChartHost: View {
         .onChange(of: dashboardStore.state.graph.isGraphReady) { wasReady, isReady in
             guard !wasReady, isReady else { return }
             adopt(dashboardStore.state.graph.xScrollPosition)
+            selectLatestIfNeeded()
         }
         // A2 — data / metric / unit / goal / weightless changes → rebuild from the store's canonical change
         // signals (not a view-side endpoint hash that can go stale). See `rebuildSignal`.
         .onChange(of: rebuildSignal) { _, _ in rebuild(at: dashboardStore.state.graph.xScrollPosition) }
-        // Period switch → adopt the new period's committed anchor.
+        // Period switch → adopt the new period's committed anchor, then ensure the latest point is selected.
         .onChange(of: dashboardStore.state.graph.selectedPeriod) { _, _ in
             adopt(dashboardStore.state.graph.xScrollPosition)
+            selectLatestIfNeeded()
         }
         // A2/V-A4 — buffer live scroll positions (same owner as the phase handler above) so the store's
         // `.idle` handler commits the right landed window.
@@ -59,32 +61,20 @@ struct WeightChartHost: View {
         .onChange(of: selectedX) { _, raw in
             handleSelectionChange(raw)
         }
-        // Scroll-END: commit + settle, off the ONE landed value (`scrollX`, where the native value-aligned
-        // scroll rested). Native `.chartScrollTargetBehavior` decelerates ONTO the period boundary
-        // (Sunday / 1st / Jan 1) in a single motion, so `scrollX` is already on the boundary here.
-        // `commitWeightScroll` snaps it to the nearest boundary (a no-op when native landed exactly),
-        // commits that as the single scroll position, and settles the y-axis + windowed ticks IN PLACE
-        // (no scroll-view rebuild → no "~1 s can't scroll" hitch, #3). The animated reflect is a SAFETY NET:
-        // its correction is ~0 when native aligned (so it doesn't fire), and it only glides the scroll onto
-        // the boundary if the OS ever fails to align — keeping the visual == the committed window (header /
-        // active-month greying / y-axis all match what's on screen).
+        // Scroll-END: commit + settle at the ONE landed value (`scrollX`, where the native value-aligned
+        // scroll rested). `.chartScrollTargetBehavior` already decelerates onto the fine grid — a fling onto
+        // the period boundary (Sunday / 1st / Jan 1), a slow drag onto any day / month — so `scrollX` is
+        // exactly where the window should stay. `commitWeightScroll` records that position VERBATIM (no
+        // re-snap, no animated reflect) and settles the y-axis + windowed ticks IN PLACE (no scroll-view
+        // rebuild → no "~1 s can't scroll" hitch, #3). Not moving the window after release is what fixes the
+        // one-unit drift on scroll-end / leave-and-return: the stored position == the visible position, so
+        // the header / active-month greying / y-axis all match what's on screen, and re-adopting the stored
+        // position on return never jumps the window by a day/month.
         .onChange(of: dashboardStore.state.graph.isScrolling) { _, isScrolling in
             // Scroll START clears any selection (the store also clears its own on `.interacting`); drop the
             // local raw value so the next tap re-triggers `onChange(selectedX)`.
             guard !isScrolling else { selectedX = nil; return }
-            let landed = scrollX
-            let snapped = dashboardStore.commitWeightScroll(landedAt: landed)
-            // Reflect the visual scroll to the committed boundary in one smooth motion. `isAdopting` keeps
-            // the resulting `scrollX` write off the buffer path (it's our programmatic move, not the user's).
-            let correction = abs(snapped.timeIntervalSince(landed))
-            if correction > 0.5 {
-                isAdopting = true
-                // Distance-aware settle: a tiny nudge snaps fast; a larger correction eases a bit longer so
-                // it reads as a deliberate glide, not a lurch. `easeOut` decelerates INTO the boundary.
-                let window = dashboardStore.chartModel?.visibleDomainLength ?? correction
-                let frac = min(1, correction / max(window, 1))
-                withAnimation(.easeOut(duration: 0.22 + 0.30 * frac)) { scrollX = snapped }
-            }
+            dashboardStore.commitWeightScroll(landedAt: scrollX)
         }
     }
 
@@ -157,17 +147,35 @@ struct WeightChartHost: View {
         return match?.xDate
     }
 
-    /// Snap the raw selected x to the nearest real (undecimated) entry and report it to the store; a `nil`
-    /// selection (or a tap while scrolling / on an empty chart) clears it.
+    /// Snap the raw selected x to the nearest real (undecimated) entry and report it to the store. A `nil`
+    /// raw value (finger-lift / empty chart) is IGNORED so the selection persists (issue #3) — Swift Charts
+    /// resets `.chartXSelection` to nil when the scrub gesture ends, but Apple Health keeps the last-tapped
+    /// point highlighted until the next scroll. The only place a selection should drop is scroll-start, where
+    /// the store clears its own on `.interacting` (and this view drops the raw value in the `isScrolling`
+    /// handler so the next tap re-triggers `onChange(selectedX)`).
     private func handleSelectionChange(_ raw: Date?) {
         guard !dashboardStore.state.graph.isScrolling else { return }
         guard let raw,
               let model = dashboardStore.chartModel,
               let nearest = nearestEntry(to: raw, in: model) else {
-            dashboardStore.selectWeightPoint(at: nil)
             return
         }
         dashboardStore.selectWeightPoint(at: nearest.original.date)
+    }
+
+    /// Issue #2 — after a period switch / cold start, make sure the latest plotted point is selected so the
+    /// header + crosshair land on the most recent reading. Derives the latest from the MODEL the chart plots
+    /// (`fullResolution`), so it can't diverge from what's on screen — the Year/Total gap came from the
+    /// period-switch auto-select (`DashboardChartManager.updateSelectedPeriod`) reading a *different*
+    /// operations source (`dataManager`, which lacks the store's monthly-summary fallback) than the model.
+    /// No-op once the current selection actually resolves to a crosshair (so it never overrides a working
+    /// week/month selection or the user's own tap). Called only on period switch / graph-ready — NOT on
+    /// scroll-end, where an empty selection is intended.
+    private func selectLatestIfNeeded() {
+        guard crosshairDate == nil, let model = dashboardStore.chartModel else { return }
+        let points = model.fullResolution[DashboardStrings.weight] ?? []
+        guard let latest = points.max(by: { $0.original.date < $1.original.date }) else { return }
+        dashboardStore.selectWeightPoint(at: latest.original.date)
     }
 
     /// V4 (6c): formatted goal-weight chip label (nil → no chip), matching the legacy

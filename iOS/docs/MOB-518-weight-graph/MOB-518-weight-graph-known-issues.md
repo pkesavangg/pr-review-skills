@@ -99,6 +99,64 @@ continuous motion — not "rest anywhere, then correct after." Verified on devic
 Resolves the **"Month visual-vs-store position mismatch"** open item above and the month **release jerk** (#6).
 The temporary `🟠 MOB518-snap` debug probe was removed before commit.
 
+> **Superseded by the third pass below (2026-07-10).** This second pass used a COARSE `matching` (the period
+> grid in *both* `matching` and `majorAlignment`) plus a `snapWeightScrollPosition` + a distance-aware animated
+> reflect. Device testing showed that force-snapped EVERY release to the boundary (no mid-period resting) and
+> drifted a unit on release / on leave-and-return. The third pass replaces it with a FINE `matching` +
+> boundary `majorAlignment`, committed verbatim (no re-snap, no reflect).
+
+---
+
+## Snap rework — third pass (2026-07-10): fine-grid resting, no post-release move, trailing frame ✅ built
+
+Device feedback on the second pass surfaced three behaviours + two cosmetics. All fixed in the working tree
+(`WeightChartView` · `WeightChartHost` · `DashboardStore` · `GraphRenderingConfiguration`). **Verify on device
+across all four periods.**
+
+1. **Could not place the window mid-period (issue #1).** The second pass put the *period boundary* in BOTH
+   `matching` and `majorAlignment`, so EVERY release force-snapped to Sunday / the 1st — you couldn't rest a
+   week on Wed→Wed or a month mid-month. Apple Health only pages to a clean window on a *fling*; a slow drag
+   rests wherever you place it. **Fix:** `matching` = the FINE grid (`hour: 0` = any day for week/month;
+   `day: 1, hour: 0` = any month-1st for year); `majorAlignment` = the period boundary (week start / 1st /
+   Jan 1). A fling decelerates onto the boundary in one motion; a slow drag rests on any day/month.
+   (`WeightChartView.scrollBehavior`.)
+
+2. **One-unit drift on release / on leave-and-return.** After the fine-grid change, the window jumped one day
+   (week/month) or one month (year) when the scroll ended, and again when you left and returned. **Cause:**
+   `commitWeightScroll` re-snapped the landed position (`snapWeightScrollPosition`, nearest grid unit) and the
+   host then *animated the visual scroll* to that snapped value — moving the window after release; re-adopting
+   the snapped value on return jumped it again. **Fix:** native value-alignment already rests on the fine
+   grid, so **commit the landed position VERBATIM** (no re-snap) and **drop the animated reflect**. Stored ==
+   visible → nothing moves after release, and re-adopting on return never jumps. `snapWeightScrollPosition`
+   deleted (now dead; a NOTE in `GraphRenderingConfiguration` records why there is no weight-specific snap).
+   (`DashboardStore.commitWeightScroll`, `WeightChartHost` scroll-end handler.)
+
+3. **Year didn't auto-select the latest on section switch (issue #2).** Week/month selected the latest point
+   on a period switch; year/total didn't. **Cause:** the period-switch auto-select
+   (`DashboardChartManager.updateSelectedPeriod`) reads `dataManager.getContinuousOperations`, which lacks the
+   store's monthly-summary fallback that the *model* is built from — so the store selection didn't resolve
+   against the year/total model. **Fix:** `WeightChartHost.selectLatestIfNeeded()` force-selects the latest
+   point **from the model it plots** (`fullResolution`) whenever the current selection doesn't resolve to a
+   crosshair — a no-op for week/month, self-consistent for year/total. Called on period switch + graph-ready
+   only (never on scroll-end, where an empty selection is intended).
+
+4. **Selection dropped on finger-lift (issue #3).** Tapping a point then lifting cleared the crosshair.
+   **Cause:** Swift Charts resets `.chartXSelection` to `nil` when the scrub gesture ends, and
+   `handleSelectionChange(nil)` cleared the store. **Fix:** ignore the `nil` (persist) — Apple Health keeps
+   the last-tapped point highlighted until the next scroll, and the store already clears its own selection on
+   scroll-start (`.interacting`). (`WeightChartHost.handleSelectionChange`.)
+
+5. **Trailing frame + y-axis gap (cosmetics).** (a) The last window looked "open" on the right — added a
+   fixed 1 pt vertical **closing rule** at the plot's trailing edge via a `.chartPlotStyle` trailing overlay
+   (mirrors the leading boundary rule; `.chartPlotStyle` styles the fixed viewport so it stays put as the
+   content scrolls). (b) The y-axis numbers hugged the screen edge — centered each in a fixed 40 pt box
+   (`yAxisLabelWidth`, parity with the legacy `BaseGraphView`) so they sit off the edge with a gap.
+   (`WeightChartView`.)
+
+Net: the second pass's coarse-`matching` + `snapWeightScrollPosition` + distance-aware reflect are all gone;
+positioning is now pure native value-alignment (fine `matching` + boundary `majorAlignment`) committed
+verbatim, with a closed trailing frame.
+
 ---
 
 ## Sweep plan (do at the end, before sign-off)

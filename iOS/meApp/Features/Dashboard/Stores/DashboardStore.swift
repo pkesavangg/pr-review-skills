@@ -959,18 +959,19 @@ class DashboardStore: ObservableObject, DashboardStateProviding {
     }
 
     /// Scroll-END commit for the v2 weight engine (single source of truth). `landed` is where the native
-    /// scroll actually rested. We snap it to the nearest period boundary (round-to-nearest month, not the
-    /// legacy floor → no backward jerk), commit that ONE value as the scroll position, and settle the chart
-    /// (in-place y-axis + windowed ticks) for it. Returns the snapped position so `WeightChartHost` can
-    /// animate the visual scroll to match — collapsing the "native rest vs committed" split that made the
-    /// header / active-month greying / y-axis compute for a window that wasn't on screen. Weight only;
-    /// baby/BPM stay on the legacy manager path (which keeps its own floor snap in `handleScrollPhaseChange`).
-    func commitWeightScroll(landedAt landed: Date) -> Date {
-        let snapped = GraphRenderingConfiguration()
-            .snapWeightScrollPosition(landed, for: state.graph.selectedPeriod)
-        graphManager.updateScrollPosition(to: snapped)
-        settleWeightChart(scrollPosition: snapped)
-        return snapped
+    /// value-aligned scroll actually rested — already on the fine grid (a fling on the period boundary via
+    /// `majorAlignment`, a slow drag on any day / month-1st via `matching`; see
+    /// `WeightChartView.scrollBehavior`). We commit that EXACT position as the scroll position — no re-snap,
+    /// so the stored position == the visible position — and settle the chart (in-place y-axis + windowed
+    /// ticks) for it. Committing raw is what removes the one-unit drift the user saw on release / on
+    /// leave-and-return: an extra "round to nearest grid unit" here could pick a neighbouring day/month, and
+    /// re-adopting that on return jumped the window; trusting native alignment keeps it put. This also
+    /// overrides the legacy manager's month floor-snap in `handleScrollPhaseChange(.idle)` (which fires just
+    /// before this), so month is likewise left exactly where it rests. Weight only; baby/BPM keep the
+    /// legacy manager path.
+    func commitWeightScroll(landedAt landed: Date) {
+        graphManager.updateScrollPosition(to: landed)
+        settleWeightChart(scrollPosition: landed)
     }
 
     /// V4 (6a): apply a validated weight-chart selection at `date` (already snapped to a real entry by the
