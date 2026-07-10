@@ -29,12 +29,12 @@ Anything that looks like a credential committed to source. Expand the existing o
 
 **Swift example:**
 ```swift
-let apiKey = "sk_live_51HxYZAbCdEfGhIjKlMnOpQrStUvWxYz"   // ❌
+let apiKey = "sk_live_EXAMPLE_redacted_not_a_real_key"   // ❌ hardcoded secret
 ```
 
 **Kotlin example:**
 ```kotlin
-const val API_KEY = "AIzaSyDPv8Hd8B1ZUH3QvX2P5j6mC2bX7w9KqLk"   // ❌
+const val API_KEY = "AIzaSyEXAMPLE_redacted_key"   // ❌ hardcoded secret
 ```
 
 **Sniff.** Run each regex against added `+` lines across all changed files (not just `.swift` / `.kt` — also `.plist`, `.xml`, `.json`, `.yaml`, `.properties`, build configs).
