@@ -42,8 +42,17 @@ struct GraphView: View {
         return dashboardStore.continuousOperations.max { $0.date < $1.date }?.date
     }
 
-    // Whether the selection callout is currently visible for the active period
+    // Whether the selection callout is currently visible for the active period. When true, the date/range
+    // label above the chart is hidden (opacity 0) — the selected date is shown by the callout instead
+    // (floating above the line for the new engine; the legacy floating callout otherwise), so it must not
+    // ALSO appear under the weight.
     private var isShowingSelectionCallout: Bool {
+        // MOB-518: the new weight engine drives selection through the STORE, not the section VMs (which stay
+        // unselected for weight). Read the store's crosshair so the redundant selected-date label under the
+        // weight hides on selection, matching the legacy behaviour.
+        if usesNewWeightEngine {
+            return dashboardStore.state.graph.showCrosshair
+        }
         switch dashboardStore.state.graph.selectedPeriod {
         case .week:
             return weekSectionViewModel.showCrosshair

@@ -105,7 +105,9 @@
 - **Selection callout** shows the selected date **above the line**, floated in the gap over the plot (a
   `.chartBackground` preference feeds the selected x to an `.overlayPreferenceValue` that overflows the
   chart's top edge — so it doesn't compress the plot), x-clamped to stay fully visible at the left/right
-  edges; the value stays in the header. ✅ (2026-07-10)
+  edges; the value stays in the header. The **redundant date/range line under the big weight** is hidden on
+  selection (`GraphView.isShowingSelectionCallout` reads the store's `showCrosshair` for the new engine) so
+  the date isn't shown twice; the period-range label returns when nothing is selected. ✅ (2026-07-10)
 - Tapping the middle/approx area snaps to the nearest real entry (never a phantom point). ✗ (V4)
 
 ## 8. Header value & label (above the chart)
@@ -120,10 +122,16 @@
 
 ## 9. Goal
 
-- **Goal chip callout** rendered at the goal weight's y-position (trailing edge), when a goal is set. ✗ (V4)
+- **Goal chip callout** rendered at the goal weight's y-position, floated **ON the trailing y-axis marks**
+  (not inside the plot) when a goal is set: a `.chartBackground` preference feeds the clamped goal y-position
+  to an `.overlayPreferenceValue` that `.position`s `GoalWeightChipView` at `width − yAxisLabelWidth/2` (over
+  the y-axis number column), matching the legacy `chartFrame.width − 20` placement. Clamped into the y-domain
+  so it stays on-screen when the goal is far outside the visible range. ✅ (2026-07-10; earlier V4 pass used a
+  `RuleMark(y:).annotation(position: .trailing)` that pinned it to the plot's inner edge, left of the axis —
+  replaced.)
 - Goal influences the **y-axis** (goal-centric fallback ticks when there's no data; goal kept in view). ◑
   (calculateYAxis already receives `goalWeightForDisplay`) 
-- Goal weight shown in **display units**. ✗ (chip — V4)
+- Goal weight shown in **display units**. ✅ (chip label via `displayManager.formatWeightDisplayText`)
 
 ## 10. Weightless mode
 

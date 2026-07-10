@@ -31,6 +31,16 @@ private struct SelectionCalloutXKey: PreferenceKey {
     }
 }
 
+/// V4 (6c): carries the goal value's y-position out of the plot so the goal chip can be floated over the
+/// y-axis label column as an overlay — parity with the legacy `BaseGraphView`, which `.position`s the chip
+/// at `chartFrame.width - 20` (i.e. ON the trailing y-axis marks), not at the plot's inner trailing edge.
+private struct GoalChipYKey: PreferenceKey {
+    static let defaultValue: CGFloat? = nil
+    static func reduce(value: inout CGFloat?, nextValue: () -> CGFloat?) {
+        if let next = nextValue() { value = next }
+    }
+}
+
 struct WeightChartView: View {
 
     let model: ChartModel
@@ -187,6 +197,15 @@ struct WeightChartView: View {
         return min(max(plot.minX + xInPlot, lower), upper)
     }
 
+    /// V4 (6c) — the (clamped) goal value's y-position in the chart's coordinate space, so the goal chip can
+    /// be floated over the trailing y-axis label column (see `GoalChipYKey`). `nil` when no goal is set.
+    private func goalChipY(_ proxy: ChartProxy, _ geo: GeometryProxy) -> CGFloat? {
+        guard let goalValue = clampedGoalValue,
+              let anchor = proxy.plotFrame,
+              let yInPlot = proxy.position(forY: goalValue) else { return nil }
+        return geo[anchor].minY + yInPlot
+    }
+
     var body: some View {
         Chart {
             ForEach(model.orderedSeriesNames, id: \.self) { name in
@@ -229,15 +248,10 @@ struct WeightChartView: View {
                     .lineStyle(StrokeStyle(lineWidth: 1))
             }
 
-            // V4 (6c) — goal chip: a trailing-edge pill at the goal's y-level (no visible rule, matching the
-            // legacy floating chip). Clamped into the y-domain so it stays on-screen when the goal is far off.
-            if let goalLabel, let goalValue = clampedGoalValue {
-                RuleMark(y: .value("Goal", goalValue))
-                    .foregroundStyle(.clear)
-                    .annotation(position: .trailing, alignment: .center, spacing: 0) {
-                        GoalWeightChipView(label: goalLabel, theme: theme)
-                    }
-            }
+            // V4 (6c) — the goal chip is NOT drawn inside the plot (an `.annotation(position: .trailing)` pins
+            // it to the plot's INNER trailing edge, left of the y-axis numbers — the "shows differently" bug).
+            // It's floated as an overlay over the trailing y-axis label column instead (see `goalChipY` +
+            // the `.overlayPreferenceValue` below), matching the legacy chip's on-axis placement.
         }
         .chartXSelection(value: $selectedX)
         .chartYScale(domain: yDomain)
@@ -306,7 +320,9 @@ struct WeightChartView: View {
         // the label and doesn't reserve plot space, so the graph is NOT compressed.
         .chartBackground { proxy in
             GeometryReader { geo in
-                Color.clear.preference(key: SelectionCalloutXKey.self, value: calloutX(proxy, geo))
+                Color.clear
+                    .preference(key: SelectionCalloutXKey.self, value: calloutX(proxy, geo))
+                    .preference(key: GoalChipYKey.self, value: goalChipY(proxy, geo))
             }
         }
         .chartLegend(.hidden)
@@ -332,6 +348,19 @@ struct WeightChartView: View {
                     .foregroundStyle(theme.textSubheading)
                     .fixedSize()
                     .position(x: calloutX, y: -12)
+            }
+        }
+        // V4 (6c) — the goal chip floats over the trailing y-axis label column at the goal's y-level, so it
+        // reads as sitting ON the y-axis marks (parity with the legacy `chartFrame.width - 20` placement),
+        // not adrift inside the plot. `width - yAxisLabelWidth/2` centres it on the y-axis number column
+        // (the number is centred in a `yAxisLabelWidth`-wide box at the trailing edge), and the y-domain
+        // clamp on `clampedGoalValue` keeps it on-screen when the goal sits far outside the visible range.
+        .overlayPreferenceValue(GoalChipYKey.self) { goalY in
+            if let goalY, let goalLabel {
+                GeometryReader { geo in
+                    GoalWeightChipView(label: goalLabel, theme: theme)
+                        .position(x: geo.size.width - yAxisLabelWidth / 2, y: goalY)
+                }
             }
         }
     }

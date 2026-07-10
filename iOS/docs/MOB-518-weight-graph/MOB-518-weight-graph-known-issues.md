@@ -194,6 +194,38 @@ edge. *(If `y: -12` sits slightly high/low, it's a one-number tweak.)*
 
 ---
 
+## Selection-label cleanup + goal-chip on-axis placement (2026-07-10, fifth pass) ✅ built
+
+Two device observations after the fourth pass, both cosmetic-but-visible. Fixed in the working tree
+(`GraphView` · `WeightChartView`).
+
+1. **Redundant selected-date label under the weight.** With the fourth pass floating the date ABOVE the line,
+   the OLD date/range line that sits *under* the big weight number ("jul 9, 2026") was still showing on
+   selection too — the same date in two places. **Cause:** that line is `GraphView`'s `weightLabel`, hidden on
+   selection via `.opacity(isShowingSelectionCallout ? 0 : 1)`; but `isShowingSelectionCallout` only read the
+   legacy per-section VMs' `showCrosshair`, and the new engine drives selection through the **store**, so the
+   flag stayed false → the label never hid. **Fix:** `isShowingSelectionCallout` short-circuits to
+   `dashboardStore.state.graph.showCrosshair` when `usesNewWeightEngine`, so the under-weight label hides on
+   selection (the floating callout is the only date shown) and the period-range label still shows when nothing
+   is selected — matching the legacy behaviour. (`GraphView.isShowingSelectionCallout`.)
+
+2. **Goal chip floated inside the plot, not on the y-axis marks.** The green goal chip rendered adrift in the
+   plot near the right edge, LEFT of the y-axis numbers, instead of sitting ON the axis at the goal level.
+   **Cause:** it was drawn as a `RuleMark(y:).annotation(position: .trailing)`, whose trailing anchor is the
+   plot's INNER right edge — inboard of the y-axis label column. **Fix:** switch to the same
+   overlay-preference technique the date callout uses — `.chartBackground` publishes the (clamped) goal value's
+   y-position (`goalChipY` → `GoalChipYKey`), and an `.overlayPreferenceValue` floats `GoalWeightChipView` at
+   `x: width − yAxisLabelWidth/2` (dead-center over the y-axis number column), `y: goalY`. That's parity with
+   the legacy `BaseGraphView`, which `.position`s its chip at `chartFrame.width − 20` (the 40 pt-wide axis
+   label box → `−20` = its center). The in-plot `RuleMark` chip is removed. (`WeightChartView` — `goalChipY`,
+   `GoalChipYKey`, the new `.overlayPreferenceValue`.)
+
+**Verify on device:** selecting a point removes the date under the weight (only the floating callout shows the
+date; the period-range label returns when nothing is selected); the goal chip sits ON the y-axis at the goal
+value across all periods (clamped on-screen when the goal is far outside the visible range).
+
+---
+
 ## Sweep plan (do at the end, before sign-off)
 
 1. After **A2** + **Phase 4** (single-event settle) → re-check **#3** (scroll-lock) and **#2** (switch heaviness).
