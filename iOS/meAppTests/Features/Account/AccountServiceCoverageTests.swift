@@ -21,10 +21,12 @@ struct AccountServiceCoverageTests {
         let logger = MockLoggerService()
         let keychain = MockKeychainService()
         let bluetooth = MockBluetoothService()
+        let notification = MockNotificationHelperService()
         let networkMonitor = networkMonitor ?? MockNetworkMonitor(isConnected: true)
 
         TestDependencyContainer.reset()
         TestDependencyContainer.registerBase(logger: logger, keychain: keychain, bluetooth: bluetooth)
+        DependencyContainer.shared.register(notification as NotificationHelperServiceProtocol)
 
         let sut = AccountService(
             apiRepo: api,
@@ -33,6 +35,18 @@ struct AccountServiceCoverageTests {
             networkMonitor: networkMonitor,
             performInitialLoad: false
         )
+        // Bind the @Injector-resolved dependencies directly on the SUT instead of relying on
+        // lazy resolution from the shared DependencyContainer. Swift Testing runs suites in
+        // parallel (xcodebuild's -parallel-testing-enabled NO only governs XCTest), so another
+        // suite's `TestDependencyContainer.reset()` can clear the container between registration
+        // and first access — making `@Injector` fatalError and taking the whole run down. The
+        // logout error paths touch `logger` (accountNotFound) and `keychainService` (success),
+        // so binding them here keeps these failure-case tests deterministic. Mirrors the
+        // EntryService suite, which already injects its logger directly.
+        sut.logger = logger
+        sut.keychainService = keychain
+        sut.bluetoothService = bluetooth
+        sut.notificationService = notification
         DependencyContainer.shared.register(sut as AccountServiceProtocol)
         return (sut, api, local)
     }
