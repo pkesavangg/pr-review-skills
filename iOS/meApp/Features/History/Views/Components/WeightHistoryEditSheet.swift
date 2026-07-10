@@ -21,6 +21,15 @@ struct WeightHistoryEditSheet: View {
     /// Adult weight unit (kg vs lb), captured from the store at presentation time.
     private let isMetric: Bool
 
+    /// Called just before the sheet dismisses after a successful save. The `Bool` reports
+    /// whether the entry's calendar date changed — the parent uses it to pop back to the
+    /// History list (the edited entry may have moved to a different month) instead of leaving
+    /// the user on the now-stale month detail (MOB-1172).
+    private let onSaved: ((_ dateChanged: Bool) -> Void)?
+
+    /// The entry's original calendar date at presentation time, used to detect a date change.
+    private let originalDate: Date
+
     /// Reactive form driving the editable fields. Reusing `ManualEntryForm` (the same form the
     /// create screen uses) gives the edit sheet identical field-level validation and error
     /// messages: weight is required / >0 / <= max, and each body metric is clamped to 0–99.9.
@@ -42,10 +51,12 @@ struct WeightHistoryEditSheet: View {
     /// Weight unit the form validates against, derived from the adult weight preference.
     private var weightUnit: WeightUnit { isMetric ? .kg : .lb }
 
-    init(entry: EntrySnapshot, isMetric: Bool) {
+    init(entry: EntrySnapshot, isMetric: Bool, onSaved: ((_ dateChanged: Bool) -> Void)? = nil) {
         self.entry = entry
         self.isMetric = isMetric
+        self.onSaved = onSaved
         let parsed = DateTimeTools.parse(entry.entryTimestamp) ?? Date()
+        self.originalDate = parsed
         let scale = entry.scaleEntry
         let storedWeight = scale?.weight ?? 0
         let displayWeight = ConversionTools.convertStoredToDisplay(storedWeight, isMetric: isMetric)
@@ -253,6 +264,7 @@ struct WeightHistoryEditSheet: View {
         isSaving = true
         let storedWeight = ConversionTools.convertDisplayToStored(weightDisplay, isMetric: isMetric)
         let timestamp = DateTimeTools.isoString(date: entryDate, time: entryTime, useUTC: true)
+        let dateChanged = !Calendar.current.isDate(entryDate, inSameDayAs: originalDate)
         Task {
             await historyStore.updateWGEntry(
                 old: entry,
@@ -265,6 +277,7 @@ struct WeightHistoryEditSheet: View {
                 entryTimestamp: timestamp
             )
             isSaving = false
+            onSaved?(dateChanged)
             dismiss()
         }
     }

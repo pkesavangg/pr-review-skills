@@ -108,8 +108,13 @@ struct ManualEntryScreen: View {
             ToolbarItemGroup(placement: .keyboard) {
                 Spacer()
                 Button(commonLang.done) {
+                    // Route through the shared helper so we both clear focus AND force
+                    // resignFirstResponder. A multiline `notes` TextEditor inside the
+                    // ScrollView does not reliably dismiss from a programmatic
+                    // `focusedField = nil` alone (SwiftUI quirk), so hideKeyboard() is
+                    // required to actually drop the keyboard. (MOB-1172)
                     withAnimation {
-                        focusedField = nil
+                        dismissKeyboardAndUnfocus()
                     }
                 }
             }
