@@ -285,8 +285,8 @@ enum PercentileChartWindowing {
             return points[matchIndex]
         }
 
-        let previousPoint = SortedArrayIndex.last(in: points, where: { $0.xDate < boundary }).map { points[$0] }
-        let nextPoint = SortedArrayIndex.first(in: points, where: { $0.xDate > boundary }).map { points[$0] }
+        let previousPoint = SortedArrayIndex.last(in: points) { $0.xDate < boundary }.map { points[$0] }
+        let nextPoint = SortedArrayIndex.first(in: points) { $0.xDate > boundary }.map { points[$0] }
 
         let segment: (start: PlottedGraphSeries, end: PlottedGraphSeries)?
         switch (previousPoint, nextPoint) {

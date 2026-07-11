@@ -18,6 +18,7 @@
 //  lines + percentile styling here once weight is signed off.
 //
 
+import Accessibility
 import Charts
 import SwiftUI
 
@@ -356,6 +357,10 @@ struct WeightChartView: View {
             }
         }
         .chartLegend(.hidden)
+        // VoiceOver Audio Graph — parity with the legacy `BaseGraphView.accessibilityChartDescriptor`
+        // (MOB-518 review: the v2 weight chart had dropped it, so the primary chart exposed nothing to
+        // VoiceOver). Built from the immutable `model` (see the `AXChartDescriptorRepresentable` extension).
+        .accessibilityChartDescriptor(self)
         .chartScrollableAxes(isScrollable ? .horizontal : [])
         .chartXVisibleDomain(length: ChartDomainSanitizer.positiveLength(visibleLength))
         .chartScrollPosition(x: $scrollX)
@@ -393,5 +398,66 @@ struct WeightChartView: View {
                 }
             }
         }
+    }
+}
+
+// MARK: - AXChartDescriptorRepresentable (VoiceOver Audio Graph)
+
+/// Exposes the weight chart to VoiceOver as a navigable Audio Graph, mirroring the legacy
+/// `BaseGraphView` descriptor (title "Weight trend chart", categorical Date x-axis, numeric Weight y-axis,
+/// per-series data points). Built purely from the immutable `ChartModel` this view already holds — no store
+/// access — so it stays in lock-step with what's drawn. MOB-518 review restored this after the v2 rebuild
+/// had left the primary chart with no accessibility semantics.
+extension WeightChartView: AXChartDescriptorRepresentable {
+    func makeChartDescriptor() -> AXChartDescriptor {
+        let dateFormatter = DateFormatter()
+        dateFormatter.dateStyle = .medium
+        dateFormatter.timeStyle = .none
+
+        // Ordered unique date strings across all plotted series (full resolution) → categorical x-axis.
+        let allPoints = model.orderedSeriesNames
+            .flatMap { model.fullResolution[$0] ?? [] }
+            .sorted { $0.original.date < $1.original.date }
+        var seenDates = Set<String>()
+        var orderedDateStrings: [String] = []
+        for point in allPoints {
+            let str = dateFormatter.string(from: point.original.date)
+            if seenDates.insert(str).inserted { orderedDateStrings.append(str) }
+        }
+
+        let xAxis = AXCategoricalDataAxisDescriptor(
+            title: DashboardStrings.accChartXAxisName,
+            categoryOrder: orderedDateStrings.isEmpty ? ["–"] : orderedDateStrings
+        )
+
+        // `yDomain` is already sanitized (finite, positive-width); the guard is belt-and-suspenders.
+        let safeRange = yDomain.lowerBound < yDomain.upperBound
+            ? yDomain
+            : yDomain.lowerBound...(yDomain.lowerBound + 1)
+        let yAxis = AXNumericDataAxisDescriptor(
+            title: DashboardStrings.accChartWeightYAxisName,
+            range: safeRange,
+            gridlinePositions: model.yAxis.ticks
+        ) { yLabel($0) }
+
+        var seriesDescriptors = model.orderedSeriesNames.compactMap { name -> AXDataSeriesDescriptor? in
+            guard let points = model.fullResolution[name], !points.isEmpty else { return nil }
+            let dataPoints = points
+                .sorted { $0.original.date < $1.original.date }
+                .map { AXDataPoint(x: dateFormatter.string(from: $0.original.date), y: $0.original.value) }
+            return AXDataSeriesDescriptor(name: name, isContinuous: true, dataPoints: dataPoints)
+        }
+        if seriesDescriptors.isEmpty {
+            seriesDescriptors = [AXDataSeriesDescriptor(name: "", isContinuous: true, dataPoints: [])]
+        }
+
+        return AXChartDescriptor(
+            title: DashboardStrings.accWeightChartLabel,
+            summary: nil,
+            xAxis: xAxis,
+            yAxis: yAxis,
+            additionalAxes: [],
+            series: seriesDescriptors
+        )
     }
 }

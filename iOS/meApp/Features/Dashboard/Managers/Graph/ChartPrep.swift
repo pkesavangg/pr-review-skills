@@ -38,7 +38,7 @@ enum ChartPrep {
     static let tickWindowRadius: Double = 10
 
     /// Build the weight `ChartModel` for one period at one scroll position.
-    static func buildWeight( // swiftlint:disable:this function_parameter_count
+    static func buildWeight( // swiftlint:disable:this function_parameter_count function_body_length
         operations: [BathScaleWeightSummary],
         period: TimePeriod,
         scrollPosition: Date,
@@ -75,7 +75,13 @@ enum ChartPrep {
         //    identical at every scroll position, so Swift Charts scrolls natively within it and a y-settle
         //    never rebuilds the scroll region. `visibleDomainLength(for:)` (no position) → month uses the
         //    constant window, not the per-month duration, so scrolling between months doesn't re-lay-out.
-        let visibleLength = config.visibleDomainLength(for: period)
+        // Weight engine uses a 7-day WEEK viewport (== the Sun→Sun value-alignment stride) for the visible
+        // window + y-axis window. The shared `week` (7.15) stays for legacy baby/BPM — MOB-518 review: the
+        // flat 7 there had silently narrowed their week view. Non-week periods use the shared config value.
+        // (fullXDomain / tick-window keep the shared default; that's a sub-day extent delta, snapping-neutral.)
+        let visibleLength = period == .week
+            ? DashboardConstants.TimeInterval.weightWeekWindow
+            : config.visibleDomainLength(for: period)
         // MOB-518 — FULL scroll domain (scroll-independent, V-A5a): continuous scrolling through all history
         // with no walls and no scroll-view rebuild on settle. The hang is avoided by WINDOWING the ticks
         // (below), not the domain — the AxisMarks count was the real cost, not the canvas.
@@ -87,13 +93,20 @@ enum ChartPrep {
         //    normalize the co-plotted metric series consistently. (`weightYAxis` stays for the in-place
         //    weight-only settle in `settleWeightChart`.)
         let yAxisOps = weightYAxisOperations(
-            operations: operations, period: period, scrollPosition: scrollPosition,
-            visibleDomainLength: visibleLength, preparer: preparer
+            operations: operations,
+            period: period,
+            scrollPosition: scrollPosition,
+            visibleDomainLength: visibleLength,
+            preparer: preparer
         )
         let scale = YAxisCalculator.calculateYAxis(
-            operations: yAxisOps, goalWeight: goalWeight, isWeightlessMode: isWeightlessMode,
-            anchorWeight: anchorWeight, convertStoredWeightToDisplay: convertWeight,
-            chartHeight: chartHeight, lastScale: lastYAxis
+            operations: yAxisOps,
+            goalWeight: goalWeight,
+            isWeightlessMode: isWeightlessMode,
+            anchorWeight: anchorWeight,
+            convertStoredWeightToDisplay: convertWeight,
+            chartHeight: chartHeight,
+            lastScale: lastYAxis
         )
         let yAxis = YAxisModel(domain: scale.domain, ticks: scale.ticks, average: scale.average)
 

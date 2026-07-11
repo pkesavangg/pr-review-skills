@@ -9,6 +9,12 @@
 >
 > **v2 coverage key:** ✅ done in the new engine · ◑ partial · ✗ not yet. (Ties each feature to the §8/§9
 > architecture backlog in the v2 engine design doc.)
+>
+> **⚠️ Authoritative status lives elsewhere.** The per-section ✅/◑/✗ markers below are refreshed opportunistically
+> and can lag the code. For the canonical remaining-work list see
+> [v2-engine-design §10](MOB-518-weight-graph-v2-engine-design.md#10-remaining-roadmap--the-single-ordered-list-2026-07-09)
+> and the [known-issues log](MOB-518-weight-graph-known-issues.md); where they disagree with a marker here, they win.
+> (Updated 2026-07-11: V-A1…A5, V3, V4, V6 are all done; the remaining work is device sign-off + Phase T tests.)
 
 ---
 
@@ -17,8 +23,9 @@
 - **Four period sections:** Week · Month · Year · Total (`TimePeriod`). A segmented control switches them. ✅
 - **Scrollable horizontally** in Week / Month / Year; **Total is NOT scrollable** — it shows the entire
   dataset in one non-paged view, X-axis hidden. ✅
-- **Per-period visible window ("domain length"):** Week ≈ 7.15 days · Month = 32 days (actually the containing
-  calendar month) · Year = 365 days · Total = full padded span. ◑ (Total span hacked, see V-A5)
+- **Per-period visible window ("domain length"):** Week = **7 days** (weight engine — exactly the Sun→Sun
+  value-alignment stride, via `DashboardConstants.weightWeekWindow`; the shared `week` stays 7.15 for legacy
+  baby/BPM) · Month = the containing calendar month · Year = 365 days · Total = full padded span. ✅
 - **X-axis present** for Week/Month/Year; **hidden** for Total. ◑ (labels not at parity yet — V3)
 - Only the active period renders; inactive section VMs are torn down on switch.
 
@@ -182,7 +189,8 @@
 ## 12. Month "active month" greying
 
 - In Month view, when a full calendar month is visible, points **outside** that month interval render with
-  **disabled opacity** (greyed). ✗ (V4)
+  **disabled opacity** (greyed) — `WeightChartView.isOutsideActiveMonth` + the muted "outside" colors, driven
+  by `displayManager.activeMonthInterval` (suppressed while scrolling). ✅ (V4-6f)
 
 ## 13. Lifecycle & initial state
 
@@ -215,16 +223,20 @@
 
 ## Parity gap summary (what the new engine still owes)
 
-Most gaps are **selection + header + goal + metrics (V4)** and **x-axis rendering parity (V3)** — and both are
-blocked by the **store-integration architecture (V-A1…V-A3)** and the **scroll-geometry source (V-A5)**. In
-priority order that's exactly §8/§9 of the v2 design doc:
+**The behavioural/rendering rebuild is feature-complete on `develop`.** The store-integration architecture
+(V-A1…V-A4), scroll geometry + snap + initial position (V-A5), selection/header/goal/weightless/metrics/
+active-month greying (V4), and x-axis rendering parity (V3) are all **done** and flipped on for weight (V6).
+See [v2-engine-design §10](MOB-518-weight-graph-v2-engine-design.md#10-remaining-roadmap--the-single-ordered-list-2026-07-09)
+for the itemised status.
 
-1. **V-A4 decision** (who owns scroll/selection) → then **A3 → A1 → A2** (store owns the published model +
-   lifecycle).
-2. **V-A5** (real scroll geometry: snap, initial position, x-domain).
-3. **V4** (selection/crosshair, header value+label, window average, goal chip, weightless label, metric co-plot,
-   active-month greying).
-4. **V3 cosmetics** (vertical gridlines, x-axis labels, selected-point size).
+What genuinely remains before the epic closes:
 
-*Values verified against the working tree 2026-07-09. Line/point sizes taken from `BaseSectionViewModel`
-(code), not the stale `GraphViewFlow.md` table.*
+1. **Device sign-off** — full parity pass across week/month/year/total + Instruments Animation Hitches
+   (< ~5 ms/s, no frame > 16.7 ms) on a large account. Some known-issues items are still "verify on device."
+2. **Phase T — automated tests** for the new engine core (golden model parity, decimation-preserves-shape,
+   settle-once, prep 0× during scroll). Only the shared pure helpers are covered so far.
+3. **Minor deferred:** last-scale y-axis hinting (`lastScale` passed `nil`); optional off-main `ChartPrep`;
+   the wholesale legacy `BaseGraphView` delete (waits for baby/BPM to migrate — separate epic).
+
+*Marker staleness note: the per-section ✅/◑/✗ above may still lag; §10 of the design doc + the known-issues
+log are the authoritative status. Last spec pass 2026-07-11.*

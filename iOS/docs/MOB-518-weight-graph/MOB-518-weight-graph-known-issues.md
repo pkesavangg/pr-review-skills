@@ -338,6 +338,46 @@ still snaps to the nearest reading.
 
 ---
 
+## Pre-PR self-review fixes (2026-07-11, ninth pass) ✅ built
+
+Ran the five specialist review skills (lint / regression / security / issue-coverage / accessibility) against the
+whole branch diff vs `develop`. Security = PASS; lint = 0 errors / non-blocking warnings. The actionable findings
+and what was done:
+
+1. **Accessibility — VoiceOver chart descriptor regression (fixed).** The v2 `WeightChartView` had **no**
+   accessibility semantics, so the primary chart lost the Audio Graph the legacy `BaseGraphView` exposes via
+   `AXChartDescriptorRepresentable` / `.accessibilityChartDescriptor`. Restored: `WeightChartView` now conforms
+   to `AXChartDescriptorRepresentable` (title "Weight trend chart", categorical Date x-axis, numeric Weight
+   y-axis with the model's ticks + `yLabel` formatter, per-series data points) built purely from `ChartModel`,
+   and applies `.accessibilityChartDescriptor(self)`. Baby/BPM were unaffected (still on `BaseGraphView`).
+
+2. **Regression — shared `week` constant narrowed the baby/BPM week view (fixed by construction).** The snap
+   rework had changed `DashboardConstants.TimeInterval.week` 7.15→7, but that constant isn't weight-scoped — it
+   also feeds the legacy `BaseSectionViewModel.visibleDomainLength` + axis padding for baby/BPM, silently
+   narrowing their week window ~2%. **Fix:** restored the shared `week` to 7.15 (baby/BPM byte-identical to
+   shipped) and added a weight-only `DashboardConstants.TimeInterval.weightWeekWindow = 7`, threaded through the
+   v2-only geometry (`GraphRenderingConfiguration.visibleDomainLength(…, weekWindow:)`, `fullXDomain`,
+   `boundedXDomain`, and `ChartPrep`). The weight engine keeps its 7-day value-alignment window; legacy uses the
+   7.15 default. (The weekly tick stride is calendar-based, so ticks were never affected.)
+
+3. **Hygiene:** refreshed a stale `BaseSectionViewModelTests` name (`forceScrollPositionUpdate` no longer does the
+   removed +0.001 nudge); cleared the source-side lint warnings (`ChartPrep` multiline args, `BaseGraphChartContent`
+   trailing closures); refreshed stale feature-spec markers (§1 week window, §12 active-month greying, the
+   "Parity gap summary").
+
+### Still open — needs device verification (not changed in code)
+
+- **`scrollPosition` de-`@Published` timing on the legacy (baby/BPM) path.** The branch made
+  `BaseSectionViewModel.scrollPosition` a plain `var` and dropped the `forceScrollPositionUpdate` nudge. Weight
+  renders through `WeightChartHost` (unaffected), but baby/BPM still use `BaseSectionViewModel`; the period-switch
+  path sets `scrollPosition` directly without bumping `scrollAdoptToken`, relying on `configure(with:)`'s
+  synchronous set + `@Published` cache mutation to force the re-render — "plausibly fine by side-effect, not by
+  construction." **Verify on device:** baby/BPM **period switch**, **cold-start / tab-return positioning**, and
+  **live-scroll settle**. (No Combine `$scrollPosition` subscribers exist, so this is a render-timing question,
+  not a data one.)
+
+---
+
 ## Sweep plan (do at the end, before sign-off)
 
 1. After **A2** + **Phase 4** (single-event settle) → re-check **#3** (scroll-lock) and **#2** (switch heaviness).
