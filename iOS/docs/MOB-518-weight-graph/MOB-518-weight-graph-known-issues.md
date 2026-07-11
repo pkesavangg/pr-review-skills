@@ -265,6 +265,39 @@ the "Wed" line).
 
 ---
 
+## Metric tiles didn't follow the crosshair (2026-07-11, seventh pass) ✅ built
+
+**Device observation:** tapping a graph point updated the weight header but the metric tiles below the chart
+(bmi / body fat % / muscle % …) did NOT change to that point's values.
+
+**Cause — a v2-engine gap.** The tiles (`MetricCardView` / `MetricGridUIKitView`, shared chrome below the
+chart — NOT `WeightSnapshotCard`) render `state.metrics.metricsToShow`, a pre-computed `MetricItem` string
+array mutated only by imperative `DashboardMetricsManager` calls. The weight header updates on tap because
+`DashboardDisplayManager.displayWeight` reactively reads `state.graph.selectedPoint`; the tiles have no such
+reactive path. The **legacy** engine refreshed the tiles on selection (`handleCompleteChartSelection` →
+`updateMetrics(with: selectedPoint)`), but the v2 selection path
+(`WeightChartHost.handleSelectionChange → DashboardStore.selectWeightPoint → applyChartSelectionSync`) only set
+the graph-selection state and never called the metrics manager. Per-point metric values already exist on every
+`BathScaleWeightSummary`, so the data was there — just not wired.
+
+**Fix (`DashboardStore`).** `selectWeightPoint(at:)` now calls `displayManager.updateMetricsForCurrentView()`
+after applying the selection (and on clear), and `commitWeightScroll` calls it at scroll-end. That method
+already branches: selected point → `updateMetrics(with: selectedPoint)` (per-point bmi/fat/muscle/…);
+crosshair on an empty day → placeholders; no selection → visible-window average. It's guarded by `isScrolling`
+and de-duped by `MetricsUpdateSignature`, so it runs once per real change — NOT the per-frame legacy settle the
+v2 engine deliberately skips. Net: the tiles now track the header — selected point shows that point's metrics,
+no selection shows the visible-window average — matching the legacy engine. Weight (v2) only; baby/BPM legacy
+path unchanged.
+
+Also noted (docs only): the metric **co-plot line** (tapping a tile co-plots that metric as a 2nd normalized
+line) is already wired in the v2 engine (`ChartPrep.buildWeight` + `buildNormalizedMetricSeriesWithDomain`,
+toggled by `selectedMetricLabel`), despite feature-spec §11 previously marking it "✗ V4" — spec corrected.
+
+**Verify on device:** tap a point → the bmi / body fat % / muscle % boxes change to that point's values;
+scroll away → they revert to the visible-window average (in sync with the header).
+
+---
+
 ## Sweep plan (do at the end, before sign-off)
 
 1. After **A2** + **Phase 4** (single-event settle) → re-check **#3** (scroll-lock) and **#2** (switch heaviness).

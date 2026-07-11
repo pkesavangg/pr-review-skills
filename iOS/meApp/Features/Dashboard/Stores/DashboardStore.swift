@@ -972,6 +972,11 @@ class DashboardStore: ObservableObject, DashboardStateProviding {
     func commitWeightScroll(landedAt landed: Date) {
         graphManager.updateScrollPosition(to: landed)
         settleWeightChart(scrollPosition: landed)
+        // A scroll clears the selection, so refresh the metric tiles for the NEW visible window (visible-window
+        // average) — otherwise they'd keep the values of the point the user just scrolled away from, out of sync
+        // with the header. This runs ONCE at scroll-end (isScrolling is already false here) and is de-duped by
+        // `MetricsUpdateSignature`, so it's not the per-frame legacy settle the v2 engine deliberately avoids.
+        displayManager.updateMetricsForCurrentView()
     }
 
     /// V4 (6a): apply a validated weight-chart selection at `date` (already snapped to a real entry by the
@@ -980,9 +985,20 @@ class DashboardStore: ObservableObject, DashboardStateProviding {
     func selectWeightPoint(at date: Date?) {
         guard let date else {
             graphManager.state.clearSelection()
+            // Selection cleared → the metric tiles fall back to the visible-window average / latest (parity
+            // with the header). See below for why the v2 engine has to drive this explicitly.
+            displayManager.updateMetricsForCurrentView()
             return
         }
         graphManager.applyChartSelectionSync(at: date, operations: continuousOperations)
+        // MOB-518: refresh the metric tiles (bmi / body fat % / muscle % …) to the SELECTED point's per-point
+        // values. The legacy engine did this via `handleCompleteChartSelection`'s `updateMetrics` closure;
+        // `applyChartSelectionSync` only sets the graph-selection state (which the weight HEADER reads
+        // reactively), so without this the tiles keep their last latest/average values — the "tiles don't
+        // update on tap" gap. `updateMetricsForCurrentView` branches: selected point → that point's metrics;
+        // crosshair on an empty day → placeholders; no selection → visible-window average. Guarded + de-duped,
+        // so it's a no-op when nothing changed.
+        displayManager.updateMetricsForCurrentView()
     }
 
     var hasAnyEntries: Bool { state.data.hasAnyEntries }

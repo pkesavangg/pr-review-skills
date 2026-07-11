@@ -154,12 +154,18 @@
 ## 11. Metrics (below-chart + co-plot)
 
 - **Below-chart metric tiles:** bmi, body fat %, muscle % (+ more available: water, heart bpm, bone, visceral
-  fat, subcutaneous fat, protein, skeletal muscle, bmr, metabolic age — 4 or 12 by dashboard type). ✗ (owned by
-  `WeightSnapshotCard`, outside the graph view — unaffected by the rebuild, keep working)
+  fat, subcutaneous fat, protein, skeletal muscle, bmr, metabolic age — 4 or 12 by dashboard type). Rendered by
+  `MetricCardView` / `MetricGridUIKitView` (shared chrome below the chart, NOT `WeightSnapshotCard`). ✅
+- **Tiles track the selection:** selecting a point updates the tiles to that point's **per-point** values
+  (`BathScaleWeightSummary` carries them); with no selection they show the **visible-window average**; a
+  crosshair on an empty day shows placeholders. The v2 engine drives this from `DashboardStore.selectWeightPoint`
+  + `commitWeightScroll` → `displayManager.updateMetricsForCurrentView()` (guarded/de-duped), matching the
+  legacy `handleCompleteChartSelection`. ✅ (2026-07-11 — earlier the v2 selection path only updated the header,
+  leaving the tiles stale.)
 - **Metric switching:** selecting a metric co-plots it as a **second line normalized into the weight y-domain**
-  (`buildNormalizedMetricSeriesWithDomain`); the co-plotted line uses a neutral high-contrast color. ✗ (V4 —
-  ChartPrep currently builds the weight series only)
-- Metric availability is filtered to metrics with ≥2 distinct values; metric-info sheet supported. ✗ (V4)
+  (`buildNormalizedMetricSeriesWithDomain`, toggled by `selectedMetricLabel`); the co-plotted line uses a
+  neutral high-contrast color. ✅ (wired in `ChartPrep.buildWeight`; the earlier "✗ V4" was stale)
+- Metric availability is filtered to metrics with ≥2 distinct values; metric-info sheet supported. ✅
 
 ## 12. Month "active month" greying
 
