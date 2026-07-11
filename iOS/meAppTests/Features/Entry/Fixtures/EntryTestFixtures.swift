@@ -306,4 +306,34 @@ enum EntryTestFixtures {
             serverTimestamp: serverTimestamp
         )
     }
+
+    /// A weight-category row as returned by `POST /v3/entries/` — used to
+    /// stub batched-push submit responses.
+    static func makeUnifiedResult(
+        entryId: String,
+        timestamp: String,
+        operationType: String = "create",
+        weight: Int? = 1800
+    ) -> UnifiedEntryResult {
+        UnifiedEntryResult(
+            category: EntryCategory.weight.rawValue,
+            entryId: entryId,
+            operationType: operationType,
+            entryTimestamp: timestamp,
+            serverTimestamp: timestamp,
+            source: "manual",
+            weight: weight,
+            bodyFat: nil,
+            muscleMass: nil,
+            water: nil,
+            bmi: nil,
+            boneMass: nil,
+            impedance: nil,
+            unit: nil,
+            systolic: nil,
+            diastolic: nil,
+            pulse: nil,
+            note: nil
+        )
+    }
 }

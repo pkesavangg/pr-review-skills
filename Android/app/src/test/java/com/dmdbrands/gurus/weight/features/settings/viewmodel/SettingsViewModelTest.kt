@@ -120,7 +120,6 @@ class SettingsViewModelTest {
         assertThat(state.enableTestingFeatures).isFalse()
         assertThat(state.unreadFeedCount).isEqualTo(0)
         assertThat(state.showUnreadFeedIndication).isFalse()
-        assertThat(state.isExportEnabled).isFalse()
         assertThat(state.isBabyProduct).isFalse()
         assertThat(state.hasWeightScale).isFalse()
     }
@@ -147,11 +146,6 @@ class SettingsViewModelTest {
     @Test
     fun `init delegates to notificationSettingsManager initFeedNotificationListener`() {
         verify { notificationSettingsManager.initFeedNotificationListener(any(), any()) }
-    }
-
-    @Test
-    fun `init delegates to dataSettingsManager observeExportEnabled`() {
-        verify { dataSettingsManager.observeExportEnabled(any(), any()) }
     }
 
     // -------------------------------------------------------------------------
@@ -221,12 +215,6 @@ class SettingsViewModelTest {
     fun `SetShowUnreadFeedIndication updates flag`() {
         viewModel.handleIntent(SettingsIntent.SetShowUnreadFeedIndication(true))
         assertThat(viewModel.state.value.showUnreadFeedIndication).isTrue()
-    }
-
-    @Test
-    fun `SetExportEnabled updates isExportEnabled`() {
-        viewModel.handleIntent(SettingsIntent.SetExportEnabled(true))
-        assertThat(viewModel.state.value.isExportEnabled).isTrue()
     }
 
     @Test
@@ -371,12 +359,6 @@ class SettingsViewModelTest {
     fun `LogoutAllAccounts delegates to dataSettingsManager with isLogoutAll true`() {
         viewModel.handleIntent(SettingsIntent.LogoutAllAccounts)
         verify { dataSettingsManager.onLogOutClick(any(), any(), isLogoutAll = true) }
-    }
-
-    @Test
-    fun `ExportData delegates to dataSettingsManager onExportDataClick`() {
-        viewModel.handleIntent(SettingsIntent.ExportData)
-        verify { dataSettingsManager.onExportDataClick(any()) }
     }
 
     @Test

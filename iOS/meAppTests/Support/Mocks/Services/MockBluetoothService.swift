@@ -28,6 +28,8 @@ final class MockBluetoothService: BluetoothServiceProtocol {
     var cancelWifiResult: Result<Void, BluetoothServiceError> = .success(())
     var startLiveMeasurementResult: Result<Void, BluetoothServiceError> = .success(())
     var stopLiveMeasurementResult: Result<Void, BluetoothServiceError> = .success(())
+    var updateFirmwareResult: Result<Void, BluetoothServiceError> = .failure(.notImplemented)
+    var clearDataResult: Result<Void, BluetoothServiceError> = .failure(.notImplemented)
 
     private(set) var disconnectConnectedScalesCalls = 0
     private(set) var scanForPairingCalls = 0
@@ -54,6 +56,12 @@ final class MockBluetoothService: BluetoothServiceProtocol {
     private(set) var reapplySkipDevicesExcludingPairedCalls = 0
     private(set) var startLiveMeasurementCalls = 0
     private(set) var stopLiveMeasurementCalls = 0
+    private(set) var updateFirmwareCalls = 0
+    private(set) var clearDataCalls = 0
+    private(set) var lastUpdateFirmwareBroadcastId: String?
+    private(set) var lastUpdateFirmwareTimestamp: UInt32?
+    private(set) var lastClearDataBroadcastId: String?
+    private(set) var lastClearDataType: DeviceClearType?
     private(set) var lastConnectedWifiSSIDBroadcastId: String?
     private(set) var lastUpdateSettingBroadcastId: String?
     private(set) var lastUpdateSettings: [DeviceSetting] = []
@@ -207,8 +215,18 @@ final class MockBluetoothService: BluetoothServiceProtocol {
         lastUpdateSettings = settings
         return updateSettingResult
     }
-    func updateFirmware(broadcastId: String, timestamp: UInt32) async -> Result<Void, BluetoothServiceError> { .failure(.notImplemented) }
-    func clearData(broadcastId: String, dataType: DeviceClearType) async -> Result<Void, BluetoothServiceError> { .failure(.notImplemented) }
+    func updateFirmware(broadcastId: String, timestamp: UInt32) async -> Result<Void, BluetoothServiceError> {
+        updateFirmwareCalls += 1
+        lastUpdateFirmwareBroadcastId = broadcastId
+        lastUpdateFirmwareTimestamp = timestamp
+        return updateFirmwareResult
+    }
+    func clearData(broadcastId: String, dataType: DeviceClearType) async -> Result<Void, BluetoothServiceError> {
+        clearDataCalls += 1
+        lastClearDataBroadcastId = broadcastId
+        lastClearDataType = dataType
+        return clearDataResult
+    }
     func updateUserProfileForR4Scales() async -> Result<[String], BluetoothServiceError> {
         updateUserProfileForR4ScalesCalls += 1
         return updateUserProfileForR4ScalesResult

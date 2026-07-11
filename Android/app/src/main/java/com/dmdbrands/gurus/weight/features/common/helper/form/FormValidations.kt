@@ -43,7 +43,7 @@ object ValidationMessages {
   const val BLANK = "this field is required"
   const val INVALID_WEIGHT = "invalid weight"
   const val KG_RANGE = "Value should be between 0 kg and 450 kg"
-  const val LB_RANGE = "Value should be between 0 lbs and 999 lbs"
+  const val LB_RANGE = "Value should be between 0 lb and 999 lb"
   const val WEIGHT_MATCH = "value should not be equal to starting weight"
   const val DUPLICATE = "value already exists"
 }
@@ -178,6 +178,60 @@ object FormValidations {
       }
     }
 
+  /**
+   * Advisory (non-blocking) cross-field warning for the systolic field: systolic should be
+   * higher than diastolic. Mirrors Balance Health (bpmMobileApp4) exactly — it only fires when
+   * systolic is inside its typical range [warnMin, warnMax], so it never collides with the
+   * range warning (which only fires outside that range). Returns null otherwise.
+   *
+   * @param diastolic the sibling control to compare against (read live at validation time)
+   * @param message the advisory copy to surface (WARNING severity — value still saves)
+   */
+  fun systolicCrossFieldWarning(
+    diastolic: FormControl<String>,
+    warnMin: Int,
+    warnMax: Int,
+    message: String,
+  ): Validator<String> =
+    { value ->
+      val systolicValue = value.toIntOrNull()
+      val diastolicValue = diastolic.value.toIntOrNull()
+      if (systolicValue != null && systolicValue in warnMin..warnMax &&
+        diastolicValue != null && diastolicValue > systolicValue
+      ) {
+        ValidationError(ValidationType.WARNING, message, ValidationSeverity.WARNING)
+      } else {
+        null
+      }
+    }
+
+  /**
+   * Advisory (non-blocking) cross-field warning for the diastolic field: diastolic should be
+   * lower than systolic. Mirrors Balance Health (bpmMobileApp4): fires only when diastolic is
+   * inside its typical range [warnMin, warnMax] and either systolic is lower than diastolic or
+   * systolic is still empty. Returns null otherwise.
+   *
+   * @param systolic the sibling control to compare against (read live at validation time)
+   * @param message the advisory copy to surface (WARNING severity — value still saves)
+   */
+  fun diastolicCrossFieldWarning(
+    systolic: FormControl<String>,
+    warnMin: Int,
+    warnMax: Int,
+    message: String,
+  ): Validator<String> =
+    { value ->
+      val diastolicValue = value.toIntOrNull()
+      val systolicValue = systolic.value.toIntOrNull()
+      if (diastolicValue != null && diastolicValue in warnMin..warnMax &&
+        ((systolicValue != null && systolicValue < diastolicValue) || systolic.value.isEmpty())
+      ) {
+        ValidationError(ValidationType.WARNING, message, ValidationSeverity.WARNING)
+      } else {
+        null
+      }
+    }
+
   fun futureTime(): Validator<Calendar> =
     { value ->
       val currTime = Calendar.getInstance()
@@ -229,7 +283,7 @@ object FormValidations {
               else -> null
             }
           } else {
-            val unit = "lbs"
+            val unit = "lb"
             when {
               v <= AppValidatorConfig.WeightLb.MIN  ->
                 ValidationError(
@@ -337,8 +391,10 @@ object FormValidations {
 
   /**
    * Blocking upper-bound check for manual entry. Returns an ERROR when an integer
-   * value exceeds [max] (or isn't a valid whole number). Mirrors Balance Health's
-   * hard 500 cap on systolic/diastolic/pulse. Blank is left to [required].
+   * value reaches [max] or above (or isn't a valid whole number). The bound is
+   * exclusive so it matches the "value should be less than [max]" copy — e.g. 500
+   * is blocked, not just 501 (MOB-1431). Mirrors Balance Health's hard cap on
+   * systolic/diastolic/pulse. Blank is left to [required].
    */
   fun hardMaxValidator(max: Int): Validator<String> =
     { value ->
@@ -348,7 +404,7 @@ object FormValidations {
         val v = value.toIntOrNull()
         when {
           v == null -> ValidationError(ValidationType.NOT_IN_RANGE, ValidationMessages.INVALID_NUMBER)
-          v > max -> ValidationError(
+          v >= max -> ValidationError(
             ValidationType.MAX_LIMIT,
             String.format(ValidationMessages.LESS_THAN, max),
           )

@@ -228,6 +228,11 @@ final class EntryStore: ObservableObject {
             try await entryService.saveNewEntry(entry)
             // Let event streams (entrySaved) trigger downstream reloads
             resetForm()
+            // The save is now instant (~45ms), so the loader can't visibly appear — show a
+            // success toast so the user gets clear feedback that the entry was saved
+            // (MOB-1433 §5c). The toast is a global overlay, so it persists across the
+            // post-save tab switch.
+            notificationService.showToast(ToastModel(title: toastLang.success, message: toastLang.entryAdded))
             logger.log(level: .success, tag: self.tag, message: "Manual entry save succeeded. accountId=\(accountId), timestamp=\(entryTimestamp)")
             return true
         } catch {
@@ -510,6 +515,7 @@ final class EntryStore: ObservableObject {
             logger.log(level: .info, tag: tag, message: "BPM entry save started. timestamp=\(entryTimestamp)")
             try await entryService.createBpmEntry(dto)
             resetBPForm()
+            notificationService.showToast(ToastModel(title: toastLang.success, message: toastLang.entryAdded))
             logger.log(level: .success, tag: tag, message: "BPM entry save succeeded. timestamp=\(entryTimestamp)")
         } catch {
             logger.log(level: .error, tag: tag, message: "Failed to save BPM entry. error=\(error.localizedDescription)")
@@ -582,6 +588,7 @@ final class EntryStore: ObservableObject {
                 entryTimestamp: entryTimestamp
             )
             resetBabyForm()
+            notificationService.showToast(ToastModel(title: toastLang.success, message: toastLang.entryAdded))
             logger.log(level: .success, tag: tag, message: "Baby entry save succeeded. babyId=\(profile.id), timestamp=\(entryTimestamp)")
         } catch {
             logger.log(level: .error, tag: tag, message: "Failed to save baby entry. error=\(error.localizedDescription)")

@@ -249,15 +249,21 @@ class PushNotificationService: NSObject, PushNotificationServiceProtocol {
     private func setupNetworkMonitoring() {
         networkMonitor.pathUpdateHandler = { [weak self] path in
             Task { @MainActor [weak self] in
-                self?.isNetworkConnected = path.status == .satisfied
-                self?.logger.log(
+                guard let self else { return }
+                let nowConnected = path.status == .satisfied
+                let wasConnected = self.isNetworkConnected
+                self.isNetworkConnected = nowConnected
+                self.logger.log(
                     level: .info,
-                    tag: self?.tag ?? "PushNotificationService",
-                    message: "Network status changed for push service. connected=\(path.status == .satisfied)"
+                    tag: self.tag,
+                    message: "Network status changed for push service. connected=\(nowConnected)"
                 )
-                if path.status == .satisfied {
-                    await self?.networkOperations()
-                }
+                // NWPathMonitor fires on ANY path change (interface reshuffle, expensive/constrained
+                // re-evaluation, DNS/route changes) — not just connect/disconnect. Only run the full
+                // sync cycle on a real disconnected → connected transition, otherwise the entries /
+                // paired-scale / device-info triplet re-fires on every callback while idle.
+                guard nowConnected, !wasConnected else { return }
+                await self.networkOperations()
             }
         }
         networkMonitor.start(queue: DispatchQueue.global())

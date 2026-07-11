@@ -9,6 +9,7 @@ import com.dmdbrands.gurus.weight.data.storage.db.entity.account.Account as Enti
 import com.dmdbrands.gurus.weight.data.storage.db.entity.account.AccountEntity
 import com.dmdbrands.gurus.weight.data.storage.db.entity.account.DashboardSettingsEntity
 import com.dmdbrands.gurus.weight.domain.enums.DashboardType
+import com.dmdbrands.gurus.weight.domain.enums.ProductType
 import com.dmdbrands.gurus.weight.domain.model.PartialAccount
 import com.dmdbrands.gurus.weight.domain.model.api.auth.ChangePasswordResponse
 import com.dmdbrands.gurus.weight.domain.model.api.auth.LoginResponse
@@ -78,6 +79,9 @@ class AccountRepositoryTest {
 
     @MockK(relaxUnitFun = true)
     lateinit var userDataStore: UserDataStore
+
+    @MockK(relaxUnitFun = true)
+    lateinit var babyProfileDao: com.dmdbrands.gurus.weight.data.storage.db.dao.BabyProfileDao
 
     @MockK(relaxUnitFun = true)
     lateinit var tokenManager: ITokenManager
@@ -159,7 +163,10 @@ class AccountRepositoryTest {
         every { userDataStore.currentThemeModeFlow } returns flowOf(ThemeMode.SYSTEM)
         every { userDataStore.defaultGraphSegmentFlow } returns
             flowOf(DefaultGraphSegment.DEFAULT_GRAPH_SEGMENT_UNSPECIFIED)
-        repository = AccountRepository(accountDao, mockk(relaxed = true), userDataStore, tokenManager, mockk(relaxed = true), authAPI, userAPI)
+        // getActiveAccount() combines the account flow with the baby-profile flow; default to
+        // no local babies so the productTypes derivation is a no-op unless a test opts in.
+        every { babyProfileDao.observeByAccountId(any()) } returns flowOf(emptyList())
+        repository = AccountRepository(accountDao, babyProfileDao, userDataStore, tokenManager, mockk(relaxed = true), authAPI, userAPI)
     }
 
     // -------------------------------------------------------------------------
@@ -434,6 +441,43 @@ class AccountRepositoryTest {
         val account = repository.getActiveAccount().first()
 
         assertThat(account).isNull()
+    }
+
+    @Test
+    fun `getActiveAccount injects baby into productTypes when a local baby profile exists`() = runTest {
+        every { accountDao.getActiveAccount() } returns flowOf(entityAccountWithRelations)
+        every { babyProfileDao.observeByAccountId(TEST_ACCOUNT_ID) } returns flowOf(
+            listOf(
+                com.dmdbrands.gurus.weight.data.storage.db.entity.baby.BabyProfileEntity(
+                    babyId = "baby-1",
+                    accountId = TEST_ACCOUNT_ID,
+                    name = "Emma",
+                ),
+            ),
+        )
+
+        val account = repository.getActiveAccount().first()
+
+        assertThat(account!!.productTypes).contains(ProductType.BABY.apiValue)
+    }
+
+    @Test
+    fun `getActiveAccount does not inject baby when the only local baby is deleted`() = runTest {
+        every { accountDao.getActiveAccount() } returns flowOf(entityAccountWithRelations)
+        every { babyProfileDao.observeByAccountId(TEST_ACCOUNT_ID) } returns flowOf(
+            listOf(
+                com.dmdbrands.gurus.weight.data.storage.db.entity.baby.BabyProfileEntity(
+                    babyId = "baby-1",
+                    accountId = TEST_ACCOUNT_ID,
+                    name = "Emma",
+                    isDeleted = true,
+                ),
+            ),
+        )
+
+        val account = repository.getActiveAccount().first()
+
+        assertThat(account!!.productTypes).doesNotContain(ProductType.BABY.apiValue)
     }
 
     @Test

@@ -23,9 +23,10 @@ enum class WeightUnit(
   // [unit]/[babyUnit] are the Unit Type dialog labels (canonical set, MOB-667/MOB-1250):
   // "&" separates weight from length; the compound weight stays hyphenated ("lb-oz");
   // weight is singular "lb"; adult height is "ft" (My Weight), baby length is "in" (My Kids).
-  // [label] is the short value-suffix used next to weights elsewhere — do NOT change here.
+  // [label] is the short value-suffix used next to weights elsewhere. Singular "lb"
+  // per the non-pluralised unit convention (NIST/ISO; matches Apple Health / Fitbit).
   KG("kg", "kg", "kg & cm", "kg & cm"),
-  LB("lb", "lbs", "lb & ft", "lb & in"),
+  LB("lb", "lb", "lb & ft", "lb & in"),
   LB_OZ("lb_oz", "lbs & oz", "lb-oz & in", "lb-oz & in"),
   ;
 

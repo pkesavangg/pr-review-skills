@@ -1,2 +1,4 @@
 APP_ENV = DEV
-API_BASE_URL = 49.207.187.28:4200/wg-server-2573/v3
+// Scheme (http://) is prepended in Environment.swift — xcconfig treats // as a comment,
+// so the base URL here must be scheme-less.
+API_BASE_URL = ec2-13-217-141-203.compute-1.amazonaws.com:3005/v3

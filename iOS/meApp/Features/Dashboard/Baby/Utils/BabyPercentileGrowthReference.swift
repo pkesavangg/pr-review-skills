@@ -109,10 +109,18 @@ enum BabyPercentileGrowthReference {
         isMaleReference(biologicalSex) ? boyMeasurementEntries : girlMeasurementEntries
     }
 
+    /// `true` when no sex-specific WHO reference applies: sex is `"private"` or unset.
+    /// Parity with Smart Baby `percentile.service.ts`, which returns `null` / `[]` for
+    /// private — a withheld sex is never silently mapped to the boys' or girls' tables.
+    static func isSexWithheld(_ biologicalSex: String?) -> Bool {
+        guard let sex = biologicalSex?.lowercased(), !sex.isEmpty else { return true }
+        return sex == "private"
+    }
+
     /// Returns WHO percentile reference points filtered to a date range and converted to display units.
     ///
     /// - Parameters:
-    ///   - biologicalSex: `"male"` / `"female"` (defaults to male when `nil` or unrecognized).
+    ///   - biologicalSex: `"male"` / `"female"` (`"private"` / `nil` yields no points).
     ///   - birthday: The baby’s date of birth — used to map JSON day offsets to calendar dates.
     ///   - dateRange: The visible chart window.
     ///   - convertDecigramsToDisplay: Converts a decigram value to the active display unit (lbs or kg).
@@ -123,6 +131,7 @@ enum BabyPercentileGrowthReference {
         convertDecigramsToDisplay: (Int) -> Double,
         calendar: Calendar = .current
     ) -> [BabyPercentileChartPoint] {
+        guard !isSexWithheld(biologicalSex) else { return [] }
         let entries = loadPercentileEntries(biologicalSex: biologicalSex)
         guard !entries.isEmpty else { return [] }
 
@@ -168,6 +177,7 @@ enum BabyPercentileGrowthReference {
         weightDecigrams: Int,
         calendar: Calendar = .current
     ) -> Int? {
+        guard !isSexWithheld(biologicalSex) else { return nil }
         let dayOfLife = max(0, calendar.dateComponents([.day], from: birthday, to: date).day ?? 0)
         let entries = loadMeasurementEntries(biologicalSex: biologicalSex)
         guard let measurement = interpolatedMeasurement(forDayOfLife: dayOfLife, entries: entries),
