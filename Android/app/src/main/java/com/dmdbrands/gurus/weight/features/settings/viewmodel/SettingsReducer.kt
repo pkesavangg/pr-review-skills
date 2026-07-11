@@ -23,7 +23,6 @@ data class SettingsState(
   val enableTestingFeatures: Boolean = false,
   val unreadFeedCount: Int = 0,
   val showUnreadFeedIndication: Boolean = false,
-  val isExportEnabled: Boolean = false,
   val isBabyProduct: Boolean = false,
   val hasWeightScale: Boolean = false,
   // Local-only My Kids unit preference. Defaults to LB_OZ — the canonical
@@ -45,12 +44,23 @@ data class SettingsState(
     }
 
   /**
-   * Whether the "My Kids" Settings row is enabled. Per MOB-686 Rule A, this turns on once the
-   * account has engaged a baby scale at least once (signup or Add Devices) and is additive: it
-   * stays on after the baby-scale device is removed, because the account's persisted
-   * [Account.productTypes] still carries "baby" (the device list alone would flip back to false).
+   * Whether the "My Kids" Settings row is enabled. Always enabled now: any account may open
+   * My Kids to add a baby — creating a baby (or pairing a baby scale) auto-adds "baby" to
+   * [Account.productTypes] server-side, so a weight- or BP-only user must be able to get in.
+   * This is intentionally separate from [isMyKidsUnitEnabled]: reachability of the row is not
+   * the same as being allowed to change the baby measurement unit.
    */
   val isMyKidsEnabled: Boolean
+    get() = true
+
+  /**
+   * Whether the "My Kids" section of the Unit Type modal is editable. Gated on actual baby
+   * product ownership — the account has engaged a baby scale ([hasBabyScaleDevice]) or its
+   * [Account.productTypes] carries "baby" (additive per MOB-686 Rule A; stays on after the
+   * device is removed). Unlike the always-on My Kids row, the baby unit can only be changed
+   * once the account actually owns the baby product, so it is not enabled globally.
+   */
+  val isMyKidsUnitEnabled: Boolean
     get() = hasBabyScaleDevice ||
       account?.productTypes?.contains(ProductType.BABY.apiValue) == true
 
@@ -91,7 +101,6 @@ data class SettingsState(
  */
 sealed interface SettingsIntent : IReducer.Intent {
   object LoadSettings : SettingsIntent
-  object ExportData : SettingsIntent
 
   data class SetError(
     val message: String,
@@ -129,7 +138,6 @@ sealed interface SettingsIntent : IReducer.Intent {
   data class UpdateTestingFeatures(val enabled: Boolean) : SettingsIntent
   data class SetUnreadFeedCount(val count: Int) : SettingsIntent
   data class SetShowUnreadFeedIndication(val show: Boolean) : SettingsIntent
-  data class SetExportEnabled(val enabled: Boolean) : SettingsIntent
   data class SetIsBabyProduct(val isBabyProduct: Boolean) : SettingsIntent
   data class SetHasWeightScale(val hasWeightScale: Boolean) : SettingsIntent
   data class SetBabyWeightUnit(val unit: WeightUnit) : SettingsIntent
@@ -163,7 +171,6 @@ class SettingsReducer : IReducer<SettingsState, SettingsIntent> {
       is SettingsIntent.UpdateTestingFeatures -> state.copy(enableTestingFeatures = intent.enabled)
       is SettingsIntent.SetUnreadFeedCount -> state.copy(unreadFeedCount = intent.count)
       is SettingsIntent.SetShowUnreadFeedIndication -> state.copy(showUnreadFeedIndication = intent.show)
-      is SettingsIntent.SetExportEnabled -> state.copy(isExportEnabled = intent.enabled)
       is SettingsIntent.SetIsBabyProduct -> state.copy(isBabyProduct = intent.isBabyProduct)
       is SettingsIntent.SetHasWeightScale -> state.copy(hasWeightScale = intent.hasWeightScale)
       is SettingsIntent.SetBabyWeightUnit -> state.copy(babyWeightUnit = intent.unit)

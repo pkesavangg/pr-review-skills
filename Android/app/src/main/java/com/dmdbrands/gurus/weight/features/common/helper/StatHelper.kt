@@ -134,8 +134,14 @@ object StatHelper {
       (this.key == MilestoneKey.CURRENT_STREAK || this.key == MilestoneKey.LONGEST_STREAK) &&
       value is Number
     ) {
-      val numValue = value.toDouble()
-      if (numValue <= 1.0) "day" else "days"
+      // MOB-1168: 1 -> "day", 2-999 -> "days", 1000+ -> "d" (no max cap) to prevent
+      // ellipsis truncation of large streak counts on the milestone card.
+      val days = value.toInt()
+      when {
+        days <= 1 -> DashboardString.MileStone.StreakDaySingular
+        days <= 999 -> DashboardString.MileStone.StreakDayPlural
+        else -> DashboardString.MileStone.StreakDayAbbrev
+      }
     } else {
       meta.valueSuffix(useShort).takeIf { it.isNotEmpty() }
     }
@@ -361,12 +367,12 @@ internal object StatMeta {
   val milestoneStatMetaMap: Map<MilestoneKey, StatMeta> = mapOf(
     MilestoneKey.CURRENT_STREAK to StatMeta(
       labelProvider = { _ -> DashboardString.MileStone.CurrentStreak },
-      valueSuffix = { "day" },
+      valueSuffix = { DashboardString.MileStone.StreakDaySingular },
       icon = AppIcons.Milestone.Bolt,
     ),
     MilestoneKey.LONGEST_STREAK to StatMeta(
       labelProvider = { _ -> DashboardString.MileStone.LongestStreak },
-      valueSuffix = { "day" },
+      valueSuffix = { DashboardString.MileStone.StreakDaySingular },
       icon = AppIcons.Milestone.Streak,
     ),
     MilestoneKey.PER_WEEK to StatMeta(
@@ -383,7 +389,7 @@ internal object StatMeta {
     ),
     MilestoneKey.TO_GOAL to StatMeta(
       labelProvider = { isLb -> if (isLb) DashboardString.MileStone.LbsToGoal else DashboardString.MileStone.KgsToGoal },
-      unit = "lbs",
+      unit = "lb",
     ),
   )
 

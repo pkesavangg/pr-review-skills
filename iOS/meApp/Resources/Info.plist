@@ -6,6 +6,21 @@
     <string>$(API_BASE_URL)</string>
     <key>APP_ENV</key>
     <string>$(APP_ENV)</string>
+    <key>NSAppTransportSecurity</key>
+    <dict>
+        <!-- Dev API server is plain HTTP on :3005; allow cleartext only for that host.
+             Production (api.weightgurus.com) stays HTTPS under full ATS. -->
+        <key>NSExceptionDomains</key>
+        <dict>
+            <key>ec2-13-217-141-203.compute-1.amazonaws.com</key>
+            <dict>
+                <key>NSExceptionAllowsInsecureHTTPLoads</key>
+                <true/>
+                <key>NSIncludesSubdomains</key>
+                <false/>
+            </dict>
+        </dict>
+    </dict>
     <key>FirebaseAppDelegateProxyEnabled</key>
     <false/>
     <key>FirebaseMessagingAutoInitEnabled</key>

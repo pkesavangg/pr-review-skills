@@ -244,7 +244,7 @@ struct HistoryStoreBabyAndDeleteTests {
         deleteButton.action(nil)
 
         notificationService.toastData?.onDismiss?()
-        let done = await waitUntil { entryService.deleteEntryByIdCalls == 1 }
+        let done = await waitUntilHistoryStore { entryService.deleteEntryByIdCalls == 1 }
 
         #expect(done == true)
         #expect(entryService.deletedEntryIds.first == entry.id)
@@ -265,7 +265,7 @@ struct HistoryStoreBabyAndDeleteTests {
         deleteButton.action(nil)
 
         notificationService.toastData?.onDismiss?()
-        let done = await waitUntil { notificationService.showToastCalls >= 2 }
+        let done = await waitUntilHistoryStore { notificationService.showToastCalls >= 2 }
 
         #expect(done == true)
         #expect(notificationService.toastData?.isError == true)

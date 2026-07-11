@@ -12,7 +12,10 @@ class SetupLoaderViewModel: ObservableObject {
     @Published var dotScales = Array(repeating: 0.5, count: 5)
     @Published var connectionState: ConnectionState = .loading
     private var timer: Timer?
-    private var isAnimating = false
+    /// True while a repeating animation timer is scheduled. Exposed (setter stays
+    /// private) so tests can assert the loading guard scheduled no tick, without a
+    /// wall-clock wait.
+    private(set) var isAnimating = false
 
     func startAnimation() {
         guard connectionState == .loading, !isAnimating else { return }

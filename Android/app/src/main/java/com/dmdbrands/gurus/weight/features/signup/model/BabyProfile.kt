@@ -12,5 +12,5 @@ data class BabyProfile(
     val birthLength: String = "",
     val birthWeight: String = "",
     val birthWeightOz: String = "",
-    val weightUnit: BabyWeightUnit = BabyWeightUnit.LBS,
+    val weightUnit: BabyWeightUnit = BabyWeightUnit.LBS_OZ,
 )

@@ -1,4 +1,3 @@
-// swiftlint:disable file_length
 import Combine
 import Foundation
 import GGBluetoothSwiftPackage
@@ -7,7 +6,6 @@ import Testing
 
 @Suite(.serialized)
 @MainActor
-// swiftlint:disable:next type_body_length
 struct BluetoothServiceCoreOperationsTests {
 
     @Test("scan with no active account returns early")

@@ -27,7 +27,7 @@ enum AppEnvironment: String {
         case .production:
             scheme = "https://"
         case .dev:
-            scheme = "https://"
+            scheme = "http://"
         }
         return scheme + baseDomain
     }

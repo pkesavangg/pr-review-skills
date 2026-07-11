@@ -6,8 +6,11 @@ import com.dmdbrands.gurus.weight.domain.model.common.BpHistoryMonth
 import com.dmdbrands.gurus.weight.domain.model.common.HistoryMonth
 import androidx.compose.runtime.Stable
 import kotlinx.collections.immutable.ImmutableList
+import kotlinx.collections.immutable.ImmutableMap
 import kotlinx.collections.immutable.persistentListOf
+import kotlinx.collections.immutable.persistentMapOf
 import kotlinx.collections.immutable.toImmutableList
+import kotlinx.collections.immutable.toImmutableMap
 
 /**
  * UI state for the history feature, holding loading state, error, and data.
@@ -18,7 +21,9 @@ data class HistoryState(
     val errorMessage: String? = null,
     val historyItems: ImmutableList<HistoryMonth> = persistentListOf(),
     val bpHistoryItems: ImmutableList<BpHistoryMonth> = persistentListOf(),
-    val babyHistoryItems: ImmutableList<BabyWeekGroup> = persistentListOf(),
+    // Keyed by babyId so each baby's history stays scoped to that baby. A single shared
+    // list caused every baby to display the last-loaded baby's entries (MOB-1449).
+    val babyHistoryItems: ImmutableMap<String, ImmutableList<BabyWeekGroup>> = persistentMapOf(),
 ) : IReducer.State
 
 /**
@@ -43,7 +48,7 @@ sealed interface HistoryIntent : IReducer.Intent {
 
     data class SetBpHistoryItems(val items: List<BpHistoryMonth>) : HistoryIntent
 
-    data class SetBabyHistoryItems(val items: List<BabyWeekGroup>) : HistoryIntent
+    data class SetBabyHistoryItems(val babyId: String, val items: List<BabyWeekGroup>) : HistoryIntent
 
     object Export : HistoryIntent
     object OnConnectScale : HistoryIntent
@@ -77,7 +82,9 @@ class HistoryReducer : IReducer<HistoryState, HistoryIntent> {
 
             is HistoryIntent.SetBabyHistoryItems ->
                 state.copy(
-                    babyHistoryItems = intent.items.toImmutableList(),
+                    babyHistoryItems =
+                        (state.babyHistoryItems + (intent.babyId to intent.items.toImmutableList()))
+                            .toImmutableMap(),
                     isLoading = false,
                     errorMessage = null,
                 )

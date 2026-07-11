@@ -76,7 +76,7 @@ func makeHistoryStoreSUT() -> ( // swiftlint:disable:this large_tuple
 }
 
 @MainActor
-private func waitUntil(timeoutIterations: Int = 200, condition: @escaping @MainActor () -> Bool) async -> Bool {
+func waitUntilHistoryStore(timeoutIterations: Int = 200, condition: @escaping @MainActor () -> Bool) async -> Bool {
     for _ in 0..<timeoutIterations {
         if condition() { return true }
         await Task.yield()
@@ -112,7 +112,7 @@ struct HistoryStoreTests {
         entryService.getMonthsAllResult = .success([])
 
         store.loadMonths()
-        let done = await waitUntil { entryService.getMonthsAllCalls == 1 }
+        let done = await waitUntilHistoryStore { entryService.getMonthsAllCalls == 1 }
 
         #expect(done == true)
         #expect(store.months.isEmpty)
@@ -128,7 +128,7 @@ struct HistoryStoreTests {
         entryService.getMonthsAllResult = .success(months)
 
         store.loadMonths()
-        let done = await waitUntil { store.months.count == 2 }
+        let done = await waitUntilHistoryStore { store.months.count == 2 }
 
         #expect(done == true)
         #expect(store.months.count == 2)
@@ -142,7 +142,7 @@ struct HistoryStoreTests {
         entryService.getMonthsAllResult = .failure(HistoryStoreTestError.loadMonthsFailed)
 
         store.loadMonths()
-        let done = await waitUntil { entryService.getMonthsAllCalls == 1 }
+        let done = await waitUntilHistoryStore { entryService.getMonthsAllCalls == 1 }
 
         #expect(done == true)
         #expect(store.months.isEmpty)
@@ -157,7 +157,7 @@ struct HistoryStoreTests {
         entryService.getMonthsAllResult = .success([makeHistoryMonth()])
 
         store.loadMonths()
-        _ = await waitUntil { store.months.count == 1 }
+        _ = await waitUntilHistoryStore { store.months.count == 1 }
         let firstCalls = entryService.getMonthsAllCalls
 
         store.loadMonths()
@@ -177,7 +177,7 @@ struct HistoryStoreTests {
         entryService.fetchEntrySnapshotsForMonthResult = .success([EntryTestFixtures.makeEntrySnapshot(entryTimestamp: "2026-03-01T08:00:00Z")])
 
         store.selectMonth(month)
-        let done = await waitUntil { store.selectedMonth?.id == "2026-03" && entryService.fetchEntrySnapshotsForMonthCalls == 1 }
+        let done = await waitUntilHistoryStore { store.selectedMonth?.id == "2026-03" && entryService.fetchEntrySnapshotsForMonthCalls == 1 }
 
         #expect(done == true)
         #expect(store.selectedMonth?.id == "2026-03")
@@ -304,7 +304,7 @@ struct HistoryStoreTests {
         entryService.fetchAllEntrySnapshotsResult = .success(entries)
 
         store.loadMonths()
-        let done = await waitUntil { !store.babyWeeks.isEmpty }
+        let done = await waitUntilHistoryStore { !store.babyWeeks.isEmpty }
 
         #expect(done == true)
         #expect(store.babyWeeks.count >= 2)
@@ -396,7 +396,7 @@ struct HistoryStoreTests {
         #expect(entryService.deleteEntryByIdCalls == 0)
         // Dismissing the undo toast commits the actual delete.
         notificationService.toastData?.onDismiss?()
-        let done = await waitUntil { entryService.deleteEntryByIdCalls == 1 }
+        let done = await waitUntilHistoryStore { entryService.deleteEntryByIdCalls == 1 }
         #expect(done == true)
         #expect(entryService.deletedEntryIds.first == entry.id)
     }
@@ -436,7 +436,7 @@ struct HistoryStoreTests {
             return
         }
         sendButton.action(nil)
-        let done = await waitUntil { notificationService.toastData != nil }
+        let done = await waitUntilHistoryStore { notificationService.toastData != nil }
         #expect(done == true)
         #expect(entryService.exportCSVCalls == 1)
         #expect(notificationService.toastData?.message == ToastStrings.csvExported)
@@ -453,7 +453,7 @@ struct HistoryStoreTests {
             return
         }
         sendButton.action(nil)
-        let done = await waitUntil { notificationService.toastData != nil }
+        let done = await waitUntilHistoryStore { notificationService.toastData != nil }
         #expect(done == true)
         #expect(notificationService.toastData?.message == ToastStrings.csvExportError)
     }
@@ -483,9 +483,9 @@ struct HistoryStoreTests {
         entryService.getMonthsAllResult = .success([makeHistoryMonth(id: "2026-03")])
         entryService.fetchEntrySnapshotsForMonthResult = .success([EntryTestFixtures.makeEntrySnapshot(entryTimestamp: "2026-03-01T08:00:00Z")])
         store.loadMonths()
-        _ = await waitUntil { store.months.count == 1 }
+        _ = await waitUntilHistoryStore { store.months.count == 1 }
         store.selectMonth(makeHistoryMonth(id: "2026-03"))
-        _ = await waitUntil { store.entries.count == 1 }
+        _ = await waitUntilHistoryStore { store.entries.count == 1 }
         let initialSnapshotCalls = entryService.fetchEntrySnapshotsForMonthCalls
         entryService.getMonthsAllResult = .success([makeHistoryMonth(id: "2026-03"), makeHistoryMonth(id: "2026-02")])
         entryService.fetchEntrySnapshotsForMonthResult = .success([
@@ -494,7 +494,9 @@ struct HistoryStoreTests {
         ])
         let entry = EntryTestFixtures.makeEntry(timestamp: "2026-03-02T09:00:00Z")
         entryService.entrySaved.send(EntryNotification(from: entry))
-        let done = await waitUntil { entryService.getMonthsAllCalls >= 2 && entryService.fetchEntrySnapshotsForMonthCalls > initialSnapshotCalls }
+        let done = await waitUntilHistoryStore {
+            entryService.getMonthsAllCalls >= 2 && entryService.fetchEntrySnapshotsForMonthCalls > initialSnapshotCalls
+        }
         #expect(done == true)
     }
 
@@ -507,14 +509,14 @@ struct HistoryStoreTests {
         entryService.getMonthsAllResult = .success([makeHistoryMonth(id: "2026-03")])
         entryService.fetchEntrySnapshotsForMonthResult = .success([EntryTestFixtures.makeEntrySnapshot(entryTimestamp: "2026-03-01T08:00:00Z")])
         store.loadMonths()
-        _ = await waitUntil { store.months.count == 1 }
+        _ = await waitUntilHistoryStore { store.months.count == 1 }
         store.selectMonth(makeHistoryMonth(id: "2026-03"))
-        _ = await waitUntil { store.entries.count == 1 }
+        _ = await waitUntilHistoryStore { store.entries.count == 1 }
         entryService.getMonthsAllResult = .success([])
         entryService.fetchEntrySnapshotsForMonthResult = .success([])
         let entry = EntryTestFixtures.makeEntry(timestamp: "2026-03-01T08:00:00Z")
         entryService.entryDeleted.send(EntryNotification(from: entry))
-        let done = await waitUntil { entryService.getMonthsAllCalls >= 2 }
+        let done = await waitUntilHistoryStore { entryService.getMonthsAllCalls >= 2 }
         #expect(done == true)
     }
 
@@ -525,7 +527,7 @@ struct HistoryStoreTests {
         let (store, entryService, _, _, _) = makeHistoryStoreSUT()
         entryService.getMonthsAllResult = .success([])
         store.loadMonths()
-        _ = await waitUntil { entryService.getMonthsAllCalls == 1 }
+        _ = await waitUntilHistoryStore { entryService.getMonthsAllCalls == 1 }
         #expect(store.isEmptyState == true)
     }
 
@@ -534,7 +536,7 @@ struct HistoryStoreTests {
         let (store, entryService, _, _, _) = makeHistoryStoreSUT()
         entryService.getMonthsAllResult = .failure(HistoryStoreTestError.loadMonthsFailed)
         store.loadMonths()
-        _ = await waitUntil { entryService.getMonthsAllCalls == 1 }
+        _ = await waitUntilHistoryStore { entryService.getMonthsAllCalls == 1 }
         #expect(store.isEmptyState == true)
     }
 }
