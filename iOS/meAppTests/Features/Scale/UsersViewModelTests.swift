@@ -420,7 +420,7 @@ struct UsersViewModelTests {
         DependencyContainer.shared.register(notification as NotificationHelperServiceProtocol)
         DependencyContainer.shared.register(bluetooth as BluetoothServiceProtocol)
         DependencyContainer.shared.register(permissions as PermissionsServiceProtocol)
-        DependencyContainer.shared.register(scaleService as ScaleServiceProtocol)
+        DependencyContainer.shared.register(scaleService as PairedDeviceServiceProtocol)
         DependencyContainer.shared.register(logger as LoggerServiceProtocol)
 
         // Publish the scale as a DeviceSnapshot so the ViewModel can resolve it via ScaleService.
@@ -431,7 +431,7 @@ struct UsersViewModelTests {
         store.notificationService = notification
         store.bluetoothService = bluetooth
         store.permissionsService = permissions
-        store.scaleService = scaleService
+        store.deviceService = scaleService
         store.logger = logger
         return (store, bluetooth, scaleService, notification, permissions)
     }

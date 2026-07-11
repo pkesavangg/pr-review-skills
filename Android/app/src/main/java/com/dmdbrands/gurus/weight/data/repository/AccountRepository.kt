@@ -51,10 +51,13 @@ import com.dmdbrands.gurus.weight.domain.model.storage.Account.toWeightless
 import com.dmdbrands.gurus.weight.domain.repository.IAccountRepository
 import com.dmdbrands.gurus.weight.features.goal.helper.Weightless
 import com.dmdbrands.gurus.weight.proto.ThemeMode
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
 import retrofit2.HttpException
 import retrofit2.Response
@@ -494,14 +497,43 @@ constructor(
 
   /**
    * Gets the stored active account from the database as a Flow.
+   *
+   * `productTypes` is derived locally: the stored value is whatever the server last returned,
+   * but a locally-present (non-deleted) baby profile means the account effectively owns the
+   * "baby" product — so "baby" is injected here whenever the local baby list is non-empty.
+   * This is intentionally local and self-healing: it holds offline (before the server has
+   * registered the baby / added the product) and is re-derived on every emit, so a stale
+   * server sync can't strip it back out while a local baby still exists.
    */
+  @OptIn(ExperimentalCoroutinesApi::class)
   override fun getActiveAccount(): Flow<Account?> =
-    combine(
-      accountDao.getActiveAccount().distinctUntilChanged(),
-      userDataStore.defaultGraphSegmentFlow.distinctUntilChanged(),
-    ) { entity, segmentProto ->
-      entity?.toDomainAccount()?.copy(defaultGraphSegment = segmentProto.toGraphSegment())
+    accountDao.getActiveAccount().distinctUntilChanged().flatMapLatest { entity ->
+      if (entity == null) {
+        flowOf(null)
+      } else {
+        val account = entity.toDomainAccount()
+        combine(
+          userDataStore.defaultGraphSegmentFlow.distinctUntilChanged(),
+          babyProfileDao.observeByAccountId(account.id).distinctUntilChanged(),
+        ) { segmentProto, babies ->
+          val hasLocalBaby = babies.any { !it.isDeleted }
+          account
+            .copy(defaultGraphSegment = segmentProto.toGraphSegment())
+            .withBabyProduct(hasLocalBaby)
+        }
+      }
     }
+
+  /**
+   * Returns a copy with "baby" present in [Account.productTypes] when [hasLocalBaby] is true.
+   * No-op when already present or when there are no local babies — never removes a product the
+   * server granted.
+   */
+  private fun Account.withBabyProduct(hasLocalBaby: Boolean): Account {
+    val babyValue = ProductType.BABY.apiValue
+    if (!hasLocalBaby || productTypes.contains(babyValue)) return this
+    return copy(productTypes = productTypes + babyValue)
+  }
 
   /**
    * Deactivates all accounts except the given account ID.

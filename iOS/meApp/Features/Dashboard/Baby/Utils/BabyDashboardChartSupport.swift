@@ -178,6 +178,7 @@ enum BabyDashboardChartSupport {
         operations: [BathScaleWeightSummary],
         calendar: Calendar = .current
     ) -> [GraphSeries] {
+        guard !BabyPercentileGrowthReference.isSexWithheld(babyProfile.biologicalSex) else { return [] }
         let birthday = resolvedBirthday(for: babyProfile, calendar: calendar)
         let birthLengthInches = resolvedBirthLengthInches(for: babyProfile)
 
@@ -205,6 +206,7 @@ enum BabyDashboardChartSupport {
         dateRange: ClosedRange<Date>,
         calendar: Calendar = .current
     ) -> [GraphSeries] {
+        guard !BabyPercentileGrowthReference.isSexWithheld(babyProfile.biologicalSex) else { return [] }
         let birthday = resolvedBirthday(for: babyProfile, calendar: calendar)
         let birthLengthInches = resolvedBirthLengthInches(for: babyProfile)
 
@@ -427,7 +429,8 @@ enum BabyDashboardChartSupport {
         heightInches: Double,
         on date: Date,
         calendar: Calendar = .current
-    ) -> Int {
+    ) -> Int? {
+        guard !BabyPercentileGrowthReference.isSexWithheld(babyProfile.biologicalSex) else { return nil }
         let birthday = resolvedBirthday(for: babyProfile, calendar: calendar, today: date)
         let dayOfLife = max(0, calendar.dateComponents([.day], from: birthday, to: date).day ?? 0)
         let birthLengthInches = resolvedBirthLengthInches(for: babyProfile)
