@@ -38,6 +38,9 @@ fun BirthdayStep(birthdayControl: FormControl<DateTimeValue>) {
       formControl = birthdayControl,
       mode = DateTimeInputMode.Date,
       maxValue = DateTimeValue.Date(DateTimeUtil.getMinBirthdayOffsetForDatePicker()),
+      // DOB: calendar grid only — block typed dates so an impossible leap day can't be silently
+      // normalized to a valid one. (MOB-868)
+      showModeToggle = false,
     )
   }
 }

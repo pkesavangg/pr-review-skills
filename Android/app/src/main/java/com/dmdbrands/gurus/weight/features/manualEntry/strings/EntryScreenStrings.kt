@@ -95,6 +95,11 @@ object EntryScreenStrings {
   const val PULSE_LABEL = "pulse"
   const val NOTES_LABEL = "notes"
 
+  // Cross-field advisory warnings when systolic is not higher than diastolic
+  // (Balance Health / bpmMobileApp4 parity). Non-blocking — the reading still saves.
+  const val SYSTOLIC_CROSS_WARNING = "Systolic should be higher than diastolic"
+  const val DIASTOLIC_CROSS_WARNING = "Diastolic should be lower than systolic"
+
   /** Maximum character limit enforced on measurement note text (MOB-438). */
   const val NOTES_MAX_LENGTH = 280
 

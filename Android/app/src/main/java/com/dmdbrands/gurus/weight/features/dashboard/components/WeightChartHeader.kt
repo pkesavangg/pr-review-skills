@@ -6,7 +6,6 @@ import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.width
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
@@ -50,7 +49,7 @@ fun WeightChartHeader(
   val isEmpty = target.isEmpty()
   val displayValue = convertWeight(avgLb - weightlessOffset, WeightUnit.LB, weightUnit)
   val label = if (isEmpty) DashboardSnapshotStrings.ZeroWeight else formatWeightValue(displayValue)
-  val displayUnit = remember(weightUnit, displayValue) { displayUnit(weightUnit, displayValue) }
+  val displayUnit = displayUnit(weightUnit)
 
   ChartHeader(
     rangeData = rangeText,
@@ -73,9 +72,10 @@ fun WeightChartHeader(
   }
 }
 
-private fun displayUnit(weightUnit: WeightUnit, weight: Double): String = when (weightUnit) {
+private fun displayUnit(weightUnit: WeightUnit): String = when (weightUnit) {
   WeightUnit.KG -> DashboardSnapshotStrings.Kg
-  WeightUnit.LB, WeightUnit.LB_OZ -> if (weight <= 1.0 && weight != 0.0) DashboardSnapshotStrings.Lb else DashboardSnapshotStrings.Lbs
+  // Adult weight is always singular "lb" per the non-pluralised unit convention (MOB-655/657).
+  WeightUnit.LB, WeightUnit.LB_OZ -> DashboardSnapshotStrings.Lb
 }
 
 /**

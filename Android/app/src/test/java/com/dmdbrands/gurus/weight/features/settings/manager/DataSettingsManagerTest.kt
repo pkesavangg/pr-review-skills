@@ -6,8 +6,6 @@ import com.dmdbrands.gurus.weight.data.storage.datastore.UserDataStore
 import com.dmdbrands.gurus.weight.domain.interfaces.IDialogQueueService
 import com.dmdbrands.gurus.weight.domain.services.AuthState
 import com.dmdbrands.gurus.weight.domain.services.IAccountService
-import com.dmdbrands.gurus.weight.domain.services.IEntryReadService
-import com.dmdbrands.gurus.weight.domain.services.IExportService
 import com.dmdbrands.gurus.weight.domain.services.IHealthConnectService
 import com.dmdbrands.gurus.weight.features.common.model.DialogModel
 import com.dmdbrands.gurus.weight.features.settings.strings.RadioGroupModalStrings
@@ -22,21 +20,16 @@ import io.mockk.mockk
 import io.mockk.slot
 import io.mockk.verify
 import kotlinx.coroutines.ExperimentalCoroutinesApi
-import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
-import okhttp3.MediaType.Companion.toMediaTypeOrNull
-import okhttp3.ResponseBody.Companion.toResponseBody
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.RegisterExtension
-import retrofit2.HttpException
-import retrofit2.Response
 
 /**
- * Covers DataSettingsManager — export observation, theme loading, and the
- * dialog-driven flows (export, delete account, logout / logout-all, appearance).
- * Private branches (performExport, logout, onLogoutAllAccounts, onAppearanceUpdate)
+ * Covers DataSettingsManager — theme loading and the dialog-driven flows
+ * (delete account, logout / logout-all, appearance).
+ * Private branches (logout, onLogoutAllAccounts, onAppearanceUpdate)
  * are driven the way the UI does: by capturing the enqueued DialogModel and
  * invoking its callbacks.
  */
@@ -47,18 +40,14 @@ class DataSettingsManagerTest {
   @RegisterExtension
   val mainDispatcherRule = MainDispatcherRule()
 
-  private val entryReadService: IEntryReadService = mockk(relaxed = true)
   private val accountService: IAccountService = mockk(relaxed = true)
-  private val exportService: IExportService = mockk(relaxed = true)
   private val healthConnectService: IHealthConnectService = mockk(relaxed = true)
   private val userDataStore: UserDataStore = mockk(relaxed = true)
   private val dialogQueueService: IDialogQueueService = mockk(relaxed = true)
   private val navigationService: IAppNavigationService = mockk(relaxed = true)
 
   private val manager = DataSettingsManager(
-    entryReadService = entryReadService,
     accountService = accountService,
-    exportService = exportService,
     healthConnectService = healthConnectService,
     userDataStore = userDataStore,
     dialogQueueService = dialogQueueService,
@@ -69,11 +58,6 @@ class DataSettingsManagerTest {
     id = "acct-1",
     isActiveAccount = true,
   ).copy(fcmToken = "tok")
-
-  private fun httpException(): HttpException {
-    val body = "".toResponseBody("application/json".toMediaTypeOrNull())
-    return HttpException(Response.error<Any>(500, body))
-  }
 
   /** Captures the most recently enqueued Confirm dialog. */
   private fun captureConfirm(): DialogModel.Confirm {
@@ -89,41 +73,6 @@ class DataSettingsManagerTest {
     verify { dialogQueueService.enqueue(capture(slot)) }
     val custom = slot.captured as DialogModel.Custom
     return custom.params["onConfirm"] as (String?) -> Unit
-  }
-
-  // ── observeExportEnabled ──────────────────────────────────────────────────
-
-  @Test
-  fun `observeExportEnabled with non-null latest entry sets export enabled`() = runTest {
-    every { entryReadService.latestEntry() } returns flowOf(TestFixtures.weightEntry)
-    val dispatch = mockk<(SettingsIntent) -> Unit>(relaxed = true)
-
-    manager.observeExportEnabled(scope = this, dispatch = dispatch)
-    advanceUntilIdle()
-
-    verify { dispatch(SettingsIntent.SetExportEnabled(true)) }
-  }
-
-  @Test
-  fun `observeExportEnabled with null latest entry sets export disabled`() = runTest {
-    every { entryReadService.latestEntry() } returns flowOf(null)
-    val dispatch = mockk<(SettingsIntent) -> Unit>(relaxed = true)
-
-    manager.observeExportEnabled(scope = this, dispatch = dispatch)
-    advanceUntilIdle()
-
-    verify { dispatch(SettingsIntent.SetExportEnabled(false)) }
-  }
-
-  @Test
-  fun `observeExportEnabled catches flow error and sets export disabled`() = runTest {
-    every { entryReadService.latestEntry() } returns flow { throw RuntimeException("boom") }
-    val dispatch = mockk<(SettingsIntent) -> Unit>(relaxed = true)
-
-    manager.observeExportEnabled(scope = this, dispatch = dispatch)
-    advanceUntilIdle()
-
-    verify { dispatch(SettingsIntent.SetExportEnabled(false)) }
   }
 
   // ── loadCurrentThemeMode ──────────────────────────────────────────────────
@@ -165,45 +114,6 @@ class DataSettingsManagerTest {
     verify {
       dispatch(SettingsIntent.UpdateThemeMode(RadioGroupModalStrings.Appearance.System))
     }
-  }
-
-  // ── onExportDataClick / performExport ─────────────────────────────────────
-
-  @Test
-  fun `onExportDataClick confirm runs export with loader then dismisses`() = runTest {
-    manager.onExportDataClick(scope = this)
-    val confirm = captureConfirm()
-
-    confirm.onConfirm?.invoke()
-    advanceUntilIdle()
-
-    verify { dialogQueueService.showLoader(any()) }
-    coVerify { exportService.exportCsvWithPrompt() }
-    verify { dialogQueueService.dismissLoader() }
-    verify { dialogQueueService.dismissCurrent() }
-  }
-
-  @Test
-  fun `onExportDataClick cancel dismisses current dialog`() = runTest {
-    manager.onExportDataClick(scope = this)
-    val confirm = captureConfirm()
-
-    confirm.onCancel?.invoke()
-    advanceUntilIdle()
-
-    verify { dialogQueueService.dismissCurrent() }
-  }
-
-  @Test
-  fun `performExport dismisses loader when export throws HttpException`() = runTest {
-    coEvery { exportService.exportCsvWithPrompt() } throws httpException()
-
-    manager.onExportDataClick(scope = this)
-    val confirm = captureConfirm()
-    confirm.onConfirm?.invoke()
-    advanceUntilIdle()
-
-    verify { dialogQueueService.dismissLoader() }
   }
 
   // ── onConfirmDeleteAccount ────────────────────────────────────────────────

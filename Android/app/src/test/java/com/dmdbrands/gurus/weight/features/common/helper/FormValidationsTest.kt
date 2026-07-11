@@ -875,11 +875,22 @@ class FormValidationsTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `hardMaxValidator allows values up to the cap`() {
+    fun `hardMaxValidator allows values below the cap`() {
         val validator = FormValidations.hardMaxValidator(500)
 
-        assertThat(validator("500")).isNull()
+        assertThat(validator("499")).isNull()
         assertThat(validator("300")).isNull()
+    }
+
+    @Test
+    fun `hardMaxValidator blocks the cap value itself with ERROR severity`() {
+        val validator = FormValidations.hardMaxValidator(500)
+
+        val result = validator("500")
+
+        assertThat(result).isNotNull()
+        assertThat(result?.severity).isEqualTo(ValidationSeverity.ERROR)
+        assertThat(result?.type).isEqualTo(ValidationType.MAX_LIMIT)
     }
 
     @Test

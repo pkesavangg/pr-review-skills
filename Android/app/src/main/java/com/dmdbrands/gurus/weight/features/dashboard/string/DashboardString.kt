@@ -44,17 +44,22 @@ object DashboardString {
   }
 
   object MileStone {
-    const val LbsToGoal = "lbs to goal"
+    const val LbsToGoal = "lb to goal"
     const val KgsToGoal = "kgs to goal"
     const val CurrentStreak = "current streak"
     const val LongestStreak = "longest streak"
-    const val LbsPerWeek = "lbs/week"
+    // Streak unit labels (MOB-1168): singular / plural / abbreviated to avoid truncation
+    const val StreakDaySingular = "day"
+    const val StreakDayPlural = "days"
+    const val StreakDayAbbrev = "d"
+    const val StreakZeroDays = "0 days"
+    const val LbsPerWeek = "lb/week"
     const val KgsPerWeek = "kg/week"
-    const val LbsPerMonth = "lbs/month"
+    const val LbsPerMonth = "lb/month"
     const val KgsPerMonth = "kg/month"
-    const val LbsPerYear = "lbs/year"
+    const val LbsPerYear = "lb/year"
     const val KgsPerYear = "kg/year"
-    const val LbsTotal = "lbs/total"
+    const val LbsTotal = "lb/total"
     const val KgsTotal = "kg/total"
   }
 

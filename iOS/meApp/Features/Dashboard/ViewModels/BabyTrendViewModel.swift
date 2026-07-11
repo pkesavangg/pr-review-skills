@@ -314,7 +314,7 @@ final class BabyTrendViewModel {
             ? fallbackBabyOperations(dashboardStore: dashboardStore, babyProfile: babyProfile).map(\.date)
             : operations.map(\.date)
 
-        let percentiles = sourceDates.map { date in
+        let percentiles = sourceDates.compactMap { date in
             BabyDashboardChartSupport.heightPercentile(
                 for: babyProfile,
                 heightInches: BabyDashboardChartSupport.dummyHeightValue(for: babyProfile, on: date),
