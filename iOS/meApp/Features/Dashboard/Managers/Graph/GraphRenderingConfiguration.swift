@@ -90,7 +90,7 @@ struct GraphRenderingConfiguration {
         let shouldRepeat = DateTimeTools.shouldRepeatXAxisLabels(for: period, entryCount: operations.count)
         switch period {
         case .week:  return weeklyTicks(from: domain.lowerBound, to: domain.upperBound)
-        case .month: return monthlyTicks(from: domain.lowerBound, to: domain.upperBound)
+        case .month: return monthlyWeeklyTicks(from: domain.lowerBound, to: domain.upperBound)
         case .year:  return yearlyTicks(from: domain.lowerBound, to: domain.upperBound)
         case .total: return totalTicks(from: domain.lowerBound, to: domain.upperBound, operations: operations, shouldRepeat: shouldRepeat)
         }
@@ -128,7 +128,7 @@ struct GraphRenderingConfiguration {
         let shouldRepeat = DateTimeTools.shouldRepeatXAxisLabels(for: period, entryCount: operations.count)
         switch period {
         case .week:  return weeklyTicks(from: domain.lowerBound, to: domain.upperBound)
-        case .month: return monthlyTicks(from: domain.lowerBound, to: domain.upperBound)
+        case .month: return monthlyWeeklyTicks(from: domain.lowerBound, to: domain.upperBound)
         case .year:  return yearlyTicks(from: domain.lowerBound, to: domain.upperBound)
         case .total: return totalTicks(from: domain.lowerBound, to: domain.upperBound, operations: operations, shouldRepeat: shouldRepeat)
         }
@@ -201,6 +201,48 @@ struct GraphRenderingConfiguration {
             if phantomNoon > last {
                 dates.append(phantomNoon)
             }
+        }
+        return dates
+    }
+
+    /// MOB-518 v2 weight engine — Apple-Health-style MONTH ticks: a **continuous Sunday-anchored 7-day grid**
+    /// across the whole domain that never resets at the 1st, so labels read every 7 days (… may 17, 24, 31,
+    /// jun 7 …) exactly like Health. Unlike `monthlyTicks` (which restarts the grid at the 1st of every month
+    /// → `1, 8, 15, 22, 29`, bunching `29`/`1` at the boundary — 2–3 days apart, not 7). The **solid month
+    /// boundary rule** is NOT baked into these ticks: injecting a `1st` tick 1 day from the adjacent Sunday
+    /// made Swift Charts hide that Sunday's label (the boundary tick "ate" it), leaving a visible gap. The
+    /// view draws the boundary as a separate gridline-only mark (`WeightChartView.monthBoundaryTicks`) that
+    /// carries no tick/label, so every Sunday label renders. Scoped to the v2 weight paths
+    /// (`fullXAxisValues`/`boundedXAxisValues`); the legacy `monthlyTicks` (used by `xAxisValues`, shared with
+    /// baby/BPM) is intentionally left unchanged.
+    func monthlyWeeklyTicks(from start: Date, to end: Date) -> [Date] {
+        var cal = Calendar(identifier: .gregorian)
+        cal.timeZone = calendar.timeZone
+        cal.locale = calendar.locale
+        cal.firstWeekday = 1 // Sunday
+
+        let (startDate, endDate) = (min(start, end), max(start, end))
+
+        // Continuous weekly grid: anchor to the Sunday of the start's week, then step +7 days across month
+        // boundaries (never resetting to the 1st). Ticks at local noon, like the other generators.
+        var dates: [Date] = []
+        if let weekStart = cal.dateInterval(of: .weekOfYear, for: startDate)?.start {
+            var day = cal.startOfDay(for: weekStart)
+            while day <= endDate {
+                if let noon = cal.date(byAdding: .hour, value: 12, to: day), noon >= startDate, noon <= endDate {
+                    dates.append(noon)
+                }
+                guard let next = cal.date(byAdding: .day, value: 7, to: day) else { break }
+                day = next
+            }
+        }
+
+        // Trailing phantom (+7 days past the last tick) so the view's `dropLast()` removes a throwaway rather
+        // than a real tick, keeping the last real label/gridline off the right edge (parity with the others).
+        if let last = dates.last,
+           let phantom = cal.date(byAdding: .day, value: 7, to: cal.startOfDay(for: last)),
+           let phantomNoon = cal.date(byAdding: .hour, value: 12, to: phantom) {
+            dates.append(phantomNoon)
         }
         return dates
     }

@@ -117,10 +117,30 @@ struct WeightChartView: View {
         // sits ON its rule — matching month/year, where "1"/"Jan" sit on the boundary rule. Without this the
         // label stays at the noon tick, half a column right of the midnight gridline → the "wrong side" look.
         // Month/year keep the noon tick (their 12 h vs the midnight gridline is <2% of the window → the label
-        // already reads on the rule), so they're untouched.
+        // already reads on the rule), so they're untouched. Month labels are a continuous Sunday grid
+        // (… 17, 24, 31, 7 …) — the solid month divider is drawn separately (see `monthBoundaryTicks`), so no
+        // Sunday label is hidden by an adjacent boundary tick.
         guard model.period == .week else { return base }
         let calendar = Calendar.current
         return base.map { calendar.startOfDay(for: $0) }
+    }
+
+    /// MOB-518 — the 1st of each month within the tick window, for the SOLID month-divider rule. Drawn as a
+    /// gridline-only mark (no tick, no label) in a dedicated `AxisMarks` block so it can't hide the Sunday
+    /// label that sits next to it (the reason the boundary rule is NOT baked into `monthlyWeeklyTicks`).
+    private var monthBoundaryTicks: [Date] {
+        guard model.period == .month,
+              let lo = model.xAxisTicks.first,
+              let hi = model.xAxisTicks.last else { return [] }
+        let calendar = Calendar.current
+        guard var monthStart = calendar.dateInterval(of: .month, for: lo)?.start else { return [] }
+        var result: [Date] = []
+        while monthStart <= hi {
+            result.append(monthStart)
+            guard let next = calendar.date(byAdding: .month, value: 1, to: monthStart) else { break }
+            monthStart = next
+        }
+        return result
     }
 
     /// V4 (6f): a point's entry date falls outside the active month (month view only, not while scrolling)
@@ -130,14 +150,17 @@ struct WeightChartView: View {
         return date < interval.start || date >= interval.end
     }
 
-    /// A "major" boundary that gets a solid vertical rule — start of week / 1st of month / Jan 1st
+    /// A "major" boundary that gets a solid vertical rule — start of week / Jan 1st
     /// (mirrors `BaseSectionViewModel.shouldShowSolidLine`, incl. its use of `Calendar.current`).
+    /// MONTH is deliberately NOT here: its solid divider is drawn by a dedicated gridline-only block over
+    /// `monthBoundaryTicks`, so the boundary can't sit on a `gridTicks` tick and hide the adjacent Sunday
+    /// label. So for month this returns false → every Sunday gridline is light/dashed.
     private func isPeriodBoundary(_ date: Date) -> Bool {
         let calendar = Calendar.current
         let components = calendar.dateComponents([.weekday, .day, .month], from: date)
         switch model.period {
         case .week:  return components.weekday == calendar.firstWeekday
-        case .month: return components.day == 1
+        case .month: return false
         case .year:  return components.month == 1 && components.day == 1
         case .total: return false
         }
@@ -283,6 +306,12 @@ struct WeightChartView: View {
                     AxisGridLine()
                     AxisTick()
                 }
+            }
+            // Month only — the solid month-divider rule, drawn as a GRIDLINE-ONLY mark (no tick, no label) at
+            // each month's 1st, so it can't sit on a `gridTicks` tick and hide the Sunday label beside it.
+            AxisMarks(values: monthBoundaryTicks) { _ in
+                AxisGridLine(stroke: StrokeStyle(lineWidth: 1))
+                    .foregroundStyle(theme.statusIconSecondaryDisabled)
             }
             // Labels only (no gridline here → no double rule). Month gets a background chip, like the legacy.
             AxisMarks(values: labelTicks) { value in

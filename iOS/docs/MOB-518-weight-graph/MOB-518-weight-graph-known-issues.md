@@ -226,6 +226,45 @@ value across all periods (clamped on-screen when the goal is far outside the vis
 
 ---
 
+## Month x-axis stride + points-on-the-line (2026-07-11, sixth pass) ✅ built
+
+Two related device observations about the MONTH x-axis and point placement.
+
+1. **Month labels showed "1" and broke the 7-day stride at the boundary.** The month ticks came from
+   `monthlyTicks`, which restarts the weekly grid at the 1st of every month (`1, 8, 15, 22, 29`) — so `29 → 1`
+   is 2–3 days, not 7, and a "1" sat on every boundary. Apple Health uses a continuous 7-day stride that never
+   resets. **Fix:** new `GraphRenderingConfiguration.monthlyWeeklyTicks` — a continuous **Sunday-anchored
+   7-day grid** across the whole domain (… may 17, 24, 31, jun 7 …). Wired into the v2 paths only
+   (`fullXAxisValues`/`boundedXAxisValues`); the legacy `monthlyTicks` (via `xAxisValues`, shared with
+   baby/BPM) is untouched.
+   - **First attempt left a gap (24 → [blank] → 7).** I injected the month's 1st into the tick array to carry
+     the solid boundary rule; that 1st tick landed 1 day from the adjacent Sunday (May 31), and Swift Charts
+     hid the "31" label (a tick sat on top of it). **Final fix:** `monthlyWeeklyTicks` is a *pure* Sunday grid
+     (no injected 1st), so May 31 is a normal labelled tick → even stride 17, 24, 31, 7, no gap. The **solid
+     month divider** is drawn by a dedicated **gridline-only** `AxisMarks` over `monthBoundaryTicks`
+     (`WeightChartView`), which has no tick/label and so can't hide the neighbouring Sunday label.
+     `isPeriodBoundary` no longer treats month as a boundary (that block owns it). The divider correctly marks
+     the **1st (month start)** — it looks adjacent to "31" only because May 31 is the last day before June.
+
+2. **Points sat between the day lines, not on them.** The v2 engine plotted week/month points at that day's
+   local **noon** (`ChartPrep.plotXDate`), while the gridlines / week labels / value-aligned scroll all rest
+   on **midnight**. So a Wednesday reading rendered half a day right of the "Wed" line — "between Wed and Thu".
+   **Fix:** `plotXDate` now returns **start-of-day (midnight)** for week/month and the **1st-of-month at
+   midnight** for year, so each point lands ON its day/month gridline and coincides with the scroll rest
+   position. `BathScaleWeightSummary.date` is already the **local** day (aggregation converts the entry's UTC
+   timestamp via `TimeZone.current`), so `startOfDay` is timezone- and DST-correct — no separate timezone fix
+   needed. Selection/crosshair/callout follow automatically (they operate in `xDate` space and key off
+   `original.date`). The shared `GraphDataPreparer.normalizedPlotDate` (header/average interpolation) was left
+   at noon: it's a self-consistent internal grid that never samples the plotted `xDate`, and v2 always selects
+   a real point (header shows `original.value`), so there's no phase mismatch. Legacy section VMs keep their
+   noon convention (baby/BPM draw on a noon grid) — the two engines are intentionally NOT unified.
+
+**Verify on device:** month labels read a clean 7-day stride (17, 24, 31, 7) with no "1" and no gap, solid
+divider at the month start; week/month/year points sit ON the day/month gridlines (a Wednesday reading is on
+the "Wed" line).
+
+---
+
 ## Sweep plan (do at the end, before sign-off)
 
 1. After **A2** + **Phase 4** (single-event settle) → re-check **#3** (scroll-lock) and **#2** (switch heaviness).

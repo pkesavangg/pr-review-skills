@@ -35,8 +35,14 @@
 
 ## 3. Plotting (marks)
 
-- **Plot-x per period** (`plotXDate`): Week/Month → that day's **local noon**; Year → **month-1st at noon**;
-  Total → the raw date. Keeps points aligned to the x-axis ticks. ✅
+- **Plot-x per period** (`plotXDate`): Week/Month → that day's **local start-of-day (midnight)**; Year →
+  **1st-of-month at midnight**; Total → the raw date. Points sit **ON** the day/month gridline (a Wednesday
+  reading is on the "Wed" line, not centered between Wed and Thu), aligned with the value-aligned scroll's
+  midnight rest positions. The incoming `BathScaleWeightSummary.date` is already the **local** day (aggregation
+  converts the entry's UTC timestamp via `TimeZone.current`), so `startOfDay` is timezone- and DST-correct.
+  ✅ (2026-07-11; earlier the v2 engine offset week/month to local **noon** so points centered between the
+  midnight gridlines — changed so they land on the line. The legacy section VMs keep their noon convention;
+  the two engines draw gridlines at different times — v2 midnight, legacy noon — so each plots on its own grid.)
 - **One line + one point per summary.** Line uses **`.monotone`** (Fritsch–Carlson) interpolation. ✅
 - **Colors:** weight line + points = brand blue (`theme.weightScaleColor`). ✅
 - **Line width:** 3 pt for Week/Month/Year, 2 pt for Total. **Point diameter:** 8 pt (W/M/Y) / 4 pt (Total);
@@ -45,12 +51,16 @@
 
 ## 4. X-axis
 
-- **Ticks per period:** Week = 7 daily ticks + 1 phantom trailing (+1 day); Month = Sunday-based weekly ticks
-  (1, 8, 15, 22, 29) + phantom trailing Sunday; Year = one tick/month + phantom trailing month; Total =
-  yearly (same-era) or quarterly ticks, **no labels**. ◑ (ticks generated; labels/format not at parity — V3)
-- **Grid lines:** solid vertical rule at period boundaries (week/month/year start), light rule at
-  intermediate ticks; horizontal rules at y-ticks; plus a fixed 1 pt **trailing closing rule** at the plot's
-  right edge so the last window reads as a closed frame (2026-07-10). ✅ (V3 + third pass)
+- **Ticks per period:** Week = 7 daily ticks + 1 phantom trailing (+1 day); Month = a **continuous
+  Sunday-anchored 7-day grid** that never resets at the 1st (… may 17, 24, 31, jun 7 …; via
+  `monthlyWeeklyTicks`), so labels read every 7 days like Apple Health — NOT the old per-month `1, 8, 15, 22,
+  29` reset that bunched `29`/`1` at the boundary; Year = one tick/month + phantom trailing month; Total =
+  yearly (same-era) or quarterly ticks, **no labels**. ✅ (2026-07-11 for month; V3 for the rest)
+- **Grid lines:** solid vertical rule at period boundaries (week start / year start); the **month divider**
+  (1st of each month) is drawn as a separate **gridline-only** mark (`monthBoundaryTicks`, no tick/label) so it
+  can't hide the Sunday label sitting beside it; light rule at intermediate ticks; horizontal rules at
+  y-ticks; plus a fixed 1 pt **trailing closing rule** at the plot's right edge so the last window reads as a
+  closed frame. ✅ (V3 + third pass + 2026-07-11 month divider)
 - **Y-axis label gap:** each y-axis number is centered in a fixed 40 pt box so it sits off the trailing screen
   edge with a gap (parity with the legacy `yAxisLabelWidth`). ✅
 - **Label formats:** Week = weekday letters (or dates); Month = day numbers; Year = month initials;

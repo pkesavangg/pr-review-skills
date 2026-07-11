@@ -210,17 +210,28 @@ enum ChartPrep {
         return visible + bracket.filter { !visibleTimestamps.contains($0.entryTimestamp) }
     }
 
-    // MARK: - Plot-X normalization (matches the section VMs' `plotXDate`)
+    // MARK: - Plot-X normalization (v2 weight engine: points sit ON the day/month gridline)
 
+    /// The x-position a summary plots at. **Start-of-day (local-tz midnight)** for week/month, and the
+    /// **1st-of-month at midnight** for year — so each point lands ON its day/month gridline, not centered in
+    /// the column. The v2 gridlines (`WeightChartView.gridTicks`), week labels, and the value-aligned scroll
+    /// all rest on midnight/day boundaries already, so plotting at midnight makes point + line + scroll-rest
+    /// coincide (e.g. a Wednesday reading sits on the "Wed" line, not between Wed and Thu). The incoming
+    /// `date` is `BathScaleWeightSummary.date`, which aggregation already normalized to the **local** day
+    /// (from the entry's UTC timestamp), so `startOfDay` here is DST-correct and timezone-correct.
+    ///
+    /// NOTE: this deliberately DIVERGES from the legacy section VMs' `plotXDate` (which offset to local NOON
+    /// so points centered between the legacy noon gridlines). The legacy engine (baby/BPM) keeps its noon
+    /// convention — do not unify them; the two engines draw their gridlines at different times (v2 = midnight,
+    /// legacy = noon), so each plots on its own grid.
     static func plotXDate(_ date: Date, period: TimePeriod, calendar: Calendar) -> Date {
         switch period {
         case .week, .month:
-            let dayStart = calendar.startOfDay(for: date)
-            return calendar.date(byAdding: .hour, value: 12, to: dayStart) ?? date
+            return calendar.startOfDay(for: date)
         case .year:
             var components = calendar.dateComponents([.year, .month], from: date)
             components.day = 1
-            components.hour = 12
+            components.hour = 0
             components.minute = 0
             components.second = 0
             return calendar.date(from: components) ?? date
