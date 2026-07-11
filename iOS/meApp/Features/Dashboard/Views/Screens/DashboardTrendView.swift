@@ -114,9 +114,8 @@ struct DashboardTrendView<TopContent: View, ChartFooter: View>: View {
                     // MA-3839: scale all period tabs (Week/Month/Year/Total) to one shared
                     // font size so they stay uniform and don't truncate under Dynamic Type.
                     selectedSegment: $localSelectedPeriod,
-                    useUniformFontScaling: true,
-                    accessibilityIdentifierProvider: { "\(AccessibilityID.dashboardPeriodTab)_\($0.rawValue)" }
-                )
+                    useUniformFontScaling: true
+                ) { "\(AccessibilityID.dashboardPeriodTab)_\($0.rawValue)" }
                 .padding(.vertical, .spacingSM)
                 .padding(.horizontal, 15)
                 if !dashboardStore.state.data.hasAnyEntries ||

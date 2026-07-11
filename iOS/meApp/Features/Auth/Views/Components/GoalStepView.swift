@@ -24,14 +24,13 @@ struct GoalStepView: View {
             VStack {
                 SegmentedButtonView(
                     segments: GoalTypeSegment.allCases,
-                    selectedSegment: $selectedSegment,
-                    accessibilityIdentifierProvider: { segment in
-                        switch segment {
-                        case .loseGain: return AccessibilityID.signupGoalTypeLoseGainTab
-                        case .maintain: return AccessibilityID.signupGoalTypeMaintainTab
-                        }
+                    selectedSegment: $selectedSegment
+                ) { segment in
+                    switch segment {
+                    case .loseGain: return AccessibilityID.signupGoalTypeLoseGainTab
+                    case .maintain: return AccessibilityID.signupGoalTypeMaintainTab
                     }
-                )
+                }
                 .onChange(of: selectedSegment) { _, newValue in
                     signupStore.signupForm.goalType.value = newValue.goalTypeValue
                     // Mark as dirty and touched when goal type changes

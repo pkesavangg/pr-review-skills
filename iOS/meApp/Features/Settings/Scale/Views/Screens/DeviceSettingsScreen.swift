@@ -145,43 +145,7 @@ struct DeviceSettingsScreen: View {
     private func settingsSection() -> some View {
         Section(header: SectionHeader(title: lang.settingsSectionHeader)) {
             if scaleType == .bluetoothR4 {
-                ActionListItemView(
-                    config: ActionListItemConfig(
-                        title: lang.mode,
-                        value: scaleSettingsStore.isBodyMetrics ? "All Body metrics" : "Weight only"
-                    ) {
-                            router.navigate(to: .deviceModes(
-                                scale: scale,
-                                isWeighOnlyModeEnabledByOthers: scaleSettingsStore.isWeighOnlyModeEnabledByOthers
-                            ))
-                        }
-                )
-                .appAccessibility(id: AccessibilityID.deviceSettingsModeRow)
-                ActionListItemView(
-                    config: ActionListItemConfig(
-                        title: lang.displayMetrics
-                    ) {
-                        router.navigate(to: .displayMetrics(
-                            scale: scale,
-                            isWeighOnlyModeEnabledByOthers: scaleSettingsStore.isWeighOnlyModeEnabledByOthers
-                        ))
-                    }
-                )
-                .appAccessibility(id: AccessibilityID.deviceSettingsDisplayMetricsRow)
-                ActionListItemView(
-                    config: ActionListItemConfig(
-                        title: lang.users,
-                        value: scaleSettingsStore.displayName,
-                        chevronType: scaleSettingsStore.isFetchingUsersList ? .loading : .right,
-                        isDisabled: !scaleSettingsStore.isDeviceConnected
-                    ) {
-                            Task {
-                                let fetchedUsersList = await scaleSettingsStore.ensureUsersList()
-                                router.navigate(to: .users(scale: scale, usersList: fetchedUsersList))
-                            }
-                        }
-                )
-                .appAccessibility(id: AccessibilityID.deviceSettingsUsersRow)
+                r4SettingsRows()
             }
             ActionListItemView(
                 config: ActionListItemConfig(
@@ -190,7 +154,7 @@ struct DeviceSettingsScreen: View {
                 ) { router.navigate(to: .deviceNameScreen(scale: scale)) }
             )
             .appAccessibility(id: AccessibilityID.deviceSettingsScaleNameRow)
-            
+
             if let userNumber = scale.userNumber, scaleType != .bluetoothR4 {
                 ActionListItemView(config: ActionListItemConfig(title: lang.userNumber, value: lang.userNumberInfo(userNumber), chevronType: .none))
             }
@@ -198,6 +162,49 @@ struct DeviceSettingsScreen: View {
         .listRowInsets()
         .listRowBackground(theme.backgroundPrimary)
         .listRowSeparatorTint(theme.statusUtilityPrimary)
+    }
+
+    /// R4-only rows (Mode / Display Metrics / Users). Extracted so `settingsSection()`
+    /// stays within the SwiftLint function-body length budget.
+    @ViewBuilder
+    private func r4SettingsRows() -> some View {
+        ActionListItemView(
+            config: ActionListItemConfig(
+                title: lang.mode,
+                value: scaleSettingsStore.isBodyMetrics ? "All Body metrics" : "Weight only"
+            ) {
+                router.navigate(to: .deviceModes(
+                    scale: scale,
+                    isWeighOnlyModeEnabledByOthers: scaleSettingsStore.isWeighOnlyModeEnabledByOthers
+                ))
+            }
+        )
+        .appAccessibility(id: AccessibilityID.deviceSettingsModeRow)
+        ActionListItemView(
+            config: ActionListItemConfig(
+                title: lang.displayMetrics
+            ) {
+                router.navigate(to: .displayMetrics(
+                    scale: scale,
+                    isWeighOnlyModeEnabledByOthers: scaleSettingsStore.isWeighOnlyModeEnabledByOthers
+                ))
+            }
+        )
+        .appAccessibility(id: AccessibilityID.deviceSettingsDisplayMetricsRow)
+        ActionListItemView(
+            config: ActionListItemConfig(
+                title: lang.users,
+                value: scaleSettingsStore.displayName,
+                chevronType: scaleSettingsStore.isFetchingUsersList ? .loading : .right,
+                isDisabled: !scaleSettingsStore.isDeviceConnected
+            ) {
+                Task {
+                    let fetchedUsersList = await scaleSettingsStore.ensureUsersList()
+                    router.navigate(to: .users(scale: scale, usersList: fetchedUsersList))
+                }
+            }
+        )
+        .appAccessibility(id: AccessibilityID.deviceSettingsUsersRow)
     }
     
     private func connectionSection() -> some View {

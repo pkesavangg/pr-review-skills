@@ -3,7 +3,6 @@
 //  Common feature — accessibility identifiers.
 //
 
-
 // MARK: - MOB-1489 accessibility-id sweep (declared centrally)
 extension AccessibilityID {
     static let deviceMetricsCloseButton = "device_metrics_close_button"
