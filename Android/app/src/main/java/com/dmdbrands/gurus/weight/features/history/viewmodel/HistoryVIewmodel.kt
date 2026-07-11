@@ -91,7 +91,12 @@ constructor(
           when (grouped) {
             is GroupedHistory.Weight -> handleIntent(HistoryIntent.SetHistoryItems(grouped.months))
             is GroupedHistory.BloodPressure -> handleIntent(HistoryIntent.SetBpHistoryItems(grouped.months))
-            is GroupedHistory.Baby -> handleIntent(HistoryIntent.SetBabyHistoryItems(grouped.weeks))
+            is GroupedHistory.Baby -> {
+              val babyId = (product as? ProductSelection.Baby)?.profile?.id
+              if (babyId != null) {
+                handleIntent(HistoryIntent.SetBabyHistoryItems(babyId, grouped.weeks))
+              }
+            }
           }
         }
       }

@@ -5,6 +5,7 @@ import com.dmdbrands.gurus.weight.core.rules.MainDispatcherRule
 import com.dmdbrands.gurus.weight.core.service.BluetoothPreferencesService
 import com.dmdbrands.gurus.weight.domain.interfaces.IDialogUtility
 import com.dmdbrands.gurus.weight.domain.model.common.WeightProgress
+import com.dmdbrands.gurus.weight.domain.model.permission.PermissionState
 import com.dmdbrands.gurus.weight.domain.repository.IDeviceRepository
 import com.dmdbrands.gurus.weight.domain.repository.IDeviceService
 import com.dmdbrands.gurus.weight.domain.services.IAccountService
@@ -18,6 +19,7 @@ import com.dmdbrands.gurus.weight.features.DeviceSetup.reducer.BtWifiScaleSetupI
 import com.dmdbrands.gurus.weight.features.common.model.DialogModel
 import com.dmdbrands.gurus.weight.testutil.initTestDependencies
 import com.google.common.truth.Truth.assertThat
+import com.dmdbrands.library.ggbluetooth.enums.GGPermissionType
 import com.greatergoods.blewrapper.GGDeviceService
 import com.greatergoods.blewrapper.GGPermissionService
 import io.mockk.MockKAnnotations
@@ -361,6 +363,87 @@ class BtWifiScaleSetupViewModelTest {
         advanceScheduler()
         // At SCALE_INFO, Skip just calls onNext — step should advance
         assertThat(viewModel.state.value.currentStep).isNotEqualTo(BtWifiSetupStep.SCALE_INFO)
+    }
+
+    // -------------------------------------------------------------------------
+    // Bluetooth-off during measurement → Error Collecting Measurement (MOB-871)
+    // -------------------------------------------------------------------------
+
+    /** All BtWifiR4-required permissions enabled (JVM tests run below API S). */
+    private fun allPermissionsEnabled() = mutableMapOf(
+        GGPermissionType.BLUETOOTH_SWITCH to PermissionState.ENABLED,
+        GGPermissionType.LOCATION_SWITCH to PermissionState.ENABLED,
+        GGPermissionType.LOCATION to PermissionState.ENABLED,
+        GGPermissionType.WIFI_SWITCH to PermissionState.ENABLED,
+    )
+
+    private fun invokeHandlePermissionBasedErrors() {
+        val method = viewModel::class.java.getDeclaredMethod("handlePermissionBasedErrors")
+        method.isAccessible = true
+        method.invoke(viewModel)
+    }
+
+    @Test
+    fun `Bluetooth off while on STEP_ON routes to MEASUREMENT error screen`() {
+        advanceScheduler()
+        // Arrive on "One Last Step" with every permission granted (so entry runs stepOn, not the error path).
+        viewModel.handleIntent(BtWifiScaleSetupIntent.SetPermissions(allPermissionsEnabled()))
+        viewModel.handleIntent(BtWifiScaleSetupIntent.SetCurrentStep(BtWifiSetupStep.STEP_ON))
+        advanceScheduler()
+        assertThat(viewModel.state.value.currentStep).isEqualTo(BtWifiSetupStep.STEP_ON)
+
+        // User turns Bluetooth off before stepping on the scale.
+        viewModel.handleIntent(
+            BtWifiScaleSetupIntent.SetPermissions(
+                allPermissionsEnabled().apply { put(GGPermissionType.BLUETOOTH_SWITCH, PermissionState.DISABLED) },
+            ),
+        )
+        invokeHandlePermissionBasedErrors()
+        advanceScheduler()
+
+        assertThat(viewModel.state.value.currentStep).isEqualTo(BtWifiSetupStep.MEASUREMENT)
+        assertThat(viewModel.state.value.stepConnectionStates[BtWifiSetupStep.MEASUREMENT])
+            .isInstanceOf(ConnectionState.Failed::class.java)
+    }
+
+    @Test
+    fun `Bluetooth off during MEASUREMENT surfaces the error state`() {
+        advanceScheduler()
+        viewModel.handleIntent(BtWifiScaleSetupIntent.SetPermissions(allPermissionsEnabled()))
+        viewModel.handleIntent(BtWifiScaleSetupIntent.SetCurrentStep(BtWifiSetupStep.MEASUREMENT))
+        advanceScheduler()
+
+        viewModel.handleIntent(
+            BtWifiScaleSetupIntent.SetPermissions(
+                allPermissionsEnabled().apply { put(GGPermissionType.BLUETOOTH_SWITCH, PermissionState.DISABLED) },
+            ),
+        )
+        invokeHandlePermissionBasedErrors()
+        advanceScheduler()
+
+        assertThat(viewModel.state.value.stepConnectionStates[BtWifiSetupStep.MEASUREMENT])
+            .isInstanceOf(ConnectionState.Failed::class.java)
+    }
+
+    @Test
+    fun `only network permission missing on STEP_ON does not fail the measurement`() {
+        advanceScheduler()
+        viewModel.handleIntent(BtWifiScaleSetupIntent.SetPermissions(allPermissionsEnabled()))
+        viewModel.handleIntent(BtWifiScaleSetupIntent.SetCurrentStep(BtWifiSetupStep.STEP_ON))
+        advanceScheduler()
+
+        // Wi-Fi/network off alone must not block the BLE reading — stay on "One Last Step".
+        viewModel.handleIntent(
+            BtWifiScaleSetupIntent.SetPermissions(
+                allPermissionsEnabled().apply { put(GGPermissionType.WIFI_SWITCH, PermissionState.DISABLED) },
+            ),
+        )
+        invokeHandlePermissionBasedErrors()
+        advanceScheduler()
+
+        assertThat(viewModel.state.value.currentStep).isEqualTo(BtWifiSetupStep.STEP_ON)
+        assertThat(viewModel.state.value.stepConnectionStates[BtWifiSetupStep.MEASUREMENT])
+            .isNotInstanceOf(ConnectionState.Failed::class.java)
     }
 
     // -------------------------------------------------------------------------

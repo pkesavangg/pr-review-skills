@@ -5,6 +5,7 @@ import com.dmdbrands.gurus.weight.domain.model.common.BpHistoryMonth
 import com.dmdbrands.gurus.weight.domain.model.common.HistoryMonth
 import com.google.common.truth.Truth.assertThat
 import kotlinx.collections.immutable.persistentListOf
+import kotlinx.collections.immutable.persistentMapOf
 import io.mockk.mockk
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
@@ -134,25 +135,47 @@ class HistoryReducerTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `SetBabyHistoryItems stores items and clears loading and error`() {
+    fun `SetBabyHistoryItems stores items under its babyId and clears loading and error`() {
         val babyA: BabyWeekGroup = mockk(relaxed = true)
         val state = HistoryState(isLoading = true, errorMessage = "stale error")
 
-        val result = reducer.reduce(state, HistoryIntent.SetBabyHistoryItems(listOf(babyA)))
+        val result = reducer.reduce(state, HistoryIntent.SetBabyHistoryItems("baby-1", listOf(babyA)))
 
-        assertThat(result.babyHistoryItems).containsExactly(babyA)
+        assertThat(result.babyHistoryItems.keys).containsExactly("baby-1")
+        assertThat(result.babyHistoryItems["baby-1"]).containsExactly(babyA)
         assertThat(result.isLoading).isFalse()
         assertThat(result.errorMessage).isNull()
     }
 
     @Test
-    fun `SetBabyHistoryItems with empty list clears previous items`() {
+    fun `SetBabyHistoryItems keeps each baby scoped to its own babyId`() {
+        val babyAWeeks: BabyWeekGroup = mockk(relaxed = true)
+        val babyBWeeks: BabyWeekGroup = mockk(relaxed = true)
+
+        // Two babies load into the same state, mirroring loadAllHistory's per-baby collectors.
+        val afterA = reducer.reduce(HistoryState(), HistoryIntent.SetBabyHistoryItems("baby-1", listOf(babyAWeeks)))
+        val afterB = reducer.reduce(afterA, HistoryIntent.SetBabyHistoryItems("baby-2", listOf(babyBWeeks)))
+
+        // The second baby must NOT overwrite the first (MOB-1449 regression).
+        assertThat(afterB.babyHistoryItems["baby-1"]).containsExactly(babyAWeeks)
+        assertThat(afterB.babyHistoryItems["baby-2"]).containsExactly(babyBWeeks)
+    }
+
+    @Test
+    fun `SetBabyHistoryItems with empty list clears only that baby's items`() {
         val babyA: BabyWeekGroup = mockk(relaxed = true)
-        val state = HistoryState(babyHistoryItems = persistentListOf(babyA))
+        val babyB: BabyWeekGroup = mockk(relaxed = true)
+        val state = HistoryState(
+            babyHistoryItems = persistentMapOf(
+                "baby-1" to persistentListOf(babyA),
+                "baby-2" to persistentListOf(babyB),
+            ),
+        )
 
-        val result = reducer.reduce(state, HistoryIntent.SetBabyHistoryItems(emptyList()))
+        val result = reducer.reduce(state, HistoryIntent.SetBabyHistoryItems("baby-1", emptyList()))
 
-        assertThat(result.babyHistoryItems).isEmpty()
+        assertThat(result.babyHistoryItems["baby-1"]).isEmpty()
+        assertThat(result.babyHistoryItems["baby-2"]).containsExactly(babyB)
     }
 
     // -------------------------------------------------------------------------

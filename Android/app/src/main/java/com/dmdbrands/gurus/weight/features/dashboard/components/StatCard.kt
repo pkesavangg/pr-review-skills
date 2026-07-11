@@ -41,6 +41,7 @@ import com.dmdbrands.gurus.weight.features.common.components.AppIconType
 import com.dmdbrands.gurus.weight.features.common.model.DashboardKey
 import com.dmdbrands.gurus.weight.features.common.model.Stat
 import com.dmdbrands.gurus.weight.features.dashboard.strings.DashboardString
+import com.dmdbrands.gurus.weight.features.dashboard.string.DashboardString as MilestoneStrings
 import com.dmdbrands.gurus.weight.resources.AppIcons
 import com.dmdbrands.gurus.weight.theme.MeTheme
 
@@ -80,7 +81,7 @@ internal fun StatCard(
         // Handle null values based on key type
         when {
           !isFromSetup && stat.key is DashboardKey.Milestone && stat.key.key == MilestoneKey.CURRENT_STREAK ->
-            append("0 days")
+            append(MilestoneStrings.MileStone.StreakZeroDays)
 
           !isFromSetup && stat.key is DashboardKey.Milestone && !isStreakMilestone(stat) ->
             append("0")

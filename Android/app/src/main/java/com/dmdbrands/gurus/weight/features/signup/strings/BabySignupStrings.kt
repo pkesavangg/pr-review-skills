@@ -36,8 +36,8 @@ object BabySignupStrings {
     const val birthWeightOzLabel = "oz"
 
     // Unit segments and suffixes
-    const val unitLbs = "lbs"
-    const val unitLbsOz = "lbs/oz"
+    const val unitLbs = "lb"
+    const val unitLbsOz = "lb/oz"
     const val unitKg = "kg"
     const val unitOz = "oz"
     const val unitIn = "in"

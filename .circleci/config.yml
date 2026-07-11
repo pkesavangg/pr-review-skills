@@ -281,9 +281,23 @@ jobs:
           # entitlement, so every Keychain SecItem call returns errSecMissingEntitlement (-34018)
           # and all KeychainServiceTests fail. Ad-hoc signing on the simulator applies the app's
           # entitlements (no provisioning profile needed) so the default keychain access group works.
+          # Hard wall-clock cap via `timeout`: a hung/looping test can flood stdout
+          # (e.g. a SwiftData autosave-retry loop logging "DefaultStore save failed"
+          # forever), and because that flood IS continuous output, `no_output_timeout`
+          # never fires — MOB-1396 ran 2h32m before it was cancelled by hand. `timeout`
+          # is output-independent, so it bounds the step no matter how noisy the hang.
+          # The grep filter drops that flood from the streamed log so the tail still
+          # shows the last test that started (the culprit); PIPESTATUS preserves
+          # xcodebuild's real exit code. Per-test execution allowances fail a runaway
+          # XCTest case (with its name) instead of letting it run to the cap.
           command: |
+            set -o pipefail
             xcrun simctl boot "iPhone 16" || true
-            xcodebuild test \
+            # Use GNU timeout if present (`timeout` or `gtimeout`); otherwise fall back to
+            # the per-test allowances + no_output_timeout below (macOS may not ship it).
+            TIMEOUT_BIN="$(command -v timeout || command -v gtimeout || true)"
+            CAP="${TIMEOUT_BIN:+$TIMEOUT_BIN 2400}"
+            $CAP xcodebuild test \
               -project meApp.xcodeproj \
               -scheme meApp \
               -configuration Dev \
@@ -294,10 +308,20 @@ jobs:
               -clonedSourcePackagesDirPath SourcePackages \
               -enableCodeCoverage YES \
               -resultBundlePath TestResults.xcresult \
+              -test-timeouts-enabled YES \
+              -default-test-execution-time-allowance 120 \
+              -maximum-test-execution-time-allowance 300 \
+              -parallel-testing-enabled NO \
               CODE_SIGN_IDENTITY="-" \
               CODE_SIGNING_REQUIRED=NO \
               CODE_SIGNING_ALLOWED=YES \
-              ENABLE_USER_SCRIPT_SANDBOXING=NO
+              ENABLE_USER_SCRIPT_SANDBOXING=NO \
+              2>&1 | grep --line-buffered -v -E 'DefaultStore save failed|Error Domain=NSCocoaErrorDomain|NSValidationError|NSManagedObject|x-coredata:|is a required value|^[[:space:]]*(accountId|activityLevel|height|id|isSynced|weightUnit) = |^\)\}$|^[[:space:]]*"Error Domain'
+            STATUS=${PIPESTATUS[0]}
+            if [ "$STATUS" -eq 124 ]; then
+              echo "ERROR: 'xcodebuild test' exceeded the 40-minute hard cap — a test is hung or looping. The last test shown above is the likely culprit."
+            fi
+            exit "$STATUS"
       - run:
           name: Check coverage threshold (80% on testable layers; UI layer excluded)
           working_directory: iOS
@@ -332,6 +356,28 @@ jobs:
             # and ViewModels ~57% are the shortfalls), so the shortage is visible and enforced.
             THRESHOLD=80
             echo "Non-UI line coverage: ${COVERAGE}% (UI layer excluded per CLAUDE.md; threshold ${THRESHOLD}%)"
+            # Diagnostic: the non-UI testable files with the most uncovered lines, so
+            # coverage work can target the biggest gaps first.
+            python3 -c "
+            import json
+            d = json.load(open('coverage.json'))
+            apps = [t for t in d.get('targets', []) if t.get('name','').startswith('meApp') and t.get('name','').endswith('.app')]
+            target = apps[0] if apps else None
+            def is_ui(path):
+                if '/Views/' in path: return True
+                base = path.rsplit('/', 1)[-1]
+                return base.endswith(('View.swift','Screen.swift','Modifier.swift'))
+            rows = []
+            for f in (target.get('files', []) if target else []):
+                p = f.get('path', f.get('name',''))
+                if is_ui(p): continue
+                ex = f.get('executableLines',0); cov = f.get('coveredLines',0)
+                if ex - cov > 0: rows.append((ex-cov, ex, cov, p.rsplit('/',1)[-1]))
+            rows.sort(reverse=True)
+            print('--- Top 25 non-UI files by uncovered lines ---')
+            for gap, ex, cov, name in rows[:25]:
+                print(f'  gap={gap:4d}  {(cov/ex*100 if ex else 100):5.1f}%  ({cov}/{ex})  {name}')
+            "
             if (( $(echo "$COVERAGE < $THRESHOLD" | bc -l) )); then
               echo "ERROR: Coverage ${COVERAGE}% is below the ${THRESHOLD}% threshold."
               exit 1
@@ -440,7 +486,11 @@ jobs:
   android-lint:
     docker:
       - image: cimg/android:2024.11.1
-    resource_class: large
+    # xlarge (16 GB): :app:lintAnalyzeDebug loads the whole app-module UAST and,
+    # with the 4 GB Gradle daemon heap + Kotlin daemon + parallel workers, peaks
+    # past the 8 GB `large` limit, so the kernel OOM-killer kills the Gradle
+    # daemon ("daemon disappeared unexpectedly"). Give lint headroom.
+    resource_class: xlarge
     steps:
       - checkout
       - run:

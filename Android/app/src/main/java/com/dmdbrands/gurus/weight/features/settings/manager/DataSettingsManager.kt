@@ -5,8 +5,6 @@ import com.dmdbrands.gurus.weight.core.shared.utilities.logging.AppLog
 import com.dmdbrands.gurus.weight.data.storage.datastore.UserDataStore
 import com.dmdbrands.gurus.weight.domain.services.AuthState
 import com.dmdbrands.gurus.weight.domain.services.IAccountService
-import com.dmdbrands.gurus.weight.domain.services.IEntryReadService
-import com.dmdbrands.gurus.weight.domain.services.IExportService
 import com.dmdbrands.gurus.weight.domain.services.IHealthConnectService
 import com.dmdbrands.gurus.weight.domain.interfaces.IDialogQueueService
 import com.dmdbrands.gurus.weight.features.common.components.ButtonType
@@ -18,24 +16,15 @@ import com.dmdbrands.gurus.weight.features.settings.strings.RadioGroupModalStrin
 import com.dmdbrands.gurus.weight.features.settings.strings.SettingsScreenStrings
 import com.dmdbrands.gurus.weight.features.settings.viewmodel.SettingsIntent
 import com.dmdbrands.gurus.weight.features.settings.viewmodel.SettingsState
-import com.dmdbrands.gurus.weight.features.export.strings.ExportStrings
-import retrofit2.HttpException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 interface IDataSettingsManager {
-  fun observeExportEnabled(
-    scope: CoroutineScope,
-    dispatch: (SettingsIntent) -> Unit,
-  )
-
   fun loadCurrentThemeMode(
     scope: CoroutineScope,
     dispatch: (SettingsIntent) -> Unit,
   )
-
-  fun onExportDataClick(scope: CoroutineScope)
 
   fun onConfirmDeleteAccount(dispatch: (SettingsIntent) -> Unit)
 
@@ -60,9 +49,7 @@ interface IDataSettingsManager {
 class DataSettingsManager
 @Inject
 constructor(
-  private val entryReadService: IEntryReadService,
   private val accountService: IAccountService,
-  private val exportService: IExportService,
   private val healthConnectService: IHealthConnectService,
   private val userDataStore: UserDataStore,
   private val dialogQueueService: IDialogQueueService,
@@ -70,24 +57,6 @@ constructor(
 ) : IDataSettingsManager {
   companion object {
     private const val TAG = "DataSettingsManager"
-  }
-
-  override fun observeExportEnabled(
-    scope: CoroutineScope,
-    dispatch: (SettingsIntent) -> Unit,
-  ) {
-    scope.launch {
-      try {
-        entryReadService.latestEntry().collect { latestEntry ->
-          val isEnabled = latestEntry != null
-          dispatch(SettingsIntent.SetExportEnabled(isEnabled))
-          AppLog.d(TAG, "Export enabled: $isEnabled (latestEntry: ${latestEntry != null})")
-        }
-      } catch (e: Exception) {
-        AppLog.e(TAG, "Error checking export enabled state", e.toString())
-        dispatch(SettingsIntent.SetExportEnabled(false))
-      }
-    }
   }
 
   override fun loadCurrentThemeMode(
@@ -104,27 +73,6 @@ constructor(
         dispatch(SettingsIntent.UpdateThemeMode(displayString))
       }
     }
-  }
-
-  override fun onExportDataClick(scope: CoroutineScope) {
-    AppLog.d(TAG, "Export data clicked")
-
-    dialogQueueService.enqueue(
-      DialogModel.Confirm(
-        title = ExportStrings.ExportDialogTitle,
-        message = ExportStrings.ExportDialogMessage,
-        confirmText = ExportStrings.SendButton,
-        cancelText = ExportStrings.CancelButton,
-        onConfirm = {
-          performExport(scope)
-          dialogQueueService.dismissCurrent()
-        },
-        onCancel = {
-          AppLog.d(TAG, "User cancelled export")
-          dialogQueueService.dismissCurrent()
-        },
-      ),
-    )
   }
 
   override fun onConfirmDeleteAccount(dispatch: (SettingsIntent) -> Unit) {
@@ -270,24 +218,6 @@ constructor(
         AppLog.i(TAG, "Successfully updated appearance to $displayString")
       } catch (e: Exception) {
         AppLog.e(TAG, "Error updating appearance", e)
-      } finally {
-        dialogQueueService.dismissLoader()
-      }
-    }
-  }
-
-  private fun performExport(scope: CoroutineScope) {
-    AppLog.i(TAG, ExportStrings.ExportStarted)
-    dialogQueueService.showLoader(
-      message = ExportStrings.LoaderMessage,
-    )
-
-    scope.launch {
-      try {
-        exportService.exportCsvWithPrompt()
-        AppLog.i(TAG, ExportStrings.ExportCompleted)
-      } catch (e: HttpException) {
-        AppLog.e(TAG, ExportStrings.ExportFailed, e)
       } finally {
         dialogQueueService.dismissLoader()
       }

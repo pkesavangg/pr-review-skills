@@ -82,6 +82,7 @@ private fun HelpContent(
       DeviceCatalogSection(
         title = HelpScreenStrings.BabyScale,
         iconId = AppIcons.Setup.BabyScale,
+        iconTint = MeTheme.colorScheme.baby,
         devices = BABY_SCALES,
         onDeviceSelected = { device ->
           val url = "${AppConfig.PRODUCT_URL}/${device.sku}"
@@ -91,6 +92,7 @@ private fun HelpContent(
       DeviceCatalogSection(
         title = HelpScreenStrings.BloodPressureMonitor,
         iconId = AppIcons.Setup.BpmScale,
+        iconTint = MeTheme.colorScheme.secondarySuccess,
         devices = BPM_DEVICES,
         onDeviceSelected = { device ->
           val url = "${AppConfig.PRODUCT_URL}/${device.sku}"
