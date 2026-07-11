@@ -55,8 +55,10 @@ struct WeightChartHost: View {
             if isAdopting { isAdopting = false; return }   // WE moved scrollX (init/period), not the user
             dashboardStore.graphManager.handleScrollPositionChange(newValue)
         }
-        // V4 (6a) — tap/drag selection: snap the raw x to the nearest real entry and report it to the store
-        // (which resolves `selectedPoint`/`showCrosshair` per period). Ignored mid-scroll. The crosshair
+        // V4 (6a) — tap/drag selection: snap the raw x to the nearest day/month gridline (NOT to the nearest
+        // real entry) and report it to the store, which resolves `selectedPoint`/`showCrosshair` per period.
+        // A gridline with no real reading is an "in-between" selection: the header interpolates the day's
+        // value with the Hermite spline (see `handleSelectionChange`). Ignored mid-scroll. The crosshair
         // itself is derived from the store's validated selection via `crosshairDate`.
         .onChange(of: selectedX) { _, raw in
             handleSelectionChange(raw)
@@ -136,9 +138,11 @@ struct WeightChartHost: View {
 
     // MARK: - V4 (6a) selection / crosshair
 
-    /// Plotted x-date of the store's currently-selected entry — drives the crosshair rule + point highlight.
-    /// Derived from the store's validated selection so it reflects both taps and programmatic auto-select,
-    /// and clears automatically when the store clears selection (e.g. on scroll-start). `nil` when unselected.
+    /// Plotted x-date of the store's current selection — drives the crosshair rule + (for a real point) the
+    /// enlarged point. Derived from the store's validated selection so it reflects both taps and programmatic
+    /// auto-select, and clears automatically when the store clears selection (e.g. on scroll-start). Resolves
+    /// to a real point's plot-x when the selected day/month has a reading, else to that day/month's gridline
+    /// (an interpolated in-between selection). `nil` when unselected.
     private var crosshairDate: Date? {
         guard dashboardStore.state.graph.showCrosshair,
               let selectedDate = dashboardStore.state.graph.selectedXValue,
@@ -151,7 +155,14 @@ struct WeightChartHost: View {
             case .year, .total: return calendar.isDate(point.original.date, equalTo: selectedDate, toGranularity: .month)
             }
         }
-        return match?.xDate
+        if let match { return match.xDate }
+        // In-between selection — an empty day/month with no real reading. Draw the crosshair ON that day's
+        // (or month's) gridline anyway; the header shows the Hermite-interpolated value for it (see
+        // `handleSelectionChange` / `DashboardMetricsCalculator.calculateDisplayWeight`). `.total` never lands
+        // here (it snaps to a real entry) and programmatic selects always resolve to a real point, so this
+        // fires only for a user tap on a gap. `selectedDate` is already the snapped day/month, and `plotXDate`
+        // is idempotent on it, so this is exactly where the day/month gridline sits.
+        return ChartPrep.plotXDate(selectedDate, period: model.period, calendar: calendar)
     }
 
     /// Issue #2 — formatted date of the store's selected point, for the callout above the crosshair line.
@@ -166,20 +177,98 @@ struct WeightChartHost: View {
             .lowercased()
     }
 
-    /// Snap the raw selected x to the nearest real (undecimated) entry and report it to the store. A `nil`
-    /// raw value (finger-lift / empty chart) is IGNORED so the selection persists (issue #3) — Swift Charts
-    /// resets `.chartXSelection` to nil when the scrub gesture ends, but Apple Health keeps the last-tapped
-    /// point highlighted until the next scroll. The only place a selection should drop is scroll-start, where
-    /// the store clears its own on `.interacting` (and this view drops the raw value in the `isScrolling`
-    /// handler so the next tap re-triggers `onChange(selectedX)`).
+    /// Snap the raw selected x to the day/month gridline we select, and report it to the store. A `nil` raw
+    /// value (finger-lift / empty chart) is IGNORED so the selection persists (issue #3) — Swift Charts resets
+    /// `.chartXSelection` to nil when the scrub gesture ends, but Apple Health keeps the last-tapped point
+    /// highlighted until the next scroll. The only place a selection should drop is scroll-start, where the
+    /// store clears its own on `.interacting` (and this view drops the raw value in the `isScrolling` handler
+    /// so the next tap re-triggers `onChange(selectedX)`).
     private func handleSelectionChange(_ raw: Date?) {
         guard !dashboardStore.state.graph.isScrolling else { return }
         guard let raw,
               let model = dashboardStore.chartModel,
-              let nearest = nearestEntry(to: raw, in: model) else {
+              let snapped = snappedSelectionDate(for: raw, in: model) else {
             return
         }
-        dashboardStore.selectWeightPoint(at: nearest.original.date)
+        dashboardStore.selectWeightPoint(at: snapped)
+    }
+
+    /// The date we SELECT for a raw tapped x, per period. When the snapped date has NO real reading this is
+    /// an "in-between" selection: `applyChartSelectionSync` leaves `selectedPoint == nil` (only
+    /// `selectedXValue` set), so `DashboardMetricsCalculator.calculateDisplayWeight` interpolates its value
+    /// with the Hermite (Fritsch–Carlson) spline — the same path the legacy engine uses for a crosshair on an
+    /// empty day. Everything is clamped to the plotted data's range so the crosshair never lands past the
+    /// first/last reading (or on the phantom trailing tick).
+    ///
+    /// - **Week** shows a gridline for every day → snap to the nearest day.
+    /// - **Month** shows vertical lines only at the 1st + every Sunday (weekly stride, NOT every day) → snap
+    ///   to the nearest of those SHOWN lines or a real entry day, so a tap lands on a visible gridline
+    ///   (interpolated when empty) or an entry point.
+    /// - **Year** shows a line per month → snap to the nearest 1st-of-month.
+    /// - **Total** isn't a continuous grid (raw dates, no per-day buckets) → snap to the nearest real entry.
+    private func snappedSelectionDate(for raw: Date, in model: ChartModel) -> Date? {
+        let points = model.fullResolution[DashboardStrings.weight] ?? []
+        guard let firstDate = points.first?.original.date,
+              let lastDate = points.last?.original.date else { return nil }
+        let calendar = Calendar.current
+        switch model.period {
+        case .week:
+            // Round to the nearest midnight (day gridline), then clamp into the data's day range.
+            let nearestDay = calendar.startOfDay(for: raw.addingTimeInterval(43_200))
+            let lo = calendar.startOfDay(for: firstDate)
+            let hi = calendar.startOfDay(for: lastDate)
+            return min(max(nearestDay, lo), hi)
+        case .month:
+            let lo = calendar.startOfDay(for: firstDate)
+            let hi = calendar.startOfDay(for: lastDate)
+            // Candidates = the shown vertical lines (every Sunday + each month's 1st) ∪ real entry days,
+            // restricted to the data range. Snap to whichever is nearest the tap.
+            var candidates = monthLineCandidates(in: model, calendar: calendar)
+            candidates.append(contentsOf: points.map { calendar.startOfDay(for: $0.original.date) })
+            let inRange = candidates.filter { $0 >= lo && $0 <= hi }
+            if let nearest = inRange.min(by: { abs($0.timeIntervalSince(raw)) < abs($1.timeIntervalSince(raw)) }) {
+                return nearest
+            }
+            // Fallback (no ticks generated yet): nearest day, clamped.
+            return min(max(calendar.startOfDay(for: raw.addingTimeInterval(43_200)), lo), hi)
+        case .year:
+            // Round to the nearest 1st-of-month, then clamp into the data's month range.
+            let nearestMonth = nearestMonthStart(to: raw, calendar: calendar)
+            let lo = monthStart(of: firstDate, calendar: calendar)
+            let hi = monthStart(of: lastDate, calendar: calendar)
+            return min(max(nearestMonth, lo), hi)
+        case .total:
+            return nearestEntry(to: raw, in: model)?.original.date
+        }
+    }
+
+    /// The vertical gridlines the MONTH view draws — every Sunday (the windowed weekly ticks) plus each
+    /// month's 1st (the solid dividers) — snapped to midnight. These are the "shown lines" the user selects
+    /// in month view (in addition to real entry days). Mirrors `WeightChartView.gridTicks` +
+    /// `monthBoundaryTicks` so a selection lands exactly on a drawn rule.
+    private func monthLineCandidates(in model: ChartModel, calendar: Calendar) -> [Date] {
+        guard let lo = model.xAxisTicks.first, let hi = model.xAxisTicks.last else { return [] }
+        // Weekly Sunday ticks (drop the phantom trailing tick), at midnight — the light rules.
+        var candidates = model.xAxisTicks.dropLast().map { calendar.startOfDay(for: $0) }
+        // Each month's 1st within the tick span — the solid divider rules.
+        guard var monthStart = calendar.dateInterval(of: .month, for: lo)?.start else { return candidates }
+        while monthStart <= hi {
+            candidates.append(monthStart)
+            guard let next = calendar.date(byAdding: .month, value: 1, to: monthStart) else { break }
+            monthStart = next
+        }
+        return candidates
+    }
+
+    /// Nearest 1st-of-month (midnight) to `raw` — the year view's selection grid.
+    private func nearestMonthStart(to raw: Date, calendar: Calendar) -> Date {
+        let thisStart = monthStart(of: raw, calendar: calendar)
+        let nextStart = calendar.date(byAdding: .month, value: 1, to: thisStart) ?? thisStart
+        return abs(raw.timeIntervalSince(thisStart)) <= abs(nextStart.timeIntervalSince(raw)) ? thisStart : nextStart
+    }
+
+    private func monthStart(of date: Date, calendar: Calendar) -> Date {
+        calendar.date(from: calendar.dateComponents([.year, .month], from: date)) ?? calendar.startOfDay(for: date)
     }
 
     /// Issue #2 — after a period switch / cold start, make sure the latest plotted point is selected so the

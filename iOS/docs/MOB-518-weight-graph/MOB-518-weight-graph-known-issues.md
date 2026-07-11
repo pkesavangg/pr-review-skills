@@ -298,6 +298,46 @@ scroll away → they revert to the visible-window average (in sync with the head
 
 ---
 
+## In-between line selection + Hermite interpolation (2026-07-11, eighth pass) ✅ built
+
+**Ask:** select the *lines between entries* too — e.g. an entry on Mon and Thu but none on Tue/Wed → tap the
+Tue/Wed line and read the approximate value for that day (the Hermite curve legacy already computes). Then a
+month-specific refinement: in month view the shown vertical lines are only the **1st + every Sunday** (weekly
+stride, not every day), so selection there should land on **those lines** (plus real entry points).
+
+**Finding — the interpolation was already fully wired; only the snap blocked it.** The reused domain layer
+carries the legacy Fritsch–Carlson spline (`GraphDataPreparer.interpolatedDisplayWeight`), and
+`DashboardMetricsCalculator.calculateDisplayWeight` already returns the interpolated value at the selected
+date whenever `selectedPoint == nil` but `selectedXValue` is set — the header reads it reactively, and the
+metric tiles already fall back to placeholders for an empty-day crosshair. The **only** blocker was that the
+v2 host (`WeightChartHost.handleSelectionChange`) snapped every tap to the nearest *real entry*, so
+`selectedPoint` was always set and the interpolation branch never ran. (Legacy weight draws only the vertical
+crosshair rule for an in-between selection — no dot on the line — the value lives in the header; v2 matches
+this, so no `WeightChartView` change was needed.)
+
+**Fix (`WeightChartHost` only).**
+1. **`snappedSelectionDate(for:in:)`** replaces the nearest-real-entry snap with a period-aware gridline snap,
+   clamped to the data range `[first, last]`:
+   - Week → nearest **day** (every day is a line).
+   - Month → nearest **shown line** (every Sunday + each month's 1st) **or** a real entry day, whichever is
+     closer (`monthLineCandidates` mirrors the view's `gridTicks` + `monthBoundaryTicks` so a selection lands
+     exactly on a drawn rule).
+   - Year → nearest **1st-of-month**.
+   - Total → nearest **real entry** (raw dates, no continuous daily grid → no interpolation).
+2. **`crosshairDate`** now falls back to `ChartPrep.plotXDate(selectedDate, period:)` when no real point
+   matches the selected day/month, so the crosshair draws ON that gridline for a gap selection.
+
+Net: tapping a gap line → crosshair on the line + header shows the Hermite-interpolated value for that
+day/month + tiles show placeholders (legacy parity); tapping a real entry → unchanged (exact value / day
+average). Feature-spec §7 + §8 updated (were stale `✗ V4`). Weight (v2) only; baby/BPM legacy path untouched.
+
+**Verify on device:** week — tap between two readings → crosshair on that day, header shows an interpolated
+weight. Month — tap a Sunday / the 1st line with no entry → crosshair on that line + interpolated value; tap
+near a real (mid-week) entry → that entry, exact value. Year — tap an empty month → interpolated. Total —
+still snaps to the nearest reading.
+
+---
+
 ## Sweep plan (do at the end, before sign-off)
 
 1. After **A2** + **Phase 4** (single-event settle) → re-check **#3** (scroll-lock) and **#2** (switch heaviness).

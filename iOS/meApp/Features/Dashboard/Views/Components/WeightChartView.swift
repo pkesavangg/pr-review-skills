@@ -45,7 +45,8 @@ struct WeightChartView: View {
 
     let model: ChartModel
     @Binding var scrollX: Date
-    /// V4 (6a): raw x-value from `.chartXSelection`; the host snaps it to a real entry and drives `crosshairDate`.
+    /// V4 (6a): raw x-value from `.chartXSelection`; the host snaps it to the nearest day/month gridline
+    /// (interpolating the value on a gap day) and drives `crosshairDate`.
     @Binding var selectedX: Date?
     /// V4 (6a): plotted x-date of the currently-selected (snapped) point — draws the crosshair + enlarges the
     /// matching point. `nil` when nothing is selected / crosshair hidden (e.g. during a scroll).

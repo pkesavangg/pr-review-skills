@@ -102,13 +102,21 @@
 
 ## 7. Selection / crosshair
 
-- **Tap to select**, per-period snap rule:
-  - Week → nearest real day tick (excludes phantom); crosshair shown only if the day ∈ `[firstPoint, lastPoint]`.
-  - Month → **section windowing**: find `[startTick, endTick)` around the tap; select nearest point inside, or
-    the section start if empty; crosshair only within `[first, last]` + ~50 % right slack.
-  - Year → nearest month tick within `[firstMonth, lastMonth]`.
-  - Total → nearest real data point within `[firstPoint, lastPoint]` + small right slack.  ✗ (all — V4)
-- **Crosshair** = vertical rule at the selected x (+ callout). Hidden outside the drawn line's range. ✗ (V4)
+- **Tap to select**, per-period snap rule — a tap snaps to a **gridline (or real entry)**, and an *empty*
+  gridline (a day/month with no reading) is a valid selection whose value is **Hermite-interpolated** (§8), so
+  you can select the in-between lines, not just entry points. All clamped to the data range `[first, last]`, so
+  the crosshair never lands past the first/last reading or on the phantom trailing tick (`WeightChartHost.snappedSelectionDate`):
+  - Week → nearest **day** gridline (every day has a line; excludes phantom).
+  - Month → nearest **shown line** (every Sunday + each month's 1st — the weekly stride, NOT every day) **or**
+    a real entry day, whichever is closer (`monthLineCandidates` mirrors the drawn `gridTicks` + `monthBoundaryTicks`).
+  - Year → nearest **1st-of-month**.
+  - Total → nearest **real data point** (no continuous daily grid → no interpolation there).
+  ✅ (2026-07-11; earlier the v2 host snapped every tap to the nearest *real entry*, so gap days couldn't be
+  selected and the Hermite path never ran — the legacy behaviour was lost. Now restored + refined for the
+  month weekly grid.)
+- **Crosshair** = vertical rule at the selected x (+ callout). For an in-between selection it sits **on** the
+  day/month gridline (`crosshairDate` falls back to `ChartPrep.plotXDate` when no real point matches). Hidden
+  outside the drawn line's range. ✅
 - **Selection clears when a scroll starts** (store clears on `.interacting`), and **persists after
   finger-lift** — Swift Charts resets `.chartXSelection` to `nil` on gesture-end but the host ignores that so
   the crosshair stays until the next scroll, like Apple Health (2026-07-10, third pass). ✅
@@ -118,17 +126,21 @@
   edges; the value stays in the header. The **redundant date/range line under the big weight** is hidden on
   selection (`GraphView.isShowingSelectionCallout` reads the store's `showCrosshair` for the new engine) so
   the date isn't shown twice; the period-range label returns when nothing is selected. ✅ (2026-07-10)
-- Tapping the middle/approx area snaps to the nearest real entry (never a phantom point). ✗ (V4)
+- Tapping an in-between line snaps to that gridline (interpolated value); tapping near a real entry snaps to
+  the entry (exact value). Never a phantom point. ✅ (2026-07-11)
 
 ## 8. Header value & label (above the chart)
 
-- **Displayed weight priority:** (1) selected point → its exact weight; (2) interpolated weight at the crosshair
-  date (Hermite); (3) **visible-window average** (arithmetic mean of window ops); (4) latest entry (fallback). ✗ (V4)
+- **Displayed weight priority:** (1) selected point → its exact weight (day average on week/month); (2)
+  **interpolated weight at the crosshair date (Hermite/Fritsch–Carlson)** when the selected gridline has no
+  reading; (3) **visible-window average** (arithmetic mean of window ops); (4) latest entry (fallback). Driven
+  by `DashboardMetricsCalculator.calculateDisplayWeight`, read reactively from store state. ✅ (interpolated
+  path now actually exercised by in-between selection — §7 — 2026-07-11)
 - **Label states:** point selected → **"day average"**; no selection → **"{period} average"** (e.g. "week
-  average"); no entries in period → "no entries in {period}"; none at all → "no entries". ✗ (V4)
+  average"); no entries in period → "no entries in {period}"; none at all → "no entries". ✅
 - **Window average** is an **interpolated** average over the visible range (Hermite samples), and **settles on
-  finger-lift** (not recomputed mid-drag). ✗ (V4)
-- Unit suffix (kg/lb) follows the account. ✗ (V4)
+  finger-lift** (not recomputed mid-drag). ✅
+- Unit suffix (kg/lb) follows the account. ✅
 
 ## 9. Goal
 

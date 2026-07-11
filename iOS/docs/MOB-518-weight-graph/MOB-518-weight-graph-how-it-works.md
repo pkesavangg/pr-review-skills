@@ -311,13 +311,22 @@ the **date floats above the line** ("jul 9, 2026"). It stays until you scroll.
 **How it works:**
 
 ```
-tap ─► Swift Charts .chartXSelection writes raw x  ─► host snaps to the NEAREST REAL point
-                                                       (from fullResolution, so taps always hit a real entry)
-    ─► store.selectWeightPoint(at: realDate)
-         • sets selectedPoint / selectedXValue / showCrosshair
+tap ─► Swift Charts .chartXSelection writes raw x  ─► host snaps to the nearest GRIDLINE (or real entry)
+                                                       per period (day / Sunday+1st / month-1st / entry)
+    ─► store.selectWeightPoint(at: snappedDate)
+         • sets selectedPoint (nil if the line has no reading) / selectedXValue / showCrosshair
          • refreshes the metric tiles (§10)
     ─► the VIEW derives the crosshair from the store's validated selection (crosshairDate)
 ```
+
+**You can select the in-between lines, not just entry points.** If the snapped day/month has a reading the
+header shows that exact value (day average on week/month); if it's an *empty* gridline the header shows the
+**Hermite-interpolated** value for that day (§9) — the same Fritsch–Carlson spline the legacy engine uses.
+The snap grid is per-period: **week** → any day (every day is a line); **month** → the shown lines (every
+Sunday + each month's 1st) or a real entry; **year** → any month-1st; **total** → nearest real entry (no
+continuous grid). All clamped to the data range, so the crosshair never lands past the first/last reading.
+(Legacy — and v2 — draw *only* the vertical rule for a gap selection; there's no dot on the line, the value
+is in the header.)
 
 Two important details:
 
@@ -556,5 +565,5 @@ v2            FULL domain  → no gap         windowed ±10 (perf only, not the 
 ---
 
 *Grounded in the working tree as of 2026-07-11 (after the goal-chip-on-axis, month-stride, points-on-line,
-metric-tile, and dead-code-cleanup changes). If a symbol drifts, re-grep — the invariants in §14 are the stable
-part.*
+metric-tile, dead-code-cleanup, and in-between/Hermite-interpolated selection changes). If a symbol drifts,
+re-grep — the invariants in §14 are the stable part.*
