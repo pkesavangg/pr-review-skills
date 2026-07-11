@@ -80,22 +80,6 @@ struct GraphRenderingConfiguration {
         return start <= end ? start...end : end...start
     }
 
-    /// All x-axis tick dates across the FULL domain (scroll-independent) for the v2 engine — unlike
-    /// `xAxisValues`, which windows ticks around the scroll position for large spans. The v2 engine needs
-    /// ticks over the whole scrollable range so gridlines/labels appear everywhere the user scrolls, and so
-    /// a scroll-settle never regenerates them (which would rebuild the chart's scroll view). `operations`
-    /// must be sorted ascending.
-    func fullXAxisValues(for period: TimePeriod, from operations: [BathScaleWeightSummary]) -> [Date] {
-        guard let domain = fullXDomain(for: period, from: operations) else { return [] }
-        let shouldRepeat = DateTimeTools.shouldRepeatXAxisLabels(for: period, entryCount: operations.count)
-        switch period {
-        case .week:  return weeklyTicks(from: domain.lowerBound, to: domain.upperBound)
-        case .month: return monthlyWeeklyTicks(from: domain.lowerBound, to: domain.upperBound)
-        case .year:  return yearlyTicks(from: domain.lowerBound, to: domain.upperBound)
-        case .total: return totalTicks(from: domain.lowerBound, to: domain.upperBound, operations: operations, shouldRepeat: shouldRepeat)
-        }
-    }
-
     /// Bounded scrollable x-domain for the v2 engine: a window of `±windows` visible-windows around
     /// `scrollPosition`, clamped to the buffered full data span. This caps the Swift Charts scroll canvas
     /// (fullDomain ÷ visibleWindow) to ~`2·windows`× regardless of how much history exists — the fix for the
@@ -213,7 +197,7 @@ struct GraphRenderingConfiguration {
     /// made Swift Charts hide that Sunday's label (the boundary tick "ate" it), leaving a visible gap. The
     /// view draws the boundary as a separate gridline-only mark (`WeightChartView.monthBoundaryTicks`) that
     /// carries no tick/label, so every Sunday label renders. Scoped to the v2 weight paths
-    /// (`fullXAxisValues`/`boundedXAxisValues`); the legacy `monthlyTicks` (used by `xAxisValues`, shared with
+    /// (`boundedXAxisValues`); the legacy `monthlyTicks` (used by `xAxisValues`, shared with
     /// baby/BPM) is intentionally left unchanged.
     func monthlyWeeklyTicks(from start: Date, to end: Date) -> [Date] {
         var cal = Calendar(identifier: .gregorian)

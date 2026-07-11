@@ -73,29 +73,6 @@ struct ChartModel: Equatable, Sendable {
     /// Convenience accessor for the primary (weight) series' display points.
     var weightPoints: [PlottedGraphSeries] { seriesPoints[DashboardStrings.weight] ?? [] }
 
-    /// Adaptive y-axis resettle (Y-B) — returns a copy with ONLY `yAxis` replaced. Every other field
-    /// (series, `xDomain`, `visibleDomainLength`, `xAxisTicks`, `dataFingerprint`) is byte-identical, so the
-    /// `Chart`'s scroll region (`.chartXScale`/`.chartXVisibleDomain`/`.chartScrollPosition`) does NOT
-    /// re-lay-out on a scroll-end settle — only `.chartYScale` animates. This is what keeps the chart
-    /// scrollable immediately after a scroll stops (the fix for the "can't scroll for ~1 s" hitch): the old
-    /// code rebuilt the whole model at scroll-end, and the scroll-dependent x-geometry (per-month
-    /// `visibleDomainLength`, windowed `xAxisTicks`) changing forced Swift Charts to rebuild the scroll view.
-    func withYAxis(_ newYAxis: YAxisModel) -> ChartModel {
-        ChartModel(
-            period: period,
-            productType: productType,
-            orderedSeriesNames: orderedSeriesNames,
-            seriesPoints: seriesPoints,
-            fullResolution: fullResolution,
-            xDomain: xDomain,
-            visibleDomainLength: visibleDomainLength,
-            xAxisTicks: xAxisTicks,
-            goalWeight: goalWeight,
-            yAxis: newYAxis,
-            dataFingerprint: dataFingerprint
-        )
-    }
-
     /// Scroll-end settle for the FULL-domain / windowed-ticks engine: returns a copy with ONLY `yAxis` and
     /// `xAxisTicks` replaced. `xDomain`, `visibleDomainLength`, `seriesPoints`, and `dataFingerprint` stay
     /// byte-identical, so the scroll region (`.chartXScale`/`.chartXVisibleDomain`/`.chartScrollPosition`)

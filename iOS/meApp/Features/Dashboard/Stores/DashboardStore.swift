@@ -892,38 +892,6 @@ class DashboardStore: ObservableObject, DashboardStateProviding {
         return metric == DashboardStrings.weight ? nil : metric
     }
 
-    /// Scroll-END settle: recompute ONLY the adaptive y-axis for the landed window and update `chartModel`
-    /// in place via `ChartModel.withYAxis` — the series + x-geometry (`xDomain` / `visibleDomainLength` /
-    /// `xAxisTicks`) are left byte-identical so Swift Charts does NOT rebuild its scroll view (which was the
-    /// "can't scroll for ~1 s after a scroll stops" hitch). The y-window reuses the model's frozen
-    /// `visibleDomainLength` so the axis matches the on-screen window. No-op if the model isn't built yet.
-    /// Weight only; baby/BPM stay on the legacy engine.
-    func resettleWeightYAxis(scrollPosition: Date) {
-        // 6e: a co-plotted metric is normalized to the y-domain, so a settle must re-normalize it → full
-        // rebuild. x-geometry is scroll-independent (V-A5a), so the scroll region still stays stable.
-        guard coPlottedMetric == nil else {
-            rebuildWeightChartModel(scrollPosition: scrollPosition)
-            return
-        }
-        guard let current = chartModel else {
-            rebuildWeightChartModel(scrollPosition: scrollPosition)
-            return
-        }
-        let newYAxis = ChartPrep.weightYAxis(
-            operations: continuousOperations,
-            period: state.graph.selectedPeriod,
-            scrollPosition: scrollPosition,
-            visibleDomainLength: current.visibleDomainLength,
-            goalWeight: goalWeightForDisplay,
-            isWeightlessMode: isWeightlessModeEnabled,
-            anchorWeight: weightlessAnchorWeight,
-            convertWeight: goalManager.convertWeightToDisplay,
-            chartHeight: state.graph.chartHeight
-        )
-        guard newYAxis != current.yAxis else { return }
-        chartModel = current.withYAxis(newYAxis)
-    }
-
     /// Scroll-END settle for the v2 weight engine. The scroll domain is FULL and scroll-independent, so a
     /// settle only needs to (a) resettle the adaptive y-axis for the landed window and (b) refresh the
     /// WINDOWED x-axis ticks so gridlines follow the scroll. Both are swapped IN PLACE via

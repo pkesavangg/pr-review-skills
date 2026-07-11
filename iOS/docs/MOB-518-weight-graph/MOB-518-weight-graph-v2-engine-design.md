@@ -428,3 +428,25 @@ Full detail + the still-open items are in the [known-issues log](MOB-518-weight-
 
 **Shorthand:** 1–4 = architecture + perf finish (closes #2/#3, done) · 5 = visual parity (closes #1) ·
 6 = behaviour parity (closes #4) · 7 makes it the real graph · 8–11 verify, test, ship.
+
+### Dead-code cleanup (2026-07-11) — scoped, weight-only
+
+A conservative sweep removed the v2 weight-only symbols that later steps superseded and left with **zero
+callers** (build-verified — a stray reference would fail to compile):
+
+- `DashboardStore.resettleWeightYAxis(scrollPosition:)` + `ChartModel.withYAxis(_:)` — the step-2 in-place
+  y-axis settle, **superseded by `settleWeightChart` + `ChartModel.withYAxisAndTicks`** (which also refreshes the
+  windowed ticks, per the post-flip scroll-hang fix). Removed as a pair.
+- `GraphRenderingConfiguration.fullXAxisValues(for:from:)` — the step-4a full-span tick generator,
+  **superseded by `boundedXAxisValues`** (windowed ticks). `fullXDomain` stays (still used by `ChartPrep` +
+  `boundedXDomain`). Stale doc-comment references were scrubbed to point at the live symbols.
+
+**Explicitly NOT removed — the wholesale legacy delete is still deferred (step 7).** `BaseGraphView`, the four
+section views + view-models, `BaseSectionViewModel`, the shared managers, and the legacy tick path
+(`xAxisValues`/`monthlyTicks`/…) are **shared with baby/BPM** and stay until those migrate (separate epic).
+Also deferred (dead-in-prod but test-covered *and* on shared manager/protocol surfaces — removing them would
+touch shared code + delete tests, which the standing constraints forbid pre-Phase-T):
+`DashboardChartManager.xAxisValuesWithBuffer`, `DashboardGraphManager.generateChartData` /
+`recalculateYAxisForVisibleData` / `updateWeightDisplayForCurrentView(triggerUpdate:)`,
+`BaseSectionViewModel.visibleChartSeriesData` (+ its `SectionViewModelProtocol` requirement). Revisit these in
+Phase T / the baby-BPM migration.

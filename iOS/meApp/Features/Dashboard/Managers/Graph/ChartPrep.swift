@@ -85,7 +85,7 @@ enum ChartPrep {
         // 3. Adaptive y-axis over the visible window (Y-B) — the ONLY scroll-position-dependent output.
         //    Computed inline (rather than via `weightYAxis`) so the domain AND the window ops can also
         //    normalize the co-plotted metric series consistently. (`weightYAxis` stays for the in-place
-        //    weight-only settle in `resettleWeightYAxis`.)
+        //    weight-only settle in `settleWeightChart`.)
         let yAxisOps = weightYAxisOperations(
             operations: operations, period: period, scrollPosition: scrollPosition,
             visibleDomainLength: visibleLength, preparer: preparer
@@ -100,7 +100,7 @@ enum ChartPrep {
         // 4. Series dicts. Weight is always present; a selected body-comp metric (6e) is co-plotted as a
         //    2nd line NORMALIZED into the weight y-domain (so it overlays the same axis). That normalization
         //    is scroll-dependent (keyed off the y-domain + window ops), so a scroll-end settle must
-        //    re-normalize it — `DashboardStore.resettleWeightYAxis` does a full rebuild when a metric is
+        //    re-normalize it — `DashboardStore.settleWeightChart` does a full rebuild when a metric is
         //    active (x-geometry is scroll-independent since V-A5a, so the scroll region still stays stable).
         var orderedNames: [String] = plotted.isEmpty ? [] : [seriesName]
         var full: [String: [PlottedGraphSeries]] = [seriesName: plotted]
@@ -150,7 +150,7 @@ enum ChartPrep {
     /// The adaptive y-axis (Y-B) for one visible window: visible ∪ bracketing ops (deduped) → `YAxisScale`,
     /// exactly as `DashboardChartManager.updateYAxisCache`. Total isn't scrollable → the whole dataset
     /// defines the axis. This is the ONLY scroll-position-dependent output of the weight model, so a
-    /// scroll-end settle recomputes just this and calls `ChartModel.withYAxis` — leaving the (scroll-stable)
+    /// scroll-end settle recomputes just this and calls `ChartModel.withYAxisAndTicks` — leaving the (scroll-stable)
     /// series + x-geometry untouched so the chart never rebuilds its scroll view on settle.
     static func weightYAxis( // swiftlint:disable:this function_parameter_count
         operations: [BathScaleWeightSummary],

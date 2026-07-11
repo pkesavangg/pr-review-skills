@@ -100,7 +100,7 @@ struct WeightChartHost: View {
             // V-A4 — routed straight to `graphManager` (not `chartManager`): we want only the commit +
             // `isScrolling` flip + selection-clear, NOT the chartManager's `.idle` 50 ms legacy settle
             // (`updateYAxisCache`/`updateWeightDisplay`/metrics) — the new engine gets its y-axis from
-            // `resettleWeightYAxis` and ignores that legacy work. `graphManager.handleScrollPhaseChange`
+            // `settleWeightChart` and ignores that legacy work. `graphManager.handleScrollPhaseChange`
             // commits the landed window (with month snapping) into `state.graph.xScrollPosition`.
             .onScrollPhaseChange { _, newPhase in
                 Task { @MainActor in
