@@ -22,7 +22,7 @@ import com.dmdbrands.gurus.weight.theme.MeTheme
  * "Dec 2022, 3 entries, average 148.4 lbs, change -1.4 lbs".
  */
 private fun weightRowDescription(item: HistoryMonth): String {
-    val unit = item.unit ?: "lbs"
+    val unit = item.unit ?: "lb"
     val avgText = "${item.avgWeightPrefix ?: ""}${formatWeightValue(item.avgWeight)} $unit"
     val changeText = buildString {
         item.change?.let { if (it > 0) append("+") }
@@ -57,7 +57,7 @@ fun WeightHistoryItem(
                 text = buildString {
                     append(item.avgWeightPrefix ?: "")
                     append(formatWeightValue(item.avgWeight))
-                    append(" ${item.unit ?: "lbs"}")
+                    append(" ${item.unit ?: "lb"}")
                 },
                 style = MeTheme.typography.body2,
                 color = MeTheme.colorScheme.textBody,
@@ -78,7 +78,7 @@ fun WeightHistoryItem(
                 text = buildString {
                     item.change?.let { if (it > 0) append("+") }
                     append(formatWeightValue(item.change))
-                    append(" ${item.unit ?: "lbs"}")
+                    append(" ${item.unit ?: "lb"}")
                 },
                 style = MeTheme.typography.body2,
                 color = MeTheme.colorScheme.textBody,

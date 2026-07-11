@@ -18,6 +18,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusManager
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.SpanStyle
@@ -72,7 +73,6 @@ fun <T> SetupForm(
   subtitle: String,
   subtitleAnnotatedText: String? = null,
   label: String,
-  isCustomization: Boolean = false,
   inputType: AppInputType = AppInputType.TEXT,
   hasToggle: Boolean = false,
   toggleLabel: String? = null,
@@ -89,161 +89,186 @@ fun <T> SetupForm(
   enableScroll: Boolean = true, // New parameter to control scrolling
   userList: List<GGBTUser> = emptyList(), // List of existing usernames to check for duplicates
 ) {
-  // Add duplicate name validator if userList is provided (same as Angular version)
-    // Use LaunchedEffect to refresh validation whenever userList changes
-  val errorMessage = if(isCustomization) BtWifiScaleSetupStrings.DuplicateUser.UserErrorMessage else BtWifiScaleSetupStrings.DuplicateUser.ErrorMessage
-  LaunchedEffect(userList) {
-    // Remove any existing duplicate validators first
-    formControl.removeValidator("DUPLICATE_NAME")
-
-    if (userList.isNotEmpty()) {
-      // Add new duplicate validator
-      formControl.addValidator { value ->
-        if (value?.toString()?.let { name ->
-            userList.any { user -> user.name.equals(name, ignoreCase = true) }
-          } == true ) {
-          ValidationError("DUPLICATE_NAME", errorMessage)
-        } else null
-      }
-    }
-
-    // Force validation refresh to update any existing errors
-    formControl.validate()
-  }
+  DuplicateNameValidatorEffect(formControl, userList)
   val focusManager = LocalFocusManager.current
 
-  Column(
-    modifier = modifier
-      .fillMaxSize()
-      .then(
-        // Only apply vertical scroll if enabled
-        if (enableScroll) {
-          Modifier
-            .verticalScroll(rememberScrollState())
-            .padding(horizontal = spacing.sm, vertical = spacing.md)
-        } else {
-          Modifier
-            .fillMaxSize()
-            .padding(horizontal = 0.dp, vertical = 0.dp)
-        },
-      )
-      .dismissKeyboardOnTap(),
-  ) {
-    AppText(
-      text = title,
-      textType = TextType.ListTitle2,
-    )
-
-    AppText(
-      text = subtitle,
-      textType = TextType.Body,
-      modifier = Modifier.padding(top = spacing.xs,bottom = spacing.lg),
-      annotatedText = subtitleAnnotatedText,
-      annotationPosition = AnnotationPosition.End,
-      spanStyle = if (subtitleAnnotatedText.isNullOrEmpty()) null else SpanStyle(fontWeight = FontWeight.Bold),
-    )
-
-     wifiNameFormControl?.let {
-       if(!isWifiConnected){
-         AppInput(
-           formControl = it,
-           label = secondaryLabel,
-           imeAction = ImeAction.Done,
-           onImeAction =  {
-             focusManager.clearFocus()
-           },
-           enabled = true,
-           modifier = Modifier.fillMaxWidth(),
-         )
-       }
-    }
-
-    if (isWifiConnected) {
-      WifiItem(
-        borderRadius = borderRadius.sm,
-        ssid = wifiNameFormControl?.value.toString(),
-        isConfigured = false,
-        index = 0,
-        total = 1,
-        onClick = { onImeAction?.invoke() },
-        modifier = Modifier.size(spacing.md)
-      )
-      Spacer(modifier = Modifier.padding(bottom = spacing.sm))
-    }
-    // Input Field Section
+  Column(modifier = modifier.setupFormContainer(enableScroll)) {
+    SetupFormHeader(title, subtitle, subtitleAnnotatedText)
+    SetupFormWifiSection(wifiNameFormControl, isWifiConnected, secondaryLabel, focusManager, onImeAction)
     AppInput(
       formControl = formControl,
       label = label,
       type = inputType,
       imeAction = ImeAction.Done,
-      onImeAction = onImeAction ?: {
-        focusManager.clearFocus()
-      },
+      onImeAction = onImeAction ?: { focusManager.clearFocus() },
       enabled = !(hasToggle && toggleChecked),
       modifier = Modifier.fillMaxWidth(),
     )
+    SetupFormSupportingButton(supportingButtonLabel, supportText, onSupportingButtonClick)
+    SetupFormToggle(hasToggle, toggleLabel, toggleChecked, onToggleChanged)
+    SetupFormNote(noteMessage)
+    SetupFormSupportingImage(supportingImage)
+  }
+}
 
-
-
-    if (supportingButtonLabel != null && onSupportingButtonClick != null) {
-      Column(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalAlignment = Alignment.CenterHorizontally,
-      ) {
-        AppButton(
-          label = supportingButtonLabel,
-          type = ButtonType.InlineTextPrimary,
-          onClick = onSupportingButtonClick,
-          modifier = Modifier.padding(vertical = spacing.xs)
-        )
-        supportText?.let {
-          AppText(
-            text = supportText,
-            textType = TextType.Body,
-            modifier = Modifier.padding(bottom = spacing.lg),
-          )
-        }
+/**
+ * Registers a runtime "DUPLICATE_NAME" validator whenever [userList] changes.
+ *
+ * Duplicate-profile collisions always surface the dedicated duplicate message so it stays
+ * distinct from the reserved-name ("guest") error (BtWifiScaleSetupReducer wires that separately).
+ */
+@Composable
+private fun <T> DuplicateNameValidatorEffect(
+  formControl: FormControl<T>,
+  userList: List<GGBTUser>,
+) {
+  val errorMessage = BtWifiScaleSetupStrings.DuplicateUser.ErrorMessage
+  LaunchedEffect(userList) {
+    formControl.removeValidator("DUPLICATE_NAME")
+    if (userList.isNotEmpty()) {
+      formControl.addValidator { value ->
+        if (value?.toString()?.let { name ->
+            userList.any { user -> user.name.equals(name, ignoreCase = true) }
+          } == true) {
+          ValidationError("DUPLICATE_NAME", errorMessage)
+        } else null
       }
     }
+    // Force validation refresh to update any existing errors
+    formControl.validate()
+  }
+}
 
-    // Toggle Section
-    if (hasToggle && toggleLabel != null && onToggleChanged != null) {
-      Row(
+/** Root container modifier — applies scroll + padding only when [enableScroll] is set. */
+@Composable
+private fun Modifier.setupFormContainer(enableScroll: Boolean): Modifier = this
+  .fillMaxSize()
+  .then(
+    if (enableScroll) {
+      Modifier
+        .verticalScroll(rememberScrollState())
+        .padding(horizontal = spacing.sm, vertical = spacing.md)
+    } else {
+      Modifier.fillMaxSize()
+    },
+  )
+  .dismissKeyboardOnTap()
+
+@Composable
+private fun SetupFormHeader(title: String, subtitle: String, subtitleAnnotatedText: String?) {
+  AppText(text = title, textType = TextType.ListTitle2)
+  AppText(
+    text = subtitle,
+    textType = TextType.Body,
+    modifier = Modifier.padding(top = spacing.xs, bottom = spacing.lg),
+    annotatedText = subtitleAnnotatedText,
+    annotationPosition = AnnotationPosition.End,
+    spanStyle = if (subtitleAnnotatedText.isNullOrEmpty()) null else SpanStyle(fontWeight = FontWeight.Bold),
+  )
+}
+
+@Composable
+private fun <T> SetupFormWifiSection(
+  wifiNameFormControl: FormControl<T>?,
+  isWifiConnected: Boolean,
+  secondaryLabel: String?,
+  focusManager: FocusManager,
+  onImeAction: (() -> Unit)?,
+) {
+  wifiNameFormControl?.let {
+    if (!isWifiConnected) {
+      AppInput(
+        formControl = it,
+        label = secondaryLabel,
+        imeAction = ImeAction.Done,
+        onImeAction = { focusManager.clearFocus() },
+        enabled = true,
         modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.Absolute.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically,
-      ) {
-        AppText(
-          text = toggleLabel,
-          textType = TextType.Body,
-        )
-        AppToggle(
-          checked = toggleChecked,
-          onCheckedChange = onToggleChanged,
-        )
-      }
-    }
-
-    noteMessage?.let {
-      Spacer(modifier = Modifier.padding(top = spacing.lg))
-      AppNote(
-        message = noteMessage,
-        showNote = true,
       )
     }
+  }
 
-    // Supporting Image Section
-    supportingImage?.let { imageRes ->
-      Box(
-        modifier = Modifier.fillMaxWidth(),
-        contentAlignment = Alignment.Center,
-      ) {
-        Image(
-          painter = painterResource(id = imageRes),
-          contentDescription = DeviceFormStrings.SupportingImageDescription,
-          modifier = Modifier.size(200.dp),
+  if (isWifiConnected) {
+    WifiItem(
+      borderRadius = borderRadius.sm,
+      ssid = wifiNameFormControl?.value.toString(),
+      isConfigured = false,
+      index = 0,
+      total = 1,
+      onClick = { onImeAction?.invoke() },
+      modifier = Modifier.size(spacing.md),
+    )
+    Spacer(modifier = Modifier.padding(bottom = spacing.sm))
+  }
+}
+
+@Composable
+private fun SetupFormSupportingButton(
+  supportingButtonLabel: String?,
+  supportText: String?,
+  onSupportingButtonClick: (() -> Unit)?,
+) {
+  if (supportingButtonLabel != null && onSupportingButtonClick != null) {
+    Column(
+      modifier = Modifier.fillMaxWidth(),
+      horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+      AppButton(
+        label = supportingButtonLabel,
+        type = ButtonType.InlineTextPrimary,
+        onClick = onSupportingButtonClick,
+        modifier = Modifier.padding(vertical = spacing.xs),
+      )
+      supportText?.let {
+        AppText(
+          text = supportText,
+          textType = TextType.Body,
+          modifier = Modifier.padding(bottom = spacing.lg),
         )
       }
+    }
+  }
+}
+
+@Composable
+private fun SetupFormToggle(
+  hasToggle: Boolean,
+  toggleLabel: String?,
+  toggleChecked: Boolean,
+  onToggleChanged: ((Boolean) -> Unit)?,
+) {
+  if (hasToggle && toggleLabel != null && onToggleChanged != null) {
+    Row(
+      modifier = Modifier.fillMaxWidth(),
+      horizontalArrangement = Arrangement.Absolute.SpaceBetween,
+      verticalAlignment = Alignment.CenterVertically,
+    ) {
+      AppText(text = toggleLabel, textType = TextType.Body)
+      AppToggle(checked = toggleChecked, onCheckedChange = onToggleChanged)
+    }
+  }
+}
+
+@Composable
+private fun SetupFormNote(noteMessage: String?) {
+  noteMessage?.let {
+    Spacer(modifier = Modifier.padding(top = spacing.lg))
+    AppNote(message = noteMessage, showNote = true)
+  }
+}
+
+@Composable
+private fun SetupFormSupportingImage(supportingImage: Int?) {
+  supportingImage?.let { imageRes ->
+    Box(
+      modifier = Modifier.fillMaxWidth(),
+      contentAlignment = Alignment.Center,
+    ) {
+      Image(
+        painter = painterResource(id = imageRes),
+        contentDescription = DeviceFormStrings.SupportingImageDescription,
+        modifier = Modifier.size(200.dp),
+      )
     }
   }
 }

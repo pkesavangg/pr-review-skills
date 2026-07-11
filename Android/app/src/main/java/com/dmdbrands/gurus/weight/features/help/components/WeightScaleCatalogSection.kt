@@ -82,6 +82,7 @@ fun WeightScaleCatalogSection(
         AppIcon(
           id = AppIcons.Setup.WeightScale,
           contentDescription = HelpScreenStrings.WeightScale,
+          tintColor = MeTheme.colorScheme.wgPrimary,
           modifier = Modifier.size(24.dp),
           onClick = null,
         )

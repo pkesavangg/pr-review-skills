@@ -90,7 +90,8 @@ constructor(
     // owns the relevant product, otherwise it's locked to the system default with an
     // unlock message. My Weight ⟺ weight scale, My Kids ⟺ baby scale or baby profile.
     val myWeightEnabled = state.isMyWeightEnabled
-    val myKidsEnabled = state.isMyKidsEnabled
+    // Unit editability is gated on baby product ownership, NOT the always-on My Kids row.
+    val myKidsEnabled = state.isMyKidsUnitEnabled
 
     // Legacy accounts can still carry weightUnit = "lb_oz" (a baby scale used to
     // overwrite the adult unit). lbs & oz is no longer a My Weight option, so
@@ -157,7 +158,7 @@ constructor(
     val newAdultUnit = adultSelection?.let { WeightUnit.from(it) }
       ?.takeIf { state.isMyWeightEnabled && it != currentAccount.weightUnit && it in MY_WEIGHT_OPTIONS }
     val newBabyUnit = babySelection?.let { WeightUnit.from(it) }
-      ?.takeIf { state.isMyKidsEnabled && it != state.babyWeightUnit && it in MY_KIDS_OPTIONS }
+      ?.takeIf { state.isMyKidsUnitEnabled && it != state.babyWeightUnit && it in MY_KIDS_OPTIONS }
 
     if (newAdultUnit == null && newBabyUnit == null) {
       AppLog.d(TAG, "No unit type changes to persist")

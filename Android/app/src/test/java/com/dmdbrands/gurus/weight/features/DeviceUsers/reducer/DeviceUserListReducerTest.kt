@@ -2,6 +2,7 @@ package com.dmdbrands.gurus.weight.features.DeviceUsers.reducer
 
 import com.dmdbrands.gurus.weight.domain.model.storage.BLEStatus
 import com.dmdbrands.gurus.weight.domain.model.storage.Device
+import com.dmdbrands.gurus.weight.features.DeviceSetup.strings.BtWifiScaleSetupStrings
 import com.dmdbrands.library.ggbluetooth.model.GGBTUser
 import com.google.common.truth.Truth.assertThat
 import io.mockk.mockk
@@ -247,5 +248,38 @@ class DeviceUserListReducerTest {
 
         assertThat(result?.hasSetUsername).isTrue()
         assertThat(result?.scale).isEqualTo(fakeDevice)
+    }
+
+    // -------------------------------------------------------------------------
+    // Username validation — distinct reserved-name vs duplicate-name errors (MOB-1188)
+    // -------------------------------------------------------------------------
+
+    @Test
+    fun `reserved name Guest surfaces the reserved-name error`() {
+        val form = DeviceUsernameFormControls.create(listOf(fakeUser1))
+
+        form.username.onValueChange("Guest")
+
+        assertThat(form.username.isError).isTrue()
+        assertThat(form.username.errorMessage)
+            .isEqualTo(BtWifiScaleSetupStrings.DuplicateUser.UserErrorMessage)
+    }
+
+    @Test
+    fun `duplicate profile name surfaces the duplicate-name error`() {
+        val form = DeviceUsernameFormControls.create(listOf(fakeUser1))
+
+        // fakeUser1 is "Alice"; matching an existing profile is a duplicate, not a reserved name.
+        form.username.onValueChange("alice")
+
+        assertThat(form.username.isError).isTrue()
+        assertThat(form.username.errorMessage)
+            .isEqualTo(BtWifiScaleSetupStrings.DuplicateUser.ErrorMessage)
+    }
+
+    @Test
+    fun `reserved-name and duplicate-name errors are distinct messages`() {
+        assertThat(BtWifiScaleSetupStrings.DuplicateUser.ErrorMessage)
+            .isNotEqualTo(BtWifiScaleSetupStrings.DuplicateUser.UserErrorMessage)
     }
 }

@@ -109,14 +109,6 @@ class SettingsReducerTest {
         assertThat(result?.showUnreadFeedIndication).isTrue()
     }
 
-    @Test
-    fun `SetExportEnabled updates isExportEnabled`() {
-        val state = SettingsState(isExportEnabled = false)
-
-        val result = reducer.reduce(state, SettingsIntent.SetExportEnabled(enabled = true))
-
-        assertThat(result?.isExportEnabled).isTrue()
-    }
 
     @Test
     fun `SetIsBabyProduct updates isBabyProduct`() {
@@ -184,7 +176,6 @@ class SettingsReducerTest {
         assertThat(state.enableTestingFeatures).isFalse()
         assertThat(state.unreadFeedCount).isEqualTo(0)
         assertThat(state.showUnreadFeedIndication).isFalse()
-        assertThat(state.isExportEnabled).isFalse()
         assertThat(state.isBabyProduct).isFalse()
         assertThat(state.hasWeightScale).isFalse()
         assertThat(state.hasBabyScaleDevice).isFalse()
@@ -249,6 +240,8 @@ class SettingsReducerTest {
         assertThat(state.currentNotificationStatus).isEqualTo("Off")
     }
 
+    // My Kids is always enabled now (updated requirement) — regardless of baby-scale device,
+    // productTypes, or a null account. Users can set the baby unit / open My Kids at any time.
     @Test
     fun `isMyKidsEnabled is true when hasBabyScaleDevice is true`() {
         val state = SettingsState(hasBabyScaleDevice = true, account = null)
@@ -265,18 +258,50 @@ class SettingsReducerTest {
     }
 
     @Test
-    fun `isMyKidsEnabled is false when no device and account is null`() {
+    fun `isMyKidsEnabled is true even when no device and account is null`() {
         val state = SettingsState(hasBabyScaleDevice = false, account = null)
 
-        assertThat(state.isMyKidsEnabled).isFalse()
+        assertThat(state.isMyKidsEnabled).isTrue()
     }
 
     @Test
-    fun `isMyKidsEnabled is false when no device and productTypes lacks baby`() {
+    fun `isMyKidsEnabled is true even when no device and productTypes lacks baby`() {
         val account = fakeAccount.copy(productTypes = listOf("weight", "blood_pressure"))
         val state = SettingsState(hasBabyScaleDevice = false, account = account)
 
-        assertThat(state.isMyKidsEnabled).isFalse()
+        assertThat(state.isMyKidsEnabled).isTrue()
+    }
+
+    // isMyKidsUnitEnabled (Unit Type baby-section editability) stays gated on baby product
+    // ownership — unlike the always-on row. It also gates whether a baby unit change persists.
+    @Test
+    fun `isMyKidsUnitEnabled is true when hasBabyScaleDevice is true`() {
+        val state = SettingsState(hasBabyScaleDevice = true, account = null)
+
+        assertThat(state.isMyKidsUnitEnabled).isTrue()
+    }
+
+    @Test
+    fun `isMyKidsUnitEnabled is true when productTypes contains baby even without device`() {
+        val account = fakeAccount.copy(productTypes = listOf("weight", "baby"))
+        val state = SettingsState(hasBabyScaleDevice = false, account = account)
+
+        assertThat(state.isMyKidsUnitEnabled).isTrue()
+    }
+
+    @Test
+    fun `isMyKidsUnitEnabled is false when no device and account is null`() {
+        val state = SettingsState(hasBabyScaleDevice = false, account = null)
+
+        assertThat(state.isMyKidsUnitEnabled).isFalse()
+    }
+
+    @Test
+    fun `isMyKidsUnitEnabled is false when no device and productTypes lacks baby`() {
+        val account = fakeAccount.copy(productTypes = listOf("weight", "blood_pressure"))
+        val state = SettingsState(hasBabyScaleDevice = false, account = account)
+
+        assertThat(state.isMyKidsUnitEnabled).isFalse()
     }
 
     // --- isMyWeightEnabled: My Weight section editable only when the account owns the
@@ -360,7 +385,6 @@ class SettingsReducerTest {
     fun `side-effect and modal intents return null`() {
         val state = SettingsState()
 
-        assertThat(reducer.reduce(state, SettingsIntent.ExportData)).isNull()
         assertThat(reducer.reduce(state, SettingsIntent.LogoutAllAccounts)).isNull()
         assertThat(reducer.reduce(state, SettingsIntent.DeleteAccount)).isNull()
         assertThat(reducer.reduce(state, SettingsIntent.ConfirmDeleteAccount)).isNull()
