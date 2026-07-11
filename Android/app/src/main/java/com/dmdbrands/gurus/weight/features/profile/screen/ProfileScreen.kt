@@ -166,6 +166,8 @@ private fun ProfileContent(state: ProfileState, handleIntent: (ProfileIntent) ->
                         mode = DateTimeInputMode.Date,
                         maxValue = DateTimeValue.Date(DateTimeUtil.getMinBirthdayOffsetForDatePicker()),
                         modifier = Modifier.focusRequester(birthdayFocusRequester),
+                        // DOB: calendar grid only to prevent silent leap-day normalization. (MOB-868)
+                        showModeToggle = false,
                     )
                   Spacer(modifier = Modifier.padding(top = MeTheme.spacing.md))
                   // Biological Sex dropdown with note

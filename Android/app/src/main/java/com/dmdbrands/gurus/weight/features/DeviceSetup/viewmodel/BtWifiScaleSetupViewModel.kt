@@ -857,10 +857,14 @@ class BtWifiScaleSetupViewModel @AssistedInject constructor(
                 BtWifiSetupStep.UPDATE_SETTINGS -> {
                     if (!isOnlyNetworkPermissionMissing) setUpdateSettingsError()
                 }
-                BtWifiSetupStep.STEP_ON -> {
-                    if (!isOnlyNetworkPermissionMissing) {
-                        requestPermission(GGPermissionType.BLUETOOTH_SWITCH, true)
-                    }
+                BtWifiSetupStep.STEP_ON,
+                BtWifiSetupStep.MEASUREMENT -> {
+                    // Bluetooth (or nearby-device / location) switched off during "One Last Step" or
+                    // while the reading is being collected must surface the "Error Collecting
+                    // Measurement" screen — mirroring the on-entry guard in observeStepChanges —
+                    // instead of leaving the user stranded on "One Last Step" (MOB-871). A missing
+                    // *network* permission alone doesn't block the BLE reading, so it's ignored here.
+                    if (!isOnlyNetworkPermissionMissing) setMeasurementFailed()
                 }
                 BtWifiSetupStep.CONNECTING_BLUETOOTH,
                 BtWifiSetupStep.DUPLICATES_FOUND,
@@ -998,6 +1002,9 @@ class BtWifiScaleSetupViewModel @AssistedInject constructor(
     }
 
     private fun setMeasurementFailed() {
+        // Stop the pending collection timeout so it can't overwrite/duplicate the failed state later.
+        measurementTimeoutJob?.cancel()
+        measurementTimeoutJob = null
         handleIntent(
             BtWifiScaleSetupIntent.SetStepConnectionState(BtWifiSetupStep.MEASUREMENT, ConnectionState.Failed.Error),
         )

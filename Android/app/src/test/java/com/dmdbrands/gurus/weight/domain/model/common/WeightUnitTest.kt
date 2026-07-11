@@ -87,7 +87,12 @@ class WeightUnitTest {
   }
 
   // [label] is the short value-suffix printed next to weights (history, notifications).
-  // Unchanged by MOB-1250 — the singular-lb change for value suffixes is MOB-655/657.
+  // Adult weight is singular "lb" per the non-pluralised unit convention (MOB-655/657).
+  @Test
+  fun `LB label is singular lb`() {
+    assertThat(WeightUnit.LB.label).isEqualTo("lb")
+  }
+
   @Test
   fun `LB_OZ label is lbs ampersand oz`() {
     assertThat(WeightUnit.LB_OZ.label).isEqualTo("lbs & oz")

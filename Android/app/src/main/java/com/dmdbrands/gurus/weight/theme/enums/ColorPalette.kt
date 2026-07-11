@@ -49,8 +49,10 @@ object ColorPalette {
     val green800 = Color(0xFF458239)
     val green900 = Color(0xFF36682D)
 
-    // meApp · yellow / teal
+    // meApp · yellow / orange / teal
     val yellow100 = Color(0xFFEDB53A)
+    // Advisory warning text (Balance Health / bpmMobileApp4 --ion-color-warning-text)
+    val orange100 = Color(0xFFFF5F15)
     val teal100 = Color(0xFF65CEC8)
 
     // Greater Goods · gg-secondary
@@ -108,8 +110,10 @@ object ColorPalette {
     val green800 = Color(0xFF63B453)
     val green900 = Color(0xFF79C66A)
 
-    // meApp · yellow / teal
+    // meApp · yellow / orange / teal
     val yellow100 = Color(0xFFFDD663)
+    // Advisory warning text (Balance Health / bpmMobileApp4 --ion-color-warning-text)
+    val orange100 = Color(0xFFFF5F15)
     val teal100 = Color(0xFF00B3A6)
 
     // Greater Goods · gg-secondary

@@ -54,7 +54,9 @@ data class BabyFormControls(
                 validators = emptyList(),
             ),
             weightUnit = FormControl.create(
-                initialValue = BabyWeightUnit.LBS,
+                // Default to lbs/oz on the signup add-a-baby step to match the Smart Baby app
+                // (UX decision recorded on MOB-450). Users can switch to kg via Settings.
+                initialValue = BabyWeightUnit.LBS_OZ,
                 validators = emptyList(),
             ),
         )

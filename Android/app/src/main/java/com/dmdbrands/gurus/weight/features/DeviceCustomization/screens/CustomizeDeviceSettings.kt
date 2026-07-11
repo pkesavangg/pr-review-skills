@@ -410,7 +410,6 @@ fun CustomizeDeviceSettings(
             supportingImage = AppIcons.Setup.UserNameScale,
             enableScroll = false,
             userList = userList,
-            isCustomization = true,
             onImeAction = {
               focusManager.clearFocus()
               keyboardController?.hide()

@@ -40,7 +40,7 @@ internal object LightColorToken {
   val subheading = ColorPalette.Light.neutral700 // #7B726E
   val textError = ColorPalette.Light.red800 // #B3261E
   val textErrorDisabled = ColorPalette.Light.red100 // #F5C0BD
-  val textWarning = ColorPalette.Light.yellow100 // #EDB53A
+  val textWarning = ColorPalette.Light.orange100 // #FF5F15
 
   // Action
   val primaryFocusedAction = ColorPalette.Light.neutral900 // #1F1C1B (primary-pressed)
@@ -137,7 +137,7 @@ internal object DarkColorToken {
   val subheading = ColorPalette.Dark.neutral700 // #92989F
   val textError = ColorPalette.Dark.red800 // #F28B82
   val textErrorDisabled = ColorPalette.Dark.red100 // #5C1A16
-  val textWarning = ColorPalette.Dark.yellow100 // #FDD663
+  val textWarning = ColorPalette.Dark.orange100 // #FF5F15
 
   // Action
   val primaryFocusedAction = ColorPalette.Dark.neutral900 // #F2F3F3 (primary-pressed)
