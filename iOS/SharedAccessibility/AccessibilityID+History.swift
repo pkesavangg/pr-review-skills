@@ -8,6 +8,9 @@ extension AccessibilityID {
     static let historyScreenRoot = "history_screen_root"
     static let historyEntryRow = "history_entry_row"
     static let historyMonthRow = "history_month_row"
+    /// Blood-pressure history row expand/collapse control (whole row toggles the notes
+    /// section). Gives automation a stable selector instead of a bounds-based tap (MOB-1475).
+    static let historyBPRowExpand = "history_bp_row_expand"
     static let historyDeleteButton = "history_delete_button"
     static let historyDownloadButton = "history_download_button"
     static let historyEditNoteButton = "history_edit_note_button"
