@@ -105,7 +105,10 @@ object AppInputDefaults {
             AppInputType.EMAIL -> KeyboardType.Email
             AppInputType.NUMBER, AppInputType.BODY_COMP, AppInputType.NUMERIC_STRING
             -> KeyboardType.Number
-            AppInputType.DECIMAL_STRING -> KeyboardType.Decimal
+            // Phone (not Decimal): several OEM keyboards (OnePlus/Samsung) hide the '.' key under
+            // KeyboardType.Decimal, forcing whole-number-only entry. The phone pad always exposes
+            // '.', and the DECIMAL_STRING filter keeps only digits + a single dot. (MOB-1223)
+            AppInputType.DECIMAL_STRING -> KeyboardType.Phone
             AppInputType.PASSWORD -> KeyboardType.Password
         }
 

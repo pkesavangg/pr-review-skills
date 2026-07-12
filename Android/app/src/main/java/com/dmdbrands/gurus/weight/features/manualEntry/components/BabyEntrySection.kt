@@ -12,6 +12,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.text.input.ImeAction
+import com.dmdbrands.gurus.weight.domain.model.common.WeightUnit
 import com.dmdbrands.gurus.weight.features.common.components.AppInput
 import com.dmdbrands.gurus.weight.features.common.components.AppInputType
 import com.dmdbrands.gurus.weight.features.common.components.AppTextArea
@@ -22,62 +23,48 @@ import com.dmdbrands.gurus.weight.features.manualEntry.viewmodel.BabyEntryFormCo
 import com.dmdbrands.gurus.weight.theme.MeTheme
 
 /**
- * Baby entry section — pounds + ounces (side-by-side), inches, notes, and date/time.
+ * Baby entry section (MOB-1223). The weight/length fields follow the account's Unit Type — there
+ * is no on-screen toggle — mirroring the Add-a-Baby / Weight-Scale / BPM field-label pattern:
+ *  - lb/oz → two weight fields (weight (lb) + ounces (oz)), length (in)
+ *  - lb    → one weight field (weight (lb)), length (in)
+ *  - kg    → one weight field (weight (kg)), length (cm)
+ *
+ * Labels name the metric ("weight" / "ounces" / "length"); the unit is the right-edge "(unit)"
+ * suffix (AppInput.trailingText). Notes + date/time are unchanged across units.
  */
 @Composable
 fun BabyEntrySection(
     controls: BabyEntryFormControls,
+    weightUnit: WeightUnit,
     onImeAction: () -> Unit,
 ) {
-    val poundsFocusRequester = remember { FocusRequester() }
-    val ouncesFocusRequester = remember { FocusRequester() }
-    val inchesFocusRequester = remember { FocusRequester() }
+    val isMetric = weightUnit == WeightUnit.KG
+    val isLbOz = weightUnit == WeightUnit.LB_OZ
 
-    // Pounds + Ounces side-by-side (short input layout)
-    // Each AppInput is wrapped in a Column so its error text + spacer stay
-    // within its half of the Row (InputFieldBase emits multiple composables).
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(MeTheme.spacing.md),
-    ) {
-        Column(modifier = Modifier.weight(1f)) {
-            AppInput(
-                formControl = controls.pounds,
-                label = EntryScreenStrings.POUNDS_LABEL,
-                type = AppInputType.NUMERIC_STRING,
-                imeAction = ImeAction.Next,
-                nextFocusRequester = ouncesFocusRequester,
-                maxLength = 3,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .focusRequester(poundsFocusRequester),
-            )
-        }
-        Column(modifier = Modifier.weight(1f)) {
-            AppInput(
-                formControl = controls.ounces,
-                label = EntryScreenStrings.OUNCES_LABEL,
-                type = AppInputType.DECIMAL_STRING,
-                imeAction = ImeAction.Next,
-                nextFocusRequester = inchesFocusRequester,
-                maxLength = 4,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .focusRequester(ouncesFocusRequester),
-            )
-        }
-    }
+    val weightFocusRequester = remember { FocusRequester() }
+    val weightOzFocusRequester = remember { FocusRequester() }
+    val lengthFocusRequester = remember { FocusRequester() }
+
+    BabyWeightInput(
+        controls = controls,
+        isMetric = isMetric,
+        isLbOz = isLbOz,
+        weightFocusRequester = weightFocusRequester,
+        weightOzFocusRequester = weightOzFocusRequester,
+        lengthFocusRequester = lengthFocusRequester,
+    )
     Spacer(modifier = Modifier.height(MeTheme.spacing.xs))
     AppInput(
-        formControl = controls.inches,
-        label = EntryScreenStrings.INCHES_LABEL,
+        formControl = controls.length,
+        label = EntryScreenStrings.LENGTH_LABEL,
+        trailingText = if (isMetric) EntryScreenStrings.BABY_LENGTH_CM_UNIT else EntryScreenStrings.BABY_LENGTH_IN_UNIT,
         type = AppInputType.DECIMAL_STRING,
         imeAction = ImeAction.Done,
         onImeAction = onImeAction,
-        maxLength = 4,
+        maxLength = if (isMetric) 5 else 4,
         modifier = Modifier
             .fillMaxWidth()
-            .focusRequester(inchesFocusRequester),
+            .focusRequester(lengthFocusRequester),
     )
     Spacer(modifier = Modifier.height(MeTheme.spacing.xs))
     AppTextArea(
@@ -93,4 +80,72 @@ fun BabyEntrySection(
         label = EntryScreenStrings.DATE_LABEL,
         maxValue = null,
     )
+}
+
+/**
+ * The weight input(s) for the account's unit: two fields (weight (lb) + ounces (oz)) for lb/oz,
+ * otherwise a single decimal weight field (kg or lb). Ounces uses the adult weight input
+ * (BODY_COMP) — a number keypad with an implicit 1-place decimal (type "45" → 4.5), so no '.'
+ * key is needed on any OEM keyboard; its value is stored as raw digits. (MOB-1223)
+ */
+@Composable
+private fun BabyWeightInput(
+    controls: BabyEntryFormControls,
+    isMetric: Boolean,
+    isLbOz: Boolean,
+    weightFocusRequester: FocusRequester,
+    weightOzFocusRequester: FocusRequester,
+    lengthFocusRequester: FocusRequester,
+) {
+    if (isLbOz) {
+        // Each AppInput is wrapped in a Column so its error text + spacer stay within its half
+        // of the Row (InputFieldBase emits multiple composables).
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(MeTheme.spacing.md),
+        ) {
+            Column(modifier = Modifier.weight(1f)) {
+                AppInput(
+                    formControl = controls.weight,
+                    label = EntryScreenStrings.WEIGHT_LABEL,
+                    trailingText = EntryScreenStrings.BABY_WEIGHT_LB_UNIT,
+                    type = AppInputType.NUMERIC_STRING,
+                    imeAction = ImeAction.Next,
+                    nextFocusRequester = weightOzFocusRequester,
+                    maxLength = 3,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .focusRequester(weightFocusRequester),
+                )
+            }
+            Column(modifier = Modifier.weight(1f)) {
+                AppInput(
+                    formControl = controls.weightOz,
+                    label = EntryScreenStrings.OUNCES_LABEL,
+                    trailingText = EntryScreenStrings.BABY_WEIGHT_OZ_UNIT,
+                    type = AppInputType.BODY_COMP,
+                    imeAction = ImeAction.Next,
+                    nextFocusRequester = lengthFocusRequester,
+                    maxLength = 3,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .focusRequester(weightOzFocusRequester),
+                )
+            }
+        }
+    } else {
+        // Single decimal weight field: kg (metric) or lb (imperial decimal).
+        AppInput(
+            formControl = controls.weight,
+            label = EntryScreenStrings.WEIGHT_LABEL,
+            trailingText = if (isMetric) EntryScreenStrings.BABY_WEIGHT_KG_UNIT else EntryScreenStrings.BABY_WEIGHT_LB_UNIT,
+            type = AppInputType.DECIMAL_STRING,
+            imeAction = ImeAction.Next,
+            nextFocusRequester = lengthFocusRequester,
+            maxLength = 5,
+            modifier = Modifier
+                .fillMaxWidth()
+                .focusRequester(weightFocusRequester),
+        )
+    }
 }

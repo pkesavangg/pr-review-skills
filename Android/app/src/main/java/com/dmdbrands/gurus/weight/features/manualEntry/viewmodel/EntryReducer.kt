@@ -306,9 +306,12 @@ data class BloodPressureEntryForm(
  * Form controls for baby entry.
  */
 data class BabyEntryFormControls(
-  val pounds: FormControl<String>,
-  val ounces: FormControl<String>,
-  val inches: FormControl<String>,
+  // Unit-neutral names (MOB-1223): the layout/unit follows the account's Unit Type.
+  //   lb/oz → [weight]=lb + [weightOz]=oz; lb → [weight]=lb decimal; kg → [weight]=kg.
+  //   [weightOz] is only surfaced in the lb/oz layout. [length] is in / cm per unit.
+  val weight: FormControl<String>,
+  val weightOz: FormControl<String>,
+  val length: FormControl<String>,
   val notes: FormControl<String>,
   val dateTime: FormControl<DateTimeValue>,
 )
@@ -320,34 +323,57 @@ data class BabyEntryForm(
   val baby: FormGroup<BabyEntryFormControls>,
 ) {
   companion object {
-    fun create(): BabyEntryForm {
+    /**
+     * Builds the baby form with validators matching the account's [weightUnit] (MOB-1223):
+     * lb/oz keeps the whole-lb + oz bounds; lb/kg use a single decimal weight field; length is
+     * validated in inches (imperial) or cm (metric). Bounds stay exclusive (Smart Baby parity).
+     */
+    fun create(weightUnit: WeightUnit): BabyEntryForm {
+      val isLbOz = weightUnit == WeightUnit.LB_OZ
+      val isMetric = weightUnit == WeightUnit.KG
       val calendar = Calendar.getInstance()
       val controls = BabyEntryFormControls(
-        pounds = FormControl.create(
+        weight = FormControl.create(
           "",
           listOf(
-            FormValidations.bodyCompValidator(
-              AppValidatorConfig.BabyWeightLb.MIN, AppValidatorConfig.BabyWeightLb.MAX, false,
-            ),
+            when {
+              // Whole pounds (no decimal); the oz field carries the fractional part.
+              isLbOz -> FormValidations.bodyCompValidator(
+                AppValidatorConfig.BabyWeightLb.MIN, AppValidatorConfig.BabyWeightLb.MAX, false,
+              )
+              // Single decimal weight field: kg (metric) or lb (imperial decimal).
+              isMetric -> FormValidations.decimalRangeValidator(
+                AppValidatorConfig.BabyWeightKg.MIN, AppValidatorConfig.BabyWeightKg.MAX,
+              )
+              else -> FormValidations.decimalRangeValidator(
+                AppValidatorConfig.BabyWeightLb.MIN, AppValidatorConfig.BabyWeightLb.MAX,
+              )
+            },
             FormValidations.required(),
           ),
         ),
-        // oz and length accept one decimal (Smart Baby parity): real decimal
-        // string, validated against exclusive Smart Baby bounds.
-        ounces = FormControl.create(
+        // oz uses the adult weight-field input (BODY_COMP implicit 1-decimal), so it validates
+        // with bodyCompValidator on the raw digit string (e.g. "159" → 15.9). Only shown in lb/oz.
+        weightOz = FormControl.create(
           "",
           listOf(
-            FormValidations.decimalRangeValidator(
+            FormValidations.bodyCompValidator(
               AppValidatorConfig.BabyWeightOz.MIN, AppValidatorConfig.BabyWeightOz.MAX,
             ),
           ),
         ),
-        inches = FormControl.create(
+        length = FormControl.create(
           "",
           listOf(
-            FormValidations.decimalRangeValidator(
-              AppValidatorConfig.BabyHeight.MIN, AppValidatorConfig.BabyHeight.MAX,
-            ),
+            if (isMetric) {
+              FormValidations.decimalRangeValidator(
+                AppValidatorConfig.BabyLengthCm.MIN, AppValidatorConfig.BabyLengthCm.MAX,
+              )
+            } else {
+              FormValidations.decimalRangeValidator(
+                AppValidatorConfig.BabyHeight.MIN, AppValidatorConfig.BabyHeight.MAX,
+              )
+            },
           ),
         ),
         notes = FormControl.create("", emptyList()),
@@ -400,6 +426,10 @@ data class EntryState(
     form = MultiFormGroup.create(forms = EntryForm.create()),
   ),
   val weightMode: WeightUnit = WeightUnit.LB,
+  // Baby manual entry follows the account's MEASUREMENT unit (My Kids), which is distinct from
+  // [weightMode] (the adult My Weight unit) and can differ from it (MOB-1223). Derived from
+  // account.measurementUnits via MeasurementUnits.toWeightUnit().
+  val babyWeightMode: WeightUnit = WeightUnit.LB_OZ,
   val isLoading: Boolean = false,
   val isMetricFieldsExpandedInitially: Boolean = false,
   val dashboardType: DashboardType = DashboardType.DASHBOARD_4_METRICS,
@@ -425,6 +455,9 @@ sealed interface EntryIntent : IReducer.Intent {
   data class UpdateActiveForm(val activeForm: ActiveEntryForm) : EntryIntent
 
   data class UpdateWeightUnit(val weightUnit: WeightUnit) : EntryIntent
+
+  /** Updates the baby measurement unit (My Kids), derived from account.measurementUnits. */
+  data class UpdateBabyUnit(val weightUnit: WeightUnit) : EntryIntent
   data class UpdateDashboardType(val dashboardType: DashboardType) : EntryIntent
   data class UpdateMetricFieldsExpandedStatus(val isExpanded: Boolean) : EntryIntent
   data class LoadAppSyncData(
@@ -452,6 +485,10 @@ class EntryReducer : IReducer<EntryState, EntryIntent> {
 
       is EntryIntent.UpdateWeightUnit -> {
         state.copy(weightMode = intent.weightUnit)
+      }
+
+      is EntryIntent.UpdateBabyUnit -> {
+        state.copy(babyWeightMode = intent.weightUnit)
       }
 
       is EntryIntent.UpdateDashboardType -> {

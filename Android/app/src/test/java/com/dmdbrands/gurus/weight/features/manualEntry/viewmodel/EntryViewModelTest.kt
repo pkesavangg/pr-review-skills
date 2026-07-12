@@ -9,6 +9,7 @@ import com.dmdbrands.gurus.weight.domain.enums.DashboardType
 import com.dmdbrands.gurus.weight.domain.interfaces.IDialogQueueService
 import com.dmdbrands.gurus.weight.domain.enums.ProductType
 import com.dmdbrands.gurus.weight.domain.model.common.BabyProfile
+import com.dmdbrands.gurus.weight.domain.model.common.MeasurementUnits
 import com.dmdbrands.gurus.weight.domain.model.common.WeightUnit
 import com.dmdbrands.gurus.weight.domain.model.storage.entry.BabyEntry
 import com.dmdbrands.gurus.weight.domain.model.storage.entry.BpmEntry
@@ -139,6 +140,21 @@ class EntryViewModelTest {
         assertThat(viewModel.state.value.weightMode).isEqualTo(WeightUnit.KG)
     }
 
+    @Test
+    fun `initial babyWeightMode reads from account measurementUnits, not weightUnit`() {
+        // Baby entry follows the My Kids measurement unit, which is independent of the adult
+        // weightUnit: an lb (adult) account can still be lb-oz for babies. (MOB-1223)
+        val account = TestFixtures.anAccount(isActiveAccount = true, isLoggedIn = true)
+            .copy(weightUnit = WeightUnit.LB, measurementUnits = MeasurementUnits.IMPERIAL_LB_OZ)
+        every { accountService.activeAccount } returns MutableStateFlow(account)
+        every { accountService.activeAccountFlow } returns flowOf(account)
+
+        viewModel = createViewModel()
+
+        assertThat(viewModel.state.value.weightMode).isEqualTo(WeightUnit.LB)
+        assertThat(viewModel.state.value.babyWeightMode).isEqualTo(WeightUnit.LB_OZ)
+    }
+
     // -------------------------------------------------------------------------
     // UpdateForm
     // -------------------------------------------------------------------------
@@ -193,16 +209,22 @@ class EntryViewModelTest {
 
     @Test
     fun `Save with baby form saves one combined baby entry carrying weight and length`() = runTest(mainDispatcherRule.scheduler) {
+        // lb/oz baby unit (measurementUnits, not the adult weightUnit) → two weight fields. (MOB-1223)
+        val lbOzAccount = TestFixtures.anAccount(isActiveAccount = true, isLoggedIn = true)
+            .copy(measurementUnits = MeasurementUnits.IMPERIAL_LB_OZ)
+        every { accountService.activeAccount } returns MutableStateFlow(lbOzAccount)
+        every { accountService.activeAccountFlow } returns flowOf(lbOzAccount)
         val baby = ProductSelection.Baby(
             BabyProfile(id = "baby-1", name = "Timmy", birthdate = null, accountId = "acc-1"),
         )
         every { productSelectionManager.selectedProduct } returns MutableStateFlow(baby)
         viewModel = createViewModel()
 
-        val form = MultiFormGroup.create(forms = BabyEntryForm.create())
-        form.forms.baby.controls.pounds.onValueChange("7")
-        form.forms.baby.controls.ounces.onValueChange("4")
-        form.forms.baby.controls.inches.onValueChange("20")
+        val form = MultiFormGroup.create(forms = BabyEntryForm.create(WeightUnit.LB_OZ))
+        form.forms.baby.controls.weight.onValueChange("7")
+        // oz is BODY_COMP (implicit 1-decimal): raw "40" → 4.0 oz.
+        form.forms.baby.controls.weightOz.onValueChange("40")
+        form.forms.baby.controls.length.onValueChange("20")
         viewModel.handleIntent(EntryIntent.UpdateActiveForm(ActiveEntryForm.Baby(form, baby.profile)))
 
         val captured = mutableListOf<Entry>()
@@ -221,17 +243,72 @@ class EntryViewModelTest {
     }
 
     @Test
+    fun `Save baby entry for metric account converts kg and cm to canonical decigrams and mm`() =
+        runTest(mainDispatcherRule.scheduler) {
+            // metric baby unit → single kg weight field + cm length. (MOB-1223)
+            val kgAccount = TestFixtures.anAccount(isActiveAccount = true, isLoggedIn = true)
+                .copy(measurementUnits = MeasurementUnits.METRIC)
+            every { accountService.activeAccount } returns MutableStateFlow(kgAccount)
+            every { accountService.activeAccountFlow } returns flowOf(kgAccount)
+            every { productSelectionManager.selectedProduct } returns MutableStateFlow(babyProfile())
+            viewModel = createViewModel()
+
+            val form = MultiFormGroup.create(forms = BabyEntryForm.create(WeightUnit.KG))
+            form.forms.baby.controls.weight.onValueChange("3.3")
+            form.forms.baby.controls.length.onValueChange("50")
+            viewModel.handleIntent(EntryIntent.UpdateActiveForm(ActiveEntryForm.Baby(form, babyProfile().profile)))
+
+            val captured = mutableListOf<Entry>()
+            coEvery { entryService.addEntry(entry = capture(captured)) } returns Unit
+
+            viewModel.handleIntent(EntryIntent.Save)
+            advanceUntilIdle()
+
+            val entry = captured.single() as BabyEntry
+            assertThat(entry.babyWeightDecigrams).isEqualTo(ConversionTools.convertKgToDecigrams(3.3))
+            assertThat(entry.babyLengthMillimeters).isEqualTo(ConversionTools.convertCmToMm(50.0))
+        }
+
+    @Test
+    fun `Save baby entry for imperial-decimal account converts lb and inches`() =
+        runTest(mainDispatcherRule.scheduler) {
+            // imperial-decimal baby unit → single lb weight field + inches. (MOB-1223)
+            val lbAccount = TestFixtures.anAccount(isActiveAccount = true, isLoggedIn = true)
+                .copy(measurementUnits = MeasurementUnits.IMPERIAL_LB_DECIMAL)
+            every { accountService.activeAccount } returns MutableStateFlow(lbAccount)
+            every { accountService.activeAccountFlow } returns flowOf(lbAccount)
+            every { productSelectionManager.selectedProduct } returns MutableStateFlow(babyProfile())
+            viewModel = createViewModel()
+
+            val form = MultiFormGroup.create(forms = BabyEntryForm.create(WeightUnit.LB))
+            form.forms.baby.controls.weight.onValueChange("7.5")
+            form.forms.baby.controls.length.onValueChange("20")
+            viewModel.handleIntent(EntryIntent.UpdateActiveForm(ActiveEntryForm.Baby(form, babyProfile().profile)))
+
+            val captured = mutableListOf<Entry>()
+            coEvery { entryService.addEntry(entry = capture(captured)) } returns Unit
+
+            viewModel.handleIntent(EntryIntent.Save)
+            advanceUntilIdle()
+
+            val entry = captured.single() as BabyEntry
+            assertThat(entry.babyWeightDecigrams).isEqualTo(ConversionTools.convertLbToDecigrams(7.5))
+            assertThat(entry.babyLengthMillimeters).isEqualTo(ConversionTools.convertInchesToMm(20.0))
+        }
+
+    @Test
     fun `Save baby weight for metric account shows saved-to-log card in kg`() = runTest(mainDispatcherRule.scheduler) {
+        // metric baby unit drives the kg input; weightUnit=KG drives the card's isMetric display.
         val kgAccount = TestFixtures.anAccount(isActiveAccount = true, isLoggedIn = true)
-            .copy(weightUnit = WeightUnit.KG)
+            .copy(weightUnit = WeightUnit.KG, measurementUnits = MeasurementUnits.METRIC)
         every { accountService.activeAccount } returns MutableStateFlow(kgAccount)
         every { accountService.activeAccountFlow } returns flowOf(kgAccount)
         every { productSelectionManager.selectedProduct } returns MutableStateFlow(babyProfile())
         viewModel = createViewModel()
 
-        val form = MultiFormGroup.create(forms = BabyEntryForm.create())
-        form.forms.baby.controls.pounds.onValueChange("7")
-        form.forms.baby.controls.ounces.onValueChange("4")
+        // kg account → single decimal weight field in kg. (MOB-1223)
+        val form = MultiFormGroup.create(forms = BabyEntryForm.create(WeightUnit.KG))
+        form.forms.baby.controls.weight.onValueChange("3.3")
         viewModel.handleIntent(EntryIntent.UpdateActiveForm(ActiveEntryForm.Baby(form, babyProfile().profile)))
 
         val toasts = mutableListOf<Toast>()
@@ -241,7 +318,7 @@ class EntryViewModelTest {
         viewModel.handleIntent(EntryIntent.Save)
         advanceUntilIdle()
 
-        val dg = ConversionTools.convertLbOzToDecigrams(7, 4.0)
+        val dg = ConversionTools.convertKgToDecigrams(3.3)
         val expectedKg = ConversionTools.convertBabyWeightToDisplay(dg, source = null, isMetric = true)
         val reading = toasts.filterIsInstance<Toast.Custom>()
             .map { it.content }.filterIsInstance<ReadingToast>().single()
@@ -250,13 +327,18 @@ class EntryViewModelTest {
 
     @Test
     fun `Save baby weight for imperial account shows saved-to-log card in lb-oz`() = runTest(mainDispatcherRule.scheduler) {
-        // Default active account is imperial (LB).
+        // lb/oz baby unit → two weight fields; card renders lb-oz (weightUnit non-KG). (MOB-1223)
+        val lbOzAccount = TestFixtures.anAccount(isActiveAccount = true, isLoggedIn = true)
+            .copy(measurementUnits = MeasurementUnits.IMPERIAL_LB_OZ)
+        every { accountService.activeAccount } returns MutableStateFlow(lbOzAccount)
+        every { accountService.activeAccountFlow } returns flowOf(lbOzAccount)
         every { productSelectionManager.selectedProduct } returns MutableStateFlow(babyProfile())
         viewModel = createViewModel()
 
-        val form = MultiFormGroup.create(forms = BabyEntryForm.create())
-        form.forms.baby.controls.pounds.onValueChange("7")
-        form.forms.baby.controls.ounces.onValueChange("4")
+        val form = MultiFormGroup.create(forms = BabyEntryForm.create(WeightUnit.LB_OZ))
+        form.forms.baby.controls.weight.onValueChange("7")
+        // oz is BODY_COMP (implicit 1-decimal): raw "40" → 4.0 oz.
+        form.forms.baby.controls.weightOz.onValueChange("40")
         viewModel.handleIntent(EntryIntent.UpdateActiveForm(ActiveEntryForm.Baby(form, babyProfile().profile)))
 
         val toasts = mutableListOf<Toast>()
@@ -448,9 +530,9 @@ class EntryViewModelTest {
             .atStartOfDay(ZoneId.systemDefault())
             .toInstant()
             .toEpochMilli()
-        val form = MultiFormGroup.create(forms = BabyEntryForm.create())
-        form.forms.baby.controls.pounds.onValueChange("7")
-        form.forms.baby.controls.ounces.onValueChange("4")
+        // Default active account is imperial decimal (LB) → single lb weight field. (MOB-1223)
+        val form = MultiFormGroup.create(forms = BabyEntryForm.create(WeightUnit.LB))
+        form.forms.baby.controls.weight.onValueChange("7")
         form.forms.baby.controls.dateTime.onValueChange(DateTimeValue.Date(entryMillis))
         // Capture the birthdate-carrying profile in the form — saveBabyEntry's pre-birthdate guard
         // reads the form's profile, not the global selection (MOB-1449).
@@ -841,8 +923,8 @@ class EntryViewModelTest {
             // shifted to baby-2. The save must still land on baby-1 (the form's captured baby).
             every { productSelectionManager.selectedProduct } returns MutableStateFlow(babyProfile(id = "baby-2"))
             viewModel = createViewModel()
-            val form = MultiFormGroup.create(forms = BabyEntryForm.create())
-            form.forms.baby.controls.pounds.onValueChange("7")
+            val form = MultiFormGroup.create(forms = BabyEntryForm.create(WeightUnit.LB))
+            form.forms.baby.controls.weight.onValueChange("7")
             viewModel.handleIntent(
                 EntryIntent.UpdateActiveForm(ActiveEntryForm.Baby(form, babyProfile(id = "baby-1").profile)),
             )
@@ -862,8 +944,8 @@ class EntryViewModelTest {
         every { accountService.activeAccountFlow } returns flowOf(null)
         every { productSelectionManager.selectedProduct } returns MutableStateFlow(babyProfile())
         viewModel = createViewModel()
-        val form = MultiFormGroup.create(forms = BabyEntryForm.create())
-        form.forms.baby.controls.pounds.onValueChange("7")
+        val form = MultiFormGroup.create(forms = BabyEntryForm.create(WeightUnit.LB))
+        form.forms.baby.controls.weight.onValueChange("7")
         viewModel.handleIntent(EntryIntent.UpdateActiveForm(ActiveEntryForm.Baby(form, babyProfile().profile)))
 
         viewModel.handleIntent(EntryIntent.Save)
@@ -877,10 +959,9 @@ class EntryViewModelTest {
     fun `Save with baby form weight only sends single weight entry`() = runTest(mainDispatcherRule.scheduler) {
         every { productSelectionManager.selectedProduct } returns MutableStateFlow(babyProfile())
         viewModel = createViewModel()
-        val form = MultiFormGroup.create(forms = BabyEntryForm.create())
-        form.forms.baby.controls.pounds.onValueChange("7")
-        form.forms.baby.controls.ounces.onValueChange("4")
-        // No inches → no length entry
+        val form = MultiFormGroup.create(forms = BabyEntryForm.create(WeightUnit.LB))
+        form.forms.baby.controls.weight.onValueChange("7")
+        // No length → no length entry
         viewModel.handleIntent(EntryIntent.UpdateActiveForm(ActiveEntryForm.Baby(form, babyProfile().profile)))
 
         val captured = mutableListOf<Entry>()
@@ -897,9 +978,9 @@ class EntryViewModelTest {
     fun `Save with baby form length only sends single length entry`() = runTest(mainDispatcherRule.scheduler) {
         every { productSelectionManager.selectedProduct } returns MutableStateFlow(babyProfile())
         viewModel = createViewModel()
-        val form = MultiFormGroup.create(forms = BabyEntryForm.create())
-        // No pounds/ounces (both 0) → no weight entry, only length
-        form.forms.baby.controls.inches.onValueChange("20")
+        val form = MultiFormGroup.create(forms = BabyEntryForm.create(WeightUnit.LB))
+        // No weight → no weight entry, only length
+        form.forms.baby.controls.length.onValueChange("20")
         viewModel.handleIntent(EntryIntent.UpdateActiveForm(ActiveEntryForm.Baby(form, babyProfile().profile)))
 
         val captured = mutableListOf<Entry>()
@@ -916,7 +997,7 @@ class EntryViewModelTest {
     fun `Save with baby form all zero values sends no entries`() = runTest(mainDispatcherRule.scheduler) {
         every { productSelectionManager.selectedProduct } returns MutableStateFlow(babyProfile())
         viewModel = createViewModel()
-        val form = MultiFormGroup.create(forms = BabyEntryForm.create())
+        val form = MultiFormGroup.create(forms = BabyEntryForm.create(WeightUnit.LB))
         viewModel.handleIntent(EntryIntent.UpdateActiveForm(ActiveEntryForm.Baby(form, babyProfile().profile)))
 
         viewModel.handleIntent(EntryIntent.Save)
@@ -930,8 +1011,8 @@ class EntryViewModelTest {
     fun `Save with baby form shows error toast when addEntry throws`() = runTest(mainDispatcherRule.scheduler) {
         every { productSelectionManager.selectedProduct } returns MutableStateFlow(babyProfile())
         viewModel = createViewModel()
-        val form = MultiFormGroup.create(forms = BabyEntryForm.create())
-        form.forms.baby.controls.pounds.onValueChange("7")
+        val form = MultiFormGroup.create(forms = BabyEntryForm.create(WeightUnit.LB))
+        form.forms.baby.controls.weight.onValueChange("7")
         viewModel.handleIntent(EntryIntent.UpdateActiveForm(ActiveEntryForm.Baby(form, babyProfile().profile)))
         coEvery { entryService.addEntry(entry = any()) } throws RuntimeException(NETWORK_ERROR)
 

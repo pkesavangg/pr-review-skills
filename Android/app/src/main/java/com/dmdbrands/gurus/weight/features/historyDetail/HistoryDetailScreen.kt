@@ -238,7 +238,9 @@ private fun BabyEditModal(
                 .dismissKeyboardOnTap(),
             verticalArrangement = Arrangement.Top,
         ) {
-            BabyEntrySection(controls = controls, onImeAction = {})
+            // MOB-1223 is scoped to Manual Entry; the History-detail baby edit form stays lb/oz-only
+            // (its existing behaviour) — hence the fixed LB_OZ layout + conversion below.
+            BabyEntrySection(controls = controls, weightUnit = WeightUnit.LB_OZ, onImeAction = {})
             Spacer(modifier = Modifier.height(MeTheme.spacing.lg))
             Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
                 AppButton(
@@ -247,9 +249,11 @@ private fun BabyEditModal(
                     size = ButtonSize.Large,
                     type = ButtonType.PrimaryFilled,
                     onClick = {
-                        val lbs = controls.pounds.value.toIntOrNull() ?: 0
-                        val oz = controls.ounces.value.toDoubleOrNull() ?: 0.0
-                        val inches = controls.inches.value.toDoubleOrNull()
+                        val lbs = controls.weight.value.toIntOrNull() ?: 0
+                        // oz uses the adult BODY_COMP input: raw digits with an implicit 1-place
+                        // decimal ("45" → 4.5), so divide by 10 to recover real ounces. (MOB-1223)
+                        val oz = controls.weightOz.value.toDoubleOrNull()?.div(10.0) ?: 0.0
+                        val inches = controls.length.value.toDoubleOrNull()
                         val weightDecigrams =
                             if (lbs > 0 || oz > 0) ConversionTools.convertLbOzToDecigrams(lbs, oz) else null
                         val lengthMm =
@@ -270,15 +274,17 @@ private fun BabyEditModal(
 
 /** Builds a baby entry form pre-filled from an existing [entry] for editing. */
 private fun seededBabyEntryForm(entry: BabyEntry): MultiFormGroup<BabyEntryForm> {
-    val form = MultiFormGroup.create(forms = BabyEntryForm.create())
+    // Edit form stays lb/oz-only (MOB-1223 scoped to Manual Entry); seed accordingly.
+    val form = MultiFormGroup.create(forms = BabyEntryForm.create(WeightUnit.LB_OZ))
     val controls = form.forms.baby.controls
     entry.babyWeightDecigrams?.takeIf { it > 0 }?.let {
         val (lb, oz) = ConversionTools.convertDecigramsToLbOz(it)
-        controls.pounds.setValue(lb.toString())
-        controls.ounces.setValue(formatOneDecimal(oz))
+        controls.weight.setValue(lb.toString())
+        // oz field is BODY_COMP (implicit 1-decimal): seed the raw digit string, e.g. 4.5 → "45".
+        controls.weightOz.setValue(Math.round(oz * 10).toString())
     }
     entry.babyLengthMillimeters?.takeIf { it > 0 }?.let {
-        controls.inches.setValue(formatOneDecimal(ConversionTools.convertMmToInches(it)))
+        controls.length.setValue(formatOneDecimal(ConversionTools.convertMmToInches(it)))
     }
     entry.entryNote?.let { controls.notes.setValue(it) }
     val millis = DateTimeConverter.isoToTimestamp(entry.entry.entryTimestamp)

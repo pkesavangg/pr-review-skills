@@ -82,12 +82,25 @@ constructor(
     accountService.activeAccount.value?.weightUnit?.let {
       handleIntent(EntryIntent.UpdateWeightUnit(it))
     }
+    // Baby entry follows the account's MEASUREMENT unit (My Kids), which is separate from the
+    // adult weightUnit and can differ from it — read it synchronously too. (MOB-1223)
+    accountService.activeAccount.value?.measurementUnits?.let {
+      handleIntent(EntryIntent.UpdateBabyUnit(it.toWeightUnit()))
+    }
 
     // Set up continuous flows
     viewModelScope.launch {
       accountService.activeAccountFlow.map { it?.weightUnit }.distinctUntilChanged().collect {
         if (it != null) {
           handleIntent(EntryIntent.UpdateWeightUnit(it))
+        }
+      }
+    }
+
+    viewModelScope.launch {
+      accountService.activeAccountFlow.map { it?.measurementUnits }.distinctUntilChanged().collect {
+        if (it != null) {
+          handleIntent(EntryIntent.UpdateBabyUnit(it.toWeightUnit()))
         }
       }
     }
@@ -160,7 +173,7 @@ constructor(
         handleIntent(
           EntryIntent.UpdateActiveForm(
             ActiveEntryForm.Baby(
-              form = MultiFormGroup.create(forms = BabyEntryForm.create()),
+              form = MultiFormGroup.create(forms = BabyEntryForm.create(_state.value.babyWeightMode)),
               // Capture the baby this form is being built for, so the save uses it instead of the
               // global selection at save time (MOB-1449).
               profile = product.profile,
@@ -531,14 +544,14 @@ constructor(
         // measures: the local UNIQUE(accountId, entryTimestamp) index allows only one row per
         // timestamp, and the POST split into distinct §2.16 weight/length requests happens later
         // in the mapper. Null when no measure was entered.
-        val babyEntry = buildBabyEntry(babyForm.forms.baby.controls, accountId, babyId)
+        val babyEntry = buildBabyEntry(babyForm.forms.baby.controls, accountId, babyId, _state.value.babyWeightMode)
         babyEntry?.let { entryService.addEntry(it) }
         analyticsService.logEvent(IAnalyticsService.Events.MANUAL_ENTRY_CREATED)
         showBabySavedToast(babyEntry, babyProfile.name)
         handleIntent(
           EntryIntent.UpdateActiveForm(
             ActiveEntryForm.Baby(
-              form = MultiFormGroup.create(forms = BabyEntryForm.create()),
+              form = MultiFormGroup.create(forms = BabyEntryForm.create(_state.value.babyWeightMode)),
               profile = babyProfile,
             ),
           ),
@@ -590,14 +603,29 @@ constructor(
     controls: BabyEntryFormControls,
     accountId: String,
     babyId: String,
+    weightUnit: WeightUnit,
   ): BabyEntry? {
     val timestamp = DateTimeConverter.timestampToIso(controls.dateTime.value.getTimestamp())
     val note = controls.notes.value.ifBlank { null }
-    val lbs = controls.pounds.value.toIntOrNull() ?: 0
-    val oz = controls.ounces.value.toDoubleOrNull() ?: 0.0
-    val inches = controls.inches.value.toDoubleOrNull()
-    val weightDecigrams = if (lbs > 0 || oz > 0) ConversionTools.convertLbOzToDecigrams(lbs, oz) else null
-    val lengthMm = if (inches != null && inches > 0) ConversionTools.convertInchesToMm(inches) else null
+    // The typed value's unit follows the account's Unit Type (MOB-1223); convert to the canonical
+    // decigrams/mm the local row + POST both use (matches Smart Baby / babyApp storage contract).
+    val weightDecigrams = when (weightUnit) {
+      WeightUnit.LB_OZ -> {
+        val lbs = controls.weight.value.toIntOrNull() ?: 0
+        // oz uses the adult BODY_COMP input: value is the raw digit string with an implicit
+        // 1-place decimal ("45" → 4.5 oz), so divide by 10 to recover the real ounces. (MOB-1223)
+        val oz = controls.weightOz.value.toDoubleOrNull()?.div(10.0) ?: 0.0
+        if (lbs > 0 || oz > 0) ConversionTools.convertLbOzToDecigrams(lbs, oz) else null
+      }
+      WeightUnit.KG -> controls.weight.value.toDoubleOrNull()
+        ?.takeIf { it > 0 }?.let { ConversionTools.convertKgToDecigrams(it) }
+      WeightUnit.LB -> controls.weight.value.toDoubleOrNull()
+        ?.takeIf { it > 0 }?.let { ConversionTools.convertLbToDecigrams(it) }
+    }
+    val lengthValue = controls.length.value.toDoubleOrNull()?.takeIf { it > 0 }
+    val lengthMm = lengthValue?.let {
+      if (weightUnit == WeightUnit.KG) ConversionTools.convertCmToMm(it) else ConversionTools.convertInchesToMm(it)
+    }
     if (weightDecigrams == null && lengthMm == null) return null
     return BabyEntry(
       entry = EntryEntity(
