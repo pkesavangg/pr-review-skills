@@ -529,10 +529,10 @@ struct AlertStrings {
     }
 
     struct ExitSetupAlert {
-        static let title = "Confirm"
-        static let message = "Are you sure you want to exit setup?"
-        static let exitButton = "Exit"
-        static let returnButton = "Return"
+        static let title = "Cancel Device Setup?"
+        static let message = "Your progress won't be saved. You can set up your device anytime from Settings → My Devices."
+        static let exitButton = "Yes, Cancel"
+        static let returnButton = "Go Back"
     }
 
     struct ExitBtWifiSetupAlert {

@@ -676,7 +676,9 @@ final class HistoryStore: ObservableObject {
                 pulse: Double(pulse),
                 meanArterial: meanArterial,
                 note: note.isEmpty ? nil : note,
-                source: EntrySource.manual.rawValue,
+                // Preserve the original source: a device-synced reading is edited note-only,
+                // so re-saving must not relabel it as manual (MOB-1172).
+                source: old.source ?? EntrySource.manual.rawValue,
                 unit: nil,
                 entryTimestamp: entryTimestamp,
                 operationType: nil,
@@ -701,6 +703,106 @@ final class HistoryStore: ObservableObject {
         }
     }
 
+    // MARK: - Weight Edit (delete-old + create-new)
+
+    /// Trims a note and collapses a blank/whitespace-only value to nil, matching the manual
+    /// create path (EntryStore.saveEntry) so an empty edit clears the note rather than storing "".
+    private static func normalizedNote(_ note: String) -> String? {
+        let trimmed = note.trimmingCharacters(in: .whitespacesAndNewlines)
+        return trimmed.isEmpty ? nil : trimmed
+    }
+
+    // swiftlint:disable function_parameter_count
+    /// Updates a weight-scale entry. Editable core fields (weight + bmi/body-fat/muscle-mass/
+    /// body-water) come from the edit sheet; all other body metrics on the original entry are
+    /// preserved verbatim. The original `source` is kept so a device-synced reading edited
+    /// note-only is not relabeled as manual (MOB-1172).
+    ///
+    /// No PATCH endpoint exists, so this creates the replacement first, then deletes the
+    /// original by its id (a distinct UUID, so a shared timestamp can't collapse them).
+    ///
+    /// Returns `true` only when the replacement saved AND the original was deleted, so the caller
+    /// can gate post-save navigation (e.g. popping back to the list) on a confirmed success.
+    @discardableResult
+    func updateWGEntry(
+        old: EntrySnapshot,
+        weight: Int,
+        bmi: Int?,
+        bodyFat: Int?,
+        muscleMass: Int?,
+        water: Int?,
+        note: String,
+        entryTimestamp: String
+    ) async -> Bool {
+        guard let accountId = accountService.activeAccount?.accountId else { return false }
+        notificationService.showLoader(LoaderModel(text: loaderLang.savingEntry))
+        defer { notificationService.dismissLoader() }
+
+        let scaleEntry = BathScaleEntry(
+            weight: weight,
+            bodyFat: bodyFat,
+            muscleMass: muscleMass,
+            water: water,
+            bmi: bmi,
+            source: old.scaleEntry?.source ?? EntrySource.manual.rawValue
+        )
+
+        // Preserve every non-core metric from the original entry — the edit sheet does not
+        // expose them, so they must round-trip untouched.
+        let scaleMetric = Self.preservedMetric(from: old.scaleEntryMetric)
+
+        let entry = Entry(
+            entryTimestamp: entryTimestamp,
+            accountId: accountId,
+            operationType: OperationType.create.rawValue,
+            entryType: EntryType.scale.rawValue,
+            isSynced: false
+        )
+        entry.note = Self.normalizedNote(note)
+        entry.scaleEntry = scaleEntry
+        entry.scaleEntryMetric = scaleMetric
+
+        do {
+            try await entryService.saveNewEntry(entry)
+            do {
+                try await entryService.deleteEntry(entryId: old.id)
+            } catch {
+                // Save succeeded but the delete of the original failed — both the old and the
+                // replacement now exist. Bubble a distinct log so support can distinguish this
+                // duplicate from a plain save error (a blind retry would create a third copy).
+                let duplicateMessage = "Weight entry delete-after-save failed (duplicate created), "
+                    + "original id \(old.id): \(error.localizedDescription)"
+                logger.log(level: .error, tag: tag, message: duplicateMessage)
+                notificationService.showToast(ToastModel(message: toastLang.errorSavingEntry))
+                return false
+            }
+            logger.log(level: .info, tag: tag, message: "Weight entry updated: \(entryTimestamp)")
+            return true
+        } catch {
+            logger.log(level: .error, tag: tag, message: "Failed to update weight entry: \(error.localizedDescription)")
+            notificationService.showToast(ToastModel(message: toastLang.errorSavingEntry))
+            return false
+        }
+    }
+    // swiftlint:enable function_parameter_count
+
+    /// Rebuilds a `BathScaleMetric` from the original entry's snapshot so the non-core metrics the
+    /// weight edit sheet does not expose round-trip untouched onto the replacement entry.
+    private static func preservedMetric(from oldMetric: BathScaleMetricSnapshot?) -> BathScaleMetric {
+        BathScaleMetric(
+            bmr: oldMetric?.bmr,
+            metabolicAge: oldMetric?.metabolicAge,
+            proteinPercent: oldMetric?.proteinPercent,
+            pulse: oldMetric?.pulse,
+            skeletalMusclePercent: oldMetric?.skeletalMusclePercent,
+            subcutaneousFatPercent: oldMetric?.subcutaneousFatPercent,
+            visceralFatLevel: oldMetric?.visceralFatLevel,
+            boneMass: oldMetric?.boneMass,
+            impedance: oldMetric?.impedance,
+            unit: oldMetric?.unit
+        )
+    }
+
     // MARK: - Baby Edit (delete-old + create-new)
 
     func updateBabyEntry(
@@ -722,7 +824,9 @@ final class HistoryStore: ObservableObject {
                 length: lengthMm,
                 note: note,
                 entryTimestamp: entryTimestamp,
-                source: nil
+                // Preserve the original source so a device-synced (baby-scale) reading edited
+                // note-only is not relabeled as manual (MOB-1172).
+                source: old.source
             )
             try await entryService.deleteEntry(entryId: old.id)
             logger.log(level: .info, tag: tag, message: "Baby entry updated: \(entryTimestamp)")
@@ -826,6 +930,12 @@ final class HistoryStore: ObservableObject {
         accountService.activeAccount?.measurementUnits == MeasurementUnits.metric.rawValue
     }
 
+    /// Adult weight unit (kg vs lb) for the active account — drives weight-entry display/edit
+    /// conversions. Distinct from `isMetric`, which reflects the baby measurement-unit selection.
+    var isWeightMetric: Bool {
+        accountService.activeAccount?.weightUnit == .kg
+    }
+
     private var currentMeasurementUnits: MeasurementUnits {
         guard let raw = accountService.activeAccount?.measurementUnits,
               let units = MeasurementUnits(rawValue: raw) else { return .imperialLbOz }
@@ -879,7 +989,8 @@ final class HistoryStore: ObservableObject {
                         percentile: pct,
                         notes: entry.note?.isEmpty == false ? entry.note : nil,
                         weightDisplay: self.formatBabyWeightDisplay(decigrams: decigrams, source: source, units: units),
-                        lengthDisplay: self.formatBabyLengthDisplay(mm: mm, isMetric: metric)
+                        lengthDisplay: self.formatBabyLengthDisplay(mm: mm, isMetric: metric),
+                        source: source
                     )
                 }.sorted { $0.entryTimestamp > $1.entryTimestamp }
             } catch {
@@ -978,7 +1089,8 @@ final class HistoryStore: ObservableObject {
                 systolic: Int(dto.systolic ?? 0),
                 diastolic: Int(dto.diastolic ?? 0),
                 pulse: Int(dto.pulse ?? 0),
-                notes: dto.note
+                notes: dto.note,
+                source: dto.source
             )
         }.sorted { $0.entryTimestamp > $1.entryTimestamp }
     }

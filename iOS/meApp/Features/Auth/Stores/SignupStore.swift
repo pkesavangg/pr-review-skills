@@ -839,9 +839,18 @@ final class SignupStore: ObservableObject {
 
     /// Writes the union of product types for every device that saved successfully.
     /// `updateProductTypes` replaces the array, so we must send all of them in one call.
-    /// On failure, every previously-successful device is flipped to `.failure` so the
-    /// error screen surfaces — the account state is otherwise out of sync with what
-    /// the user thinks they registered.
+    ///
+    /// This is a best-effort write, NOT a signup gate. The substantive work — creating
+    /// the account and saving each device profile (goal, babies) — has already succeeded
+    /// by the time we get here, and product types are self-healing state:
+    ///   • the server auto-adds a product when its device is paired / a baby is created, and
+    ///   • `ProductTypeStore.resolveProductTypes()` reconstructs product types from synced
+    ///     devices/babies and retries `updateProductTypes` on the next rebuild.
+    /// A brand-new account's `PATCH /account/products` can transiently 404 before the
+    /// account fully propagates server-side; flipping the already-saved devices to
+    /// `.failure` here would surface the signup error screen for an account that was, in
+    /// fact, created successfully. So on failure we log and let signup complete — the
+    /// product types reconcile on the next sync.
     private func writeAccumulatedProductTypes() async {
         let successfulIndices = deviceStatuses.indices.filter {
             if case .success = deviceStatuses[$0].status { return true }
@@ -855,11 +864,9 @@ final class SignupStore: ObservableObject {
             logger.log(
                 level: .error,
                 tag: tag,
-                message: "Failed to write accumulated product types. error=\(error.localizedDescription)"
+                message: "Failed to write accumulated product types; will reconcile on next sync. "
+                    + "error=\(error.localizedDescription)"
             )
-            for index in successfulIndices {
-                deviceStatuses[index] = (deviceStatuses[index].device, .failure(error))
-            }
         }
     }
 

@@ -65,15 +65,16 @@ extension BabyScaleSetupStore {
             return
         }
 
+        let alertLang = AlertStrings.ExitSetupAlert.self
         let alert = AlertModel(
-            title: "Exit Setup?",
-            message: "Are you sure you want to exit scale setup?",
+            title: alertLang.title,
+            message: alertLang.message,
             buttons: [
-                AlertButtonModel(title: commonLang.cancel, type: .secondary) { [weak self] _ in
-                    self?.isExiting = false
-                },
-                AlertButtonModel(title: "Exit", type: .danger) { [weak self] _ in
+                AlertButtonModel(title: alertLang.exitButton, type: .primary) { [weak self] _ in
                     self?.performExitCleanup()
+                },
+                AlertButtonModel(title: alertLang.returnButton, type: .secondary) { [weak self] _ in
+                    self?.isExiting = false
                 }
             ]
         )
