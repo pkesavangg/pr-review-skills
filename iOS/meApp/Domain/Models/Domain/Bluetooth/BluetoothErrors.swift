@@ -142,3 +142,20 @@ enum BluetoothServiceError: Error, LocalizedError {
         }
     }
 }
+
+extension BluetoothServiceError {
+    /// Whether a failed connect/pair attempt is worth retrying once. Re-pairing the same
+    /// monitor under a newly-selected user times out or throws a pairing error on the first
+    /// attempt (the SDK still holds the previous user's session); that failed attempt tears
+    /// the stale session down, so a second attempt succeeds. Non-transient failures —
+    /// Bluetooth off, permission denied, invalid broadcast id, device not found, etc. — can't
+    /// be fixed by a second connect, so they must fail fast instead of paying the retry delay.
+    var isRetryablePairingFailure: Bool {
+        switch self {
+        case .timeout, .pairFailed, .pairOperationFailed, .confirmPairFailed:
+            return true
+        default:
+            return false
+        }
+    }
+}

@@ -246,6 +246,28 @@ struct BluetoothServiceBpmTests {
         }
     }
 
+    // MARK: - getScaleUserList Fail-Closed Tests
+
+    @Test("getScaleUserList fails closed for an untracked broadcastId (avoids BPM SDK crash)")
+    func getScaleUserListFailsClosedWhenUntracked() async {
+        // A fresh service has no tracked scales, so the broadcastId cannot be confirmed to be a
+        // weight scale. isBpmDevice must fail closed and skip the crash-prone user-list call —
+        // even with skipConnectionCheck, which would otherwise bypass the connection guard.
+        let sut = makeSUT()
+
+        let result = await sut.getScaleUserList(broadcastId: "UNKNOWN-BROADCAST", skipConnectionCheck: true)
+
+        switch result {
+        case .success:
+            Issue.record("Expected fail-closed .notImplemented for an untracked broadcastId")
+        case .failure(let error):
+            guard case .notImplemented = error else {
+                Issue.record("Expected .notImplemented, got \(error)")
+                return
+            }
+        }
+    }
+
     // MARK: - DeviceCategory Tests
 
     @Test("DeviceCategory: raw values are correct")

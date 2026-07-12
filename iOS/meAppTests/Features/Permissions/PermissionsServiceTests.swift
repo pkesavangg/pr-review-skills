@@ -7,6 +7,23 @@ import Testing
 @Suite(.serialized)
 @MainActor
 struct PermissionsServiceTests {
+
+    /// Polls until `condition` holds or the deadline passes. Used instead of a lone
+    /// `Task.yield()` when a test must wait for the SUT's async alert flow to actually
+    /// present the next alert before tapping — a single yield is not enough hops for a
+    /// multi-step flow and races into a 120s hang.
+    private func waitUntil(
+        timeoutNanoseconds: UInt64 = 2_000_000_000,
+        pollNanoseconds: UInt64 = 10_000_000,
+        condition: @escaping @MainActor () -> Bool
+    ) async -> Bool {
+        let deadline = ContinuousClock.now + .nanoseconds(Int64(timeoutNanoseconds))
+        while !condition() && ContinuousClock.now < deadline {
+            try? await Task.sleep(nanoseconds: pollNanoseconds)
+        }
+        return condition()
+    }
+
     @Test("setPermissions and getPermissionState: stores and returns cached states")
     func setPermissionsStoresState() {
         let sut = makeSUT()
@@ -178,11 +195,11 @@ struct PermissionsServiceTests {
         sut.setPermissions(PermissionsTestFixtures.permissionMap(locationSwitch: .DISABLED))
 
         let task = Task { await sut.handlePermission(.locationSwitch) }
-        await Task.yield()
+        _ = await waitUntil { notification.shownAlerts.count == 1 }
         notification.tapAlertButton(at: 1) // Why
-        await Task.yield()
+        _ = await waitUntil { notification.shownAlerts.count == 2 }
         notification.tapAlertButton(at: 0) // Back from Why
-        await Task.yield()
+        _ = await waitUntil { notification.shownAlerts.count == 3 }
         notification.tapAlertButton(at: 0) // Exit on re-shown location alert
 
         let result = await task.value

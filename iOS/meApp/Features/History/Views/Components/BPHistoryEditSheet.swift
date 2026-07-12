@@ -45,6 +45,12 @@ struct BPHistoryEditSheet: View {
         _entryTime = State(initialValue: parsed)
     }
 
+    // MARK: - Edit permissions
+
+    /// Device-synced readings (BT / Wi-Fi) are note-only: the measured values came from the
+    /// device and stay read-only. Manually-entered readings are fully editable (MOB-1172).
+    private var valuesLocked: Bool { !entry.isManual }
+
     // MARK: - Validation
 
     private var systolicError: String? {
@@ -116,6 +122,7 @@ struct BPHistoryEditSheet: View {
                         label: lang.systolic,
                         inputType: .metric,
                         errorMessage: systolicError ?? systolicWarning,
+                        isDisabled: valuesLocked,
                         focusField: .systolic,
                         maxLength: 3,
                         allowWholeNumbers: true
@@ -131,6 +138,7 @@ struct BPHistoryEditSheet: View {
                         label: lang.diastolic,
                         inputType: .metric,
                         errorMessage: diastolicError ?? diastolicWarning,
+                        isDisabled: valuesLocked,
                         focusField: .diastolic,
                         maxLength: 3,
                         allowWholeNumbers: true
@@ -146,6 +154,7 @@ struct BPHistoryEditSheet: View {
                         label: lang.pulse,
                         inputType: .metric,
                         errorMessage: pulseError ?? pulseWarning,
+                        isDisabled: valuesLocked,
                         focusField: .pulse,
                         maxLength: 3,
                         allowWholeNumbers: true

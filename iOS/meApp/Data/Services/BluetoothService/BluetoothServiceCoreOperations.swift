@@ -462,7 +462,40 @@ extension BluetoothService {
         }
     }
 
+    /// Whether `getScaleUserList` must be skipped for this broadcastId because the device is — or
+    /// cannot be confirmed *not* to be — a BPM monitor.
+    /// `getUsers` / `getScaleUserList` is a weight-scale-only SDK operation; invoking it against a
+    /// BPM (A6) monitor crashes inside the vendored SDK (EXC_BAD_ACCESS in
+    /// `GGBPMonitorA6.description.getter`), so callers must skip it for BPM devices.
+    ///
+    /// Fails **closed**: if the broadcastId isn't yet tracked in `bluetoothScales` (e.g. a race
+    /// during discovery), we cannot verify the device is a weight scale, so we treat it as a BPM
+    /// monitor and skip the crash-prone call. A skipped user-list fetch is recoverable; the
+    /// EXC_BAD_ACCESS is not.
+    private func isBpmDevice(broadcastId: String) -> Bool {
+        guard let sku = bluetoothScales.first(where: { $0.broadcastIdString == broadcastId })?.sku else {
+            logger.log(
+                level: .info,
+                tag: tag,
+                message: "isBpmDevice: \(broadcastId) not yet tracked in bluetoothScales — "
+                    + "failing closed (treating as BPM) to avoid getScaleUserList crash"
+            )
+            return true
+        }
+        return DeviceInfoUtils.shared.getDeviceInfo(bySku: sku)?.setupType == .bpm
+    }
+
     func getScaleUserList(broadcastId: String, skipConnectionCheck: Bool = false) async -> Result<[DeviceUser], BluetoothServiceError> {
+        // BPM monitors have no scale-style user list; asking the SDK for one crashes it.
+        guard !isBpmDevice(broadcastId: broadcastId) else {
+            logger.log(
+                level: .info,
+                tag: tag,
+                message: "Skipping getScaleUserList for BPM monitor \(broadcastId) — user-list is a weight-scale operation"
+            )
+            return .failure(.notImplemented)
+        }
+
         let isConnected = bluetoothScales.first { $0.broadcastIdString == broadcastId }?.isConnected ?? false
         guard skipConnectionCheck || isConnected else {
             logger.log(level: .error, tag: tag, message: "Cannot get user list - device is not connected: \(broadcastId)")

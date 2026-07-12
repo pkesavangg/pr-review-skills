@@ -55,6 +55,10 @@ struct BabyHistoryEditSheet: View {
 
     private var isMetric: Bool { historyStore.isMetric }
 
+    /// Device-synced readings (baby scale) are note-only: the measured weight/length came from
+    /// the device and stay read-only. Manually-entered readings are fully editable (MOB-1172).
+    private var valuesLocked: Bool { !entry.isManual }
+
     // MARK: - Validation (driven by BabyEntryForm)
 
     /// Weight is required; length is optional. Range checks come from the form's validators.
@@ -78,6 +82,7 @@ struct BabyHistoryEditSheet: View {
                             label: lang.kg,
                             inputType: .metric,
                             errorMessage: form.weightErrorMetric,
+                            isDisabled: valuesLocked,
                             focusField: .weight,
                             allowWholeNumbers: false,
                             decimalPlaces: 3
@@ -92,6 +97,7 @@ struct BabyHistoryEditSheet: View {
                             label: lang.cm,
                             inputType: .metric,
                             errorMessage: form.lengthErrorCm,
+                            isDisabled: valuesLocked,
                             focusField: .inches,
                             allowWholeNumbers: false
                         ),
@@ -105,6 +111,7 @@ struct BabyHistoryEditSheet: View {
                             label: lang.pounds,
                             inputType: .metric,
                             errorMessage: form.weightError,
+                            isDisabled: valuesLocked,
                             focusField: .weight,
                             maxLength: 3,
                             allowWholeNumbers: true
@@ -118,6 +125,7 @@ struct BabyHistoryEditSheet: View {
                         config: TextInputConfig(
                             label: lang.ounces,
                             inputType: .metric,
+                            isDisabled: valuesLocked,
                             focusField: .ounces,
                             allowWholeNumbers: false
                         ),
@@ -131,6 +139,7 @@ struct BabyHistoryEditSheet: View {
                             label: lang.inches,
                             inputType: .metric,
                             errorMessage: form.lengthError,
+                            isDisabled: valuesLocked,
                             focusField: .inches,
                             allowWholeNumbers: false
                         ),

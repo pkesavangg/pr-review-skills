@@ -27,6 +27,19 @@ extension BluetoothService {
             return
         }
 
+        // The duplicate-user / reconnect + delete-user flow below is a weight-scale (R4) feature
+        // — `findUserToDelete` only matches R4 scales, and `getScaleUserList` (called next) crashes
+        // the SDK for BPM monitors. BPM monitors surface duplicate users via their own setup flow,
+        // so bail out here rather than driving the scale flow against a monitor.
+        if scaleInfo?.setupType == .bpm {
+            logger.log(
+                level: .info,
+                tag: tag,
+                message: "Ignoring scale user-event alert for BPM monitor \(deviceDetails.broadcastIdString)"
+            )
+            return
+        }
+
         let userListResult = await getScaleUserList(broadcastId: discoveredScale.broadcastIdString ?? "", skipConnectionCheck: true)
         guard case .success(let userList) = userListResult else {
             logger.log(level: .error, tag: tag, message: "Failed to get scale user list for device event alert")

@@ -11,6 +11,7 @@ import com.dmdbrands.gurus.weight.features.common.helper.form.FormControl
 import com.dmdbrands.gurus.weight.features.common.helper.form.FormGroup
 import com.dmdbrands.gurus.weight.features.common.helper.form.FormValidations
 import com.dmdbrands.gurus.weight.features.common.helper.form.MultiFormGroup
+import com.dmdbrands.gurus.weight.features.manualEntry.strings.EntryScreenStrings
 import java.util.Calendar
 import androidx.compose.runtime.Stable
 
@@ -211,30 +212,32 @@ data class BloodPressureEntryForm(
   companion object {
     fun create(): BloodPressureEntryForm {
       val calendar = Calendar.getInstance()
+      // Warn-but-save (Balance Health parity): block only above the hard cap,
+      // show an advisory warning outside the typical range, still allow save.
+      val systolic = FormControl.create(
+        "",
+        listOf(
+          FormValidations.required(),
+          FormValidations.hardMaxValidator(AppValidatorConfig.Systolic.HARD_MAX),
+          FormValidations.rangeWarningValidator(
+            AppValidatorConfig.Systolic.WARN_MIN, AppValidatorConfig.Systolic.WARN_MAX,
+          ),
+        ),
+      )
+      val diastolic = FormControl.create(
+        "",
+        listOf(
+          FormValidations.required(),
+          FormValidations.hardMaxValidator(AppValidatorConfig.Diastolic.HARD_MAX),
+          FormValidations.rangeWarningValidator(
+            AppValidatorConfig.Diastolic.WARN_MIN, AppValidatorConfig.Diastolic.WARN_MAX,
+          ),
+        ),
+      )
+      wireCrossFieldWarnings(systolic, diastolic)
       val controls = BloodPressureFormControls(
-        // Warn-but-save (Balance Health parity): block at the hard cap and above
-        // (exclusive cap — 500 is blocked, MOB-1431), show an advisory warning
-        // outside the typical range, still allow save.
-        systolic = FormControl.create(
-          "",
-          listOf(
-            FormValidations.required(),
-            FormValidations.hardMaxValidator(AppValidatorConfig.Systolic.HARD_MAX),
-            FormValidations.rangeWarningValidator(
-              AppValidatorConfig.Systolic.WARN_MIN, AppValidatorConfig.Systolic.WARN_MAX,
-            ),
-          ),
-        ),
-        diastolic = FormControl.create(
-          "",
-          listOf(
-            FormValidations.required(),
-            FormValidations.hardMaxValidator(AppValidatorConfig.Diastolic.HARD_MAX),
-            FormValidations.rangeWarningValidator(
-              AppValidatorConfig.Diastolic.WARN_MIN, AppValidatorConfig.Diastolic.WARN_MAX,
-            ),
-          ),
-        ),
+        systolic = systolic,
+        diastolic = diastolic,
         pulse = FormControl.create(
           "",
           listOf(
@@ -259,6 +262,42 @@ data class BloodPressureEntryForm(
         ),
       )
       return BloodPressureEntryForm(bloodPressure = FormGroup(controls))
+    }
+
+    /**
+     * Wires the cross-field advisory (Balance Health / bpmMobileApp4 parity): warn — but still
+     * allow save — when systolic is not higher than diastolic. Each rule fires only while its own
+     * field is inside the typical range, so it never collides with the range warning. Wired after
+     * construction because the two controls reference each other; the value-change listeners
+     * re-validate the sibling so its advisory refreshes even when only one field is edited.
+     *
+     * Note: [FormControl.onValueChangeListener] holds a single listener (latest wins, by design).
+     * The systolic/diastolic controls therefore reserve that slot for this cross-field wiring — do
+     * not register another value-change listener on them, or the sibling advisory will stop
+     * refreshing (silently, with no compile error).
+     */
+    private fun wireCrossFieldWarnings(
+      systolic: FormControl<String>,
+      diastolic: FormControl<String>,
+    ) {
+      systolic.addValidator(
+        FormValidations.systolicCrossFieldWarning(
+          diastolic,
+          AppValidatorConfig.Systolic.WARN_MIN,
+          AppValidatorConfig.Systolic.WARN_MAX,
+          EntryScreenStrings.SYSTOLIC_CROSS_WARNING,
+        ),
+      )
+      diastolic.addValidator(
+        FormValidations.diastolicCrossFieldWarning(
+          systolic,
+          AppValidatorConfig.Diastolic.WARN_MIN,
+          AppValidatorConfig.Diastolic.WARN_MAX,
+          EntryScreenStrings.DIASTOLIC_CROSS_WARNING,
+        ),
+      )
+      systolic.onValueChangeListener { _, _ -> diastolic.validate() }
+      diastolic.onValueChangeListener { _, _ -> systolic.validate() }
     }
   }
 }
