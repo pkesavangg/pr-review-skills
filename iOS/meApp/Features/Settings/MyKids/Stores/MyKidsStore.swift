@@ -91,11 +91,9 @@ final class MyKidsStore: ObservableObject {
         guard !name.isEmpty else { return }
 
         // A locally-detected duplicate already disables SAVE, but guard here too in case
-        // the check hasn't re-run yet.
+        // the check hasn't re-run yet. This also clears any stale duplicate-name error
+        // (refreshDuplicateNameError sets duplicateNameError to nil when there's no match).
         guard !refreshDuplicateBabyNameError() else { return }
-
-        // Clear any stale duplicate-name error before a new attempt.
-        babyProfileForm.duplicateNameError = nil
 
         let birthday = babyProfileForm.birthday.value
         let biologicalSex = babyProfileForm.biologicalSex.value.isEmpty
