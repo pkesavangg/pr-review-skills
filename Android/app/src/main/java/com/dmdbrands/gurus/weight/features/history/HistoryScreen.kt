@@ -24,10 +24,12 @@ import com.dmdbrands.gurus.weight.features.common.components.strings.BabyEmptySt
 import com.dmdbrands.gurus.weight.domain.model.common.ProductSelection
 import com.dmdbrands.gurus.weight.domain.services.IProductSelectionManager
 import androidx.lifecycle.compose.collectAsStateWithLifecycle as collectAsState2
+import com.dmdbrands.gurus.weight.features.dashboard.snapshot.components.SnapshotColors
 import com.dmdbrands.gurus.weight.features.history.components.BabyHistoryList
 import com.dmdbrands.gurus.weight.features.history.components.BpHistoryList
-import com.dmdbrands.gurus.weight.features.history.components.HistoryEmptyState
+import com.dmdbrands.gurus.weight.features.history.components.ProductHistoryEmptyState
 import com.dmdbrands.gurus.weight.features.history.components.WeightHistoryList
+import com.dmdbrands.gurus.weight.features.history.strings.HistoryEmptyStateStrings
 import com.dmdbrands.gurus.weight.features.history.strings.HistoryScreenStrings
 import com.dmdbrands.gurus.weight.features.history.viewmodel.HistoryIntent
 import com.dmdbrands.gurus.weight.features.history.viewmodel.HistoryState
@@ -110,10 +112,27 @@ fun HistoryScreenContent(
       when (currentProduct) {
         is ProductSelection.MyWeight -> {
           if (state.historyItems.isEmpty()) {
-            HistoryEmptyState(
-              onRetry = { handleIntent(HistoryIntent.Retry) },
-              onConnectScale = { handleIntent(HistoryIntent.OnConnectScale) },
-            )
+            if (state.hasWeightDevice) {
+              ProductHistoryEmptyState(
+                icon = AppIcons.Default.History,
+                iconTint = SnapshotColors.Weight,
+                iconContentDescription = HistoryEmptyStateStrings.NoEntriesIconDescription,
+                title = HistoryEmptyStateStrings.WeightNoEntryTitle,
+                description = HistoryEmptyStateStrings.WeightNoEntryDescription,
+                primaryLabel = HistoryEmptyStateStrings.LogManually,
+                onPrimaryClick = { handleIntent(HistoryIntent.OnLogManually) },
+              )
+            } else {
+              ProductHistoryEmptyState(
+                icon = AppIcons.Default.WeightScale,
+                iconTint = SnapshotColors.Weight,
+                iconContentDescription = HistoryEmptyStateStrings.WeightIconDescription,
+                title = HistoryEmptyStateStrings.WeightNoDeviceTitle,
+                description = HistoryEmptyStateStrings.WeightNoDeviceDescription,
+                primaryLabel = HistoryEmptyStateStrings.AddDevice,
+                onPrimaryClick = { handleIntent(HistoryIntent.OnConnectScale) },
+              )
+            }
           } else {
             WeightHistoryList(
               items = state.historyItems,
@@ -132,10 +151,27 @@ fun HistoryScreenContent(
 
         is ProductSelection.BloodPressure -> {
           if (state.bpHistoryItems.isEmpty()) {
-            HistoryEmptyState(
-              onRetry = { handleIntent(HistoryIntent.Retry) },
-              onConnectScale = { handleIntent(HistoryIntent.OnConnectScale) },
-            )
+            if (state.hasBpmDevice) {
+              ProductHistoryEmptyState(
+                icon = AppIcons.Default.History,
+                iconTint = SnapshotColors.BloodPressure,
+                iconContentDescription = HistoryEmptyStateStrings.NoEntriesIconDescription,
+                title = HistoryEmptyStateStrings.BpmNoEntryTitle,
+                description = HistoryEmptyStateStrings.BpmNoEntryDescription,
+                primaryLabel = HistoryEmptyStateStrings.LogManually,
+                onPrimaryClick = { handleIntent(HistoryIntent.OnLogManually) },
+              )
+            } else {
+              ProductHistoryEmptyState(
+                icon = AppIcons.Default.BloodPressureMonitor,
+                iconTint = SnapshotColors.BloodPressure,
+                iconContentDescription = HistoryEmptyStateStrings.BpmIconDescription,
+                title = HistoryEmptyStateStrings.BpmNoDeviceTitle,
+                description = HistoryEmptyStateStrings.BpmNoDeviceDescription,
+                primaryLabel = HistoryEmptyStateStrings.AddDevice,
+                onPrimaryClick = { handleIntent(HistoryIntent.OnConnectScale) },
+              )
+            }
           } else {
             BpHistoryList(
               items = state.bpHistoryItems,
@@ -153,10 +189,27 @@ fun HistoryScreenContent(
         is ProductSelection.Baby -> {
           val babyGroups = state.babyHistoryItems[currentProduct.profile.id] ?: persistentListOf()
           if (babyGroups.isEmpty()) {
-            HistoryEmptyState(
-              onRetry = { handleIntent(HistoryIntent.Retry) },
-              onConnectScale = { handleIntent(HistoryIntent.OnConnectScale) },
-            )
+            if (state.hasBabyDevice) {
+              ProductHistoryEmptyState(
+                icon = AppIcons.Default.History,
+                iconTint = SnapshotColors.Baby,
+                iconContentDescription = HistoryEmptyStateStrings.NoEntriesIconDescription,
+                title = HistoryEmptyStateStrings.BabyNoEntryTitle,
+                description = HistoryEmptyStateStrings.BabyNoEntryDescription,
+                primaryLabel = HistoryEmptyStateStrings.LogManually,
+                onPrimaryClick = { handleIntent(HistoryIntent.OnLogManually) },
+              )
+            } else {
+              ProductHistoryEmptyState(
+                icon = AppIcons.Default.BabyScale,
+                iconTint = SnapshotColors.Baby,
+                iconContentDescription = HistoryEmptyStateStrings.BabyScaleIconDescription,
+                title = HistoryEmptyStateStrings.BabyNoDeviceTitle,
+                description = HistoryEmptyStateStrings.BabyNoDeviceDescription,
+                primaryLabel = HistoryEmptyStateStrings.AddDevice,
+                onPrimaryClick = { handleIntent(HistoryIntent.OnConnectScale) },
+              )
+            }
           } else {
             BabyHistoryList(
               groups = babyGroups,

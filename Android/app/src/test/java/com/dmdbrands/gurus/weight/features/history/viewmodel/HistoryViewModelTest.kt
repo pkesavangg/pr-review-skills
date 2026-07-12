@@ -7,10 +7,13 @@ import com.dmdbrands.gurus.weight.domain.interfaces.IDialogQueueService
 import com.dmdbrands.gurus.weight.domain.model.common.GroupedHistory
 import com.dmdbrands.gurus.weight.domain.model.common.BabyProfile
 import com.dmdbrands.gurus.weight.domain.model.common.ProductSelection
+import com.dmdbrands.gurus.weight.domain.model.storage.Device
+import com.dmdbrands.gurus.weight.domain.repository.IDeviceService
 import com.dmdbrands.gurus.weight.domain.services.IEntryReadService
 import com.dmdbrands.gurus.weight.domain.services.IEntryService
 import com.dmdbrands.gurus.weight.domain.services.IExportService
 import com.dmdbrands.gurus.weight.domain.services.IProductSelectionManager
+import com.dmdbrands.gurus.weight.features.common.enums.DeviceSetupType
 import com.dmdbrands.gurus.weight.features.common.model.DialogModel
 import com.dmdbrands.gurus.weight.testutil.initTestDependencies
 import com.google.common.truth.Truth.assertThat
@@ -50,6 +53,9 @@ class HistoryViewModelTest {
     @MockK(relaxed = true)
     lateinit var entryCursorPager: com.dmdbrands.gurus.weight.data.services.EntryCursorPager
 
+    @MockK(relaxed = true)
+    lateinit var deviceService: IDeviceService
+
     private lateinit var navigationService: IAppNavigationService
     private lateinit var dialogQueueService: IDialogQueueService
     private lateinit var productSelectionManager: IProductSelectionManager
@@ -68,6 +74,7 @@ class HistoryViewModelTest {
             exportService = exportService,
             entryReadService = entryReadService,
             entryCursorPager = entryCursorPager,
+            deviceService = deviceService,
         ).initTestDependencies(
             navigationService = navigationService,
             dialogQueueService = dialogQueueService,
@@ -83,6 +90,8 @@ class HistoryViewModelTest {
             MutableStateFlow(listOf(ProductSelection.MyWeight))
         every { productSelectionManager.selectedProduct } returns
             MutableStateFlow(ProductSelection.MyWeight)
+        // observeDeviceFlags() collects pairedScales on init. (MOB-1221)
+        every { deviceService.pairedScales } returns MutableStateFlow(emptyList())
     }
 
     // -------------------------------------------------------------------------
@@ -111,6 +120,7 @@ class HistoryViewModelTest {
             exportService = exportService,
             entryReadService = entryReadService,
             entryCursorPager = entryCursorPager,
+            deviceService = deviceService,
         ).initTestDependencies(
             navigationService = navigationService,
             dialogQueueService = dialogQueueService,
@@ -211,6 +221,73 @@ class HistoryViewModelTest {
     }
 
     // -------------------------------------------------------------------------
+    // OnLogManually — navigation (MOB-1221)
+    // -------------------------------------------------------------------------
+
+    @Test
+    fun `OnLogManually navigates to Entry under Home top-level`() = runTest(mainDispatcherRule.scheduler) {
+        viewModel.handleIntent(HistoryIntent.OnLogManually)
+        advanceUntilIdle()
+        coVerify { navigationService.navigateTo(AppRoute.Main.Entry, AppRoute.Home) }
+    }
+
+    // -------------------------------------------------------------------------
+    // Device flags derived from pairedScales (MOB-1221)
+    // -------------------------------------------------------------------------
+
+    @Test
+    fun `pairedScales sets per-product device flags`() = runTest(mainDispatcherRule.scheduler) {
+        every { deviceService.pairedScales } returns MutableStateFlow(
+            listOf(
+                Device(deviceType = DeviceSetupType.BtWifiR4.value),
+                Device(deviceType = DeviceSetupType.BpmBluetooth.value),
+                Device(deviceType = DeviceSetupType.BabyScale.value),
+            ),
+        )
+
+        viewModel = HistoryViewModel(
+            entryService = entryService,
+            exportService = exportService,
+            entryReadService = entryReadService,
+            entryCursorPager = entryCursorPager,
+            deviceService = deviceService,
+        ).initTestDependencies(
+            navigationService = navigationService,
+            dialogQueueService = dialogQueueService,
+            productSelectionManager = productSelectionManager,
+        )
+        advanceUntilIdle()
+
+        assertThat(viewModel.state.value.hasWeightDevice).isTrue()
+        assertThat(viewModel.state.value.hasBpmDevice).isTrue()
+        assertThat(viewModel.state.value.hasBabyDevice).isTrue()
+    }
+
+    @Test
+    fun `pairedScales with only a weight scale sets only the weight flag`() = runTest(mainDispatcherRule.scheduler) {
+        every { deviceService.pairedScales } returns MutableStateFlow(
+            listOf(Device(deviceType = DeviceSetupType.BtWifiR4.value)),
+        )
+
+        viewModel = HistoryViewModel(
+            entryService = entryService,
+            exportService = exportService,
+            entryReadService = entryReadService,
+            entryCursorPager = entryCursorPager,
+            deviceService = deviceService,
+        ).initTestDependencies(
+            navigationService = navigationService,
+            dialogQueueService = dialogQueueService,
+            productSelectionManager = productSelectionManager,
+        )
+        advanceUntilIdle()
+
+        assertThat(viewModel.state.value.hasWeightDevice).isTrue()
+        assertThat(viewModel.state.value.hasBpmDevice).isFalse()
+        assertThat(viewModel.state.value.hasBabyDevice).isFalse()
+    }
+
+    // -------------------------------------------------------------------------
     // historyService grouped history subscription
     // -------------------------------------------------------------------------
 
@@ -227,6 +304,7 @@ class HistoryViewModelTest {
             exportService = exportService,
             entryReadService = entryReadService,
             entryCursorPager = entryCursorPager,
+            deviceService = deviceService,
         ).initTestDependencies(
             navigationService = navigationService,
             dialogQueueService = dialogQueueService,

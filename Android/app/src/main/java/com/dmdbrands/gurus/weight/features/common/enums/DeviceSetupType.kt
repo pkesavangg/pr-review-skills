@@ -46,10 +46,22 @@ enum class DeviceSetupType(
      */
     val weightScaleTypes: Set<DeviceSetupType> = setOf(Wifi, Bluetooth, Lcbt, EspTouchWifi, BtWifiR4, AppSync)
 
+    /** Setup types that represent a Blood Pressure Monitor (A3 and A6 protocol monitors). */
+    val bloodPressureTypes: Set<DeviceSetupType> = setOf(BpmBluetooth, BpmA6Bluetooth)
+
+    /** Setup types that represent a Baby Scale. */
+    val babyScaleTypes: Set<DeviceSetupType> = setOf(BabyScale)
+
     fun fromString(value: String?): DeviceSetupType? = values().find { it.value == value }
 
     /** Returns true when [value] maps to a Weight Scale setup type. */
     fun isWeightScale(value: String?): Boolean = fromString(value) in weightScaleTypes
+
+    /** Returns true when [value] maps to a Blood Pressure Monitor setup type. */
+    fun isBloodPressure(value: String?): Boolean = fromString(value) in bloodPressureTypes
+
+    /** Returns true when [value] maps to a Baby Scale setup type. */
+    fun isBabyScale(value: String?): Boolean = fromString(value) in babyScaleTypes
 
     /**
      * Returns the display label for the given scale setup type.

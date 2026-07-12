@@ -6,6 +6,8 @@ import com.dmdbrands.gurus.weight.core.shared.utilities.logging.AppLog
 import com.dmdbrands.gurus.weight.domain.model.api.entry.EntryCategory
 import com.dmdbrands.gurus.weight.domain.model.common.GroupedHistory
 import com.dmdbrands.gurus.weight.domain.model.common.ProductSelection
+import com.dmdbrands.gurus.weight.domain.repository.IDeviceService
+import com.dmdbrands.gurus.weight.features.common.enums.DeviceSetupType
 import kotlinx.coroutines.flow.collectLatest
 import com.dmdbrands.gurus.weight.domain.services.IEntryService
 import com.dmdbrands.gurus.weight.domain.services.IExportService
@@ -26,6 +28,7 @@ constructor(
   private val exportService: IExportService,
   private val entryReadService: IEntryReadService,
   private val entryCursorPager: com.dmdbrands.gurus.weight.data.services.EntryCursorPager,
+  private val deviceService: IDeviceService,
 ) : BaseIntentViewModel<HistoryState, HistoryIntent>(
   HistoryReducer(),
 ) {
@@ -43,6 +46,10 @@ constructor(
         onExportDataClick()
       }
       is HistoryIntent.OnConnectScale -> navigateTo(AppRoute.AccountSettings.MyDevices)
+      // Main.Entry is a bottom-nav tab under the Home top-level backstack, so it must be
+      // navigated with Home as the top-level anchor (mirrors HomeViewModel). (MOB-1221)
+      is HistoryIntent.OnLogManually ->
+        viewModelScope.launch { navigationService.navigateTo(AppRoute.Main.Entry, AppRoute.Home) }
 
       else -> null
     }
@@ -50,6 +57,7 @@ constructor(
 
   override fun onDependenciesReady() {
     observeAndLoadHistory()
+    observeDeviceFlags()
   }
 
   init {
@@ -62,6 +70,27 @@ constructor(
 
   private val historyJobs = mutableListOf<Job>()
   private var observeJob: Job? = null
+  private var deviceJob: Job? = null
+
+  /**
+   * Observe paired devices and derive per-product device-presence flags, so the History
+   * empty state can distinguish "no device connected" from "device connected, no entries
+   * yet" and show the right copy + CTA per product. (MOB-1221)
+   */
+  private fun observeDeviceFlags() {
+    if (deviceJob != null) return // already observing
+    deviceJob = viewModelScope.launch {
+      deviceService.pairedScales.collect { devices ->
+        handleIntent(
+          HistoryIntent.SetDeviceFlags(
+            hasWeightDevice = devices.any { DeviceSetupType.isWeightScale(it.deviceType) },
+            hasBpmDevice = devices.any { DeviceSetupType.isBloodPressure(it.deviceType) },
+            hasBabyDevice = devices.any { DeviceSetupType.isBabyScale(it.deviceType) },
+          ),
+        )
+      }
+    }
+  }
 
   /**
    * Start observing availableProducts. When products change,
