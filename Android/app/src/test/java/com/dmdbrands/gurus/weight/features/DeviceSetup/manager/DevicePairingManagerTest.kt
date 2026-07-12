@@ -159,6 +159,27 @@ class DevicePairingManagerTest {
     }
 
     @Test
+    fun `CREATION_COMPLETED but getUsers never returns surfaces retryable error and does not advance`() {
+        // MOB-248: pairing succeeds (green "Connected") but Bluetooth is switched off in that
+        // instant, so the getUsers callback never fires. Stub only pairDevice — leaving getUsers
+        // a relaxed no-op reproduces the dead BLE link. Without the withTimeoutOrNull guard the
+        // manager would suspend forever here; it must instead fall back to a retryable error.
+        discoveredScale = Device()
+        state = BtWifiScaleSetupState(currentStep = BtWifiSetupStep.CONNECTING_BLUETOOTH)
+        coEvery { deviceService.saveScale(any()) } answers { firstArg() }
+        every { ggDeviceService.pairDevice(any(), any(), any(), any()) } answers {
+            lastArg<(GGUserActionResponseType) -> Unit>().invoke(GGUserActionResponseType.CREATION_COMPLETED)
+        }
+
+        manager().connectToBluetooth()
+        scope.testScheduler.advanceUntilIdle()
+
+        assertThat(btStates()).contains(ConnectionState.Success)       // green check was shown
+        assertThat(btStates()).contains(ConnectionState.Failed.Error)  // then recovered to a retryable error
+        assertThat(nextCalled).isEqualTo(0)                            // never auto-advanced past the dead link
+    }
+
+    @Test
     fun `connectToBluetooth DUPLICATE_USER_ERROR routes to DUPLICATES_FOUND`() {
         discoveredScale = Device()
         stubPairResponse(GGUserActionResponseType.DUPLICATE_USER_ERROR)
