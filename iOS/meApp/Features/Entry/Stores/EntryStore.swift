@@ -50,20 +50,32 @@ final class EntryStore: ObservableObject {
     let tag = "EntryStore"
 
     var isBabyFormValid: Bool {
+        let weightPresent: Bool
         let weightValid: Bool
         switch babyWeightUnit {
-        case .kg: weightValid = !babyForm.kg.value.isEmpty && babyForm.kg.isValid
-        case .lb: weightValid = !babyForm.lb.value.isEmpty && babyForm.lb.isValid
-        case .lbsOz: weightValid = !babyForm.pounds.value.isEmpty && babyForm.pounds.isValid && babyForm.ounces.isValid
+        case .kg:
+            weightPresent = !babyForm.kg.value.isEmpty
+            weightValid = babyForm.kg.isValid
+        case .lb:
+            weightPresent = !babyForm.lb.value.isEmpty
+            weightValid = babyForm.lb.isValid
+        case .lbsOz:
+            weightPresent = !babyForm.pounds.value.isEmpty || !babyForm.ounces.value.isEmpty
+            weightValid = babyForm.pounds.isValid && babyForm.ounces.isValid
         }
 
+        let lengthPresent: Bool
         let lengthValid: Bool
         switch babyLengthUnit {
-        case .inches: lengthValid = !babyForm.inches.value.isEmpty && babyForm.inches.isValid
-        case .cm: lengthValid = !babyForm.cm.value.isEmpty && babyForm.cm.isValid
+        case .inches:
+            lengthPresent = !babyForm.inches.value.isEmpty
+            lengthValid = babyForm.inches.isValid
+        case .cm:
+            lengthPresent = !babyForm.cm.value.isEmpty
+            lengthValid = babyForm.cm.isValid
         }
 
-        return weightValid && lengthValid && babyForm.date.isValid
+        return (weightPresent || lengthPresent) && weightValid && lengthValid && babyForm.date.isValid
     }
 
     var maxSelectableTime: Date {
@@ -205,6 +217,8 @@ final class EntryStore: ObservableObject {
             entryType: EntryType.scale.rawValue,
             isSynced: false
         )
+        let note = manualEntryForm.notes.value.trimmingCharacters(in: .whitespacesAndNewlines)
+        entry.note = note.isEmpty ? nil : note
         entry.scaleEntry = scaleEntry
         entry.scaleEntryMetric = scaleMetric
 
@@ -545,11 +559,6 @@ final class EntryStore: ObservableObject {
             weight = ConversionTools.convertBabyLbsOzToDecigrams(lbs: pounds, oz: ounces)
         }
 
-        guard weight > 0 else {
-            logger.log(level: .info, tag: tag, message: "Baby entry save skipped: weight is zero")
-            return
-        }
-
         let length: Int
         switch babyLengthUnit {
         case .cm:
@@ -559,6 +568,14 @@ final class EntryStore: ObservableObject {
             let inchesValue = Double(babyForm.inches.value) ?? 0
             length = ConversionTools.convertBabyInchesToMm(inchesValue)
         }
+
+        // A baby entry needs at least one measurement; the unified request builder emits a
+        // weight row and/or a length row depending on which is > 0 (MOB-1172).
+        guard weight > 0 || length > 0 else {
+            logger.log(level: .info, tag: tag, message: "Baby entry save skipped: weight and length are both zero")
+            return
+        }
+
         let note = babyForm.notes.value
 
         do {
