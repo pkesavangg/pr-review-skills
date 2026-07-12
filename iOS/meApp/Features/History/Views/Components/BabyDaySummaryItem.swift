@@ -39,28 +39,27 @@ struct BabyDaySummaryItem: View {
         VStack(spacing: 0) {
             HStack {
                 // Date & entry count — balloon precedes the date on the baby's
-                // birthday (MOB-1164).
-                HStack(spacing: .spacingXS) {
-                    if day.isBirthday {
-                        BirthdayBalloonBadge()
-                    }
-                    VStack(alignment: .leading) {
+                // birthday (MOB-1164). The balloon aligns with the date line, with the
+                // entry count sitting below at the row's leading edge (matches the mock).
+                VStack(alignment: .leading, spacing: 2) {
+                    HStack(spacing: .spacingXS) {
+                        if day.isBirthday {
+                            BirthdayBalloonBadge()
+                        }
                         Text(dateText)
                             .fontOpenSans(.heading5)
                             .foregroundColor(theme.textHeading)
-
-                        Text("\(day.entryCount) \(HistoryListStrings.entries)")
-                            .fontOpenSans(.subHeading2)
-                            .foregroundColor(theme.textSubheading)
                     }
+
+                    Text("\(day.entryCount) \(HistoryListStrings.entries)")
+                        .fontOpenSans(.subHeading2)
+                        .foregroundColor(theme.textSubheading)
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
 
                 // Weight
                 VStack(alignment: .leading) {
-                    Text(weightText)
-                        .fontOpenSans(.body2)
-                        .foregroundColor(theme.babyScaleColor)
+                    BabyValueText(value: weightText)
                         .lineLimit(1)
                         .fixedSize(horizontal: true, vertical: false)
 
@@ -74,9 +73,7 @@ struct BabyDaySummaryItem: View {
 
                 // Length
                 VStack(alignment: .leading) {
-                    Text(lengthText)
-                        .fontOpenSans(.body2)
-                        .foregroundColor(theme.babyScaleColor)
+                    BabyValueText(value: lengthText)
 
                     Text(HistoryListStrings.length)
                         .fontOpenSans(.body3)
@@ -120,7 +117,7 @@ struct BabyWeekHeaderView: View {
             }
             Text("\(HistoryListStrings.week) \(weekNumber)")
                 .fontOpenSans(.subHeading2)
-                .foregroundColor(theme.textSubheading)
+                .foregroundColor(theme.textBody)
             Spacer()
         }
         .padding(.horizontal, .spacingSM)
