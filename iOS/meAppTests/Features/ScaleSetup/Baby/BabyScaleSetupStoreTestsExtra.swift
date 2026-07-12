@@ -220,7 +220,7 @@ extension BabyScaleSetupStoreTests {
         #expect(store.connectionState == .loading)
     }
 
-    @Test("handleDeviceDiscovery for known baby scale shows alert")
+    @Test("handleDeviceDiscovery for known baby scale shows Known Scale Already Paired alert")
     func handleDeviceDiscovery_knownScale_showsAlert() {
         let (store, notification, _, _, _, _, _) = makeBabyScaleSUT()
         store.scaleItem = makeBabyScaleItem()
@@ -231,7 +231,27 @@ extension BabyScaleSetupStoreTests {
 
         #expect(store.discoveredScale != nil)
         #expect(notification.showAlertCalls == 1)
-        #expect(notification.alertData?.title == "Scale Already Paired")
+        #expect(notification.alertData?.title == BabyScaleSetupStrings.KnownScaleAlreadyPaired.title)
+        #expect(notification.alertData?.message == BabyScaleSetupStrings.KnownScaleAlreadyPaired.message)
+        // Single exit-only action — no "Continue" re-pair path.
+        #expect(notification.alertData?.buttons.count == 1)
+        #expect(notification.alertData?.buttons.first?.title == BabyScaleSetupStrings.KnownScaleAlreadyPaired.exitButton)
+    }
+
+    @Test("handleDeviceDiscovery known baby scale alert action exits setup to dashboard")
+    func handleDeviceDiscovery_knownScale_exitButtonExitsSetup() {
+        var dismissed = false
+        let (store, notification, _, bluetooth, _, _, _) = makeBabyScaleSUT()
+        store.scaleItem = makeBabyScaleItem()
+        store.dismissAction = { dismissed = true }
+        bluetooth.isSetupInProgress = true
+        store.navigateToStep(.wakeup)
+
+        store.handleDeviceDiscovery(makeBabyDiscoveryEvent(isNew: false))
+        notification.alertData?.buttons.first?.action(nil)
+
+        #expect(dismissed == true)
+        #expect(bluetooth.isSetupInProgress == false)
     }
 
     // MARK: - confirmPair (MA-3627)

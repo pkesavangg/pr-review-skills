@@ -21,7 +21,8 @@ enum BpmSetupStoreTestFixtures {
         account: MockAccountService? = nil,
         scaleService: MockScaleService? = nil,
         scanTimeoutNs: UInt64 = 40_000_000,
-        stepTransitionDelayNs: UInt64 = 5_000_000
+        stepTransitionDelayNs: UInt64 = 5_000_000,
+        pairingRetryDelayNs: UInt64 = 5_000_000
     ) -> BpmSetupStoreHarness {
         let notification = notification ?? TestNotificationHelperService()
         let permissions = permissions ?? MockPermissionsService()
@@ -46,7 +47,8 @@ enum BpmSetupStoreTestFixtures {
 
         let store = BpmSetupStore(
             scanTimeoutNs: scanTimeoutNs,
-            stepTransitionDelayNs: stepTransitionDelayNs
+            stepTransitionDelayNs: stepTransitionDelayNs,
+            pairingRetryDelayNs: pairingRetryDelayNs
         )
         store.testWarmInjectedDependencies()
 

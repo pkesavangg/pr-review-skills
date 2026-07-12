@@ -15,20 +15,12 @@ extension BabyScaleSetupStore {
         guard !isExiting else { return }
 
         switch currentStep {
-        case .intro, .permissions, .scaleName, .paired, .babyProfile, .babyAdded, .connectionError, .done:
+        case .intro, .permissions, .connectingBluetooth, .scaleName, .paired, .babyProfile, .babyAdded, .connectionError, .done:
+            // Pairing is triggered directly from device discovery (isNew = true path);
+            // no per-step action is needed here.
             break
         case .wakeup:
             startBluetoothScan()
-        case .connectingBluetooth:
-            // Normally pairing is triggered directly from device discovery (isNew = true path).
-            // When arriving here from showKnownScaleAlert "Continue" (isNew = false path),
-            // discoveredScale/discoveryEvent are already set — start pairing now.
-            if discoveredScale != nil && discoveryEvent != nil {
-                Task {
-                    connectionState = .loading
-                    await confirmPair()
-                }
-            }
         }
     }
 
@@ -195,19 +187,13 @@ extension BabyScaleSetupStore {
     }
 
     private func showKnownScaleAlert() {
+        let alertStrings = lang.KnownScaleAlreadyPaired.self
         let alert = AlertModel(
-            title: "Scale Already Paired",
-            message: "This scale is already paired to your account. Would you like to set it up again?",
+            title: alertStrings.title,
+            message: alertStrings.message,
             buttons: [
-                AlertButtonModel(title: commonLang.cancel, type: .secondary) { [weak self] _ in
-                    self?.navigateToStep(.intro)
-                },
-                AlertButtonModel(title: "Continue", type: .primary) { [weak self] _ in
-                    guard let self else { return }
-                    Task {
-                        self.connectionState = .loading
-                        await self.confirmPair()
-                    }
+                AlertButtonModel(title: alertStrings.exitButton, type: .primary) { [weak self] _ in
+                    self?.performExitCleanup()
                 }
             ]
         )
