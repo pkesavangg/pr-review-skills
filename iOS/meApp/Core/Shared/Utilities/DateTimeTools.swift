@@ -354,15 +354,20 @@ final class DateTimeTools { // swiftlint:disable:this type_body_length
     /// Parses a stored date-of-birth (or similar calendar-only) string into a local-midnight `Date`
     /// representing the same Y-M-D the user picked, independent of timezone.
     ///
-    /// The backend returns dob as an ISO instant, but the exact anchor varies: it may be clean UTC
-    /// midnight (e.g. `"2000-03-01T00:00:00.000Z"`) OR the account's local midnight expressed in UTC
-    /// (e.g. `"2000-02-29T18:30:00.000Z"` for +05:30, which is local midnight of March 1). Reading the
-    /// raw UTC calendar day makes the second shape land a day early east of UTC (March 1 → Feb 29),
-    /// while rendering the instant in local time makes the first shape land a day early west of UTC.
-    /// Snapping the instant to the NEAREST local calendar day (offset by 12h, then truncated) recovers
-    /// the intended day for both shapes across all practical timezones.
+    /// The backend returns dob as an ISO instant in one of two shapes, and both must recover the
+    /// same Y-M-D the user picked:
+    ///   • clean UTC midnight (e.g. `"2000-03-01T00:00:00.000Z"`) — the intended day is the UTC
+    ///     calendar day, and must not shift in any timezone.
+    ///   • the account's local midnight expressed in UTC (e.g. `"2000-02-29T18:30:00.000Z"` for
+    ///     +05:30, which is local midnight of March 1) — the intended day is the local calendar day.
     ///
-    /// `timeZone` defaults to the device's zone; it is injectable so the timezone-sensitive snap
+    /// We disambiguate by the instant's UTC time-of-day: exactly `00:00:00` uniquely identifies the
+    /// clean-UTC-midnight shape (the local-midnight shape can only land on UTC midnight at offset 0,
+    /// where both interpretations agree anyway). The previous "add 12h then read the local day" snap
+    /// rolled the clean-midnight shape forward a day at offsets ≥ +12:00 (New Zealand, Tonga,
+    /// Kiribati) — this comparison of the two candidate days fixes that (MOB-1464).
+    ///
+    /// `timeZone` defaults to the device's zone; it is injectable so the timezone-sensitive branch
     /// can be unit-tested deterministically without depending on the CI machine's zone.
     static func parseCalendarDate(_ dateString: String, timeZone: TimeZone = .current) -> Date? {
         // Bare "yyyy-MM-dd" — no time component to drift, interpret in the local calendar.
@@ -370,10 +375,16 @@ final class DateTimeTools { // swiftlint:disable:this type_body_length
             return date
         }
         guard let instant = parse(dateString) else { return nil }
+
         var localCal = Calendar(identifier: .gregorian)
         localCal.timeZone = timeZone
-        let snapped = instant.addingTimeInterval(12 * 60 * 60)
-        let comps = localCal.dateComponents([.year, .month, .day], from: snapped)
+        var utcCal = Calendar(identifier: .gregorian)
+        utcCal.timeZone = TimeZone(secondsFromGMT: 0) ?? timeZone
+
+        let utcTime = utcCal.dateComponents([.hour, .minute, .second], from: instant)
+        let isCleanUtcMidnight = utcTime.hour == 0 && utcTime.minute == 0 && utcTime.second == 0
+        let dayCal = isCleanUtcMidnight ? utcCal : localCal
+        let comps = dayCal.dateComponents([.year, .month, .day], from: instant)
         return localCal.date(from: DateComponents(year: comps.year, month: comps.month, day: comps.day))
     }
 
