@@ -87,7 +87,14 @@ struct ConnectionIndicatorView: View {
                     )
                     .themeDropShadow()
             } else {
-                AppIconView(icon: image, size: IconSize(width: 59, height: 59))
+                // scaledToFit preserves aspect ratio so a wide wordmark (e.g. the "me." logo)
+                // fits within the circle instead of being squished into a square frame.
+                // For the square icons used elsewhere (bluetooth/wifi/wgLogo) this is a no-op.
+                Image(image)
+                    .renderingMode(.template)
+                    .resizable()
+                    .scaledToFit()
+                    .frame(width: 59, height: 59)
                     .foregroundColor(theme.backgroundPrimary)
             }
         }

@@ -339,6 +339,123 @@ extension BpmSetupStoreTests {
             #expect(device.userNumber == "2")
         }
 
+        // MARK: - Pairing Auto-Retry (stale-session recovery)
+
+        @Test("startPairing retries once when the first connect fails, then succeeds without an error alert")
+        func startPairingAutoRetriesAndSucceeds() async {
+            let bluetooth = MockBluetoothService()
+            // First connect fails (stale session from the previously-paired user), second succeeds.
+            bluetooth.connectBpmResults = [.failure(.timeout), .success(.creationCompleted)]
+            let harness = BpmSetupStoreTestFixtures.makeSUT(bluetooth: bluetooth)
+            let store = harness.store
+            BpmSetupStoreTestFixtures.configureA6Bpm(store)
+            store.selectedUserNumber = 2
+            store.currentStepIndex = BpmSetupStoreTestFixtures.stepIndex(.scanning, in: store)
+
+            let device = BpmSetupStoreTestFixtures.makeBpmDevice()
+            store.testSetInternalState(
+                discoveredDevice: device,
+                discoveryEvent: BpmSetupStoreTestFixtures.makeBpmDiscoveryEvent(device: device, protocolType: .A6)
+            )
+
+            await store.testStartPairing()
+
+            // Connect was attempted twice, and no "Unable to Connect" alert was surfaced.
+            #expect(bluetooth.connectBpmCalls == 2)
+            #expect(harness.notification.alertData?.title != BpmSetupStrings.ConnectionErrorAlert.title)
+        }
+
+        @Test("startPairing shows Unable to Connect only after the retry also fails")
+        func startPairingShowsErrorAfterRetryFails() async {
+            let bluetooth = MockBluetoothService()
+            bluetooth.connectBpmResults = [.failure(.timeout), .failure(.timeout)]
+            let harness = BpmSetupStoreTestFixtures.makeSUT(bluetooth: bluetooth)
+            let store = harness.store
+            BpmSetupStoreTestFixtures.configureA6Bpm(store)
+            store.selectedUserNumber = 2
+            store.currentStepIndex = BpmSetupStoreTestFixtures.stepIndex(.scanning, in: store)
+
+            let device = BpmSetupStoreTestFixtures.makeBpmDevice()
+            store.testSetInternalState(
+                discoveredDevice: device,
+                discoveryEvent: BpmSetupStoreTestFixtures.makeBpmDiscoveryEvent(device: device, protocolType: .A6)
+            )
+
+            await store.testStartPairing()
+
+            #expect(bluetooth.connectBpmCalls == 2)
+            #expect(harness.notification.alertData?.title == BpmSetupStrings.ConnectionErrorAlert.title)
+        }
+
+        @Test("startPairing does not retry a non-recoverable failure (Bluetooth unavailable)")
+        func startPairingNoRetryOnNonRecoverableFailure() async {
+            let bluetooth = MockBluetoothService()
+            // A hard failure can't be fixed by a second connect — it must fail fast, not retry.
+            bluetooth.connectBpmResults = [.failure(.bluetoothUnavailable), .success(.creationCompleted)]
+            let harness = BpmSetupStoreTestFixtures.makeSUT(bluetooth: bluetooth)
+            let store = harness.store
+            BpmSetupStoreTestFixtures.configureA6Bpm(store)
+            store.selectedUserNumber = 2
+            store.currentStepIndex = BpmSetupStoreTestFixtures.stepIndex(.scanning, in: store)
+
+            let device = BpmSetupStoreTestFixtures.makeBpmDevice()
+            store.testSetInternalState(
+                discoveredDevice: device,
+                discoveryEvent: BpmSetupStoreTestFixtures.makeBpmDiscoveryEvent(device: device, protocolType: .A6)
+            )
+
+            await store.testStartPairing()
+
+            // Connected only once, and "Unable to Connect" surfaced immediately.
+            #expect(bluetooth.connectBpmCalls == 1)
+            #expect(harness.notification.alertData?.title == BpmSetupStrings.ConnectionErrorAlert.title)
+        }
+
+        @Test("startPairing does not retry when the first connect succeeds")
+        func startPairingNoRetryOnFirstSuccess() async {
+            let bluetooth = MockBluetoothService()
+            bluetooth.connectBpmResult = .success(.creationCompleted)
+            let harness = BpmSetupStoreTestFixtures.makeSUT(bluetooth: bluetooth)
+            let store = harness.store
+            BpmSetupStoreTestFixtures.configureA6Bpm(store)
+            store.selectedUserNumber = 2
+            store.currentStepIndex = BpmSetupStoreTestFixtures.stepIndex(.scanning, in: store)
+
+            let device = BpmSetupStoreTestFixtures.makeBpmDevice()
+            store.testSetInternalState(
+                discoveredDevice: device,
+                discoveryEvent: BpmSetupStoreTestFixtures.makeBpmDiscoveryEvent(device: device, protocolType: .A6)
+            )
+
+            await store.testStartPairing()
+
+            #expect(bluetooth.connectBpmCalls == 1)
+        }
+
+        @Test("startPairing does not retry a conflict response (different-user)")
+        func startPairingNoRetryOnConflictResponse() async {
+            let bluetooth = MockBluetoothService()
+            // A conflict is a legitimate SDK response, not a connection failure — it must not retry.
+            bluetooth.connectBpmResult = .success(.deviceExistsWithDifferentUser)
+            let harness = BpmSetupStoreTestFixtures.makeSUT(bluetooth: bluetooth)
+            let store = harness.store
+            BpmSetupStoreTestFixtures.configureA6Bpm(store)
+            store.selectedUserNumber = 2
+            store.currentStepIndex = BpmSetupStoreTestFixtures.stepIndex(.scanning, in: store)
+
+            let device = BpmSetupStoreTestFixtures.makeBpmDevice()
+            store.testSetInternalState(
+                discoveredDevice: device,
+                discoveryEvent: BpmSetupStoreTestFixtures.makeBpmDiscoveryEvent(device: device, protocolType: .A6)
+            )
+
+            await store.testStartPairing()
+
+            #expect(bluetooth.connectBpmCalls == 1)
+            // The different-user conflict alert is shown, not the connection-error alert.
+            #expect(harness.notification.alertData?.title == BpmSetupStrings.DeviceConflictAlert.DifferentUser.title)
+        }
+
         // MARK: - cleanUp
 
         @Test("cleanUp resets setup in progress and isDeviceSaved")

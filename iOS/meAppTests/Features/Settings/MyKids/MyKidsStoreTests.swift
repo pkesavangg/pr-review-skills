@@ -420,6 +420,58 @@ struct MyKidsStoreTests {
 
         #expect(store.isSaveEnabled == false)
     }
+
+    // MARK: - preferredWeightUnit (Edit a Baby unit derives from baby measurementUnits, MOB-1471)
+
+    /// Editing a baby must derive the form's weight unit from the account's "My Kids"
+    /// `measurementUnits` (which the baby Unit Type dialog writes) — not the adult
+    /// "My Weight" `weightUnit`. Verified through the observable `selectedWeightUnit`
+    /// that `editBaby` -> `populateStoredMeasurements` sets.
+    private func editBabyWeightUnit(forMeasurementUnits measurementUnits: String?) -> BabyWeightUnit {
+        let account = MockAccountService()
+        account.activeAccount = AccountTestFixtures.makeAccountSnapshot(
+            email: "kids@test.com",
+            isActiveAccount: true,
+            measurementUnits: measurementUnits
+        )
+        let sut = makeSUT(accountService: account)
+        let baby = Baby(
+            accountId: "acct-1",
+            name: "Kid",
+            birthday: Date(),
+            biologicalSex: "female",
+            birthLengthInches: 20.0,
+            birthWeightLbs: 7,
+            birthWeightOz: 4.0
+        )
+        sut.store.editBaby(baby)
+        return sut.store.babyProfileForm.selectedWeightUnit
+    }
+
+    @Test("editBaby with metric measurementUnits derives the kg unit")
+    func preferredWeightUnit_metric_isKg() {
+        #expect(editBabyWeightUnit(forMeasurementUnits: MeasurementUnits.metric.rawValue) == .kg)
+    }
+
+    @Test("editBaby with imperialLbDecimal measurementUnits derives the lb (decimal) unit")
+    func preferredWeightUnit_imperialLbDecimal_isLb() {
+        #expect(editBabyWeightUnit(forMeasurementUnits: MeasurementUnits.imperialLbDecimal.rawValue) == .lb)
+    }
+
+    @Test("editBaby with imperialLbOz measurementUnits derives the lbs/oz unit")
+    func preferredWeightUnit_imperialLbOz_isLbsOz() {
+        #expect(editBabyWeightUnit(forMeasurementUnits: MeasurementUnits.imperialLbOz.rawValue) == .lbsOz)
+    }
+
+    @Test("editBaby with no measurementUnits defaults to the lbs/oz unit")
+    func preferredWeightUnit_nil_defaultsToLbsOz() {
+        #expect(editBabyWeightUnit(forMeasurementUnits: nil) == .lbsOz)
+    }
+
+    @Test("editBaby with an unrecognised measurementUnits string defaults to the lbs/oz unit")
+    func preferredWeightUnit_invalid_defaultsToLbsOz() {
+        #expect(editBabyWeightUnit(forMeasurementUnits: "not-a-real-unit") == .lbsOz)
+    }
 }
 
 // MARK: - Test Errors

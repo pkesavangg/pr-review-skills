@@ -1,3 +1,4 @@
+// swiftlint:disable file_length
 import Combine
 import Foundation
 import GGBluetoothSwiftPackage
@@ -91,6 +92,27 @@ struct BluetoothServiceEventAlertsTests {
         #expect(logger.messages.contains { $0.contains("Failed to get scale user list for device event alert") })
     }
 
+    @Test("handleDeviceEventAlert bails out for BPM monitor without requesting scale user list")
+    func handleDeviceEventAlertSkipsBpmMonitor() async {
+        let logger = MockLoggerService()
+        let notification = MockNotificationHelperService()
+        let sdk = MockBluetoothSDKClient()
+        let sut = makeSUT(logger: logger, sdk: sdk, notification: notification)
+        let device = BluetoothTestFixtures.makeDevice(id: "dev-bpm", broadcastIdString: "BPM-EVT-1")
+        device.sku = "0663" // A6 BPM monitor
+        sut.bluetoothScales = [device.toSnapshot()]
+
+        // deviceName "gG BPM 0663" resolves via DeviceInfoUtils.getDeviceInfo(byDeviceName:)
+        // to a BPM device (setupType == .bpm), tripping the bail-out guard.
+        let deviceDetails = makeDeviceDetails(broadcastId: "BPM-EVT-1", deviceName: "gG BPM 0663")
+        await sut.handleDeviceEventAlert(deviceDetails, isDuplicateUserError: false)
+
+        // The guard returns before getScaleUserList, which crashes the SDK for BPM monitors.
+        #expect(sdk.userListRequests.isEmpty)
+        #expect(notification.showAlertCalls == 0)
+        #expect(logger.messages.contains { $0.contains("Ignoring scale user-event alert for BPM monitor") })
+    }
+
     // MARK: - handleDeviceEventAlert: Alert Display
 
     @Test("handleDeviceEventAlert shows reconnect alert when isDuplicateUserError is false")
@@ -99,6 +121,7 @@ struct BluetoothServiceEventAlertsTests {
         let sdk = MockBluetoothSDKClient()
         let sut = makeSUT(sdk: sdk, notification: notification)
         let device = BluetoothTestFixtures.makeDevice(id: "dev-r", broadcastIdString: "RECON-1")
+        device.sku = "0375" // weight scale; isBpmDevice() must be false so getScaleUserList runs
         sut.bluetoothScales = [device.toSnapshot()]
 
         let deviceDetails = makeDeviceDetails(broadcastId: "RECON-1")
@@ -115,6 +138,7 @@ struct BluetoothServiceEventAlertsTests {
         let sdk = MockBluetoothSDKClient()
         let sut = makeSUT(sdk: sdk, notification: notification)
         let device = BluetoothTestFixtures.makeDevice(id: "dev-d", broadcastIdString: "DUP-1")
+        device.sku = "0375" // weight scale; isBpmDevice() must be false so getScaleUserList runs
         sut.bluetoothScales = [device.toSnapshot()]
 
         let deviceDetails = makeDeviceDetails(broadcastId: "DUP-1")
@@ -132,6 +156,7 @@ struct BluetoothServiceEventAlertsTests {
         let sut = makeSUT(sdk: sdk, notification: notification)
         sut.setCanShowScaleDiscoveredModal(true)
         let device = BluetoothTestFixtures.makeDevice(id: "dev-m", broadcastIdString: "MODAL-1")
+        device.sku = "0375" // weight scale; isBpmDevice() must be false so getScaleUserList runs
         sut.bluetoothScales = [device.toSnapshot()]
 
         let deviceDetails = makeDeviceDetails(broadcastId: "MODAL-1")
@@ -146,6 +171,7 @@ struct BluetoothServiceEventAlertsTests {
         let sdk = MockBluetoothSDKClient()
         let sut = makeSUT(sdk: sdk, notification: notification)
         let device = BluetoothTestFixtures.makeDevice(id: "dev-cancel", broadcastIdString: "CANCEL-1")
+        device.sku = "0375" // weight scale; isBpmDevice() must be false so getScaleUserList runs
         sut.bluetoothScales = [device.toSnapshot()]
 
         let deviceDetails = makeDeviceDetails(broadcastId: "CANCEL-1")
@@ -167,6 +193,7 @@ struct BluetoothServiceEventAlertsTests {
         let sdk = MockBluetoothSDKClient()
         let sut = makeSUT(sdk: sdk, notification: notification)
         let device = BluetoothTestFixtures.makeDevice(id: "dev-dup-cancel", broadcastIdString: "DUP-CANCEL-1")
+        device.sku = "0375" // weight scale; isBpmDevice() must be false so getScaleUserList runs
         sut.bluetoothScales = [device.toSnapshot()]
 
         let deviceDetails = makeDeviceDetails(broadcastId: "DUP-CANCEL-1")
@@ -186,6 +213,7 @@ struct BluetoothServiceEventAlertsTests {
         let sdk = MockBluetoothSDKClient()
         let sut = makeSUT(sdk: sdk, notification: notification)
         let device = BluetoothTestFixtures.makeDevice(id: "dev-setup", broadcastIdString: "SETUP-1")
+        device.sku = "0375" // weight scale; isBpmDevice() must be false so getScaleUserList runs
         sut.bluetoothScales = [device.toSnapshot()]
 
         var callbackInvoked = false
@@ -213,6 +241,7 @@ struct BluetoothServiceEventAlertsTests {
         let sdk = MockBluetoothSDKClient()
         let sut = makeSUT(sdk: sdk, notification: notification)
         let device = BluetoothTestFixtures.makeDevice(id: "dev-dup-setup", broadcastIdString: "DUP-SETUP-1")
+        device.sku = "0375" // weight scale; isBpmDevice() must be false so getScaleUserList runs
         sut.bluetoothScales = [device.toSnapshot()]
 
         var callbackIsDuplicate = false
@@ -503,6 +532,7 @@ struct BluetoothServiceEventAlertsTests {
         let sdk = MockBluetoothSDKClient()
         let sut = makeSUT(sdk: sdk, notification: notification)
         let device = BluetoothTestFixtures.makeDevice(id: "dev-repeat", broadcastIdString: "RPT-1")
+        device.sku = "0375" // weight scale; isBpmDevice() must be false so getScaleUserList runs
         sut.bluetoothScales = [device.toSnapshot()]
 
         let deviceDetails = makeDeviceDetails(broadcastId: "RPT-1")
@@ -568,7 +598,8 @@ private struct MalformedScanData: GGScanResponseData {}
 
 private func makeDeviceDetails(
     broadcastId: String,
-    protocolType: String = "A6"
+    protocolType: String = "A6",
+    deviceName: String? = nil
 ) -> GGDeviceDetails {
     decodeJSON(
         [
@@ -579,7 +610,7 @@ private func makeDeviceDetails(
             "hardwareRevision": "HW-1",
             "softwareRevision": "SW-1",
             "systemID": "SYS-\(broadcastId)",
-            "deviceName": protocolType == "R4" ? "Smart Scale" : "Scale",
+            "deviceName": deviceName ?? (protocolType == "R4" ? "Smart Scale" : "Scale"),
             "broadcastId": broadcastId,
             "broadcastIdString": broadcastId,
             "password": "00000000",

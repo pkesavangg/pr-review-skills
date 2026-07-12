@@ -211,7 +211,18 @@ final class MyKidsStore: ObservableObject {
         babyProfileForm.birthWeightKg.markAsPristine()
     }
 
+    /// Baby weight unit derived from the account's "My Kids" `measurementUnits`, NOT the
+    /// adult "My Weight" `weightUnit`. The baby Unit Type dialog writes `measurementUnits`,
+    /// so reading `weightUnit` here left the Edit a Baby form on the previous unit after a
+    /// baby unit change (MOB-1471). Also honours `.lb` (decimal) which the old check dropped.
     private var preferredWeightUnit: BabyWeightUnit {
-        accountService.activeAccount?.weightUnit == .kg ? .kg : .lbsOz
+        switch accountService.activeAccount?.measurementUnits.flatMap(MeasurementUnits.init(rawValue:)) {
+        case .metric:
+            return .kg
+        case .imperialLbDecimal:
+            return .lb
+        case .imperialLbOz, .none:
+            return .lbsOz
+        }
     }
 }

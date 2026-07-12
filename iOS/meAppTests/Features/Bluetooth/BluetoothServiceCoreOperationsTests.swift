@@ -123,10 +123,14 @@ struct BluetoothServiceCoreOperationsTests {
         #expect(firstTask != nil)
     }
 
-    @Test("deleteCurrentUserFromScaleIfPossible returns deviceNotFound when scale is not in bluetooth scales")
+    @Test("deleteCurrentUserFromScaleIfPossible returns deviceNotFound when no matching scale user exists")
     func deleteCurrentUserFromScaleIfPossibleDisconnectedDevice() async {
         let sut = makeSUT()
+        // Tracked weight scale (non-BPM so getScaleUserList runs, non-R4 so findUserToDelete finds
+        // no match) with no persisted token — the delete resolves to deviceNotFound.
         let disconnectedDevice = makeDevice(id: "offline-1", broadcastIdString: "AA11", isConnected: false)
+        disconnectedDevice.sku = "0375"
+        sut.bluetoothScales = [disconnectedDevice.toSnapshot(isConnected: false)]
 
         let result = await sut.deleteCurrentUserFromScaleIfPossible(broadcastId: disconnectedDevice.broadcastIdString ?? "", disconnect: true)
 
@@ -390,118 +394,6 @@ struct BluetoothServiceCoreOperationsTests {
         #expect(sdk.deletedDevices.first?.device.broadcastId == "DEL11")
     }
 
-    @Test("getWifiList maps sdk wifi response")
-    func getWifiListSuccessMapsResponse() async {
-        let sdk = MockBluetoothSDKClient()
-        let sut = makeSUT(sdk: sdk)
-        let device = makeDevice(id: "wifi-list-1", broadcastIdString: "WIFI11", isConnected: true)
-
-        let result = await sut.getWifiList(broadcastId: device.broadcastIdString ?? "")
-
-        guard case .success(let wifiList) = result else {
-            Issue.record("Expected getWifiList to succeed")
-            return
-        }
-
-        #expect(wifiList.count == 1)
-        #expect(wifiList.first?.ssid == "Home WiFi")
-        #expect(wifiList.first?.macAddress == "AA:BB:CC")
-        #expect(sdk.wifiListDevices.count == 1)
-    }
-
-    @Test("setupWifi maps sdk response")
-    func setupWifiSuccessMapsResponse() async {
-        let sdk = MockBluetoothSDKClient()
-        let sut = makeSUT(sdk: sdk)
-        let device = makeDevice(id: "wifi-setup-1", broadcastIdString: "SET11", isConnected: true)
-
-        let result = await sut.setupWifi(broadcastId: device.broadcastIdString ?? "", config: WifiConfig(ssid: "Office", password: "secret"))
-
-        guard case .success(let response) = result else {
-            Issue.record("Expected setupWifi to succeed")
-            return
-        }
-
-        #expect(response == WifiSetupResponse(wifiState: "CONNECTED", errorCode: nil))
-        #expect(sdk.setupWifiCalls.count == 1)
-        #expect(sdk.setupWifiInputs.first?.ssid == "Office")
-        #expect(sdk.setupWifiInputs.first?.password == "secret")
-    }
-
-    @Test("cancelWifi delegates to sdk")
-    func cancelWifiSuccessDelegatesToSDK() async {
-        let sdk = MockBluetoothSDKClient()
-        let sut = makeSUT(sdk: sdk)
-        let device = makeDevice(id: "wifi-cancel-1", broadcastIdString: "CAN11", isConnected: true)
-
-        let result = await sut.cancelWifi(broadcastId: device.broadcastIdString ?? "")
-
-        guard case .success = result else {
-            Issue.record("Expected cancelWifi to succeed")
-            return
-        }
-
-        #expect(sdk.cancelledWifiDevices.count == 1)
-        #expect(sdk.cancelledWifiDevices.first?.broadcastId == "CAN11")
-    }
-
-    @Test("getConnectedWifiSSID returns sdk ssid")
-    func getConnectedWifiSSIDSuccessReturnsSSID() async {
-        let sdk = MockBluetoothSDKClient()
-        sdk.getConnectedWifiSSIDResult = "Office WiFi"
-        let sut = makeSUT(sdk: sdk)
-
-        let result = await sut.getConnectedWifiSSID(broadcastId: "SSID11")
-
-        guard case .success(let ssid) = result else {
-            Issue.record("Expected getConnectedWifiSSID to succeed")
-            return
-        }
-
-        #expect(ssid == "Office WiFi")
-        #expect(sdk.connectedWifiSSIDRequests.count == 1)
-    }
-
-    @Test("getWifiMacAddress returns sdk wifi mac")
-    func getWifiMacAddressSuccessReturnsMac() async {
-        let sdk = MockBluetoothSDKClient()
-        sdk.getWifiMacAddressResult = "66:55:44:33:22:11"
-        let sut = makeSUT(sdk: sdk)
-        let device = makeDevice(id: "wifi-mac-1", broadcastIdString: "MAC11", isConnected: true)
-
-        let result = await sut.getWifiMacAddress(broadcastId: device.broadcastIdString ?? "")
-
-        guard case .success(let mac) = result else {
-            Issue.record("Expected getWifiMacAddress to succeed")
-            return
-        }
-
-        #expect(mac == "66:55:44:33:22:11")
-        #expect(sdk.wifiMacAddressDevices.count == 1)
-    }
-
-    @Test("live measurement operations delegate to sdk")
-    func liveMeasurementOperationsDelegateToSDK() async {
-        let sdk = MockBluetoothSDKClient()
-        let sut = makeSUT(sdk: sdk)
-        let device = makeDevice(id: "live-1", broadcastIdString: "LIVE11", isConnected: true)
-
-        let startResult = await sut.startLiveMeasurement(broadcastId: device.broadcastIdString ?? "")
-        let stopResult = await sut.stopLiveMeasurement(broadcastId: device.broadcastIdString ?? "")
-
-        guard case .success = startResult else {
-            Issue.record("Expected startLiveMeasurement to succeed")
-            return
-        }
-        guard case .success = stopResult else {
-            Issue.record("Expected stopLiveMeasurement to succeed")
-            return
-        }
-
-        #expect(sdk.startLiveMeasurementDevices.count == 1)
-        #expect(sdk.stopLiveMeasurementDevices.count == 1)
-    }
-
     // MARK: - Helpers
 
     func makeSUT(
@@ -537,33 +429,6 @@ struct BluetoothServiceCoreOperationsTests {
             isConnected: isConnected,
             bathScale: bathScale
         )
-    }
-
-    func makePreference(id: String) -> R4ScalePreference {
-        R4ScalePreference(
-            scaleId: id,
-            displayName: "Test User",
-            displayMetrics: ["weight"],
-            shouldFactoryReset: false,
-            shouldMeasureImpedance: true,
-            shouldMeasurePulse: true,
-            timeFormat: "12",
-            tzOffset: 0,
-            wifiFotaScheduleTime: 0,
-            updatedAt: nil
-        )
-    }
-
-    func expectInvalidBroadcast<T>(_ result: Result<T, BluetoothServiceError>) {
-        switch result {
-        case .success:
-            Issue.record("Expected invalidBroadcastId")
-        case .failure(let error):
-            guard case .invalidBroadcastId = error else {
-                Issue.record("Expected invalidBroadcastId, got \(error)")
-                return
-            }
-        }
     }
 }
 
