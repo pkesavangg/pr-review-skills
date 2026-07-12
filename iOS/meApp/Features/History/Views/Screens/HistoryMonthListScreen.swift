@@ -16,10 +16,14 @@ struct HistoryMonthListScreen: View {
     @EnvironmentObject var router: Router<HistoryRoute>
     @State private var selectedEntry: EntrySnapshot?
     @State private var selectedMetric: BodyMetric?
+    @State private var entryToEdit: EntrySnapshot?
     @State private var showDeleteAlert = false
     @State private var entryToDelete: EntrySnapshot?
     @State private var openItemID: UUID?
     @State private var isOnboardingComplete: Bool = false
+    /// Set when an edit save changed the entry's date, so the sheet's `onDismiss` pops
+    /// back to the History list (the entry may have moved to another month).
+    @State private var popToListAfterEdit = false
     
     let month: HistoryMonth
     
@@ -88,6 +92,21 @@ struct HistoryMonthListScreen: View {
         .sheet(item: $selectedEntry) { entry in
             RefetchedEntryWrapper(entryId: entry.id, selectedMetric: selectedMetric ?? .bmi)
         }
+        .sheet(
+            item: $entryToEdit,
+            onDismiss: {
+                if popToListAfterEdit {
+                    popToListAfterEdit = false
+                    router.navigateBack()
+                }
+            },
+            content: { entry in
+                WeightHistoryEditSheet(entry: entry, isMetric: historyStore.isWeightMetric) { dateChanged in
+                    popToListAfterEdit = dateChanged
+                }
+                .environmentObject(historyStore)
+            }
+        )
     }
     
     @ViewBuilder
@@ -108,6 +127,9 @@ struct HistoryMonthListScreen: View {
                         onMetricTap: { entry, metric in
                             selectedEntry = entry
                             selectedMetric = metric
+                        },
+                        onEditNotes: {
+                            entryToEdit = entry
                         },
                         openItemID: $openItemID
                     )

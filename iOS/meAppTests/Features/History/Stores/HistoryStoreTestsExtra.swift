@@ -381,6 +381,157 @@ struct HistoryStoreBabyAndDeleteTests {
         #expect(store.isLoadingPage == false)
         #expect(logger.messages.contains { $0.contains("Failed to load entries page") })
     }
+
+    // MARK: - updateWGEntry partial-failure
+
+    @Test("updateWGEntry: delete-after-save failure keeps the replacement, logs a distinct duplicate warning, and surfaces an error toast")
+    func updateWGEntryDeleteAfterSaveFailureLogsDuplicateAndShowsErrorToast() async {
+        let (store, entryService, notificationService, accountService, logger) = makeHistoryStoreSUT()
+        let account = AccountTestFixtures.makeAccountSnapshot(id: "acct-1", email: "a@b.com", isActiveAccount: true)
+        accountService.seedAccounts([account], active: account)
+
+        let old = EntryTestFixtures.makeEntrySnapshot(entryTimestamp: "2026-03-10T08:00:00Z")
+        // The replacement save succeeds, but deleting the original throws — so both the old
+        // and the new reading now persist (the duplicate the P1 fix must make detectable).
+        entryService.deleteEntryByIdError = HistoryStoreTestError.loadMonthsFailed
+
+        let didSave = await store.updateWGEntry(
+            old: old,
+            weight: 1800,
+            bmi: nil,
+            bodyFat: nil,
+            muscleMass: nil,
+            water: nil,
+            note: "",
+            entryTimestamp: "2026-03-10T08:00:00Z"
+        )
+
+        // Reports failure so the caller does not navigate away on a delete-after-save duplicate.
+        #expect(didSave == false)
+        // Replacement persisted, delete attempted-and-failed.
+        #expect(entryService.savedEntries.count == 1)
+        #expect(entryService.deleteEntryByIdCalls == 1)
+        // User is told saving failed rather than seeing a silent duplicate.
+        #expect(notificationService.showToastCalls >= 1)
+        // A distinct duplicate-created error is logged so support can reconcile it
+        // (a blind retry would otherwise create a third copy).
+        #expect(logger.messages.contains { $0.contains("delete-after-save failed") })
+    }
+
+    // MARK: - updateWGEntry source preservation & round-trip (MOB-1172)
+
+    @Test("updateWGEntry preserves a device-synced source on the replacement entry")
+    func updateWGEntryPreservesDeviceSyncedSource() async {
+        let (store, entryService, _, accountService, _) = makeHistoryStoreSUT()
+        let account = AccountTestFixtures.makeAccountSnapshot(id: "acct-1", email: "a@b.com", isActiveAccount: true)
+        accountService.seedAccounts([account], active: account)
+
+        // A device-synced reading edited note-only: its source must round-trip untouched
+        // so the entry keeps its values-locked, note-only edit behaviour.
+        let old = EntryTestFixtures.makeEntrySnapshot(source: EntrySource.bluetooth.rawValue)
+
+        await store.updateWGEntry(
+            old: old,
+            weight: 1800,
+            bmi: nil,
+            bodyFat: nil,
+            muscleMass: nil,
+            water: nil,
+            note: "after workout",
+            entryTimestamp: "2026-03-10T08:00:00Z"
+        )
+
+        #expect(entryService.savedEntries.count == 1)
+        #expect(entryService.savedEntries.first?.scaleEntry?.source == EntrySource.bluetooth.rawValue)
+        #expect(entryService.savedEntries.first?.note == "after workout")
+        #expect(entryService.deleteEntryByIdCalls == 1)
+    }
+
+    @Test("updateWGEntry defaults a nil source to manual and stores an empty note as nil")
+    func updateWGEntryDefaultsNilSourceToManual() async {
+        let (store, entryService, _, accountService, _) = makeHistoryStoreSUT()
+        let account = AccountTestFixtures.makeAccountSnapshot(id: "acct-1", email: "a@b.com", isActiveAccount: true)
+        accountService.seedAccounts([account], active: account)
+
+        let old = EntryTestFixtures.makeEntrySnapshot(source: nil)
+
+        await store.updateWGEntry(
+            old: old,
+            weight: 1750,
+            bmi: nil,
+            bodyFat: nil,
+            muscleMass: nil,
+            water: nil,
+            note: "",
+            entryTimestamp: "2026-03-10T08:00:00Z"
+        )
+
+        #expect(entryService.savedEntries.first?.scaleEntry?.source == EntrySource.manual.rawValue)
+        #expect(entryService.savedEntries.first?.note == nil)
+    }
+
+    @Test("updateWGEntry round-trips the non-core metrics the edit sheet does not expose")
+    func updateWGEntryRoundTripsHiddenMetrics() async {
+        let (store, entryService, _, accountService, _) = makeHistoryStoreSUT()
+        let account = AccountTestFixtures.makeAccountSnapshot(id: "acct-1", email: "a@b.com", isActiveAccount: true)
+        accountService.seedAccounts([account], active: account)
+
+        let old = EntryTestFixtures.makeEntrySnapshot(
+            source: EntrySource.wifiScale.rawValue,
+            bmr: 1600,
+            metabolicAge: 35,
+            proteinPercent: 190,
+            pulse: 72,
+            skeletalMusclePercent: 410,
+            subcutaneousFatPercent: 210,
+            visceralFatLevel: 11,
+            boneMass: 80,
+            impedance: 510
+        )
+
+        await store.updateWGEntry(
+            old: old,
+            weight: 1800,
+            bmi: 230,
+            bodyFat: 250,
+            muscleMass: 820,
+            water: 540,
+            note: "note",
+            entryTimestamp: "2026-03-10T08:00:00Z"
+        )
+
+        let savedMetric = entryService.savedEntries.first?.scaleEntryMetric
+        #expect(savedMetric?.bmr == 1600)
+        #expect(savedMetric?.metabolicAge == 35)
+        #expect(savedMetric?.visceralFatLevel == 11)
+        #expect(savedMetric?.impedance == 510)
+    }
+
+    @Test("updateWGEntry success saves the replacement, deletes the original, and logs success")
+    func updateWGEntrySuccessSavesThenDeletes() async {
+        let (store, entryService, _, accountService, logger) = makeHistoryStoreSUT()
+        let account = AccountTestFixtures.makeAccountSnapshot(id: "acct-1", email: "a@b.com", isActiveAccount: true)
+        accountService.seedAccounts([account], active: account)
+
+        let old = EntryTestFixtures.makeEntrySnapshot(source: "manual")
+
+        let didSave = await store.updateWGEntry(
+            old: old,
+            weight: 1900,
+            bmi: nil,
+            bodyFat: nil,
+            muscleMass: nil,
+            water: nil,
+            note: "",
+            entryTimestamp: "2026-03-11T08:00:00Z"
+        )
+
+        // Reports success so the caller may safely navigate away / pop back to the list.
+        #expect(didSave == true)
+        #expect(entryService.savedEntries.count == 1)
+        #expect(entryService.deleteEntryByIdCalls == 1)
+        #expect(logger.messages.contains { $0.contains("Weight entry updated") })
+    }
 }
 
 @MainActor

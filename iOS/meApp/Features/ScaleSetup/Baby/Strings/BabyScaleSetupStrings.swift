@@ -40,6 +40,13 @@ struct BabyScaleSetupStrings {
         static let searching = "Searching..."
     }
 
+    // MARK: - Known Scale Already Paired
+    struct KnownScaleAlreadyPaired {
+        static let title = "Caution: Scale Already Connected"
+        static let message = "This baby scale is already paired to your profile. Please use a different scale to continue setup."
+        static let exitButton = "OK, EXIT"
+    }
+
     // MARK: - Connection
     struct Connection {
         static let unableToConnect = "Unable to connect to your device"

@@ -97,6 +97,7 @@ final class BpmSetupStore: ObservableObject {
     private let tag = "BpmSetupStore"
     private let scanTimeoutNs: UInt64
     private let stepTransitionDelayNs: UInt64
+    private let pairingRetryDelayNs: UInt64
 
     // MARK: - Step Views
 
@@ -294,10 +295,12 @@ final class BpmSetupStore: ObservableObject {
     // MARK: - Init
     init(
         scanTimeoutNs: UInt64 = 15_000_000_000,
-        stepTransitionDelayNs: UInt64 = 1_500_000_000
+        stepTransitionDelayNs: UInt64 = 1_500_000_000,
+        pairingRetryDelayNs: UInt64 = 1_000_000_000
     ) {
         self.scanTimeoutNs = scanTimeoutNs
         self.stepTransitionDelayNs = stepTransitionDelayNs
+        self.pairingRetryDelayNs = pairingRetryDelayNs
 
         permissionsService.permissionsPublisher
             .receive(on: DispatchQueue.main)
@@ -580,12 +583,38 @@ final class BpmSetupStore: ObservableObject {
             message: "Starting BPM pairing: \(broadcastId), user: \(String(describing: selectedUserNumber)), replaceUser: \(canReplaceUser)"
         )
 
-        let result = await bluetoothService.connectBpm(
+        var result = await bluetoothService.connectBpm(
             broadcastId: broadcastId,
             userNumber: selectedUserNumber ?? 1,
             replaceUser: canReplaceUser,
             pairedSKUMonitors: pairedSKUMonitors
         )
+
+        // Re-pairing the same physical monitor under a newly-selected user can fail on the
+        // first attempt: the SDK still holds the previously-paired user's session, so the
+        // initial connect times out / errors. That failed attempt tears the stale session
+        // down, which is why a manual "Try Again" then succeeds. Do that recovery
+        // automatically — retry the connect once before surfacing "Unable to Connect", so
+        // the user isn't forced to reconnect. Only transient pairing failures (timeout / pair
+        // error) are retried (`isRetryablePairingFailure`); hard failures — Bluetooth off,
+        // permission denied, invalid id, device not found — fail fast, and the SDK's conflict
+        // responses below are legitimate and handled as-is.
+        if case .failure(let error) = result, error.isRetryablePairingFailure {
+            LoggerService.shared.log(
+                level: .info,
+                tag: tag,
+                message: "First BPM connect attempt failed (\(error.localizedDescription)); "
+                    + "retrying once after stale-session teardown for \(broadcastId)"
+            )
+            try? await Task.sleep(nanoseconds: pairingRetryDelayNs)
+            result = await bluetoothService.connectBpm(
+                broadcastId: broadcastId,
+                userNumber: selectedUserNumber ?? 1,
+                replaceUser: canReplaceUser,
+                pairedSKUMonitors: pairedSKUMonitors
+            )
+        }
+
         switch result {
         case .success(let response):
             switch response {

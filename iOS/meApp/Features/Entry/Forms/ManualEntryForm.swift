@@ -22,6 +22,9 @@ class ManualEntryForm: ObservableForm {
     /// Time portion of the entry (default = now). Validation is handled by UI restriction.
     var time = FormControl(Date())
 
+    /// Optional free-text note (max 280 chars, enforced by the notes input field).
+    var notes = FormControl("")
+
     /// Additional fields for body composition metrics. 
     var bmi = FormControl("", validators: [.minValue(), .maxValue(99.0)])
     var bodyFat = FormControl("", validators: [.minValue(), .maxValue(99.0)])
@@ -42,6 +45,7 @@ class ManualEntryForm: ObservableForm {
             weight.$value.map { _ in () }.eraseToAnyPublisher(),
             date.$value.map { _ in () }.eraseToAnyPublisher(),
             time.$value.map { _ in () }.eraseToAnyPublisher(),
+            notes.$value.map { _ in () }.eraseToAnyPublisher(),
             bmi.$value.map { _ in () }.eraseToAnyPublisher(),
             bodyFat.$value.map { _ in () }.eraseToAnyPublisher(),
             muscleMass.$value.map { _ in () }.eraseToAnyPublisher(),

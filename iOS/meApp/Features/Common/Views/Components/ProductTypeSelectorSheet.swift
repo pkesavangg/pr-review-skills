@@ -22,7 +22,6 @@ struct ProductTypeSelectorSheet: View {
                 leadingContent: {
                     AnyView(
                         AppIconView(icon: AppAssets.close)
-                            .foregroundColor(theme.actionSecondary)
                     )
                 },
                 onLeadingTap: {
