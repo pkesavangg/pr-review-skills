@@ -517,7 +517,7 @@ class EntryRepositoryTest {
     @Test
     fun `exportEntriesCsv returns body when response successful`() = runTest {
         val body = okhttp3.ResponseBody.create(null, "csv data")
-        coEvery { entryApi.exportEntriesCsv(any(), any(), any()) } returns retrofit2.Response.success(body)
+        coEvery { entryApi.exportEntriesCsv(any(), any(), any(), any()) } returns retrofit2.Response.success(body)
 
         val result = repository.exportEntriesCsv("weight", download = true, utcOffset = 0)
 
@@ -527,7 +527,7 @@ class EntryRepositoryTest {
     @Test
     fun `exportEntriesCsv returns null when response unsuccessful`() = runTest {
         val errorBody = okhttp3.ResponseBody.create(null, "err")
-        coEvery { entryApi.exportEntriesCsv(any(), any(), any()) } returns
+        coEvery { entryApi.exportEntriesCsv(any(), any(), any(), any()) } returns
             retrofit2.Response.error(500, errorBody)
 
         val result = repository.exportEntriesCsv("weight", download = false, utcOffset = 5)
@@ -537,9 +537,26 @@ class EntryRepositoryTest {
 
     @Test
     fun `exportEntriesCsv rethrows on api failure`() = runTest {
-        coEvery { entryApi.exportEntriesCsv(any(), any(), any()) } throws RuntimeException("csv failed")
+        coEvery { entryApi.exportEntriesCsv(any(), any(), any(), any()) } throws RuntimeException("csv failed")
 
         assertFailsWith<RuntimeException> { repository.exportEntriesCsv(null, download = true, utcOffset = 0) }
+    }
+
+    @Test
+    fun `exportEntriesCsv forwards category and babyId to the api`() = runTest {
+        val body = okhttp3.ResponseBody.create(null, "csv data")
+        coEvery { entryApi.exportEntriesCsv(any(), any(), any(), any()) } returns retrofit2.Response.success(body)
+
+        repository.exportEntriesCsv(category = "baby", babyId = "baby-1", download = false, utcOffset = 0)
+
+        coVerify {
+            entryApi.exportEntriesCsv(
+                category = "baby",
+                babyId = "baby-1",
+                download = null,
+                utcOffset = 0,
+            )
+        }
     }
 
     // ── Helpers ────────────────────────────────────────────────────────────────

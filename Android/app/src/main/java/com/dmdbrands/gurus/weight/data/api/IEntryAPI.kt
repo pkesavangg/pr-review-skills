@@ -56,11 +56,13 @@ interface EntryApi {
 
     /**
      * CSV export. `download="true"` returns a file body; omitting it sends email.
+     * `babyId` is required by the server when `category=baby` (spec §2.18).
      */
     @Streaming
     @GET("entries/csv")
     suspend fun exportEntriesCsv(
         @Query("category") category: String? = null,
+        @Query("babyId") babyId: String? = null,
         @Query("download") download: String? = null,
         @Query("utcOffset") utcOffset: Int = 0,
     ): Response<ResponseBody>

@@ -3,6 +3,7 @@ package com.dmdbrands.gurus.weight.features.history.viewmodel
 import androidx.lifecycle.viewModelScope
 import com.dmdbrands.gurus.weight.core.navigation.AppRoute
 import com.dmdbrands.gurus.weight.core.shared.utilities.logging.AppLog
+import com.dmdbrands.gurus.weight.domain.model.api.entry.EntryCategory
 import com.dmdbrands.gurus.weight.domain.model.common.GroupedHistory
 import com.dmdbrands.gurus.weight.domain.model.common.ProductSelection
 import kotlinx.coroutines.flow.collectLatest
@@ -127,8 +128,13 @@ constructor(
   fun onExportDataClick() {
     AppLog.d(TAG, "Export data clicked")
 
-    // Show confirmation dialog with a title that matches the active history type
-    val productType = productSelectionManager.selectedProduct.value.productType
+    // Export the active product's own data: map the selection to an entries `category`
+    // (weight/bp/baby) and, for baby, the selected babyId (required by the server, spec §2.18).
+    val selection = productSelectionManager.selectedProduct.value
+    val productType = selection.productType
+    val category = EntryCategory.fromProductType(productType).value
+    val babyId = (selection as? ProductSelection.Baby)?.profile?.id
+
     dialogQueueService.enqueue(
       DialogModel.Confirm(
         title = ExportStrings.exportDialogTitle(productType),
@@ -136,7 +142,7 @@ constructor(
         confirmText = ExportStrings.SendButton,
         cancelText = ExportStrings.CancelButton,
         onConfirm = {
-          performExport()
+          performExport(category = category, babyId = babyId)
           dialogQueueService.dismissCurrent()
         },
         onCancel = {
@@ -148,9 +154,10 @@ constructor(
   }
 
   /**
-   * Performs the actual export operation with loading and error handling.
+   * Performs the actual export operation with loading and error handling. Emails the CSV for
+   * the given [category] (and [babyId] when category=baby) via the unified entries export.
    */
-  private fun performExport() {
+  private fun performExport(category: String, babyId: String?) {
     AppLog.i(TAG, ExportStrings.ExportStarted)
 
     // Show loading spinner
@@ -160,7 +167,7 @@ constructor(
 
     viewModelScope.launch {
       try {
-        exportService.exportCsvWithPrompt()
+        exportService.exportEntriesCsv(category = category, babyId = babyId, download = false)
         AppLog.i(TAG, ExportStrings.ExportCompleted)
       } catch (e: Exception) {
         AppLog.e(TAG, ExportStrings.ExportFailed, e)

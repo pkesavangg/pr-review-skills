@@ -70,6 +70,16 @@ fun HistoryScreenContent(
   val hasMultipleProducts = (productSelectionManager?.availableProducts
       ?.collectAsState2()?.value?.size ?: 0) > 1
 
+  // Export is enabled when the ACTIVE product has history to export — each product keeps its
+  // own list, so keying off the weight list alone left Balance/Baby exports disabled (MOB-1230).
+  val activeSelection = selectedProduct?.value ?: ProductSelection.MyWeight
+  val canExport = when (activeSelection) {
+    is ProductSelection.MyWeight -> state.historyItems.isNotEmpty()
+    is ProductSelection.BloodPressure -> state.bpHistoryItems.isNotEmpty()
+    is ProductSelection.Baby -> state.babyHistoryItems[activeSelection.profile.id]?.isNotEmpty() == true
+    is ProductSelection.BabyScale -> false
+  }
+
   AppScaffold(
     title = if (productSelectionManager == null) HistoryScreenStrings.Title else null,
     topBarContent = if (productSelectionManager != null) {
@@ -87,7 +97,7 @@ fun HistoryScreenContent(
         contentDescription = HistoryScreenStrings.ExportDataDescription,
         type = AppIconType.Primary,
         modifier = Modifier.padding(end = spacing.sm),
-        enabled = state.historyItems.isNotEmpty(),
+        enabled = canExport,
       ) {
         handleIntent(HistoryIntent.Export)
       }

@@ -256,13 +256,15 @@ class EntryRepository @Inject constructor(
 
   override suspend fun exportEntriesCsv(
     category: String?,
+    babyId: String?,
     download: Boolean,
     utcOffset: Int,
   ): okhttp3.ResponseBody? {
-    AppLog.d("EntryRepository", "exportEntriesCsv category=$category download=$download")
+    AppLog.d("EntryRepository", "exportEntriesCsv category=$category babyId=$babyId download=$download")
     return try {
       val response = entryApi.exportEntriesCsv(
         category = category,
+        babyId = babyId,
         download = if (download) "true" else null,
         utcOffset = utcOffset,
       )

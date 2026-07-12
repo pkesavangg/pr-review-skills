@@ -493,6 +493,44 @@ class ExportServiceTest {
     }
 
     // -------------------------------------------------------------------------
+    // exportEntriesCsv — product-typed unified export (MOB-1230)
+    // -------------------------------------------------------------------------
+
+    @Test
+    fun `exportEntriesCsv email mode forwards category and babyId and shows success toast`() =
+        runTest(mainDispatcherRule.scheduler) {
+            coEvery { entryRepository.exportEntriesCsv(any(), any(), any(), any()) } returns null
+
+            service.exportEntriesCsv(category = "baby", babyId = "baby-1", download = false)
+
+            coVerify {
+                entryRepository.exportEntriesCsv(
+                    category = "baby",
+                    babyId = "baby-1",
+                    download = false,
+                    utcOffset = any(),
+                )
+            }
+            verify {
+                dialogQueueService.showToast(match<Toast> { it.message == ExportStrings.SuccessMessage })
+            }
+        }
+
+    @Test
+    fun `exportEntriesCsv shows error toast and rethrows on HttpException`() =
+        runTest(mainDispatcherRule.scheduler) {
+            coEvery { entryRepository.exportEntriesCsv(any(), any(), any(), any()) } throws
+                httpException(HttpErrorConfig.ResponseCode.UNAUTHORIZED)
+
+            assertFailsWith<HttpException> {
+                service.exportEntriesCsv(category = "bp", babyId = null, download = false)
+            }
+            verify {
+                dialogQueueService.showToast(match<Toast> { it.message == ToastStrings.Error.ExportCsv.Message })
+            }
+        }
+
+    // -------------------------------------------------------------------------
     // exportCsvWithPrompt — HttpException error paths
     // -------------------------------------------------------------------------
 
