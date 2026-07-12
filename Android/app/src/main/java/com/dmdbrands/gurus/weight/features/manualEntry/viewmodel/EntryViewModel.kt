@@ -11,6 +11,7 @@ import com.dmdbrands.gurus.weight.domain.services.IAnalyticsService
 import com.dmdbrands.gurus.weight.domain.services.IAppSyncService
 import com.dmdbrands.gurus.weight.core.shared.utilities.ConversionTools
 import com.dmdbrands.gurus.weight.core.shared.utilities.DateTimeConverter
+import com.dmdbrands.gurus.weight.data.storage.datastore.UserDataStore
 import com.dmdbrands.gurus.weight.data.storage.db.entity.entry.BabyEntryEntity
 import com.dmdbrands.gurus.weight.data.storage.db.entity.entry.BpmEntryEntity
 import com.dmdbrands.gurus.weight.data.storage.db.entity.entry.EntryEntity
@@ -63,6 +64,7 @@ constructor(
   private val appSyncService: IAppSyncService,
   private val deviceService: IDeviceService,
   private val analyticsService: IAnalyticsService,
+  private val userDataStore: UserDataStore,
   // App-lifetime scope: the saved-to-log toast's VIEW is tapped AFTER this screen pops (so
   // viewModelScope is already cancelled). Navigating from the app scope keeps it working.
   @ApplicationScope private val appScope: CoroutineScope,
@@ -82,11 +84,6 @@ constructor(
     accountService.activeAccount.value?.weightUnit?.let {
       handleIntent(EntryIntent.UpdateWeightUnit(it))
     }
-    // Baby entry follows the account's MEASUREMENT unit (My Kids), which is separate from the
-    // adult weightUnit and can differ from it — read it synchronously too. (MOB-1223)
-    accountService.activeAccount.value?.measurementUnits?.let {
-      handleIntent(EntryIntent.UpdateBabyUnit(it.toWeightUnit()))
-    }
 
     // Set up continuous flows
     viewModelScope.launch {
@@ -97,11 +94,13 @@ constructor(
       }
     }
 
+    // Baby entry follows the My Kids unit shown in Settings — the device-local
+    // babyWeightUnit (UNSPECIFIED → LB_OZ), NOT account.measurementUnits. On a fresh signup
+    // weightUnit is only ever kg/lb, so measurementUnits is metric/lb-decimal and would never
+    // yield the lb-oz baby default; this flow is the same source Settings reads. (MOB-1223)
     viewModelScope.launch {
-      accountService.activeAccountFlow.map { it?.measurementUnits }.distinctUntilChanged().collect {
-        if (it != null) {
-          handleIntent(EntryIntent.UpdateBabyUnit(it.toWeightUnit()))
-        }
+      userDataStore.babyWeightUnitForCurrentAccountFlow.distinctUntilChanged().collect {
+        handleIntent(EntryIntent.UpdateBabyUnit(it))
       }
     }
 

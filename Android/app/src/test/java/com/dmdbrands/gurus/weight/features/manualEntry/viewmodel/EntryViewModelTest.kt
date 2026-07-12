@@ -9,7 +9,6 @@ import com.dmdbrands.gurus.weight.domain.enums.DashboardType
 import com.dmdbrands.gurus.weight.domain.interfaces.IDialogQueueService
 import com.dmdbrands.gurus.weight.domain.enums.ProductType
 import com.dmdbrands.gurus.weight.domain.model.common.BabyProfile
-import com.dmdbrands.gurus.weight.domain.model.common.MeasurementUnits
 import com.dmdbrands.gurus.weight.domain.model.common.WeightUnit
 import com.dmdbrands.gurus.weight.domain.model.storage.entry.BabyEntry
 import com.dmdbrands.gurus.weight.domain.model.storage.entry.BpmEntry
@@ -76,6 +75,9 @@ class EntryViewModelTest {
     @MockK(relaxed = true)
     lateinit var deviceService: IDeviceService
 
+    @MockK(relaxed = true)
+    lateinit var userDataStore: com.dmdbrands.gurus.weight.data.storage.datastore.UserDataStore
+
     private lateinit var navigationService: IAppNavigationService
     private lateinit var dialogQueueService: IDialogQueueService
     private lateinit var productSelectionManager: IProductSelectionManager
@@ -96,6 +98,8 @@ class EntryViewModelTest {
         every { accountService.activeAccountFlow } returns flowOf(TestFixtures.activeAccount)
         every { appSyncService.appSyncDataForEditing } returns MutableStateFlow(null)
         every { deviceService.hasBluetoothWifiScale } returns flowOf(false)
+        // Baby unit defaults to the canonical lb-oz (the My Kids default shown in Settings). (MOB-1223)
+        every { userDataStore.babyWeightUnitForCurrentAccountFlow } returns flowOf(WeightUnit.LB_OZ)
         // Default to the weight product so UpdateOnRelaunch builds the weight form. (MOB-592)
         every { productSelectionManager.selectedProduct } returns MutableStateFlow(ProductSelection.MyWeight)
     }
@@ -107,6 +111,7 @@ class EntryViewModelTest {
             appSyncService = appSyncService,
             deviceService = deviceService,
             analyticsService = mockk(relaxed = true),
+            userDataStore = userDataStore,
             appScope = TestScope(mainDispatcherRule.dispatcher),
         ).initTestDependencies(
             navigationService = navigationService,
@@ -141,13 +146,15 @@ class EntryViewModelTest {
     }
 
     @Test
-    fun `initial babyWeightMode reads from account measurementUnits, not weightUnit`() {
-        // Baby entry follows the My Kids measurement unit, which is independent of the adult
-        // weightUnit: an lb (adult) account can still be lb-oz for babies. (MOB-1223)
+    fun `babyWeightMode reads the My Kids baby unit, independent of the adult weightUnit`() {
+        // Baby entry follows the My Kids unit (device-local babyWeightUnit shown in Settings),
+        // which is independent of the adult weightUnit: an lb (adult) account is still lb-oz for
+        // babies on a fresh signup. (MOB-1223)
         val account = TestFixtures.anAccount(isActiveAccount = true, isLoggedIn = true)
-            .copy(weightUnit = WeightUnit.LB, measurementUnits = MeasurementUnits.IMPERIAL_LB_OZ)
+            .copy(weightUnit = WeightUnit.LB)
         every { accountService.activeAccount } returns MutableStateFlow(account)
         every { accountService.activeAccountFlow } returns flowOf(account)
+        every { userDataStore.babyWeightUnitForCurrentAccountFlow } returns flowOf(WeightUnit.LB_OZ)
 
         viewModel = createViewModel()
 
@@ -209,11 +216,8 @@ class EntryViewModelTest {
 
     @Test
     fun `Save with baby form saves one combined baby entry carrying weight and length`() = runTest(mainDispatcherRule.scheduler) {
-        // lb/oz baby unit (measurementUnits, not the adult weightUnit) → two weight fields. (MOB-1223)
-        val lbOzAccount = TestFixtures.anAccount(isActiveAccount = true, isLoggedIn = true)
-            .copy(measurementUnits = MeasurementUnits.IMPERIAL_LB_OZ)
-        every { accountService.activeAccount } returns MutableStateFlow(lbOzAccount)
-        every { accountService.activeAccountFlow } returns flowOf(lbOzAccount)
+        // lb/oz baby unit (My Kids) → two weight fields; default stub is LB_OZ. (MOB-1223)
+        every { userDataStore.babyWeightUnitForCurrentAccountFlow } returns flowOf(WeightUnit.LB_OZ)
         val baby = ProductSelection.Baby(
             BabyProfile(id = "baby-1", name = "Timmy", birthdate = null, accountId = "acc-1"),
         )
@@ -246,10 +250,7 @@ class EntryViewModelTest {
     fun `Save baby entry for metric account converts kg and cm to canonical decigrams and mm`() =
         runTest(mainDispatcherRule.scheduler) {
             // metric baby unit → single kg weight field + cm length. (MOB-1223)
-            val kgAccount = TestFixtures.anAccount(isActiveAccount = true, isLoggedIn = true)
-                .copy(measurementUnits = MeasurementUnits.METRIC)
-            every { accountService.activeAccount } returns MutableStateFlow(kgAccount)
-            every { accountService.activeAccountFlow } returns flowOf(kgAccount)
+            every { userDataStore.babyWeightUnitForCurrentAccountFlow } returns flowOf(WeightUnit.KG)
             every { productSelectionManager.selectedProduct } returns MutableStateFlow(babyProfile())
             viewModel = createViewModel()
 
@@ -273,10 +274,7 @@ class EntryViewModelTest {
     fun `Save baby entry for imperial-decimal account converts lb and inches`() =
         runTest(mainDispatcherRule.scheduler) {
             // imperial-decimal baby unit → single lb weight field + inches. (MOB-1223)
-            val lbAccount = TestFixtures.anAccount(isActiveAccount = true, isLoggedIn = true)
-                .copy(measurementUnits = MeasurementUnits.IMPERIAL_LB_DECIMAL)
-            every { accountService.activeAccount } returns MutableStateFlow(lbAccount)
-            every { accountService.activeAccountFlow } returns flowOf(lbAccount)
+            every { userDataStore.babyWeightUnitForCurrentAccountFlow } returns flowOf(WeightUnit.LB)
             every { productSelectionManager.selectedProduct } returns MutableStateFlow(babyProfile())
             viewModel = createViewModel()
 
@@ -300,9 +298,10 @@ class EntryViewModelTest {
     fun `Save baby weight for metric account shows saved-to-log card in kg`() = runTest(mainDispatcherRule.scheduler) {
         // metric baby unit drives the kg input; weightUnit=KG drives the card's isMetric display.
         val kgAccount = TestFixtures.anAccount(isActiveAccount = true, isLoggedIn = true)
-            .copy(weightUnit = WeightUnit.KG, measurementUnits = MeasurementUnits.METRIC)
+            .copy(weightUnit = WeightUnit.KG)
         every { accountService.activeAccount } returns MutableStateFlow(kgAccount)
         every { accountService.activeAccountFlow } returns flowOf(kgAccount)
+        every { userDataStore.babyWeightUnitForCurrentAccountFlow } returns flowOf(WeightUnit.KG)
         every { productSelectionManager.selectedProduct } returns MutableStateFlow(babyProfile())
         viewModel = createViewModel()
 
@@ -327,11 +326,8 @@ class EntryViewModelTest {
 
     @Test
     fun `Save baby weight for imperial account shows saved-to-log card in lb-oz`() = runTest(mainDispatcherRule.scheduler) {
-        // lb/oz baby unit → two weight fields; card renders lb-oz (weightUnit non-KG). (MOB-1223)
-        val lbOzAccount = TestFixtures.anAccount(isActiveAccount = true, isLoggedIn = true)
-            .copy(measurementUnits = MeasurementUnits.IMPERIAL_LB_OZ)
-        every { accountService.activeAccount } returns MutableStateFlow(lbOzAccount)
-        every { accountService.activeAccountFlow } returns flowOf(lbOzAccount)
+        // lb/oz baby unit → two weight fields; card renders lb-oz (default account weightUnit non-KG).
+        every { userDataStore.babyWeightUnitForCurrentAccountFlow } returns flowOf(WeightUnit.LB_OZ)
         every { productSelectionManager.selectedProduct } returns MutableStateFlow(babyProfile())
         viewModel = createViewModel()
 
