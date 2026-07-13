@@ -88,7 +88,7 @@ fun DeviceCatalogSection(
         modifier = Modifier
           .fillMaxWidth()
           .padding(horizontal = MeTheme.spacing.sm),
-        shape = RoundedCornerShape(MeTheme.borderRadius.md),
+        shape = RoundedCornerShape(MeTheme.borderRadius.lg),
         colors = CardDefaults.cardColors(
           containerColor = MeTheme.colorScheme.primaryBackground,
         ),
@@ -98,6 +98,13 @@ fun DeviceCatalogSection(
             AppDeviceCard(
               scale = device,
               isSavedScale = false,
+              // Baby Scale & BPM rows show the caret only (no connectivity-type icon) — the
+              // connectivity icon/filter is Weight-Scale-only per the approved design (MOB-728).
+              showConnectionIcon = false,
+              // Full product name wraps across lines (matches the Figma card structure).
+              wrapSubtitle = true,
+              // White card rows on the #F6F4F1 (secondary) screen background, per the design.
+              containerColor = MeTheme.colorScheme.primaryBackground,
               onClick = onDeviceSelected,
             )
           }

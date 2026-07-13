@@ -14,6 +14,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -43,6 +44,9 @@ fun AppDeviceCard(
   isSavedScale: Boolean,
   enabled: Boolean = true,
   canShowRightCaret: Boolean = true,
+  showConnectionIcon: Boolean = true,
+  wrapSubtitle: Boolean = false,
+  containerColor: Color = colorScheme.secondaryBackground,
   displayLabel: String? = null,
   onClick: (DeviceModelInfo) -> Unit,
 ) {
@@ -65,7 +69,7 @@ fun AppDeviceCard(
       modifier
         .fillMaxWidth()
         .debounceClick { onClick(scale) },
-    color = colorScheme.secondaryBackground,
+    color = containerColor,
     shadowElevation = 0.dp,
   ) {
     Row(
@@ -92,8 +96,10 @@ fun AppDeviceCard(
         AppText(
           text = scale.productName.lowercase(),
           textType = TextType.ListSubtitle,
-          textOverflow = TextOverflow.Ellipsis,
-          softWrap = false,
+          // Catalog cards (Help) wrap the full product name across lines to match the design;
+          // elsewhere the name stays on one line with an ellipsis. (MOB-728)
+          textOverflow = if (wrapSubtitle) TextOverflow.Clip else TextOverflow.Ellipsis,
+          softWrap = wrapSubtitle,
         )
         if (isBpm && isSavedScale && scale.userNumber != null) {
           val displayUser = DeviceDataHelper.formatUserDisplay(scale.hasNumericUsers, scale.userNumber)
@@ -150,7 +156,7 @@ fun AppDeviceCard(
         }
       }
       Spacer(modifier = Modifier.width(spacing.md))
-      if (!isSavedScale) {
+      if (!isSavedScale && showConnectionIcon) {
         AppIcon(
           id = connectionIcon,
           // Decorative: the scale type/name is already announced by the SKU and
