@@ -23,6 +23,14 @@ object TestTags {
     const val WelcomeTitle = "login_welcome_title"
   }
 
+  /** Auth feature — Forgot / reset-password modal (opened from Login). Android-defined; iOS to mirror. */
+  object ForgotPassword {
+    const val Title = "forgot_password_title"
+    const val EmailField = "forgot_password_email_field"
+    const val SubmitButton = "forgot_password_submit_button"
+    const val CancelButton = "forgot_password_cancel_button"
+  }
+
   /**
    * Suffixes for child controls whose tag is derived from a field's base tag by the shared
    * input component, e.g. `login_password_field` -> `login_password_field_visibility_toggle`.
