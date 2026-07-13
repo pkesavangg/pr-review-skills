@@ -133,8 +133,8 @@ interface IEntryRepository {
   /** Fetches a single cursor page. Throws on failure. */
   suspend fun getEntriesPage(cursor: String? = null, limit: Int = 20, category: String? = null): EntriesCursorResponse
 
-  /** Streams a CSV export body; null on non-2xx. Throws on network error. */
-  suspend fun exportEntriesCsv(category: String? = null, download: Boolean = false, utcOffset: Int = 0): okhttp3.ResponseBody?
+  /** Streams a CSV export body; null on non-2xx. Throws on network error. `babyId` required when category=baby. */
+  suspend fun exportEntriesCsv(category: String? = null, babyId: String? = null, download: Boolean = false, utcOffset: Int = 0): okhttp3.ResponseBody?
 
   /**
    * Gets the operation count for an account.

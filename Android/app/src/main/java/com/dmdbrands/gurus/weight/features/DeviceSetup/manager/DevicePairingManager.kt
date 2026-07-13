@@ -35,6 +35,7 @@ import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.suspendCancellableCoroutine
+import kotlinx.coroutines.withTimeoutOrNull
 import java.time.Instant
 import kotlin.coroutines.resume
 
@@ -58,6 +59,14 @@ class DevicePairingManager(
 
     private val TAG = "DevicePairingManager"
     private var bluetoothConnectionTimeoutJob: Job? = null
+
+    private companion object {
+        // Pairing has already succeeded before fetchUserList runs, so a live scale
+        // answers getUsers quickly. If Bluetooth is switched off in this window the
+        // SDK callback never fires (no internal timeout, no error path), so we bound
+        // the wait ourselves and surface a retryable error instead of hanging (MOB-248).
+        const val USER_LIST_TIMEOUT_MS = 15_000L
+    }
 
     override fun connectToBluetooth() {
         onIntent(
@@ -257,15 +266,30 @@ class DevicePairingManager(
     private suspend fun fetchUserList(duplicateUserName: String? = null, onSuccess: (() -> Unit)? = null) {
         try {
             val scale = getDiscoveredScale() ?: return
-            val userList = suspendCancellableCoroutine { continuation ->
-                ggDeviceService.getUsers(scale.toGGBTDevice()) { response ->
-                    if (duplicateUserName != null) {
-                        val user = response.user.first { it.name == duplicateUserName }
-                        onIntent(BtWifiScaleSetupIntent.SetDuplicateUser(user))
+            val userList = withTimeoutOrNull(USER_LIST_TIMEOUT_MS) {
+                suspendCancellableCoroutine { continuation ->
+                    ggDeviceService.getUsers(scale.toGGBTDevice()) { response ->
+                        // Ignore a late BLE callback that arrives after the 15s timeout already
+                        // cancelled the continuation (Bluetooth switched off) — otherwise its side
+                        // effects (duplicate-user intent, onSuccess) fire a stale state transition
+                        // over the already-set failed state (MOB-248).
+                        if (continuation.isActive) {
+                            if (duplicateUserName != null) {
+                                val user = response.user.first { it.name == duplicateUserName }
+                                onIntent(BtWifiScaleSetupIntent.SetDuplicateUser(user))
+                            }
+                            continuation.resume(response.user)
+                            onSuccess?.invoke()
+                        }
                     }
-                    continuation.resume(response.user)
-                    onSuccess?.invoke()
                 }
+            }
+            if (userList == null) {
+                // BLE is unavailable (e.g. Bluetooth switched off right after pairing),
+                // so getUsers never called back. Surface a retryable error (MOB-248).
+                AppLog.w(TAG, "Fetching user list timed out after ${USER_LIST_TIMEOUT_MS}ms — BLE likely unavailable")
+                setBluetoothFailedStatus()
+                return
             }
             val filteredUserList = userList.filter { user -> user.token != getDiscoveredScale()?.token }
             val currentUserName = accountService.activeAccountFlow.first()?.firstName?.take(20)

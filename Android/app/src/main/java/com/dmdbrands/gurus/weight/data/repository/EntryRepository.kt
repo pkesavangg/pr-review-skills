@@ -19,6 +19,7 @@ import com.dmdbrands.gurus.weight.domain.repository.IEntryRepository
 import com.dmdbrands.gurus.weight.features.manualEntry.helper.EntryHelper.convertToStored
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
+import retrofit2.HttpException
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -256,17 +257,23 @@ class EntryRepository @Inject constructor(
 
   override suspend fun exportEntriesCsv(
     category: String?,
+    babyId: String?,
     download: Boolean,
     utcOffset: Int,
   ): okhttp3.ResponseBody? {
-    AppLog.d("EntryRepository", "exportEntriesCsv category=$category download=$download")
+    AppLog.d("EntryRepository", "exportEntriesCsv category=$category babyId=$babyId download=$download")
     return try {
       val response = entryApi.exportEntriesCsv(
         category = category,
+        babyId = babyId,
         download = if (download) "true" else null,
         utcOffset = utcOffset,
       )
-      if (response.isSuccessful) response.body() else null
+      // A non-2xx must surface as a failure, not a silent null. Otherwise the email
+      // export path would report "sent" on a 4xx/5xx (e.g. the server rejecting
+      // category=baby&babyId= per spec §2.18). Throwing HttpException lets the caller
+      // drive showErrorToast(...) with the real status code for both email and download.
+      if (response.isSuccessful) response.body() else throw HttpException(response)
     } catch (e: Exception) {
       AppLog.e("EntryRepository", "exportEntriesCsv failed", e)
       throw e

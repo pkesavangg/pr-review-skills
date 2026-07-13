@@ -47,6 +47,7 @@ fun BaseModal(
   secondaryAction: ActionButton? = null,
   onDismiss: (() -> Unit)? = null,
   testTag: String = "modal_card",
+  titleTestTag: String? = null,
   content: @Composable (() -> Unit)? = null,
 ) {
   val cardColors =
@@ -73,7 +74,9 @@ fun BaseModal(
           text = it,
           style = MeTheme.typography.heading4,
           color = MeTheme.colorScheme.textHeading,
-          modifier = Modifier.fillMaxWidth(),
+          modifier = Modifier
+            .fillMaxWidth()
+            .then(titleTestTag?.let { tag -> Modifier.testTag(tag) } ?: Modifier),
         )
       }
       subtitle?.let {
@@ -142,6 +145,7 @@ Text(
                   type = ButtonType.InlineTextTertiary,
                   size = ButtonSize.Small,
                   enabled = secondaryAction.enabled,
+                  modifier = secondaryAction.testTag?.let { Modifier.testTag(it) } ?: Modifier,
                 )
               }
               if (primaryAction != null) {
@@ -151,6 +155,7 @@ Text(
                   type = primaryActionType,
                   size = ButtonSize.Small,
                   enabled = primaryAction.enabled,
+                  modifier = primaryAction.testTag?.let { Modifier.testTag(it) } ?: Modifier,
                 )
               }
             }
@@ -167,7 +172,7 @@ Text(
                   type = ButtonType.InlineTextTertiary,
                   size = ButtonSize.Small,
                   enabled = secondaryAction.enabled,
-                  modifier = Modifier,
+                  modifier = secondaryAction.testTag?.let { Modifier.testTag(it) } ?: Modifier,
                 )
                 Spacer(modifier = Modifier.width(MeTheme.spacing.xs))
               }
@@ -178,6 +183,7 @@ Text(
                   type = primaryActionType,
                   size = ButtonSize.Small,
                   enabled = primaryAction.enabled,
+                  modifier = primaryAction.testTag?.let { Modifier.testTag(it) } ?: Modifier,
                 )
               }
             }

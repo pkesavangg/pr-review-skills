@@ -192,7 +192,10 @@ struct HistoryListScreen: View {
             } else {
                 LazyVStack(spacing: 0) {
                     ForEach(store.babyWeeks) { week in
-                        BabyWeekHeaderView(weekNumber: week.weekNumber)
+                        BabyWeekHeaderView(
+                            weekNumber: week.weekNumber,
+                            showBirthdayBalloon: week.containsBirthday
+                        )
 
                         ForEach(week.days) { day in
                             BabyDaySummaryItem(day: day)

@@ -7,10 +7,12 @@ import com.dmdbrands.gurus.weight.domain.enums.ProductType
  */
 object ExportStrings {
     // Dialog/Modal strings
-    const val ExportDialogTitle = "Download Weight History"
-    const val ExportBpDialogTitle = "Download BP History"
-    const val ExportBabyDialogTitle = "Download Baby History"
-    const val ExportDialogMessage = "An email with your measurement history will be sent to the email address associated with this account."
+    // Export delivers the history via email, not a device download, so the title/body/CTA all
+    // use "Send" wording (MOB-1230 / UX query MOB-652). Applied to all products for consistency.
+    const val ExportDialogTitle = "Send Weight History"
+    const val ExportBpDialogTitle = "Send BP History"
+    const val ExportBabyDialogTitle = "Send Baby History"
+    const val ExportDialogMessage = "We'll send your measurement history to the email address linked to your account."
     const val SendButton = "Send"
     const val CancelButton = "Cancel"
 

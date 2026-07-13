@@ -849,6 +849,9 @@ struct AppAssets {
     static let chevronRight = "chevronRight"
     static let chevronLeft = "chevronLeft"
     static let chevronUpDown = "chevronUpDown"
+    /// Birthday-week balloon badge (purple baby-product disc + white balloon).
+    /// Full-color asset — render with `.renderingMode(.original)`, not templated.
+    static let birthdayBalloon = "birthdayBalloon"
     static let bmiIcon = "bmi"
     static let bodyFatIcon = "bodyFat"
     static let muscleIcon = "muscle"

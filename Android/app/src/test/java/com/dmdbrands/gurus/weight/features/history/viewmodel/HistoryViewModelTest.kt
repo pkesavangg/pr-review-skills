@@ -5,6 +5,7 @@ import com.dmdbrands.gurus.weight.core.rules.MainDispatcherRule
 import com.dmdbrands.gurus.weight.core.service.IAppNavigationService
 import com.dmdbrands.gurus.weight.domain.interfaces.IDialogQueueService
 import com.dmdbrands.gurus.weight.domain.model.common.GroupedHistory
+import com.dmdbrands.gurus.weight.domain.model.common.BabyProfile
 import com.dmdbrands.gurus.weight.domain.model.common.ProductSelection
 import com.dmdbrands.gurus.weight.domain.services.IEntryReadService
 import com.dmdbrands.gurus.weight.domain.services.IEntryService
@@ -144,7 +145,8 @@ class HistoryViewModelTest {
     }
 
     @Test
-    fun `Export confirm callback calls exportService`() = runTest(mainDispatcherRule.scheduler) {
+    fun `Export confirm callback exports the active product category`() = runTest(mainDispatcherRule.scheduler) {
+        // Default selection is MyWeight → category "weight", no babyId.
         val dialogSlot = slot<DialogModel.Confirm>()
         every { dialogQueueService.enqueue(capture(dialogSlot)) } returns Unit
 
@@ -152,7 +154,23 @@ class HistoryViewModelTest {
         dialogSlot.captured.onConfirm?.invoke()
         advanceUntilIdle()
 
-        coVerify { exportService.exportCsvWithPrompt() }
+        coVerify { exportService.exportEntriesCsv(category = "weight", babyId = null, download = false) }
+    }
+
+    @Test
+    fun `Export for a baby passes baby category and babyId`() = runTest(mainDispatcherRule.scheduler) {
+        val baby = ProductSelection.Baby(
+            BabyProfile(id = "baby-1", accountId = "acc-1", name = "Emma"),
+        )
+        every { productSelectionManager.selectedProduct } returns MutableStateFlow(baby)
+        val dialogSlot = slot<DialogModel.Confirm>()
+        every { dialogQueueService.enqueue(capture(dialogSlot)) } returns Unit
+
+        viewModel.handleIntent(HistoryIntent.Export)
+        dialogSlot.captured.onConfirm?.invoke()
+        advanceUntilIdle()
+
+        coVerify { exportService.exportEntriesCsv(category = "baby", babyId = "baby-1", download = false) }
     }
 
     @Test
@@ -170,7 +188,7 @@ class HistoryViewModelTest {
 
     @Test
     fun `Export confirm dismisses loader on exception`() = runTest(mainDispatcherRule.scheduler) {
-        coEvery { exportService.exportCsvWithPrompt() } throws RuntimeException("export fail")
+        coEvery { exportService.exportEntriesCsv(any(), any(), any()) } throws RuntimeException("export fail")
         val dialogSlot = slot<DialogModel.Confirm>()
         every { dialogQueueService.enqueue(capture(dialogSlot)) } returns Unit
 

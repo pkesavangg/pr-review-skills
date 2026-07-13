@@ -26,6 +26,7 @@ extension AccessibilityID {
     // MARK: - Account Settings / Add Scale rows
     static let accountSettingsAddScalesRow = "account_settings_add_scales_row"
     static let accountSettingsIntegrationsRow = "account_settings_integrations_row"
+    static let accountSettingsExportDataRow = "account_settings_export_data_row"
     static let accountSettingsChangePasswordRow = "account_settings_change_password_row"
     static let accountSettingsUserProfileRow = "account_settings_user_profile_row"
 

@@ -12,6 +12,7 @@ import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.text.input.ImeAction
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.dmdbrands.gurus.weight.core.shared.utilities.testing.TestTags
 import com.dmdbrands.gurus.weight.features.common.components.dismissKeyboardOnTap
 import com.dmdbrands.gurus.weight.features.common.components.AppInput
 import com.dmdbrands.gurus.weight.features.common.components.AppInputType
@@ -46,11 +47,13 @@ fun PasswordResetModal(
     }
                 BaseModal(
                     title = ForgotPasswordDialogStrings.Title,
+                    titleTestTag = TestTags.ForgotPassword.Title,
                     body = ForgotPasswordDialogStrings.Subtitle,
                     primaryAction = ActionButton(
                         text = ForgotPasswordDialogStrings.SubmitButton,
                         action = { viewModel.handleIntent(ForgotPasswordDialogIntent.Submit) },
                         enabled = viewModel.isSubmitEnabled,
+                        testTag = TestTags.ForgotPassword.SubmitButton,
                     ),
                     secondaryAction = ActionButton(
                         text = ForgotPasswordDialogStrings.CancelButton,
@@ -58,6 +61,7 @@ fun PasswordResetModal(
                             viewModel.handleIntent(ForgotPasswordDialogIntent.Close)
                             onDismiss()
                         },
+                        testTag = TestTags.ForgotPassword.CancelButton,
                     ),
                     onDismiss = {
                         viewModel.handleIntent(ForgotPasswordDialogIntent.Close)
@@ -76,6 +80,7 @@ fun PasswordResetModal(
                             viewModel.handleIntent(ForgotPasswordDialogIntent.Submit)
                             focusManager.clearFocus()
                             keyboardController?.hide() },
+                        testTag = TestTags.ForgotPassword.EmailField,
                         modifier = Modifier,
                     )
                 }

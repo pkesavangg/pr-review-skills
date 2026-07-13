@@ -352,23 +352,39 @@ final class DateTimeTools { // swiftlint:disable:this type_body_length
     // MARK: - Helpers
 
     /// Parses a stored date-of-birth (or similar calendar-only) string into a local-midnight `Date`
-    /// representing the same Y-M-D the server stored.
+    /// representing the same Y-M-D the user picked, independent of timezone.
     ///
-    /// The backend stores dob as UTC midnight ISO (e.g. `"1999-09-09T00:00:00.000Z"`) regardless of
-    /// what timezone the client sends from — it strips the time and keeps the UTC date portion.
-    /// Parsed as an instant and rendered in local time, that shifts one day earlier in any timezone
-    /// west of UTC. This helper reads the Y-M-D in UTC and rebuilds at local midnight so the
-    /// calendar day is preserved in any timezone.
-    static func parseCalendarDate(_ dateString: String) -> Date? {
+    /// The backend returns dob as an ISO instant in one of two shapes, and both must recover the
+    /// same Y-M-D the user picked:
+    ///   • clean UTC midnight (e.g. `"2000-03-01T00:00:00.000Z"`) — the intended day is the UTC
+    ///     calendar day, and must not shift in any timezone.
+    ///   • the account's local midnight expressed in UTC (e.g. `"2000-02-29T18:30:00.000Z"` for
+    ///     +05:30, which is local midnight of March 1) — the intended day is the local calendar day.
+    ///
+    /// We disambiguate by the instant's UTC time-of-day: exactly `00:00:00` uniquely identifies the
+    /// clean-UTC-midnight shape (the local-midnight shape can only land on UTC midnight at offset 0,
+    /// where both interpretations agree anyway). The previous "add 12h then read the local day" snap
+    /// rolled the clean-midnight shape forward a day at offsets ≥ +12:00 (New Zealand, Tonga,
+    /// Kiribati) — this comparison of the two candidate days fixes that (MOB-1464).
+    ///
+    /// `timeZone` defaults to the device's zone; it is injectable so the timezone-sensitive branch
+    /// can be unit-tested deterministically without depending on the CI machine's zone.
+    static func parseCalendarDate(_ dateString: String, timeZone: TimeZone = .current) -> Date? {
+        // Bare "yyyy-MM-dd" — no time component to drift, interpret in the local calendar.
         if let date = formatter("yyyy-MM-dd").date(from: dateString) {
             return date
         }
         guard let instant = parse(dateString) else { return nil }
-        var utcCal = Calendar(identifier: .gregorian)
-        utcCal.timeZone = TimeZone(secondsFromGMT: 0) ?? .current
-        let comps = utcCal.dateComponents([.year, .month, .day], from: instant)
+
         var localCal = Calendar(identifier: .gregorian)
-        localCal.timeZone = .current
+        localCal.timeZone = timeZone
+        var utcCal = Calendar(identifier: .gregorian)
+        utcCal.timeZone = TimeZone(secondsFromGMT: 0) ?? timeZone
+
+        let utcTime = utcCal.dateComponents([.hour, .minute, .second], from: instant)
+        let isCleanUtcMidnight = utcTime.hour == 0 && utcTime.minute == 0 && utcTime.second == 0
+        let dayCal = isCleanUtcMidnight ? utcCal : localCal
+        let comps = dayCal.dateComponents([.year, .month, .day], from: instant)
         return localCal.date(from: DateComponents(year: comps.year, month: comps.month, day: comps.day))
     }
 

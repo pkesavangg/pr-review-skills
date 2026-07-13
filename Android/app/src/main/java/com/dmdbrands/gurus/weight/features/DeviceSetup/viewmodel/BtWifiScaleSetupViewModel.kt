@@ -866,7 +866,14 @@ class BtWifiScaleSetupViewModel @AssistedInject constructor(
                     // *network* permission alone doesn't block the BLE reading, so it's ignored here.
                     if (!isOnlyNetworkPermissionMissing) setMeasurementFailed()
                 }
-                BtWifiSetupStep.CONNECTING_BLUETOOTH,
+                BtWifiSetupStep.CONNECTING_BLUETOOTH -> {
+                    // Scale is already paired/CONNECTED, so goToPermissionSlide() is a no-op
+                    // here (its guard blocks navigation once connected). If Bluetooth itself
+                    // is switched off in this window the screen would otherwise freeze, so
+                    // surface a retryable error instead. A missing network-only permission
+                    // must NOT fail BLE pairing, which doesn't need the network. (MOB-248)
+                    if (!isOnlyNetworkPermissionMissing) setConnectingBluetoothFailed()
+                }
                 BtWifiSetupStep.DUPLICATES_FOUND,
                 BtWifiSetupStep.USER_LIMIT_REACHED -> goToPermissionSlide()
                 else -> {}
@@ -997,6 +1004,16 @@ class BtWifiScaleSetupViewModel @AssistedInject constructor(
         handleIntent(
             BtWifiScaleSetupIntent.SetStepConnectionState(
                 BtWifiSetupStep.GATHERING_NETWORK, ConnectionState.Failed.Error,
+            ),
+        )
+    }
+
+    private fun setConnectingBluetoothFailed() {
+        // Stop the pending pairing timeout so it can't re-fire over the failed state.
+        scalePairingManager.cancelTimeout()
+        handleIntent(
+            BtWifiScaleSetupIntent.SetStepConnectionState(
+                BtWifiSetupStep.CONNECTING_BLUETOOTH, ConnectionState.Failed.Error,
             ),
         )
     }

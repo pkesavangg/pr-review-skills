@@ -32,7 +32,7 @@ enum ProductSelection: Equatable, Hashable, Identifiable {
         switch self {
         case .myWeight:           return ProductTypeStrings.myWeight
         case .myBloodPressure:    return ProductTypeStrings.myBloodPressure
-        case .baby(let profile):  return profile.name
+        case .baby(let profile):  return profile.displayName
         }
     }
 
@@ -41,7 +41,7 @@ enum ProductSelection: Equatable, Hashable, Identifiable {
         switch self {
         case .myWeight:           return ProductTypeStrings.weightHistory
         case .myBloodPressure:    return ProductTypeStrings.bloodPressure
-        case .baby(let profile):  return profile.name
+        case .baby(let profile):  return profile.displayName
         }
     }
 
@@ -50,7 +50,7 @@ enum ProductSelection: Equatable, Hashable, Identifiable {
         switch self {
         case .myWeight:           return ProductTypeStrings.myWeight
         case .myBloodPressure:    return ProductTypeStrings.myBP
-        case .baby(let profile):  return profile.name
+        case .baby(let profile):  return profile.displayName
         }
     }
 
@@ -59,7 +59,7 @@ enum ProductSelection: Equatable, Hashable, Identifiable {
         switch self {
         case .myWeight:           return ProductTypeStrings.weightEntry
         case .myBloodPressure:    return ProductTypeStrings.bpEntry
-        case .baby(let profile):  return profile.name
+        case .baby(let profile):  return profile.displayName
         }
     }
 

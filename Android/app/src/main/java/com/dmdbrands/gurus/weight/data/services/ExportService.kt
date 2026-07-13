@@ -147,10 +147,10 @@ constructor(
    * Email mode (download=false): server sends CSV to the account's email.
    * Download mode (download=true): streams file body and saves to MediaStore Downloads.
    */
-  override suspend fun exportEntriesCsv(category: String?, download: Boolean) {
+  override suspend fun exportEntriesCsv(category: String?, babyId: String?, download: Boolean) {
     val utcOffset = getUtcOffset()
     try {
-      val body = entryRepository.exportEntriesCsv(category = category, download = download, utcOffset = utcOffset)
+      val body = entryRepository.exportEntriesCsv(category = category, babyId = babyId, download = download, utcOffset = utcOffset)
       if (download) {
         // Download mode must produce a file. A null body (or a failed write below) is a
         // real failure — never report success without a file on disk.
@@ -170,8 +170,14 @@ constructor(
         AppLog.i(TAG, "exportEntriesCsv: email triggered (category=$category)")
         showExportSuccessToast()
       }
+    } catch (e: HttpException) {
+      // Preserve the error-toast UX parity with exportCsvWithPrompt().
+      showErrorToast(action = AccountSettingsAction.EXPORT_CSV, e)
+      AppLog.e(TAG, "exportEntriesCsv failed (category=$category babyId=$babyId download=$download)", e)
+      throw e
     } catch (e: Exception) {
-      AppLog.e(TAG, "exportEntriesCsv failed (category=$category download=$download)", e)
+      showErrorToast(action = AccountSettingsAction.EXPORT_CSV, error = null)
+      AppLog.e(TAG, "exportEntriesCsv failed (category=$category babyId=$babyId download=$download)", e)
       throw e
     }
   }
