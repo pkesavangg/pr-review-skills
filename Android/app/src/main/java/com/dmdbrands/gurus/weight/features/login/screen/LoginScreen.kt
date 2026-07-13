@@ -27,12 +27,14 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.contentType
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextAlign
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.dmdbrands.gurus.weight.core.shared.utilities.testing.TestTags
 import com.dmdbrands.gurus.weight.features.common.components.dismissKeyboardOnTap
 import com.dmdbrands.gurus.weight.features.common.components.AppButton
 import com.dmdbrands.gurus.weight.features.common.components.AppIconButton
@@ -99,12 +101,14 @@ private fun LoginContent(
     navigationIcon = {
       AppIconButton(
         AppIcons.Default.Close,
+        modifier = Modifier.testTag(TestTags.Login.CloseButton),
         contentDescription = LoginStrings.accCloseLabel,
       ) { handleIntent(LoginIntent.OnRequestBack) }
     },
     actions = {
       AppIconButton(
         AppIcons.Outlined.Help,
+        modifier = Modifier.testTag(TestTags.Login.HelpButton),
         contentDescription = LoginStrings.accHelpLabel,
       ) { handleIntent(LoginIntent.OpenHelpModal) }
     },
@@ -126,6 +130,7 @@ private fun LoginContent(
         modifier = Modifier
           .fillMaxWidth()
           .padding(horizontal = spacing.sm)
+          .testTag(TestTags.Login.WelcomeTitle)
           .semantics { heading() },
       )
       Spacer(Modifier.height(spacing.xl))
@@ -143,6 +148,7 @@ private fun LoginContent(
           showTrailingIcon = true,
           imeAction = ImeAction.Next,
           nextFocusRequester = passwordFocusRequester,
+          testTag = TestTags.Login.EmailField,
           modifier =
             Modifier
               .semantics { contentType = ContentType.Username }
@@ -159,6 +165,7 @@ private fun LoginContent(
             focusManager.clearFocus()
             keyboardController?.hide()
           },
+          testTag = TestTags.Login.PasswordField,
           modifier =
             Modifier
               .semantics { contentType = ContentType.Password }
@@ -168,7 +175,9 @@ private fun LoginContent(
         AppButton(
           label = LoginStrings.LoginButton,
           enabled = state.form.isValid,
-          modifier = Modifier.align(Alignment.CenterHorizontally),
+          modifier = Modifier
+            .align(Alignment.CenterHorizontally)
+            .testTag(TestTags.Login.SubmitButton),
           onClick = {
             keyboardController?.hide()
             handleIntent(LoginIntent.Submit)
@@ -179,7 +188,9 @@ private fun LoginContent(
           label = LoginStrings.ForgotPassword,
           type = ButtonType.TextPrimary,
           size = ButtonSize.Small,
-          modifier = Modifier.align(Alignment.CenterHorizontally),
+          modifier = Modifier
+            .align(Alignment.CenterHorizontally)
+            .testTag(TestTags.Login.ForgotPasswordButton),
           onClick = { handleIntent(LoginIntent.OpenForgotPasswordModal) },
         )
       }
