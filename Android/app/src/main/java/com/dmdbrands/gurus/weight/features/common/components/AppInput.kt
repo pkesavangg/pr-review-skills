@@ -257,6 +257,7 @@ fun <T> AppInput(
 /**
  * Base input composable with full form event support and error handling.
  */
+@Suppress("LongMethod")
 @Composable
 fun <T> InputFieldBase(
     modifier: Modifier = Modifier,

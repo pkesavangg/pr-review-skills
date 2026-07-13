@@ -64,6 +64,7 @@ private val DeviceIconSize = 56.dp
  * @param onFinish invoked on FINISH — completes signup; account + saved devices persist.
  * @param onTryAgain invoked on TRY AGAIN — retries the failed device's product creation.
  */
+@Suppress("LongMethod")
 @Composable
 fun SignupErrorStep(
     failedDeviceId: String,
