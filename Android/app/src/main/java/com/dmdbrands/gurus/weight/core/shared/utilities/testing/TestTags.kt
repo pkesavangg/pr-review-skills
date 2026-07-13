@@ -31,6 +31,47 @@ object TestTags {
     const val CancelButton = "forgot_password_cancel_button"
   }
 
+  /** Auth feature — Signup wizard (all steps + shared top-bar/footer chrome). Mirrors the iOS `AccessibilityID+Auth` Signup group. */
+  object Signup {
+    // Input fields (AppInput testTag param also derives _clear_button / _visibility_toggle children).
+    const val FirstNameField = "signup_first_name_field"
+    const val LastNameField = "signup_last_name_field"
+    const val EmailField = "signup_email_field"
+    const val PasswordField = "signup_password_field"
+    const val ConfirmPasswordField = "signup_confirm_password_field"
+    const val ZipcodeField = "signup_zipcode_field"
+    const val GoalUnitToggle = "signup_goal_unit_toggle"
+
+    // Shared top-bar (present on every step) + footer nav (non-terminal steps).
+    const val CloseButton = "signup_close_button"
+    const val HelpButton = "signup_help_button"
+    const val BackButton = "signup_back_button"
+    const val SkipButton = "signup_skip_button"
+    const val NextButton = "signup_next_button"
+    // Same footer button as NextButton on the final data step (label switches to "Create account").
+    const val CreateAccountButton = "signup_create_account_button"
+
+    // Terminal steps (Device Ready / All Devices Ready / Error) — own buttons.
+    const val FinishButton = "signup_finish_button"
+    const val ConnectAnotherDeviceButton = "signup_connect_another_device_button"
+    const val TryAgainButton = "signup_try_again_button"
+  }
+
+  /** Auth feature — Landing screens (pre-auth + saved-accounts). Mirrors the iOS `AccessibilityID+Auth` Landing group. */
+  object Landing {
+    const val LogInButton = "landing_log_in_button"
+    const val SignUpButton = "landing_sign_up_button"
+    const val LogInToExistingAccountButton = "landing_log_in_to_existing_account_button"
+    const val CreateNewAccountButton = "landing_create_new_account_button"
+    const val VersionLabel = "landing_version_label"
+
+    // Saved-account tile (repeated row) — suffix each with the per-account id, e.g.
+    // "account_card_row_<accountId>", so every row resolves to a unique node.
+    const val AccountCardRow = "account_card_row"
+    const val AccountCardDeleteButton = "account_card_delete_button"
+    const val AccountCardLogInButton = "account_card_log_in_button"
+  }
+
   /**
    * Suffixes for child controls whose tag is derived from a field's base tag by the shared
    * input component, e.g. `login_password_field` -> `login_password_field_visibility_toggle`.
