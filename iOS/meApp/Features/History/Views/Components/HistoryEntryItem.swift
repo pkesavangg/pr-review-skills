@@ -69,7 +69,7 @@ struct HistoryEntryItem: View {
                     Text(DateTimeTools.getFormattedDay(entry.entryTimestamp))
                         .fontOpenSans(.heading5)
                         .foregroundColor(isExpanded ? theme.textInverse : theme.textHeading)
-                    Text(DateTimeTools.getFormattedTime(entry.entryTimestamp))
+                    Text(DateTimeTools.getFormattedTimeLowercased(entry.entryTimestamp))
                         .fontOpenSans(.body3)
                         .foregroundColor(isExpanded ? theme.actionInverseSecondary : theme.textSubheading)
                 }
@@ -175,7 +175,7 @@ struct HistoryEntryItem: View {
     /// Expanded-state note row: shows the saved note (or a placeholder) with a "+" to add
     /// or a boxed pencil to edit. Tapping opens the edit overlay (MOB-1172).
     private var notesSection: some View {
-        HStack(alignment: .top, spacing: .spacingXS) {
+        HStack(alignment: .center, spacing: .spacingXS) {
             if hasNotes {
                 Text(entry.note ?? "")
                     .fontOpenSans(.body3)

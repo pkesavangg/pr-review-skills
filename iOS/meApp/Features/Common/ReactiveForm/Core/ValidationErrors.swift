@@ -58,7 +58,8 @@ public enum ValidatorType: Hashable {
     case reversedValues
     case maxLimit
     case numericOnly
-    
+    case pattern
+
     public func hash(into hasher: inout Hasher) {
         hasher.combine(String(describing: self))
     }

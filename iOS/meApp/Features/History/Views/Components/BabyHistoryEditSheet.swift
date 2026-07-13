@@ -124,7 +124,10 @@ struct BabyHistoryEditSheet: View {
                             inputType: .metric,
                             isDisabled: valuesLocked,
                             focusField: .ounces,
-                            allowWholeNumbers: false
+                            maxLength: 4,
+                            allowWholeNumbers: false,
+                            decimalPlaces: 1,
+                            directDecimalEntry: true
                         ),
                         value: $form.ounces.value,
                         focusedField: $focusedField

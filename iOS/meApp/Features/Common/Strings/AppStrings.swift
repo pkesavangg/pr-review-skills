@@ -393,8 +393,8 @@ struct AlertStrings {
         static let returnButton = "Return"
     }
     struct CsvExportAlert {
-        static let title = "Download Weight History"
-        static let message = "An email with your measurement history will be sent to the email address associated with this account."
+        static let title = "Send Weight History"
+        static let message = "We'll send your measurement history to the email address linked to your account."
         static let sendButton = "Send"
         static let cancelButton = "Cancel"
     }

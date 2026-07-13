@@ -241,6 +241,10 @@ struct AppInputField: View {
     }
 
     private var keyboardTypeForInput: UIKeyboardType {
+        // Literal-decimal fields (e.g. baby ounces) need a decimal point on the keyboard.
+        if config.directDecimalEntry {
+            return .decimalPad
+        }
         switch config.inputType {
         case .number, .metric:
             return .numberPad
