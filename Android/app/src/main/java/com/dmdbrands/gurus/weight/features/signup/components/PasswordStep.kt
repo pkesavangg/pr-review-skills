@@ -12,6 +12,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.testTag
+import com.dmdbrands.gurus.weight.core.shared.utilities.testing.TestTags
 import androidx.compose.ui.autofill.ContentType
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
@@ -69,6 +71,7 @@ fun PasswordStep(
                 label = SignupStrings.passwordLabel,
                 imeAction = ImeAction.Next,
                 nextFocusRequester = confirmPasswordFocusRequester,
+                testTag = TestTags.Signup.PasswordField,
                 modifier =
                     Modifier
                         .semantics { contentType = ContentType.NewPassword }
@@ -80,6 +83,7 @@ fun PasswordStep(
                 label = SignupStrings.confirmPasswordLabel,
                 imeAction = ImeAction.Next,
                 nextFocusRequester = zipcodeFocusRequester,
+                testTag = TestTags.Signup.ConfirmPasswordField,
                 modifier = Modifier.focusRequester(confirmPasswordFocusRequester),
             )
             AppInput(
@@ -88,6 +92,7 @@ fun PasswordStep(
                 label = SignupStrings.zipcodeLabel,
                 imeAction = ImeAction.Done,
                 onImeAction = onSubmit,
+                testTag = TestTags.Signup.ZipcodeField,
                 modifier = Modifier.focusRequester(zipcodeFocusRequester),
             )
             Spacer(modifier = Modifier.padding(bottom = MeTheme.spacing.md))

@@ -35,6 +35,7 @@ import com.dmdbrands.gurus.weight.theme.MeTheme.spacing
  * @param onDismiss Called when the dialog is dismissed (optional, for outside click).
  * @param modifier Modifier for styling.
  */
+@Suppress("LongMethod")
 @Composable
 fun BaseModal(
   modifier: Modifier = Modifier,
