@@ -295,6 +295,31 @@ class EntryViewModelTest {
         }
 
     @Test
+    fun `UpdateBabyUnit rebuilds the active baby form so validators match the new unit (MOB-1223)`() =
+        runTest(mainDispatcherRule.scheduler) {
+            // Simulate the first-load race: the baby form is built with the default lb-oz
+            // whole-number validators before the real kg unit arrives asynchronously.
+            every { userDataStore.babyWeightUnitForCurrentAccountFlow } returns flowOf(WeightUnit.LB_OZ)
+            every { productSelectionManager.selectedProduct } returns MutableStateFlow(babyProfile())
+            viewModel = createViewModel()
+
+            val staleForm = MultiFormGroup.create(forms = BabyEntryForm.create(WeightUnit.LB_OZ))
+            viewModel.handleIntent(
+                EntryIntent.UpdateActiveForm(ActiveEntryForm.Baby(staleForm, babyProfile().profile)),
+            )
+
+            // The real kg unit arrives, as the async flow would emit.
+            viewModel.handleIntent(EntryIntent.UpdateBabyUnit(WeightUnit.KG))
+
+            // The active form must be a NEW instance rebuilt with kg (decimal) validators: a
+            // decimal weight is now valid where the lb-oz whole-number validator would reject it.
+            val rebuilt = viewModel.state.value.activeForm as ActiveEntryForm.Baby
+            assertThat(rebuilt.form).isNotSameInstanceAs(staleForm)
+            rebuilt.form.forms.baby.controls.weight.onValueChange("3.3")
+            assertThat(rebuilt.form.forms.baby.controls.weight.error).isNull()
+        }
+
+    @Test
     fun `Save baby weight for metric account shows saved-to-log card in kg`() = runTest(mainDispatcherRule.scheduler) {
         // metric baby unit drives the kg input; weightUnit=KG drives the card's isMetric display.
         val kgAccount = TestFixtures.anAccount(isActiveAccount = true, isLoggedIn = true)

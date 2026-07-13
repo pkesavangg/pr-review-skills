@@ -223,6 +223,26 @@ constructor(
         }
       }
 
+      is EntryIntent.UpdateBabyUnit -> {
+        // The baby form's validators are frozen at build time from babyWeightMode. Because the
+        // baby unit loads asynchronously (no synchronous seed like the adult weightUnit), the
+        // active baby form may have been built with the default LB_OZ whole-number validators
+        // before the real unit arrived — leaving a kg/lb-decimal single-field layout wired to
+        // lb-oz validators that reject valid decimals. Rebuild the active baby form so its
+        // validators match the unit now being rendered. (MOB-1223)
+        val activeForm = _state.value.activeForm
+        if (activeForm is ActiveEntryForm.Baby) {
+          handleIntent(
+            EntryIntent.UpdateActiveForm(
+              ActiveEntryForm.Baby(
+                form = MultiFormGroup.create(forms = BabyEntryForm.create(intent.weightUnit)),
+                profile = activeForm.profile,
+              ),
+            ),
+          )
+        }
+      }
+
       is EntryIntent.EarlyExit -> {
         earlyExitToHome()
       }
