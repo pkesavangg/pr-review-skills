@@ -517,7 +517,7 @@ struct AccountRepositoryAPITests {
         #expect(body["height"] != nil)
     }
 
-    @Test("createAccount baby-only: omits gender/dob/height, includes measurementUnits")
+    @Test("createAccount baby-only: omits gender but still sends dob/height, includes measurementUnits")
     func createAccountBabyOnlyOmitsConditionalFields() async throws {
         let (sut, http) = makeSUT()
         http.sendResult = AccountTestFixtures.makeAccountResponse()
@@ -530,8 +530,11 @@ struct AccountRepositoryAPITests {
         let body = try jsonBody(http.lastSendBody)
         #expect(body["productTypes"] as? [String] == ["baby"])
         #expect(body["gender"] == nil)
-        #expect(body["dob"] == nil)
-        #expect(body["height"] == nil)
+        // dob and height are only *required* for weight/BP, but we always send them so the
+        // account holder's birthday and height persist for baby-only signups too — this is
+        // what keeps Settings showing the signup birthday and never a "0' 0"" height.
+        #expect(body["dob"] != nil)
+        #expect(body["height"] != nil)
         #expect(body["measurementUnits"] as? String == "imperialLbOz")
     }
 

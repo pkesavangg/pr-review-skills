@@ -61,6 +61,63 @@ struct GraphRenderingConfiguration {
         }
     }
 
+    // MARK: - Full-Domain Geometry (MOB-518 v2 engine)
+
+    /// Full scrollable x-domain for the v2 weight engine — the buffered data span using the *fixed-domain*
+    /// semantics of `axisRange`, so it is INDEPENDENT of the current scroll position. The v2 engine scrolls
+    /// natively within this once-computed domain (no live re-windowing), which keeps the scroll region
+    /// stable across a y-settle. Returns `nil` for an empty dataset. `operations` must be sorted ascending.
+    func fullXDomain(for period: TimePeriod, from operations: [BathScaleWeightSummary]) -> ClosedRange<Date>? {
+        guard let minDate = operations.first?.date, let maxDate = operations.last?.date else { return nil }
+        let (start, end) = axisRange(
+            period: period,
+            minDate: minDate,
+            maxDate: maxDate,
+            scrollPosition: maxDate,
+            domainLength: visibleDomainLength(for: period, at: maxDate),
+            useFixedDomain: true
+        )
+        return start <= end ? start...end : end...start
+    }
+
+    /// Bounded scrollable x-domain for the v2 engine: a window of `±windows` visible-windows around
+    /// `scrollPosition`, clamped to the buffered full data span. This caps the Swift Charts scroll canvas
+    /// (fullDomain ÷ visibleWindow) to ~`2·windows`× regardless of how much history exists — the fix for the
+    /// week/month scroll hang, where the full-dataset domain made the canvas 100×+ wide. `.total` isn't
+    /// scrollable → the whole span. Returns `nil` for an empty dataset. `operations` must be sorted ascending.
+    func boundedXDomain(
+        for period: TimePeriod,
+        from operations: [BathScaleWeightSummary],
+        around scrollPosition: Date,
+        windows: Double
+    ) -> ClosedRange<Date>? {
+        guard let full = fullXDomain(for: period, from: operations) else { return nil }
+        guard period != .total else { return full }
+        let half = visibleDomainLength(for: period) * windows
+        let low = max(full.lowerBound, scrollPosition.addingTimeInterval(-half))
+        let high = min(full.upperBound, scrollPosition.addingTimeInterval(half))
+        return low < high ? low...high : full
+    }
+
+    /// X-axis ticks generated FOR the bounded window (`boundedXDomain`), not the full span — so only a
+    /// handful of `AxisMarks` render and gridlines/labels appear correctly across every period. `operations`
+    /// must be sorted ascending.
+    func boundedXAxisValues(
+        for period: TimePeriod,
+        from operations: [BathScaleWeightSummary],
+        around scrollPosition: Date,
+        windows: Double
+    ) -> [Date] {
+        guard let domain = boundedXDomain(for: period, from: operations, around: scrollPosition, windows: windows) else { return [] }
+        let shouldRepeat = DateTimeTools.shouldRepeatXAxisLabels(for: period, entryCount: operations.count)
+        switch period {
+        case .week:  return weeklyTicks(from: domain.lowerBound, to: domain.upperBound)
+        case .month: return monthlyWeeklyTicks(from: domain.lowerBound, to: domain.upperBound)
+        case .year:  return yearlyTicks(from: domain.lowerBound, to: domain.upperBound)
+        case .total: return totalTicks(from: domain.lowerBound, to: domain.upperBound, operations: operations, shouldRepeat: shouldRepeat)
+        }
+    }
+
     // MARK: - Period-Specific Tick Generators
 
     func weeklyTicks(from start: Date, to end: Date) -> [Date] {
@@ -128,6 +185,48 @@ struct GraphRenderingConfiguration {
             if phantomNoon > last {
                 dates.append(phantomNoon)
             }
+        }
+        return dates
+    }
+
+    /// MOB-518 v2 weight engine — Apple-Health-style MONTH ticks: a **continuous Sunday-anchored 7-day grid**
+    /// across the whole domain that never resets at the 1st, so labels read every 7 days (… may 17, 24, 31,
+    /// jun 7 …) exactly like Health. Unlike `monthlyTicks` (which restarts the grid at the 1st of every month
+    /// → `1, 8, 15, 22, 29`, bunching `29`/`1` at the boundary — 2–3 days apart, not 7). The **solid month
+    /// boundary rule** is NOT baked into these ticks: injecting a `1st` tick 1 day from the adjacent Sunday
+    /// made Swift Charts hide that Sunday's label (the boundary tick "ate" it), leaving a visible gap. The
+    /// view draws the boundary as a separate gridline-only mark (`WeightChartView.monthBoundaryTicks`) that
+    /// carries no tick/label, so every Sunday label renders. Scoped to the v2 weight paths
+    /// (`boundedXAxisValues`); the legacy `monthlyTicks` (used by `xAxisValues`, shared with
+    /// baby/BPM) is intentionally left unchanged.
+    func monthlyWeeklyTicks(from start: Date, to end: Date) -> [Date] {
+        var cal = Calendar(identifier: .gregorian)
+        cal.timeZone = calendar.timeZone
+        cal.locale = calendar.locale
+        cal.firstWeekday = 1 // Sunday
+
+        let (startDate, endDate) = (min(start, end), max(start, end))
+
+        // Continuous weekly grid: anchor to the Sunday of the start's week, then step +7 days across month
+        // boundaries (never resetting to the 1st). Ticks at local noon, like the other generators.
+        var dates: [Date] = []
+        if let weekStart = cal.dateInterval(of: .weekOfYear, for: startDate)?.start {
+            var day = cal.startOfDay(for: weekStart)
+            while day <= endDate {
+                if let noon = cal.date(byAdding: .hour, value: 12, to: day), noon >= startDate, noon <= endDate {
+                    dates.append(noon)
+                }
+                guard let next = cal.date(byAdding: .day, value: 7, to: day) else { break }
+                day = next
+            }
+        }
+
+        // Trailing phantom (+7 days past the last tick) so the view's `dropLast()` removes a throwaway rather
+        // than a real tick, keeping the last real label/gridline off the right edge (parity with the others).
+        if let last = dates.last,
+           let phantom = cal.date(byAdding: .day, value: 7, to: cal.startOfDay(for: last)),
+           let phantomNoon = cal.date(byAdding: .hour, value: 12, to: phantom) {
+            dates.append(phantomNoon)
         }
         return dates
     }
@@ -243,6 +342,13 @@ struct GraphRenderingConfiguration {
             return position
         }
     }
+
+    // NOTE (MOB-518, v2 weight engine): there is deliberately NO weight-specific scroll snap. Native
+    // `ValueAlignedChartScrollTargetBehavior` (see `WeightChartView.scrollBehavior`) rests the window on the
+    // fine grid — a fling on the period boundary, a slow drag on any day / month — and `commitWeightScroll`
+    // records that landed position verbatim. An earlier `snapWeightScrollPosition` re-rounded it here and
+    // caused a one-unit drift on release / on leave-and-return, so it was removed. Legacy baby/BPM still use
+    // `snapScrollPosition` above.
 
     func clampScrollPosition(_ position: Date, for period: TimePeriod, minDate: Date, maxDate: Date) -> Date {
         let padding = periodPadding(for: period)

@@ -127,7 +127,7 @@ struct SignupScreen: View {
                 selectedIndex: $signupStore.currentStepIndex,
                 views: stepViews
             )
-            .padding(.top, .spacing2XL)
+            .padding(.top, .spacingXL)
             // Footer Buttons
             footerButtons
             

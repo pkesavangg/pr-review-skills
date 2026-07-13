@@ -128,6 +128,17 @@ extension Validator where Value == String {
             return weight <= maximum
         }
     }
+
+    /// Validator that requires the control's value to be *strictly* less than the provided maximum.
+    /// Mirrors `maxValue` but is exclusive of the boundary, so the maximum itself is rejected —
+    /// matching the "value should be less than N" copy shown for weight entry (MOB-1392).
+    /// Uses the `.maxValue` error type so existing error-message wiring is unchanged.
+    public static func maxValueExclusive(_ maximum: Double) -> Validator {
+        Validator(type: .maxValue, value: maximum) { value in
+            guard let num = Double(value) else { return true } // Pass if not a number, other validators will catch it
+            return num < maximum
+        }
+    }
     
     /// Validator that requires the control's value to not exceed an absolute maximum limit.
     public static func maxLimit(_ maximum: Double) -> Validator {

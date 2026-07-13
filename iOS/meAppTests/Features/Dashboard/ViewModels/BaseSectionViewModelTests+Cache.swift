@@ -122,12 +122,13 @@ extension BaseSectionViewModelTests {
 
     // MARK: - forceScrollPositionUpdate
 
-    @Test("forceScrollPositionUpdate temporarily changes and restores scroll position")
+    @Test("forceScrollPositionUpdate sets the scroll position to the target")
     func forceScrollPositionUpdateSetsValue() async {
         let (sut, _, _) = baseSectionVMTestsMakeConfiguredSUT()
         let target = Date().addingTimeInterval(5000)
         sut.forceScrollPositionUpdate(to: target)
-        // The scroll position should eventually settle on target
+        // MOB-518: `scrollPosition` is no longer `@Published`, so the +0.001 "nudge then restore" dance
+        // was removed — `forceScrollPositionUpdate` now sets the value directly (no temporary change).
         try? await Task.sleep(nanoseconds: 50_000_000)
         #expect(sut.scrollPosition == target)
     }

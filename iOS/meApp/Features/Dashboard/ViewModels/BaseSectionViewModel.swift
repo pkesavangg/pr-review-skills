@@ -19,7 +19,15 @@ class BaseSectionViewModel: ObservableObject, SectionViewModelProtocol {
     @Published var selectedPoint: BathScaleWeightSummary?
     @Published var selectedDate: Date?
     @Published var showCrosshair: Bool = false
-    @Published var scrollPosition = Date()
+    /// The chart's live scroll position. **Intentionally NOT `@Published`** — this is the load-bearing
+    /// invariant documented in `GraphViewFlow.md:475-477`. Swift Charts' `.chartScrollPosition` binding
+    /// writes this on every frame *during* the SwiftUI view-update pass; if it published, that write
+    /// would fire `objectWillChange` mid-update → re-entrant `BaseGraphView` invalidation → the
+    /// "Publishing changes from within view updates" / "onChange … multiple times per frame" storm
+    /// (`.equatable()` cannot stop an ObservableObject publish). `BaseGraphView`'s `Equatable` hash
+    /// already excludes it, and programmatic moves adopt via the store's published `xScrollPosition`,
+    /// so keeping it a plain property is correct and observer-safe (no `$scrollPosition` subscribers).
+    var scrollPosition = Date()
     @Published var isScrolling: Bool = false
     
     /// Default implementation simply returns the current `selectedDate`.
@@ -708,14 +716,16 @@ class BaseSectionViewModel: ObservableObject, SectionViewModelProtocol {
         self.scrollPosition = position
     }
     
-    /// Forces scroll position update with binding refresh
+    /// Sets the scroll position for a programmatic move (e.g. a period transition).
+    ///
+    /// Historically this wrote the value twice (`+0.001`, then the real value) to force the old
+    /// `@Published scrollPosition` binding to refresh. That nudge is obsolete now that `scrollPosition`
+    /// is a plain property: the freshly-mounted period chart adopts this value through its
+    /// `.chartScrollPosition` binding on first render, and in-place moves re-render via the store→VM
+    /// `xScrollPosition` sync. A direct set is sufficient — and avoids the transient off-by-0.001
+    /// position the nudge briefly published.
     func forceScrollPositionUpdate(to position: Date) {
-        // Force a small change to trigger binding update
-        let temp = position.addingTimeInterval(0.001)
-        self.scrollPosition = temp
-        Task { @MainActor in
-            self.scrollPosition = position
-        }
+        self.scrollPosition = position
     }
     
     /// Initialize chart

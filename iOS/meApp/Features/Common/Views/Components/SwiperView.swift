@@ -40,6 +40,10 @@ struct SwiperView<Content: View>: View {
                     views[i]
                         .padding(.horizontal, shouldApplyHorizontalPadding(i) ? .spacingSM : 0)
                         .frame(width: geometry.size.width)
+                        // Clip each page to its own width so long headings / media
+                        // can't bleed into the adjacent page (visible on larger
+                        // screens like iPhone 17 Pro).
+                        .clipped()
                 }
             }
             .frame(width: geometry.size.width * CGFloat(views.count), alignment: .leading)
