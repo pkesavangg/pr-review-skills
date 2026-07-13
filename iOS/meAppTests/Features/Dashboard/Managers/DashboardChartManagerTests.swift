@@ -136,6 +136,9 @@ struct DashboardChartManagerTests {
         DashboardManagerTestSupport.syncStoreGraphState(store)
 
         await DashboardManagerTestSupport.loadData(into: store, entryService: entryService, daily: secondBatch)
+        // Loading data also invalidates the chart-series cache via DashboardStore's content-
+        // signature sink, so isolate the domain-change invalidation with a before/after delta.
+        let invalidationsBeforeDomainChange = cacheManager.invalidateChartSeriesCalls
         store.chartManager.updateYAxisCache(force: true)
         await DashboardTestFixtures.waitUntil {
             store.state.graph.cachedYAxisDomain != nil &&
@@ -144,7 +147,7 @@ struct DashboardChartManagerTests {
 
         #expect(firstDomain != nil)
         #expect(store.state.graph.cachedYAxisDomain != firstDomain)
-        #expect(cacheManager.invalidateChartSeriesCalls == 1)
+        #expect(cacheManager.invalidateChartSeriesCalls - invalidationsBeforeDomainChange == 1)
     }
 
     @Test("chart series: cache manager is used to serve chart data requests")
@@ -194,10 +197,13 @@ struct DashboardChartManagerTests {
         store.graphManager.state.chartHeight = 220
         DashboardManagerTestSupport.syncStoreGraphState(store)
 
+        // Loading data invalidates the chart-series cache via the content-signature sink, so
+        // assert the unforced, scrolling updateYAxisCache adds no *further* invalidation.
+        let invalidationsBeforeUpdate = cacheManager.invalidateChartSeriesCalls
         store.chartManager.updateYAxisCache()
 
         #expect(store.state.graph.cachedYAxisDomain == nil)
-        #expect(cacheManager.invalidateChartSeriesCalls == 0)
+        #expect(cacheManager.invalidateChartSeriesCalls == invalidationsBeforeUpdate)
     }
 
     @Test("updateSelectedPeriod: total view clears caches and refreshes metrics immediately")
