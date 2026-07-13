@@ -12,7 +12,10 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.rememberCoroutineScope
@@ -94,6 +97,21 @@ fun HistoryDetailScreenContent(
 ) {
     val backStack = LocalNavBackStack.current
     val scope = rememberCoroutineScope()
+    // When the last entry in this month/day is deleted, the detail list becomes empty — pop back
+    // to the history list instead of leaving the user on a blank detail screen. `hadEntries` gates
+    // out the initial empty state (before data loads); `popped` guards against a double-pop if the
+    // flow re-emits empty. (MOB-1462)
+    var hadEntries by remember { mutableStateOf(false) }
+    var popped by remember { mutableStateOf(false) }
+    LaunchedEffect(state.historyItems, state.isLoading) {
+        when {
+            state.historyItems.isNotEmpty() -> hadEntries = true
+            hadEntries && !state.isLoading && !popped -> {
+                popped = true
+                backStack.removeLast()
+            }
+        }
+    }
     AppScaffold(
         title = state.month,
         isRefreshing = state.isLoading,
