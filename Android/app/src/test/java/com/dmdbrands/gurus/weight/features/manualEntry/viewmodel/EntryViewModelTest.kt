@@ -228,7 +228,8 @@ class EntryViewModelTest {
         form.forms.baby.controls.weight.onValueChange("7")
         // oz is BODY_COMP (implicit 1-decimal): raw "40" → 4.0 oz.
         form.forms.baby.controls.weightOz.onValueChange("40")
-        form.forms.baby.controls.length.onValueChange("20")
+        // length is BODY_COMP implicit-1-decimal raw digits: "200" → 20.0 in. (MOB-1223)
+        form.forms.baby.controls.length.onValueChange("200")
         viewModel.handleIntent(EntryIntent.UpdateActiveForm(ActiveEntryForm.Baby(form, baby.profile)))
 
         val captured = mutableListOf<Entry>()
@@ -256,7 +257,8 @@ class EntryViewModelTest {
 
             val form = MultiFormGroup.create(forms = BabyEntryForm.create(WeightUnit.KG))
             form.forms.baby.controls.weight.onValueChange("3.3")
-            form.forms.baby.controls.length.onValueChange("50")
+            // length is BODY_COMP implicit-1-decimal raw digits: "500" → 50.0 cm. (MOB-1223)
+            form.forms.baby.controls.length.onValueChange("500")
             viewModel.handleIntent(EntryIntent.UpdateActiveForm(ActiveEntryForm.Baby(form, babyProfile().profile)))
 
             val captured = mutableListOf<Entry>()
@@ -280,7 +282,8 @@ class EntryViewModelTest {
 
             val form = MultiFormGroup.create(forms = BabyEntryForm.create(WeightUnit.LB))
             form.forms.baby.controls.weight.onValueChange("7.5")
-            form.forms.baby.controls.length.onValueChange("20")
+            // length is BODY_COMP implicit-1-decimal raw digits: "200" → 20.0 in. (MOB-1223)
+        form.forms.baby.controls.length.onValueChange("200")
             viewModel.handleIntent(EntryIntent.UpdateActiveForm(ActiveEntryForm.Baby(form, babyProfile().profile)))
 
             val captured = mutableListOf<Entry>()
@@ -1001,7 +1004,8 @@ class EntryViewModelTest {
         viewModel = createViewModel()
         val form = MultiFormGroup.create(forms = BabyEntryForm.create(WeightUnit.LB))
         // No weight → no weight entry, only length
-        form.forms.baby.controls.length.onValueChange("20")
+        // length is BODY_COMP implicit-1-decimal raw digits: "200" → 20.0 in. (MOB-1223)
+        form.forms.baby.controls.length.onValueChange("200")
         viewModel.handleIntent(EntryIntent.UpdateActiveForm(ActiveEntryForm.Baby(form, babyProfile().profile)))
 
         val captured = mutableListOf<Entry>()

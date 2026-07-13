@@ -641,7 +641,9 @@ constructor(
       WeightUnit.LB -> controls.weight.value.toDoubleOrNull()
         ?.takeIf { it > 0 }?.let { ConversionTools.convertLbToDecigrams(it) }
     }
-    val lengthValue = controls.length.value.toDoubleOrNull()?.takeIf { it > 0 }
+    // length is BODY_COMP raw digits with an implicit 1-place decimal ("205" → 20.5), so divide
+    // by 10 to recover the real value — same convention as ounces. (MOB-1223)
+    val lengthValue = controls.length.value.toDoubleOrNull()?.div(10.0)?.takeIf { it > 0 }
     val lengthMm = lengthValue?.let {
       if (weightUnit == WeightUnit.KG) ConversionTools.convertCmToMm(it) else ConversionTools.convertInchesToMm(it)
     }

@@ -58,10 +58,12 @@ fun BabyEntrySection(
         formControl = controls.length,
         label = EntryScreenStrings.LENGTH_LABEL,
         trailingText = if (isMetric) EntryScreenStrings.BABY_LENGTH_CM_UNIT else EntryScreenStrings.BABY_LENGTH_IN_UNIT,
-        type = AppInputType.DECIMAL_STRING,
+        // Implicit 1-decimal like ounces (BODY_COMP): type 0 → 0.0, "205" → 20.5. No '.' key
+        // needed (sidesteps OEM keyboards that hide it). Value stored as raw digits. (MOB-1223)
+        type = AppInputType.BODY_COMP,
         imeAction = ImeAction.Done,
         onImeAction = onImeAction,
-        maxLength = if (isMetric) 5 else 4,
+        maxLength = if (isMetric) 4 else 3,
         modifier = Modifier
             .fillMaxWidth()
             .focusRequester(lengthFocusRequester),

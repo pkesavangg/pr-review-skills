@@ -362,15 +362,17 @@ data class BabyEntryForm(
             ),
           ),
         ),
+        // Length uses the ounces-style BODY_COMP implicit 1-decimal input, so it validates with
+        // bodyCompValidator on the raw digit string (e.g. "205" → 20.5 in / cm). (MOB-1223)
         length = FormControl.create(
           "",
           listOf(
             if (isMetric) {
-              FormValidations.decimalRangeValidator(
+              FormValidations.bodyCompValidator(
                 AppValidatorConfig.BabyLengthCm.MIN, AppValidatorConfig.BabyLengthCm.MAX,
               )
             } else {
-              FormValidations.decimalRangeValidator(
+              FormValidations.bodyCompValidator(
                 AppValidatorConfig.BabyHeight.MIN, AppValidatorConfig.BabyHeight.MAX,
               )
             },

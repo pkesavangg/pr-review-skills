@@ -253,7 +253,9 @@ private fun BabyEditModal(
                         // oz uses the adult BODY_COMP input: raw digits with an implicit 1-place
                         // decimal ("45" → 4.5), so divide by 10 to recover real ounces. (MOB-1223)
                         val oz = controls.weightOz.value.toDoubleOrNull()?.div(10.0) ?: 0.0
-                        val inches = controls.length.value.toDoubleOrNull()
+                        // length is BODY_COMP raw digits with an implicit 1-place decimal
+                        // ("205" → 20.5), so divide by 10 — same as ounces. (MOB-1223)
+                        val inches = controls.length.value.toDoubleOrNull()?.div(10.0)
                         val weightDecigrams =
                             if (lbs > 0 || oz > 0) ConversionTools.convertLbOzToDecigrams(lbs, oz) else null
                         val lengthMm =
@@ -284,7 +286,8 @@ private fun seededBabyEntryForm(entry: BabyEntry): MultiFormGroup<BabyEntryForm>
         controls.weightOz.setValue(Math.round(oz * 10).toString())
     }
     entry.babyLengthMillimeters?.takeIf { it > 0 }?.let {
-        controls.length.setValue(formatOneDecimal(ConversionTools.convertMmToInches(it)))
+        // length field is BODY_COMP (implicit 1-decimal): seed the raw digit string, 20.5 → "205".
+        controls.length.setValue(Math.round(ConversionTools.convertMmToInches(it) * 10).toString())
     }
     entry.entryNote?.let { controls.notes.setValue(it) }
     val millis = DateTimeConverter.isoToTimestamp(entry.entry.entryTimestamp)
