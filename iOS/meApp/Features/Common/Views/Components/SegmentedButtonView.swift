@@ -15,6 +15,8 @@ struct SegmentedButtonView<T: CaseIterable & RawRepresentable & Identifiable & H
     /// dividing the parent equally. Required when the control is hosted in a
     /// horizontal ScrollView so it can actually scroll under Dynamic Type.
     var usesIntrinsicWidth: Bool = false
+    /// Opt-in — stretches the row to fill its container while guaranteeing each
+    var fillsAvailableWidth: Bool = false
     /// Opt-in — returns a stable accessibility identifier for each segment so
     /// UI tests can tap a specific tab by name. Pass `nil` to leave segments
     /// untagged (the default).
@@ -28,6 +30,10 @@ struct SegmentedButtonView<T: CaseIterable & RawRepresentable & Identifiable & H
     /// the `uniformFontSize` getter handles that case the same way it always did via the
     /// existing `widestLabelWidth > 0` guard.
     @State private var cachedWidestLabelWidth: CGFloat = 0
+    /// Cached natural label width per segment (indexed by position). Populated once
+    /// on appear and used only in `fillsAvailableWidth` mode to set each segment's
+    /// `minWidth`, so a segment never shrinks below its text and truncates.
+    @State private var cachedSegmentLabelWidths: [Int: CGFloat] = [:]
 
     /// heading5 size — used only when `useUniformFontScaling` is on.
     private static var baseFontSize: CGFloat { 16 }
@@ -45,7 +51,10 @@ struct SegmentedButtonView<T: CaseIterable & RawRepresentable & Identifiable & H
                     Text(segmentDisplayName(for: segment))
                         .fontOpenSans(.heading5)
                         .foregroundColor(selectedSegment == segment ? theme.textInverse : theme.actionTertiary)
-                        .frame(maxWidth: usesIntrinsicWidth ? nil : .infinity)
+                        .frame(
+                            minWidth: fillsAvailableWidth ? cachedSegmentLabelWidths[index] : nil,
+                            maxWidth: usesIntrinsicWidth ? nil : .infinity
+                        )
                         .lineLimit(1)
                         .padding(.vertical, 8)
                         .padding(.horizontal, useUniformFontScaling ? 8 : 12)
@@ -82,6 +91,11 @@ struct SegmentedButtonView<T: CaseIterable & RawRepresentable & Identifiable & H
             // read. See history doc §3.10.3 for trace evidence.
             if cachedWidestLabelWidth == 0 {
                 cachedWidestLabelWidth = computeWidestLabelWidth()
+            }
+            // Per-segment minimums for fill mode — keeps long labels from
+            // truncating while extra space is shared across segments (MOB-229).
+            if fillsAvailableWidth && cachedSegmentLabelWidths.isEmpty {
+                cachedSegmentLabelWidths = computeSegmentLabelWidths()
             }
         }
         .background(
@@ -121,15 +135,25 @@ struct SegmentedButtonView<T: CaseIterable & RawRepresentable & Identifiable & H
         return segment.rawValue.uppercased()
     }
 
+    /// Natural (unscaled) label width per segment at the base font size, indexed
+    /// by position. Called once from `.onAppear`; don't read on the hot path.
+    private func computeSegmentLabelWidths() -> [Int: CGFloat] {
+        let font = UIFont(name: "OpenSans-Bold", size: Self.baseFontSize)
+            ?? .systemFont(ofSize: Self.baseFontSize, weight: .bold)
+        var widths: [Int: CGFloat] = [:]
+        for (index, segment) in segments.enumerated() {
+            // +1 guards against sub-pixel rounding forcing a truncation.
+            widths[index] = ((segmentDisplayName(for: segment) as NSString)
+                .size(withAttributes: [.font: font]).width).rounded(.up) + 1
+        }
+        return widths
+    }
+
     /// Natural (unscaled) width of the widest label at the base font size.
     /// Called from `.onAppear` to populate `cachedWidestLabelWidth`. Don't read
     /// directly on the hot path — read `cachedWidestLabelWidth` instead.
     private func computeWidestLabelWidth() -> CGFloat {
-        let font = UIFont(name: "OpenSans-Bold", size: Self.baseFontSize)
-            ?? .systemFont(ofSize: Self.baseFontSize, weight: .bold)
-        return segments
-            .map { (segmentDisplayName(for: $0) as NSString).size(withAttributes: [.font: font]).width }
-            .max() ?? 0
+        computeSegmentLabelWidths().values.max() ?? 0
     }
 
     /// Single font size applied to every segment so they scale together.
