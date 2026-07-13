@@ -756,7 +756,7 @@ class BottomTabBarViewModel: ObservableObject {
     // - Single baby: personalized title ("New Reading Received for EMMA") + DISCARD/SAVE.
     // - Multiple babies: standard title + DON'T ASSIGN / ASSIGN → opens selection modal.
     // - Multiple buffered readings: compact header row shows count + VIEW above the card.
-    // swiftlint:disable:next cyclomatic_complexity function_body_length
+    // swiftlint:disable:next function_body_length
     private func showBabyReadingArrivalCard(notification: EntryNotification) {
         let lang = DashboardStrings.self
         let isMetric = accountService.activeAccount?.weightUnit == .kg

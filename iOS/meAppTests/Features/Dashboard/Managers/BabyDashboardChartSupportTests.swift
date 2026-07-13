@@ -342,7 +342,6 @@ struct BabyDashboardChartSupportTests {
     func heightValueReturnsRecordedLength() {
         let start = cal.date(byAdding: .day, value: -5, to: Date()) ?? Date()
         let ops = makeDailySummaries(count: 5, from: start)
-        // swiftlint:disable:next force_unwrapping
         let target = ops[2]
         let result = BabyDashboardChartSupport.heightValue(on: target.date, in: ops)
         #expect(result == target.babyLengthInches)
