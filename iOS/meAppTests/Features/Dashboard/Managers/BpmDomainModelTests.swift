@@ -57,52 +57,19 @@ struct BpmDomainModelTests {
         let theme = AppColors.Theme.primary.palette
 
         assertColor(AhaPressureClass.normal.color(theme: theme), equals: theme.statusSuccess)
-        assertColor(AhaPressureClass.elevated.color(theme: theme), equals: Color(red: 0.8, green: 0.68, blue: 0.0))
-        assertColor(AhaPressureClass.hypertensionStage1.color(theme: theme), equals: Color(red: 0.66, green: 0.5, blue: 0.0))
+        assertColor(AhaPressureClass.elevated.color(theme: theme), equals: ColorTokens.bpElevated)
+        assertColor(AhaPressureClass.hypertensionStage1.color(theme: theme), equals: ColorTokens.bpStage1)
         assertColor(AhaPressureClass.hypertensionStage2.color(theme: theme), equals: theme.statusError)
-        assertColor(AhaPressureClass.hypertensiveCrisis.color(theme: theme), equals: Color(red: 0.6, green: 0.0, blue: 0.0))
+        assertColor(AhaPressureClass.hypertensiveCrisis.color(theme: theme), equals: ColorTokens.bpCrisis)
     }
 
     @Test("AHA fallback colors stay available outside themed contexts")
     func ahaFallbackColors() {
-        assertColor(AhaPressureClass.normal.fallbackColor, equals: .green)
-        assertColor(AhaPressureClass.elevated.fallbackColor, equals: .yellow)
-        assertColor(AhaPressureClass.hypertensionStage1.fallbackColor, equals: .orange)
-        assertColor(AhaPressureClass.hypertensionStage2.fallbackColor, equals: .red)
-        assertColor(AhaPressureClass.hypertensiveCrisis.fallbackColor, equals: Color(red: 0.6, green: 0.0, blue: 0.0))
-    }
-
-    @Test("BP category classification follows dashboard risk rules")
-    func bpCategoryClassificationThresholds() {
-        let cases: [BpmDomainModelBpCategoryCase] = [
-            BpmDomainModelBpCategoryCase(systolic: 119, diastolic: 79, expected: .normal),
-            BpmDomainModelBpCategoryCase(systolic: 120, diastolic: 79, expected: .elevated),
-            BpmDomainModelBpCategoryCase(systolic: 129, diastolic: 79, expected: .elevated),
-            BpmDomainModelBpCategoryCase(systolic: 119, diastolic: 80, expected: .highStage1),
-            BpmDomainModelBpCategoryCase(systolic: 130, diastolic: 79, expected: .highStage1),
-            BpmDomainModelBpCategoryCase(systolic: 139, diastolic: 89, expected: .highStage1),
-            BpmDomainModelBpCategoryCase(systolic: 140, diastolic: 79, expected: .highStage2),
-            BpmDomainModelBpCategoryCase(systolic: 130, diastolic: 90, expected: .highStage2)
-        ]
-
-        for testCase in cases {
-            #expect(
-                BPCategory.classify(
-                    systolic: testCase.systolic,
-                    diastolic: testCase.diastolic
-                ) == testCase.expected
-            )
-        }
-    }
-
-    @Test("BP category colors use the expected theme accents")
-    func bpCategoryThemeColors() {
-        let theme = AppColors.Theme.primary.palette
-
-        assertColor(BPCategory.normal.color(theme: theme), equals: theme.actionSuccess)
-        assertColor(BPCategory.elevated.color(theme: theme), equals: theme.statusError)
-        assertColor(BPCategory.highStage1.color(theme: theme), equals: theme.actionError)
-        assertColor(BPCategory.highStage2.color(theme: theme), equals: theme.actionError)
+        assertColor(AhaPressureClass.normal.fallbackColor, equals: ColorTokens.green800)
+        assertColor(AhaPressureClass.elevated.fallbackColor, equals: ColorTokens.bpElevated)
+        assertColor(AhaPressureClass.hypertensionStage1.fallbackColor, equals: ColorTokens.bpStage1)
+        assertColor(AhaPressureClass.hypertensionStage2.fallbackColor, equals: ColorTokens.red800)
+        assertColor(AhaPressureClass.hypertensiveCrisis.fallbackColor, equals: ColorTokens.bpCrisis)
     }
 
     @Test("three reading average label adapts to reading count")
@@ -118,12 +85,6 @@ private struct BpmDomainModelAhaCase {
     let systolic: Int
     let diastolic: Int
     let expected: AhaPressureClass
-}
-
-private struct BpmDomainModelBpCategoryCase {
-    let systolic: Int
-    let diastolic: Int
-    let expected: BPCategory
 }
 
 @MainActor

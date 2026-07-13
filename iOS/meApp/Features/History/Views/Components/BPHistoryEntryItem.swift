@@ -24,7 +24,7 @@ struct BPHistoryEntryItem: View {
     private var hasNotes: Bool { !(entry.notes ?? "").isEmpty }
 
     private var pressureColor: Color {
-        BPCategory.classify(systolic: entry.systolic, diastolic: entry.diastolic).color(theme: theme)
+        AhaPressureClass.classify(systolic: entry.systolic, diastolic: entry.diastolic).color(theme: theme)
     }
 
     private var combinedAccessibilityLabel: String {

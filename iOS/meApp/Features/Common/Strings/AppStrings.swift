@@ -11,6 +11,10 @@ import Foundation
 struct CommonStrings {
     static let done = "Done"
     static let ok = "OK"
+    /// Accessibility label for the notes remaining-character counter.
+    static func charactersRemaining(_ count: Int) -> String { "\(count) characters remaining" }
+    /// Accessibility label for the notes character counter shown as current / max.
+    static func charactersCount(_ current: Int, _ max: Int) -> String { "\(current) of \(max) characters" }
     static let retry = "Retry"
     static let cancel = "Cancel"
     static let submit = "Submit"

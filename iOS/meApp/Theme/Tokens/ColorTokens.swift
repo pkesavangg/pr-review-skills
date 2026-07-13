@@ -37,6 +37,11 @@ struct ColorTokens {
     static let yellow100 = Color("yellow-100")
     static let accucheck = Color("accucheck")
 
+    // Blood-pressure classification colors (AHA), light + dark variants
+    static let bpElevated = Color("bp-elevated")
+    static let bpStage1 = Color("bp-stage1")
+    static let bpCrisis = Color("bp-crisis")
+
     static let ggBackground = Color("ggBackground")
     static let ggPrimary = Color("ggPrimary")
     static let ggSecondary100 = Color("ggSecondary100")

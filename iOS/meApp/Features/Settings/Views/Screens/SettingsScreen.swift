@@ -213,7 +213,16 @@ struct SettingsScreen: View {
             })
             .listRowInsets()
             .appAccessibility(id: AccessibilityID.settingsRowAppPermissions)
-            // Notifications moved to the product-scoped "My Weight" section (MOB-417).
+            // Notifications are available for any product (weight / BP / baby), gated on
+            // `shouldShowNotifications` rather than the weight-only section (was MOB-417).
+            if settingsStore.shouldShowNotifications {
+                ActionListItemView(config: ActionListItemConfig(
+                    title: settingsLang.notifications,
+                    value: settingsStore.notificationsOnText,
+                    chevronType: .upDown) { settingsStore.presentNotificationPicker() })
+                .listRowInsets()
+                .appAccessibility(id: AccessibilityID.settingsRowNotifications)
+            }
             ActionListItemView(config: ActionListItemConfig(
                 title: settingsStore.messagesTitleText,
                 showDot: settingsStore.canShowFeedNotificationBadge
@@ -242,12 +251,6 @@ struct SettingsScreen: View {
 
     private func weightScaleSection() -> some View {
         Section(header: sectionHeader(title: settingsLang.myWeight)) {
-            ActionListItemView(config: ActionListItemConfig(
-                title: settingsLang.notifications,
-                value: settingsStore.notificationsOnText,
-                chevronType: .upDown) { settingsStore.presentNotificationPicker() })
-            .listRowInsets()
-            .appAccessibility(id: AccessibilityID.settingsRowNotifications)
             ActionListItemView(config: ActionListItemConfig(
                 title: settingsLang.goalSetting) {
                     router.navigate(to: .goal)

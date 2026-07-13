@@ -75,9 +75,9 @@ struct BabyEntryView: View {
                                     label: babyLang.ounces,
                                     inputType: .metric,
                                     focusField: .ounces,
-                                    maxLength: 4,
-                                    decimalPlaces: 1,
-                                    directDecimalEntry: true
+                                    maxLength: 3,
+                                    clearZeroValue: true,
+                                    decimalPlaces: 1
                                 ),
                                 value: $entryStore.babyForm.ounces.value,
                                 focusedField: $focusedField
