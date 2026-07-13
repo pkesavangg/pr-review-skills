@@ -60,6 +60,10 @@ struct MyAccountsScreen: View {
             ) {
                 accountsStore.canShowAccountSignupScreen = false
                 tabViewModel.selectedTab = .dash
+                // Pop the pushed .myAccounts route so the Settings tab returns to its root
+                // for the newly created account — otherwise the Settings tab stays stuck on
+                // the My Accounts sub-screen (MOB-1482). Mirrors the login/switch callbacks.
+                router.navigateBack()
             }
                 .interactiveDismissDisabled()
         }

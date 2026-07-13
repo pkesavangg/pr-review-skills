@@ -13,6 +13,11 @@ struct BabyHistoryWeek: Identifiable, Equatable, Hashable {
     let weekNumber: Int
     /// Day summaries within this week
     let days: [BabyHistoryDay]
+    /// `true` when any day in this week falls on the baby's birthday (MOB-1164) —
+    /// drives the birthday balloon shown before the week label.
+    var containsBirthday: Bool {
+        days.contains { $0.isBirthday }
+    }
 }
 
 /// Represents a single day summary within baby history.
@@ -39,4 +44,8 @@ struct BabyHistoryDay: Identifiable, Equatable, Hashable {
     let weightDisplay: String
     /// Pre-formatted length string based on account unit preference
     let lengthDisplay: String
+    /// `true` when this day matches the baby's birthday (MOB-1164) — drives the
+    /// birthday balloon shown before the date in the list row and detail header.
+    /// Defaults to `false` when no birthday is set on the profile.
+    var isBirthday: Bool = false
 }

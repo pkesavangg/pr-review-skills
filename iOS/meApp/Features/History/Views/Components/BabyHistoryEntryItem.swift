@@ -46,9 +46,7 @@ struct BabyHistoryEntryItem: View {
 
                 // Weight
                 VStack(alignment: .leading, spacing: 2) {
-                    Text(entry.weightDisplay)
-                        .fontOpenSans(.heading5)
-                        .foregroundStyle(isExpanded ? theme.textInverse : theme.babyScaleColor)
+                    BabyValueText(value: entry.weightDisplay, onDarkBackground: isExpanded)
 
                     Text(HistoryListStrings.weight)
                         .fontOpenSans(.body3)
@@ -58,9 +56,7 @@ struct BabyHistoryEntryItem: View {
 
                 // Length — "--" when no length recorded (handled in weightDisplay/lengthDisplay)
                 VStack(alignment: .leading, spacing: 2) {
-                    Text(entry.lengthDisplay)
-                        .fontOpenSans(.heading5)
-                        .foregroundStyle(isExpanded ? theme.textInverse : theme.babyScaleColor)
+                    BabyValueText(value: entry.lengthDisplay, onDarkBackground: isExpanded)
 
                     Text(HistoryListStrings.length)
                         .fontOpenSans(.body3)
@@ -70,9 +66,10 @@ struct BabyHistoryEntryItem: View {
 
                 // Percentile
                 VStack(alignment: .leading, spacing: 2) {
-                    Text(BabyWeightPercentileCalculator.percentileDisplayText(entry.percentile))
-                        .fontOpenSans(.heading5)
-                        .foregroundStyle(isExpanded ? theme.textInverse : theme.babyScaleColor)
+                    BabyValueText(
+                        value: BabyWeightPercentileCalculator.percentileDisplayText(entry.percentile),
+                        onDarkBackground: isExpanded
+                    )
 
                     Text(HistoryListStrings.percentile)
                         .fontOpenSans(.body3)

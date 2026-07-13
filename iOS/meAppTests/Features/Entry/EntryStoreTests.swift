@@ -210,6 +210,38 @@ struct EntryStoreTests {
         #expect(store.manualEntryForm.weight.errors[.maxValue] == true)
     }
 
+    // MOB-1392: entering exactly the kg cap (450.0) must surface the over-max message and
+    // keep SAVE disabled — previously the inclusive `<=` cap treated 450.0 as valid, so no
+    // weight message showed even though the form was invalid (via the derived BMI).
+    @Test("weight at exactly kg max (450) surfaces over-max message")
+    func weightAtKgMaxBoundaryShowsMessage() {
+        let (store, _, _, accountService) = makeSUT()
+        accountService.activeAccount = AccountTestFixtures.makeAccountSnapshot(id: "entry-account", email: "entry@example.com", isActiveAccount: true, weightUnit: .kg)
+
+        store.refreshWeightUnit()
+        store.manualEntryForm.weight.value = "450"
+        store.manualEntryForm.weight.markAsDirty()
+        store.manualEntryForm.weight.validate()
+
+        #expect(store.weightUnit == .kg)
+        #expect(store.manualEntryForm.weight.errors[.maxValue] == true)
+        #expect(store.getError(for: store.manualEntryForm.weight) == FormErrorMessages.maxWeightKg)
+    }
+
+    @Test("weight just below kg max (449.9) is valid with no message")
+    func weightJustBelowKgMaxIsValid() {
+        let (store, _, _, accountService) = makeSUT()
+        accountService.activeAccount = AccountTestFixtures.makeAccountSnapshot(id: "entry-account", email: "entry@example.com", isActiveAccount: true, weightUnit: .kg)
+
+        store.refreshWeightUnit()
+        store.manualEntryForm.weight.value = "449.9"
+        store.manualEntryForm.weight.markAsDirty()
+        store.manualEntryForm.weight.validate()
+
+        #expect(store.manualEntryForm.weight.errors[.maxValue] == false)
+        #expect(store.getError(for: store.manualEntryForm.weight) == nil)
+    }
+
     @Test("populateFromAppSync converts stored weight to display and enables metrics")
     func populateFromAppSyncConvertsWeight() {
         let (store, _, _, _) = makeSUT()

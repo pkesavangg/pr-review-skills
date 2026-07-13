@@ -27,6 +27,11 @@ final class AccountRepositoryAPI: AccountRepositoryAPIProtocol {
         let productTypes = profile.productTypes ?? [ProductType.weight.apiValue]
         let requiresHeight = productTypes.contains(ProductType.weight.apiValue)
         let requiresGenderAndDob = requiresHeight || productTypes.contains(ProductType.bloodPressure.apiValue)
+        // dob and height are only *required* for weight/BP, but the signup form always
+        // collects a birthday and carries a valid default height, so we send them for
+        // every product (including baby-only). This keeps the account holder's birthday
+        // and height persisted regardless of the product picked, so Settings reflects the
+        // signup birthday and never renders a "0' 0"" height.
         let createAccountRequest = RegisterRequest(
             email: email,
             password: password,
@@ -34,9 +39,9 @@ final class AccountRepositoryAPI: AccountRepositoryAPIProtocol {
             lastName: profile.lastName,
             gender: requiresGenderAndDob ? profile.gender.rawValue : nil,
             zipcode: profile.zipcode,
-            dob: requiresGenderAndDob ? profile.dob : nil,
+            dob: profile.dob,
             weightUnit: profile.weightUnit.rawValue,
-            height: requiresHeight ? profile.height : nil,
+            height: profile.height,
             activityLevel: profile.activityLevel.rawValue,
             productTypes: productTypes,
             measurementUnits: profile.measurementUnits)

@@ -40,4 +40,11 @@ struct BabyProfile: Identifiable, Equatable, Hashable {
     var isPendingSelection: Bool {
         id == Self.pendingSelectionId
     }
+
+    /// Name to show in headers/selectors, falling back to the generic "Baby Scale"
+    /// label when a profile has no name yet (MOB-1164).
+    var displayName: String {
+        let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
+        return trimmed.isEmpty ? ProductTypeStrings.babyScale : trimmed
+    }
 }
