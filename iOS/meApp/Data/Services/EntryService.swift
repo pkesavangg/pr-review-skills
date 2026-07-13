@@ -80,6 +80,23 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
     /// The Bool result indicates whether the load succeeded; piggybacked callers retry on failure.
     private var activeDashboardLoadTasks: [EntryType: Task<Bool, Never>] = [:]
     private var activeBabyDashboardLoadTasks: [String: Task<Bool, Never>] = [:]
+    /// MOB-516: single-flight for the full-table History read. Concurrent callers (History
+    /// tab-switch, entry-saved/deleted reloads, Settings, sync-completion) share ONE worker
+    /// read instead of stacking 2–3 reads on the serial worker — that stacking was the ~6.6 s
+    /// "stuck" History loader after adding an entry.
+    private var activeMonthsLoadTasks: [EntryType: Task<[HistoryMonth], Error>] = [:]
+    /// MOB-516: result cache for the grouped History months. Redundant callers that fire when the
+    /// data hasn't changed — Settings' `hasEntries` check, History `onAppear`/tab re-entry, a
+    /// no-op sync completing — used to each pay a fresh full-table 10k read + grouping (the
+    /// sequential 2–8 s reads that hung the UI on touch right after login). A warm cache serves
+    /// them instantly. Weight (`.scale`) months embed RAW weight values (the view formats per-unit),
+    /// so unit changes do NOT invalidate this — only genuine entry-data changes do. Invalidation
+    /// bumps `entryDataRevision` and clears the cache; see `invalidateMonthsCache()`.
+    private var monthsCacheByType: [EntryType: [HistoryMonth]] = [:]
+    /// Monotonic marker bumped on every entry-data change. `performGetMonthsAll` snapshots it before
+    /// its off-main read and only writes the result to the cache if it is unchanged afterward — so a
+    /// mutation that lands mid-read never poisons the cache with pre-mutation data.
+    private var entryDataRevision = 0
     private var summaryCacheByEntryType: [EntryType: EntrySummaryCacheEntry] = [:]
     private var babySummaryCacheByProfile: [String: EntryBabySummaryCacheEntry] = [:]
     private var streakCacheByEntryType: [EntryType: EntryStreakCacheEntry] = [:]
@@ -129,6 +146,17 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
                     }
                     .store(in: &self.cancellables)
             }
+
+            // MOB-516: invalidate the grouped-months cache the instant any entry changes.
+            // entrySaved/entryDeleted cover every local mutation AND the remote-merge fan-out;
+            // delivery is synchronous on the main actor (no `receive(on:)`), so the cache is
+            // already stale-cleared before any reactive reload's `getMonthsAll` runs. (Updates-only
+            // remote merges emit nothing — `performSync` invalidates directly on `hadChanges`.)
+            Publishers.Merge(self.entrySaved, self.entryDeleted)
+                .sink { [weak self] _ in
+                    self?.invalidateMonthsCache()
+                }
+                .store(in: &self.cancellables)
 
             // Eager push after a local mutation. Every mutation (weight/BP/baby
             // create or delete) emits on entrySaved/entryDeleted, so subscribing
@@ -345,11 +373,18 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
     /// Use this instead of getAllEntries() when you only need to read entry data
     /// to avoid blocking the main thread with toOperationDTO() calls.
     func getAllEntriesAsDTO() async throws -> [BathScaleOperationDTO] {
-        // MOB-1433: fetch + DTO-map off the main actor via the worker. This
-        // feeds the dashboard load, streak, and metrics — the heaviest read on
-        // a 5k-10k-entry account.
+        // MOB-1433: fetch + DTO-map off the main actor via the worker.
+        // MOB-516: the worker is a stock `@ModelActor`; its `DefaultSerialModelExecutor`
+        // runs the job on the CALLING thread, so awaiting it directly from this `@MainActor`
+        // method ran the full-table read on the MAIN thread (cold-login hang). SwiftData
+        // rejects a custom background executor at runtime ("Unexpected executor"), so we
+        // enqueue the worker call from a DETACHED (background) task instead — the stock
+        // executor then runs it off-main. Verify via trace: `fetchEntriesAsDTO` off Main.
         let accountId = try getAccountId()
-        return try await worker.fetchEntriesAsDTO(accountId: accountId, operationType: OperationType.create.rawValue)
+        let worker = self.worker
+        return try await Task.detached(priority: .userInitiated) {
+            try await worker.fetchEntriesAsDTO(accountId: accountId, operationType: OperationType.create.rawValue)
+        }.value
     }
 
     func checkEntryTimestampExists(_ entryTimestamp: String) async throws -> Bool {
@@ -358,8 +393,16 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
     }
 
     func getEntryCount() async throws -> Int {
+        // MOB-516: route the COUNT through the `@ModelActor` worker via a DETACHED task so it
+        // runs off-main. The `@MainActor` `EntryRepository` ran `fetchCount` on the main thread,
+        // where it took the SQLite store lock and stalled behind the concurrent cold-login
+        // merge/read on the same store — a blocked-on-lock main-thread stall (severe hang, ~0% CPU).
+        // Every caller (progress refresh, goal-card gating, sync bookkeeping) benefits at once.
         let accountId = try getAccountId()
-        return try await localRepo.fetchEntryCount(forUserId: accountId)
+        let worker = self.worker
+        return try await Task.detached(priority: .userInitiated) {
+            try await worker.fetchEntryCount(accountId: accountId)
+        }.value
     }
 
     func getOldestEntry() async throws -> Entry? {
@@ -392,17 +435,67 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
 
     // MARK: - Month/History
 
+    /// MOB-516: clears the grouped-months result cache. Called on every entry-data change (the
+    /// entrySaved/entryDeleted sink in `init`, and directly from `performSync` for updates-only
+    /// merges that emit nothing). Bumping `entryDataRevision` also cancels any in-flight read's
+    /// pending cache write (`performGetMonthsAll`), so a mutation mid-read can't cache stale data.
+    private func invalidateMonthsCache() {
+        entryDataRevision &+= 1
+        monthsCacheByType.removeAll()
+    }
+
     func getMonthsAll(entryType: EntryType = .scale) async throws -> [HistoryMonth] {
-        // MOB-1433 read-path follow-up: fetch + group off the main actor. Reading the
-        // full create-history as @Model rows on main (localRepo) blocked the main thread
-        // on 5k-10k-entry accounts, so History froze on open and the shared loader could
-        // not even paint. Fetch lightweight EntryData via the worker, then group/build on
-        // a detached task so none of it runs on main.
+        // MOB-516: serve a warm cache instantly. Redundant callers (Settings `hasEntries`, History
+        // re-entry, a no-op sync completing) then cost nothing instead of a fresh full-table read.
+        // The cache is cleared the moment any entry changes (see `invalidateMonthsCache()`).
+        if let cached = monthsCacheByType[entryType] {
+            return cached
+        }
+        // MOB-516: single-flight so concurrent callers share ONE read instead of stacking
+        // full-table reads on the serial worker. Freshness holds because History triggers its
+        // reads AFTER a mutation commits (and its reload driver reruns once post-mutation), so
+        // a piggybacked in-flight read reflects the current state.
+        if let existing = activeMonthsLoadTasks[entryType] {
+            return try await existing.value
+        }
+        let task = Task<[HistoryMonth], Error> { [weak self] in
+            guard let self else { return [] }
+            return try await self.performGetMonthsAll(entryType: entryType)
+        }
+        activeMonthsLoadTasks[entryType] = task
+        defer {
+            if activeMonthsLoadTasks[entryType] == task {
+                activeMonthsLoadTasks[entryType] = nil
+            }
+        }
+        return try await task.value
+    }
+
+    private func performGetMonthsAll(entryType: EntryType) async throws -> [HistoryMonth] {
+        // MOB-1433 read-path follow-up: fetch + group off the main actor.
+        // MOB-516: the worker fetch was awaited DIRECTLY from this `@MainActor` method, so
+        // the stock `@ModelActor` `DefaultSerialModelExecutor` ran the full-table read on
+        // the MAIN thread (the single biggest cold-login hang cost). SwiftData rejects a
+        // custom background executor at runtime, so we enqueue the worker call from a
+        // DETACHED (background) task — the stock executor then runs the fetch off-main —
+        // and group in the same task. Verify via trace: `fetchAllEntryData` off Main.
         let accountId = try getAccountId()
-        let allEntries = try await worker.fetchAllEntryData(accountId: accountId, operationType: OperationType.create.rawValue)
-        return await Task.detached(priority: .userInitiated) {
-            Self.buildMonthsAll(from: allEntries, entryType: entryType)
+        let worker = self.worker
+        // Snapshot the data revision BEFORE the off-main read; only cache the result if it is still
+        // current afterward (no mutation landed mid-read) — otherwise this caller gets its result
+        // but the cache stays empty so the next call re-reads fresh (MOB-516).
+        let revisionAtStart = entryDataRevision
+        let result = try await Task.detached(priority: .userInitiated) {
+            let allEntries = try await worker.fetchAllEntryData(
+                accountId: accountId,
+                operationType: OperationType.create.rawValue
+            )
+            return Self.buildMonthsAll(from: allEntries, entryType: entryType)
         }.value
+        if entryDataRevision == revisionAtStart {
+            monthsCacheByType[entryType] = result
+        }
+        return result
     }
 
     /// Groups pre-fetched entry data into monthly summaries. `nonisolated` so it runs
@@ -473,7 +566,13 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
         let accountId = try getAccountId()
 
         // Reuse the worker so progress refreshes do not keep creating fresh model contexts.
-        let fetchResult = try await worker.fetchProgressData(accountId: accountId)
+        // MOB-516: enqueue from a detached (background) task so the stock @ModelActor executor
+        // runs this full-table streak read off-main — awaited directly from @MainActor it ran on
+        // the MAIN thread (~18% of the cold-login hang). Verify via trace: `fetchProgressData` off Main.
+        let progressWorker = self.worker
+        let fetchResult = try await Task.detached(priority: .userInitiated) {
+            try await progressWorker.fetchProgressData(accountId: accountId)
+        }.value
         let goalInitial = await getGoalInitialWeight()
         let datasetSignature = Self.makeEntryDataSignature(fetchResult.allEntries)
 
@@ -1111,7 +1210,7 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
         do {
             let hadPushedCreates = await pushUnsyncedEntriesToRemote(accountId: accountId)
 
-            let localEntryCount = try? await localRepo.fetchEntryCount(forUserId: accountId)
+            let localEntryCount = try? await getEntryCount()
             var lastSyncTimestamp = try? await localKVRepo.getLastSyncTimestamp(accountId: accountId)
 
             if localEntryCount == 0 {
@@ -1129,8 +1228,14 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
             // `.operations` recomputes its DTO remap on every access — hold it once.
             let operations = remoteOps.operations
 
-            // Batched merge runs on the @ModelActor, off the main thread (MOB-1433).
-            let mergeResult = try await worker.applyRemoteOperations(operations, accountId: accountId)
+            // Batched merge runs on the @ModelActor. MOB-516: awaited directly from @MainActor,
+            // the stock executor ran the chunked merge/save on the MAIN thread (~27% + the 8.9 s
+            // cold-login hang). Enqueue from a detached (background) task so it runs off-main.
+            // Verify via trace: `applyRemoteOperations` off Main.
+            let mergeWorker = self.worker
+            let mergeResult = try await Task.detached(priority: .userInitiated) {
+                try await mergeWorker.applyRemoteOperations(operations, accountId: accountId)
+            }.value
             await applyMergeSideEffects(mergeResult)
 
             // Remote deletes/updates refresh the dashboard too: the old per-row
@@ -1367,6 +1472,12 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
     /// `entrySaved` emission for the whole batch of new creates, and
     /// integration forwarding of each newly-created entry (MA-3886).
     private func applyMergeSideEffects(_ result: EntryMergeResult) async {
+        // MOB-516: an updates-only remote merge changes local data but emits neither entrySaved
+        // nor entryDeleted, so the sink-based cache invalidation wouldn't fire — clear directly
+        // on any merge change so History never serves pre-merge months.
+        if result.hadChanges {
+            invalidateMonthsCache()
+        }
         for notification in result.deletedNotifications {
             entryDeleted.send(notification)
             do {
@@ -2030,10 +2141,10 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
     /// Update progress and streak based on current entries
     private func updateProgressAndStreakInternal() async {
         do {
-            let accountId = try getAccountId()
             // Run the count and streak refresh together so sync/dashboard updates spend less
-            // wall time waiting on serial data work.
-            async let totalEntriesTask = localRepo.fetchEntryCount(forUserId: accountId)
+            // wall time waiting on serial data work. Both read OFF the main actor now (MOB-516):
+            // getEntryCount() routes through the worker via a detached task; getStreak() already did.
+            async let totalEntriesTask = getEntryCount()
             async let streakTask = getStreak()
             let totalEntries = try await totalEntriesTask
             let streakValue = try await streakTask
