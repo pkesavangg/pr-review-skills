@@ -75,9 +75,13 @@ struct BabyEntryView: View {
                                     label: babyLang.ounces,
                                     inputType: .metric,
                                     focusField: .ounces,
-                                    maxLength: 3,
+                                    // Literal (as-typed) decimal entry so "6" stays "6" and
+                                    // "6.5" stays "6.5", matching BabyHistoryEditSheet. maxLength
+                                    // is 4 so the max "15.9" (4 chars incl. ".") fits in literal mode.
+                                    maxLength: 4,
                                     clearZeroValue: true,
-                                    decimalPlaces: 1
+                                    decimalPlaces: 1,
+                                    directDecimalEntry: true
                                 ),
                                 value: $entryStore.babyForm.ounces.value,
                                 focusedField: $focusedField

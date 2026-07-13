@@ -1900,7 +1900,9 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
     private nonisolated func avgLengthInches(_ lengthsMm: [Int]) -> Double? {
         let recorded = lengthsMm.filter { $0 > 0 }
         guard !recorded.isEmpty else { return nil }
-        let avgMm = recorded.reduce(0, +) / recorded.count
+        // Average in Double and round to the nearest mm rather than integer-dividing, so the
+        // fractional part isn't silently truncated (e.g. [201, 202] → 202mm, not 201mm).
+        let avgMm = Int((Double(recorded.reduce(0, +)) / Double(recorded.count)).rounded())
         return ConversionTools.convertBabyMmToInches(avgMm)
     }
 
