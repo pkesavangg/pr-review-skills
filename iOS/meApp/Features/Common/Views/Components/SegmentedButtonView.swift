@@ -16,6 +16,8 @@ struct SegmentedButtonView<T: CaseIterable & RawRepresentable & Identifiable & H
     /// horizontal ScrollView so it can actually scroll under Dynamic Type.
     var usesIntrinsicWidth: Bool = false
     /// Opt-in — stretches the row to fill its container while guaranteeing each
+    /// segment keeps at least its natural label width, so extra space is shared
+    /// across segments without any label ever truncating.
     var fillsAvailableWidth: Bool = false
     /// Opt-in — returns a stable accessibility identifier for each segment so
     /// UI tests can tap a specific tab by name. Pass `nil` to leave segments
