@@ -7,8 +7,9 @@ import com.dmdbrands.gurus.weight.domain.model.api.entry.EntryCategory
 import com.dmdbrands.gurus.weight.domain.model.common.GroupedHistory
 import com.dmdbrands.gurus.weight.domain.model.common.ProductSelection
 import com.dmdbrands.gurus.weight.domain.repository.IDeviceService
-import com.dmdbrands.gurus.weight.features.common.enums.DeviceSetupType
+import com.dmdbrands.gurus.weight.domain.repository.IProductSelectionRepository
 import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.first
 import com.dmdbrands.gurus.weight.domain.services.IEntryService
 import com.dmdbrands.gurus.weight.domain.services.IExportService
 import com.dmdbrands.gurus.weight.domain.services.IEntryReadService
@@ -29,6 +30,7 @@ constructor(
   private val entryReadService: IEntryReadService,
   private val entryCursorPager: com.dmdbrands.gurus.weight.data.services.EntryCursorPager,
   private val deviceService: IDeviceService,
+  private val productSelectionRepository: IProductSelectionRepository,
 ) : BaseIntentViewModel<HistoryState, HistoryIntent>(
   HistoryReducer(),
 ) {
@@ -73,19 +75,31 @@ constructor(
   private var deviceJob: Job? = null
 
   /**
-   * Observe paired devices and derive per-product device-presence flags, so the History
-   * empty state can distinguish "no device connected" from "device connected, no entries
-   * yet" and show the right copy + CTA per product. (MOB-1221)
+   * Derive per-product device-presence flags so the History empty state can distinguish
+   * "no device connected" from "device connected, no entries yet" and show the right copy +
+   * CTA per product. (MOB-1221)
+   *
+   * Re-evaluates whenever the paired-device set changes, but reads presence from the
+   * app-standard sources — `IDeviceService.hasWeightScale`, `IProductSelectionManager
+   * .hasBabyScaleDevice`, `IProductSelectionRepository.hasBpmDevice` — rather than
+   * re-classifying the raw `pairedScales` list by `deviceType`. A baby scale can surface
+   * under a weight-scale device type in that raw list (MOB-1175), which would set the wrong
+   * flag; using the shared APIs keeps History consistent with Settings/Dashboard. (PR #2242)
    */
   private fun observeDeviceFlags() {
     if (deviceJob != null) return // already observing
     deviceJob = viewModelScope.launch {
-      deviceService.pairedScales.collect { devices ->
+      deviceService.pairedScales.collect {
+        val accountId = entryReadService.accountId
         handleIntent(
           HistoryIntent.SetDeviceFlags(
-            hasWeightDevice = devices.any { DeviceSetupType.isWeightScale(it.deviceType) },
-            hasBpmDevice = devices.any { DeviceSetupType.isBloodPressure(it.deviceType) },
-            hasBabyDevice = devices.any { DeviceSetupType.isBabyScale(it.deviceType) },
+            hasWeightDevice = deviceService.hasWeightScale.first(),
+            hasBpmDevice = if (accountId.isNullOrEmpty()) {
+              false
+            } else {
+              productSelectionRepository.hasBpmDevice(accountId)
+            },
+            hasBabyDevice = productSelectionManager.hasBabyScaleDevice.value,
           ),
         )
       }
