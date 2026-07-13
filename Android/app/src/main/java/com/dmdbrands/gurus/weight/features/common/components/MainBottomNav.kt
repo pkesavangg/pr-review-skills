@@ -21,6 +21,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.testTag
+import com.dmdbrands.gurus.weight.core.shared.utilities.testing.TestTags
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Offset
@@ -91,6 +93,9 @@ fun MainBottomNav(
         val icon = if (isSelected && item.selectedIcon != null) item.selectedIcon else item.icon
         if (!showAppsync && item.label === DashboardString.BottomNav.appsync) return@Row
         NavigationBarItem(
+          modifier = Modifier.testTag(
+            "${TestTags.Dashboard.TabBarItem}_${item.route.toString().lowercase()}",
+          ),
           icon = {
             BadgedBox(
               badge = {

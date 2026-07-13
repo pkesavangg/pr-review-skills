@@ -11,6 +11,9 @@ import com.dmdbrands.gurus.weight.data.storage.db.entity.entry.EntryEntity
 import com.dmdbrands.gurus.weight.domain.model.common.WeightUnit
 import com.dmdbrands.gurus.weight.domain.model.storage.entry.ScaleEntry
 import com.dmdbrands.gurus.weight.domain.model.storage.entry.ScaleEntryWithMetrics
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.testTag
+import com.dmdbrands.gurus.weight.core.shared.utilities.testing.TestTags
 import com.dmdbrands.gurus.weight.features.common.components.AppSwipeableActionItem
 import com.dmdbrands.gurus.weight.features.common.components.AppSwipeableList
 import com.dmdbrands.gurus.weight.features.common.components.AppSwipeableListActions
@@ -53,6 +56,7 @@ fun WeightHistoryDetailList(
           // Destructive swipe fill uses the Status/danger background token, not the text/error
           // token (same red, but the correct role) — matches every other swipe-to-delete. (MOB-1259)
           backgroundColor = MeTheme.colorScheme.danger,
+          modifier = Modifier.testTag(TestTags.History.DeleteButton),
         ) {
           onItemDelete(item)
         }

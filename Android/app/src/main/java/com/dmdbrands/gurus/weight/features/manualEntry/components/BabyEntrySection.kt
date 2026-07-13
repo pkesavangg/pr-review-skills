@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
+import com.dmdbrands.gurus.weight.core.shared.utilities.testing.TestTags
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.text.input.ImeAction
@@ -64,6 +65,7 @@ fun BabyEntrySection(
         imeAction = ImeAction.Done,
         onImeAction = onImeAction,
         maxLength = if (isMetric) 4 else 3,
+        testTag = TestTags.ManualEntry.BabyLengthField,
         modifier = Modifier
             .fillMaxWidth()
             .focusRequester(lengthFocusRequester),
@@ -115,6 +117,7 @@ private fun BabyWeightInput(
                     imeAction = ImeAction.Next,
                     nextFocusRequester = weightOzFocusRequester,
                     maxLength = 3,
+                    testTag = TestTags.ManualEntry.BabyWeightField,
                     modifier = Modifier
                         .fillMaxWidth()
                         .focusRequester(weightFocusRequester),
@@ -145,6 +148,7 @@ private fun BabyWeightInput(
             imeAction = ImeAction.Next,
             nextFocusRequester = lengthFocusRequester,
             maxLength = 5,
+            testTag = TestTags.ManualEntry.BabyWeightField,
             modifier = Modifier
                 .fillMaxWidth()
                 .focusRequester(weightFocusRequester),
