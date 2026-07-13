@@ -465,31 +465,24 @@ struct GraphDataPreparer { // swiftlint:disable:this type_body_length
     }
 
     // MARK: - Binary Search Helpers (O(log n))
+    //
+    // Thin instance-scoped wrappers preserved for the existing `[BathScaleWeightSummary]`
+    // call sites in this file. The algorithm now lives once in the generic `SortedArrayIndex`
+    // so it can be reused on other sorted arrays (e.g. `[PlottedGraphSeries]` in the chart
+    // content) without duplicating the loop (MOB-518).
 
     func binarySearchFirst(
         in operations: [BathScaleWeightSummary],
         where predicate: (BathScaleWeightSummary) -> Bool
     ) -> Int? {
-        guard !operations.isEmpty else { return nil }
-        var low = 0, high = operations.count
-        while low < high {
-            let mid = (low + high) / 2
-            predicate(operations[mid]) ? (high = mid) : (low = mid + 1)
-        }
-        return low < operations.count ? low : nil
+        SortedArrayIndex.first(in: operations, where: predicate)
     }
 
     func binarySearchLast(
         in operations: [BathScaleWeightSummary],
         where predicate: (BathScaleWeightSummary) -> Bool
     ) -> Int? {
-        guard !operations.isEmpty else { return nil }
-        var low = 0, high = operations.count
-        while low < high {
-            let mid = (low + high) / 2
-            predicate(operations[mid]) ? (low = mid + 1) : (high = mid)
-        }
-        return low > 0 ? low - 1 : nil
+        SortedArrayIndex.last(in: operations, where: predicate)
     }
 
     // MARK: - Private Helpers
@@ -697,5 +690,39 @@ private extension Calendar {
         formatter.timeZone = timeZone
         formatter.dateFormat = format
         return formatter.string(from: date)
+    }
+}
+
+// MARK: - Generic Sorted-Array Index Search (O(log n))
+
+/// O(log n) index search over an array that is sorted so the predicate is *monotonic*.
+///
+/// - `first`: the predicate goes `false … false, true … true`; returns the index of the
+///   first `true` element (nil if none is true).
+/// - `last`: the predicate goes `true … true, false … false`; returns the index of the
+///   last `true` element (nil if none is true).
+///
+/// Kept type-agnostic so any sorted collection can slice/locate neighbours without an
+/// O(n) scan — used by `GraphDataPreparer` on `[BathScaleWeightSummary]` and by the chart
+/// content on `[PlottedGraphSeries]` (MOB-518).
+enum SortedArrayIndex {
+    static func first<T>(in elements: [T], where predicate: (T) -> Bool) -> Int? {
+        guard !elements.isEmpty else { return nil }
+        var low = 0, high = elements.count
+        while low < high {
+            let mid = (low + high) / 2
+            predicate(elements[mid]) ? (high = mid) : (low = mid + 1)
+        }
+        return low < elements.count ? low : nil
+    }
+
+    static func last<T>(in elements: [T], where predicate: (T) -> Bool) -> Int? {
+        guard !elements.isEmpty else { return nil }
+        var low = 0, high = elements.count
+        while low < high {
+            let mid = (low + high) / 2
+            predicate(elements[mid]) ? (low = mid + 1) : (high = mid)
+        }
+        return low > 0 ? low - 1 : nil
     }
 }

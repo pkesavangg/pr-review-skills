@@ -14,9 +14,18 @@ enum DashboardConstants {
     // MARK: - Time Intervals
     enum TimeInterval {
         static let day: Foundation.TimeInterval = 24 * 60 * 60
-        /// Week viewport length used for chart scrolling/visible-domain behavior.
-        /// Intentionally wider than 7 days for UX spacing.
+        /// Week viewport length for the **legacy** chart engine (baby/BPM) + the shared axis/padding
+        /// geometry. Kept at 7.15 days (7 days + ~3.6 h of right-edge UX padding) so the shipped baby/BPM
+        /// week view is byte-identical. The v2 WEIGHT engine uses `weightWeekWindow` instead (see below) —
+        /// MOB-518 review: the earlier flat 7 here silently narrowed the baby/BPM week window ~2%.
         static let week: Foundation.TimeInterval = 7.15 * 24 * 60 * 60
+        /// MOB-518 — v2 WEIGHT engine week viewport: exactly 7 days so the visible window == the weekly
+        /// alignment stride (Sunday→Sunday). This `page == period == alignment unit` property lets
+        /// `ValueAlignedChartScrollTargetBehavior` land the scroll on a week boundary during deceleration
+        /// (Apple Health parity) with no post-release snap. Weight-only, threaded via
+        /// `GraphRenderingConfiguration.visibleDomainLength(…, weekWindow:)` — the legacy engine keeps
+        /// `week` (7.15) so baby/BPM are unaffected.
+        static let weightWeekWindow: Foundation.TimeInterval = 7 * 24 * 60 * 60
         /// Strict calendar week length (7 days) for week-boundary calculations.
         static let calendarWeek: Foundation.TimeInterval = 7 * 24 * 60 * 60
         static let month: Foundation.TimeInterval = 32 * 24 * 60 * 60

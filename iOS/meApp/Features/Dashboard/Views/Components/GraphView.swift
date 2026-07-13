@@ -25,6 +25,14 @@ struct GraphView: View {
     // back doesn't override a user's intentional manual clear.
     @State private var didInitialSelect = false
 
+    /// MOB-518 V6: the v2 weight-chart engine (`WeightChartHost`) is now the weight renderer. Baby/BPM
+    /// keep the legacy `BaseGraphView` engine below (the two share it), so this is gated on the product
+    /// type, not a toggle. When true, the host owns period/scroll/model and the legacy section-VM machinery
+    /// must NOT run for weight (see the `selectedPeriod` handler / `chartView`).
+    private var usesNewWeightEngine: Bool {
+        dashboardStore.productType == .scale
+    }
+
     /// Latest entry date in the active period — used to drive first-appear / initial-load auto-select.
     private var latestEntryDate: Date? {
         // A baby with no real readings would otherwise auto-select a phantom point from the
@@ -34,8 +42,17 @@ struct GraphView: View {
         return dashboardStore.continuousOperations.max { $0.date < $1.date }?.date
     }
 
-    // Whether the selection callout is currently visible for the active period
+    // Whether the selection callout is currently visible for the active period. When true, the date/range
+    // label above the chart is hidden (opacity 0) — the selected date is shown by the callout instead
+    // (floating above the line for the new engine; the legacy floating callout otherwise), so it must not
+    // ALSO appear under the weight.
     private var isShowingSelectionCallout: Bool {
+        // MOB-518: the new weight engine drives selection through the STORE, not the section VMs (which stay
+        // unselected for weight). Read the store's crosshair so the redundant selected-date label under the
+        // weight hides on selection, matching the legacy behaviour.
+        if usesNewWeightEngine {
+            return dashboardStore.state.graph.showCrosshair
+        }
         switch dashboardStore.state.graph.selectedPeriod {
         case .week:
             return weekSectionViewModel.showCrosshair
@@ -87,6 +104,12 @@ struct GraphView: View {
         .onChange(of: dashboardStore.state.graph.selectedPeriod) { _, newValue in
             // PERFORMANCE: Cancel any pending period change configuration
             periodChangeTask?.cancel()
+
+            // MOB-518 V-A4: the new weight engine's host (`WeightChartHost`) reacts to the period change
+            // itself (adopts the new anchor + rebuilds its model), so skip the entire legacy section-VM
+            // machinery (clear ×4 / tearDown / configure / forceScrollPositionUpdate / updateYAxisCache).
+            // Running it here for the new engine was pure wasted work on every switch — the #2 heaviness.
+            guard !usesNewWeightEngine else { return }
 
             // Note: The anchor-based scroll position is already calculated and set by
             // WeightTrendView.onChange(of: localSelectedPeriod) before this handler runs.
@@ -215,6 +238,10 @@ struct GraphView: View {
             // No real baby readings yet — show the empty grid instead of plotting the
             // dummy summaries that `continuousOperations` falls back to (matches design mock).
             BabyEmptyGraphView()
+        } else if usesNewWeightEngine {
+            // MOB-518 v2 engine — the weight renderer (V6). Baby/BPM never reach here (they use the
+            // legacy BaseGraphView engine in the else branch below).
+            WeightChartHost(dashboardStore: dashboardStore)
         } else {
             HStack(spacing: 0) {
                 switch dashboardStore.state.graph.selectedPeriod {
