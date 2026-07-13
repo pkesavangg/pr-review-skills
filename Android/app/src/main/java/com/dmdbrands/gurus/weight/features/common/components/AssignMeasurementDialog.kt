@@ -45,6 +45,7 @@ import com.dmdbrands.gurus.weight.domain.model.common.BabyProfile
 import com.dmdbrands.gurus.weight.features.common.helper.MeasurementType
 import com.dmdbrands.gurus.weight.features.common.helper.rememberMeasurementText
 import com.dmdbrands.gurus.weight.features.common.strings.ReadingToastStrings
+import com.dmdbrands.gurus.weight.core.shared.utilities.testing.exposeTestTagsAsResourceId
 import com.dmdbrands.gurus.weight.theme.MeAppTheme
 import com.dmdbrands.gurus.weight.theme.MeTheme
 import com.dmdbrands.gurus.weight.theme.MeTheme.colorScheme
@@ -58,6 +59,7 @@ const val ASSIGN_NEW_BABY_ID = "__assign_new_baby__"
 /** Max height of the scrollable baby list before it scrolls, keeping the actions on-screen. */
 private val BABY_LIST_MAX_HEIGHT = 280.dp
 
+@Suppress("LongMethod")
 @Composable
 fun AssignMeasurementDialog(
     reading: String,
@@ -76,6 +78,7 @@ fun AssignMeasurementDialog(
     ) {
         Card(
             modifier = Modifier
+                .exposeTestTagsAsResourceId()
                 .padding(horizontal = MeTheme.spacing.md)
                 .fillMaxWidth(),
             shape = RoundedCornerShape(MeTheme.borderRadius.lg),
