@@ -499,7 +499,10 @@ class ExportServiceTest {
     @Test
     fun `exportEntriesCsv email mode forwards category and babyId and shows success toast`() =
         runTest(mainDispatcherRule.scheduler) {
-            coEvery { entryRepository.exportEntriesCsv(any(), any(), any(), any()) } returns null
+            // A genuine 2xx email response carries a (possibly empty) body. A non-2xx now throws
+            // in the repository, so reaching this success path implies a real success.
+            coEvery { entryRepository.exportEntriesCsv(any(), any(), any(), any()) } returns
+                okhttp3.ResponseBody.create(null, "{\"sent\":true}")
 
             service.exportEntriesCsv(category = "baby", babyId = "baby-1", download = false)
 

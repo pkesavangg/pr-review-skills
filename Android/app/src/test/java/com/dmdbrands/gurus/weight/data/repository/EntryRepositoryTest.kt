@@ -525,14 +525,17 @@ class EntryRepositoryTest {
     }
 
     @Test
-    fun `exportEntriesCsv returns null when response unsuccessful`() = runTest {
+    fun `exportEntriesCsv throws HttpException when response unsuccessful`() = runTest {
         val errorBody = okhttp3.ResponseBody.create(null, "err")
         coEvery { entryApi.exportEntriesCsv(any(), any(), any(), any()) } returns
             retrofit2.Response.error(500, errorBody)
 
-        val result = repository.exportEntriesCsv("weight", download = false, utcOffset = 5)
-
-        assertThat(result).isNull()
+        // A non-2xx must surface as a failure so the email export path cannot report
+        // "sent" on a rejected request; it previously collapsed to a null body.
+        val ex = assertFailsWith<retrofit2.HttpException> {
+            repository.exportEntriesCsv("weight", download = false, utcOffset = 5)
+        }
+        assertThat(ex.code()).isEqualTo(500)
     }
 
     @Test
