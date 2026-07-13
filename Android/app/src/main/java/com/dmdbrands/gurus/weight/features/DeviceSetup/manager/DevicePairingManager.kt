@@ -269,12 +269,18 @@ class DevicePairingManager(
             val userList = withTimeoutOrNull(USER_LIST_TIMEOUT_MS) {
                 suspendCancellableCoroutine { continuation ->
                     ggDeviceService.getUsers(scale.toGGBTDevice()) { response ->
-                        if (duplicateUserName != null) {
-                            val user = response.user.first { it.name == duplicateUserName }
-                            onIntent(BtWifiScaleSetupIntent.SetDuplicateUser(user))
+                        // Ignore a late BLE callback that arrives after the 15s timeout already
+                        // cancelled the continuation (Bluetooth switched off) — otherwise its side
+                        // effects (duplicate-user intent, onSuccess) fire a stale state transition
+                        // over the already-set failed state (MOB-248).
+                        if (continuation.isActive) {
+                            if (duplicateUserName != null) {
+                                val user = response.user.first { it.name == duplicateUserName }
+                                onIntent(BtWifiScaleSetupIntent.SetDuplicateUser(user))
+                            }
+                            continuation.resume(response.user)
+                            onSuccess?.invoke()
                         }
-                        if (continuation.isActive) continuation.resume(response.user)
-                        onSuccess?.invoke()
                     }
                 }
             }

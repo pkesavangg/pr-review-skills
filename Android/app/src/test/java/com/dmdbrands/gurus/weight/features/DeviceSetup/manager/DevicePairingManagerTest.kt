@@ -19,6 +19,7 @@ import com.google.common.truth.Truth.assertThat
 import io.mockk.coEvery
 import io.mockk.every
 import io.mockk.mockk
+import io.mockk.slot
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.test.StandardTestDispatcher
@@ -199,6 +200,35 @@ class DevicePairingManagerTest {
         scope.testScheduler.advanceUntilIdle()
 
         assertThat(currentSteps()).contains(BtWifiSetupStep.USER_LIMIT_REACHED)
+    }
+
+    @Test
+    fun `a late getUsers callback after the user-list timeout does not fire a stale transition`() {
+        // MOB-248: MEMORY_FULL routes to fetchUserList(onSuccess = SetCurrentStep(USER_LIMIT_REACHED)).
+        // If Bluetooth dies, getUsers can call back LATE — after the 15s timeout already surfaced a
+        // retryable error. That late callback must be ignored (continuation no longer active), or it
+        // would yank the user off the error screen onto USER_LIMIT_REACHED.
+        val userListTimeoutMs = 15_000L
+        discoveredScale = Device()
+        state = BtWifiScaleSetupState(currentStep = BtWifiSetupStep.CONNECTING_BLUETOOTH)
+        every { ggDeviceService.pairDevice(any(), any(), any(), any()) } answers {
+            lastArg<(GGUserActionResponseType) -> Unit>().invoke(GGUserActionResponseType.MEMORY_FULL)
+        }
+        // Capture the getUsers callback instead of invoking it — reproduces the dead BLE link.
+        val userCb = slot<(GGScaleUserResponse) -> Unit>()
+        every { ggDeviceService.getUsers(any(), capture(userCb)) } answers { }
+
+        manager().connectToBluetooth()
+        scope.testScheduler.runCurrent()
+        // The user-list timeout fires and surfaces the retryable error.
+        scope.testScheduler.advanceTimeBy(userListTimeoutMs + 1)
+        scope.testScheduler.runCurrent()
+        // Bluetooth answers late, after the timeout already gave up.
+        userCb.captured.invoke(mockk(relaxed = true))
+        scope.testScheduler.advanceUntilIdle()
+
+        assertThat(btStates()).contains(ConnectionState.Failed.Error)           // timeout error stands
+        assertThat(currentSteps()).doesNotContain(BtWifiSetupStep.USER_LIMIT_REACHED) // late onSuccess ignored
     }
 
     // -------------------------------------------------------------------------
