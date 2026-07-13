@@ -17,35 +17,31 @@ struct A3BpmModelSelectionView: View {
     private let columns = [GridItem(.flexible()), GridItem(.flexible())]
 
     var body: some View {
-        GeometryReader { geometry in
-            ScrollView(.vertical, showsIndicators: false) {
-                VStack(alignment: .leading, spacing: .spacingLG) {
-                    VStack(alignment: .leading, spacing: .spacingXS) {
-                        Text(lang.title)
-                            .fontOpenSans(.heading4)
-                            .foregroundColor(theme.textHeading)
+        ScrollView(.vertical, showsIndicators: false) {
+            VStack(alignment: .leading, spacing: .spacingLG) {
+                VStack(alignment: .leading, spacing: .spacingXS) {
+                    Text(lang.title)
+                        .fontOpenSans(.heading4)
+                        .foregroundColor(theme.textHeading)
 
-                        Text(lang.description)
-                            .fontOpenSans(.body2)
-                            .foregroundColor(theme.textBody)
-                    }
-                    .accessibilityElement(children: .combine)
+                    Text(lang.description)
+                        .fontOpenSans(.body2)
+                        .foregroundColor(theme.textBody)
+                }
+                .accessibilityElement(children: .combine)
 
-                    LazyVGrid(columns: columns, spacing: .spacingMD) {
-                        ForEach(models) { model in
-                            BpmModelCard(
-                                model: model,
-                                isSelected: model.sku == selectedSku
-                            ) {
-                                onSelect(model.sku)
-                            }
+                LazyVGrid(columns: columns, spacing: .spacingMD) {
+                    ForEach(models) { model in
+                        BpmModelCard(
+                            model: model,
+                            isSelected: model.sku == selectedSku
+                        ) {
+                            onSelect(model.sku)
                         }
                     }
                 }
-                // MOB-1247: centre setup-slide content to match `ScaleSetupIntroView`.
-                .frame(maxWidth: .infinity)
-                .frame(minHeight: geometry.size.height, alignment: .center)
             }
+            .padding(.top, .spacingLG)
         }
     }
 }

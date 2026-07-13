@@ -366,6 +366,61 @@ struct MyKidsStoreTests {
         #expect(attempted == true)
     }
 
+    // MARK: - refreshDuplicateBabyNameError
+
+    @Test("refreshDuplicateBabyNameError flags a name that matches an existing baby")
+    func refreshDuplicate_matchesExisting_setsError() {
+        let sut = makeSUT()
+        let store = sut.store
+        store.babies = [Baby(accountId: "acct-1", name: "Aria")]
+        store.babyProfileForm.name.value = "aria"
+
+        let isDuplicate = store.refreshDuplicateBabyNameError()
+
+        #expect(isDuplicate == true)
+        #expect(store.babyProfileForm.duplicateNameError == BabyScaleSetupStrings.BabyProfile.duplicateNameError)
+    }
+
+    @Test("refreshDuplicateBabyNameError excludes the baby currently being edited")
+    func refreshDuplicate_excludesEditingBaby() {
+        let sut = makeSUT()
+        let store = sut.store
+        let baby = Baby(accountId: "acct-1", name: "Aria")
+        store.babies = [baby]
+        store.editBaby(baby)
+        store.babyProfileForm.name.value = "Aria"
+
+        let isDuplicate = store.refreshDuplicateBabyNameError()
+
+        #expect(isDuplicate == false)
+        #expect(store.babyProfileForm.duplicateNameError == nil)
+    }
+
+    @Test("refreshDuplicateBabyNameError allows a unique name")
+    func refreshDuplicate_uniqueName_clearsError() {
+        let sut = makeSUT()
+        let store = sut.store
+        store.babies = [Baby(accountId: "acct-1", name: "Aria")]
+        store.babyProfileForm.name.value = "Bella"
+
+        #expect(store.refreshDuplicateBabyNameError() == false)
+        #expect(store.babyProfileForm.duplicateNameError == nil)
+    }
+
+    @Test("isSaveEnabled is false while the name duplicates an existing baby")
+    func isSaveEnabled_falseWhenDuplicateNameError() {
+        let sut = makeSUT()
+        let store = sut.store
+        store.babies = [Baby(accountId: "acct-1", name: "Aria")]
+        store.babyProfileForm.name.value = "Aria"
+        store.babyProfileForm.birthday.value = Date()
+        store.babyProfileForm.biologicalSex.value = "male"
+
+        store.refreshDuplicateBabyNameError()
+
+        #expect(store.isSaveEnabled == false)
+    }
+
     // MARK: - preferredWeightUnit (Edit a Baby unit derives from baby measurementUnits, MOB-1471)
 
     /// Editing a baby must derive the form's weight unit from the account's "My Kids"

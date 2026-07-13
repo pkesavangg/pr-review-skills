@@ -21,9 +21,10 @@ final class MyKidsStore: ObservableObject {
     /// Form used by the add/edit baby sheet.
     @Published var babyProfileForm = BabyProfileSetupForm()
 
-    /// Save is enabled when the form is valid AND (adding a new baby OR the form has been edited).
+    /// Save is enabled when the form is valid, the name isn't a duplicate, AND
+    /// (adding a new baby OR the form has been edited).
     var isSaveEnabled: Bool {
-        guard babyProfileForm.isProfileValid else { return false }
+        guard babyProfileForm.isProfileValid, babyProfileForm.duplicateNameError == nil else { return false }
         if editingBaby != nil { return isFormDirty }
         return true
     }
@@ -60,6 +61,7 @@ final class MyKidsStore: ObservableObject {
         babyProfileForm.formDidChange
             .receive(on: DispatchQueue.main)
             .sink { [weak self] in
+                self?.refreshDuplicateBabyNameError()
                 self?.objectWillChange.send()
             }
             .store(in: &cancellables)
@@ -87,6 +89,11 @@ final class MyKidsStore: ObservableObject {
     func saveBabyProfile() async {
         let name = babyProfileForm.name.value.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !name.isEmpty else { return }
+
+        // A locally-detected duplicate already disables SAVE, but guard here too in case
+        // the check hasn't re-run yet. This also clears any stale duplicate-name error
+        // (refreshDuplicateNameError sets duplicateNameError to nil when there's no match).
+        guard !refreshDuplicateBabyNameError() else { return }
 
         let birthday = babyProfileForm.birthday.value
         let biologicalSex = babyProfileForm.biologicalSex.value.isEmpty
@@ -125,11 +132,28 @@ final class MyKidsStore: ObservableObject {
             isShowingAddBaby = false
             editingBaby = nil
         } catch {
-            // Surface the failure instead of silently swallowing it — otherwise SAVE looks unresponsive.
             notificationService.dismissLoader()
-            notificationService.showToast(ToastModel(title: ToastStrings.somethingWentWrongTitle, message: lang.saveFailed))
             LoggerService.shared.log(level: .error, tag: "MyKidsStore", message: "Failed to save baby: \(error)")
+            if HTTPError.isConflict(error) {
+                // Surface the server 409 as an inline field error rather than a generic toast.
+                babyProfileForm.duplicateNameError = BabyScaleSetupStrings.BabyProfile.duplicateNameError
+            } else {
+                // Surface the failure instead of silently swallowing it — otherwise SAVE looks unresponsive.
+                notificationService.showToast(ToastModel(title: ToastStrings.somethingWentWrongTitle, message: lang.saveFailed))
+            }
         }
+    }
+
+    /// Re-evaluates whether the current name duplicates an already-saved baby's name and sets or
+    /// clears `duplicateNameError` accordingly. Called on every name change so the error surfaces
+    /// (and SAVE disables) as soon as a duplicate is typed — without waiting for the server 409.
+    /// Delegates the comparison to the shared `BabyProfileSetupForm` helper.
+    @discardableResult
+    func refreshDuplicateBabyNameError() -> Bool {
+        let otherNames = babies
+            .filter { $0.id != editingBaby?.id }
+            .map(\.name)
+        return babyProfileForm.refreshDuplicateNameError(against: otherNames)
     }
 
     // MARK: - Delete
