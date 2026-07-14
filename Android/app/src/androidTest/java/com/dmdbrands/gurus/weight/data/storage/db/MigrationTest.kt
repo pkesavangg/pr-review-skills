@@ -345,10 +345,10 @@ class MigrationTest {
             close()
         }
 
-        // --- Run the FULL chain 1 → 8 ------------------------------------------------
+        // --- Run the FULL chain 1 → 10 -----------------------------------------------
         val db = helper.runMigrationsAndValidate(
             TEST_DB,
-            8,
+            10,
             true,
             AppDatabase.MIGRATION_1_2,
             AppDatabase.MIGRATION_2_3,
@@ -357,6 +357,8 @@ class MigrationTest {
             AppDatabase.MIGRATION_5_6,
             AppDatabase.MIGRATION_6_7,
             AppDatabase.MIGRATION_7_8,
+            AppDatabase.MIGRATION_8_9,
+            AppDatabase.MIGRATION_9_10,
         )
 
         // --- Account survived --------------------------------------------------------
@@ -379,6 +381,8 @@ class MigrationTest {
             assertThat(cursor.getInt(cursor.getColumnIndexOrThrow("diastolic"))).isEqualTo(80)
             assertThat(cursor.getString(cursor.getColumnIndexOrThrow("note")))
                 .isEqualTo("morning reading")
+            // MIGRATION_8_9 (MOB-1173) adds the nullable source column; legacy rows are null.
+            assertThat(cursor.isNull(cursor.getColumnIndexOrThrow("source"))).isTrue()
         }
 
         // --- baby_profiles → baby (id→babyId, biologicalSex→sex), data preserved -----

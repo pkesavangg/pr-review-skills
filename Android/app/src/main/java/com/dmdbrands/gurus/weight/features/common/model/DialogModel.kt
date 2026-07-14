@@ -94,6 +94,10 @@ sealed class Toast {
         override val message: String,
         val title: String? = null,
         val action: ActionButton? = null,
+        /** Optional leading drawable res shown before the text (e.g. restore/trash). */
+        val icon: Int? = null,
+        /** Error variant — pink background + red message (e.g. "Couldn't delete!"). */
+        val isError: Boolean = false,
     ) : Toast()
 
     data class Custom(val content: ToastContent) : Toast() {

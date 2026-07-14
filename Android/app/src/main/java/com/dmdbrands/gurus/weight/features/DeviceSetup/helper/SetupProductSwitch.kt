@@ -9,8 +9,8 @@ import com.dmdbrands.gurus.weight.domain.services.IProductSelectionManager
  * After a device-setup flow completes, the newly added device's product becomes the
  * active product and the single-product dashboard is surfaced (snapshot mode off), so the
  * header reflects what the user intentionally set up. A null [selection] is a no-op, for
- * flows that should leave the active product unchanged (e.g. baby-scale setup, which is not
- * bound to a specific baby profile at setup time).
+ * flows that should leave the active product unchanged. (Baby-scale setup always switches:
+ * to the created baby, or to the Baby Scale empty-state product when the profile is skipped.)
  */
 suspend fun IProductSelectionManager.switchActiveProductAfterSetup(selection: ProductSelection?) {
   selection ?: return

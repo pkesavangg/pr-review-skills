@@ -267,9 +267,9 @@ object StatHelper {
    */
   @Composable
   fun getBgColor(index: Int, size: Int): Color {
-    return if (size == 1)
-      MeTheme.colorScheme.primaryBackground
-    else if (index % 2 != 0)
+    // Metrics list alternates starting on WHITE (first row white, then grey) per Figma so it reads
+    // as distinct from the grey weight-header/edit block above it. (MOB-1173)
+    return if (size == 1 || index % 2 == 0)
       MeTheme.colorScheme.primaryBackground
     else
       MeTheme.colorScheme.secondaryBackground

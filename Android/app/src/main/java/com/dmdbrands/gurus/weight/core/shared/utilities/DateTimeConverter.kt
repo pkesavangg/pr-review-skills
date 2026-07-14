@@ -31,6 +31,14 @@ object DateTimeConverter {
    * @param isoString The date-time string in various formats
    * @return Timestamp in milliseconds since epoch, or 0L if conversion fails
    */
+  /**
+   * True when [dateKey] (a YYYY-MM-DD day key) is the baby's birth date. Birthdate strings always
+   * begin with the ISO date (e.g. "2024-08-17", "2024-08-17T…", "2024-08-17 …"), so comparing the
+   * leading 10 chars is a format-agnostic exact-date match. Used to show the birthday balloon.
+   */
+  fun isBirthDate(dateKey: String, birthdate: String?): Boolean =
+    !birthdate.isNullOrBlank() && birthdate.length >= 10 && birthdate.take(10) == dateKey
+
   fun isoToTimestamp(isoString: String?): Long {
     return try {
       if (isoString == null) {

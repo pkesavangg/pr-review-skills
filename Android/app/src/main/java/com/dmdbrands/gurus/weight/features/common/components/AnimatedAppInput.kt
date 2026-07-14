@@ -41,6 +41,7 @@ fun AnimatedAppInput(
     index: Int,
     testTag: String? = null,
     trailingText: String? = null,
+    enabled: Boolean = true,
 ) {
     val alpha = remember { Animatable(0f) }
 
@@ -61,5 +62,6 @@ fun AnimatedAppInput(
         modifier = modifier.graphicsLayer { this.alpha = alpha.value },
         testTag = testTag,
         trailingText = trailingText,
+        enabled = enabled,
     )
 }

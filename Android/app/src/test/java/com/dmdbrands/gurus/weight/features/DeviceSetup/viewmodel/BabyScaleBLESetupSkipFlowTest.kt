@@ -4,7 +4,9 @@ import com.dmdbrands.gurus.weight.core.network.interfaces.IConnectivityObserver
 import com.dmdbrands.gurus.weight.core.rules.MainDispatcherRule
 import com.dmdbrands.gurus.weight.domain.interfaces.IDialogQueueService
 import com.dmdbrands.gurus.weight.domain.interfaces.IDialogUtility
+import com.dmdbrands.gurus.weight.domain.model.common.ProductSelection
 import com.dmdbrands.gurus.weight.domain.repository.IDeviceService
+import com.dmdbrands.gurus.weight.domain.services.IProductSelectionManager
 import com.dmdbrands.gurus.weight.features.DeviceSetup.enums.BabyScaleSetupStep
 import com.dmdbrands.gurus.weight.features.DeviceSetup.modal.SetupInitData
 import com.dmdbrands.gurus.weight.features.DeviceSetup.reducer.DeviceSetupIntent
@@ -14,6 +16,7 @@ import com.google.common.truth.Truth.assertThat
 import com.greatergoods.blewrapper.GGDeviceService
 import com.greatergoods.blewrapper.GGPermissionService
 import io.mockk.MockKAnnotations
+import io.mockk.coVerify
 import io.mockk.every
 import io.mockk.impl.annotations.MockK
 import io.mockk.mockk
@@ -54,6 +57,7 @@ class BabyScaleBLESetupSkipFlowTest {
 
     private lateinit var dependencies: BLESetupDependencies
     private lateinit var dialogQueueService: IDialogQueueService
+    private lateinit var productSelectionManager: IProductSelectionManager
     private lateinit var viewModel: BabyScaleBLESetupViewModel
 
     @BeforeEach
@@ -75,6 +79,7 @@ class BabyScaleBLESetupSkipFlowTest {
             dialogUtility = dialogUtility,
         )
         dialogQueueService = mockk(relaxed = true)
+        productSelectionManager = mockk(relaxed = true)
     }
 
     @AfterEach
@@ -109,7 +114,10 @@ class BabyScaleBLESetupSkipFlowTest {
             dependencies = dependencies,
             babyProfileService = mockk(relaxed = true),
             accountRepository = mockk(relaxed = true),
-        ).initTestDependencies(dialogQueueService = dialogQueueService)
+        ).initTestDependencies(
+            dialogQueueService = dialogQueueService,
+            productSelectionManager = productSelectionManager,
+        )
         advanceScheduler()
         return viewModel
     }
@@ -184,5 +192,20 @@ class BabyScaleBLESetupSkipFlowTest {
 
         verify { dialogQueueService.showLoader(any(), any()) }
         verify { dialogQueueService.dismissLoader() }
+    }
+
+    @Test
+    fun `finishing setup without a baby profile switches the active product to Baby Scale`() {
+        createViewModel()
+        stepTo(BabyScaleSetupStep.SETUP_FINISHED)
+
+        // No baby was created in this session (profile skipped). On finish, the just-paired baby
+        // scale should still become the active product — falling back to the Baby Scale empty
+        // state — instead of leaving the active product on weight/blood pressure.
+        viewModel.handleIntent(DeviceSetupIntent.ExitSetup(true))
+        advanceScheduler()
+
+        coVerify { productSelectionManager.selectProduct(ProductSelection.BabyScale) }
+        verify { productSelectionManager.setSnapshotMode(false) }
     }
 }

@@ -33,6 +33,12 @@ interface IEntryRepository {
    */
   suspend fun delete(entry: Entry)
 
+  /** Sets/clears the swipe-delete Undo-window flag for an entry (MOB-1173). */
+  suspend fun setPendingDelete(id: Long, pending: Boolean)
+
+  /** Commits any entries still in the Undo window for [accountId] (app-launch flush; MOB-1173). */
+  suspend fun commitPendingDeletes(accountId: String)
+
   /**
    * Updates an existing entry.
    * @param entry The entry to update.

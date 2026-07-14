@@ -8,6 +8,7 @@ object HistoryItemStrings {
     const val Average = "average"
     const val Change = "change"
     const val GoToMonthView = "go to month view"
+    const val BirthdayBalloonContentDescription = "birthday"
     const val AvgPressure = "avg pressure"
     const val AvgPulse = "avg pulse"
     const val Mmhg = "mmhg"
