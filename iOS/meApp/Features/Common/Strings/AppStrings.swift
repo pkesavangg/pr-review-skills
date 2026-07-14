@@ -11,6 +11,10 @@ import Foundation
 struct CommonStrings {
     static let done = "Done"
     static let ok = "OK"
+    /// Accessibility label for the notes remaining-character counter.
+    static func charactersRemaining(_ count: Int) -> String { "\(count) characters remaining" }
+    /// Accessibility label for the notes character counter shown as current / max.
+    static func charactersCount(_ current: Int, _ max: Int) -> String { "\(current) of \(max) characters" }
     static let retry = "Retry"
     static let cancel = "Cancel"
     static let submit = "Submit"
@@ -393,8 +397,8 @@ struct AlertStrings {
         static let returnButton = "Return"
     }
     struct CsvExportAlert {
-        static let title = "Download Weight History"
-        static let message = "An email with your measurement history will be sent to the email address associated with this account."
+        static let title = "Send Weight History"
+        static let message = "We'll send your measurement history to the email address linked to your account."
         static let sendButton = "Send"
         static let cancelButton = "Cancel"
     }

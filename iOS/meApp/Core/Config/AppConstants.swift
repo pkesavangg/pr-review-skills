@@ -18,14 +18,16 @@ struct AppConstants {
         static let scaleDeletionGraceTimeoutNs = 1_200_000_000 // 1.2 seconds
         /// Duration to block broadcastId events after disconnect to avoid reconnect race
         static let broadcastBlockDurationNs = 3_000_000_000 // 3 seconds
+        /// How long an actionable "reading arrival" toast (weight / BPM / baby assign-or-discard)
+        static let readingArrivalWindowSeconds: Double = 15
     }
-    
+
     /// Numeric precision/tolerance constants
     struct Precision {
         /// Tolerance for floating-point equality and integer checks
         static let doubleEqualityEpsilon: Double = 1e-9
     }
-    
+
     struct Account {
         /// Maximum number of accounts that can be stored locally
         static let maxAccounts = 10

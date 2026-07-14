@@ -511,6 +511,38 @@ struct SwiftDataWorkerTests {
         #expect(dto.serverTimestamp == nil)
     }
 
+    /// Regression: the worker's `EntryData.toDTO()` used to hardcode `systolic/diastolic/
+    /// meanArterial = nil` and `entryType = nil`, so the dashboard BPM aggregation (filters
+    /// `systolic > 0`, matches on `entryType`) dropped every reading and the BP dashboard
+    /// showed 000/00 while History rendered the same entries fine.
+    @Test("EntryData toDTO carries BPM fields and entry type for BP entries")
+    @MainActor
+    func entryDataToDTOCarriesBpmFields() async throws {
+        let container = try makeContainer()
+        let ctx = container.mainContext
+
+        let entry = Entry(
+            entryTimestamp: "2026-03-10T00:00:00Z",
+            accountId: "acct-1",
+            operationType: "create",
+            isSynced: true
+        )
+        entry.entryType = EntryType.bpm.rawValue
+        entry.bpmEntry = BPMEntry(systolic: 123, diastolic: 85, meanArterial: "97", pulse: 54)
+        ctx.insert(entry)
+        try ctx.save()
+
+        let worker = SwiftDataWorker(modelContainer: container)
+        let fetched = try await worker.fetchEntryData(byId: entry.id)
+        let dto = try #require(fetched?.toDTO())
+
+        #expect(dto.entryType == EntryType.bpm.rawValue)
+        #expect(dto.systolic == 123)
+        #expect(dto.diastolic == 85)
+        #expect(dto.meanArterial == 97)
+        #expect(dto.pulse == 54)
+    }
+
     // MARK: - ProgressFetchResult computed properties
 
     @Test("ProgressFetchResult computed properties return correct entries")

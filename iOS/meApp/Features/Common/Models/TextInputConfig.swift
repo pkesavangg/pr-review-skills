@@ -33,6 +33,11 @@ struct TextInputConfig {
     /// Number of digits to place after the decimal point in decimal mode.
     /// Defaults to `1`. Set to `3` for baby kg/lb fields to match Baby App formatting.
     var decimalPlaces: Int = 1
+    /// When `true`, the field takes typed characters literally (with a `.decimalPad` keyboard)
+    /// instead of the app's default "cents-style" auto-decimal shift. Use for fields where the
+    /// user expects to type the value directly — e.g. baby ounces ("6" → "6", "6.5" → "6.5"),
+    /// matching the Baby app's weight-entry behaviour. `decimalPlaces` still caps the fraction.
+    var directDecimalEntry: Bool = false
     /// Optional trailing label displayed after the input text (e.g. "(cm)", "(kg)").
     var trailingLabel: String?
 }

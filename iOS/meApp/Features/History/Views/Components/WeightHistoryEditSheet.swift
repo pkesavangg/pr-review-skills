@@ -91,7 +91,7 @@ struct WeightHistoryEditSheet: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: .spacingLG) {
-                closeButton
+                header
 
                 MetricInputField(
                     config: TextInputConfig(
@@ -147,7 +147,7 @@ struct WeightHistoryEditSheet: View {
 
     // MARK: - Subviews
 
-    private var closeButton: some View {
+    private var header: some View {
         HStack {
             Spacer()
             Button { dismiss() } label: {

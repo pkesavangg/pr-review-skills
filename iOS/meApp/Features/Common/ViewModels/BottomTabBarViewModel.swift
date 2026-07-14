@@ -756,7 +756,7 @@ class BottomTabBarViewModel: ObservableObject {
     // - Single baby: personalized title ("New Reading Received for EMMA") + DISCARD/SAVE.
     // - Multiple babies: standard title + DON'T ASSIGN / ASSIGN → opens selection modal.
     // - Multiple buffered readings: compact header row shows count + VIEW above the card.
-    // swiftlint:disable:next cyclomatic_complexity function_body_length
+    // swiftlint:disable:next function_body_length
     private func showBabyReadingArrivalCard(notification: EntryNotification) {
         let lang = DashboardStrings.self
         let isMetric = accountService.activeAccount?.weightUnit == .kg
@@ -783,27 +783,12 @@ class BottomTabBarViewModel: ObservableObject {
             AssignBabyModalView.BabyItem(id: $0.id, name: $0.name, birthday: $0.birthday)
         }
 
-        let autoAssign: () -> Void = { [weak self] in
-            guard let self, let activeBabyId else { return }
-            Task { @MainActor [weak self] in
-                guard let self else { return }
-                do {
-                    try await self.entryService.assignBabyEntry(entryId: entryId, babyId: activeBabyId)
-                    self.logger.log(level: .info, tag: self.tag, message: "Baby reading auto-assigned to babyId=\(activeBabyId), entryId=\(entryId)")
-                } catch {
-                    self.logger.log(
-                        level: .error,
-                        tag: self.tag,
-                        message: "Failed to auto-assign baby reading. entryId=\(entryId)",
-                        data: error.localizedDescription
-                    )
-                }
-            }
-        }
-
-        let onDismiss: () -> Void = {
+        // On timeout without a user decision, discard the reading rather than silently
+        // assigning it to the first baby — an unassigned reading must not land in a baby's
+        // history without the user choosing. Matches the no-profile card's timeout behavior.
+        let onDismiss: () -> Void = { [weak self] in
             guard !didUserAct else { return }
-            autoAssign()
+            self?.discardBabyReading(entryId: entryId)
         }
 
         let toast: ToastModel
@@ -855,7 +840,7 @@ class BottomTabBarViewModel: ObservableObject {
                         }
                     )
                 ),
-                duration: 8.0,
+                duration: AppConstants.TimeoutsAndRetention.readingArrivalWindowSeconds,
                 onDismiss: onDismiss
             )
         } else {
@@ -886,7 +871,7 @@ class BottomTabBarViewModel: ObservableObject {
                         }
                     )
                 ),
-                duration: 8.0,
+                duration: AppConstants.TimeoutsAndRetention.readingArrivalWindowSeconds,
                 onDismiss: onDismiss
             )
         }
@@ -930,7 +915,7 @@ class BottomTabBarViewModel: ObservableObject {
                     }
                 )
             ),
-            duration: 8.0
+            duration: AppConstants.TimeoutsAndRetention.readingArrivalWindowSeconds
         ) { [weak self] in
             // No baby was added — discard the reading so it doesn't linger orphaned.
             guard !didUserAct else { return }
@@ -1341,7 +1326,7 @@ class BottomTabBarViewModel: ObservableObject {
             message: "\(weightString) - \(relativeTime)",
             headerView: headerView,
             btnTextView: AnyView(ReadingArrivalViewCTAView(onView: onView)),
-            duration: 8.0,
+            duration: AppConstants.TimeoutsAndRetention.readingArrivalWindowSeconds,
             onDismiss: onDismiss
         )
 
@@ -1392,7 +1377,7 @@ class BottomTabBarViewModel: ObservableObject {
             message: bpmMessage,
             headerView: headerView,
             btnTextView: AnyView(ReadingArrivalViewCTAView(onView: onView)),
-            duration: 8.0,
+            duration: AppConstants.TimeoutsAndRetention.readingArrivalWindowSeconds,
             onDismiss: onDismiss
         )
 

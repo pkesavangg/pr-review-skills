@@ -24,7 +24,7 @@ struct BPHistoryEntryItem: View {
     private var hasNotes: Bool { !(entry.notes ?? "").isEmpty }
 
     private var pressureColor: Color {
-        BPCategory.classify(systolic: entry.systolic, diastolic: entry.diastolic).color(theme: theme)
+        AhaPressureClass.classify(systolic: entry.systolic, diastolic: entry.diastolic).color(theme: theme)
     }
 
     private var combinedAccessibilityLabel: String {
@@ -42,7 +42,7 @@ struct BPHistoryEntryItem: View {
                     Text(DateTimeTools.getFormattedDay(entry.entryTimestamp))
                         .fontOpenSans(.heading5)
                         .foregroundColor(isExpanded ? theme.textInverse : theme.textHeading)
-                    Text(DateTimeTools.getFormattedTime(entry.entryTimestamp))
+                    Text(DateTimeTools.getFormattedTimeLowercased(entry.entryTimestamp))
                         .fontOpenSans(.body3)
                         .foregroundStyle(isExpanded ? theme.actionInverseSecondary : theme.textSubheading)
                 }
@@ -115,7 +115,7 @@ struct BPHistoryEntryItem: View {
 
             // Expanded notes section — always shown when expanded
             if isExpanded {
-                HStack(alignment: .top, spacing: .spacingXS) {
+                HStack(alignment: .center, spacing: .spacingXS) {
                     if hasNotes {
                         Text(entry.notes ?? "")
                             .fontOpenSans(.body3)
@@ -131,6 +131,10 @@ struct BPHistoryEntryItem: View {
                         Image(systemName: hasNotes ? "square.and.pencil" : "plus")
                             .font(.system(size: 18))
                             .foregroundStyle(theme.actionPrimary)
+                            // Guarantee at least a 44×44pt tap target (Apple HIG) — the glyph
+                            // stays visually 18pt but the whole square is tappable.
+                            .frame(width: 44, height: 44)
+                            .contentShape(Rectangle())
                     }
                     .buttonStyle(.plain)
                     .accessibilityLabel(hasNotes ? HistoryListStrings.accEditNoteLabel : HistoryListStrings.accAddNoteLabel)

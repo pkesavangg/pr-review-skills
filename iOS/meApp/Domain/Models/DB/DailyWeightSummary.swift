@@ -24,12 +24,11 @@ final class BathScaleWeightSummary: Identifiable, Equatable {
     var visceralFatLevel: Double?
     var boneMass: Double?
     var impedance: Double?
-
-    // MARK: - BP fields
     var systolic: Double?
     var diastolic: Double?
     var meanArterial: Double?
     var entryType: String?
+    var babyLengthInches: Double?
 
     init(
         id: UUID = UUID(),
@@ -55,7 +54,8 @@ final class BathScaleWeightSummary: Identifiable, Equatable {
         systolic: Double? = nil,
         diastolic: Double? = nil,
         meanArterial: Double? = nil,
-        entryType: String? = nil
+        entryType: String? = nil,
+        babyLengthInches: Double? = nil
     ) {
         self.id = id
         self.accountId = accountId
@@ -81,8 +81,9 @@ final class BathScaleWeightSummary: Identifiable, Equatable {
         self.diastolic = diastolic
         self.meanArterial = meanArterial
         self.entryType = entryType
+        self.babyLengthInches = babyLengthInches
     }
-    
+
     // MARK: - Equatable
     static func == (lhs: BathScaleWeightSummary, rhs: BathScaleWeightSummary) -> Bool {
         return lhs.id == rhs.id &&
@@ -108,6 +109,7 @@ final class BathScaleWeightSummary: Identifiable, Equatable {
                lhs.systolic == rhs.systolic &&
                lhs.diastolic == rhs.diastolic &&
                lhs.meanArterial == rhs.meanArterial &&
-               lhs.entryType == rhs.entryType
+               lhs.entryType == rhs.entryType &&
+               lhs.babyLengthInches == rhs.babyLengthInches
     }
 }
