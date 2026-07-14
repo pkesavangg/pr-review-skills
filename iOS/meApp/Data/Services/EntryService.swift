@@ -1125,6 +1125,14 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
 
         let task = Task { [weak self] in
             guard let self else { return }
+            // Baby-before-entry ordering (MOB-1527): if an offline-created baby is still awaiting
+            // its server id, reconcile babies first so any baby entries get remapped onto the
+            // server id before they're pushed — otherwise this eager push would POST a client-UUID
+            // babyId the server rejects, burning the entry's retry budget. Mirrors `performSync`;
+            // the in-memory guard keeps the common weight/BP push (no pending baby) free of extra work.
+            if self.babyService?.currentBabies.contains(where: { !$0.isServerCreated && !$0.isDeleted }) == true {
+                await self.babyService?.syncBabies(for: accountId)
+            }
             _ = await self.pushUnsyncedEntriesToRemote(accountId: accountId)
         }
         pendingPushTask = task
