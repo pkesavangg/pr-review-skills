@@ -107,7 +107,7 @@ struct DeviceModesScreen: View {
             .padding(.horizontal, .spacingSM)
         }
         .background(theme.backgroundSecondary.ignoresSafeArea())
-        .navigationBarBackButtonHidden(true)
+        .navigationBarHidden(true) // MOB-190: hide system nav bar (matches Settings flow)
         .task {
             // Load scale mode data when the screen appears
             await viewModel.loadScaleModeData()

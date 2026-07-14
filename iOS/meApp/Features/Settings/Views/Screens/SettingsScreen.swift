@@ -55,6 +55,13 @@ struct SettingsScreen: View {
                     isPresented: settingsStore.isBrowserPresented
                 )
             }
+            // MOB-190: Hide the system navigation bar on the tab root. The custom
+            // NavbarHeaderView is the only header. Without this, the NavigationStack's
+            // system bar can reserve its height on the root after popping back from the
+            // scale/Wi-Fi flow, pushing the "Settings" header down (leaked top inset).
+            // Matches the pattern used by the other Settings screens (Integrations,
+            // EditProfile, …); SwipeBackEnabler in RoutingView restores the swipe-back gesture.
+            .navigationBarHidden(true)
             .onAppear {
                 tabViewModel.showTabBar = true
                 if tabViewModel.selectedTab == .settings {

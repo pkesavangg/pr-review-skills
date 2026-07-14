@@ -83,7 +83,7 @@ struct DeviceNameScreen: View {
             }
             .scrollDismissesKeyboard(.interactively)
         }
-        .navigationBarBackButtonHidden(true)
+        .navigationBarHidden(true) // MOB-190: hide system nav bar (matches Settings flow)
         .background(theme.backgroundSecondary.ignoresSafeArea())
         .onTapGesture {
             focusedField = nil
