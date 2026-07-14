@@ -60,6 +60,7 @@ import com.dmdbrands.gurus.weight.features.common.helper.form.FormControl
 import com.dmdbrands.gurus.weight.features.common.helper.form.FormValidations
 import com.dmdbrands.gurus.weight.features.common.helper.form.ValidationError
 import com.dmdbrands.gurus.weight.features.common.helper.form.ValidationType
+import com.dmdbrands.gurus.weight.features.myKids.isDuplicateBabyName
 import com.dmdbrands.gurus.weight.features.myKids.strings.AddBabyStrings
 import com.dmdbrands.gurus.weight.features.myKids.viewmodel.MyKidsIntent
 import com.dmdbrands.gurus.weight.features.myKids.viewmodel.MyKidsViewModel
@@ -158,8 +159,7 @@ private fun AttachDuplicateNameValidation(
     }
     LaunchedEffect(Unit) {
         nameControl.addValidator { value ->
-            val normalized = siblingNames.value.map { it.trim().lowercase() }
-            if (value.trim().lowercase() in normalized) {
+            if (isDuplicateBabyName(value, siblingNames.value)) {
                 ValidationError(ValidationType.DUPLICATE, AddBabyStrings.DuplicateNameError)
             } else {
                 null

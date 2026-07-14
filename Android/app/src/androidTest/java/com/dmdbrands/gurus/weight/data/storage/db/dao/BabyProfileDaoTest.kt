@@ -1,6 +1,7 @@
 package com.dmdbrands.gurus.weight.data.storage.db.dao
 
 import androidx.room.Room
+import androidx.sqlite.db.SimpleSQLiteQuery
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.dmdbrands.gurus.weight.data.storage.db.AppDatabase
@@ -131,6 +132,27 @@ class BabyProfileDaoTest {
         assertThat(babyProfileDao.getById("temp-1")).isNotNull()
         assertThat(babyEntryDao.observeByBabyId("temp-1").first()).hasSize(1)
         assertThat(babyProfileDao.getById("srv-stale")).isNull()
+    }
+
+    private fun entryCount(id: Long): Int =
+        db.query(SimpleSQLiteQuery("SELECT COUNT(*) FROM entry WHERE id = $id")).use {
+            it.moveToFirst()
+            it.getInt(0)
+        }
+
+    @Test
+    fun purgeBabyAndEntries_removes_baby_entries_and_parent_entry_rows() = runTest {
+        babyProfileDao.insert(baby(id = "srv-1", existsOnServer = true))
+        insertBabyEntry(entryId = 1L, babyId = "srv-1", weightDg = 34000)
+        insertBabyEntry(entryId = 2L, babyId = "srv-1", weightDg = 35000)
+
+        babyProfileDao.purgeBabyAndEntries("srv-1")
+
+        assertThat(babyProfileDao.getById("srv-1")).isNull()
+        assertThat(babyEntryDao.observeByBabyId("srv-1").first()).isEmpty()
+        // Parent entry rows are removed too — no orphaned `entry` rows left behind.
+        assertThat(entryCount(1L)).isEqualTo(0)
+        assertThat(entryCount(2L)).isEqualTo(0)
     }
 
     @Test

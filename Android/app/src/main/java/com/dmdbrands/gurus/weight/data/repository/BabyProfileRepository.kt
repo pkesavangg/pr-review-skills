@@ -91,7 +91,7 @@ class BabyProfileRepository @Inject constructor(
         val existing = babyProfileDao.getById(profileId) ?: return
         if (!existing.existsOnServer) {
             // Never reached the server — just purge locally, nothing to sync.
-            babyProfileDao.delete(profileId)
+            babyProfileDao.purgeBabyAndEntries(profileId)
             return
         }
         // Soft-delete + mark pending so it disappears from UI now; syncPendingBabies issues the
@@ -99,7 +99,7 @@ class BabyProfileRepository @Inject constructor(
         babyProfileDao.update(existing.copy(isDeleted = true, isSynced = false))
         try {
             babyApi.deleteBaby(profileId)
-            babyProfileDao.delete(profileId)
+            babyProfileDao.purgeBabyAndEntries(profileId)
         } catch (e: Exception) {
             AppLog.e(TAG, "Baby delete deferred to offline sync", e)
         }
@@ -154,9 +154,9 @@ class BabyProfileRepository @Inject constructor(
                 when {
                     baby.isDeleted && baby.existsOnServer -> {
                         babyApi.deleteBaby(baby.babyId)
-                        babyProfileDao.delete(baby.babyId)
+                        babyProfileDao.purgeBabyAndEntries(baby.babyId)
                     }
-                    baby.isDeleted -> babyProfileDao.delete(baby.babyId) // never synced → local purge
+                    baby.isDeleted -> babyProfileDao.purgeBabyAndEntries(baby.babyId) // never synced → local purge
                     baby.existsOnServer -> {
                         babyApi.updateBaby(baby.babyId, baby.toDomain().toRequest())
                         babyProfileDao.update(baby.copy(isSynced = true))

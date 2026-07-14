@@ -21,6 +21,24 @@ interface BabyProfileDao {
     @Query("DELETE FROM baby WHERE babyId = :profileId")
     suspend fun delete(profileId: String)
 
+    /** Deletes the parent `entry` rows behind [babyId]'s baby entries (their `baby_entry` children
+     * cascade via the entry FK). */
+    @Query("DELETE FROM entry WHERE id IN (SELECT id FROM baby_entry WHERE babyId = :babyId)")
+    suspend fun deleteEntriesForBaby(babyId: String)
+
+    /**
+     * Hard-deletes a baby and its entries cleanly. Removes the parent `entry` rows FIRST (while
+     * `baby_entry` still maps them; their `baby_entry` children cascade via the entry FK) so no
+     * orphaned `entry` rows linger, then deletes the baby row. Use for a genuine delete — NOT the
+     * id-remap, which instead re-points entries onto the server id before dropping the temp row
+     * (MOB-1476).
+     */
+    @Transaction
+    suspend fun purgeBabyAndEntries(babyId: String) {
+        deleteEntriesForBaby(babyId)
+        delete(babyId)
+    }
+
     /** Non-deleted babies for [accountId]. Excludes soft-deleted rows (isDeleted = 1) that are
      * awaiting a server DELETE, so an offline delete disappears from UI / productTypes at once. */
     @Query("SELECT * FROM baby WHERE accountId = :accountId AND isDeleted = 0")

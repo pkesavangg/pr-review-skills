@@ -167,7 +167,7 @@ class BabyProfileRepositoryTest {
         coVerifyOrder {
             babyProfileDao.update(match<BabyProfileEntity> { it.isDeleted && !it.isSynced })
             babyApi.deleteBaby(PROFILE_ID)
-            babyProfileDao.delete(PROFILE_ID)
+            babyProfileDao.purgeBabyAndEntries(PROFILE_ID)
         }
     }
 
@@ -177,7 +177,7 @@ class BabyProfileRepositoryTest {
 
         repository.delete(PROFILE_ID)
 
-        coVerify { babyProfileDao.delete(PROFILE_ID) }
+        coVerify { babyProfileDao.purgeBabyAndEntries(PROFILE_ID) }
         coVerify(exactly = 0) { babyApi.deleteBaby(any()) }
     }
 
@@ -189,7 +189,7 @@ class BabyProfileRepositoryTest {
         repository.delete(PROFILE_ID)
 
         coVerify { babyProfileDao.update(match<BabyProfileEntity> { it.isDeleted && !it.isSynced }) }
-        coVerify(exactly = 0) { babyProfileDao.delete(PROFILE_ID) }
+        coVerify(exactly = 0) { babyProfileDao.purgeBabyAndEntries(PROFILE_ID) }
     }
 
     // ── refresh ───────────────────────────────────────────────────────────────────
@@ -300,7 +300,7 @@ class BabyProfileRepositoryTest {
         repository.syncPendingBabies(ACCOUNT_ID)
 
         coVerify { babyApi.deleteBaby(PROFILE_ID) }
-        coVerify { babyProfileDao.delete(PROFILE_ID) }
+        coVerify { babyProfileDao.purgeBabyAndEntries(PROFILE_ID) }
     }
 
     @Test
@@ -311,7 +311,7 @@ class BabyProfileRepositoryTest {
 
         repository.syncPendingBabies(ACCOUNT_ID)
 
-        coVerify { babyProfileDao.delete(PROFILE_ID) }
+        coVerify { babyProfileDao.purgeBabyAndEntries(PROFILE_ID) }
         coVerify(exactly = 0) { babyApi.deleteBaby(any()) }
     }
 
