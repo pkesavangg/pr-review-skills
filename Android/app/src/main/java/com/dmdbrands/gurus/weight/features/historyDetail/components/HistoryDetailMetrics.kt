@@ -149,40 +149,12 @@ fun WeightHistoryDetailItemDetails(
         .fillMaxWidth()
         .background(MeTheme.colorScheme.primaryBackground),
   ) {
-    metrics.forEachIndexed { index, metric ->
-      AnimatedMetricItem(
-        stat = metric,
-        index = index,
-        size = metrics.size,
-        isVisible = true, // Always visible, animation handled internally
-        onMetricClick = {
-          val bodyMetric = fromScaleEntry(item)
-          scope.launch {
-            navBackStack.addRoute(
-              AppRoute.Dashboard.MetricInfo(
-                info = bodyMetric,
-                key = if (metric.key is DashboardKey.Metric) metric.key.key else MetricKey.WEIGHT,
-              ),
-            )
-          }
-        },
-      )
-    }
-    if (metrics.size % 2 != 0) {
-      HorizontalDivider(
-        thickness = 0.5.dp,
-        color = MeTheme.colorScheme.utility,
-      )
-    }
     // Note (MOB-438) — always shown when expanded: the saved note or an add-note prompt.
     // The trailing icon is a "+" when no note exists (add) and the boxed pencil once a note
-    // is present (edit) (MOB-1163).
+    // is present (edit) (MOB-1163). Rendered directly under the header, above the metric
+    // rows, to match the Figma WG history-detail layout (MOB-1470).
     val note = item.scale.scaleEntry.note
     val hasNote = !note.isNullOrBlank()
-    HorizontalDivider(
-      thickness = 0.5.dp,
-      color = MeTheme.colorScheme.utility,
-    )
     Row(
       modifier = Modifier
         .fillMaxWidth()
@@ -207,6 +179,35 @@ fun WeightHistoryDetailItemDetails(
         },
         onClick = { onEditEntry() },
         modifier = Modifier.padding(start = MeTheme.spacing.sm),
+      )
+    }
+    HorizontalDivider(
+      thickness = 0.5.dp,
+      color = MeTheme.colorScheme.utility,
+    )
+    metrics.forEachIndexed { index, metric ->
+      AnimatedMetricItem(
+        stat = metric,
+        index = index,
+        size = metrics.size,
+        isVisible = true, // Always visible, animation handled internally
+        onMetricClick = {
+          val bodyMetric = fromScaleEntry(item)
+          scope.launch {
+            navBackStack.addRoute(
+              AppRoute.Dashboard.MetricInfo(
+                info = bodyMetric,
+                key = if (metric.key is DashboardKey.Metric) metric.key.key else MetricKey.WEIGHT,
+              ),
+            )
+          }
+        },
+      )
+    }
+    if (metrics.size % 2 != 0) {
+      HorizontalDivider(
+        thickness = 0.5.dp,
+        color = MeTheme.colorScheme.utility,
       )
     }
   }

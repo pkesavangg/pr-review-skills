@@ -114,6 +114,9 @@ fun HistoryDetailScreenContent(
     }
     AppScaffold(
         title = state.month,
+        // Month title is centered across the bar to match the Figma WG history-detail header
+        // (MOB-1470) — the close icon stays pinned left.
+        centerTitle = true,
         isRefreshing = state.isLoading,
         navigationIcon = {
             AppIconButton(
