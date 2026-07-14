@@ -82,6 +82,12 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
     private var activeBabyDashboardLoadTasks: [String: Task<Bool, Never>] = [:]
     private var summaryCacheByEntryType: [EntryType: EntrySummaryCacheEntry] = [:]
     private var babySummaryCacheByProfile: [String: EntryBabySummaryCacheEntry] = [:]
+    /// Resolved lazily and non-fatally (unlike `@Injector`) so unit tests that construct
+    /// `EntryService` directly without registering a `BabyService` still sync entries — baby
+    /// profile sync is simply skipped when the service isn't registered.
+    private var babyService: BabyServiceProtocol? {
+        DependencyContainer.shared.resolve(BabyServiceProtocol.self)
+    }
     private var streakCacheByEntryType: [EntryType: EntryStreakCacheEntry] = [:]
     private var progressCacheByEntryType: [EntryType: EntryProgressCacheEntry] = [:]
 
@@ -301,6 +307,35 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
         )
         let notification = EntryNotification(from: entry)
         entrySaved.send(notification)
+    }
+
+    func remapBabyId(from oldId: String, to newId: String) async {
+        guard oldId != newId else { return }
+        guard let accountId = try? getAccountId() else { return }
+        do {
+            // Baby entries are few per account; a full fetch + in-memory filter is cheaper than
+            // maintaining a dedicated predicate path and keeps the FK rewrite on the main actor.
+            let entries = try await localRepo.fetchEntries(forUserId: accountId, operationType: nil)
+            var remapped = 0
+            for entry in entries where entry.babyEntry?.babyId == oldId {
+                entry.babyEntry?.babyId = newId
+                try await localRepo.updateEntry(entry)
+                remapped += 1
+            }
+            if remapped > 0 {
+                logger.log(
+                    level: .info,
+                    tag: tag,
+                    message: "Remapped babyId on \(remapped) entr\(remapped == 1 ? "y" : "ies"): \(oldId) -> \(newId)"
+                )
+            }
+        } catch {
+            logger.log(
+                level: .error,
+                tag: tag,
+                message: "Failed to remap babyId \(oldId) -> \(newId): \(error.localizedDescription)"
+            )
+        }
     }
 
     // MARK: - Snapshot Queries
@@ -1107,6 +1142,11 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
             return
         }
         logger.log(level: .info, tag: tag, message: "Full entry sync started: accountId=\(accountId)")
+
+        // Reconcile baby profiles BEFORE pushing entries (MOB-1527): an offline-created baby
+        // must swap its client id for the server id — and have baby entries remapped onto it —
+        // before those entries are pushed, otherwise they'd reference a non-existent baby id.
+        await babyService?.syncBabies(for: accountId)
 
         do {
             let hadPushedCreates = await pushUnsyncedEntriesToRemote(accountId: accountId)
