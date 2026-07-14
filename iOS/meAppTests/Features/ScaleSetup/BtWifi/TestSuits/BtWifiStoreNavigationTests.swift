@@ -39,19 +39,16 @@ extension BtWifiStoreTests {
             #expect(store.nextButtonText == CommonStrings.finish)
         }
 
-        @Test("intro advances to wakeup when bluetooth permissions and network are available")
-        func introAdvancesToWakeupWhenReady() async {
+        @Test("intro always advances to completeProfile when permissions and network are available (0412 never skips it)")
+        func introAdvancesToCompleteProfileWhenReady() {
             let harness = BtWifiStoreTestFixtures.makeSUT()
             let store = harness.store
 
+            // Profile is complete in the fixture account, but 0412 must still show the step.
             store.configure(with: SettingsConstants.defaultR4Sku, isWifiSetupOnly: false)
             store.handleNextButtonClick()
-            await BtWifiStoreTestFixtures.waitUntil {
-                harness.bluetooth.scanForPairingCalls == 1
-            }
 
-            #expect(store.currentStep == .wakeup)
-            #expect(harness.bluetooth.scanForPairingCalls == 1)
+            #expect(store.currentStep == .completeProfile)
         }
 
         @Test("intro routes to permissions when bluetooth or network is unavailable")
@@ -67,24 +64,22 @@ extension BtWifiStoreTests {
         }
 
         @Test("moveToNextStep respects permission skipping and exiting guards")
-        func moveToNextStepRespectsPermissionSkippingAndExitingGuards() async {
+        func moveToNextStepRespectsPermissionSkippingAndExitingGuards() {
             let harness = BtWifiStoreTestFixtures.makeSUT()
             let store = harness.store
 
             store.configure(with: SettingsConstants.defaultR4Sku, isWifiSetupOnly: false)
             store.moveToNextStep()
-            await BtWifiStoreTestFixtures.waitUntil {
-                store.currentStep == .wakeup && harness.bluetooth.scanForPairingCalls == 1
-            }
 
-            #expect(store.currentStep == .wakeup)
+            // Permissions are enabled in the fixture, so the permissions step is skipped.
+            // completeProfile is never auto-skipped for 0412, so we land there.
+            #expect(store.currentStep == .completeProfile)
 
             store.isExiting = true
             store.moveToNextStep()
             store.moveToNextStep()
 
-            #expect(store.currentStep == .wakeup)
-            #expect(harness.bluetooth.scanForPairingCalls == 1)
+            #expect(store.currentStep == .completeProfile)
         }
 
         @Test("moveToNextStep stops on permissions when requirements are missing and dismisses at the end")

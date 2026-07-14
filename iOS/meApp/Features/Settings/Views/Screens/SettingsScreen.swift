@@ -137,14 +137,36 @@ struct SettingsScreen: View {
         }
     }
 
+    // MOB-190: The profile header used to be a *loose* row in the List while every other
+    // item is a `Section`. A loose row before Sections in an `.insetGrouped` List has no
+    // stable section identity, so during scroll cell-recycling SwiftUI recomputed its
+    // height/insets inconsistently (default separator bled in, centered content shifted or
+    // overlapped) — the "header layout breaks on scroll" report. Wrapping it in its own
+    // Section with a cleared background, hidden separator, and explicit insets makes it
+    // lay out consistently like the rest of the List.
     private func profileHeader() -> some View {
+        Section {
+            profileHeaderContent()
+                .accessibilityElement(children: .combine)
+                .frame(maxWidth: .infinity)
+                .listRowBackground(Color.clear)
+                .listRowInsets(top: .spacingSM, bottom: .spacingSM)
+                .listRowSeparator(.hidden)
+        }
+    }
+
+    private func profileHeaderContent() -> some View {
         VStack(spacing: .spacingXS) {
             InitialIconView(
                 character: settingsStore.profileInitial,
                 size: 36,
                 style: .fill
             )
-            .onLongPressGesture {
+            // MOB-223: A bare `.onLongPressGesture` (maximumDistance 10, non-simultaneous)
+            // is unreliable inside a List — the scroll recognizer steals it and small
+            // finger drift cancels it. Use the shared `.longPressGesture` (simultaneous,
+            // maximumDistance 50) so the press coexists with scrolling and tolerates drift.
+            .longPressGesture(isEditMode: false) {
                 router.navigate(to: .myAccounts)
             }
             .accessibilityAction(named: SettingsStrings.A11y.profileSwitchAccountsAction) {
@@ -159,9 +181,6 @@ struct SettingsScreen: View {
                 .fontOpenSans(.body2)
                 .foregroundColor(theme.textBody)
         }
-        .accessibilityElement(children: .combine)
-        .frame(maxWidth: .infinity)
-        .listRowBackground(Color.clear)
     }
 
     private func accountSettingsSection() -> some View {

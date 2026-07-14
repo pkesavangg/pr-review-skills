@@ -468,26 +468,29 @@ extension BluetoothService {
     /// BPM (A6) monitor crashes inside the vendored SDK (EXC_BAD_ACCESS in
     /// `GGBPMonitorA6.description.getter`), so callers must skip it for BPM devices.
     ///
-    /// Fails **closed**: if the broadcastId isn't yet tracked in `bluetoothScales` (e.g. a race
-    /// during discovery), we cannot verify the device is a weight scale, so we treat it as a BPM
-    /// monitor and skip the crash-prone call. A skipped user-list fetch is recoverable; the
-    /// EXC_BAD_ACCESS is not.
-    private func isBpmDevice(broadcastId: String) -> Bool {
-        guard let sku = bluetoothScales.first(where: { $0.broadcastIdString == broadcastId })?.sku else {
+    /// Fails **closed**: if the broadcastId isn't tracked in `bluetoothScales` AND no SKU is supplied
+    /// by the caller, we cannot verify the device is a weight scale, so we treat it as a BPM monitor
+    /// and skip the crash-prone call. A skipped user-list fetch is recoverable; the EXC_BAD_ACCESS is
+    /// not. When the caller knows the SKU (e.g. a freshly paired scale not yet in `bluetoothScales`),
+    /// that SKU is used to classify the device so a real weight scale isn't wrongly skipped.
+    private func isBpmDevice(broadcastId: String, sku: String? = nil) -> Bool {
+        // Prefer the tracked scale's SKU; fall back to the caller-supplied SKU before failing closed.
+        let resolvedSku = bluetoothScales.first(where: { $0.broadcastIdString == broadcastId })?.sku ?? sku
+        guard let resolvedSku else {
             logger.log(
                 level: .info,
                 tag: tag,
-                message: "isBpmDevice: \(broadcastId) not yet tracked in bluetoothScales — "
+                message: "isBpmDevice: \(broadcastId) not tracked in bluetoothScales and no SKU supplied — "
                     + "failing closed (treating as BPM) to avoid getScaleUserList crash"
             )
             return true
         }
-        return DeviceInfoUtils.shared.getDeviceInfo(bySku: sku)?.setupType == .bpm
+        return DeviceInfoUtils.shared.getDeviceInfo(bySku: resolvedSku)?.setupType == .bpm
     }
 
-    func getScaleUserList(broadcastId: String, skipConnectionCheck: Bool = false) async -> Result<[DeviceUser], BluetoothServiceError> {
+    func getScaleUserList(broadcastId: String, skipConnectionCheck: Bool, sku: String?) async -> Result<[DeviceUser], BluetoothServiceError> {
         // BPM monitors have no scale-style user list; asking the SDK for one crashes it.
-        guard !isBpmDevice(broadcastId: broadcastId) else {
+        guard !isBpmDevice(broadcastId: broadcastId, sku: sku) else {
             logger.log(
                 level: .info,
                 tag: tag,
@@ -496,14 +499,21 @@ extension BluetoothService {
             return .failure(.notImplemented)
         }
 
-        let isConnected = bluetoothScales.first { $0.broadcastIdString == broadcastId }?.isConnected ?? false
+        let matchedScale = bluetoothScales.first { $0.broadcastIdString == broadcastId }
+        let isConnected = matchedScale?.isConnected ?? false
         guard skipConnectionCheck || isConnected else {
             logger.log(level: .error, tag: tag, message: "Cannot get user list - device is not connected: \(broadcastId)")
             return .failure(.deviceNotConnected)
         }
 
         do {
-            let ggDevice = mapToGGBTDevice(broadcastId)
+            // Build the SDK device from the full discovered scale (protocolType, password, token,
+            // mac, preference) rather than a broadcastId-only stub. The stub leaves protocolType/mac
+            // empty, which the SDK can't use to connect and read the user list when there is no live
+            // session — this is why the reconnect "User Limit Exceeded" screen came back empty on iOS
+            // while Android (which passes the full device) populated it. Fall back to the stub only
+            // when the scale isn't in the discovered list.
+            let ggDevice = matchedScale.flatMap { mapToGGBTDevice($0) } ?? mapToGGBTDevice(broadcastId)
 
             let users = try await sdkOperationSerializer.execute(
                 operationKey: "\(broadcastId):getUsers"

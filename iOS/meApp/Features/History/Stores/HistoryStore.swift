@@ -962,9 +962,15 @@ final class HistoryStore: ObservableObject {
                     let decigrams = baby.weight
                     let source = baby.source
                     let displayUnit: ConversionTools.BabyDisplayUnit = metric ? .kg : .lbOz
-                    let graduatedDecigrams = ConversionTools.convertToDisplayWeightBase(
-                        decigrams: decigrams, source: source, unit: displayUnit, isBabyScaleEntry: true
-                    )
+                    // Scale graduation snaps a value to the physical scale's resolution
+                    // (e.g. 0.2 oz in the 18–25 lb band), which rounds a typed 9.9 oz to 10.0.
+                    // Only device/scale readings should be graduated — a manually-typed entry
+                    // (nil/"manual" source) must display exactly what the user entered.
+                    let graduatedDecigrams = EntrySource.isManualEntry(source)
+                        ? decigrams
+                        : ConversionTools.convertToDisplayWeightBase(
+                            decigrams: decigrams, source: source, unit: displayUnit, isBabyScaleEntry: true
+                        )
                     let lbsOz = ConversionTools.convertBabyDecigramsToLbsOz(graduatedDecigrams)
                     let kg = ConversionTools.convertBabyDecigramsToKg(graduatedDecigrams)
                     let lbDecimal = ConversionTools.convertBabyDecigramsToLb(graduatedDecigrams)
@@ -1012,9 +1018,13 @@ final class HistoryStore: ObservableObject {
     private func formatBabyWeightDisplay(decigrams: Int, source: String? = nil, units: MeasurementUnits) -> String {
         guard decigrams > 0 else { return "--" }
         let displayUnit: ConversionTools.BabyDisplayUnit = units == .metric ? .kg : .lbOz
-        let graduatedDecigrams = ConversionTools.convertToDisplayWeightBase(
-            decigrams: decigrams, source: source, unit: displayUnit, isBabyScaleEntry: true
-        )
+        // Manual entries (nil/"manual" source) are shown exactly as typed — only genuine
+        // device/scale readings get snapped to the scale's graduation.
+        let graduatedDecigrams = EntrySource.isManualEntry(source)
+            ? decigrams
+            : ConversionTools.convertToDisplayWeightBase(
+                decigrams: decigrams, source: source, unit: displayUnit, isBabyScaleEntry: true
+            )
         switch units {
         case .metric:
             let kg = ConversionTools.convertBabyDecigramsToKg(graduatedDecigrams)
