@@ -14,6 +14,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.testTag
+import com.dmdbrands.gurus.weight.core.shared.utilities.testing.TestTags
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.semantics.heading
@@ -171,6 +173,7 @@ fun GoalStep(
           type = SegmentButtonType.Scrollable,
           spacedBy = MeTheme.spacing.xs,
           uppercaseLabels = false,
+          modifier = Modifier.testTag(TestTags.Signup.GoalUnitToggle),
         )
       }
     }

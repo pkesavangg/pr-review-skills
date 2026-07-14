@@ -12,6 +12,8 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.testTag
+import com.dmdbrands.gurus.weight.core.shared.utilities.testing.TestTags
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
@@ -91,12 +93,14 @@ fun DeviceReadyStep(
                 label = DeviceReadyStrings.finish,
                 type = ButtonType.PrimaryFilled,
                 size = ButtonSize.Large,
+                modifier = Modifier.testTag(TestTags.Signup.FinishButton),
                 onClick = onFinish,
             )
             AppButton(
                 label = DeviceReadyStrings.connectAnother,
                 type = ButtonType.TextPrimary,
                 size = ButtonSize.Large,
+                modifier = Modifier.testTag(TestTags.Signup.ConnectAnotherDeviceButton),
                 onClick = onConnectAnother,
             )
             Spacer(modifier = Modifier.height(MeTheme.spacing.md))

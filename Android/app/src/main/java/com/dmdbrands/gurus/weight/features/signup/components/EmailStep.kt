@@ -3,6 +3,8 @@ package com.dmdbrands.gurus.weight.features.signup.components
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.testTag
+import com.dmdbrands.gurus.weight.core.shared.utilities.testing.TestTags
 import androidx.compose.ui.autofill.ContentType
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
@@ -50,6 +52,7 @@ fun EmailStep(
             label = SignupStrings.emailLabel,
             imeAction = ImeAction.Next,
             onImeAction = onNext,
+            testTag = TestTags.Signup.EmailField,
             modifier = Modifier.semantics { contentType = ContentType.NewUsername }.focusRequester(emailFocusRequester),
         )
     }

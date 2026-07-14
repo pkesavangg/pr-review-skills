@@ -31,6 +31,8 @@ class MetricFieldFormatter: ObservableObject {
         
         if config.allowWholeNumbers {
             return formatWholeNumber(input)
+        } else if config.directDecimalEntry {
+            return formatLiteralDecimal(input)
         } else {
             return formatDecimalNumber(input)
         }
@@ -107,6 +109,35 @@ class MetricFieldFormatter: ObservableObject {
         }
     }
     
+    /// Takes the input literally (as typed) rather than cents-shifting it: keeps the digits and a
+    /// single decimal separator, requires at least one digit before the separator, and caps the
+    /// fraction to `config.decimalPlaces` and the whole string to `config.maxLength`. Used for the
+    /// baby ounces field so "6" stays "6" and "6.5" stays "6.5" (Baby-app parity).
+    private func formatLiteralDecimal(_ input: String) -> String {
+        var result = ""
+        var hasSeparator = false
+        for ch in input {
+            if ch.isNumber {
+                result.append(ch)
+            } else if (ch == "." || ch == ",") && !hasSeparator && !result.isEmpty {
+                result.append(".")
+                hasSeparator = true
+            }
+        }
+
+        // Cap the fractional part to the configured number of decimal places.
+        if hasSeparator,
+           let dotIndex = result.firstIndex(of: "."),
+           config.decimalPlaces >= 0 {
+            let fraction = result[result.index(after: dotIndex)...]
+            if fraction.count > config.decimalPlaces {
+                result = String(result[..<dotIndex]) + "." + String(fraction.prefix(config.decimalPlaces))
+            }
+        }
+
+        return String(result.prefix(config.maxLength))
+    }
+
     private func formatWholeNumber(_ input: String) -> String {
         // Extract only numeric characters
         let digitsOnly = input.replacingOccurrences(of: "[^0-9]", with: "", options: .regularExpression)

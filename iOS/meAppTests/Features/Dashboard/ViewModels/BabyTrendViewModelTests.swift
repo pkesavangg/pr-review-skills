@@ -22,9 +22,30 @@ struct BabyTrendViewModelTests {
         let deps = TestDependencyContainer.registerDashboardConcreteDependencies()
         let store = DashboardStore(lightweight: true, formatter: MockDashboardFormatter(), cacheManager: MockDashboardCacheManager())
         // Seed real baby summaries so `hasBabyEntries` is true, then select the baby.
-        deps.entry.babyDailySummariesByProfile[baby.id] = BabyDashboardChartSupport.dummyDailySummaries(for: baby)
+        deps.entry.babyDailySummariesByProfile[baby.id] = makeRealBabySummaries()
         store.selectProductItem(.baby(profile: baby))
         return store
+    }
+
+    /// A handful of real daily baby summaries carrying weight and recorded length, mirroring
+    /// what `EntryService` aggregation produces from actual entries.
+    private func makeRealBabySummaries() -> [BathScaleWeightSummary] {
+        let calendar = Calendar.current
+        let formatter = DateFormatter()
+        formatter.dateFormat = "yyyy-MM-dd"
+        return (0..<5).compactMap { offset in
+            guard let date = calendar.date(byAdding: .day, value: -offset, to: Date()) else { return nil }
+            let day = calendar.startOfDay(for: date)
+            return BathScaleWeightSummary(
+                accountId: "baby_b1",
+                period: formatter.string(from: day),
+                entryTimestamp: formatter.string(from: day),
+                date: day,
+                count: 1,
+                weight: Double(150 + offset),
+                babyLengthInches: 22.0 + Double(offset) * 0.2
+            )
+        }
     }
 
     private func makeBabyProfile(

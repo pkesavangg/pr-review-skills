@@ -7,11 +7,17 @@ import Combine
 import Foundation
 
 class BabyEntryForm: ObservableForm {
-    // Weight fields (only one set active at a time based on selected unit)
-    var pounds = FormControl("", validators: [.minValue(), .maxLimit(999.0)])
-    var ounces = FormControl("", validators: [.minValue(), .maxLimit(15.9)])
-    var kg = FormControl("", validators: [.minValue(1.0), .maxLimit(450.0)])
-    var lb = FormControl("", validators: [.minValue(1.0), .maxLimit(999.0)])
+    // Weight fields (only one set active at a time based on selected unit).
+    // Rules ported 1:1 from the Baby app's weight-input validators:
+    //  • lb/oz: pounds are a whole number 1–999 (`^\d{1,3}$`); ounces are optional,
+    //    ≤ 15.9 with at most one decimal (`^\d{1,2}(\.\d)?$`) so 0 is allowed and 16+ is not.
+    //  • kg / decimal-lb: 1–999.999 with up to three decimals (`^\d{1,3}(\.\d{1,3})?$`).
+    // (Required-ness is enforced by EntryStore.isBabyFormValid's non-empty check, matching
+    //  the Baby app's `Validators.required` on the same fields.)
+    var pounds = FormControl("", validators: [.minValue(1.0), .maxLimit(999.0), .pattern("^\\d{1,3}$")])
+    var ounces = FormControl("", validators: [.maxLimit(15.9), .pattern("^\\d{1,2}(\\.\\d)?$")])
+    var kg = FormControl("", validators: [.minValue(1.0), .maxLimit(999.999), .pattern("^\\d{1,3}(\\.\\d{1,3})?$")])
+    var lb = FormControl("", validators: [.minValue(1.0), .maxLimit(999.999), .pattern("^\\d{1,3}(\\.\\d{1,3})?$")])
 
     // Length fields (only one active at a time based on selected unit)
     var inches = FormControl("", validators: [.minValue(), .maxLimit(99.9)])

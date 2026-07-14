@@ -201,6 +201,17 @@ extension Validator where Value == String {
         return trimmed.allSatisfy(\.isNumber)
     }
 
+    /// Validator that requires the value to fully match the provided regular expression.
+    /// Empty values pass so required-ness can be enforced separately — mirroring Angular's
+    /// `Validators.pattern`, which treats an empty control as valid. Used to port the Baby app's
+    /// manual weight-entry unit validation (integer pounds, one-decimal ounces, three-decimal kg/lb).
+    public static func pattern(_ pattern: String) -> Validator {
+        Validator(type: .pattern, value: pattern) { value in
+            guard !value.isEmpty else { return true }
+            return value.range(of: pattern, options: .regularExpression) != nil
+        }
+    }
+
 }
 
 // MARK: - Integer Validators

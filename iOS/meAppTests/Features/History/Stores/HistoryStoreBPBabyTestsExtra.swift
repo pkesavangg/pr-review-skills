@@ -114,18 +114,18 @@ extension HistoryStoreBPBabyTests {
 
     // MARK: - handleExport title variants
 
-    @Test("handleExport uses the blood-pressure download title in BP mode")
+    @Test("handleExport uses the blood-pressure send title in BP mode")
     func handleExportBPTitle() {
         let sut = makeSUT(selection: .myBloodPressure)
         sut.store.handleExport()
-        #expect(sut.notificationService.alertData?.title == HistoryListStrings.downloadBPHistory)
+        #expect(sut.notificationService.alertData?.title == HistoryListStrings.sendBPHistory)
     }
 
-    @Test("handleExport uses the baby download title in baby mode")
+    @Test("handleExport uses the baby send title in baby mode")
     func handleExportBabyTitle() {
         let sut = makeSUT(selection: .baby(profile: babyProfile()))
         sut.store.handleExport()
-        #expect(sut.notificationService.alertData?.title == HistoryListStrings.downloadBabyHistory)
+        #expect(sut.notificationService.alertData?.title == HistoryListStrings.sendBabyHistory)
     }
 
     // MARK: - isMetric getter

@@ -59,7 +59,8 @@ struct BabyEntryFormTests {
         #expect(form.kg.isInvalid == true)
         #expect(form.weightErrorMetric == BabyFormTestText.invalidWeight)
 
-        form.kg.value = "451"
+        // Max is 999.999 (Baby-app parity), so the over-max case must exceed that.
+        form.kg.value = "1000"
         #expect(form.kg.isInvalid == true)
         #expect(form.weightErrorMetric == BabyFormTestText.invalidWeight)
     }
@@ -75,6 +76,52 @@ struct BabyEntryFormTests {
         form.lb.value = "1000"
         #expect(form.lb.isInvalid == true)
         #expect(form.weightErrorLb == BabyFormTestText.invalidWeight)
+    }
+
+    // MARK: - Baby-app unit-validation parity (ported rules)
+
+    @Test("pounds must be a whole number: a decimal value is invalid")
+    func poundsMustBeWholeNumber() {
+        let form = BabyEntryForm()
+
+        form.pounds.value = "7.5"
+        #expect(form.pounds.isInvalid == true)
+
+        form.pounds.value = "7"
+        #expect(form.pounds.isValid == true)
+    }
+
+    @Test("ounces: 0 is allowed, and at most one decimal place")
+    func ouncesZeroAndDecimalRule() {
+        let form = BabyEntryForm()
+
+        // 0 oz is valid (e.g. exactly "5 lb 0 oz") — Baby app has no minimum on ounces.
+        form.ounces.value = "0"
+        #expect(form.ounces.isValid == true)
+
+        // One decimal place is fine, two is not.
+        form.ounces.value = "9.9"
+        #expect(form.ounces.isValid == true)
+
+        form.ounces.value = "9.99"
+        #expect(form.ounces.isInvalid == true)
+    }
+
+    @Test("kg/lb allow up to three decimals; a fourth is invalid")
+    func metricDecimalPrecision() {
+        let form = BabyEntryForm()
+
+        form.kg.value = "3.456"
+        #expect(form.kg.isValid == true)
+
+        form.kg.value = "3.4567"
+        #expect(form.kg.isInvalid == true)
+
+        form.lb.value = "12.345"
+        #expect(form.lb.isValid == true)
+
+        form.lb.value = "12.3456"
+        #expect(form.lb.isInvalid == true)
     }
 
     // MARK: - Length Validation

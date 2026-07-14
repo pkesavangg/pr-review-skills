@@ -12,7 +12,10 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.rememberCoroutineScope
@@ -94,6 +97,21 @@ fun HistoryDetailScreenContent(
 ) {
     val backStack = LocalNavBackStack.current
     val scope = rememberCoroutineScope()
+    // When the last entry in this month/day is deleted, the detail list becomes empty — pop back
+    // to the history list instead of leaving the user on a blank detail screen. `hadEntries` gates
+    // out the initial empty state (before data loads); `popped` guards against a double-pop if the
+    // flow re-emits empty. (MOB-1462)
+    var hadEntries by remember { mutableStateOf(false) }
+    var popped by remember { mutableStateOf(false) }
+    LaunchedEffect(state.historyItems, state.isLoading) {
+        when {
+            state.historyItems.isNotEmpty() -> hadEntries = true
+            hadEntries && !state.isLoading && !popped -> {
+                popped = true
+                backStack.removeLast()
+            }
+        }
+    }
     AppScaffold(
         title = state.month,
         isRefreshing = state.isLoading,
@@ -220,7 +238,9 @@ private fun BabyEditModal(
                 .dismissKeyboardOnTap(),
             verticalArrangement = Arrangement.Top,
         ) {
-            BabyEntrySection(controls = controls, onImeAction = {})
+            // MOB-1223 is scoped to Manual Entry; the History-detail baby edit form stays lb/oz-only
+            // (its existing behaviour) — hence the fixed LB_OZ layout + conversion below.
+            BabyEntrySection(controls = controls, weightUnit = WeightUnit.LB_OZ, onImeAction = {})
             Spacer(modifier = Modifier.height(MeTheme.spacing.lg))
             Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
                 AppButton(
@@ -229,9 +249,13 @@ private fun BabyEditModal(
                     size = ButtonSize.Large,
                     type = ButtonType.PrimaryFilled,
                     onClick = {
-                        val lbs = controls.pounds.value.toIntOrNull() ?: 0
-                        val oz = controls.ounces.value.toDoubleOrNull() ?: 0.0
-                        val inches = controls.inches.value.toDoubleOrNull()
+                        val lbs = controls.weight.value.toIntOrNull() ?: 0
+                        // oz uses the adult BODY_COMP input: raw digits with an implicit 1-place
+                        // decimal ("45" → 4.5), so divide by 10 to recover real ounces. (MOB-1223)
+                        val oz = controls.weightOz.value.toDoubleOrNull()?.div(10.0) ?: 0.0
+                        // length is BODY_COMP raw digits with an implicit 1-place decimal
+                        // ("205" → 20.5), so divide by 10 — same as ounces. (MOB-1223)
+                        val inches = controls.length.value.toDoubleOrNull()?.div(10.0)
                         val weightDecigrams =
                             if (lbs > 0 || oz > 0) ConversionTools.convertLbOzToDecigrams(lbs, oz) else null
                         val lengthMm =
@@ -252,15 +276,18 @@ private fun BabyEditModal(
 
 /** Builds a baby entry form pre-filled from an existing [entry] for editing. */
 private fun seededBabyEntryForm(entry: BabyEntry): MultiFormGroup<BabyEntryForm> {
-    val form = MultiFormGroup.create(forms = BabyEntryForm.create())
+    // Edit form stays lb/oz-only (MOB-1223 scoped to Manual Entry); seed accordingly.
+    val form = MultiFormGroup.create(forms = BabyEntryForm.create(WeightUnit.LB_OZ))
     val controls = form.forms.baby.controls
     entry.babyWeightDecigrams?.takeIf { it > 0 }?.let {
         val (lb, oz) = ConversionTools.convertDecigramsToLbOz(it)
-        controls.pounds.setValue(lb.toString())
-        controls.ounces.setValue(formatOneDecimal(oz))
+        controls.weight.setValue(lb.toString())
+        // oz field is BODY_COMP (implicit 1-decimal): seed the raw digit string, e.g. 4.5 → "45".
+        controls.weightOz.setValue(Math.round(oz * 10).toString())
     }
     entry.babyLengthMillimeters?.takeIf { it > 0 }?.let {
-        controls.inches.setValue(formatOneDecimal(ConversionTools.convertMmToInches(it)))
+        // length field is BODY_COMP (implicit 1-decimal): seed the raw digit string, 20.5 → "205".
+        controls.length.setValue(Math.round(ConversionTools.convertMmToInches(it) * 10).toString())
     }
     entry.entryNote?.let { controls.notes.setValue(it) }
     val millis = DateTimeConverter.isoToTimestamp(entry.entry.entryTimestamp)

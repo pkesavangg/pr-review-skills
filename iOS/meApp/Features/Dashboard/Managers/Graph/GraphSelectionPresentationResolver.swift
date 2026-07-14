@@ -119,14 +119,15 @@ struct GraphSelectionPresentationResolver {
     }
 
     private func fallbackValue(
-        on date: Date,
-        babyProfile: BabyProfile,
+        on _: Date,
+        babyProfile _: BabyProfile,
         metric: BabyMetric,
         displayWeight: Double?
     ) -> Double? {
         switch metric {
         case .height:
-            return BabyDashboardChartSupport.dummyHeightValue(for: babyProfile, on: date)
+            // No synthetic fill: a crosshair outside the recorded length points has no value.
+            return nil
         case .weight:
             guard let displayWeight,
                   abs(displayWeight) >= AppConstants.Precision.doubleEqualityEpsilon else {

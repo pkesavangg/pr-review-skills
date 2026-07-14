@@ -25,7 +25,7 @@ struct BabyHistoryEntryItem: View {
     private var noteIsLong: Bool { (entry.notes ?? "").count > 100 }
 
     private var timeText: String {
-        DateTimeTools.getFormattedTime(entry.entryTimestamp)
+        DateTimeTools.getFormattedTimeLowercased(entry.entryTimestamp)
     }
 
     private var combinedAccessibilityLabel: String {
@@ -119,7 +119,7 @@ struct BabyHistoryEntryItem: View {
 
             // Expanded notes section
             if isExpanded {
-                HStack(alignment: .top, spacing: .spacingXS) {
+                HStack(alignment: .center, spacing: .spacingXS) {
                     if hasNotes {
                         VStack(alignment: .leading, spacing: 4) {
                             Text(entry.notes ?? "")
@@ -155,6 +155,10 @@ struct BabyHistoryEntryItem: View {
                         Image(systemName: hasNotes ? "square.and.pencil" : "plus")
                             .font(.system(size: 18))
                             .foregroundColor(theme.actionPrimary)
+                            // Guarantee at least a 44×44pt tap target (Apple HIG) — the glyph
+                            // stays visually 18pt but the whole square is tappable.
+                            .frame(width: 44, height: 44)
+                            .contentShape(Rectangle())
                     }
                     .buttonStyle(.plain)
                     .accessibilityLabel(hasNotes ? HistoryListStrings.accEditNoteLabel : HistoryListStrings.accAddNoteLabel)

@@ -66,13 +66,13 @@ class HistoryDetailViewModel @AssistedInject constructor(
                         is HistoryDetail.BloodPressure -> detail.entries
                         is HistoryDetail.Baby -> detail.entries
                     }
-                    if (entries.isNotEmpty()) {
-                        AppLog.d(TAG, "Loaded ${entries.size} entries")
-                        handleIntent(HistoryDetailIntent.SetHistoryItems(month, entries))
-                    } else {
-                        AppLog.w(TAG, "No entries found for key: $month")
-                        handleIntent(HistoryDetailIntent.SetError("No entries found"))
-                    }
+                    // An empty result is a valid state — e.g. the last entry in this month/day was
+                    // just deleted — not an error. Route it through SetHistoryItems so the list
+                    // clears reactively. Previously empty went to SetError, which does NOT clear
+                    // historyItems, so a just-deleted last row lingered on screen until the detail
+                    // screen was recreated (switching tabs). (MOB-1462)
+                    AppLog.d(TAG, "Loaded ${entries.size} entries for key: $month")
+                    handleIntent(HistoryDetailIntent.SetHistoryItems(month, entries))
                 }
             } catch (e: Exception) {
                 AppLog.e(TAG, "Error loading details for key: $month", e)

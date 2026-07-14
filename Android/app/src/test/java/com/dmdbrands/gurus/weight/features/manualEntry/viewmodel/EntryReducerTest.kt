@@ -331,7 +331,7 @@ class EntryReducerTest {
 
     @Test
     fun `ActiveEntryForm Baby reflects form state`() {
-        val form = MultiFormGroup.create(forms = BabyEntryForm.create())
+        val form = MultiFormGroup.create(forms = BabyEntryForm.create(WeightUnit.LB_OZ))
         val active = ActiveEntryForm.Baby(form, mockk(relaxed = true))
         assertThat(active.isDirty).isFalse()
         assertThat(active.isValid).isEqualTo(form.isValid)
@@ -339,8 +339,8 @@ class EntryReducerTest {
 
     @Test
     fun `ActiveEntryForm Baby isDirty true when touched`() {
-        val form = MultiFormGroup.create(forms = BabyEntryForm.create())
-        form.forms.baby.controls.pounds.markAsTouched()
+        val form = MultiFormGroup.create(forms = BabyEntryForm.create(WeightUnit.LB_OZ))
+        form.forms.baby.controls.weight.markAsTouched()
         val active = ActiveEntryForm.Baby(form, mockk(relaxed = true))
         assertThat(active.isDirty).isTrue()
     }

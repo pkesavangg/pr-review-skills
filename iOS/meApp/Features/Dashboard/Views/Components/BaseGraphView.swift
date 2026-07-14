@@ -25,7 +25,6 @@ struct BaseGraphView<ViewModel: SectionViewModelProtocol>: View, Equatable {
     @State private var lastCacheUpdateTime: Date = .distantPast
     @State private var cacheUpdateTask: Task<Void, Never>?
     @State private var isInScrollEndTransition = false
-    @State private var chartRebuildToken = 0
     @State private var previousYAxisDomain: ClosedRange<Double>?
     @State private var previousDataHash: Int?
     @State private var isDomainChangeOnly = false
@@ -41,6 +40,14 @@ struct BaseGraphView<ViewModel: SectionViewModelProtocol>: View, Equatable {
     @State private var lastSettingsChangeSignature = 0
     @State private var lastChartFrame: CGRect = .zero
     @State private var lastChartHeight: CGFloat = .zero
+    /// Bumped to force a single adoption re-render when a *programmatic* scroll move updates the
+    /// store's `xScrollPosition`. Because `viewModel.scrollPosition` is no longer `@Published`,
+    /// writing it does not re-render on its own; bumping this `@State` re-applies `.chartScrollPosition`
+    /// with the adopted value so Swift Charts moves to it. Zero effect during user drags (no publish,
+    /// no per-frame churn) — it only fires on scroll-end commit / "scroll to latest" / init.
+    /// Not `private`: mutated by the store→VM sync `onChange` in `BaseGraphView+ChartModifiers.swift`
+    /// (same pattern as `localSelectedXValue`), and `private` is file-scoped.
+    @State var scrollAdoptToken = 0
 
     private let cacheUpdateThrottle: TimeInterval = 0.05
     private let goalChipTrailingPadding: CGFloat = 20
@@ -69,6 +76,7 @@ struct BaseGraphView<ViewModel: SectionViewModelProtocol>: View, Equatable {
         #if DEBUG
             Self._logChanges()
         #endif
+        _ = scrollAdoptToken // dependency: programmatic-scroll adoption re-render (see `scrollAdoptToken`)
         return conditionalScrollSyncing(
             ZStack {
                 mainChartView
@@ -134,15 +142,9 @@ struct BaseGraphView<ViewModel: SectionViewModelProtocol>: View, Equatable {
         // MA-3837/MA-3977: on mount (incl. the chart remount after a tab switch), adopt the
         // store's current selection so the auto-selected latest point renders on first frame.
         syncViewModelSelectionFromStore()
-
-        guard isScrollable else { return }
-        Task { @MainActor in
-            try? await Task.sleep(nanoseconds: 100_000_000)
-            let targetPosition = viewModel.scrollPosition
-            viewModel.scrollPosition = targetPosition.addingTimeInterval(0.001)
-            await Task.yield()
-            viewModel.scrollPosition = targetPosition
-        }
+        // No scroll-position "nudge" here: `scrollPosition` is a plain property now, so the chart
+        // adopts the anchor position `configure()` set via its `.chartScrollPosition` binding on this
+        // first render. The old `+0.001` dance only existed to refresh the former `@Published` binding.
     }
 
     private func handleOnDisappear() {
@@ -168,7 +170,6 @@ struct BaseGraphView<ViewModel: SectionViewModelProtocol>: View, Equatable {
     private func handleScrollStateChange(_ oldValue: Bool, _ newValue: Bool) {
         guard oldValue && !newValue else { return }
         isInScrollEndTransition = true
-        chartRebuildToken += 1
 
         Task { @MainActor in
             try? await Task.sleep(nanoseconds: 5_000_000)
@@ -336,6 +337,14 @@ struct BaseGraphView<ViewModel: SectionViewModelProtocol>: View, Equatable {
 
     private var chartContainerHeight: CGFloat {
         selectedBabyProfile != nil ? babyChartContainerHeight : 265
+    }
+
+    /// The Y-axis domain, guaranteed finite with positive width before it reaches `.chartYScale`.
+    /// A zero-width / non-finite domain makes Charts divide by zero when placing marks, which is one
+    /// of the sources of the `Invalid frame dimension` flood (MOB-518 / W2). Used for the scale AND
+    /// the series clamping so plotted points and the scale always agree.
+    private var safeYAxisDomain: ClosedRange<Double> {
+        ChartDomainSanitizer.finiteWidth(viewModel.yAxisDomain)
     }
 
     private var shouldShowYAxisLabels: Bool {
@@ -508,7 +517,7 @@ struct BaseGraphView<ViewModel: SectionViewModelProtocol>: View, Equatable {
         return ChartSeriesContent(
             orderedSeriesNames: cachedOrderedSeriesNames,
             cachedPlottedPoints: cachedPlottedPoints,
-            yAxisDomain: viewModel.yAxisDomain,
+            yAxisDomain: safeYAxisDomain,
             scrollPosition: viewModel.scrollPosition,
             visibleDomainLength: viewModel.visibleDomainLength,
             visibleGridRange: visiblePercentileRange,
@@ -542,8 +551,21 @@ struct BaseGraphView<ViewModel: SectionViewModelProtocol>: View, Equatable {
                         chartSeriesContent
                         chartBpmReferenceLines
                     }
-                    .id(lastDataHash)
-                    .chartYScale(domain: viewModel.yAxisDomain)
+                    // S1 (MOB-518): NO `.id` on the Chart. A stable view identity lets Swift Charts diff
+                    // marks and animate the y-axis settle IN PLACE, instead of tearing down + re-mounting the
+                    // whole chart on every settle. The old `.id(lastDataHash)` hashed the y-domain, so each
+                    // scroll-end resettle changed the id → full teardown/rebuild → "points render, then the
+                    // line attaches" + the settle jerk/hitch. Marks stay correct without an id because
+                    // `chartSeriesContent` is a pure function of the caches (re-derives on any data change).
+                    // Period switches still remount correctly: each period is a distinct generic type
+                    // (BaseGraphView<WeekSectionViewModel> vs <MonthSectionViewModel>…), so SwiftUI replaces
+                    // the view on period change on its own — the `.id` was never what drove that.
+                    // FALLBACK: if a same-count value edit (e.g. weight→BMI metric switch, add/edit/delete)
+                    // ever fails to visually refresh on device, add a VALUE-ONLY fingerprint id (series
+                    // endpoints only, NOT the y-domain). Never re-add a y-domain-inclusive hash — that is S1.
+                    // MULTI-SERIES: baby/BPM add more series to cachedPlottedPoints; a value-only fingerprint
+                    // (if used) must fold in every series, and percentile series change only on profile/DOB/unit.
+                    .chartYScale(domain: safeYAxisDomain)
                     .chartYAxis { yAxisMarks }
                     .chartLegend(.hidden)
                     .chartScrollTargetBehavior(getChartScrollBehavior(for: viewModel.timePeriod))

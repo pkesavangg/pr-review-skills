@@ -145,6 +145,7 @@ private fun EntryScreenContent(
           if (babyForm != null) {
             BabyEntrySection(
               controls = babyForm.forms.baby.controls,
+              weightUnit = state.babyWeightMode,
               onImeAction = {
                 focusManager.clearFocus()
                 keyboardController?.hide()

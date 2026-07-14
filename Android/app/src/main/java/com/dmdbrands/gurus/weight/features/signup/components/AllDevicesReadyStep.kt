@@ -13,6 +13,8 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.testTag
+import com.dmdbrands.gurus.weight.core.shared.utilities.testing.TestTags
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
@@ -85,6 +87,7 @@ fun AllDevicesReadyStep(
                 label = DeviceReadyStrings.finish,
                 type = ButtonType.PrimaryFilled,
                 size = ButtonSize.Large,
+                modifier = Modifier.testTag(TestTags.Signup.FinishButton),
                 onClick = onFinish,
             )
             AppButton(
@@ -92,6 +95,7 @@ fun AllDevicesReadyStep(
                 type = ButtonType.TextPrimary,
                 size = ButtonSize.Large,
                 enabled = false,
+                modifier = Modifier.testTag(TestTags.Signup.ConnectAnotherDeviceButton),
                 onClick = {},
             )
         }

@@ -299,24 +299,15 @@ class HistoryDetailViewModelTest {
     }
 
     @Test
-    fun `loadHistoryDetail sets error when entries are empty`() = runTest(mainDispatcherRule.scheduler) {
+    fun `loadHistoryDetail clears items and sets no error when entries are empty`() = runTest(mainDispatcherRule.scheduler) {
         every { entryReadService.getDetail(any(), eq(TEST_MONTH)) } returns flowOf(HistoryDetail.Weight(emptyList()))
 
-        viewModel = HistoryDetailViewModel(
-            accountService = accountService,
-            entryService = entryService,
-            healthConnectService = healthConnectService,
-            entryReadService = entryReadService,
-            month = TEST_MONTH,
-            productType = com.dmdbrands.gurus.weight.domain.enums.ProductType.MY_WEIGHT,
-        ).initTestDependencies(
-            navigationService = navigationService,
-            dialogQueueService = dialogQueueService,
-            productSelectionManager = productSelectionManager,
-        )
+        viewModel = createViewModelRaw()
         advanceUntilIdle()
 
-        assertThat(viewModel.state.value.errorMessage).isNotNull()
+        // Empty is a valid state (e.g. the last entry was just deleted), not an error (MOB-1462).
+        assertThat(viewModel.state.value.historyItems).isEmpty()
+        assertThat(viewModel.state.value.errorMessage).isNull()
     }
 
     @Test
@@ -610,13 +601,34 @@ class HistoryDetailViewModelTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `loadDetail with empty weight entries sets error`() = runTest {
+    fun `loadDetail with empty weight entries clears items without error`() = runTest {
         every { entryReadService.getDetail(any(), eq(TEST_MONTH)) } returns
             flowOf(HistoryDetail.Weight(emptyList()))
         viewModel = createViewModelRaw()
         advanceUntilIdle()
 
-        assertThat(viewModel.state.value.errorMessage).isNotNull()
+        // Empty result → clear the list, not an error (MOB-1462).
+        assertThat(viewModel.state.value.historyItems).isEmpty()
+        assertThat(viewModel.state.value.errorMessage).isNull()
+    }
+
+    @Test
+    fun `deleting the last entry clears the list reactively`() = runTest {
+        // getDetail is reactive: one entry first, then an empty emission after the last delete.
+        val detailFlow = MutableStateFlow<HistoryDetail>(
+            HistoryDetail.Weight(listOf(TestFixtures.weightEntry)),
+        )
+        every { entryReadService.getDetail(any(), eq(TEST_MONTH)) } returns detailFlow
+        viewModel = createViewModelRaw()
+        advanceUntilIdle()
+        assertThat(viewModel.state.value.historyItems).hasSize(1)
+
+        // Last entry removed → the detail flow re-emits empty; the list must clear (not error).
+        detailFlow.value = HistoryDetail.Weight(emptyList())
+        advanceUntilIdle()
+
+        assertThat(viewModel.state.value.historyItems).isEmpty()
+        assertThat(viewModel.state.value.errorMessage).isNull()
     }
 
     @Test

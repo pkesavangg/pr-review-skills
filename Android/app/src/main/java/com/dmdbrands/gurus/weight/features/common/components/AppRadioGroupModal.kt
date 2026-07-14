@@ -29,6 +29,7 @@ import androidx.compose.ui.window.DialogProperties
 import com.dmdbrands.gurus.weight.features.common.model.ActionButton
 import com.dmdbrands.gurus.weight.features.common.model.DialogModel
 import com.dmdbrands.gurus.weight.features.settings.strings.RadioGroupModalStrings
+import com.dmdbrands.gurus.weight.core.shared.utilities.testing.exposeTestTagsAsResourceId
 import com.dmdbrands.gurus.weight.theme.MeAppTheme
 import com.dmdbrands.gurus.weight.theme.MeTheme
 import kotlinx.coroutines.delay
@@ -172,6 +173,7 @@ fun <T> AppRadioGroupModal(
         Box(
           modifier = Modifier
                 .fillMaxSize()
+                .exposeTestTagsAsResourceId()
                 .background(MeTheme.colorScheme.overlay),
         ) {
             Box(modifier = Modifier.align(Alignment.Center)) {
