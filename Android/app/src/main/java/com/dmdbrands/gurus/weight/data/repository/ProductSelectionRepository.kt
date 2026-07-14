@@ -4,6 +4,7 @@ import com.dmdbrands.gurus.weight.core.shared.utilities.logging.AppLog
 import com.dmdbrands.gurus.weight.data.storage.datastore.UserDataStore
 import com.dmdbrands.gurus.weight.data.storage.db.dao.BabyProfileDao
 import com.dmdbrands.gurus.weight.data.storage.db.dao.DeviceDao
+import com.dmdbrands.gurus.weight.data.storage.db.entity.baby.BabyProfileEntity
 import com.dmdbrands.gurus.weight.domain.enums.ProductType
 import com.dmdbrands.gurus.weight.domain.model.common.BabyProfile
 import com.dmdbrands.gurus.weight.domain.repository.IProductSelectionRepository
@@ -74,7 +75,7 @@ class ProductSelectionRepository @Inject constructor(
     override fun observeBabyProfiles(accountId: String): Flow<List<BabyProfile>> =
         babyProfileDao.observeByAccountId(accountId).map { list -> list.map { it.toBabyProfile() } }
 
-    private fun com.dmdbrands.gurus.weight.data.storage.db.entity.baby.BabyProfileEntity.toBabyProfile() =
+    private fun BabyProfileEntity.toBabyProfile() =
         BabyProfile(
             id = babyId,
             name = name,
