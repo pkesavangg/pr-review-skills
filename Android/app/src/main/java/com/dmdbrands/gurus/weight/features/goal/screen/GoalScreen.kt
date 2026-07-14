@@ -15,8 +15,10 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.dmdbrands.gurus.weight.core.shared.utilities.testing.TestTags
 import com.dmdbrands.gurus.weight.domain.model.common.WeightUnit
 import com.dmdbrands.gurus.weight.features.common.components.AppButton
 import com.dmdbrands.gurus.weight.features.common.components.AppIconButton
@@ -61,11 +63,12 @@ private fun GoalContent(state: GoalState, handleIntent: (GoalIntent) -> Unit) {
   AppScaffold(
     title = GoalStrings.PageTitle,
     navigationIcon = {
-      AppIconButton(AppIcons.Default.Close, contentDescription = GoalStrings.accCloseLabel) { handleIntent(GoalIntent.OnBack) }
+      AppIconButton(AppIcons.Default.Close, modifier = Modifier.testTag(TestTags.Goal.CloseButton), contentDescription = GoalStrings.accCloseLabel) { handleIntent(GoalIntent.OnBack) }
     },
     actions = {
       AppButton(
         GoalStrings.SaveGoalButton,
+        modifier = Modifier.testTag(TestTags.Goal.SaveButton),
         type = ButtonType.InlineTextPrimary,
         size = ButtonSize.Small,
         enabled =  state.form.isDirty && state.form.controls.isValidForGoalType(),
@@ -80,7 +83,8 @@ private fun GoalContent(state: GoalState, handleIntent: (GoalIntent) -> Unit) {
       modifier = Modifier
         .fillMaxSize()
         .verticalScroll(scrollState)
-        .dismissKeyboardOnTap(),
+        .dismissKeyboardOnTap()
+        .testTag(TestTags.Goal.ScreenRoot),
       horizontalAlignment = Alignment.CenterHorizontally,
       verticalArrangement = Arrangement.Top,
     ) {

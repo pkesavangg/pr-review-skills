@@ -17,12 +17,14 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.contentType
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.input.ImeAction
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.dmdbrands.gurus.weight.core.shared.utilities.DateTimeUtil
+import com.dmdbrands.gurus.weight.core.shared.utilities.testing.TestTags
 import com.dmdbrands.gurus.weight.features.common.components.dismissKeyboardOnTap
 import com.dmdbrands.gurus.weight.domain.model.common.WeightUnit
 import com.dmdbrands.gurus.weight.features.common.components.AppButton
@@ -87,10 +89,10 @@ private fun ProfileContent(state: ProfileState, handleIntent: (ProfileIntent) ->
     AppScaffold(
         title = ProfileStrings.ScreenTitle,
         navigationIcon = {
-            AppIconButton(AppIcons.Default.Close, contentDescription = ProfileStrings.accCloseLabel) { onBack() }
+            AppIconButton(AppIcons.Default.Close, modifier = Modifier.testTag(TestTags.Profile.CloseButton), contentDescription = ProfileStrings.accCloseLabel) { onBack() }
         },
         actions = {
-            AppButton(ProfileStrings.SaveButton, enabled = state.form.isValid && state.form.isDirty, type = ButtonType.InlineTextPrimary, size = ButtonSize.Small) {
+            AppButton(ProfileStrings.SaveButton, modifier = Modifier.testTag(TestTags.Profile.SaveButton), enabled = state.form.isValid && state.form.isDirty, type = ButtonType.InlineTextPrimary, size = ButtonSize.Small) {
                 focusManager.clearFocus()
                 keyboardController?.hide()
                 handleIntent.invoke(ProfileIntent.Submit)
@@ -116,7 +118,7 @@ private fun ProfileContent(state: ProfileState, handleIntent: (ProfileIntent) ->
                     showTrailingIcon = true,
                     imeAction = ImeAction.Next,
                     nextFocusRequester = lastNameFocusRequester,
-                    testTag = "first_name_field",
+                    testTag = TestTags.Profile.FirstNameField,
                     modifier = Modifier
                       .semantics { contentType = ContentType.PersonFirstName }
                       .focusRequester(firstNameFocusRequester),
@@ -129,7 +131,7 @@ private fun ProfileContent(state: ProfileState, handleIntent: (ProfileIntent) ->
                     showTrailingIcon = true,
                     imeAction = ImeAction.Next,
                     nextFocusRequester = emailFocusRequester,
-                    testTag = "last_name_field",
+                    testTag = TestTags.Profile.LastNameField,
                     modifier = Modifier
                       .semantics { contentType = ContentType.PersonLastName }
                       .focusRequester(lastNameFocusRequester),
@@ -142,7 +144,7 @@ private fun ProfileContent(state: ProfileState, handleIntent: (ProfileIntent) ->
                         showTrailingIcon = true,
                         imeAction = ImeAction.Next,
                         nextFocusRequester = zipcodeFocusRequester,
-                        testTag = "email_field",
+                        testTag = TestTags.Profile.EmailField,
                         modifier = Modifier
                           .semantics { contentType = ContentType.EmailAddress }
                           .focusRequester(emailFocusRequester),
@@ -155,7 +157,7 @@ private fun ProfileContent(state: ProfileState, handleIntent: (ProfileIntent) ->
                         showTrailingIcon = true,
                         imeAction = ImeAction.Next,
                         nextFocusRequester = birthdayFocusRequester,
-                        testTag = "zipcode_field",
+                        testTag = TestTags.Profile.ZipcodeField,
                         modifier = Modifier
                           .semantics { contentType = ContentType.PostalCode }
                           .focusRequester(zipcodeFocusRequester),
@@ -182,7 +184,7 @@ private fun ProfileContent(state: ProfileState, handleIntent: (ProfileIntent) ->
                             ?.replaceFirstChar { it.uppercase() }
                             ?: ProfileStrings.NotSet,
                         ),
-                        testTag = "settings_row_biological_sex",
+                        testTag = TestTags.Settings.BiologicalSex,
                         onClick = { handleIntent(ProfileIntent.ShowBiologicalSexModal) },
                       )
                     ),
@@ -204,7 +206,7 @@ private fun ProfileContent(state: ProfileState, handleIntent: (ProfileIntent) ->
                             isMetric = state.weightUnit == WeightUnit.KG,
                           ),
                         ),
-                        testTag = "settings_row_height",
+                        testTag = TestTags.Settings.Height,
                         onClick = { handleIntent(ProfileIntent.ShowHeightModal) },
                       ),
                     ),

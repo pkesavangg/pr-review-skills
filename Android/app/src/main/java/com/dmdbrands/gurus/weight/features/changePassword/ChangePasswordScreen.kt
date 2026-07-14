@@ -18,11 +18,13 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.contentType
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.input.ImeAction
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.dmdbrands.gurus.weight.core.shared.utilities.testing.TestTags
 import com.dmdbrands.gurus.weight.features.changePassword.model.ChangePasswordFormControls
 import com.dmdbrands.gurus.weight.features.changePassword.model.ChangePasswordIntent
 import com.dmdbrands.gurus.weight.features.changePassword.model.ChangePasswordState
@@ -73,13 +75,14 @@ private fun ChangePasswordContent(
     AppScaffold(
         title = ChangePasswordStrings.Title,
         navigationIcon = {
-            AppIconButton(AppIcons.Default.Close, contentDescription = ChangePasswordStrings.accCloseLabel) {
+            AppIconButton(AppIcons.Default.Close, modifier = Modifier.testTag(TestTags.ChangePassword.CloseButton), contentDescription = ChangePasswordStrings.accCloseLabel) {
               focusManager.clearFocus()
               handleIntent.invoke(ChangePasswordIntent.OnRequestBack) }
         },
         actions = {
             AppButton(
                 ChangePasswordStrings.SaveButton,
+                modifier = Modifier.testTag(TestTags.ChangePassword.SaveButton),
                 type = ButtonType.InlineTextPrimary,
                 size = ButtonSize.Small,
                 enabled = state.form.isValid && state.form.isDirty,
@@ -111,7 +114,7 @@ private fun ChangePasswordContent(
                         showTrailingIcon = true,
                         imeAction = ImeAction.Next,
                         nextFocusRequester = newPasswordFocusRequester,
-                        testTag = "current_password_field",
+                        testTag = TestTags.ChangePassword.CurrentPasswordField,
                         modifier =
                             Modifier
                                 .semantics { contentType = ContentType.Password }
@@ -124,7 +127,7 @@ private fun ChangePasswordContent(
                         showTrailingIcon = true,
                         imeAction = ImeAction.Next,
                         nextFocusRequester = confirmPasswordFocusRequester,
-                        testTag = "new_password_field",
+                        testTag = TestTags.ChangePassword.NewPasswordField,
                         modifier =
                             Modifier
                                 .semantics { contentType = ContentType.NewPassword }
@@ -141,7 +144,7 @@ private fun ChangePasswordContent(
                             focusManager.clearFocus()
                             keyboardController?.hide()
                         },
-                        testTag = "confirm_password_field",
+                        testTag = TestTags.ChangePassword.ConfirmPasswordField,
                         modifier =
                             Modifier
                                 .semantics { contentType = ContentType.NewPassword }
@@ -152,7 +155,9 @@ private fun ChangePasswordContent(
                         type = ButtonType.TextPrimary,
                         label = ChangePasswordStrings.ForgotPasswordLabel,
                         enabled = !state.isLoading,
-                        modifier = Modifier.align(Alignment.CenterHorizontally),
+                        modifier = Modifier
+                            .align(Alignment.CenterHorizontally)
+                            .testTag(TestTags.ChangePassword.ForgotPasswordButton),
                         onClick = {
                             handleIntent(ChangePasswordIntent.OpenForgotPasswordModal)
                         },
