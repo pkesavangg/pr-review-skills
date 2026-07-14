@@ -10,6 +10,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.disabled
 import androidx.compose.ui.semantics.role
@@ -25,6 +26,7 @@ import com.dmdbrands.gurus.weight.features.common.components.AppScaffold
 import com.dmdbrands.gurus.weight.features.common.components.AppText
 import com.dmdbrands.gurus.weight.features.common.components.PreviewTheme
 import com.dmdbrands.gurus.weight.features.common.components.TextType
+import com.dmdbrands.gurus.weight.core.shared.utilities.testing.TestTags
 import com.dmdbrands.gurus.weight.resources.AppIcons
 import com.dmdbrands.gurus.weight.theme.MeAppTheme
 import com.dmdbrands.gurus.weight.theme.MeTheme.colorScheme
@@ -58,31 +60,31 @@ fun DeviceUserListScreenContent(
       state.scale?.preferences?.displayName ?: ""
     }
   }
-
   val isSaveEnabled by remember(state.usernameForm.username.value, state.hasSetUsername, originalUsername) {
     derivedStateOf {
-      val hasSetUsername = state.hasSetUsername
       val currentValue = state.usernameForm.username.value
       val valueNotEmpty = currentValue.isNotEmpty()
       val isValid = state.usernameForm.username.isValueValid()
       val hasChanged = currentValue != originalUsername
-      hasSetUsername &&
+      state.hasSetUsername &&
         valueNotEmpty &&
         isValid &&
         hasChanged
     }
   }
 
-
   AppScaffold(
     title = DeviceUsersStrings.Header,
     navigationIcon = {
-      AppIconButton(AppIcons.Default.Close, contentDescription = DeviceUsersStrings.accCloseLabel) {
+      AppIconButton(
+        AppIcons.Default.Close,
+        modifier = Modifier.testTag(TestTags.DeviceUsers.CloseButton),
+        contentDescription = DeviceUsersStrings.accCloseLabel,
+      ) {
         handleIntent(DeviceUserListIntent.Back)
       }
     },
     actions = {
-
       AppText(
         text = DeviceUsersStrings.SaveButton,
         textType = TextType.ListTitle1,
@@ -99,12 +101,16 @@ fun DeviceUserListScreenContent(
               if (!isSaveEnabled) disabled()
             }
             .clickable(enabled = isSaveEnabled)
-            { handleIntent(DeviceUserListIntent.Save) },
+            { handleIntent(DeviceUserListIntent.Save) }
+            .testTag(TestTags.DeviceUsers.SaveButton),
       )
     },
   ) {
     DeviceUserList(
-      modifier = Modifier.padding(horizontal = spacing.sm, vertical = spacing.md),
+      modifier =
+        Modifier
+          .padding(horizontal = spacing.sm, vertical = spacing.md)
+          .testTag(TestTags.DeviceUsers.ScreenRoot),
       userList = state.scaleUserList,
       userFormControl = state.usernameForm.username,
       onDeleteUser = { user -> handleIntent(DeviceUserListIntent.DeleteUser(user)) },

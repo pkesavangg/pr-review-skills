@@ -19,7 +19,9 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
+import com.dmdbrands.gurus.weight.core.shared.utilities.testing.TestTags
 import com.dmdbrands.gurus.weight.features.DeviceCustomization.components.CustomizationLayout
 import com.dmdbrands.gurus.weight.features.DeviceCustomization.components.CustomizationSettingsItem
 import com.dmdbrands.gurus.weight.features.DeviceCustomization.strings.CustomizeSettingsStrings
@@ -175,7 +177,8 @@ fun CustomizeDeviceSettings(
     modifier = Modifier
       .fillMaxSize()
       .verticalScroll(state = scrollState)
-      .padding(vertical = spacing.md),
+      .padding(vertical = spacing.md)
+      .testTag(TestTags.DeviceCustomization.ScreenRoot),
     steps = CustomizeSettings.entries,
     containerColor = MeTheme.colorScheme.secondaryBackground,
     pagerState = pagerState,
@@ -184,6 +187,7 @@ fun CustomizeDeviceSettings(
       {
         AppButton(
           type = ButtonType.TextPrimary,
+          modifier = Modifier.testTag(TestTags.DeviceCustomization.BackButton),
           label = DeviceSetupStrings.backButton,
           size = ButtonSize.Small,
           // Disable back button when on main settings screen (NONE)
@@ -226,6 +230,7 @@ fun CustomizeDeviceSettings(
         if (pagerState.currentPage == CustomizeSettings.NONE.ordinal) {
           AppButton(
             type = ButtonType.PrimaryFilled,
+            modifier = Modifier.testTag(TestTags.DeviceCustomization.NextButton),
             label = DeviceSetupStrings.nextButton,
             size = ButtonSize.Small,
             enabled = !(pagerState.currentPage == CustomizeSettings.DEVICE_USERNAME.ordinal && !localUsernameFormControl.isValueValid()),
@@ -260,6 +265,7 @@ fun CustomizeDeviceSettings(
         } else {
           AppButton(
             type = ButtonType.PrimaryFilled,
+            modifier = Modifier.testTag(TestTags.DeviceCustomization.SaveButton),
             label = DeviceSetupStrings.saveButton,
             size = ButtonSize.Small,
             enabled = !state.isSaving && hasUnsavedChanges && (pagerState.currentPage != CustomizeSettings.DEVICE_USERNAME.ordinal || localUsernameFormControl.isValueValid()),

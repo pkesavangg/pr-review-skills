@@ -6,6 +6,8 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.testTag
+import com.dmdbrands.gurus.weight.core.shared.utilities.testing.TestTags
 import com.dmdbrands.gurus.weight.features.DeviceSetup.strings.DeviceSetupStrings
 import com.dmdbrands.gurus.weight.features.common.components.AppIconButton
 import com.dmdbrands.gurus.weight.features.common.components.AppScaffold
@@ -37,6 +39,7 @@ fun DeviceSetupHeader(
       // TalkBack: icon-only button needs a spoken label.
       AppIconButton(
         AppIcons.Default.Close,
+        modifier = Modifier.testTag(TestTags.DeviceSetup.CloseButton),
         contentDescription = DeviceSetupStrings.accCloseButton,
       ) {
         onBack()
@@ -46,6 +49,7 @@ fun DeviceSetupHeader(
       // TalkBack: icon-only button needs a spoken label.
       AppIconButton(
         AppIcons.Outlined.Help,
+        modifier = Modifier.testTag(TestTags.DeviceSetup.HelpButton),
         contentDescription = DeviceSetupStrings.accHelpButton,
       ) {
         onHelp()

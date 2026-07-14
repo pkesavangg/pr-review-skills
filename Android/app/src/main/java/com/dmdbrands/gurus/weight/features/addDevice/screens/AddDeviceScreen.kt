@@ -21,6 +21,7 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.contentType
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
@@ -28,6 +29,7 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.dmdbrands.gurus.weight.core.navigation.LocalNavBackStack
+import com.dmdbrands.gurus.weight.core.shared.utilities.testing.TestTags
 import com.dmdbrands.gurus.weight.features.addDevice.reducer.AddScaleFormControls
 import com.dmdbrands.gurus.weight.features.addDevice.reducer.AddDeviceIntent
 import com.dmdbrands.gurus.weight.features.addDevice.reducer.AddScaleState
@@ -88,6 +90,7 @@ fun AddScaleScreenContent(
       AppIconButton(
         AppIcons.Default.Close,
         contentDescription = AddDeviceScreenStrings.accCloseButton,
+        modifier = Modifier.testTag(TestTags.AddDevice.CloseButton),
       ) {
         coroutineScope.launch {
           backStack.removeLast()
@@ -100,7 +103,8 @@ fun AddScaleScreenContent(
         Modifier
           .fillMaxSize()
           .verticalScroll(rememberScrollState())
-          .dismissKeyboardOnTap(),
+          .dismissKeyboardOnTap()
+          .testTag(TestTags.AddDevice.ScreenRoot),
     ) {
       Column(
         modifier =
@@ -122,6 +126,7 @@ fun AddScaleScreenContent(
         AppInput(
           formControl = modelNumberControl,
           label = AddDeviceScreenStrings.ModelNumberLabel,
+          testTag = TestTags.AddDevice.ModelNumberField,
           type = AppInputType.NUMERIC_STRING,
           imeAction = ImeAction.Done,
           onImeAction = {
@@ -151,7 +156,7 @@ fun AddScaleScreenContent(
             keyboardController?.hide()
             handleIntent(AddDeviceIntent.Submit)
           },
-          modifier = Modifier.align(Alignment.CenterHorizontally),
+          modifier = Modifier.testTag(TestTags.AddDevice.SubmitButton).align(Alignment.CenterHorizontally),
         )
         Spacer(modifier = Modifier.height(MeTheme.spacing.sm))
         AppButton(
@@ -159,7 +164,7 @@ fun AddScaleScreenContent(
           type = ButtonType.TextPrimary,
           size = ButtonSize.XSmall,
           onClick = { handleIntent(AddDeviceIntent.OpenScaleChooser) },
-          modifier = Modifier.align(Alignment.CenterHorizontally),
+          modifier = Modifier.testTag(TestTags.AddDevice.CantFindButton).align(Alignment.CenterHorizontally),
         )
         Spacer(modifier = Modifier.height(MeTheme.spacing.lg))
         if (state.savedScales.isNotEmpty()) {

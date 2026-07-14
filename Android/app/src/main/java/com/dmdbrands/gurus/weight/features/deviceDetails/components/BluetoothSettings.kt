@@ -11,7 +11,9 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
+import com.dmdbrands.gurus.weight.core.shared.utilities.testing.TestTags
 import com.dmdbrands.gurus.weight.domain.model.storage.BLEStatus
 import com.dmdbrands.gurus.weight.domain.model.storage.Device
 import com.dmdbrands.gurus.weight.features.appPermissions.helper.AppPermissionsHelper
@@ -50,14 +52,19 @@ fun BluetoothPermissionScreen(
   AppScaffold(
     title = BluetoothSettingStrings.Title,
     navigationIcon = {
-      AppIconButton(AppIcons.Default.Close , onClick = onClose)
+      AppIconButton(
+        AppIcons.Default.Close,
+        onClick = onClose,
+        modifier = Modifier.testTag(TestTags.DeviceDetails.BluetoothCloseButton),
+      )
     },
   ) {
     Column(
       modifier =
         Modifier
           .fillMaxSize().verticalScroll(rememberScrollState())
-          .padding(vertical = spacing.md, horizontal = spacing.sm),
+          .padding(vertical = spacing.md, horizontal = spacing.sm)
+          .testTag(TestTags.DeviceDetails.BluetoothScreenRoot),
       verticalArrangement = Arrangement.spacedBy(spacing.lg),
     ) {
       val requiredPermissionTypes = buildList {

@@ -14,10 +14,12 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.dmdbrands.gurus.weight.core.shared.utilities.logging.AppLog
+import com.dmdbrands.gurus.weight.core.shared.utilities.testing.TestTags
 import com.dmdbrands.gurus.weight.features.DeviceSetup.components.DeviceInfoContent
 import com.dmdbrands.gurus.weight.features.DeviceSetup.components.DevicePermissions
 import com.dmdbrands.gurus.weight.features.DeviceSetup.components.DeviceSetupHeader
@@ -131,6 +133,7 @@ fun AppsyncScaleSetupScreenContent(
           {
             AppButton(
               type = ButtonType.TextPrimary,
+              modifier = Modifier.testTag(TestTags.DeviceSetup.BackButton),
               label = DeviceSetupStrings.backButton,
               size = ButtonSize.Small,
               enabled = !state.isFirstStep && !state.isLastStep,
@@ -145,6 +148,7 @@ fun AppsyncScaleSetupScreenContent(
           {
             AppButton(
               type = ButtonType.PrimaryFilled,
+              modifier = Modifier.testTag(TestTags.DeviceSetup.NextButton),
               label = if (state.isLastStep) DeviceSetupStrings.FinishButton else DeviceSetupStrings.nextButton,
               size = ButtonSize.Small,
               enabled = state.isNextEnabled && !isScanning,

@@ -9,6 +9,8 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.testTag
+import com.dmdbrands.gurus.weight.core.shared.utilities.testing.TestTags
 import com.dmdbrands.gurus.weight.features.common.components.AppIconButton
 import com.dmdbrands.gurus.weight.features.common.components.AppScaffold
 import com.dmdbrands.gurus.weight.features.common.components.PreviewTheme
@@ -40,7 +42,10 @@ fun AdditionalSettingsScreen(
   AppScaffold(
     title = DeviceDetailsStrings.OtherSettings,
     navigationIcon = {
-      AppIconButton(AppIcons.Default.Close) {
+      AppIconButton(
+        AppIcons.Default.Close,
+        modifier = Modifier.testTag(TestTags.DeviceDetails.AdditionalCloseButton),
+      ) {
         onClose()
       }
     },
@@ -49,7 +54,8 @@ fun AdditionalSettingsScreen(
       modifier = Modifier
         .fillMaxSize()
         .verticalScroll(rememberScrollState())
-        .padding(vertical = spacing.md, horizontal = spacing.sm),
+        .padding(vertical = spacing.md, horizontal = spacing.sm)
+        .testTag(TestTags.DeviceDetails.AdditionalScreenRoot),
       verticalArrangement = Arrangement.spacedBy(spacing.sm),
     ) {
 
@@ -91,6 +97,7 @@ fun AdditionalSettingsScreen(
         items = listOf(
           SettingsItem(
             title = DeviceDetailsStrings.EnableStartAnimation,
+            testTag = TestTags.DeviceDetails.StartAnimationRow,
             type = SettingsItemType.Toggle(
               checked = state.isStartAnimationEnabled,
               onCheckedChange = { enabled ->
@@ -100,6 +107,7 @@ fun AdditionalSettingsScreen(
           ),
           SettingsItem(
             title = DeviceDetailsStrings.EnableEndAnimation,
+            testTag = TestTags.DeviceDetails.EndAnimationRow,
             type = SettingsItemType.Toggle(
               checked = state.isEndAnimationEnabled,
               onCheckedChange = { enabled ->
@@ -109,6 +117,7 @@ fun AdditionalSettingsScreen(
           ),
           SettingsItem(
             title = DeviceDetailsStrings.TimeFormat,
+            testTag = TestTags.DeviceDetails.TimeFormatRow,
             type = SettingsItemType.Dropdown(
               state.currentTimeFormat ?: DeviceDetailsStrings.TimeFormat12H,
             ),
@@ -119,6 +128,7 @@ fun AdditionalSettingsScreen(
           ),
           SettingsItem(
             title = DeviceDetailsStrings.ResetFirmware,
+            testTag = TestTags.DeviceDetails.ResetFirmwareRow,
             type = SettingsItemType.Action(),
             color = SettingColorType.Danger,
             enabled = isConnected,
@@ -128,6 +138,7 @@ fun AdditionalSettingsScreen(
           ),
           SettingsItem(
             title = DeviceDetailsStrings.FactoryReset,
+            testTag = TestTags.DeviceDetails.FactoryResetRow,
             type = SettingsItemType.Action(),
             color = SettingColorType.Danger,
             enabled = isConnected,
@@ -137,6 +148,7 @@ fun AdditionalSettingsScreen(
           ),
           SettingsItem(
             title = DeviceDetailsStrings.DownloadLogs,
+            testTag = TestTags.DeviceDetails.DownloadLogsRow,
             type = SettingsItemType.Action(),
             enabled = isConnected,
             onClick = {
@@ -145,6 +157,7 @@ fun AdditionalSettingsScreen(
           ),
           SettingsItem(
             title = DeviceDetailsStrings.ClearScaleData,
+            testTag = TestTags.DeviceDetails.ClearDataRow,
             type = SettingsItemType.Dropdown(
               when (state.currentClearDataSelection) {
                 "ALL" -> DeviceDetailsStrings.All

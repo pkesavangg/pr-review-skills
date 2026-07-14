@@ -5,8 +5,10 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.testTag
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.dmdbrands.gurus.weight.core.navigation.LocalNavBackStack
+import com.dmdbrands.gurus.weight.core.shared.utilities.testing.TestTags
 import com.dmdbrands.gurus.weight.features.addDevice.reducer.AddDeviceIntent
 import com.dmdbrands.gurus.weight.features.addDevice.strings.ChooseScaleStrings
 import com.dmdbrands.gurus.weight.features.addDevice.viewmodel.AddDeviceViewModel
@@ -32,7 +34,10 @@ fun ChooseScaleScreenContent(handleIntent: (AddDeviceIntent) -> Unit = {}) {
   AppScaffold(
     title = ChooseScaleStrings.Header,
     navigationIcon = {
-      AppIconButton(AppIcons.Default.Close) {
+      AppIconButton(
+        AppIcons.Default.Close,
+        modifier = Modifier.testTag(TestTags.AddDevice.ChooseCloseButton),
+      ) {
         coroutineScope.launch {
           backStack.removeLast()
         }
@@ -42,7 +47,8 @@ fun ChooseScaleScreenContent(handleIntent: (AddDeviceIntent) -> Unit = {}) {
     Column(
       modifier =
         Modifier
-          .padding(vertical = spacing.md),
+          .padding(vertical = spacing.md)
+          .testTag(TestTags.AddDevice.ChooseScreenRoot),
     ) {
       DeviceList(
         onScaleSelected = { scaleInfo ->

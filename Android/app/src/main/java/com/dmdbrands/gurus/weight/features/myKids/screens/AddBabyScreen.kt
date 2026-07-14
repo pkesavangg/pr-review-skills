@@ -30,12 +30,14 @@ import kotlin.math.roundToInt
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.dmdbrands.gurus.weight.core.navigation.LocalNavBackStack
+import com.dmdbrands.gurus.weight.core.shared.utilities.testing.TestTags
 import com.dmdbrands.gurus.weight.domain.model.common.BabyProfile
 import com.dmdbrands.gurus.weight.domain.model.common.MeasurementUnits
 import com.dmdbrands.gurus.weight.features.common.components.dismissKeyboardOnTap
@@ -106,13 +108,18 @@ fun AddBabyScreen(babyId: String? = null, viewModel: MyKidsViewModel = hiltViewM
     AppScaffold(
         title = if (isEditing) AddBabyStrings.EditTitle else AddBabyStrings.Title,
         navigationIcon = {
-            AppIconButton(AppIcons.Default.Close, contentDescription = AddBabyStrings.accCloseLabel) {
+            AppIconButton(
+                AppIcons.Default.Close,
+                contentDescription = AddBabyStrings.accCloseLabel,
+                modifier = Modifier.testTag(TestTags.MyKids.AddBabyCloseButton),
+            ) {
                 coroutineScope.launch { backStack.removeLast() }
             }
         },
         actions = {
             AppButton(
                 label = AddBabyStrings.Save,
+                modifier = Modifier.testTag(TestTags.MyKids.AddBabySaveButton),
                 type = ButtonType.InlineTextPrimary,
                 size = ButtonSize.Small,
                 onClick = {
@@ -233,12 +240,14 @@ private fun AddBabyFields(
             .fillMaxSize()
             .verticalScroll(rememberScrollState())
             .padding(horizontal = MeTheme.spacing.sm, vertical = MeTheme.spacing.md)
-            .dismissKeyboardOnTap(),
+            .dismissKeyboardOnTap()
+            .testTag(TestTags.MyKids.AddBabyScreenRoot),
     ) {
         AppInput(
             formControl = controls.name,
             type = AppInputType.TEXT,
             label = AddBabyStrings.NameLabel,
+            testTag = TestTags.MyKids.NameField,
             imeAction = ImeAction.Done,
             onImeAction = { focusManager.clearFocus() },
         )
@@ -261,6 +270,7 @@ private fun AddBabyFields(
         // Length — typed, unit per account (cm metric / in imperial).
         AppInput(
             formControl = controls.length,
+            testTag = TestTags.MyKids.LengthField,
             // Implicit 1-decimal like ounces (type 0 → 0.0, "205" → 20.5); raw digits stored.
             type = AppInputType.BODY_COMP,
             label = AddBabyStrings.BirthLengthLabel,
@@ -317,6 +327,7 @@ private fun BirthWeightInput(
             Column(modifier = Modifier.weight(1f)) {
                 AppInput(
                     formControl = weightControl,
+                    testTag = TestTags.MyKids.WeightLbField,
                     type = AppInputType.NUMERIC_STRING,
                     label = AddBabyStrings.BirthWeightLabel,
                     trailingText = AddBabyStrings.BirthWeightModal.LbSuffix,
@@ -327,6 +338,7 @@ private fun BirthWeightInput(
             Column(modifier = Modifier.weight(1f)) {
                 AppInput(
                     formControl = ozControl,
+                    testTag = TestTags.MyKids.WeightOzField,
                     // Implicit 1-decimal (type 0 → 0.0, "159" → 15.9); raw digits stored.
                     type = AppInputType.BODY_COMP,
                     label = AddBabyStrings.BirthWeightLabel,
@@ -340,6 +352,7 @@ private fun BirthWeightInput(
     } else {
         AppInput(
             formControl = weightControl,
+            testTag = TestTags.MyKids.WeightField,
             type = AppInputType.DECIMAL_STRING,
             label = AddBabyStrings.BirthWeightLabel,
             trailingText = if (isMetric) AddBabyStrings.KgUnit else AddBabyStrings.FixedWeightUnit,

@@ -14,12 +14,14 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.dmdbrands.gurus.weight.core.shared.utilities.testing.TestTags
 import com.dmdbrands.gurus.weight.features.DeviceSetup.components.DeviceInfoContent
 import com.dmdbrands.gurus.weight.features.DeviceSetup.components.DevicePermissions
 import com.dmdbrands.gurus.weight.features.DeviceSetup.components.DeviceSetupHeader
@@ -105,6 +107,7 @@ fun BpmSetupScreenContent(
       leadingContent = {
         AppButton(
           type = ButtonType.TextPrimary,
+          modifier = Modifier.testTag(TestTags.BpmSetup.BackButton),
           label = DeviceSetupStrings.backButton,
           size = ButtonSize.Small,
           enabled = state.backEnabled,
@@ -114,6 +117,7 @@ fun BpmSetupScreenContent(
       trailingContent = {
         AppButton(
           type = ButtonType.PrimaryFilled,
+          modifier = Modifier.testTag(TestTags.BpmSetup.NextButton),
           label = if (state.isLastStep || currentStep == MonitorSetupStep.SUCCESS_SCREEN) DeviceSetupStrings.FinishButton else DeviceSetupStrings.nextButton,
           size = ButtonSize.Small,
           enabled = state.nextEnabled,
@@ -238,6 +242,7 @@ fun BpmSetupScreenContent(
                   formControl = nicknameFormControl,
                   label = MonitorSetupStrings.MonitorNickname.Label,
                   modifier = Modifier.fillMaxWidth(),
+                  testTag = TestTags.BpmSetup.NicknameField,
                   imeAction = ImeAction.Done,
                   onImeAction = { focusManager.clearFocus() },
                 )

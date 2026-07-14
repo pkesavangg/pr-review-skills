@@ -10,7 +10,9 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.platform.testTag
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.dmdbrands.gurus.weight.core.shared.utilities.testing.TestTags
 import com.dmdbrands.gurus.weight.features.DeviceSetup.components.DeviceInfoContent
 import com.dmdbrands.gurus.weight.features.DeviceSetup.components.DevicePermissions
 import com.dmdbrands.gurus.weight.features.DeviceSetup.components.DeviceSetupHeader
@@ -91,6 +93,7 @@ fun LcbtScaleSetupScreenContent(
         if (state.isFirstStep || setupState.step == LcbtScaleSetupStep.PERMISSIONS || state.isLastStep) {
           AppButton(
             type = ButtonType.TextPrimary,
+            modifier = Modifier.testTag(TestTags.DeviceSetup.BackButton),
             label = DeviceSetupStrings.backButton,
             size = ButtonSize.Small,
             enabled = (!state.isFirstStep && !state.isLastStep),
@@ -102,6 +105,7 @@ fun LcbtScaleSetupScreenContent(
         if (state.isFirstStep || setupState.step == LcbtScaleSetupStep.PERMISSIONS || state.isLastStep) {
           AppButton(
             type = ButtonType.PrimaryFilled,
+            modifier = Modifier.testTag(TestTags.DeviceSetup.NextButton),
             label = if (state.isLastStep) DeviceSetupStrings.FinishButton else DeviceSetupStrings.nextButton,
             size = ButtonSize.Small,
             enabled = setupState.connectionState == ConnectionState.Success || state.isFirstStep || state.isLastStep || state.nextEnabled,

@@ -9,7 +9,9 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.platform.testTag
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.dmdbrands.gurus.weight.core.shared.utilities.testing.TestTags
 import com.dmdbrands.gurus.weight.features.DeviceSetup.components.DeviceInfoContent
 import com.dmdbrands.gurus.weight.features.DeviceSetup.components.DevicePermissions
 import com.dmdbrands.gurus.weight.features.DeviceSetup.components.DeviceSetupHeader
@@ -89,6 +91,7 @@ fun BtScaleSetupScreenContent(
       leadingContent = {
         AppButton(
           type = ButtonType.TextPrimary,
+          modifier = Modifier.testTag(TestTags.DeviceSetup.BackButton),
           label = DeviceSetupStrings.backButton,
           size = ButtonSize.Small,
           enabled = state.backEnabled,
@@ -101,6 +104,7 @@ fun BtScaleSetupScreenContent(
       trailingContent = {
         AppButton(
           type = ButtonType.PrimaryFilled,
+          modifier = Modifier.testTag(TestTags.DeviceSetup.NextButton),
           label = if (state.isLastStep) DeviceSetupStrings.FinishButton else DeviceSetupStrings.nextButton,
           size = ButtonSize.Small,
           enabled = state.nextEnabled || state.isFirstStep || state.isLastStep,

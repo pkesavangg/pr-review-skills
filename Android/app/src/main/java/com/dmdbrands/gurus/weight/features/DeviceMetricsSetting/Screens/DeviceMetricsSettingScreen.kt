@@ -16,11 +16,13 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
 import com.dmdbrands.gurus.weight.features.DeviceMetricsSetting.Helper.DeviceMetricsHelper
 import com.dmdbrands.gurus.weight.features.DeviceMetricsSetting.components.DeviceMetricItem
 import com.dmdbrands.gurus.weight.features.DeviceMetricsSetting.model.DeviceMetric
 import com.dmdbrands.gurus.weight.features.DeviceMetricsSetting.model.DeviceMetricKeys
+import com.dmdbrands.gurus.weight.core.shared.utilities.testing.TestTags
 import com.dmdbrands.gurus.weight.features.common.components.AppDraggableList
 import com.dmdbrands.gurus.weight.features.common.components.PreviewTheme
 import com.dmdbrands.gurus.weight.theme.MeAppTheme
@@ -173,7 +175,8 @@ fun DeviceMetricsSettingScreen(
 
   Column(
     modifier = modifier
-      .fillMaxSize(),
+      .fillMaxSize()
+      .testTag(TestTags.DeviceMetrics.SettingScreenRoot),
   ) {
     // Body Composition Metrics Section
     AppDraggableList(

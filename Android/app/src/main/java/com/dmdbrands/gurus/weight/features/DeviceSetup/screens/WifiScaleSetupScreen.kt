@@ -12,7 +12,9 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.platform.testTag
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.dmdbrands.gurus.weight.core.shared.utilities.testing.TestTags
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
@@ -104,6 +106,7 @@ fun WifiScaleSetupScreenContent(
   val defaultButtonContent: @Composable () -> Unit = {
     AppButton(
       type = ButtonType.PrimaryFilled,
+      modifier = Modifier.testTag(TestTags.DeviceSetup.NextButton),
       label = if (state.isLastStep) DeviceSetupStrings.FinishButton else state.nextButtonText,
       size = ButtonSize.Small,
       enabled = !state.isLoading && !state.isNavigating && state.isNextButtonEnabled,
@@ -131,6 +134,7 @@ fun WifiScaleSetupScreenContent(
       leadingContent = {
         AppButton(
           type = ButtonType.TextPrimary,
+          modifier = Modifier.testTag(TestTags.DeviceSetup.BackButton),
           label = DeviceSetupStrings.backButton,
           size = ButtonSize.Small,
           enabled = !state.isFirstStep && !state.isLoading && !state.isNavigating && !state.isLastStep,
@@ -142,6 +146,7 @@ fun WifiScaleSetupScreenContent(
         if (!state.isGetMACSetup && state.currentStep == WifiScaleSetupStep.PERMISSIONS) {
           AppButton(
             type = ButtonType.TextTertiary,
+            modifier = Modifier.testTag(TestTags.DeviceSetup.SkipButton),
             label = DeviceSetupStrings.SetupButtons.Skip,
             size = ButtonSize.Small,
             enabled = !state.isLoading && !state.isNavigating,
@@ -363,7 +368,7 @@ fun WifiScaleSetupScreenContent(
                       type = ButtonType.PrimaryFilled,
                       size = ButtonSize.Large,
                       enabled = true,
-                      modifier = Modifier.fillMaxWidth(),
+                      modifier = Modifier.fillMaxWidth().testTag(TestTags.DeviceSetup.ContinueButton),
                     )
                   } else {
                     WifiItem(
