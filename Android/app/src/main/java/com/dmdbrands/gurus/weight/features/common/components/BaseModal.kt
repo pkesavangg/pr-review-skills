@@ -20,6 +20,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import com.dmdbrands.gurus.weight.core.shared.utilities.testing.TestTags
 import com.dmdbrands.gurus.weight.features.common.model.ActionButton
 import com.dmdbrands.gurus.weight.theme.MeAppTheme
 import com.dmdbrands.gurus.weight.theme.MeTheme
@@ -77,7 +78,7 @@ fun BaseModal(
           color = MeTheme.colorScheme.textHeading,
           modifier = Modifier
             .fillMaxWidth()
-            .then(titleTestTag?.let { tag -> Modifier.testTag(tag) } ?: Modifier),
+            .testTag(titleTestTag ?: TestTags.Dialog.Title),
         )
       }
       subtitle?.let {
@@ -146,7 +147,7 @@ Text(
                   type = ButtonType.InlineTextTertiary,
                   size = ButtonSize.Small,
                   enabled = secondaryAction.enabled,
-                  modifier = secondaryAction.testTag?.let { Modifier.testTag(it) } ?: Modifier,
+                  modifier = Modifier.testTag(secondaryAction.testTag ?: TestTags.Dialog.SecondaryButton),
                 )
               }
               if (primaryAction != null) {
@@ -156,7 +157,7 @@ Text(
                   type = primaryActionType,
                   size = ButtonSize.Small,
                   enabled = primaryAction.enabled,
-                  modifier = primaryAction.testTag?.let { Modifier.testTag(it) } ?: Modifier,
+                  modifier = Modifier.testTag(primaryAction.testTag ?: TestTags.Dialog.PrimaryButton),
                 )
               }
             }
@@ -173,7 +174,7 @@ Text(
                   type = ButtonType.InlineTextTertiary,
                   size = ButtonSize.Small,
                   enabled = secondaryAction.enabled,
-                  modifier = secondaryAction.testTag?.let { Modifier.testTag(it) } ?: Modifier,
+                  modifier = Modifier.testTag(secondaryAction.testTag ?: TestTags.Dialog.SecondaryButton),
                 )
                 Spacer(modifier = Modifier.width(MeTheme.spacing.xs))
               }
@@ -184,7 +185,7 @@ Text(
                   type = primaryActionType,
                   size = ButtonSize.Small,
                   enabled = primaryAction.enabled,
-                  modifier = primaryAction.testTag?.let { Modifier.testTag(it) } ?: Modifier,
+                  modifier = Modifier.testTag(primaryAction.testTag ?: TestTags.Dialog.PrimaryButton),
                 )
               }
             }

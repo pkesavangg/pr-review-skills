@@ -20,6 +20,7 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.activity.compose.LocalActivity
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.dmdbrands.gurus.weight.core.shared.utilities.testing.exposeTestTagsAsResourceId
 import com.dmdbrands.gurus.weight.app.components.HomeNavHost
 import com.dmdbrands.gurus.weight.core.navigation.LocalNavBackStack
 import com.dmdbrands.gurus.weight.features.common.components.AppFab
@@ -135,7 +136,7 @@ fun OpenWeightOnlyModePopup(
   val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
   ModalBottomSheet(
     sheetState = sheetState,
-    modifier = Modifier.navigationBarsPadding(),
+    modifier = Modifier.navigationBarsPadding().exposeTestTagsAsResourceId(),
     onDismissRequest = onClose,
     containerColor = colorScheme.primaryBackground,
     scrimColor = colorScheme.overlay,

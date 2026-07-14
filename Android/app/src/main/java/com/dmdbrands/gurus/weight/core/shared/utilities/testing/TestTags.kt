@@ -73,6 +73,23 @@ object TestTags {
   }
 
   /**
+   * Generic chrome for shared dialog/alert windows routed through `BaseModal` (alerts, confirms,
+   * radio pickers, time picker, etc.). Applied by default so every such window is selectable even
+   * before it gets bespoke ids; a caller-supplied `ActionButton.testTag` / `titleTestTag` overrides.
+   */
+  object Dialog {
+    const val Title = "dialog_title"
+    const val PrimaryButton = "dialog_primary_button"
+    const val SecondaryButton = "dialog_secondary_button"
+  }
+
+  /** Generic chrome for shared bottom sheets routed through `AppBottomSheet`. */
+  object BottomSheet {
+    const val Title = "bottom_sheet_title"
+    const val CloseButton = "bottom_sheet_close_button"
+  }
+
+  /**
    * Suffixes for child controls whose tag is derived from a field's base tag by the shared
    * input component, e.g. `login_password_field` -> `login_password_field_visibility_toggle`.
    * Mirrors the iOS `AppInputField` / `BaseInputField` derivation.

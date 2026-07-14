@@ -16,6 +16,7 @@ import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.window.Dialog
 import com.dmdbrands.gurus.weight.features.common.model.ActionButton
+import com.dmdbrands.gurus.weight.core.shared.utilities.testing.exposeTestTagsAsResourceId
 import com.dmdbrands.gurus.weight.theme.MeAppTheme
 import com.dmdbrands.gurus.weight.theme.MeTheme
 import kotlinx.coroutines.FlowPreview
@@ -143,6 +144,7 @@ fun TimePickerDialog(
 
   Dialog(onDismissRequest = onDismiss) {
     BaseModal(
+      modifier = Modifier.exposeTestTagsAsResourceId(),
       primaryAction =
         ActionButton(
           text = "OK",

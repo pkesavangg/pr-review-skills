@@ -14,6 +14,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import com.dmdbrands.gurus.weight.features.common.model.Loader
+import com.dmdbrands.gurus.weight.core.shared.utilities.testing.exposeTestTagsAsResourceId
 import com.dmdbrands.gurus.weight.theme.MeAppTheme
 import com.dmdbrands.gurus.weight.theme.MeTheme.colorScheme
 
@@ -31,6 +32,7 @@ fun LoaderCard(loader: Loader) {
     Box(
       modifier = Modifier
         .fillMaxSize()
+        .exposeTestTagsAsResourceId()
         .background(colorScheme.overlay),
     ) {
       Card(
