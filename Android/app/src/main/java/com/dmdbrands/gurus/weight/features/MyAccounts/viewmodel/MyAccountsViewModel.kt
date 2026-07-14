@@ -152,11 +152,21 @@ class MyAccountsViewModel @Inject constructor(
                     // logout(), which keeps the account (logged-out) and left it on the Multi-Account
                     // Landing.
                     accountService.removeAccountFromDevice(account.id, account.fcmToken)
-                    // Deleting the CURRENT (active) account ends the session → go to the Landing
-                    // screen. Removing a non-active account keeps the user on Switch Account with
-                    // the remaining accounts (loggedInAccountsFlow refreshes the list). (MOB-1474)
+                    // Deleting the CURRENT (active) account ends the session. If other accounts
+                    // remain on the device, show the Multi-Account Landing (pick/login); if it was
+                    // the only account, show the plain Landing screen. The removed account is fully
+                    // gone (removeAccountFromDevice), so it no longer appears on either. A non-active
+                    // removal keeps the user on Switch Account (loggedInAccountsFlow refreshes the
+                    // list). (MOB-1474)
                     if (wasActiveAccount) {
-                        navigationService.replaceStack(AppRoute.Auth.Landing)
+                        val remaining = accountService.getLoggedInAccounts()
+                        navigationService.replaceStack(
+                            if (remaining.isEmpty()) {
+                                AppRoute.Auth.Landing
+                            } else {
+                                AppRoute.Auth.MultiAccountLanding
+                            },
+                        )
                     }
                 } catch (e: Exception) {
                     AppLog.e("onRemoveAccount", "Failed to remove account", e)
