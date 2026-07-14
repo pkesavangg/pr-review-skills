@@ -367,7 +367,7 @@ struct AlertStrings {
     }
 
     struct LogoutAllAccountAlert {
-        static let title = "Log Out All Accounts"
+        static let title = "Log Out of All Accounts"
         static let message = "Are you sure you want to log out of all accounts?"
         static let logoutButton = "Log Out"
         static let cancelButton = "Cancel"
