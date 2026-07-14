@@ -69,21 +69,25 @@ class ProductSelectionRepository @Inject constructor(
     }
 
     override suspend fun getBabyProfiles(accountId: String): List<BabyProfile> =
-        babyProfileDao.observeByAccountId(accountId).first().map { entity ->
-            BabyProfile(
-                id = entity.babyId,
-                name = entity.name,
-                birthdate = entity.birthdate,
-                // sex (and birth weight/length) drive the CDC growth percentile + chart
-                // bands; omitting sex left the active profile sex=null, so every percentile
-                // resolved to null — history "--", no bands, no tooltip (MOB-598).
-                sex = entity.sex,
-                birthWeightDecigrams = entity.birthWeightDecigrams,
-                birthLengthMillimeters = entity.birthLengthMillimeters,
-                isBorn = entity.isBorn,
-                accountId = entity.accountId,
-            )
-        }
+        babyProfileDao.observeByAccountId(accountId).first().map { it.toBabyProfile() }
+
+    override fun observeBabyProfiles(accountId: String): Flow<List<BabyProfile>> =
+        babyProfileDao.observeByAccountId(accountId).map { list -> list.map { it.toBabyProfile() } }
+
+    private fun com.dmdbrands.gurus.weight.data.storage.db.entity.baby.BabyProfileEntity.toBabyProfile() =
+        BabyProfile(
+            id = babyId,
+            name = name,
+            birthdate = birthdate,
+            // sex (and birth weight/length) drive the CDC growth percentile + chart
+            // bands; omitting sex left the active profile sex=null, so every percentile
+            // resolved to null — history "--", no bands, no tooltip (MOB-598).
+            sex = sex,
+            birthWeightDecigrams = birthWeightDecigrams,
+            birthLengthMillimeters = birthLengthMillimeters,
+            isBorn = isBorn,
+            accountId = accountId,
+        )
 
     // A paired BPM is stored with its setup type ("bpmBluetooth" for A3, "bpmA6Bluetooth" for A6) —
     // NOT the API product category "BPM", which was never a stored deviceType, so the old query

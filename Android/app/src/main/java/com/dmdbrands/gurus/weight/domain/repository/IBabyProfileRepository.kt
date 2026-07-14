@@ -22,4 +22,11 @@ interface IBabyProfileRepository {
      * the local cache (reconcile + replace), preserving the current active baby.
      */
     suspend fun refresh(accountId: String)
+
+    /**
+     * Pushes all pending (isSynced = false) baby mutations for [accountId] to the server:
+     * offline creates (POST + id-remap), edits (PUT), and deletes (DELETE + purge). Called by the
+     * offline-sync pipeline on reconnect. No-op when there is nothing pending (MOB-1476).
+     */
+    suspend fun syncPendingBabies(accountId: String)
 }
