@@ -81,7 +81,7 @@ struct DeviceSettingsScreen: View {
                 latestVersion: scale.metaData?.latestVersion
             )
         }
-        .navigationBarHidden(true) // MOB-190: hide system nav bar (matches Settings flow)
+        .navigationBarHidden(true)
         .onAppear {
             scaleSettingsStore.refreshScaleData()
         }

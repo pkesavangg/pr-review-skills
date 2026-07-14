@@ -82,7 +82,7 @@ struct WifiMacAddressScreen: View {
         }
         .frame(maxHeight: .infinity, alignment: .top)
         .background(theme.backgroundSecondary.ignoresSafeArea())
-        .navigationBarHidden(true) // MOB-190: hide system nav bar (matches Settings flow)
+        .navigationBarHidden(true)
         
     }
 }

@@ -118,7 +118,7 @@ struct BtWifiScaleSetupScreen: View {
                                  isDuplicated: isDuplicated, isWifiSetupOnly: isWifiSetupOnly)
             
         }
-        .navigationBarHidden(true) // MOB-190: hide system nav bar (matches Settings flow)
+        .navigationBarHidden(true)
         .background(theme.backgroundSecondary)
         // Clear the deactivation handler when the view disappears to avoid stale closures.
         .onDisappear {

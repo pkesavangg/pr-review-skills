@@ -50,7 +50,7 @@ struct BpmDeviceSettingsScreen: View {
             isPresented: $bpmStore.showProductBrowser
         )
         .background(theme.backgroundSecondary.ignoresSafeArea())
-        .navigationBarHidden(true) // MOB-190: hide system nav bar (matches Settings flow)
+        .navigationBarHidden(true)
         .onAppear {
             bpmStore.refreshDeviceData()
         }

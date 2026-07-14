@@ -289,7 +289,7 @@ struct MyDevicesScreen: View {
             }
             .scrollDismissesKeyboard(.interactively)
         }
-        .navigationBarHidden(true) // MOB-190: hide system nav bar (matches Settings flow)
+        .navigationBarHidden(true)
         .screenAccessibilityRoot(AccessibilityID.addEditScalesScreenRoot)
         .background(theme.backgroundSecondary.ignoresSafeArea())
         .onTapGesture {
