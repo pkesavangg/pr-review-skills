@@ -84,7 +84,8 @@ struct BabyEntryView: View {
                                     directDecimalEntry: true
                                 ),
                                 value: $entryStore.babyForm.ounces.value,
-                                focusedField: $focusedField
+                                focusedField: $focusedField,
+                                accessibilityIdentifier: AccessibilityID.babyOuncesField
                             ) {
                                 focusedField = .inches
                             }
@@ -144,7 +145,8 @@ struct BabyEntryView: View {
                         focusField: .notes
                     ),
                     value: $entryStore.babyForm.notes.value,
-                    focusedField: $focusedField
+                    focusedField: $focusedField,
+                    accessibilityIdentifier: AccessibilityID.babyNotesField
                 )
                 .padding(.top, .spacingXS)
 
@@ -162,6 +164,7 @@ struct BabyEntryView: View {
                         toggleDatePicker()
                     }
                     .accessibilityHint(babyLang.accDateHint)
+                    .appAccessibility(id: AccessibilityID.manualEntryDateButton)
                     TimeLabelView(
                         time: entryStore.babyForm.time.value,
                         isSelected: entryStore.showTimePicker
@@ -169,6 +172,7 @@ struct BabyEntryView: View {
                         toggleTimePicker()
                     }
                     .accessibilityHint(babyLang.accTimeHint)
+                    .appAccessibility(id: AccessibilityID.manualEntryTimeButton)
                 }
                 .padding(.top, .spacingXS)
 

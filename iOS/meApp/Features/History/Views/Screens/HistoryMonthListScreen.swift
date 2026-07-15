@@ -57,15 +57,17 @@ struct HistoryMonthListScreen: View {
             NavbarHeaderView<AppIconView, AnyView>(
                 title: title,
                 leadingContent: { AppIconView(icon: AppAssets.chevronLeft) },
-                onLeadingTap: { router.navigateBack() }
+                onLeadingTap: { router.navigateBack() },
+                leadingAccessibilityID: AccessibilityID.historyMonthBackButton
             )
             .background(theme.backgroundPrimary)
-            
+
             content
                 .background(theme.backgroundSecondary)
                 .edgesIgnoringSafeArea(.bottom)
         }
         .background(theme.backgroundSecondary)
+        .screenAccessibilityRoot(AccessibilityID.historyMonthListScreenRoot)
         .navigationBarBackButtonHidden(true)
         .onAppear {
             if !isOnboardingComplete {

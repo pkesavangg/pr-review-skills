@@ -24,7 +24,8 @@ struct HeightStepView: View {
                 UnitValuePickerField(
                     label: heightStepLang.fieldLabel,
                     value: signupStore.getFormattedHeight(),
-                    isActive: signupStore.showHeightInchesPicker || signupStore.showHeightCmPicker
+                    isActive: signupStore.showHeightInchesPicker || signupStore.showHeightCmPicker,
+                    accessibilityIdentifier: AccessibilityID.signupHeightField
                 ) {
                     signupStore.showHeightPicker()
                 }
@@ -33,7 +34,8 @@ struct HeightStepView: View {
                 UnitSelectionToggle(
                     imperialTitle: heightStepLang.imperialUnit,
                     metricTitle: heightStepLang.metricUnit,
-                    isMetric: $signupStore.signupForm.useMetric.value
+                    isMetric: $signupStore.signupForm.useMetric.value,
+                    accessibilityIdentifier: AccessibilityID.signupHeightUnitToggle
                 )
             }
         }

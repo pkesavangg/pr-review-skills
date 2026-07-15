@@ -260,6 +260,7 @@ struct ManualEntryScreen: View {
                         .accessibilityHint(entryStore.showMetrics
                             ? manualEntryLang.accBodyMetricsCollapseHint
                             : manualEntryLang.accBodyMetricsExpandHint)
+                        .appAccessibility(id: AccessibilityID.manualEntryBodyMetricsButton)
                         .padding(.bottom, .spacingXS)
 
                         if entryStore.showMetrics {

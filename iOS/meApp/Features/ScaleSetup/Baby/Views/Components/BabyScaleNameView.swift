@@ -36,7 +36,8 @@ struct BabyScaleNameView: View {
                         focusField: .scaleName
                     ),
                     value: $store.scaleNicknameForm.nickname.value,
-                    focusedField: focusBinding
+                    focusedField: focusBinding,
+                    accessibilityIdentifier: AccessibilityID.babyScaleNicknameField
                 )
             }
             .padding(.top, .spacingLG)

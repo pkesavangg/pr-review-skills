@@ -43,10 +43,12 @@ struct UsersScreen: View {
                             isDisabled: canDisableSaveButton
                         ) {
                                 saveName()
-                            })
+                            }
+                            .appAccessibility(id: AccessibilityID.usersSaveButton))
                     },
                     onLeadingTap: { router.navigateBack() },
-                    canShowBorder: true
+                    canShowBorder: true,
+                    leadingAccessibilityID: AccessibilityID.usersBackButton
                 )
                 
                 ScrollView(showsIndicators: false) {
@@ -62,12 +64,13 @@ struct UsersScreen: View {
                             ),
                             value: Binding(
                                 get: { viewModel.userNameForm.displayName.value },
-                                set: { 
+                                set: {
                                     viewModel.userNameForm.displayName.value = $0
                                     viewModel.setDisplayNameTouched()
                                 }
                             ),
-                            focusedField: $focusedField
+                            focusedField: $focusedField,
+                            accessibilityIdentifier: AccessibilityID.usersNameField
                         ) {
                             saveName()
                         }
@@ -109,8 +112,9 @@ struct UsersScreen: View {
                 .navigationBarBackButtonHidden(true)
             }
         }
+        .screenAccessibilityRoot(AccessibilityID.usersScreenRoot)
     }
-    
+
     private func formatLastActiveTimestamp(_ timestamp: Int) -> String {
         return DateTimeTools.getFormattedDateFromTimestamp(Int64(timestamp)).toLowerCase()
     }

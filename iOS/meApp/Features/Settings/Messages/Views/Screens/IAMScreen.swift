@@ -23,6 +23,7 @@ struct IAMScreen: View {
             })
         }
         .navigationBarBackButtonHidden(true)
+        .screenAccessibilityRoot(AccessibilityID.iamScreenRoot)
     }
 }
 

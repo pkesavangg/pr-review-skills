@@ -76,6 +76,7 @@ struct DeviceCard: View {
             .cornerRadius(.spacingSM)
         }
         .accessibilityValue(isSelected ? SignupStrings.Accessibility.accSelectedValue : SignupStrings.Accessibility.accNotSelectedValue)
+        .appAccessibility(id: "\(AccessibilityID.signupDeviceCard)_\(deviceType.rawValue)")
         .buttonStyle(.plain)
         .disabled(isDisabled)
     }

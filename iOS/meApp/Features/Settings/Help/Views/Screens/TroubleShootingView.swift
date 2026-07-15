@@ -28,7 +28,8 @@ struct TroubleShootingView: View {
                 leadingContent: { Image(AppAssets.xmark) },
                 onLeadingTap: { dismiss() },
                 canShowBorder: true,
-                canShowPresentationIndicator: true
+                canShowPresentationIndicator: true,
+                leadingAccessibilityID: AccessibilityID.troubleshootingCloseButton
             )
 
             ZStack {
@@ -48,6 +49,7 @@ struct TroubleShootingView: View {
             DeviceLogSheetView(scales: helpStore.scales)
         }
         .background(theme.backgroundSecondary.ignoresSafeArea())
+        .screenAccessibilityRoot(AccessibilityID.troubleshootingScreenRoot)
     }
 
     // MARK: Sections
@@ -89,9 +91,13 @@ struct TroubleShootingView: View {
                     title: lang.sendWeightGurusLog,
                     chevronType: .none
                 ) { helpStore.sendWeightGurusLog() })
+                .appAccessibility(id: AccessibilityID.troubleshootingSendAppLogRow)
                 ActionListItemView(config: ActionListItemConfig(title: lang.resyncEntries, chevronType: .none) { helpStore.resyncEntries() })
+                .appAccessibility(id: AccessibilityID.troubleshootingResyncEntriesRow)
                 ActionListItemView(config: ActionListItemConfig(title: lang.clearAllLocalData, chevronType: .none) { helpStore.clearAllLocalData() })
+                .appAccessibility(id: AccessibilityID.troubleshootingClearDataRow)
                 ActionListItemView(config: ActionListItemConfig(title: lang.rateApp, chevronType: .none) { helpStore.showAppRateModal() })
+                .appAccessibility(id: AccessibilityID.troubleshootingRateAppRow)
             }
             .listRowInsets()
 
@@ -111,6 +117,7 @@ struct TroubleShootingView: View {
                             isDisabled: !helpStore.isSendScaleLogEnabled
                         ) { helpStore.sendScaleLogHandler() }
                     )
+                    .appAccessibility(id: AccessibilityID.troubleshootingSendScaleLogRow)
                     .listRowInsets()
                 }
                 .listRowBackground(theme.backgroundPrimary)

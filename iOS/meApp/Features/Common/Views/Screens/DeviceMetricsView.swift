@@ -61,7 +61,8 @@ struct DeviceMetricsView: View {
                 leadingContent: { Image(AppAssets.xmark) },
                 onLeadingTap: { dismiss() },
                 canShowBorder: true,
-                canShowPresentationIndicator: true
+                canShowPresentationIndicator: true,
+                leadingAccessibilityID: AccessibilityID.deviceMetricsCloseButton
             )
             .background(theme.backgroundSecondary)
 
@@ -103,6 +104,7 @@ struct DeviceMetricsView: View {
             }
         }
         .background(theme.backgroundSecondary)
+        .screenAccessibilityRoot(AccessibilityID.deviceMetricsScreenRoot)
         // The SceneDelegate-level `AppDefaultButtonStyle` (PR #1936) can drop
         // through `.sheet` presentations, letting iOS paint its Show Borders
         // grey rounded-rectangle on the close-X and each segment. Re-applying

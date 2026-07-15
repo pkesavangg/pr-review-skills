@@ -83,6 +83,7 @@ struct HelpScreen: View {
         }
         .background(theme.backgroundSecondary.ignoresSafeArea())
         .navigationBarHidden(true)
+        .screenAccessibilityRoot(AccessibilityID.helpScreenRoot)
         .inAppBrowser(
             url: helpStore.productURL ?? fallbackProductURL,
             isPresented: $helpStore.showProductBrowser
@@ -108,7 +109,9 @@ struct HelpScreen: View {
             
             VStack(alignment: .leading, spacing: .spacingMD) {
                 CallButtonView()
+                    .appAccessibility(id: AccessibilityID.helpCallButton)
                 EmailButtonView()
+                    .appAccessibility(id: AccessibilityID.helpEmailButton)
             }
             .padding(.top, .spacingXS)
         }
@@ -129,6 +132,7 @@ struct HelpScreen: View {
                         AppIconView(icon: AppAssets.helpCircle)
                             .foregroundColor(theme.actionPrimary)
                     })
+                    .appAccessibility(id: AccessibilityID.helpManualInfoButton)
                 }
                 Text(lang.digitalManualSub)
                     .fontOpenSans(.body2)
@@ -150,6 +154,14 @@ struct HelpScreen: View {
     // swiftlint:disable:next function_body_length
     private func deviceCategoryCard(_ category: DeviceCategory, isFirst: Bool = false) -> some View {
         let isExpanded = expandedCategory == category
+        // Stable snake_case suffix (independent of the localized title) for the row id.
+        let categorySuffix: String = {
+            switch category {
+            case .weightScale: return "weight_scale"
+            case .babyScale: return "baby_scale"
+            case .bloodPressureMonitor: return "blood_pressure_monitor"
+            }
+        }()
         return VStack(spacing: 0) {
             // Header row
             HStack(spacing: .spacingXS) {
@@ -178,6 +190,7 @@ struct HelpScreen: View {
             }
             .border(sides: isFirst ? [.top] : [], thickness: 0.5, color: theme.statusUtilityPrimary)
             .border(sides: [.bottom], thickness: isExpanded ? 0 : 0.5, color: theme.statusUtilityPrimary)
+            .appAccessibility(id: AccessibilityID.helpDeviceCategoryRow + "_" + categorySuffix)
 
             // Expanded content
             if isExpanded {

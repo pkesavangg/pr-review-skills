@@ -86,6 +86,7 @@ struct WeightOnlyModeIndicator: View {
                 .onAppear {
                     loadInitialPosition(in: geometry)
                 }
+                .appAccessibility(id: AccessibilityID.weightOnlyModeIndicatorButton)
         }
         .allowsHitTesting(true)
         // Present bottom sheet: centered modal on iPad < iOS 18, sheet otherwise
