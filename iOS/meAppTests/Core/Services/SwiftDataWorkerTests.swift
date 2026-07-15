@@ -218,6 +218,54 @@ struct SwiftDataWorkerTests {
         #expect(entry?.unit == "kg")
     }
 
+    // MARK: - fetchEntryCount
+
+    @Test("fetchEntryCount counts all operation types for the account (MOB-516)")
+    @MainActor
+    func fetchEntryCountCountsAllOperationTypes() async throws {
+        let container = try makeContainer()
+        let ctx = container.mainContext
+        let now = ISO8601DateFormatter().string(from: Date())
+
+        // Distinct from fetchProgressData/fetchEntriesAsDTO (which filter to operationType == create):
+        // fetchEntryCount counts every operation type, matching the EntryRepository.fetchEntryCount it
+        // replaced. Pin that here so a future "consistency" refactor can't silently add a create filter
+        // and change sync/full-resync gating + goal-card counts.
+        insertEntry(into: ctx, accountId: "acct-1", timestamp: now, operationType: "create", weight: 70000)
+        insertEntry(into: ctx, accountId: "acct-1", timestamp: now, operationType: "create", weight: 71000)
+        insertEntry(into: ctx, accountId: "acct-1", timestamp: now, operationType: "delete", weight: 65000)
+
+        let worker = SwiftDataWorker(modelContainer: container)
+        let count = try await worker.fetchEntryCount(accountId: "acct-1")
+
+        #expect(count == 3)
+    }
+
+    @Test("fetchEntryCount isolates by accountId")
+    @MainActor
+    func fetchEntryCountIsolatesByAccount() async throws {
+        let container = try makeContainer()
+        let ctx = container.mainContext
+        let now = ISO8601DateFormatter().string(from: Date())
+
+        insertEntry(into: ctx, accountId: "acct-1", timestamp: now, weight: 70000)
+        insertEntry(into: ctx, accountId: "acct-1", timestamp: now, weight: 71000)
+        insertEntry(into: ctx, accountId: "acct-2", timestamp: now, weight: 80000)
+
+        let worker = SwiftDataWorker(modelContainer: container)
+
+        #expect(try await worker.fetchEntryCount(accountId: "acct-1") == 2)
+        #expect(try await worker.fetchEntryCount(accountId: "acct-2") == 1)
+    }
+
+    @Test("fetchEntryCount returns zero for an unknown account")
+    func fetchEntryCountZeroForUnknownAccount() async throws {
+        let container = try makeContainer()
+        let worker = SwiftDataWorker(modelContainer: container)
+
+        #expect(try await worker.fetchEntryCount(accountId: "nonexistent") == 0)
+    }
+
     // MARK: - fetchEntriesAsDTO
 
     @Test("fetchEntriesAsDTO returns mapped DTOs")

@@ -1210,7 +1210,17 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
         do {
             let hadPushedCreates = await pushUnsyncedEntriesToRemote(accountId: accountId)
 
-            let localEntryCount = try? await getEntryCount()
+            // MOB-516: keep the conservative default (a nil count skips the empty-DB resync reset
+            // below, since `nil == 0` is false), but log the failure — a silent count error here
+            // would suppress the "empty local DB → full re-sync" recovery path with no trace, inside
+            // the very cold-login flow this change targets.
+            let localEntryCount: Int?
+            do {
+                localEntryCount = try await getEntryCount()
+            } catch {
+                logger.log(level: .error, tag: tag, message: "Full sync: local entry count failed; skipping empty-DB resync reset: \(error.localizedDescription)")
+                localEntryCount = nil
+            }
             var lastSyncTimestamp = try? await localKVRepo.getLastSyncTimestamp(accountId: accountId)
 
             if localEntryCount == 0 {
