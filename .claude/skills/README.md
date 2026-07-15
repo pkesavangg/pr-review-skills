@@ -39,10 +39,11 @@ Plus the two cross-platform "expert" reference skills: `compose-expert-skill` (A
 
 ---
 
-## iOS (`iOS/.claude/skills/`) — 48 skills
+## iOS (`iOS/.claude/skills/`) — 49 skills
 
 **Scaffolding & wiring:** `feature-slice`, `add-endpoint`, `wire-service`, `wire-navigation`, `add-strings`, `add-preview`, `add-accessibility`, `gen-mock-single`, `update-mock`
 **Testing & coverage:** `build`, `run-tests`, `verify-tests`, `gen-test-file`, `gen-ui-test-file`, `analyze-coverage`, `visual-regression`
+**Build tooling:** **`prepare-simulator-build`** (flip `ggWifiScalePackage`/`ggBluetoothNativeLibrary` to their `simulator-support` branch so the app builds on the Simulator, and back again — via `scripts/sim-packages.sh`; **root-symlinked** so it triggers from the monorepo root)
 **Review & quality:** `self-review`, `post-change-guard`, `swiftlint`, `review-lint`, `review-security`, `review-regression`, `review-issue-fix`, `review-accessibility`, `review-code-standards`, `review-ui-standards`, `refactor`
 **Debugging:** `debug-issue`, `fix-bug`, `fix-pr-comments`
 **Reference guides:** `api-guide`, `form-guide`, `logging-guide`, `notification-guide`, `theme-guide`, `keychain-pattern`, `analytics`
