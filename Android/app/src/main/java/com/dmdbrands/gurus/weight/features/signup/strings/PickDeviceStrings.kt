@@ -7,6 +7,10 @@ object PickDeviceStrings {
     // TODO(MOB-420): confirm final copy with design — not yet specified in Figma/iOS.
     const val addLaterNote = "You can always add more devices later."
 
+    // Loop-pass subtitle: once at least one device is registered, the pick screen becomes a
+    // "connect another device" prompt under the profiles-ready header (MOB-1453).
+    const val connectAnotherNote = "Connect another device to keep everything in one place."
+
     // Device titles
     const val babyScaleTitle = "Baby Scale"
     const val bloodPressureTitle = "Blood Pressure Monitor"

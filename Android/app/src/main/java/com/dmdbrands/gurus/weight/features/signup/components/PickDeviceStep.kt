@@ -36,6 +36,7 @@ import com.dmdbrands.gurus.weight.features.common.components.TextType
 import com.dmdbrands.gurus.weight.features.common.composition.LocalCardAlignment
 import com.dmdbrands.gurus.weight.features.common.helper.form.FormControl
 import com.dmdbrands.gurus.weight.features.common.helper.form.FormValidations
+import com.dmdbrands.gurus.weight.features.signup.strings.DeviceReadyStrings
 import com.dmdbrands.gurus.weight.features.signup.strings.PickDeviceStrings
 import com.dmdbrands.gurus.weight.resources.AppIcons
 import com.dmdbrands.gurus.weight.theme.MeAppTheme
@@ -93,15 +94,23 @@ fun PickDeviceStep(
         cardAlignmentType = LocalCardAlignment.current,
         modifier = modifier,
     ) {
+        // On loop passes (at least one device already registered) the header becomes the
+        // profiles-ready message naming ALL completed devices, with a "connect another" prompt;
+        // the first pass keeps the neutral device-picker copy. (MOB-1453)
+        val isLoopPass = registeredDevices.isNotEmpty()
         // TalkBack: the step title is a heading for by-heading navigation.
         AppText(
-            PickDeviceStrings.title,
-            TextType.Title,
+            text = if (isLoopPass) {
+                DeviceReadyStrings.readyTitle(registeredDevices)
+            } else {
+                PickDeviceStrings.title
+            },
+            textType = TextType.Title,
             spacing = MeTheme.spacing.xs,
             modifier = Modifier.semantics { heading() },
         )
         AppText(
-            text = PickDeviceStrings.addLaterNote,
+            text = if (isLoopPass) PickDeviceStrings.connectAnotherNote else PickDeviceStrings.addLaterNote,
             textType = TextType.SubHeading,
             color = MeTheme.colorScheme.textSubheading,
             spacing = MeTheme.spacing.lg,

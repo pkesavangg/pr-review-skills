@@ -39,22 +39,21 @@ private val SuccessIconSize = 155.dp
  * Shown after the user completes one device's onboarding when at least one
  * device is still unregistered. Mirrors Figma node 29507:21935.
  *
- * @param deviceId the registered device's id (matches [ProductType.id]).
- *   Used to render the device-specific title.
+ * @param registeredDevices every device registered so far this session. The title names ALL
+ *   of them (in the fixed Figma order via [DeviceReadyStrings.readyTitle]) — one device reads
+ *   "Your <device> profile is ready!", two read "Your <a> & <b> profiles are ready!" — so a
+ *   second completed device is no longer dropped from the header. (MOB-1453)
  * @param onFinish invoked when the user taps FINISH — signup is complete.
  * @param onConnectAnother invoked when the user taps CONNECT ANOTHER DEVICE
  *   to loop back to PICK_DEVICE.
  */
 @Composable
 fun DeviceReadyStep(
-    deviceId: String,
+    registeredDevices: Set<ProductType>,
     onFinish: () -> Unit,
     onConnectAnother: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val displayName =
-        ProductType.fromId(deviceId)?.displayName.orEmpty()
-
     Column(
         modifier = modifier
             .fillMaxSize()
@@ -74,7 +73,7 @@ fun DeviceReadyStep(
             )
             Spacer(modifier = Modifier.height(MeTheme.spacing.lg))
             AppText(
-                text = DeviceReadyStrings.deviceTitle(displayName),
+                text = DeviceReadyStrings.readyTitle(registeredDevices),
                 textType = TextType.Title,
                 textAlign = TextAlign.Center,
                 // TalkBack: the success title is a heading for by-heading navigation.
@@ -113,7 +112,7 @@ fun DeviceReadyStep(
 private fun DeviceReadyStepWeightScalePreview() {
     MeAppTheme {
         DeviceReadyStep(
-            deviceId = ProductType.MY_WEIGHT.id,
+            registeredDevices = setOf(ProductType.MY_WEIGHT),
             onFinish = {},
             onConnectAnother = {},
         )
@@ -122,10 +121,10 @@ private fun DeviceReadyStepWeightScalePreview() {
 
 @PreviewTheme
 @Composable
-private fun DeviceReadyStepBpmPreview() {
+private fun DeviceReadyStepTwoDevicesPreview() {
     MeAppTheme {
         DeviceReadyStep(
-            deviceId = ProductType.BLOOD_PRESSURE.id,
+            registeredDevices = setOf(ProductType.MY_WEIGHT, ProductType.BLOOD_PRESSURE),
             onFinish = {},
             onConnectAnother = {},
         )
@@ -137,7 +136,7 @@ private fun DeviceReadyStepBpmPreview() {
 private fun DeviceReadyStepBabyPreview() {
     MeAppTheme {
         DeviceReadyStep(
-            deviceId = ProductType.BABY.id,
+            registeredDevices = setOf(ProductType.BABY),
             onFinish = {},
             onConnectAnother = {},
         )

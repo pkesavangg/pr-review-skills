@@ -47,7 +47,7 @@ fun SignupPager(
   when (state.currentStep) {
     SignupStep.DEVICE_READY -> {
       DeviceReadyStep(
-        deviceId = state.form.controls.device.value,
+        registeredDevices = state.registeredDevices,
         onFinish = { onIntent(SignupIntent.FinishSignup) },
         onConnectAnother = { onIntent(SignupIntent.ConnectAnotherDevice) },
       )
