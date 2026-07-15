@@ -22,6 +22,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.dmdbrands.gurus.weight.core.shared.utilities.testing.TestTags
 import com.dmdbrands.gurus.weight.domain.model.common.ProductSelection
 import com.dmdbrands.gurus.weight.features.common.components.PreviewTheme
 import com.dmdbrands.gurus.weight.features.dashboard.components.EmptyDashboardGraph
@@ -85,7 +86,7 @@ fun WeightSnapshotCard(
     val viewModel = hiltViewModel<DashboardSnapshotViewModel>()
     val state by viewModel.state.collectAsStateWithLifecycle()
 
-    SnapshotCardContainer(modifier = modifier.testTag("weight_card"), onClickLabel = DashboardSnapshotStrings.OpenWeightDashboard, onTap = onTap) {
+    SnapshotCardContainer(modifier = modifier.testTag(TestTags.Dashboard.WeightCard), onClickLabel = DashboardSnapshotStrings.OpenWeightDashboard, onTap = onTap) {
         val chart = state.weight
 
         Text(
@@ -146,7 +147,7 @@ fun BpSnapshotCard(
     val state by viewModel.state.collectAsStateWithLifecycle()
     val chart = state.bp
 
-    SnapshotCardContainer(modifier = modifier.testTag("bp_card"), onClickLabel = DashboardSnapshotStrings.OpenBpDashboard, onTap = onTap) {
+    SnapshotCardContainer(modifier = modifier.testTag(TestTags.Dashboard.BpCard), onClickLabel = DashboardSnapshotStrings.OpenBpDashboard, onTap = onTap) {
         Row(modifier = Modifier.padding(horizontal = MeTheme.spacing.sm)) {
             Text(
                 text = DashboardSnapshotStrings.Mmhg,
