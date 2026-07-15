@@ -18,8 +18,10 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.testTag
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.dmdbrands.gurus.weight.core.navigation.LocalNavBackStack
+import com.dmdbrands.gurus.weight.core.shared.utilities.testing.TestTags
 import com.dmdbrands.gurus.weight.core.shared.utilities.DateTimeConverter
 import com.dmdbrands.gurus.weight.domain.enums.DashboardType
 import com.dmdbrands.gurus.weight.domain.enums.MetricKey
@@ -188,6 +190,7 @@ fun MetricInfoScreenContent(
     navigationIcon = {
       AppIconButton(
         AppIcons.Default.Close,
+        modifier = Modifier.testTag(TestTags.MetricInfo.CloseButton),
         contentDescription = MetricInfoStrings.accCloseButton,
       ) {
         scope.launch {
@@ -197,7 +200,9 @@ fun MetricInfoScreenContent(
     },
   ) { modifier ->
     Column(
-      modifier = modifier.padding(top = spacing.md),
+      modifier = modifier
+        .padding(top = spacing.md)
+        .testTag(TestTags.MetricInfo.ScreenRoot),
     ) {
       if (metricKeys.isNotEmpty() && selectedMetricInfoKey != null) {
         SegmentButtonGroup(
