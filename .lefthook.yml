@@ -20,6 +20,22 @@ pre-commit:
         Run: cd Android && ./gradlew detektBaseline (to update baseline for pre-existing issues)
         Or fix the violations in your code.
 
+    swiftlint:
+      glob: "iOS/**/*.swift"
+      run: |
+        if command -v swiftlint &>/dev/null; then
+          swiftlint lint --config iOS/.swiftlint.yml --quiet --reporter xcode {staged_files}
+        else
+          echo "Warning: SwiftLint not installed — skipping iOS lint gate (brew install swiftlint)"
+        fi
+      skip:
+        - merge
+        - rebase
+      fail_text: |
+        SwiftLint errors in staged Swift files (includes the custom snapshot-boundary
+        and accessibility rules). Fix them, or run /swiftlint to auto-fix the correctable ones.
+        To bypass: git commit --no-verify
+
     gitleaks:
       run: |
         if command -v gitleaks &>/dev/null; then

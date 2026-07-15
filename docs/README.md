@@ -12,6 +12,7 @@ Current, maintained documentation for the meApp monorepo. Stale working docs (ol
 | [dashboard-hybrid-latest-vs-average.md](dashboard-hybrid-latest-vs-average.md) | Dashboard weight display: latest-vs-average hybrid behavior. |
 | [automation.md](automation.md) | All automation in the repo: Claude Code AI tooling, git hooks (Lefthook), CI (CircleCI), and scripts. |
 | [circleci.md](circleci.md) | CircleCI pipeline: how it's configured, the checks per platform, why SwiftLint and the iOS build run separately, and required secrets. |
+| [confluence.md](confluence.md) | The Me App Confluence hub structure — page tree + IDs, and which repo change syncs to which page. |
 
 ## Related
 
