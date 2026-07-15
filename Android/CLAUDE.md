@@ -237,3 +237,24 @@ analyticsService.logEvent(
 - Sample/mock data lives in **Repository** layer with `USE_SAMPLE_DATA` companion flag — never in ViewModel or Composable
 - Sealed types at service boundary: Repository returns typed, Service wraps in sealed, ViewModel unwraps
 - Prefer `ProductSelection` over `ProductType` + separate params when passing product context
+
+## Accessibility / testTags (UI-test automation) — Definition of Done
+
+Every screen QA automates is located through the Compose semantics tree, so **interactive
+controls must carry a stable `testTag`** sourced from the catalog (parent MOB-1491). This is part
+of the Definition of Done for any PR that adds or changes UI:
+
+- **New/changed interactive control** (button, `AppInput`, toggle, tappable row, tab item) carries
+  a stable tag from a `TestTags` constant — never an inline string literal.
+- **Tags are single-sourced** in `core/shared/utilities/testing/TestTags.kt`, snake_case, and
+  **byte-identical to the iOS `AccessibilityID`** where the control exists on both platforms
+  (else commented `// Android-defined; iOS to mirror`).
+- **Every separate window** (`Dialog` / `Popup` / bottom sheet) applies
+  `Modifier.exposeTestTagsAsResourceId()` at its root — `testTagsAsResourceId` does not cross
+  window boundaries (MOB-1099 / MOB-1503).
+- **Derived ids** (`_clear_button` / `_visibility_toggle`) are left to `AppInput`; repeated rows
+  are suffixed with the item id (e.g. `account_card_row_<id>`). Decorative icons pass
+  `contentDescription = null`.
+
+Full guide (rationale, the 5 rules, catalog, window-exposure gotcha, reference pattern):
+[`Android/docs/accessibility-testtags-guide.md`](docs/accessibility-testtags-guide.md).
