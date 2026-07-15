@@ -89,8 +89,11 @@ jobs:
           # pre-baked into the Xcode image (older) would run instead of the version the
           # codebase is converged against. That version skew makes `--strict` flag/clear
           # different rules in CI vs. locally. Force the latest so lint is deterministic.
+          # `brew update` can exit non-zero on the CI image even when it succeeds
+          # (spurious tap/formula warnings); with CircleCI's `-eo pipefail` that would
+          # kill the step before SwiftLint is ever installed, so tolerate its exit code.
           command: |
-            brew update
+            brew update || true
             brew upgrade swiftlint || brew install swiftlint
             swiftlint version
       - run:
