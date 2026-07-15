@@ -257,7 +257,7 @@ final class MockBluetoothService: BluetoothServiceProtocol {
         return stopLiveMeasurementResult
     }
     func getMeasurementLiveData(broadcastId: String) async -> Result<MeasurementLiveData, BluetoothServiceError> { .failure(.notImplemented) }
-    func getScaleUserList(broadcastId: String, skipConnectionCheck: Bool) async -> Result<[DeviceUser], BluetoothServiceError> {
+    func getScaleUserList(broadcastId: String, skipConnectionCheck: Bool, sku: String?) async -> Result<[DeviceUser], BluetoothServiceError> {
         getScaleUserListCalls += 1
         lastUserListBroadcastId = broadcastId
         return getScaleUserListResult
