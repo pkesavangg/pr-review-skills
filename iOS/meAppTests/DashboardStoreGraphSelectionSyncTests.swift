@@ -87,39 +87,9 @@ struct DashboardStoreGraphSelectionSyncTests {
         }
     }
 
-    @Test
-    func monthViewModelAppliesExistingStoreLatestSelectionAfterConfiguration() async throws {
-        defer { clearEntrySummaries() }
-
-        let older = makeSummary(
-            date: makeDate(2026, 4, 18),
-            weight: 176,
-            bmi: 22.1
-        )
-        let latest = makeSummary(
-            date: makeDate(2026, 4, 22),
-            weight: 182,
-            bmi: 24.4
-        )
-
-        let store = await makeStore(
-            daily: [older, latest],
-            monthly: []
-        )
-
-        store.updateSelectedPeriod(.month)
-        store.state.graph.selectedPoint = latest
-        store.state.graph.selectedXValue = latest.date
-        store.state.graph.showCrosshair = true
-
-        let viewModel = MonthSectionViewModel()
-        viewModel.configure(with: store)
-        viewModel.applyProgrammaticSelection(at: store.state.graph.selectedXValue)
-
-        #expect(viewModel.showCrosshair)
-        #expect(viewModel.selectedPoint?.entryTimestamp == latest.entryTimestamp)
-        #expect(viewModel.selectedDate == viewModel.plotXDate(for: latest.date))
-    }
+    // MOB-1516 Phase D: removed `monthViewModelAppliesExistingStoreLatestSelectionAfterConfiguration` — it
+    // exercised the deleted `MonthSectionViewModel.applyProgrammaticSelection`. The v2 equivalent
+    // (host `selectLatestIfNeeded` + `DashboardStore.selectPoint`) is covered in Phase T.
 
     @Test
     func initializeChartSelectsLatestEntryWhenMonthIsVisibleInitially() async throws {

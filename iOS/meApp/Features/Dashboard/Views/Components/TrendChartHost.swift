@@ -375,13 +375,13 @@ struct TrendChartHost: View {
     /// increments on every real data mutation, so unlike the old view-side endpoint hash this can't go stale.
     private var rebuildSignal: Int {
         var hasher = Hasher()
-        hasher.combine(BaseGraphViewCacheManager.dataChangeSignature(
+        hasher.combine(ChartRebuildSignature.dataChangeSignature(
             dataRevision: dashboardStore.dataChangeRevision,
             selectedMetricLabel: dashboardStore.state.ui.selectedMetricLabel,
             productType: dashboardStore.productType,
             selectedProductItem: dashboardStore.selectedProductItem
         ))
-        hasher.combine(BaseGraphViewCacheManager.settingsChangeSignature(
+        hasher.combine(ChartRebuildSignature.settingsChangeSignature(
             currentUnitRawValue: dashboardStore.currentUnit.rawValue,
             isWeightlessModeEnabled: dashboardStore.isWeightlessModeEnabled
         ))

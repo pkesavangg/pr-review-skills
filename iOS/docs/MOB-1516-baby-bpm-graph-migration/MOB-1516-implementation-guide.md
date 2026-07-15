@@ -30,8 +30,17 @@ All file:line refs verified against the working tree on **2026-07-15**. Re-grep 
 | **G0** — generalize engine | ✅ build Dev + `swiftlint --strict` clean | `c17625810` |
 | **B** — BPM on v2 engine | ✅ build Dev + `--strict` clean | `fd0cdcabe` |
 | **Y** — Baby on v2 engine | ✅ build Dev + `--strict` clean | `9bce32a31` |
-| **D** — delete legacy | ⏳ in progress | — |
+| **D** — delete legacy | ✅ app + test target build; `--strict` clean | this commit |
 | **T** — tests | deferred (Kesavan) | — |
+
+**Phase D as-built:** deleted 17 legacy source files (`BaseGraphView`(+ChartModifiers), `BaseGraphChartContent`,
+the 4 `*GraphView` wrappers, `BaseSectionViewModel` + 4 `*SectionViewModel`s, `SectionViewModelProtocol`,
+`BaseGraphViewCacheSupport`/`Manager`, `PagedChartScrollBehavior`, `GraphViewModifier`) + 9 orphaned test
+files; relocated the two still-used signature helpers to **`ChartRebuildSignature.swift`** (the only v2→legacy
+code dep), salvaged their test → `ChartRebuildSignatureTests`, dropped one section-VM test method, unwired
+`GraphView` (now just `BabyEmptyGraphView` / `TrendChartHost`), and banner-superseded `GraphViewFlow.md`.
+Managers (`DashboardChartManager`/`GraphManager`) were kept — the v2 host depends on them; their legacy
+references were comment-only.
 
 **⚠️ Not device-verified yet** — build + lint pass ≠ behaviour verified. The device parity pass (all three
 products; baby needs the most scrutiny) is still owed and gates final sign-off.
@@ -448,7 +457,7 @@ purple, tap → horizontal crosshair + percentile, sex-withheld → no curves, y
 switch rebuilds cleanly.
 Commit: `MOB-1516 Phase Y: Baby growth chart on the v2 engine`
 
-### Phase D — Delete the legacy engine (the branch-name payoff)
+### Phase D — Delete the legacy engine (the branch-name payoff) · ✅ DONE
 Only after G0/B/Y device-verified. `grep -rn <symbol> meApp` to confirm zero refs before deleting each:
 `BaseGraphView.swift`, `BaseGraphView+ChartModifiers.swift`, `BaseGraphChartContent.swift`,
 `BaseGraphViewCacheSupport.swift`, `BaseGraphViewCacheManager.swift`, `Week/Month/Year/TotalGraphView.swift`,
