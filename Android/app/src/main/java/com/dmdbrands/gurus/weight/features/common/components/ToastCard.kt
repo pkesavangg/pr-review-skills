@@ -23,6 +23,10 @@ import androidx.compose.ui.graphics.Paint
 import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.semantics.LiveRegionMode
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.liveRegion
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -45,10 +49,21 @@ fun ToastCard(
   toast: Toast.Simple,
   clearToast: () -> Unit = {},
 ) {
+  // The banner is a Compose overlay in its own Dialog window; `testTag` alone did not surface a
+  // node to Appium/UiAutomator (MOB-1177). Publishing a semantics node — with an explicit
+  // contentDescription of the full banner text and a Polite live region — makes it queryable in
+  // the accessibility tree (and announced by TalkBack). testTagsAsResourceId is already enabled at
+  // the window root (ToastHandler.exposeTestTagsAsResourceId), so `toast_card`/`toast_message`
+  // surface as resource-ids in debug builds. Accessibility-only; no behavior change.
+  val bannerDescription = listOfNotNull(toast.title, toast.message).joinToString(". ")
   Card(
     modifier =
       modifier
         .testTag("toast_card")
+        .semantics {
+          liveRegion = LiveRegionMode.Polite
+          contentDescription = bannerDescription
+        }
         .statusBarsPadding()
         .padding(horizontal = 16.dp, vertical = 16.dp).cssBoxShadow(
         color = colorScheme.glow,
