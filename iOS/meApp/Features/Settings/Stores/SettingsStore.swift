@@ -1599,9 +1599,13 @@ class SettingsStore: ObservableObject {
     // MARK: - Entry Check
 
     private func checkEntries() async {
+        // MOB-516: `hasEntries` is a boolean, so use a cheap store-level `fetchCount` instead of the
+        // full grouped `getMonthsAll()` 10k-row read + month build. SettingsStore is an UNGUARDED
+        // subscriber to entrySaved/entryDeleted (fires on every mutation, app-wide), so the old full
+        // read stacked repeatedly on the serial worker during the login/sync/add flurry — contending
+        // with History's read and dragging one out to 6–8 s. A count never materializes rows.
         do {
-            let months = try await entryService.getMonthsAll()
-            hasEntries = !months.isEmpty
+            hasEntries = try await entryService.getEntryCount() > 0
         } catch {
             hasEntries = false
         }

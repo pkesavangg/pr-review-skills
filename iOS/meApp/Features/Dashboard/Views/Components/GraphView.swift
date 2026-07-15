@@ -67,7 +67,16 @@ struct GraphView: View {
 
     // Show skeleton until graph is ready (set after settling delay)
     private var shouldShowSkeleton: Bool {
-        !dashboardStore.state.graph.isGraphReady
+        if !dashboardStore.state.graph.isGraphReady { return true }
+        // MOB-516: on FIRST login local SwiftData is still empty while the initial full-history
+        // sync populates it — the fixed 300 ms `isGraphReady` timer would otherwise hide the
+        // skeleton into an empty graph for a few seconds. Keep the skeleton until data lands.
+        // Once the sync finishes (isSyncing=false), a genuinely empty account falls through to
+        // the empty state (no infinite skeleton). Weight engine only; baby/BPM unaffected.
+        if usesNewWeightEngine, dashboardStore.continuousOperations.isEmpty, dashboardStore.isSyncing {
+            return true
+        }
+        return false
     }
 
     // Match skeleton frame to the actual chart container height (baby charts are taller)

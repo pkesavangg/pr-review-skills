@@ -47,6 +47,12 @@ class DashboardStore: ObservableObject, DashboardStateProviding {
     /// Weight (`.scale`) only for now — baby/BPM stay on the legacy engine. `nil` until first build.
     @Published private(set) var chartModel: ChartModel?
 
+    /// Mirrors `EntryService.isSyncing`. Combined with `continuousOperations.isEmpty` in
+    /// `GraphView.shouldShowSkeleton`, it keeps the skeleton up during the FIRST-login sync —
+    /// local SwiftData is empty until that sync lands, so without this the fixed 300 ms
+    /// `isGraphReady` timer hid the skeleton into an empty graph (MOB-516).
+    @Published private(set) var isSyncing: Bool = false
+
     // MARK: - Private Properties
 
     private var cancellables = Set<AnyCancellable>()
@@ -381,6 +387,16 @@ class DashboardStore: ObservableObject, DashboardStateProviding {
         entryService.entryDeleted
             .sink { [weak self] entry in
                 self?.lifecycleManager.onEntryDeleted(entry)
+            }
+            .store(in: &cancellables)
+
+        // MOB-516: mirror the sync flag so the graph keeps the skeleton during the first-login
+        // sync instead of flashing the empty-entries graph (see GraphView.shouldShowSkeleton).
+        entryService.$isSyncing
+            .removeDuplicates()
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] syncing in
+                self?.isSyncing = syncing
             }
             .store(in: &cancellables)
     }
