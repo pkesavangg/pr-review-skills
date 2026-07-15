@@ -27,7 +27,7 @@ struct BabyEntryFormTests {
 
     // MARK: - Weight Validation (lbs/oz)
 
-    @Test("weightError: returns error when pounds exceeds max limit 999")
+    @Test("poundsError: returns error when pounds exceeds max limit 999, ouncesError stays nil")
     func poundsMaxLimit() {
         let form = BabyEntryForm()
 
@@ -35,10 +35,11 @@ struct BabyEntryFormTests {
 
         #expect(form.pounds.isInvalid == true)
         #expect(form.pounds.errors[.maxLimit] == true)
-        #expect(form.weightError == BabyFormTestText.invalidWeight)
+        #expect(form.poundsError == BabyFormTestText.invalidWeight)
+        #expect(form.ouncesError == nil)
     }
 
-    @Test("weightError: returns error when ounces exceeds max limit 15.9")
+    @Test("ouncesError: returns error when ounces exceeds max limit 15.9, poundsError stays nil")
     func ouncesMaxLimit() {
         let form = BabyEntryForm()
 
@@ -46,7 +47,8 @@ struct BabyEntryFormTests {
 
         #expect(form.ounces.isInvalid == true)
         #expect(form.ounces.errors[.maxLimit] == true)
-        #expect(form.weightError == BabyFormTestText.invalidWeight)
+        #expect(form.ouncesError == BabyFormTestText.invalidOunces)
+        #expect(form.poundsError == nil)
     }
 
     // MARK: - Weight Validation (metric)
@@ -188,7 +190,8 @@ struct BabyEntryFormTests {
 // MARK: - Test String Constants
 
 private enum BabyFormTestText {
-    static let invalidWeight = "Please enter a valid weight."
-    static let invalidLength = "Please enter a valid length."
+    static let invalidWeight = "please enter a valid weight."
+    static let invalidOunces = "please enter valid ounces."
+    static let invalidLength = "please enter a valid length."
     static let futureDate = "future dates not accepted"
 }

@@ -622,9 +622,16 @@ final class EntryStore: ObservableObject {
         switch babyWeightUnit {
         case .kg: return babyForm.weightErrorMetric
         case .lb: return babyForm.weightErrorLb
-        case .lbsOz: return babyForm.weightError
+        // lb/oz errors are surfaced per-field via babyPoundsError / babyOuncesError.
+        case .lbsOz: return nil
         }
     }
+
+    /// Validation error for the pounds field (lb/oz mode), shown under the pounds field.
+    var babyPoundsError: String? { babyForm.poundsError }
+
+    /// Validation error for the ounces field (lb/oz mode), shown under the ounces field.
+    var babyOuncesError: String? { babyForm.ouncesError }
 
     var babyLengthError: String? {
         switch babyLengthUnit {

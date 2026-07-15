@@ -47,11 +47,17 @@ class BabyEntryForm: ObservableForm {
 
     // MARK: - Weight Validation Errors
 
-    /// Combined validation error for pounds and ounces fields (lbs/oz mode).
-    var weightError: String? {
-        guard pounds.isDirty || ounces.isDirty else { return nil }
-        if pounds.isInvalid || ounces.isInvalid { return babyLang.invalidWeight }
-        return nil
+    /// Validation error for the pounds field (lbs/oz mode). Reported separately from ounces
+    /// so each field surfaces its own error under itself.
+    var poundsError: String? {
+        guard pounds.isDirty else { return nil }
+        return pounds.isInvalid ? babyLang.invalidWeight : nil
+    }
+
+    /// Validation error for the ounces field (lbs/oz mode). Reported separately from pounds.
+    var ouncesError: String? {
+        guard ounces.isDirty else { return nil }
+        return ounces.isInvalid ? babyLang.invalidOunces : nil
     }
 
     /// Validation error for kg field (metric mode).

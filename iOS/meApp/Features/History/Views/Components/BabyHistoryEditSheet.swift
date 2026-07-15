@@ -110,7 +110,7 @@ struct BabyHistoryEditSheet: View {
                         config: TextInputConfig(
                             label: lang.pounds,
                             inputType: .metric,
-                            errorMessage: form.weightError,
+                            errorMessage: form.poundsError,
                             isDisabled: valuesLocked,
                             focusField: .weight,
                             maxLength: 3,
@@ -125,6 +125,7 @@ struct BabyHistoryEditSheet: View {
                         config: TextInputConfig(
                             label: lang.ounces,
                             inputType: .metric,
+                            errorMessage: form.ouncesError,
                             isDisabled: valuesLocked,
                             focusField: .ounces,
                             maxLength: 4,

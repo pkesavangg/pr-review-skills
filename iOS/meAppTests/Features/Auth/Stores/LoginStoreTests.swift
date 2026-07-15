@@ -632,7 +632,7 @@ private enum AuthStoreTestError: Error {
 private enum LoginStoreTestText {
     static let loginErrorTitle = "Login Error"
     static let networkErrorTitle = "Network Error"
-    static let passwordResetFailed = "Failed to send password reset email."
+    static let passwordResetFailed = "failed to send password reset email."
     static let passwordResetAlertTitle = "Password Reset"
     static let passwordResetAlertMessage = "Enter your email"
     static let maxUsersAlertTitle = "Maximum Users Reached"

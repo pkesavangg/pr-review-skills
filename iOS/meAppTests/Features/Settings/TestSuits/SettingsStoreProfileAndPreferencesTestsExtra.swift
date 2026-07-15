@@ -166,6 +166,13 @@ extension SettingsStoreTests {
             )
             await SettingsStoreTestFixtures.waitUntil { store.activeAccount?.accountId == account.accountId }
 
+            // "My Kids" must be editable (baby present) for measurement units to persist.
+            guard let productTypeStore = DependencyContainer.shared.dependencies["ProductTypeStoreProtocol"] as? MockProductTypeStore else {
+                Issue.record("Expected the store's product-type store to be a MockProductTypeStore")
+                return
+            }
+            productTypeStore.availableItems = [.myWeight, .baby(profile: BabyProfile(id: "baby-1", name: "Aria"))]
+
             store.saveUnitSelections(weightUnit: .lb, measurementUnits: .metric)
             await SettingsStoreTestFixtures.waitUntil { accountService.updateMeasurementUnitsCalls == 1 && notification.dismissLoaderCalls == 1 }
 
@@ -197,6 +204,13 @@ extension SettingsStoreTests {
                 seedDefaultAccount: false
             )
             await SettingsStoreTestFixtures.waitUntil { store.activeAccount?.accountId == account.accountId }
+
+            // Both sections editable: weight scale + baby present.
+            guard let productTypeStore = DependencyContainer.shared.dependencies["ProductTypeStoreProtocol"] as? MockProductTypeStore else {
+                Issue.record("Expected the store's product-type store to be a MockProductTypeStore")
+                return
+            }
+            productTypeStore.availableItems = [.myWeight, .baby(profile: BabyProfile(id: "baby-1", name: "Aria"))]
 
             store.saveUnitSelections(weightUnit: .kg, measurementUnits: .metric)
             await SettingsStoreTestFixtures.waitUntil {
@@ -372,6 +386,90 @@ extension SettingsStoreTests {
             await SettingsStoreTestFixtures.waitUntil { accountService.updateNotificationsCalls == 1 && notification.dismissLoaderCalls == 1 }
 
             #expect(notification.toastData?.message == ToastStrings.unableToUpdateAccountSettings)
+        }
+    }
+}
+
+extension SettingsStoreTests {
+    @Suite("Unit Type Visibility")
+    @MainActor
+    struct UnitTypeVisibility {
+        private static func productTypeStore() -> MockProductTypeStore? {
+            DependencyContainer.shared.dependencies["ProductTypeStoreProtocol"] as? MockProductTypeStore
+        }
+
+        private static func babyProfile() -> BabyProfile {
+            BabyProfile(id: "baby-1", name: "Aria")
+        }
+
+        @Test("Unit Type row is hidden when Blood Pressure is the active product")
+        func hiddenWhenBpmActive() {
+            let (store, _, _, _, _) = SettingsStoreTestFixtures.makeSUT()
+            guard let productTypeStore = Self.productTypeStore() else {
+                Issue.record("Expected a MockProductTypeStore")
+                return
+            }
+            // Weight scale present, but BPM is the selected product → still hidden.
+            productTypeStore.availableItems = [.myWeight, .myBloodPressure]
+            productTypeStore.selectedItem = .myBloodPressure
+
+            #expect(store.isBloodPressureSelected == true)
+            #expect(store.shouldShowUnitType == false)
+        }
+
+        @Test("Unit Type row is hidden for a Blood-Pressure-only account")
+        func hiddenWhenBpOnly() {
+            let (store, _, _, _, _) = SettingsStoreTestFixtures.makeSUT()
+            guard let productTypeStore = Self.productTypeStore() else {
+                Issue.record("Expected a MockProductTypeStore")
+                return
+            }
+            productTypeStore.availableItems = [.myBloodPressure]
+            productTypeStore.selectedItem = .myBloodPressure
+
+            #expect(store.shouldShowUnitType == false)
+        }
+
+        @Test("Unit Type row is shown for a weight-scale account")
+        func shownForWeightScale() {
+            let (store, _, _, _, _) = SettingsStoreTestFixtures.makeSUT()
+            guard let productTypeStore = Self.productTypeStore() else {
+                Issue.record("Expected a MockProductTypeStore")
+                return
+            }
+            productTypeStore.availableItems = [.myWeight]
+            productTypeStore.selectedItem = .myWeight
+
+            #expect(store.shouldShowUnitType == true)
+        }
+
+        @Test("Unit Type row is shown for a baby account")
+        func shownForBaby() {
+            let (store, _, _, _, _) = SettingsStoreTestFixtures.makeSUT()
+            guard let productTypeStore = Self.productTypeStore() else {
+                Issue.record("Expected a MockProductTypeStore")
+                return
+            }
+            productTypeStore.availableItems = [.baby(profile: Self.babyProfile())]
+            productTypeStore.selectedItem = .baby(profile: Self.babyProfile())
+
+            #expect(store.shouldShowUnitType == true)
+        }
+
+        @Test("presentUnitPicker is a no-op while Blood Pressure is active")
+        func presentUnitPickerNoOpWhenBpmActive() {
+            let notification = TestNotificationHelperService()
+            let (store, _, _, _, _) = SettingsStoreTestFixtures.makeSUT(notification: notification)
+            guard let productTypeStore = Self.productTypeStore() else {
+                Issue.record("Expected a MockProductTypeStore")
+                return
+            }
+            productTypeStore.availableItems = [.myWeight, .myBloodPressure]
+            productTypeStore.selectedItem = .myBloodPressure
+
+            store.presentUnitPicker()
+
+            #expect(notification.showModalCalls == 0)
         }
     }
 }
