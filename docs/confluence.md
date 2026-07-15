@@ -47,11 +47,11 @@ The **meApp - Development** page (`1552482315`) mirrors this repo's architecture
 This is a **two-step mirror**: code → local doc → Confluence.
 
 1. A code change updates the matching local `docs/` file (enforced by the docs-freshness hook — see [automation.md](automation.md)).
-2. The same hook prints a `🌐 Also update Confluence …` line naming the page above.
+2. The same hook prints a `🌐 Also mirror this to Confluence → …` line naming the page above.
 3. Run [`/update-confluence`](../.claude/skills/update-confluence/SKILL.md) — it reads the target page, drafts the section edit from the current repo state, shows you the before/after, and **writes only after you approve**.
 
 Confluence is a shared, hand-curated hub, so writes are never automatic. If you add, move, or
-retire a page, update the IDs in this file **and** the `confluence_for()` note in
+retire a page, update the IDs in this file **and** the `CONF_PAGE` note in
 [`scripts/docs-freshness-check.sh`](../scripts/docs-freshness-check.sh).
 
 ### Update style — edit in place, not append-only
