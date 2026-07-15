@@ -197,8 +197,12 @@ fun SettingsScreenContent(
           },
       )
 
-      // My Weight Section — only shown when a Weight Scale is paired
-      if (state.hasWeightScale) {
+      // My Weight Section — shown when the account owns the weight product
+      // ([Account.productTypes] carries "weight"), which is set at signup for a weight-scale
+      // profile and stays on thereafter. Keyed off product ownership (isMyWeightEnabled), NOT
+      // the hasWeightScale device flag, so a weight account sees this section before any scale
+      // is paired; BP-only / baby-only / BP+baby accounts (no "weight" product) stay hidden. (MOB-1455)
+      if (state.isMyWeightEnabled) {
         SettingsSection(
           title = SettingsScreenStrings.WeightScale,
           items =
