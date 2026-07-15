@@ -33,11 +33,13 @@ import com.dmdbrands.gurus.weight.theme.MeTheme
  * Labels name the metric ("weight" / "ounces" / "length"); the unit is the right-edge "(unit)"
  * suffix (AppInput.trailingText). Notes + date/time are unchanged across units.
  */
+@Suppress("LongMethod")
 @Composable
 fun BabyEntrySection(
     controls: BabyEntryFormControls,
     weightUnit: WeightUnit,
     onImeAction: () -> Unit,
+    enabled: Boolean = true,
 ) {
     val isMetric = weightUnit == WeightUnit.KG
     val isLbOz = weightUnit == WeightUnit.LB_OZ
@@ -53,6 +55,7 @@ fun BabyEntrySection(
         weightFocusRequester = weightFocusRequester,
         weightOzFocusRequester = weightOzFocusRequester,
         lengthFocusRequester = lengthFocusRequester,
+        enabled = enabled,
     )
     Spacer(modifier = Modifier.height(MeTheme.spacing.xs))
     AppInput(
@@ -66,11 +69,13 @@ fun BabyEntrySection(
         onImeAction = onImeAction,
         maxLength = if (isMetric) 4 else 3,
         testTag = TestTags.ManualEntry.BabyLengthField,
+        enabled = enabled,
         modifier = Modifier
             .fillMaxWidth()
             .focusRequester(lengthFocusRequester),
     )
     Spacer(modifier = Modifier.height(MeTheme.spacing.xs))
+    // Note stays editable for both manual and device-synced readings.
     AppTextArea(
         formControl = controls.notes,
         label = EntryScreenStrings.NOTES_LABEL,
@@ -83,6 +88,7 @@ fun BabyEntrySection(
         mode = DateTimeInputMode.DateTime,
         label = EntryScreenStrings.DATE_LABEL,
         maxValue = null,
+        enabled = enabled,
     )
 }
 
@@ -100,6 +106,7 @@ private fun BabyWeightInput(
     weightFocusRequester: FocusRequester,
     weightOzFocusRequester: FocusRequester,
     lengthFocusRequester: FocusRequester,
+    enabled: Boolean = true,
 ) {
     if (isLbOz) {
         // Each AppInput is wrapped in a Column so its error text + spacer stay within its half
@@ -118,6 +125,7 @@ private fun BabyWeightInput(
                     nextFocusRequester = weightOzFocusRequester,
                     maxLength = 3,
                     testTag = TestTags.ManualEntry.BabyWeightField,
+                    enabled = enabled,
                     modifier = Modifier
                         .fillMaxWidth()
                         .focusRequester(weightFocusRequester),
@@ -132,6 +140,7 @@ private fun BabyWeightInput(
                     imeAction = ImeAction.Next,
                     nextFocusRequester = lengthFocusRequester,
                     maxLength = 3,
+                    enabled = enabled,
                     modifier = Modifier
                         .fillMaxWidth()
                         .focusRequester(weightOzFocusRequester),
@@ -149,6 +158,7 @@ private fun BabyWeightInput(
             nextFocusRequester = lengthFocusRequester,
             maxLength = 5,
             testTag = TestTags.ManualEntry.BabyWeightField,
+            enabled = enabled,
             modifier = Modifier
                 .fillMaxWidth()
                 .focusRequester(weightFocusRequester),

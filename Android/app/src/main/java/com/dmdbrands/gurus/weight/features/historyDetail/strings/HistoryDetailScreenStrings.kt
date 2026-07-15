@@ -9,17 +9,18 @@ object HistoryDetailScreenStrings {
     const val NoteSaveError = "Couldn't save note. Please try again."
     const val SaveLoaderMessage = "Saving..."
     const val DeleteEntryContentDescription = "Delete entry"
-    const val DeleteEntryDialogMessage = "Are you sure you want to delete your entry?"
+    // Delete-confirmation alert copy (Figma 29833-120461).
+    const val DeleteEntryDialogTitle = "Delete this record?"
+    const val DeleteEntryDialogMessage = "This reading will be removed from your history. This can't be undone."
     const val CancelButton = "Cancel"
-    const val DeleteEntryDialogTitle = "Delete Entry?"
     const val DeleteLoaderMessage = "Deleting entry..."
 
     // Optimistic delete + undo toasts (MOB-598)
     const val ReadingDeleted = "Reading deleted."
     const val UndoButton = "Undo"
-    const val ReadingRestored = "Reading restored."
+    const val ReadingRestored = "Reading restored successfully."
     const val DeleteFailedTitle = "Couldn't delete!"
-    const val DeleteFailedMessage = "Try again"
+    const val TryAgainButton = "Try again"
 
     const val BpmUnit = "bpm"
     const val KcalUnit = "kcal"

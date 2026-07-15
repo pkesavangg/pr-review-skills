@@ -151,43 +151,18 @@ fun WeightHistoryDetailItemDetails(
         .fillMaxWidth()
         .background(MeTheme.colorScheme.primaryBackground),
   ) {
-    metrics.forEachIndexed { index, metric ->
-      AnimatedMetricItem(
-        stat = metric,
-        index = index,
-        size = metrics.size,
-        isVisible = true, // Always visible, animation handled internally
-        onMetricClick = {
-          val bodyMetric = fromScaleEntry(item)
-          scope.launch {
-            navBackStack.addRoute(
-              AppRoute.Dashboard.MetricInfo(
-                info = bodyMetric,
-                key = if (metric.key is DashboardKey.Metric) metric.key.key else MetricKey.WEIGHT,
-              ),
-            )
-          }
-        },
-      )
-    }
-    if (metrics.size % 2 != 0) {
-      HorizontalDivider(
-        thickness = 0.5.dp,
-        color = MeTheme.colorScheme.utility,
-      )
-    }
-    // Note (MOB-438) — always shown when expanded: the saved note or an add-note prompt.
-    // The trailing icon is a "+" when no note exists (add) and the boxed pencil once a note
-    // is present (edit) (MOB-1163).
+    // Note (MOB-438 / MOB-1173) — the edit container sits directly under the weight block and
+    // ABOVE the metrics list (per Figma). Always shown when expanded: the saved note or an
+    // add-note prompt. The trailing icon is a "+" when no note exists (add) and the boxed pencil
+    // once a note is present (edit) (MOB-1163).
     val note = item.scale.scaleEntry.note
     val hasNote = !note.isNullOrBlank()
-    HorizontalDivider(
-      thickness = 0.5.dp,
-      color = MeTheme.colorScheme.utility,
-    )
     Row(
       modifier = Modifier
         .fillMaxWidth()
+        // Match the expanded weight header's background so the edit/note container reads as part
+        // of the same weight block (per Figma), distinct from the metrics rows below. (MOB-1173)
+        .background(MeTheme.colorScheme.secondaryBackground)
         .padding(MeTheme.spacing.sm),
       verticalAlignment = Alignment.CenterVertically,
       // Empty state centres the placeholder + "+" affordance; an existing note stays
@@ -211,6 +186,33 @@ fun WeightHistoryDetailItemDetails(
         modifier = Modifier
           .padding(start = MeTheme.spacing.sm)
           .testTag(TestTags.History.EditNoteButton),
+      )
+    }
+    // No divider here (per Figma): the weight header + note form one continuous grey block and the
+    // first metric row (white) provides the visual break into the metrics list. (MOB-1173)
+    metrics.forEachIndexed { index, metric ->
+      AnimatedMetricItem(
+        stat = metric,
+        index = index,
+        size = metrics.size,
+        isVisible = true, // Always visible, animation handled internally
+        onMetricClick = {
+          val bodyMetric = fromScaleEntry(item)
+          scope.launch {
+            navBackStack.addRoute(
+              AppRoute.Dashboard.MetricInfo(
+                info = bodyMetric,
+                key = if (metric.key is DashboardKey.Metric) metric.key.key else MetricKey.WEIGHT,
+              ),
+            )
+          }
+        },
+      )
+    }
+    if (metrics.size % 2 != 0) {
+      HorizontalDivider(
+        thickness = 0.5.dp,
+        color = MeTheme.colorScheme.utility,
       )
     }
   }

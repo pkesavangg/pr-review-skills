@@ -477,6 +477,9 @@ constructor(
           pulse = pulse,
           meanArterial = meanArterial,
           note = note,
+          // Manual entry → mark the origin so it's recognised as editable in History even before
+          // it syncs (a device-synced reading carries its own source from the server). (MOB-1173)
+          source = EntrySource.MANUAL.value,
         )
         val entryEntity = EntryEntity(
           accountId = accountId,

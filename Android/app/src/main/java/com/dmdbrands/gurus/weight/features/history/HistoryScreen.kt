@@ -4,7 +4,11 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.rememberCoroutineScope
@@ -48,6 +52,17 @@ fun HistoryScreen() {
   val viewModel: HistoryViewModel = hiltViewModel()
   val state by viewModel.state.collectAsStateWithLifecycle()
   val isRefreshing = state.isLoading
+
+  // Re-query on resume so returning to History (e.g. after deleting the last entry of a day) shows
+  // the current data — the entry_view Room flows don't reliably re-emit after the delete. (MOB-1173)
+  val lifecycleOwner = LocalLifecycleOwner.current
+  DisposableEffect(lifecycleOwner) {
+    val observer = LifecycleEventObserver { _, event ->
+      if (event == Lifecycle.Event.ON_RESUME) viewModel.refresh()
+    }
+    lifecycleOwner.lifecycle.addObserver(observer)
+    onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
+  }
   HistoryScreenContent(
     state = state,
     productSelectionManager = viewModel.productSelectionManager,
@@ -217,6 +232,7 @@ fun HistoryScreenContent(
           } else {
             BabyHistoryList(
               groups = babyGroups,
+              birthdate = (currentProduct as? ProductSelection.Baby)?.profile?.birthdate,
               onItemClick = {  item ->
                 coroutineScope.launch {
                 navBackStack.addRoute(

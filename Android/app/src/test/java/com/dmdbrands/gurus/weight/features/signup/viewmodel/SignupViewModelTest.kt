@@ -782,10 +782,10 @@ class SignupViewModelTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `Submit baby scale omits gender dob and height so the server does not 400`() = runTest(mainDispatcherRule.scheduler) {
-        // The baby path skips the GENDER/HEIGHT steps, leaving sex = "". Sending an
-        // empty gender made the server reject the request as a missing required value.
-        // For a baby-only account these fields must be omitted (null), not "".
+    fun `Submit baby scale omits gender and dob so the server does not 400`() = runTest(mainDispatcherRule.scheduler) {
+        // The baby path skips the GENDER step, leaving sex = "". Sending an empty gender
+        // made the server reject the request as a missing required value, so gender/dob
+        // must be omitted (null), not "". Height, however, is ALWAYS sent (see next test).
         val requestSlot = slot<SignupRequest>()
         coEvery { accountService.signup(capture(requestSlot)) } returns TestFixtures.activeAccount
 
@@ -802,7 +802,28 @@ class SignupViewModelTest {
         assertThat(request.productTypes).containsExactly(ProductType.BABY.apiValue)
         assertThat(request.gender).isNull()
         assertThat(request.dob).isNull()
-        assertThat(request.height).isNull()
+    }
+
+    @Test
+    fun `Submit baby scale still sends height so a later weight product-add is not rejected`() = runTest(mainDispatcherRule.scheduler) {
+        // MOB-1173: the signup form always holds a default height (5'10"), so we send it for
+        // every product — even baby. Otherwise the account is created with height = null, and a
+        // later PATCH /v3/account/products to add weight/BP is rejected server-side with
+        // "height must be set before adding the requested product(s)". That failed PATCH never
+        // persists, so it retries forever. Sending height up front prevents the whole loop.
+        val requestSlot = slot<SignupRequest>()
+        coEvery { accountService.signup(capture(requestSlot)) } returns TestFixtures.activeAccount
+
+        navigateToBabyPasswordStep { form ->
+            form.name.onValueChange("Tammy")
+            form.biologicalSex.onValueChange("male")
+            form.weightUnit.onValueChange(BabyWeightUnit.LBS)
+            form.birthWeight.onValueChange("7")
+        }
+        viewModel.handleIntent(SignupIntent.Next)
+        advanceUntilIdle()
+
+        assertThat(requestSlot.captured.height).isNotNull()
     }
 
     @Test
@@ -903,7 +924,7 @@ class SignupViewModelTest {
     }
 
     @Test
-    fun `Submit blood pressure sends gender and dob but omits height`() = runTest(mainDispatcherRule.scheduler) {
+    fun `Submit blood pressure sends gender dob and height`() = runTest(mainDispatcherRule.scheduler) {
         val requestSlot = slot<SignupRequest>()
         coEvery { accountService.signup(capture(requestSlot)) } returns TestFixtures.activeAccount
 
@@ -915,7 +936,9 @@ class SignupViewModelTest {
         assertThat(request.productTypes).containsExactly(ProductType.BLOOD_PRESSURE.apiValue)
         assertThat(request.gender).isEqualTo(TEST_SEX)
         assertThat(request.dob).isNotNull()
-        assertThat(request.height).isNull()
+        // MOB-1173: height is now always sent (default 5'10") so a later weight product-add
+        // isn't rejected for a missing height.
+        assertThat(request.height).isNotNull()
         coVerify(exactly = 0) { goalService.createGoalForSignup(any(), any(), any(), any()) }
     }
 
