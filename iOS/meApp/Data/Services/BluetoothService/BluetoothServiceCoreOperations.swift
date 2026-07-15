@@ -475,7 +475,7 @@ extension BluetoothService {
     /// that SKU is used to classify the device so a real weight scale isn't wrongly skipped.
     private func isBpmDevice(broadcastId: String, sku: String? = nil) -> Bool {
         // Prefer the tracked scale's SKU; fall back to the caller-supplied SKU before failing closed.
-        let resolvedSku = bluetoothScales.first(where: { $0.broadcastIdString == broadcastId })?.sku ?? sku
+        let resolvedSku = bluetoothScales.first { $0.broadcastIdString == broadcastId }?.sku ?? sku
         guard let resolvedSku else {
             logger.log(
                 level: .info,
