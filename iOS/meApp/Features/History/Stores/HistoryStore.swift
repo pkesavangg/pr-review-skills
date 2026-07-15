@@ -117,6 +117,14 @@ final class HistoryStore: ObservableObject {
     private var loadedProductTypes: Set<String> = []
     private var monthsLoadTask: Task<Void, Never>?
 
+    /// MOB-516: coalesced-reload state. The entry-saved/deleted sinks used to
+    /// `monthsLoadTask?.cancel()` + restart, but cancelling the Swift task does NOT stop the
+    /// underlying `getMonthsAll` worker read — so a burst of triggers on one add stacked 2–3
+    /// full-table reads on the serial worker (~6.6 s "stuck" loader). `requestMonthsReload`
+    /// replaces that with a single driver that reruns at most once more. See below.
+    private var monthsReloadPending = false
+    private var monthsReloadDriver: Task<Void, Never>?
+
     // MARK: - Init ------------------------------------------------------
 
     // swiftlint:disable:next cyclomatic_complexity function_body_length
@@ -135,9 +143,9 @@ final class HistoryStore: ObservableObject {
             .sink { [weak self] entry in
                 guard let self = self else { return }
                 Task { @MainActor in
-                    // Cancel any in-flight month load so the new entry is always picked up
-                    self.monthsLoadTask?.cancel()
-                    self.monthsLoadTask = nil
+                    // MOB-516: no cancel-and-restart here — cancelling the Swift task didn't stop
+                    // the worker read, so bursts stacked full-table reads. `requestMonthsReload`
+                    // below supersedes any in-flight load without orphaning it.
                     self.invalidateCacheForCurrentType()
                     // Baby entries may be assigned while a different product type is active,
                     // meaning invalidateCacheForCurrentType() won't clear the baby cache.
@@ -152,7 +160,9 @@ final class HistoryStore: ObservableObject {
                     // History open reloads fresh. Removes a full-dataset read from every
                     // off-screen save.
                     guard self.isHistoryScreenActive else { return }
-                    await self.loadMonthsInternal(canShowLoader: false)
+                    // MOB-516: coalesced reload — reruns once if more changes arrive, never
+                    // stacking concurrent worker reads (the ~6.6 s stuck loader).
+                    self.requestMonthsReload(canShowLoader: false, reason: "entrySaved")
                     // If we're viewing a month and the saved entry belongs to that month, refresh entries inline
                     if let selectedMonth = self.selectedMonth {
                         let monthKey = DateTimeTools.getLocalMonthStringFromUTCDate(entry.entryTimestamp)
@@ -175,15 +185,14 @@ final class HistoryStore: ObservableObject {
             .sink { [weak self] entry in
                 guard let self = self else { return }
                 Task { @MainActor in
-                    // Cancel any in-flight month load so the deleted entry is always reflected
-                    self.monthsLoadTask?.cancel()
-                    self.monthsLoadTask = nil
+                    // MOB-516: no cancel-and-restart here — see requestMonthsReload.
                     self.invalidateCacheForCurrentType()
                     // MOB-1433 §5c: eager months-list reload only when History is on screen
                     // (deletes happen from within History, so this stays correct); otherwise
                     // just invalidate and let the next open reload fresh.
                     guard self.isHistoryScreenActive else { return }
-                    await self.loadMonthsInternal(canShowLoader: false)
+                    // MOB-516: coalesced reload (see requestMonthsReload).
+                    self.requestMonthsReload(canShowLoader: false, reason: "entryDeleted")
                     // If we're viewing a month and the deleted entry belongs to that month, refresh entries inline
                     if let selectedMonth = self.selectedMonth {
                         let monthKey = DateTimeTools.getLocalMonthStringFromUTCDate(entry.entryTimestamp)
@@ -217,7 +226,7 @@ final class HistoryStore: ObservableObject {
                 // Reload now only when History is on screen; otherwise the invalidation
                 // above is enough and the next open reloads fresh (MOB-1433 §5c).
                 guard self.isHistoryScreenActive else { return }
-                self.loadMonths()
+                self.loadMonths(reason: "productTypeChange")
             }
             .store(in: &cancellables)
 
@@ -240,7 +249,7 @@ final class HistoryStore: ObservableObject {
                 // that contended with the dashboard load (MOB-1433 §5c). Only reload when
                 // History is on screen (e.g. a live unit change while viewing it).
                 guard self.isHistoryScreenActive else { return }
-                self.loadMonths()
+                self.loadMonths(reason: "accountUnitChange")
                 if let selectedBabyDay = self.selectedBabyDay {
                     self.selectBabyDay(selectedBabyDay)
                 }
@@ -249,15 +258,34 @@ final class HistoryStore: ObservableObject {
     }
 
     // MARK: - Public API --------------------------------------------------
+    /// Coalesced months reload (MOB-516). Lets any load already running finish (its data may
+    /// predate this change), then does ONE fresh load, rerunning exactly once more if another
+    /// change arrived meanwhile. It never spawns concurrent full-table reads — that stacking on
+    /// the serial worker was the ~6.6 s "stuck" History loader after adding an entry. Use this
+    /// from the reactive sinks instead of cancel-and-restart.
+    private func requestMonthsReload(canShowLoader: Bool, reason: String = "unknown") {
+        monthsReloadPending = true
+        guard monthsReloadDriver == nil else { return }
+        monthsReloadDriver = Task { [weak self] in
+            guard let self else { return }
+            await self.monthsLoadTask?.value
+            while self.monthsReloadPending {
+                self.monthsReloadPending = false
+                await self.loadMonthsInternal(canShowLoader: canShowLoader, reason: reason)
+            }
+            self.monthsReloadDriver = nil
+        }
+    }
+
     /// Call onAppear of History list screen.
-    func loadMonths() {
+    func loadMonths(reason: String = "loadMonths") {
         let currentId = productTypeStore.selectedItem.id
         guard !loadedProductTypes.contains(currentId) else {
             updateEmptyStateFromCache()
             return
         }
         loadedProductTypes.insert(currentId)
-        Task { [weak self] in await self?.loadMonthsInternal() }
+        Task { [weak self] in await self?.loadMonthsInternal(reason: reason) }
     }
 
     /// User tapped a month row.
@@ -364,7 +392,7 @@ final class HistoryStore: ObservableObject {
     }
 
     // swiftlint:disable:next cyclomatic_complexity function_body_length
-    private func loadMonthsInternal(canShowLoader: Bool = true) async {
+    private func loadMonthsInternal(canShowLoader: Bool = true, reason: String = "unknown") async {
         // If a load is already in progress, wait for it to complete rather than
         // returning early. This prevents a stale empty-state flash when a tab-switch
         // triggers loadMonths() while an entrySaved reload is still fetching data.
@@ -383,7 +411,7 @@ final class HistoryStore: ObservableObject {
                     self.bpMonths = result
                     self.isEmptyState = result.isEmpty
                 } catch {
-                    self.logger.log(level: .error, tag: self.tag, message: "Failed to load BP history: \(error.localizedDescription)")
+                    self.logger.log(level: .error, tag: self.tag, message: "Failed to load BP history [\(reason)]: \(error.localizedDescription)")
                     self.bpMonths = []
                     self.isEmptyState = true
                 }
@@ -408,7 +436,7 @@ final class HistoryStore: ObservableObject {
                     self.babyWeeks = result
                     self.isEmptyState = result.isEmpty
                 } catch {
-                    self.logger.log(level: .error, tag: self.tag, message: "Failed to load baby history: \(error.localizedDescription)")
+                    self.logger.log(level: .error, tag: self.tag, message: "Failed to load baby history [\(reason)]: \(error.localizedDescription)")
                     self.babyWeeks = []
                     self.isEmptyState = true
                 }
@@ -433,10 +461,10 @@ final class HistoryStore: ObservableObject {
                 self.logger.log(
                     level: .info,
                     tag: self.tag,
-                    message: "Loaded weight history months: count=\(result.count), isEmptyState=\(result.isEmpty)"
+                    message: "Loaded weight history months: count=\(result.count), isEmptyState=\(result.isEmpty), reason=\(reason)"
                 )
             } catch {
-                self.logger.log(level: .error, tag: self.tag, message: "Failed to load history months: \(error.localizedDescription)")
+                self.logger.log(level: .error, tag: self.tag, message: "Failed to load history months [\(reason)]: \(error.localizedDescription)")
                 self.months = []
                 self.isEmptyState = true
             }

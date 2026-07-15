@@ -97,6 +97,35 @@ struct EntryServiceTests {
         #expect(exists == true)
     }
 
+    @Test("getEntryCount routes through the @ModelActor worker, not the main-actor repo (MOB-516)")
+    func getEntryCountRoutesThroughWorker() async throws {
+        let repo = MockEntryRepository()
+        repo.entries = [
+            EntryTestFixtures.makeEntry(timestamp: "2026-03-01T08:00:00Z", weight: 1800),
+            EntryTestFixtures.makeEntry(timestamp: "2026-03-02T08:00:00Z", weight: 1810)
+        ]
+        let worker = MockEntryWorker()
+        let sut = makeSUT(repo: repo, worker: worker)
+
+        let count = try await sut.getEntryCount()
+
+        #expect(count == 2)
+        // The MOB-516 fix: the COUNT runs on the worker (off the main actor), not directly on the
+        // @MainActor EntryRepository. A revert to `localRepo.fetchEntryCount` would leave this at 0.
+        #expect(worker.fetchEntryCountCalls == 1)
+    }
+
+    @Test("getEntryCount propagates a worker fetch error (MOB-516)")
+    func getEntryCountPropagatesWorkerError() async {
+        let worker = MockEntryWorker()
+        worker.entryCountError = MockEntryWorkerError.insertFailed
+        let sut = makeSUT(worker: worker)
+
+        await #expect(throws: MockEntryWorkerError.self) {
+            _ = try await sut.getEntryCount()
+        }
+    }
+
     @Test("entry readers no active account: throw")
     func entryReadersNoActiveAccount() async {
         let sut = makeSUT(activeAccount: nil)
