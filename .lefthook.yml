@@ -32,6 +32,16 @@ pre-commit:
         - rebase
       fail_text: "Secrets detected in staged files. Remove them before committing."
 
+    testtags:
+      glob: "Android/app/src/main/**/*.kt"
+      run: bash scripts/check-testtags.sh
+      skip:
+        - merge
+        - rebase
+      fail_text: |
+        Inline-literal testTag found. Tag from a TestTags constant instead
+        (Modifier.testTag(TestTags.X.Y)). See Android/docs/accessibility-testtags-guide.md.
+
 commit-msg:
   commands:
     jira-ticket:

@@ -1,4 +1,4 @@
-package com.dmdbrands.gurus.weight.features.ScaleSetup
+package com.dmdbrands.gurus.weight.features.DeviceSetup
 
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.SemanticsMatcher
@@ -6,23 +6,23 @@ import androidx.compose.ui.test.assert
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
-import com.dmdbrands.gurus.weight.features.ScaleSetup.components.BabyScaleLoader
-import com.dmdbrands.gurus.weight.features.ScaleSetup.components.ErrorContent
-import com.dmdbrands.gurus.weight.features.ScaleSetup.components.ScaleSetupHeader
-import com.dmdbrands.gurus.weight.features.ScaleSetup.components.ScaleSetupLoader
-import com.dmdbrands.gurus.weight.features.ScaleSetup.components.SetupContent
-import com.dmdbrands.gurus.weight.features.ScaleSetup.enums.LoaderIconType
-import com.dmdbrands.gurus.weight.features.ScaleSetup.modal.ConnectionState
-import com.dmdbrands.gurus.weight.features.ScaleSetup.strings.BabyScaleSetupStrings
-import com.dmdbrands.gurus.weight.features.ScaleSetup.strings.ScaleSetupStrings
-import com.dmdbrands.gurus.weight.features.ScaleSetup.strings.SetupLoaderStrings
-import com.dmdbrands.gurus.weight.features.ScaleSetup.strings.WifiScaleSetupStrings
+import com.dmdbrands.gurus.weight.features.DeviceSetup.components.BabyScaleLoader
+import com.dmdbrands.gurus.weight.features.DeviceSetup.components.DeviceSetupHeader
+import com.dmdbrands.gurus.weight.features.DeviceSetup.components.DeviceSetupLoader
+import com.dmdbrands.gurus.weight.features.DeviceSetup.components.ErrorContent
+import com.dmdbrands.gurus.weight.features.DeviceSetup.components.SetupContent
+import com.dmdbrands.gurus.weight.features.DeviceSetup.enums.LoaderIconType
+import com.dmdbrands.gurus.weight.features.DeviceSetup.modal.ConnectionState
+import com.dmdbrands.gurus.weight.features.DeviceSetup.strings.BabyScaleSetupStrings
+import com.dmdbrands.gurus.weight.features.DeviceSetup.strings.DeviceSetupStrings
+import com.dmdbrands.gurus.weight.features.DeviceSetup.strings.SetupLoaderStrings
+import com.dmdbrands.gurus.weight.features.DeviceSetup.strings.WifiScaleSetupStrings
 import com.dmdbrands.gurus.weight.theme.MeAppTheme
 import org.junit.Rule
 import org.junit.Test
 
 /**
- * Instrumented Compose UI tests for the Add Scale & Scale Setup flows' TalkBack
+ * Instrumented Compose UI tests for the Add Device & Device Setup flows' TalkBack
  * semantics (MOB-855 — Phase 5).
  *
  * Covers the dependency-light shared building blocks that every setup screen
@@ -32,7 +32,7 @@ import org.junit.Test
  *
  * Requires a device/emulator because it uses the real Compose test rule.
  */
-class ScaleSetupAccessibilityTest {
+class DeviceSetupAccessibilityTest {
 
     @get:Rule
     val composeTestRule = createComposeRule()
@@ -58,20 +58,20 @@ class ScaleSetupAccessibilityTest {
             }
         }
 
-        composeTestRule.onNodeWithContentDescription(ScaleSetupStrings.accSetupCompleteImage)
+        composeTestRule.onNodeWithContentDescription(DeviceSetupStrings.accSetupCompleteImage)
             .assertExists()
     }
 
     @Test
-    fun scaleSetupHeader_iconButtonsAreLabeled() {
+    fun deviceSetupHeader_iconButtonsAreLabeled() {
         composeTestRule.setContent {
             MeAppTheme {
-                ScaleSetupHeader(sku = "0412", onBack = {}, onHelp = {}) {}
+                DeviceSetupHeader(sku = "0412", onBack = {}, onHelp = {}) {}
             }
         }
 
-        composeTestRule.onNodeWithContentDescription(ScaleSetupStrings.accCloseButton).assertExists()
-        composeTestRule.onNodeWithContentDescription(ScaleSetupStrings.accHelpButton).assertExists()
+        composeTestRule.onNodeWithContentDescription(DeviceSetupStrings.accCloseButton).assertExists()
+        composeTestRule.onNodeWithContentDescription(DeviceSetupStrings.accHelpButton).assertExists()
     }
 
     @Test
@@ -88,10 +88,10 @@ class ScaleSetupAccessibilityTest {
     }
 
     @Test
-    fun scaleSetupLoader_titleIsHeadingAndErrorCodeIsLiveRegion() {
+    fun deviceSetupLoader_titleIsHeadingAndErrorCodeIsLiveRegion() {
         composeTestRule.setContent {
             MeAppTheme {
-                ScaleSetupLoader(
+                DeviceSetupLoader(
                     title = "Connection Error",
                     errorCode = "ERR_001",
                     connectionState = ConnectionState.Failed.Error,

@@ -386,7 +386,7 @@ object DaoTestFixtures {
         meanArterial: String = "93",
         note: String? = null,
     ) = BpmEntryEntity(
-        entryId = id,
+        id = id,
         systolic = systolic,
         diastolic = diastolic,
         pulse = pulse,

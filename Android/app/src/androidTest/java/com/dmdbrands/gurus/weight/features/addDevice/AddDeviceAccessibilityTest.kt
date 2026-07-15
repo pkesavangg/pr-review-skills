@@ -1,4 +1,4 @@
-package com.dmdbrands.gurus.weight.features.addScale
+package com.dmdbrands.gurus.weight.features.addDevice
 
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.semantics.SemanticsProperties
@@ -10,10 +10,10 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.navigation3.runtime.NavKey
 import com.dmdbrands.gurus.weight.core.navigation.AppRoute
 import com.dmdbrands.gurus.weight.core.navigation.LocalNavBackStack
-import com.dmdbrands.gurus.weight.features.addScale.reducer.AddScaleFormControls
-import com.dmdbrands.gurus.weight.features.addScale.reducer.AddScaleState
-import com.dmdbrands.gurus.weight.features.addScale.screens.AddScaleScreenContent
-import com.dmdbrands.gurus.weight.features.addScale.strings.AddScaleScreenStrings
+import com.dmdbrands.gurus.weight.features.addDevice.reducer.AddScaleFormControls
+import com.dmdbrands.gurus.weight.features.addDevice.reducer.AddScaleState
+import com.dmdbrands.gurus.weight.features.addDevice.screens.AddScaleScreenContent
+import com.dmdbrands.gurus.weight.features.addDevice.strings.AddDeviceScreenStrings
 import com.dmdbrands.gurus.weight.features.common.helper.form.FormControl
 import com.dmdbrands.gurus.weight.features.common.helper.form.FormGroup
 import com.dmdbrands.gurus.weight.theme.MeAppTheme
@@ -22,12 +22,12 @@ import org.junit.Rule
 import org.junit.Test
 
 /**
- * Instrumented Compose UI tests for the Add Scale screen's TalkBack semantics
+ * Instrumented Compose UI tests for the Add Device screen's TalkBack semantics
  * (MOB-855 — Phase 5).
  *
  * Requires a device/emulator because it uses the real Compose test rule.
  */
-class AddScaleAccessibilityTest {
+class AddDeviceAccessibilityTest {
 
     @get:Rule
     val composeTestRule = createComposeRule()
@@ -59,17 +59,17 @@ class AddScaleAccessibilityTest {
     }
 
     @Test
-    fun addScale_screenTitleIsAHeading() {
+    fun addDevice_screenTitleIsAHeading() {
         setContent()
 
-        composeTestRule.onNodeWithText(AddScaleScreenStrings.Title).assert(isHeading())
+        composeTestRule.onNodeWithText(AddDeviceScreenStrings.Title).assert(isHeading())
     }
 
     @Test
-    fun addScale_closeButtonIsLabeled() {
+    fun addDevice_closeButtonIsLabeled() {
         setContent()
 
-        composeTestRule.onNodeWithContentDescription(AddScaleScreenStrings.accCloseButton)
+        composeTestRule.onNodeWithContentDescription(AddDeviceScreenStrings.accCloseButton)
             .assertExists()
     }
 }

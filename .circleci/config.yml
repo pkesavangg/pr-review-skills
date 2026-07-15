@@ -2,6 +2,7 @@ version: 2.1
 
 orbs:
   macos: circleci/macos@2.0.0
+  android: circleci/android@2.5.0
 
 commands:
   restore_google_services:
@@ -549,6 +550,11 @@ jobs:
       - restore_google_services
       - setup_github_packages_auth
       - run:
+          name: Enforce testTag contract (no inline-literal tags)
+          # Android mirror of the iOS SwiftLint accessibility_identifier_string_literal rule
+          # (MOB-1509). Gates only NEW literals via Android/config/testtags-baseline.txt.
+          command: bash scripts/check-testtags.sh
+      - run:
           name: Run Android lint
           working_directory: Android
           command: ./gradlew lint
@@ -594,6 +600,49 @@ jobs:
       - store_artifacts:
           path: Android/app/build/reports/jacoco/jacocoTestReport/html
           destination: coverage-report
+
+  # android-instrumented — instrumented (androidTest) tests on a headless Gradle Managed Device.
+  # Runs on the Android orb's Linux machine executor (nested-virtualization / KVM enabled), which
+  # the docker executors used by the other Android jobs cannot do. This is what makes the testTag
+  # resource-id contract test (TestTagModifiersTest) — and the rest of the androidTest suite —
+  # actually run in CI (MOB-1509). ATD system image is auto-provisioned by AGP on first run.
+  android-instrumented:
+    executor:
+      name: android/android-machine
+      resource-class: large
+      tag: 2024.01.1
+    steps:
+      - checkout
+      - run:
+          name: Skip if no Android changes
+          command: |
+            CHANGED=$(git diff --name-only HEAD~1 2>/dev/null || git diff --name-only HEAD)
+            if [ -n "$CHANGED" ] && ! echo "$CHANGED" | grep -qE "^Android/|^\.circleci/"; then
+              echo "No Android changes detected, skipping job."
+              circleci-agent step halt
+            fi
+      - restore_cache:
+          keys:
+            - gradle-v1-{{ checksum "Android/gradle/libs.versions.toml" }}-{{ checksum "Android/app/build.gradle.kts" }}
+            - gradle-v1-{{ checksum "Android/gradle/libs.versions.toml" }}-
+            - gradle-v1-
+      - restore_google_services
+      - setup_github_packages_auth
+      - run:
+          name: Accept Android SDK licenses
+          command: yes | sdkmanager --licenses >/dev/null 2>&1 || true
+      - run:
+          name: Run instrumented tests on managed device
+          working_directory: Android
+          # ATD (Automated Test Device) — headless, CI-optimised. Retries once to absorb
+          # emulator-boot flakiness before failing the job.
+          command: ./gradlew :app:pixel6Api30AtdDebugAndroidTest --console=plain || ./gradlew :app:pixel6Api30AtdDebugAndroidTest --console=plain
+          no_output_timeout: 25m
+      - store_test_results:
+          path: Android/app/build/outputs/androidTest-results/managedDevice
+      - store_artifacts:
+          path: Android/app/build/reports/androidTests/managedDevice
+          destination: instrumented-reports
 
   # android-owasp-scan — weekly OWASP dependency vulnerability scan
   android-owasp-scan:
@@ -671,6 +720,14 @@ workflows:
                 - /^MA-.*$/
                 - /^MOB-.*$/
       - android-test:
+          filters:
+            branches:
+              only:
+                - develop
+                - main
+                - /^MA-.*$/
+                - /^MOB-.*$/
+      - android-instrumented:
           filters:
             branches:
               only:
