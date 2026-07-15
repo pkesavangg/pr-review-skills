@@ -81,6 +81,9 @@ android {
           device = "Pixel 6"
           apiLevel = 30
           systemImageSource = "aosp-atd"
+          // ATD images are x86-only; the app ships x86 native libs, so pin the tested ABI
+          // (silences the AGP-10 default-change warning and avoids an arm64 test-apk mismatch).
+          testedAbi = "x86"
         }
       }
     }

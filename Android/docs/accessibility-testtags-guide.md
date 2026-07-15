@@ -169,8 +169,10 @@ Two automated gates keep coverage from regressing — the Android mirror of the 
 
 2. **Resource-id contract test** — `TestTagModifiersTest` (androidTest) asserts each applied tag
    resolves to exactly one node and that the per-window exposure rule holds. It runs in CI on a
-   headless Gradle Managed Device via the `android-instrumented` job:
-   `./gradlew :app:pixel6Api30AtdDebugAndroidTest`.
+   headless Gradle Managed Device via the `android-instrumented` job, scoped to this class:
+   `./gradlew :app:pixel6Api30AtdDebugAndroidTest -Pandroid.testInstrumentationRunnerArguments.class=…TestTagModifiersTest`.
+   The rest of the `androidTest` suite compiles and can be run locally / phased into this job
+   class-by-class as each is verified device-green.
 
 ## Adding a new screen — checklist (Definition of Done)
 

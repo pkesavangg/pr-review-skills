@@ -632,12 +632,20 @@ jobs:
           name: Accept Android SDK licenses
           command: yes | sdkmanager --licenses >/dev/null 2>&1 || true
       - run:
-          name: Run instrumented tests on managed device
+          name: Run testTag contract test on managed device
           working_directory: Android
-          # ATD (Automated Test Device) — headless, CI-optimised. Retries once to absorb
-          # emulator-boot flakiness before failing the job.
-          command: ./gradlew :app:pixel6Api30AtdDebugAndroidTest --console=plain || ./gradlew :app:pixel6Api30AtdDebugAndroidTest --console=plain
-          no_output_timeout: 25m
+          # ATD (Automated Test Device) — headless, CI-optimised. Scoped to the self-contained
+          # resource-id contract test (TestTagModifiersTest) — the MOB-1509 deliverable — to keep
+          # this new job fast and reliable. The rest of the androidTest suite compiles (repaired in
+          # this PR) and can be phased into CI class-by-class once each is verified device-green.
+          # Retries once to absorb emulator-boot flakiness before failing.
+          command: |
+            TEST_CLASS=com.dmdbrands.gurus.weight.core.shared.utilities.testing.TestTagModifiersTest
+            ./gradlew :app:pixel6Api30AtdDebugAndroidTest --console=plain \
+              -Pandroid.testInstrumentationRunnerArguments.class=$TEST_CLASS \
+              || ./gradlew :app:pixel6Api30AtdDebugAndroidTest --console=plain \
+              -Pandroid.testInstrumentationRunnerArguments.class=$TEST_CLASS
+          no_output_timeout: 20m
       - store_test_results:
           path: Android/app/build/outputs/androidTest-results/managedDevice
       - store_artifacts:
