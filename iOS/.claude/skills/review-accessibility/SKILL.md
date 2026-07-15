@@ -60,7 +60,7 @@ For each view file, read it and check:
 ### 4 — Check accessibilityIdentifier for UI-test automation (MOB-1131 convention)
 
 Automation locates controls by `accessibilityIdentifier`. Enforce the project convention
-(full guide: [`iOS/docs/accessibility-identifiers-guide.md`](../../docs/accessibility-identifiers-guide.md)):
+(full guide: [`iOS/docs/accessibility-identifiers-guide.md`](../../../docs/accessibility-identifiers-guide.md)):
 
 - **Every new/changed interactive control** — `Button`, `TextField`/`SecureField`, `Toggle`,
   tappable row (`.onTapGesture`), tab item — must carry a stable id via **`.appAccessibility(id:)`**,
