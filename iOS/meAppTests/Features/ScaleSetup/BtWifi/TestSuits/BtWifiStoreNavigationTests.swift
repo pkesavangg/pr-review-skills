@@ -218,10 +218,15 @@ extension BtWifiStoreTests {
 
             store.configure(with: SettingsConstants.defaultR4Sku, isWifiSetupOnly: false)
             store.navigateToStep(.wakeup)
+            // completeProfile is never auto-skipped now (canAutoSkipCompleteProfile == false),
+            // so stepping back from wakeup lands on completeProfile instead of jumping to intro.
+            store.moveToPreviousStep()
+            #expect(store.currentStep == .completeProfile)
+
+            // completeProfile -> (permissions enabled, so skipped) -> intro, then the intro guard holds.
             store.moveToPreviousStep()
             #expect(store.currentStep == .intro)
 
-            store.moveToPreviousStep()
             store.moveToPreviousStep()
             #expect(store.currentStep == .intro)
 
