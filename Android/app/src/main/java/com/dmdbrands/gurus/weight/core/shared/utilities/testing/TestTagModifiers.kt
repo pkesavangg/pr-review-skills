@@ -2,6 +2,7 @@ package com.dmdbrands.gurus.weight.core.shared.utilities.testing
 
 import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.testTagsAsResourceId
 import com.dmdbrands.gurus.weight.BuildConfig
@@ -26,3 +27,13 @@ import com.dmdbrands.gurus.weight.BuildConfig
 @OptIn(ExperimentalComposeUiApi::class)
 fun Modifier.exposeTestTagsAsResourceId(): Modifier =
   if (BuildConfig.DEBUG) semantics { testTagsAsResourceId = true } else this
+
+/**
+ * Applies a derived per-row [testTag] of the form `<base>_<stableId>` so each repeated row /
+ * per-row control resolves to exactly one node — e.g.
+ * `Modifier.rowTestTag(TestTags.Landing.AccountCardRow, account.id)` -> `account_card_row_<id>`.
+ *
+ * Convenience wrapper over [TestTags.rowTag]; use it wherever a row tag is applied via a
+ * [Modifier]. Do not hand-write the `_` join at the call site.
+ */
+fun Modifier.rowTestTag(base: String, stableId: Any): Modifier = testTag(TestTags.rowTag(base, stableId))
