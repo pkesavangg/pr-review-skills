@@ -1,6 +1,7 @@
 package com.dmdbrands.gurus.weight.features.settings.components
 
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -45,65 +46,81 @@ fun AccountSwitchInfoModal(
             onDismiss = onClose,
             content = {
                 Box(Modifier.fillMaxWidth()) {
-                  Row(
-                    modifier = Modifier.align(Alignment.TopEnd)
-                  ) {
-                    // Close button (top right)
-                    AppIcon(
-                      // Use the plain outline X (ic_close), not the filled variant. filled_close is
-                      // a white circle + blue X; a single icon tint recolours the circle too, so the
-                      // neutral tint (MOB-1263) turned the whole glyph #2C2827 and the X vanished into
-                      // its own circular background. The outline X has no fill circle, so the neutral
-                      // tint renders a crisp, high-contrast X. (MOB-1520)
-                      id = AppIcons.Default.Close,
-                      modifier = Modifier
-                        .padding(start = spacing.md)
-                        .size(24.dp),
-                      contentDescription = AppPopupStrings.AccountSwitchInfo.CloseContentDescription,
-                      type = AppIconType.Primary,
-                      tintColor = MeTheme.colorScheme.iconPrimary,
-                      onClick = onClose,
+                    AccountSwitchCloseButton(onClose = onClose)
+                    AccountSwitchInfoContent(
+                        userInitial = userInitial,
+                        onAddAccount = onAddAccount,
                     )
-                  }
-                    Column(
-                        modifier = Modifier
-                          .padding(top = spacing.lg)
-                          .align(Alignment.Center),
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                    ) {
-                        AppProfileAvatar(
-                            text = userInitial,
-                            size = 55.dp,
-                            isInfoIcon = true,
-                            isActive = true,
-                            enabled = true,
-                        )
-                        Spacer(modifier = Modifier.height(spacing.md))
-                        Text(
-                            text = AppPopupStrings.AccountSwitchInfo.Header,
-                            style = MeTheme.typography.heading4,
-                            color = MeTheme.colorScheme.textHeading,
-                            textAlign = TextAlign.Center,
-                        )
-                        Spacer(modifier = Modifier.height(spacing.sm))
-                        Text(
-                            text = AppPopupStrings.AccountSwitchInfo.Message,
-                            style = MeTheme.typography.body2,
-                            color = MeTheme.colorScheme.textBody,
-                            textAlign = TextAlign.Center,
-                            modifier = Modifier.align(Alignment.CenterHorizontally),
-                        )
-                        Spacer(modifier = Modifier.height(spacing.lg))
-                        AppButton(
-                            label = AppPopupStrings.AccountSwitchInfo.AddAccountButton,
-                            type = ButtonType.PrimaryFilled,
-                            size = ButtonSize.Large,
-                            textTransform = TextTransform.UPPERCASE,
-                            onClick = onAddAccount,
-                        )
-                    }
                 }
             },
+        )
+    }
+}
+
+@Composable
+private fun BoxScope.AccountSwitchCloseButton(onClose: () -> Unit) {
+    Row(
+        modifier = Modifier.align(Alignment.TopEnd)
+    ) {
+        // Close button (top right)
+        AppIcon(
+            // Use the plain outline X (ic_close), not the filled variant. filled_close is
+            // a white circle + blue X; a single icon tint recolours the circle too, so the
+            // neutral tint (MOB-1263) turned the whole glyph #2C2827 and the X vanished into
+            // its own circular background. The outline X has no fill circle, so the neutral
+            // tint renders a crisp, high-contrast X. (MOB-1520)
+            id = AppIcons.Default.Close,
+            modifier = Modifier
+                .padding(start = spacing.md)
+                .size(24.dp),
+            contentDescription = AppPopupStrings.AccountSwitchInfo.CloseContentDescription,
+            type = AppIconType.Primary,
+            tintColor = MeTheme.colorScheme.iconPrimary,
+            onClick = onClose,
+        )
+    }
+}
+
+@Composable
+private fun BoxScope.AccountSwitchInfoContent(
+    userInitial: String,
+    onAddAccount: () -> Unit,
+) {
+    Column(
+        modifier = Modifier
+            .padding(top = spacing.lg)
+            .align(Alignment.Center),
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+        AppProfileAvatar(
+            text = userInitial,
+            size = 55.dp,
+            isInfoIcon = true,
+            isActive = true,
+            enabled = true,
+        )
+        Spacer(modifier = Modifier.height(spacing.md))
+        Text(
+            text = AppPopupStrings.AccountSwitchInfo.Header,
+            style = MeTheme.typography.heading4,
+            color = MeTheme.colorScheme.textHeading,
+            textAlign = TextAlign.Center,
+        )
+        Spacer(modifier = Modifier.height(spacing.sm))
+        Text(
+            text = AppPopupStrings.AccountSwitchInfo.Message,
+            style = MeTheme.typography.body2,
+            color = MeTheme.colorScheme.textBody,
+            textAlign = TextAlign.Center,
+            modifier = Modifier.align(Alignment.CenterHorizontally),
+        )
+        Spacer(modifier = Modifier.height(spacing.lg))
+        AppButton(
+            label = AppPopupStrings.AccountSwitchInfo.AddAccountButton,
+            type = ButtonType.PrimaryFilled,
+            size = ButtonSize.Large,
+            textTransform = TextTransform.UPPERCASE,
+            onClick = onAddAccount,
         )
     }
 }
