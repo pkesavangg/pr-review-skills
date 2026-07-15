@@ -405,6 +405,31 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
         }.value
     }
 
+    /// Local entry count for sync bookkeeping — logged, and nil on failure (MOB-516). A silent
+    /// count error must not masquerade as an empty DB, so it's logged; returning nil preserves the
+    /// caller's conservative default (`nil == 0` is false → the empty-DB full-resync reset is skipped).
+    private func localEntryCountOrNil() async -> Int? {
+        do {
+            return try await getEntryCount()
+        } catch {
+            logger.log(level: .error, tag: tag, message: "Sync: local entry count failed; keeping incremental: \(error.localizedDescription)")
+            return nil
+        }
+    }
+
+    /// Resolves the sync-window start for `accountId` (MOB-516). An empty local DB clears any stale
+    /// last-sync timestamp so the server replays full history in sync mode; otherwise it resumes
+    /// from the stored timestamp (epoch on first sync). A nil count leaves the timestamp untouched.
+    private func resolveSyncStart(accountId: String) async -> String {
+        let localEntryCount = await localEntryCountOrNil()
+        var lastSyncTimestamp = try? await localKVRepo.getLastSyncTimestamp(accountId: accountId)
+        if localEntryCount == 0 {
+            try? await localKVRepo.clearLastSyncTimestamp(accountId: accountId)
+            lastSyncTimestamp = nil
+        }
+        return lastSyncTimestamp ?? Self.fullSyncStart
+    }
+
     func getOldestEntry() async throws -> Entry? {
         let accountId = try getAccountId()
         return try await localRepo.fetchOldestEntry(forUserId: accountId)
@@ -1210,28 +1235,9 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
         do {
             let hadPushedCreates = await pushUnsyncedEntriesToRemote(accountId: accountId)
 
-            // MOB-516: keep the conservative default (a nil count skips the empty-DB resync reset
-            // below, since `nil == 0` is false), but log the failure — a silent count error here
-            // would suppress the "empty local DB → full re-sync" recovery path with no trace, inside
-            // the very cold-login flow this change targets.
-            let localEntryCount: Int?
-            do {
-                localEntryCount = try await getEntryCount()
-            } catch {
-                logger.log(level: .error, tag: tag, message: "Full sync: local entry count failed; skipping empty-DB resync reset: \(error.localizedDescription)")
-                localEntryCount = nil
-            }
-            var lastSyncTimestamp = try? await localKVRepo.getLastSyncTimestamp(accountId: accountId)
-
-            if localEntryCount == 0 {
-                try? await localKVRepo.clearLastSyncTimestamp(accountId: accountId)
-                lastSyncTimestamp = nil
-            }
-
-            // Sync mode of the unified GET /v3/entries/ — all entries since the last sync.
-            // On a full sync (no prior timestamp) send the epoch so the server returns the
-            // entire history in sync mode rather than a partial 20-row cursor page.
-            let syncStart = lastSyncTimestamp ?? Self.fullSyncStart
+            // Sync mode of the unified GET /v3/entries/ — all entries since the last sync (epoch
+            // on a full sync so the server replays entire history rather than a 20-row cursor page).
+            let syncStart = await resolveSyncStart(accountId: accountId)
             let remoteOps = try await remoteRepo.fetchEntries(
                 start: syncStart, cursor: nil, limit: nil, category: nil
             )

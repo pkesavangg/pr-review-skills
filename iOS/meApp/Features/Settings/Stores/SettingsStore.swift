@@ -1613,7 +1613,7 @@ class SettingsStore: ObservableObject {
             // MOB-516: a count failure is "unknown", not "empty". Log it so a false `hasEntries`
             // (and any future view that binds to it) is debuggable rather than silently masquerading
             // as no-data. The conservative `false` fallback is kept, but now explicit and traced.
-            logger.log(level: .error, tag: tag, message: "checkEntries: entry count failed, defaulting hasEntries=false: \(error.localizedDescription)")
+            logger.log(level: .error, tag: tag, message: "checkEntries: count failed, hasEntries=false: \(error.localizedDescription)")
             hasEntries = false
         }
     }

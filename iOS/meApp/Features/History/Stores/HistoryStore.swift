@@ -411,7 +411,7 @@ final class HistoryStore: ObservableObject {
                     self.bpMonths = result
                     self.isEmptyState = result.isEmpty
                 } catch {
-                    self.logger.log(level: .error, tag: self.tag, message: "Failed to load BP history (reason=\(reason)): \(error.localizedDescription)")
+                    self.logger.log(level: .error, tag: self.tag, message: "BP history load failed [\(reason)]: \(error.localizedDescription)")
                     self.bpMonths = []
                     self.isEmptyState = true
                 }
@@ -436,7 +436,7 @@ final class HistoryStore: ObservableObject {
                     self.babyWeeks = result
                     self.isEmptyState = result.isEmpty
                 } catch {
-                    self.logger.log(level: .error, tag: self.tag, message: "Failed to load baby history (reason=\(reason)): \(error.localizedDescription)")
+                    self.logger.log(level: .error, tag: self.tag, message: "Baby history load failed [\(reason)]: \(error.localizedDescription)")
                     self.babyWeeks = []
                     self.isEmptyState = true
                 }
@@ -464,7 +464,7 @@ final class HistoryStore: ObservableObject {
                     message: "Loaded weight history months: count=\(result.count), isEmptyState=\(result.isEmpty), reason=\(reason)"
                 )
             } catch {
-                self.logger.log(level: .error, tag: self.tag, message: "Failed to load history months (reason=\(reason)): \(error.localizedDescription)")
+                self.logger.log(level: .error, tag: self.tag, message: "Weight history load failed [\(reason)]: \(error.localizedDescription)")
                 self.months = []
                 self.isEmptyState = true
             }
