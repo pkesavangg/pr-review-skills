@@ -254,9 +254,16 @@ So a task maps to comparable skills on either platform (kept in sync in both orc
 
 ---
 
-## 9. Android Extensions (skills iOS has no analog for)
+## 9. Android Extensions (official Google skills — installed, not vendored)
 
-Android ships official Google skills already in the repo — wire them in where relevant:
+These are Google's official Android skills from [`github.com/android/skills`](https://github.com/android/skills). They are **installed per-developer** via the `android` CLI, **not committed** to this repo — so they may or may not be present in a given checkout. Install what you need, then the orchestra wires them into the workflows below:
+
+```bash
+android skills add --skill=r8-analyzer --project=.   # or --skill=all
+```
+
+| Skill | Use for |
+|-------|---------|
 
 | Skill | Use for |
 |-------|---------|
