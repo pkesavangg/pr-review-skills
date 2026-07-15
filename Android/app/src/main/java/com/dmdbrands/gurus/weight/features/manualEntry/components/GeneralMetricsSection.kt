@@ -27,12 +27,14 @@ import com.dmdbrands.gurus.weight.theme.MeTheme
  * @param nextFocusRequester Optional focus requester for the next field (used when not the last section).
  * @param onImeAction Optional callback for when the last input's IME action is triggered.
  */
+@Suppress("LongMethod")
 @Composable
 fun GeneralMetricsSection(
     controls: GeneralMetricsFormControls,
     isDashboardType: DashboardType,
     nextFocusRequester: FocusRequester? = null,
     onImeAction: (() -> Unit)? = null,
+    enabled: Boolean = true,
 ) {
     val bmiFocusRequester = remember { FocusRequester() }
     val bodyFatFocusRequester = remember { FocusRequester() }
@@ -54,6 +56,7 @@ fun GeneralMetricsSection(
                 .focusRequester(bmiFocusRequester),
             index = 0,
             testTag = "bmi_field",
+            enabled = enabled,
         )
         AnimatedAppInput(
             formControl = controls.bodyFat,
@@ -69,6 +72,7 @@ fun GeneralMetricsSection(
                 .focusRequester(bodyFatFocusRequester),
             index = 1,
             testTag = "body_fat_field",
+            enabled = enabled,
         )
         AnimatedAppInput(
             formControl = controls.muscleMass,
@@ -84,6 +88,7 @@ fun GeneralMetricsSection(
                 .focusRequester(muscleMassFocusRequester),
             index = 2,
             testTag = "muscle_mass_field",
+            enabled = enabled,
         )
         AnimatedAppInput(
             formControl = controls.bodyWater,
@@ -99,6 +104,7 @@ fun GeneralMetricsSection(
                 .focusRequester(bodyWaterFocusRequester),
             index = 3,
             testTag = "body_water_field",
+            enabled = enabled,
         )
     }
 }

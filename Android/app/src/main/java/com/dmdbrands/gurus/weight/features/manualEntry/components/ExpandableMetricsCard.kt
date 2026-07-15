@@ -46,6 +46,7 @@ import com.dmdbrands.gurus.weight.theme.MeTheme
  * @param onImeAction Optional callback for when the last input's IME action is triggered.
  * @param dashboardType The dashboard type to determine the focus flow.
  */
+@Suppress("LongMethod")
 @Composable
 fun ExpandableMetricsCard(
     title: String,
@@ -55,6 +56,7 @@ fun ExpandableMetricsCard(
     expandedInitially: Boolean = false,
     onImeAction: (() -> Unit)? = null,
     dashboardType: DashboardType = DashboardType.DASHBOARD_12_METRICS,
+    enabled: Boolean = true,
 ) {
     var expanded by rememberSaveable { mutableStateOf(expandedInitially) }
     val rotation by animateFloatAsState(if (expanded) 180f else 0f, label = "ChevronRotation")
@@ -122,12 +124,14 @@ fun ExpandableMetricsCard(
                             null
                         },
                     onImeAction = if (dashboardType == DashboardType.DASHBOARD_4_METRICS) onImeAction else null,
+                    enabled = enabled,
                 )
                 if (dashboardType == DashboardType.DASHBOARD_12_METRICS && r4ScaleMetrics != null) {
                     R4ScaleMetricsSection(
                         r4ScaleMetrics,
                         onImeAction = onImeAction,
                         heartRateFocusRequester = heartRateFocusRequester,
+                        enabled = enabled,
                     )
                 }
             }

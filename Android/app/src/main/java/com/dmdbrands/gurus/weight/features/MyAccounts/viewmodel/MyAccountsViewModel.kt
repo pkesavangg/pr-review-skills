@@ -65,9 +65,9 @@ class MyAccountsViewModel @Inject constructor(
         }
 
         viewModelScope.launch {
-            accountService.loggedInAccountsFlow.collectLatest {
+            accountService.loggedInAccountsFlow.collectLatest { accounts ->
                 val hasReachedMaxAccounts = accountService.hasReachedMaxAccounts.first()
-                handleIntent(MyAccountsIntent.SetAccounts(it, hasReachedMaxAccounts))
+                handleIntent(MyAccountsIntent.SetAccounts(accounts, hasReachedMaxAccounts))
             }
         }
     }
@@ -145,9 +145,29 @@ class MyAccountsViewModel @Inject constructor(
     private fun onRemoveAccount() {
         dialogQueueService.showLoader(AppPopupStrings.RemoveAccountDialog.Loader)
         state.value.accountToRemove?.let { account ->
+            val wasActiveAccount = account.isActiveAccount
             viewModelScope.launch {
                 try {
-                    accountService.logout(account.id, account.fcmToken)
+                    // "Remove" = gone (MA-2672/MOB-424): log out + fully delete from device — not
+                    // logout(), which keeps the account (logged-out) and left it on the Multi-Account
+                    // Landing.
+                    accountService.removeAccountFromDevice(account.id, account.fcmToken)
+                    // Deleting the CURRENT (active) account ends the session. If other accounts
+                    // remain on the device, show the Multi-Account Landing (pick/login); if it was
+                    // the only account, show the plain Landing screen. The removed account is fully
+                    // gone (removeAccountFromDevice), so it no longer appears on either. A non-active
+                    // removal keeps the user on Switch Account (loggedInAccountsFlow refreshes the
+                    // list). (MOB-1474)
+                    if (wasActiveAccount) {
+                        val remaining = accountService.getLoggedInAccounts()
+                        navigationService.replaceStack(
+                            if (remaining.isEmpty()) {
+                                AppRoute.Auth.Landing
+                            } else {
+                                AppRoute.Auth.MultiAccountLanding
+                            },
+                        )
+                    }
                 } catch (e: Exception) {
                     AppLog.e("onRemoveAccount", "Failed to remove account", e)
                 } finally {

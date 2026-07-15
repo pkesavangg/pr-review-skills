@@ -50,13 +50,16 @@ fun AccountSwitchInfoModal(
                   ) {
                     // Close button (top right)
                     AppIcon(
-                      id = AppIcons.Default.closeFilled,
+                      // Use the plain outline X (ic_close), not the filled variant. filled_close is
+                      // a white circle + blue X; a single icon tint recolours the circle too, so the
+                      // neutral tint (MOB-1263) turned the whole glyph #2C2827 and the X vanished into
+                      // its own circular background. The outline X has no fill circle, so the neutral
+                      // tint renders a crisp, high-contrast X. (MOB-1520)
+                      id = AppIcons.Default.Close,
                       modifier = Modifier
                         .padding(start = spacing.md)
                         .size(24.dp),
                       contentDescription = AppPopupStrings.AccountSwitchInfo.CloseContentDescription,
-                      // Tint the close-X with the primary icon token (neutral #2C2827) instead of
-                      // letting the drawable's baked-in blue show through. (MOB-1263)
                       type = AppIconType.Primary,
                       tintColor = MeTheme.colorScheme.iconPrimary,
                       onClick = onClose,

@@ -16,9 +16,11 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.withStyle
 import com.dmdbrands.gurus.weight.domain.model.common.BabyWeekHistory
 import com.dmdbrands.gurus.weight.features.common.components.AppIcon
+import com.dmdbrands.gurus.weight.features.common.components.AppIconType
 import com.dmdbrands.gurus.weight.features.history.strings.HistoryItemStrings
 import com.dmdbrands.gurus.weight.resources.AppIcons
 import com.dmdbrands.gurus.weight.theme.MeTheme
@@ -28,10 +30,12 @@ import com.dmdbrands.gurus.weight.theme.MeTheme
  * Shows date, entry count, weight (lb/oz), length (in), percentile.
  * Values in baby purple with inline unit labels in gray.
  */
+@Suppress("LongMethod")
 @Composable
 fun BabyHistoryItem(
     item: BabyWeekHistory,
     onClick: () -> Unit,
+    showBalloon: Boolean = false,
 ) {
     val babyColor = MeTheme.colorScheme.baby
     val unitColor = MeTheme.colorScheme.textSubheading
@@ -90,19 +94,32 @@ fun BabyHistoryItem(
                 .semantics(mergeDescendants = true) { contentDescription = rowDescription }
                 .padding(horizontal = MeTheme.spacing.sm, vertical = MeTheme.spacing.sm),
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(MeTheme.spacing.lg),
+            horizontalArrangement = Arrangement.spacedBy(MeTheme.spacing.sm),
         ) {
+            // Date cell (flexible) — leading birthday balloon on the baby's birth date, then the
+            // date + entry count. Weighted so it fills the leftover space and the date ellipsizes
+            // instead of pushing the metrics into an overflow/wrap. (Figma 32758-31114)
             Row(
                 modifier = Modifier.weight(1f),
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceBetween,
+                horizontalArrangement = Arrangement.spacedBy(MeTheme.spacing.xs),
             ) {
-                // Date + entry count
+                if (showBalloon) {
+                    AppIcon(
+                        id = AppIcons.Default.BirthdayBalloon,
+                        contentDescription = HistoryItemStrings.BirthdayBalloonContentDescription,
+                        // Self-coloured vector (purple + white) — render untinted.
+                        type = AppIconType.Default,
+                        onClick = null,
+                    )
+                }
                 Column {
                     Text(
                         text = item.date,
                         style = MeTheme.typography.heading5,
                         color = MeTheme.colorScheme.textBody,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
                     )
                     if (item.entryCount > 0) {
                         Text(
@@ -113,6 +130,12 @@ fun BabyHistoryItem(
                         )
                     }
                 }
+            }
+            // Metrics group — content-sized so weight/length/percent keep even gaps and never wrap.
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(MeTheme.spacing.sm),
+            ) {
                 // Weight (lb oz)
                 Column {
                     Text(text = weightText, style = MeTheme.typography.heading5)

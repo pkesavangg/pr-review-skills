@@ -11,9 +11,11 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
+import com.dmdbrands.gurus.weight.core.shared.utilities.testing.TestTags
 import com.dmdbrands.gurus.weight.domain.model.api.integration.IntegrationCategory
 import com.dmdbrands.gurus.weight.domain.model.api.integration.IntegrationProvider
 import com.dmdbrands.gurus.weight.features.common.components.AppScaffold
@@ -94,6 +96,9 @@ private fun IntegrationSectionOrNull(
     ) {
       items.forEachIndexed { index, integration ->
         IntegrationListItem(
+          modifier = Modifier.testTag(
+            "${TestTags.Integrations.Row}_${integration.provider.apiValue}",
+          ),
           integration = integration,
           onToggle = {
             if (integration.provider == IntegrationProvider.HealthConnect) {

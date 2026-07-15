@@ -9,7 +9,9 @@ object AppIcons {
   object Default {
     val Close = R.drawable.ic_close
     val closeFilled = R.drawable.filled_close
+    val BirthdayBalloon = R.drawable.birthday_balloon
     val Delete = R.drawable.ic_delete
+    val Restore = R.drawable.ic_restore
     val EyeOpened = R.drawable.ic_eye_open
     val EyeClosed = R.drawable.ic_eye_close
     val Banner = R.drawable.weight_gurus_banner
