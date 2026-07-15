@@ -271,6 +271,116 @@ enum ChartPrep {
         return YAxisModel(domain: scale.domain, ticks: scale.ticks, average: scale.average)
     }
 
+    // MARK: - MOB-1516: Baby growth (real series + WHO/CDC percentile reference curves)
+
+    /// Build the baby `ChartModel` — one `.data` series (weight OR height) + up to seven `.reference`
+    /// percentile curves (WHO/CDC), drawn line-only BEHIND the data. The curves are sampled across the FULL
+    /// domain (scroll-independent → they slide with the poster, replacing the legacy per-scroll windowing).
+    /// The reference-driven y-axis (widened to contain the curve band) is window-adaptive, recomputed on a
+    /// scroll-end via a full rebuild (baby has no metric co-plot, and the curves are cheap analytic values).
+    /// `isSexWithheld` → no curves (parity). Reuses `BabyDashboardChartSupport` verbatim.
+    ///
+    /// ⚠️ Curve density: `percentileSeries` caps to ~150 points per curve across the dateRange. Over a full
+    /// multi-month domain a WEEK window then sees few curve points, but the curves are smooth (`.monotone`)
+    /// so a near-linear week segment reads correctly. VERIFY week-zoom smoothness on device; if too coarse,
+    /// raise the sampling cadence in `BabyPercentileGrowthReference.percentileChartPoints`.
+    static func buildBaby( // swiftlint:disable:this function_parameter_count function_body_length
+        operations: [BathScaleWeightSummary],
+        period: TimePeriod,
+        scrollPosition: Date,
+        babyProfile: BabyProfile,
+        metric: BabyMetric,
+        convertWeight: @escaping (Double) -> Double,
+        convertDecigramsToDisplay: @escaping (Int) -> Double,
+        calendar: Calendar = .current,
+        config: GraphRenderingConfiguration = GraphRenderingConfiguration()
+    ) -> ChartModel {
+        let preparer = GraphDataPreparer()
+        let plotCalendar = localGregorian(from: calendar)
+        let visibleLength = config.visibleDomainLength(for: period)
+        let xDomain = config.fullXDomain(for: period, from: operations)
+            ?? xDomainRange(plotted: [], scrollPosition: scrollPosition, visibleLength: visibleLength)
+        // Curves span the full (scroll-independent) domain; the y-axis adapts to the visible window (parity
+        // with the legacy `babyChartVisibleDateRange`) — total isn't scrollable, so it uses the whole domain.
+        let yWindow = period == .total
+            ? xDomain
+            : scrollPosition...scrollPosition.addingTimeInterval(visibleLength)
+
+        let dataName: String
+        let rawData: [GraphSeries]
+        let rawCurves: [GraphSeries]
+        let scale: YAxisScale
+        switch metric {
+        case .weight:
+            dataName = DashboardStrings.weight
+            rawData = preparer.buildWeightSeries(
+                from: operations, isWeightlessMode: false, anchorWeight: nil, convertWeight: convertWeight
+            )
+            rawCurves = BabyDashboardChartSupport.percentileSeries(
+                for: babyProfile, dateRange: xDomain, convertDecigramsToDisplay: convertDecigramsToDisplay
+            )
+            scale = BabyDashboardChartSupport.yAxisScale(
+                for: operations,
+                babyProfile: babyProfile,
+                dateRange: yWindow,
+                convertStoredWeightToDisplay: { convertWeight(Double($0)) },
+                convertDecigramsToDisplay: convertDecigramsToDisplay
+            )
+        case .height:
+            dataName = BabyDashboardChartSupport.heightSeriesName
+            rawData = BabyDashboardChartSupport.heightSeries(from: operations)
+            rawCurves = BabyDashboardChartSupport.heightPercentileSeries(for: babyProfile, dateRange: xDomain)
+            scale = BabyDashboardChartSupport.heightYAxisScale(
+                for: operations, babyProfile: babyProfile, dateRange: yWindow
+            )
+        }
+
+        func plot(_ series: [GraphSeries]) -> [PlottedGraphSeries] {
+            series
+                .map { PlottedGraphSeries(original: $0, xDate: plotXDate($0.date, period: period, calendar: plotCalendar)) }
+                .sorted { $0.xDate < $1.xDate }
+        }
+
+        // Reference curves FIRST (drawn behind), then the data series (on top).
+        let curvesByName = Dictionary(grouping: rawCurves, by: \.series)
+        var orderedNames: [String] = []
+        var full: [String: [PlottedGraphSeries]] = [:]
+        var styles: [String: ChartSeriesStyle] = [:]
+        for line in BabyPercentileLine.allCases {
+            let name = "baby_percentile_\(line.rawValue)"
+            let points = plot(curvesByName[name] ?? [])
+            guard !points.isEmpty else { continue }
+            orderedNames.append(name)
+            full[name] = points
+            styles[name] = ChartSeriesStyle(role: .reference, lineWidth: 1, showsPoints: false)
+        }
+        let dataPoints = plot(rawData)
+        if !dataPoints.isEmpty {
+            orderedNames.append(dataName)
+            full[dataName] = dataPoints
+            styles[dataName] = ChartSeriesStyle(role: .data, lineWidth: period == .total ? 2 : 3, showsPoints: true)
+        }
+
+        let decimated = full.mapValues { ChartDecimator.decimate($0) }
+        return ChartModel(
+            period: period,
+            productType: .baby,
+            orderedSeriesNames: orderedNames,
+            seriesPoints: decimated,
+            fullResolution: full,
+            xDomain: xDomain,
+            visibleDomainLength: visibleLength,
+            xAxisTicks: config.boundedXAxisValues(
+                for: period, from: operations, around: scrollPosition, windows: tickWindowRadius
+            ),
+            goalWeight: nil,
+            seriesStyle: styles,
+            referenceLines: [],
+            yAxis: YAxisModel(domain: scale.domain, ticks: scale.ticks, average: scale.average),
+            dataFingerprint: fingerprint(orderedSeriesNames: orderedNames, points: full)
+        )
+    }
+
     /// The adaptive y-axis (Y-B) for one visible window: visible ∪ bracketing ops (deduped) → `YAxisScale`,
     /// exactly as `DashboardChartManager.updateYAxisCache`. Total isn't scrollable → the whole dataset
     /// defines the axis. This is the ONLY scroll-position-dependent output of the weight model, so a

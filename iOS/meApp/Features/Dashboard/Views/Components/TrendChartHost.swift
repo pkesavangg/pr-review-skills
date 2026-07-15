@@ -96,7 +96,10 @@ struct TrendChartHost: View {
                 yLabel: { dashboardStore.displayManager.formatYAxisTickLabel($0) },
                 xLabel: formatXAxisLabel,
                 theme: theme,
-                bpmClassification: bpmClassification
+                bpmClassification: bpmClassification,
+                horizontalCrosshairValue: horizontalCrosshairValue,
+                percentileCalloutText: percentileCalloutText,
+                chartHeight: chartHeight
             )
             // A2 — native scroll phase is the REAL start/commit/end signal (same path the legacy graph
             // uses via `ScrollDetectionModifier`), so there is no view-side timer to approximate it.
@@ -117,9 +120,12 @@ struct TrendChartHost: View {
             // types). Within a period the id is stable, so a y-settle still animates in place (no teardown).
             .id(model.period)
         } else {
-            Color.clear.frame(height: 265)
+            Color.clear.frame(height: chartHeight)
         }
     }
+
+    /// MOB-1516: baby growth charts are taller (498) than weight/BPM (265).
+    private var chartHeight: CGFloat { dashboardStore.productType == .baby ? 498 : 265 }
 
     // MARK: - Model rebuild / scroll adoption
 
@@ -145,6 +151,10 @@ struct TrendChartHost: View {
     private var primarySeriesName: String {
         switch dashboardStore.productType {
         case .bpm: return "systolic"
+        case .baby:
+            return dashboardStore.selectedBabyMetric == .height
+                ? BabyDashboardChartSupport.heightSeriesName
+                : DashboardStrings.weight
         default: return DashboardStrings.weight
         }
     }
@@ -155,6 +165,31 @@ struct TrendChartHost: View {
         guard dashboardStore.productType == .bpm else { return nil }
         return dashboardStore.displayManager.getBpmDisplayValues()?.classification
     }
+
+    /// MOB-1516 (baby): resolved selection presentation (interpolated value at the crosshair + WHO/CDC growth
+    /// percentile) for the current store selection. Drives the horizontal crosshair + "NN%" callout. `nil`
+    /// off-baby or when nothing is selected.
+    private var babyPresentation: BabyGraphSelectionPresentation? {
+        guard dashboardStore.productType == .baby,
+              dashboardStore.state.graph.showCrosshair,
+              let model = dashboardStore.chartModel,
+              let selectedDate = dashboardStore.state.graph.selectedXValue else { return nil }
+        return dashboardStore.graphManager.resolveBabySelectionPresentation(
+            babyProfile: dashboardStore.selectedBabyProfile,
+            metric: dashboardStore.selectedBabyMetric,
+            selectedCrosshairDate: selectedDate,
+            plottedPoints: model.fullResolution[primarySeriesName] ?? [],
+            plotXDate: { ChartPrep.plotXDate($0, period: model.period, calendar: .current) },
+            currentUnit: dashboardStore.currentUnit,
+            displayWeight: dashboardStore.displayManager.displayWeight
+        )
+    }
+
+    /// MOB-1516 (baby): the selected reading's value → the view's horizontal crosshair. `nil` otherwise.
+    private var horizontalCrosshairValue: Double? { babyPresentation?.crosshairValue }
+
+    /// MOB-1516 (baby): "NN%" growth percentile for the crosshair callout. `nil` otherwise.
+    private var percentileCalloutText: String? { babyPresentation?.percentile.map { "\($0)%" } }
 
     /// Plotted x-date of the store's current selection — drives the crosshair rule + (for a real point) the
     /// enlarged point. Derived from the store's validated selection so it reflects both taps and programmatic
@@ -225,9 +260,9 @@ struct TrendChartHost: View {
     /// - **Year** shows a line per month → snap to the nearest 1st-of-month.
     /// - **Total** isn't a continuous grid (raw dates, no per-day buckets) → snap to the nearest real entry.
     private func snappedSelectionDate(for raw: Date, in model: ChartModel) -> Date? {
-        // MOB-1516 (BPM): the chart plots aggregated daily/monthly points with no continuous day grid, so snap
-        // to the nearest real point for every period — same as weight's `.total`.
-        if dashboardStore.productType == .bpm {
+        // MOB-1516 (BPM/baby): these plot sparse aggregated points with no continuous day grid, so snap to the
+        // nearest real point for every period — same as weight's `.total`.
+        if dashboardStore.productType == .bpm || dashboardStore.productType == .baby {
             return nearestEntry(to: raw, in: model)?.original.date
         }
         let points = model.fullResolution[primarySeriesName] ?? []

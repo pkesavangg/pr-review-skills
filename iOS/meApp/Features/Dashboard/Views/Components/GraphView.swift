@@ -30,9 +30,13 @@ struct GraphView: View {
     /// product type, not a toggle. When true, the host owns period/scroll/model and the legacy section-VM
     /// machinery must NOT run (see the `selectedPeriod` handler / `chartView`).
     private var usesNewEngine: Bool {
-        // MOB-1516: weight (V6) + BPM (Phase B) render through the v2 `TrendChartHost`. Baby is still on the
-        // legacy `BaseGraphView` engine until Phase Y (it falls through to the `else` branch in `chartView`).
-        dashboardStore.productType == .scale || dashboardStore.productType == .bpm
+        // MOB-1516: weight (V6) + BPM (Phase B) + baby (Phase Y) all render through the v2 `TrendChartHost`.
+        // Baby with NO entries is handled earlier in `chartView` by `BabyEmptyGraphView`; a baby WITH entries
+        // reaches the host. The legacy `else` branch in `chartView` is now unreachable — removed in Phase D.
+        switch dashboardStore.productType {
+        case .scale, .bpm, .baby: return true
+        default: return false
+        }
     }
 
     /// Latest entry date in the active period — used to drive first-appear / initial-load auto-select.

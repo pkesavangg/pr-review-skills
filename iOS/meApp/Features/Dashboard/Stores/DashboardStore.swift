@@ -907,6 +907,19 @@ class DashboardStore: ObservableObject, DashboardStateProviding {
             )
             return
         }
+        if productType == .baby {
+            guard let profile = selectedBabyProfile else { chartModel = nil; return }
+            chartModel = ChartPrep.buildBaby(
+                operations: continuousOperations,
+                period: state.graph.selectedPeriod,
+                scrollPosition: scrollPosition,
+                babyProfile: profile,
+                metric: selectedBabyMetric,
+                convertWeight: goalManager.convertWeightToDisplay,
+                convertDecigramsToDisplay: convertBabyDecigramsToDisplay
+            )
+            return
+        }
         chartModel = ChartPrep.buildWeight(
             operations: continuousOperations,
             period: state.graph.selectedPeriod,
@@ -936,6 +949,13 @@ class DashboardStore: ObservableObject, DashboardStateProviding {
     func settleChart(scrollPosition: Date) {
         if productType == .bpm {
             settleBpm(scrollPosition: scrollPosition)
+            return
+        }
+        if productType == .baby {
+            // Baby: window-adaptive reference-driven y-axis + full-domain curves → a full rebuild is cheap and
+            // correct (no metric co-plot). seriesPoints/x-geometry come out byte-identical, so Swift Charts
+            // still doesn't rebuild its scroll view; only the y-axis + windowed ticks change.
+            rebuildChartModel(scrollPosition: scrollPosition)
             return
         }
         guard coPlottedMetric == nil, let current = chartModel else {

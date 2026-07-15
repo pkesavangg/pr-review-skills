@@ -69,6 +69,12 @@ struct TrendChartView: View {
     /// `nil` for weight/baby → the colour provider uses its default. A cheap injected colour swap (no model
     /// rebuild), like `activeMonthInterval`/`isScrolling`.
     var bpmClassification: AhaPressureClass?
+    /// MOB-1516 (baby): the selected reading's value → a horizontal crosshair rule at that y. `nil` otherwise.
+    var horizontalCrosshairValue: Double?
+    /// MOB-1516 (baby): "NN%" growth percentile for the selected reading, floated on the crosshair. `nil` else.
+    var percentileCalloutText: String?
+    /// MOB-1516: chart container height — baby growth charts are taller (498) than weight/BPM (265).
+    var chartHeight: CGFloat = 265
 
     private var isScrollable: Bool { model.period != .total }
     /// Fixed width the y-axis number is centered in, so it sits off the trailing screen edge with a gap
@@ -304,6 +310,22 @@ struct TrendChartView: View {
                     .lineStyle(StrokeStyle(lineWidth: 1))
             }
 
+            // MOB-1516 (baby) — horizontal crosshair at the selected reading's value, carrying the "NN%"
+            // growth percentile as an annotation (parity with the legacy baby horizontal rule + callout).
+            if let horizontalCrosshairValue {
+                RuleMark(y: .value("SelectedValue", horizontalCrosshairValue))
+                    .zIndex(-100)
+                    .foregroundStyle(theme.actionPrimary)
+                    .lineStyle(StrokeStyle(lineWidth: 1))
+                    .annotation(position: .top, alignment: .trailing, spacing: 2) {
+                        if let percentileCalloutText {
+                            Text(percentileCalloutText)
+                                .fontOpenSans(.subHeading2)
+                                .foregroundStyle(theme.textSubheading)
+                        }
+                    }
+            }
+
             // V4 (6c) — the goal chip is NOT drawn inside the plot (an `.annotation(position: .trailing)` pins
             // it to the plot's INNER trailing edge, left of the y-axis numbers — the "shows differently" bug).
             // It's floated as an overlay over the trailing y-axis label column instead (see `goalChipY` +
@@ -402,7 +424,7 @@ struct TrendChartView: View {
         // The model is only rebuilt at scroll-END, so the y-domain changes once per settle → this is the
         // single, smooth, adaptive settle (Y-B). No animation fires during a drag (nothing changes then).
         .animation(.easeInOut(duration: 0.25), value: yDomain)
-        .frame(height: 265)
+        .frame(height: chartHeight)
         // Issue #2 — the date callout floats in the gap ABOVE the plot, at the selected x (from the preference
         // above). It OVERFLOWS the chart's top edge into the header gap (no ancestor clips it), so it does NOT
         // compress the plot or crowd the x-axis labels / section buttons — it reads as "above the graph", like
