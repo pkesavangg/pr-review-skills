@@ -107,4 +107,10 @@ final class MockBabyService: BabyServiceProtocol {
         lastLoadAccountId = accountId
         if let error = loadBabiesError { throw error }
     }
+
+    private(set) var syncBabiesCalls = 0
+    func syncBabies(for accountId: String) async {
+        syncBabiesCalls += 1
+        lastLoadAccountId = accountId
+    }
 }
