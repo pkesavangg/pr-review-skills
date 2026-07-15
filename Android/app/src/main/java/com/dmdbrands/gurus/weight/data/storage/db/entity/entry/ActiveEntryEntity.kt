@@ -11,6 +11,7 @@ import com.dmdbrands.gurus.weight.domain.model.common.WeightUnit
     value = """
         SELECT * FROM entry e
         WHERE e.operationType != 'delete'
+          AND e.pendingDelete = 0
           AND NOT EXISTS (
             SELECT 1 FROM entry d
             WHERE d.accountId = e.accountId
@@ -31,4 +32,7 @@ data class ActiveEntryEntity(
     override val attempts: Int = 0,
     override val unit: WeightUnit = WeightUnit.LB,
     override val isSynced: Boolean = false,
+    // Consume the view's pendingDelete column (SELECT *) so Room doesn't warn about an unused
+    // column; always 0 here since the WHERE excludes pending rows.
+    val pendingDelete: Boolean = false,
 ) : BaseEntryEntity

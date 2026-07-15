@@ -149,15 +149,18 @@ fun WeightHistoryDetailItemDetails(
         .fillMaxWidth()
         .background(MeTheme.colorScheme.primaryBackground),
   ) {
-    // Note (MOB-438) — always shown when expanded: the saved note or an add-note prompt.
-    // The trailing icon is a "+" when no note exists (add) and the boxed pencil once a note
-    // is present (edit) (MOB-1163). Rendered directly under the header, above the metric
-    // rows, to match the Figma WG history-detail layout (MOB-1470).
+    // Note (MOB-438 / MOB-1173) — the edit container sits directly under the weight block and
+    // ABOVE the metrics list (per Figma). Always shown when expanded: the saved note or an
+    // add-note prompt. The trailing icon is a "+" when no note exists (add) and the boxed pencil
+    // once a note is present (edit) (MOB-1163).
     val note = item.scale.scaleEntry.note
     val hasNote = !note.isNullOrBlank()
     Row(
       modifier = Modifier
         .fillMaxWidth()
+        // Match the expanded weight header's background so the edit/note container reads as part
+        // of the same weight block (per Figma), distinct from the metrics rows below. (MOB-1173)
+        .background(MeTheme.colorScheme.secondaryBackground)
         .padding(MeTheme.spacing.sm),
       verticalAlignment = Alignment.CenterVertically,
       // Empty state centres the placeholder + "+" affordance; an existing note stays

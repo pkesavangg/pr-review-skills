@@ -49,6 +49,10 @@ class EntryRepository @Inject constructor(
     return entryDao.update(preserveLocalScaleNote(entry).convertToStored())
   }
 
+  override suspend fun setPendingDelete(id: Long, pending: Boolean) = entryDao.setPendingDelete(id, pending)
+
+  override suspend fun commitPendingDeletes(accountId: String) = entryDao.commitPendingDeletes(accountId)
+
   /**
    * Note-only update (MOB-438) — writes just the note column for the entry's id, so weight
    * and metrics are never re-converted.

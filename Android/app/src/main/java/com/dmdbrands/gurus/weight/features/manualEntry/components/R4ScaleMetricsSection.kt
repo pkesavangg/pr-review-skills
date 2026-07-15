@@ -25,11 +25,13 @@ import com.dmdbrands.gurus.weight.theme.MeTheme
  * @param onImeAction Optional callback for when the last input's IME action is triggered.
  * @param heartRateFocusRequester Optional external focus requester for heart rate field.
  */
+@Suppress("LongMethod")
 @Composable
 fun R4ScaleMetricsSection(
     controls: R4ScaleMetricsFormControls,
     onImeAction: (() -> Unit)? = null,
     heartRateFocusRequester: FocusRequester? = null,
+    enabled: Boolean = true,
 ) {
     val internalHeartRateFocusRequester = remember { FocusRequester() }
     val boneMassFocusRequester = remember { FocusRequester() }
@@ -58,6 +60,7 @@ fun R4ScaleMetricsSection(
                 .focusRequester(finalHeartRateFocusRequester),
             index = 0,
             testTag = "heart_rate_field",
+            enabled = enabled,
         )
         AnimatedAppInput(
             formControl = controls.boneMass,
@@ -73,6 +76,7 @@ fun R4ScaleMetricsSection(
                 .focusRequester(boneMassFocusRequester),
             index = 1,
             testTag = "bone_mass_field",
+            enabled = enabled,
         )
         AnimatedAppInput(
             formControl = controls.visceralFat,
@@ -88,6 +92,7 @@ fun R4ScaleMetricsSection(
                 .focusRequester(visceralFatFocusRequester),
             index = 2,
             testTag = "visceral_fat_field",
+            enabled = enabled,
         )
         AnimatedAppInput(
             formControl = controls.subcutaneousFat,
@@ -103,6 +108,7 @@ fun R4ScaleMetricsSection(
                 .focusRequester(subcutaneousFatFocusRequester),
             index = 3,
             testTag = "subcutaneous_fat_field",
+            enabled = enabled,
         )
         AnimatedAppInput(
             formControl = controls.protein,
@@ -118,6 +124,7 @@ fun R4ScaleMetricsSection(
                 .focusRequester(proteinFocusRequester),
             index = 4,
             testTag = "protein_field",
+            enabled = enabled,
         )
         AnimatedAppInput(
             formControl = controls.skeletalMuscles,
@@ -133,6 +140,7 @@ fun R4ScaleMetricsSection(
                 .focusRequester(skeletalMusclesFocusRequester),
             index = 5,
             testTag = "skeletal_muscles_field",
+            enabled = enabled,
         )
         AnimatedAppInput(
             formControl = controls.bmr,
@@ -148,6 +156,7 @@ fun R4ScaleMetricsSection(
                 .focusRequester(bmrFocusRequester),
             index = 6,
             testTag = "basal_metabolic_field",
+            enabled = enabled,
         )
         AnimatedAppInput(
             formControl = controls.metabolicAge,
@@ -163,6 +172,7 @@ fun R4ScaleMetricsSection(
                 .focusRequester(metabolicAgeFocusRequester),
             index = 7,
             testTag = "metabolic_age_field",
+            enabled = enabled,
         )
     }
 }

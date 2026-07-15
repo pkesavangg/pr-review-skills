@@ -11,7 +11,10 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.testTag
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.dmdbrands.gurus.weight.core.shared.utilities.testing.TestTags
 import com.dmdbrands.gurus.weight.features.common.components.AppButton
 import com.dmdbrands.gurus.weight.features.common.components.AppIconButton
 import com.dmdbrands.gurus.weight.features.common.components.AppScaffold
@@ -54,7 +57,7 @@ private fun IntegrationContent(
     AppScaffold(
         title = IntegrationStrings.Title,
         navigationIcon = {
-            AppIconButton(AppIcons.Default.Close) {
+            AppIconButton(AppIcons.Default.Close, modifier = Modifier.testTag(TestTags.Integrations.CloseButton)) {
                 handleIntent(IntegrationIntent.OnBack)
             }
         },
@@ -62,7 +65,8 @@ private fun IntegrationContent(
         Column(
             modifier = scaffoldModifier
                 .fillMaxSize()
-                .padding(vertical = spacing.md, horizontal = spacing.sm),
+                .padding(vertical = spacing.md, horizontal = spacing.sm)
+                .testTag(TestTags.Integrations.ScreenRoot),
             verticalArrangement = Arrangement.spacedBy(spacing.md),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
@@ -70,7 +74,9 @@ private fun IntegrationContent(
             AppButton(
                 label = IntegrationStrings.RequestNewIntegration,
                 type = ButtonType.TextPrimary,
-                modifier = androidx.compose.ui.Modifier.fillMaxWidth(),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .testTag(TestTags.Integrations.RequestButton),
                 onClick = { handleIntent(IntegrationIntent.RequestNewIntegration) },
             )
         }

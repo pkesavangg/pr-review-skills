@@ -12,10 +12,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.rememberCoroutineScope
@@ -30,11 +27,15 @@ import com.dmdbrands.gurus.weight.domain.model.common.WeightUnit
 import com.dmdbrands.gurus.weight.domain.enums.ProductType
 import com.dmdbrands.gurus.weight.domain.model.storage.entry.BabyEntry
 import com.dmdbrands.gurus.weight.domain.model.storage.entry.BpmEntry
-import com.dmdbrands.gurus.weight.domain.model.storage.entry.Entry
 import com.dmdbrands.gurus.weight.domain.model.storage.entry.ScaleEntry
 import com.dmdbrands.gurus.weight.domain.model.storage.entry.ScaleEntryWithMetrics
+import androidx.compose.foundation.layout.Row
+import androidx.compose.material3.Text
 import com.dmdbrands.gurus.weight.features.common.components.AppBottomSheet
 import com.dmdbrands.gurus.weight.features.common.components.AppButton
+import com.dmdbrands.gurus.weight.features.common.components.AppIcon
+import com.dmdbrands.gurus.weight.features.common.components.AppIconType
+import com.dmdbrands.gurus.weight.features.history.strings.HistoryItemStrings
 import com.dmdbrands.gurus.weight.features.common.components.dismissKeyboardOnTap
 import com.dmdbrands.gurus.weight.features.common.components.AppIconButton
 import com.dmdbrands.gurus.weight.features.common.components.ButtonSize
@@ -45,10 +46,22 @@ import com.dmdbrands.gurus.weight.features.common.components.DateTimeValue
 import com.dmdbrands.gurus.weight.features.common.components.PreviewTheme
 import com.dmdbrands.gurus.weight.core.shared.utilities.ConversionTools
 import com.dmdbrands.gurus.weight.core.shared.utilities.DateTimeConverter
-import com.dmdbrands.gurus.weight.features.common.helper.form.FormControl
 import com.dmdbrands.gurus.weight.features.common.helper.form.MultiFormGroup
+import com.dmdbrands.gurus.weight.domain.enums.DashboardType
+import com.dmdbrands.gurus.weight.domain.model.api.entry.EntrySource
+import com.dmdbrands.gurus.weight.features.common.components.AppInput
+import com.dmdbrands.gurus.weight.features.common.components.AppInputType
+import com.dmdbrands.gurus.weight.features.common.components.DateTimeInput
+import com.dmdbrands.gurus.weight.features.common.components.DateTimeInputMode
 import com.dmdbrands.gurus.weight.features.manualEntry.components.BabyEntrySection
+import com.dmdbrands.gurus.weight.features.manualEntry.components.BloodPressureSection
+import com.dmdbrands.gurus.weight.features.manualEntry.components.ExpandableMetricsCard
+import com.dmdbrands.gurus.weight.features.manualEntry.viewmodel.BloodPressureEntryForm
+import kotlin.math.roundToInt
+import com.dmdbrands.gurus.weight.features.manualEntry.helper.EntryHelper.toScaleEntry
 import com.dmdbrands.gurus.weight.features.manualEntry.viewmodel.BabyEntryForm
+import com.dmdbrands.gurus.weight.features.manualEntry.viewmodel.EntryForm
+import androidx.compose.ui.text.input.ImeAction
 import com.dmdbrands.gurus.weight.features.historyDetail.strings.HistoryDetailScreenStrings
 import com.dmdbrands.gurus.weight.features.manualEntry.strings.EntryScreenStrings
 import com.dmdbrands.gurus.weight.theme.MeTheme
@@ -97,26 +110,36 @@ fun HistoryDetailScreenContent(
 ) {
     val backStack = LocalNavBackStack.current
     val scope = rememberCoroutineScope()
-    // When the last entry in this month/day is deleted, the detail list becomes empty — pop back
-    // to the history list instead of leaving the user on a blank detail screen. `hadEntries` gates
-    // out the initial empty state (before data loads); `popped` guards against a double-pop if the
-    // flow re-emits empty. (MOB-1462)
-    var hadEntries by remember { mutableStateOf(false) }
-    var popped by remember { mutableStateOf(false) }
-    LaunchedEffect(state.historyItems, state.isLoading) {
-        when {
-            state.historyItems.isNotEmpty() -> hadEntries = true
-            hadEntries && !state.isLoading && !popped -> {
-                popped = true
-                backStack.removeLast()
-            }
-        }
-    }
+    // Pop-back when the last entry in this month/day is deleted is owned by the ViewModel
+    // (HistoryDetailViewModel.loadDetail → navigationService.navigateBack), matching the app's
+    // ViewModel-driven navigation convention. (MOB-1173)
     AppScaffold(
         title = state.month,
         // Month title is centered across the bar to match the Figma WG history-detail header
         // (MOB-1470) — the close icon stays pinned left.
         centerTitle = true,
+        // On the baby's birth-date day-detail, show the birthday balloon beside the title (the
+        // title slot is centered by AppBar). Otherwise the plain string title is used.
+        topBarContent = if (state.showBirthdayBalloon) {
+            {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    AppIcon(
+                        id = AppIcons.Default.BirthdayBalloon,
+                        contentDescription = HistoryItemStrings.BirthdayBalloonContentDescription,
+                        type = AppIconType.Default,
+                        onClick = null,
+                        modifier = Modifier.padding(end = MeTheme.spacing.x2s),
+                    )
+                    Text(
+                        text = state.month,
+                        style = MeTheme.typography.heading5,
+                        color = MeTheme.colorScheme.textHeading,
+                    )
+                }
+            }
+        } else {
+            null
+        },
         isRefreshing = state.isLoading,
         navigationIcon = {
             AppIconButton(
@@ -150,7 +173,9 @@ fun HistoryDetailScreenContent(
                                     }
                                     handleIntent(HistoryDetailIntent.SetItemsOpened(newIds))
                                 },
-                                onEditEntry = { handleIntent(HistoryDetailIntent.EditEntry(it)) },
+                                // MOB-1173: manual = values+note editable, device-synced = note-only
+                                // (values disabled) — same sheet, gated by source.
+                                onEditEntry = { handleIntent(HistoryDetailIntent.EditBpEntry(it)) },
                                 onItemDelete = { handleIntent(HistoryDetailIntent.DeleteEntry(it)) },
                             )
                         }
@@ -172,7 +197,9 @@ fun HistoryDetailScreenContent(
                                 onItemDelete = {
                                     handleIntent(HistoryDetailIntent.DeleteEntry(it))
                                 },
-                                onEditEntry = { handleIntent(HistoryDetailIntent.EditEntry(it)) },
+                                // MOB-1173: branch by source — manual opens the full value+note
+                                // editor, device-synced falls back to note-only (values read-only).
+                                onEditEntry = { handleIntent(HistoryDetailIntent.EditWeightEntry(it)) },
                             )
                         }
                     }
@@ -181,11 +208,23 @@ fun HistoryDetailScreenContent(
         }
     }
 
-    state.noteEditEntry?.let { entry ->
-        NoteEditBottomSheet(
+    state.weightEditEntry?.let { entry ->
+        WeightEditModal(
             entry = entry,
-            onSave = { note -> handleIntent(HistoryDetailIntent.SaveNote(entry, note)) },
-            onDismiss = { handleIntent(HistoryDetailIntent.DismissNoteEditor) },
+            onSave = { updated ->
+                handleIntent(HistoryDetailIntent.SaveWeightEdit(original = entry, updated = updated))
+            },
+            onDismiss = { handleIntent(HistoryDetailIntent.DismissWeightEditor) },
+        )
+    }
+
+    state.bpEditEntry?.let { entry ->
+        BpEditModal(
+            entry = entry,
+            onSave = { updated ->
+                handleIntent(HistoryDetailIntent.SaveBpEdit(original = entry, updated = updated))
+            },
+            onDismiss = { handleIntent(HistoryDetailIntent.DismissBpEditor) },
         )
     }
 
@@ -221,6 +260,9 @@ private fun BabyEditModal(
     onSave: (weightDecigrams: Int?, lengthMm: Int?, note: String?, timestamp: String) -> Unit,
     onDismiss: () -> Unit,
 ) {
+    // Device-synced baby readings are note-only (values from the scale stay read-only); manual
+    // readings are fully editable. (MOB-1173)
+    val isManual = entry.source == EntrySource.MANUAL.value
     val form = remember(entry.entry.id) { seededBabyEntryForm(entry) }
     val controls = form.forms.baby.controls
     AppBottomSheet(
@@ -243,7 +285,7 @@ private fun BabyEditModal(
         ) {
             // MOB-1223 is scoped to Manual Entry; the History-detail baby edit form stays lb/oz-only
             // (its existing behaviour) — hence the fixed LB_OZ layout + conversion below.
-            BabyEntrySection(controls = controls, weightUnit = WeightUnit.LB_OZ, onImeAction = {})
+            BabyEntrySection(controls = controls, weightUnit = WeightUnit.LB_OZ, onImeAction = {},enabled = isManual)
             Spacer(modifier = Modifier.height(MeTheme.spacing.lg))
             Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
                 AppButton(
@@ -312,36 +354,220 @@ private fun formatOneDecimal(value: Double): String {
 }
 
 /**
- * Bottom-sheet modal for adding/editing an entry's note (MOB-438). Seeds the field with
- * the entry's current note and enforces the shared 280-char limit + counter.
+ * Full weight edit bottom sheet (MOB-1173) for a MANUAL reading. Weight value, note (280-char),
+ * date/time and the general body metrics (BMI / body fat / muscle mass / body water) are editable,
+ * all seeded from [entry]. R4 scale metrics (heart rate, bone mass, …) aren't shown here — they're
+ * carried over unchanged on save. SAVE rebuilds the reading through the shared manual-entry
+ * conversion (so units are handled identically to a fresh manual entry) and hands the ViewModel a
+ * ready-to-persist copy to persist as an in-place edit (operationType=edit).
  */
+@Suppress("LongMethod")
 @Composable
-private fun NoteEditBottomSheet(
-    entry: Entry,
-    onSave: (String) -> Unit,
+private fun WeightEditModal(
+    entry: ScaleEntry,
+    onSave: (updated: ScaleEntry) -> Unit,
     onDismiss: () -> Unit,
 ) {
-    val noteControl = remember(entry.entry.id) {
-        FormControl.create(entry.noteText().orEmpty(), emptyList())
-    }
+    val weightUnit = entry.entry.unit
+    // Device-synced readings are note-only: the values came from the device and stay read-only.
+    // Manual readings are fully editable. (MOB-1173)
+    val isManual = entry.scale.scaleEntry.source == EntrySource.MANUAL.value
+    val form = remember(entry.entry.id) { seededWeightEntryForm(entry) }
+    val controls = form.forms.weightDateTime.controls
     AppBottomSheet(
-        title = EntryScreenStrings.NOTES_LABEL,
+        title = "",
         onDismiss = onDismiss,
+        containerColor = MeTheme.colorScheme.secondaryBackground,
     ) {
-        AppTextArea(
-            formControl = noteControl,
-            label = EntryScreenStrings.NOTES_LABEL,
-            maxLength = EntryScreenStrings.NOTES_MAX_LENGTH,
-            showCharacterCounter = true,
-        )
-        Spacer(modifier = Modifier.height(MeTheme.spacing.md))
-        AppButton(
-            label = HistoryDetailScreenStrings.SaveButton,
-            modifier = Modifier.fillMaxWidth(),
-            onClick = { onSave(noteControl.value) },
-        )
-        Spacer(modifier = Modifier.height(MeTheme.spacing.lg))
+        Column(
+            modifier = Modifier
+                .verticalScroll(rememberScrollState())
+                .padding(horizontal = MeTheme.spacing.sm)
+                .padding(top = MeTheme.spacing.md)
+                .dismissKeyboardOnTap(),
+            verticalArrangement = Arrangement.Top,
+        ) {
+            AppInput(
+                formControl = controls.weight,
+                label = EntryScreenStrings.WEIGHT_LABEL,
+                trailingText = weightUnit.label,
+                type = AppInputType.BODY_COMP,
+                imeAction = ImeAction.Next,
+                onImeAction = {},
+                maxLength = 4,
+                enabled = isManual,
+                modifier = Modifier.fillMaxWidth(),
+            )
+            // Note is always editable — for both manual and device-synced readings.
+            AppTextArea(
+                formControl = controls.notes,
+                label = EntryScreenStrings.NOTES_LABEL,
+                maxLength = EntryScreenStrings.NOTES_MAX_LENGTH,
+                showCharacterCounter = true,
+            )
+            DateTimeInput(
+                formControl = controls.dateTime,
+                mode = DateTimeInputMode.DateTime,
+                label = EntryScreenStrings.DATE_LABEL,
+                maxValue = null,
+                enabled = isManual,
+            )
+            Spacer(modifier = Modifier.height(MeTheme.spacing.xl))
+            ExpandableMetricsCard(
+                title = EntryScreenStrings.METRICS_SECTION_TITLE,
+                subheading = EntryScreenStrings.METRICS_SECTION_SUBHEADING,
+                generalMetrics = form.forms.generalMetrics.controls,
+                r4ScaleMetrics = null,
+                expandedInitially = false,
+                onImeAction = {},
+                dashboardType = DashboardType.DASHBOARD_4_METRICS,
+                enabled = isManual,
+            )
+            Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
+                AppButton(
+                    enabled = form.isValid,
+                    label = EntryScreenStrings.SaveButton,
+                    size = ButtonSize.Large,
+                    type = ButtonType.PrimaryFilled,
+                    onClick = {
+                        val rebuilt = form.forms.toScaleEntry(weightUnit, entry.entry.accountId)
+                        // Keep the original row's identity (id, serverTimestamp, device fields) so the
+                        // edit resolves IN PLACE via operationType=edit; apply the edited
+                        // timestamp/unit and the edited weight + general metrics + note from the form.
+                        // R4 metrics aren't edited in this sheet — carry the originals over untouched.
+                        val updated = entry.copy(
+                            entry = entry.entry.copy(
+                                entryTimestamp = rebuilt.entry.entryTimestamp,
+                                unit = weightUnit,
+                            ),
+                            scale = entry.scale.copy(
+                                scaleEntry = rebuilt.scale.scaleEntry.copy(
+                                    id = entry.scale.scaleEntry.id,
+                                    source = entry.scale.scaleEntry.source,
+                                ),
+                                scaleEntryMetric = entry.scale.scaleEntryMetric,
+                            ),
+                        )
+                        onSave(updated)
+                    },
+                )
+            }
+            Spacer(modifier = Modifier.height(MeTheme.spacing.x3l))
+        }
     }
+}
+
+/** Builds a weight entry form pre-filled from an existing [entry] for editing (MOB-1173). */
+private fun seededWeightEntryForm(entry: ScaleEntry): MultiFormGroup<EntryForm> {
+    val form = MultiFormGroup.create(
+        forms = EntryForm.create(
+            includeR4ScaleMetrics = false,
+            weightUnit = entry.entry.unit,
+            height = null,
+            scaleEntry = entry,
+        ),
+    )
+    val controls = form.forms.weightDateTime.controls
+    entry.scale.scaleEntry.note?.let { controls.notes.setValue(it) }
+    // Device-synced readings store 0.0 for body-composition metrics the device didn't measure; the
+    // seeder turns that into "0", which the decimal field renders as "0.0". Show an empty field for
+    // an unavailable (zero) metric instead of a misleading "0.0". (MOB-1173)
+    val metrics = form.forms.generalMetrics.controls
+    listOf(metrics.bodyMassIndex, metrics.bodyFat, metrics.muscleMass, metrics.bodyWater).forEach { control ->
+        if (control.value == "0") control.setValue("")
+    }
+    val millis = DateTimeConverter.isoToTimestamp(entry.entry.entryTimestamp)
+    val calendar = java.util.Calendar.getInstance().apply { timeInMillis = millis }
+    controls.dateTime.setValue(
+        DateTimeValue.DateTime(
+            millis = millis,
+            hour = calendar.get(java.util.Calendar.HOUR_OF_DAY),
+            minute = calendar.get(java.util.Calendar.MINUTE),
+        ),
+    )
+    return form
+}
+
+/**
+ * BP edit bottom sheet (MOB-1173). Systolic / diastolic / pulse + note + date, all seeded from
+ * [entry]. For a MANUAL reading everything is editable; for a device-synced reading the values +
+ * date are disabled and only the note is editable. SAVE hands the ViewModel an in-place-edited copy
+ * (same row identity), which is pushed via operationType=edit.
+ */
+@Composable
+private fun BpEditModal(
+    entry: BpmEntry,
+    onSave: (updated: BpmEntry) -> Unit,
+    onDismiss: () -> Unit,
+) {
+    val isManual = entry.source == EntrySource.MANUAL.value
+    val form = remember(entry.entry.id) { seededBpEntryForm(entry) }
+    val controls = form.forms.bloodPressure.controls
+    AppBottomSheet(
+        title = "",
+        onDismiss = onDismiss,
+        containerColor = MeTheme.colorScheme.secondaryBackground,
+    ) {
+        Column(
+            modifier = Modifier
+                .verticalScroll(rememberScrollState())
+                .padding(horizontal = MeTheme.spacing.sm)
+                .padding(top = MeTheme.spacing.md)
+                .dismissKeyboardOnTap(),
+            verticalArrangement = Arrangement.Top,
+        ) {
+            BloodPressureSection(controls = controls, onImeAction = {}, enabled = isManual)
+            Spacer(modifier = Modifier.height(MeTheme.spacing.lg))
+            Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
+                AppButton(
+                    enabled = form.isValid,
+                    label = EntryScreenStrings.SaveButton,
+                    size = ButtonSize.Large,
+                    type = ButtonType.PrimaryFilled,
+                    onClick = {
+                        val sys = controls.systolic.value.toIntOrNull() ?: entry.systolic
+                        val dia = controls.diastolic.value.toIntOrNull() ?: entry.diastolic
+                        val pul = controls.pulse.value.toIntOrNull() ?: entry.pulse
+                        val newTimestamp = DateTimeConverter.timestampToIso(controls.dateTime.value.getTimestamp())
+                        // Keep the original row identity (id, serverTimestamp, device fields, source)
+                        // so the edit resolves in place; apply the edited values/note/timestamp.
+                        val updated = entry.copy(
+                            entry = entry.entry.copy(entryTimestamp = newTimestamp),
+                            bpmEntry = entry.bpmEntry.copy(
+                                systolic = sys,
+                                diastolic = dia,
+                                pulse = pul,
+                                meanArterial = ((sys + 2 * dia) / 3.0).roundToInt().toString(),
+                                note = controls.notes.value.ifBlank { null },
+                            ),
+                        )
+                        onSave(updated)
+                    },
+                )
+            }
+            Spacer(modifier = Modifier.height(MeTheme.spacing.x3l))
+        }
+    }
+}
+
+/** Builds a BP entry form pre-filled from an existing [entry] for editing (MOB-1173). */
+private fun seededBpEntryForm(entry: BpmEntry): MultiFormGroup<BloodPressureEntryForm> {
+    val form = MultiFormGroup.create(forms = BloodPressureEntryForm.create())
+    val controls = form.forms.bloodPressure.controls
+    controls.systolic.setValue(entry.systolic.toString())
+    controls.diastolic.setValue(entry.diastolic.toString())
+    controls.pulse.setValue(entry.pulse.toString())
+    entry.note?.let { controls.notes.setValue(it) }
+    val millis = DateTimeConverter.isoToTimestamp(entry.entry.entryTimestamp)
+    val calendar = java.util.Calendar.getInstance().apply { timeInMillis = millis }
+    controls.dateTime.setValue(
+        DateTimeValue.DateTime(
+            millis = millis,
+            hour = calendar.get(java.util.Calendar.HOUR_OF_DAY),
+            minute = calendar.get(java.util.Calendar.MINUTE),
+        ),
+    )
+    return form
 }
 
 @PreviewTheme

@@ -23,4 +23,7 @@ data class BabyEntry(
     val babyLengthMillimeters: Int? get() = babyEntry.babyLengthMillimeters
     val entryNote: String? get() = babyEntry.entryNote
     val entryType: String? get() = babyEntry.entryType
+
+    /** Measurement origin ("manual" / "bluetooth" / …); distinguishes manual vs device-synced. */
+    val source: String? get() = babyEntry.source
 }

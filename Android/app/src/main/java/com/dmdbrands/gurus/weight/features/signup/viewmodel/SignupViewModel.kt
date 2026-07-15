@@ -373,7 +373,6 @@ constructor(
     // (sex = ""). Sending an empty gender makes the server reject it as a missing required
     // value (400), so omit these fields (null) when the chosen product doesn't capture them.
     val needsGenderDob = productType == ProductType.MY_WEIGHT || productType == ProductType.BLOOD_PRESSURE
-    val needsHeight = productType == ProductType.MY_WEIGHT
     return SignupRequest(
       email = signupData.email.trim(),
       firstName = signupData.firstName.trim(),
@@ -382,7 +381,12 @@ constructor(
       zipcode = signupData.zipcode.trim(),
       password = signupData.password,
       dob = if (needsGenderDob) DateTimeValue.getDateFormatFromMilliseconds(controls.birthday.value.getTimestamp()) else null,
-      height = if (needsHeight) controls.height.value.toStoredHeight() else null,
+      // Always send the height the form already holds (defaults to 5'10"). The products
+      // endpoint (§2.19) rejects a later weight/BP product-add when the account has no height
+      // ("height must be set before adding the requested product(s)"), and that failed PATCH
+      // never persists — so it retries forever. Height is optional server-side and accepts a
+      // value for any product, so sending it up front is safe & backward-compatible. (MOB-1173)
+      height = controls.height.value.toStoredHeight(),
       weightUnit = weightUnit.value,
       // Phase 2 (MOB-377): the account owns the first device picked; additional devices in the
       // multi-device loop are added via account update. measurementUnits derives from the unit choice.

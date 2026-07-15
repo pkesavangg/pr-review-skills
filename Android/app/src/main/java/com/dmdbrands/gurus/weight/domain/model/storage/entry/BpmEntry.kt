@@ -25,4 +25,7 @@ data class BpmEntry(
 
     /** Optional note attached to the entry. */
     val note: String? get() = bpmEntry.note
+
+    /** Measurement origin ("manual" / "bluetooth" / …); distinguishes manual vs device-synced. */
+    val source: String? get() = bpmEntry.source
 }
