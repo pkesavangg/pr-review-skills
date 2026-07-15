@@ -180,8 +180,11 @@ final class HTTPClient: HTTPClientProtocol {
             throw parseErrorResponse(data: data, status: status, statusCode: httpResponse.statusCode)
         }
 
-        // Handle 204 No Content
-        if status == .noContent || data.isEmpty {
+        // Nothing to decode: a 204, a genuinely empty body, or a caller that asked for
+        // EmptyResponse. In the last case the caller doesn't read the body, so a non-JSON
+        // success payload (some endpoints return a plain-text "Created"/"OK" instead of an
+        // empty 204) must not be treated as a decode failure and surfaced as a fake error.
+        if status == .noContent || data.isEmpty || T.self == EmptyResponse.self {
             if let emptyResponse = EmptyResponse() as? T {
                 return emptyResponse
             } else {
