@@ -250,7 +250,7 @@ struct GraphView: View {
         } else if usesNewWeightEngine {
             // MOB-518 v2 engine — the weight renderer (V6). Baby/BPM never reach here (they use the
             // legacy BaseGraphView engine in the else branch below).
-            WeightChartHost(dashboardStore: dashboardStore)
+            TrendChartHost(dashboardStore: dashboardStore)
         } else {
             HStack(spacing: 0) {
                 switch dashboardStore.state.graph.selectedPeriod {

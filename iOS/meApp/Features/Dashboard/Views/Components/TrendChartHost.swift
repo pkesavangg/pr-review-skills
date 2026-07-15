@@ -1,5 +1,5 @@
 //
-//  WeightChartHost.swift
+//  TrendChartHost.swift
 //  meApp
 //
 //  MOB-518 — v2 weight-graph engine (greenfield strangler rebuild).
@@ -18,7 +18,7 @@
 
 import SwiftUI
 
-struct WeightChartHost: View {
+struct TrendChartHost: View {
 
     @ObservedObject var dashboardStore: DashboardStore
     @Environment(\.appTheme) private var theme
@@ -76,7 +76,7 @@ struct WeightChartHost: View {
             // Scroll START clears any selection (the store also clears its own on `.interacting`); drop the
             // local raw value so the next tap re-triggers `onChange(selectedX)`.
             guard !isScrolling else { selectedX = nil; return }
-            dashboardStore.commitWeightScroll(landedAt: scrollX)
+            dashboardStore.commitScroll(landedAt: scrollX)
         }
     }
 
@@ -84,7 +84,7 @@ struct WeightChartHost: View {
     @ViewBuilder
     private var chartContent: some View {
         if let model = dashboardStore.chartModel {
-            WeightChartView(
+            TrendChartView(
                 model: model,
                 scrollX: $scrollX,
                 selectedX: $selectedX,
@@ -133,7 +133,7 @@ struct WeightChartHost: View {
     }
 
     private func rebuild(at position: Date) {
-        dashboardStore.rebuildWeightChartModel(scrollPosition: position)
+        dashboardStore.rebuildChartModel(scrollPosition: position)
     }
 
     // MARK: - V4 (6a) selection / crosshair
@@ -190,7 +190,7 @@ struct WeightChartHost: View {
               let snapped = snappedSelectionDate(for: raw, in: model) else {
             return
         }
-        dashboardStore.selectWeightPoint(at: snapped)
+        dashboardStore.selectPoint(at: snapped)
     }
 
     /// The date we SELECT for a raw tapped x, per period. When the snapped date has NO real reading this is
@@ -283,7 +283,7 @@ struct WeightChartHost: View {
         guard crosshairDate == nil, let model = dashboardStore.chartModel else { return }
         let points = model.fullResolution[DashboardStrings.weight] ?? []
         guard let latest = points.max(by: { $0.original.date < $1.original.date }) else { return }
-        dashboardStore.selectWeightPoint(at: latest.original.date)
+        dashboardStore.selectPoint(at: latest.original.date)
     }
 
     /// V4 (6c): formatted goal-weight chip label (nil → no chip), matching the legacy

@@ -1,5 +1,5 @@
 //
-//  WeightChartView.swift
+//  TrendChartView.swift
 //  meApp
 //
 //  MOB-518 — v2 weight-graph engine (greenfield strangler rebuild).
@@ -42,7 +42,7 @@ private struct GoalChipYKey: PreferenceKey {
     }
 }
 
-struct WeightChartView: View {
+struct TrendChartView: View {
 
     let model: ChartModel
     @Binding var scrollX: Date
@@ -65,9 +65,12 @@ struct WeightChartView: View {
     let yLabel: (Double) -> String
     let xLabel: (Date) -> String
     let theme: AppColors.Palette
+    /// MOB-1516 (BPM): the selected/window reading's AHA class, so systolic+diastolic recolour on selection.
+    /// `nil` for weight/baby → the colour provider uses its default. A cheap injected colour swap (no model
+    /// rebuild), like `activeMonthInterval`/`isScrolling`.
+    var bpmClassification: AhaPressureClass?
 
     private var isScrollable: Bool { model.period != .total }
-    private var lineWidth: CGFloat { isScrollable ? 3 : 2 }
     /// Fixed width the y-axis number is centered in, so it sits off the trailing screen edge with a gap
     /// (parity with the legacy `BaseGraphView.yAxisLabelWidth`).
     private let yAxisLabelWidth: CGFloat = 40
@@ -231,14 +234,40 @@ struct WeightChartView: View {
         return geo[anchor].minY + yInPlot
     }
 
+    /// MOB-1516: map a reference-line colour role to a theme token (keeps `ChartModel` free of theme types).
+    private func referenceLineColor(_ role: ChartReferenceLineColor) -> Color {
+        switch role {
+        case .bpmReference: return theme.textSubheading.opacity(0.4)
+        }
+    }
+
     var body: some View {
         Chart {
+            // MOB-1516 (BPM): fixed horizontal reference rules (systolic 120 / diastolic 80), drawn FIRST so
+            // the data series render on top. Empty for weight/baby → nothing drawn.
+            ForEach(Array(model.referenceLines.enumerated()), id: \.offset) { _, line in
+                RuleMark(y: .value("Reference", line.value))
+                    .lineStyle(StrokeStyle(lineWidth: 1, dash: line.dashed ? [4, 4] : []))
+                    .foregroundStyle(referenceLineColor(line.color))
+            }
+
             ForEach(model.orderedSeriesNames, id: \.self) { name in
+                // MOB-1516: per-series style (role/lineWidth/showsPoints) is baked into the model. Weight/BPM
+                // series are `.data` (line + dots); baby percentile curves are `.reference` (line only).
+                let style = model.style(for: name)
                 let regularColors = DashboardChartStyleProvider.seriesColors(
-                    for: name, productType: model.productType, theme: theme, isOutsideMonthInterval: false
+                    for: name,
+                    productType: model.productType,
+                    theme: theme,
+                    bpmClassification: bpmClassification,
+                    isOutsideMonthInterval: false
                 )
                 let outsideColors = DashboardChartStyleProvider.seriesColors(
-                    for: name, productType: model.productType, theme: theme, isOutsideMonthInterval: true
+                    for: name,
+                    productType: model.productType,
+                    theme: theme,
+                    bpmClassification: bpmClassification,
+                    isOutsideMonthInterval: true
                 )
                 ForEach(model.seriesPoints[name] ?? []) { plotted in
                     let value = min(max(plotted.original.value, yDomain.lowerBound), yDomain.upperBound)
@@ -253,14 +282,16 @@ struct WeightChartView: View {
                     )
                     .foregroundStyle(colors.line)
                     .interpolationMethod(.monotone)
-                    .lineStyle(StrokeStyle(lineWidth: lineWidth))
+                    .lineStyle(StrokeStyle(lineWidth: style.lineWidth))
 
-                    PointMark(
-                        x: .value("Date", plotted.xDate),
-                        y: .value(name, value)
-                    )
-                    .symbolSize(pointArea(selected: isSelected))
-                    .foregroundStyle(colors.point)
+                    if style.showsPoints {
+                        PointMark(
+                            x: .value("Date", plotted.xDate),
+                            y: .value(name, value)
+                        )
+                        .symbolSize(pointArea(selected: isSelected))
+                        .foregroundStyle(colors.point)
+                    }
                 }
             }
 
@@ -408,7 +439,7 @@ struct WeightChartView: View {
 /// per-series data points). Built purely from the immutable `ChartModel` this view already holds — no store
 /// access — so it stays in lock-step with what's drawn. MOB-518 review restored this after the v2 rebuild
 /// had left the primary chart with no accessibility semantics.
-extension WeightChartView: AXChartDescriptorRepresentable {
+extension TrendChartView: AXChartDescriptorRepresentable {
     func makeChartDescriptor() -> AXChartDescriptor {
         let dateFormatter = DateFormatter()
         dateFormatter.dateStyle = .medium

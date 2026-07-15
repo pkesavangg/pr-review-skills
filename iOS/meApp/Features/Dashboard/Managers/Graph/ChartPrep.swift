@@ -140,6 +140,13 @@ enum ChartPrep {
         // 5. One full-domain decimation per series (no-op for the usual few-hundred-point series).
         let decimated = full.mapValues { ChartDecimator.decimate($0) }
 
+        // MOB-1516: weight series (+ any co-plotted metric) are all `.data`; the period line width matches the
+        // legacy renderer (3 pt scrollable, 2 pt total). No horizontal reference lines for weight.
+        let dataLineWidth: CGFloat = period == .total ? 2 : 3
+        let styles = Dictionary(uniqueKeysWithValues: orderedNames.map {
+            ($0, ChartSeriesStyle(role: .data, lineWidth: dataLineWidth, showsPoints: true))
+        })
+
         return ChartModel(
             period: period,
             productType: .scale,
@@ -155,6 +162,8 @@ enum ChartPrep {
                 for: period, from: operations, around: scrollPosition, windows: tickWindowRadius
             ),
             goalWeight: goalWeight,
+            seriesStyle: styles,
+            referenceLines: [],
             yAxis: yAxis,
             dataFingerprint: fingerprint(orderedSeriesNames: orderedNames, points: full)
         )
