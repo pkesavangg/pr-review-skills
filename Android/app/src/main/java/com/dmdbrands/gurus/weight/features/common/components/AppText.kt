@@ -97,6 +97,20 @@ object TextTypeDefaults {
         style = typography.link2,
         color = colorScheme.wgPrimary,
       )
+
+      else -> headingAppearance(type)
+    }
+  }
+
+  /**
+   * Appearances for the heading/list text types (split out of [appearance] to keep each
+   * mapping function short).
+   */
+  @Composable
+  private fun headingAppearance(type: TextType): TextAppearance {
+    val typography = MeTheme.typography
+
+    return when (type) {
       TextType.SubHeading ->
         TextAppearance(
           style = typography.body3,
@@ -127,7 +141,7 @@ object TextTypeDefaults {
           color = colorScheme.textHeading,
         )
 
-      TextType.CardTitle ->
+      else ->
         TextAppearance(
           style = typography.heading3,
           color = colorScheme.textHeading,
@@ -135,6 +149,105 @@ object TextTypeDefaults {
     }
   }
 }
+
+/**
+ * Builds the annotated/styled span for [AppText] when an [annotatedText] segment is styled
+ * (and optionally clickable) within [text], honoring [annotationPosition].
+ */
+private fun buildAnnotatedText(
+  text: String,
+  annotatedText: String,
+  annotationPosition: AnnotationPosition,
+  spanStyle: SpanStyle,
+  onAnnotationClick: ((String) -> Unit)?,
+): AnnotatedString = buildAnnotatedString {
+  val linkAnnotation = if (onAnnotationClick != null) {
+    LinkAnnotation.Clickable(tag = "ANNOTATED_CLICK") {
+      onAnnotationClick(annotatedText)
+    }
+  } else {
+    null
+  }
+  when (annotationPosition) {
+    AnnotationPosition.Start -> {
+      if (linkAnnotation != null) {
+        withLink(linkAnnotation) { withStyle(spanStyle) { append(annotatedText) } }
+      } else {
+        withStyle(spanStyle) { append(annotatedText) }
+      }
+      append(text.removePrefix(annotatedText))
+    }
+
+    AnnotationPosition.End -> {
+      append(text.removeSuffix(annotatedText))
+      if (linkAnnotation != null) {
+        withLink(linkAnnotation) { withStyle(spanStyle) { append(annotatedText) } }
+      } else {
+        withStyle(spanStyle) { append(annotatedText) }
+      }
+    }
+
+    AnnotationPosition.Middle -> {
+      val startIndex = text.indexOf(annotatedText)
+      if (startIndex != -1) {
+        append(text.substring(0, startIndex))
+        if (linkAnnotation != null) {
+          withLink(linkAnnotation) { withStyle(spanStyle) { append(annotatedText) } }
+        } else {
+          withStyle(spanStyle) { append(annotatedText) }
+        }
+        append(text.substring(startIndex + annotatedText.length))
+      } else {
+        append(text) // fallback
+      }
+    }
+  }
+}
+
+/**
+ * Builds an annotated string that bolds already-uppercase words (and numbers that follow one).
+ */
+private fun buildUppercaseText(text: String): AnnotatedString = buildAnnotatedString {
+  val words = text.split(" ")
+  words.forEachIndexed { index, word ->
+    val isUppercase = word.any { it.isLetter() } && word == word.uppercase()
+    val isNumber = word.all { it.isDigit() }
+    val previousWordIsUppercase = index > 0 && words[index - 1].any { it.isLetter() } && words[index - 1] == words[index - 1].uppercase()
+
+    if (isUppercase || (isNumber && previousWordIsUppercase)) {
+      withStyle(SpanStyle(fontWeight = FontWeight.Bold)) {
+        append(word)
+      }
+    } else {
+      append(word)
+    }
+    if (index != words.lastIndex) append(" ")
+  }
+}
+
+/**
+ * Resolves the final [AnnotatedString] for [AppText], memoized on the same keys as the
+ * original inline `remember` (position/uppercase flags are intentionally not keys).
+ */
+@Composable
+private fun rememberAppText(
+  text: String,
+  annotatedText: String?,
+  canApplyUppercaseStyle: Boolean,
+  annotationPosition: AnnotationPosition,
+  spanStyle: SpanStyle?,
+  onAnnotationClick: ((String) -> Unit)?,
+): AnnotatedString =
+  remember(text, annotatedText, spanStyle, onAnnotationClick) {
+    when {
+      annotatedText != null && spanStyle != null ->
+        buildAnnotatedText(text, annotatedText, annotationPosition, spanStyle, onAnnotationClick)
+
+      canApplyUppercaseStyle -> buildUppercaseText(text)
+
+      else -> AnnotatedString(text)
+    }
+  }
 
 @Composable
 fun AppText(
@@ -156,75 +269,14 @@ fun AppText(
   onAnnotationClick: ((String) -> Unit)? = null,
 ) {
   val appearance = TextTypeDefaults.appearance(textType, enabled)
-
-  val finalText = remember(text, annotatedText, spanStyle, onAnnotationClick) {
-     if (annotatedText != null && spanStyle != null) {
-      buildAnnotatedString {
-        val linkAnnotation = if (onAnnotationClick != null) {
-          LinkAnnotation.Clickable(tag = "ANNOTATED_CLICK") {
-            onAnnotationClick(annotatedText)
-          }
-        } else {
-          null
-        }
-        when (annotationPosition) {
-          AnnotationPosition.Start -> {
-            if (linkAnnotation != null) {
-              withLink(linkAnnotation) { withStyle(spanStyle) { append(annotatedText) } }
-            } else {
-              withStyle(spanStyle) { append(annotatedText) }
-            }
-            append(text.removePrefix(annotatedText))
-          }
-
-          AnnotationPosition.End -> {
-            append(text.removeSuffix(annotatedText))
-            if (linkAnnotation != null) {
-              withLink(linkAnnotation) { withStyle(spanStyle) { append(annotatedText) } }
-            } else {
-              withStyle(spanStyle) { append(annotatedText) }
-            }
-          }
-
-          AnnotationPosition.Middle -> {
-            val startIndex = text.indexOf(annotatedText)
-            if (startIndex != -1) {
-              append(text.substring(0, startIndex))
-              if (linkAnnotation != null) {
-                withLink(linkAnnotation) { withStyle(spanStyle) { append(annotatedText) } }
-              } else {
-                withStyle(spanStyle) { append(annotatedText) }
-              }
-              append(text.substring(startIndex + annotatedText.length))
-            } else {
-              append(text) // fallback
-            }
-          }
-        }
-      }
-    } else if (canApplyUppercaseStyle) {
-      buildAnnotatedString {
-        val words = text.split(" ")
-        words.forEachIndexed { index, word ->
-          val isUppercase = word.any { it.isLetter() } && word == word.uppercase()
-          val isNumber = word.all { it.isDigit() }
-          val previousWordIsUppercase = index > 0 && words[index - 1].any { it.isLetter() } && words[index - 1] == words[index - 1].uppercase()
-          
-          if (isUppercase || (isNumber && previousWordIsUppercase)) {
-            withStyle(SpanStyle(fontWeight = FontWeight.Bold)) {
-              append(word)
-            }
-          } else {
-            append(word)
-          }
-          if (index != words.lastIndex) append(" ")
-        }
-      }
-    } else {
-      AnnotatedString(text)
-    }
-  }
-
+  val finalText = rememberAppText(
+    text = text,
+    annotatedText = annotatedText,
+    canApplyUppercaseStyle = canApplyUppercaseStyle,
+    annotationPosition = annotationPosition,
+    spanStyle = spanStyle,
+    onAnnotationClick = onAnnotationClick,
+  )
   Column(
     modifier = Modifier.wrapContentSize(),
     horizontalAlignment = Alignment.Start,

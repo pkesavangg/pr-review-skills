@@ -320,6 +320,167 @@ private fun rememberThrottledClick(
 }
 
 /**
+ * Resolved visual style values for [AppButton], derived once from [ButtonType]/[ButtonSize].
+ */
+private data class AppButtonStyle(
+  val backgroundColor: Color,
+  val contentColor: Color,
+  val focusedBackgroundColor: Color,
+  val focusedContentColor: Color,
+  val border: BorderStroke?,
+  val pressedBorder: BorderStroke?,
+  val hPadding: Dp,
+  val textStyle: TextStyle,
+  val autoSize: TextAutoSize,
+  val text: String,
+)
+
+/**
+ * Computes the resolved [AppButtonStyle] from the design defaults for the given inputs.
+ */
+@Composable
+private fun rememberAppButtonStyle(
+  label: String,
+  type: ButtonType,
+  size: ButtonSize,
+  enabled: Boolean,
+  textTransform: TextTransform,
+): AppButtonStyle {
+  // Get style values from defaults
+  val backgroundColor = AppButtonDefaults.backgroundColor(type, enabled)
+  val contentColor = AppButtonDefaults.contentColor(type, enabled)
+  AppButtonDefaults.pressedBackgroundColor(type)
+  AppButtonDefaults.pressedContentColor(type, enabled)
+  val focusedBackgroundColor = AppButtonDefaults.pressedBackgroundColor(type)
+  val focusedContentColor = AppButtonDefaults.pressedContentColor(type, enabled)
+  AppButtonDefaults.pressedBorder(type)
+  val textStyle = AppButtonDefaults.textStyle(size)
+  // Stable across recompositions — only rebuilt when the design font size changes.
+  val autoSize = remember(textStyle.fontSize) { AppButtonDefaults.autoSize(textStyle) }
+  return AppButtonStyle(
+    backgroundColor = backgroundColor,
+    contentColor = contentColor,
+    focusedBackgroundColor = focusedBackgroundColor,
+    focusedContentColor = focusedContentColor,
+    border = AppButtonDefaults.border(type, enabled),
+    pressedBorder = AppButtonDefaults.pressedBorder(type),
+    hPadding = AppButtonDefaults.horizontalPadding(size, type),
+    textStyle = textStyle,
+    autoSize = autoSize,
+    text = AppButtonDefaults.transformText(label, textTransform),
+  )
+}
+
+/**
+ * Builds the sizing modifier for [AppButton].
+ */
+@Composable
+private fun appButtonModifier(
+  modifier: Modifier,
+  type: ButtonType,
+  size: ButtonSize,
+): Modifier {
+  val height = AppButtonDefaults.height(size)
+  val minWidth = AppButtonDefaults.minWidth(size)
+  // Phones / folded displays keep pixel-parity fixed height; tablets use
+  // heightIn so the button can grow with the label instead of clipping the
+  // text under tablet density (MA-3713).
+  val isPhoneLike = getDeviceType().isPhoneLike
+  return modifier
+    .then(
+      when {
+        type.isInlineText -> Modifier
+        isPhoneLike -> Modifier.height(height)
+        else -> Modifier.heightIn(min = height)
+      },
+    )
+    .defaultMinSize(minWidth = minWidth)
+}
+
+/**
+ * Transparent-background button branch — a custom [Box] avoids the Material ripple.
+ */
+@Composable
+private fun TransparentAppButton(
+  buttonModifier: Modifier,
+  shape: RoundedCornerShape,
+  backgroundColor: Color,
+  contentColor: Color,
+  enabled: Boolean,
+  interactionSource: MutableInteractionSource,
+  onClick: () -> Unit,
+  style: AppButtonStyle,
+) {
+  Box(
+    modifier = buttonModifier
+      .clip(shape)
+      .background(
+        color = backgroundColor,
+        shape = shape
+      )
+      .clickable(
+        enabled = enabled,
+        interactionSource = interactionSource,
+        onClick = onClick
+      )
+      // TalkBack: the Material3 Button branch announces "<label>, button" automatically.
+      // This transparent Box branch needs the Button role added explicitly, and
+      // mergeDescendants so the child label folds into the button node (otherwise
+      // TalkBack reads a nameless "button" and the label as a separate focus stop).
+      .semantics(mergeDescendants = true) { role = Role.Button },
+    contentAlignment = Alignment.Center
+  ) {
+    Text(
+      text = style.text,
+      style = style.textStyle,
+      color = contentColor,
+      maxLines = 1,
+      autoSize = style.autoSize,
+      modifier = Modifier.padding(
+        horizontal = style.hPadding,
+        vertical = 0.dp
+      )
+    )
+  }
+}
+
+/**
+ * Material3 [Button] branch for non-transparent backgrounds.
+ */
+@Composable
+private fun FilledAppButton(
+  buttonModifier: Modifier,
+  shape: RoundedCornerShape,
+  backgroundColor: Color,
+  contentColor: Color,
+  enabled: Boolean,
+  border: BorderStroke?,
+  interactionSource: MutableInteractionSource,
+  onClick: () -> Unit,
+  style: AppButtonStyle,
+) {
+  val buttonColors = ButtonDefaults.buttonColors(
+    containerColor = backgroundColor,
+    contentColor = contentColor,
+    disabledContainerColor = style.backgroundColor,
+    disabledContentColor = style.contentColor,
+  )
+
+  Button(
+    onClick = onClick,
+    enabled = enabled,
+    shape = shape,
+    colors = buttonColors,
+    border = border,
+    modifier = buttonModifier,
+    contentPadding = PaddingValues(vertical = 0.dp, horizontal = style.hPadding),
+    interactionSource = interactionSource,
+  ) {
+    Text(text = style.text, style = style.textStyle, maxLines = 1, autoSize = style.autoSize)
+  }
+}
+
+/**
  * A customizable button for the app, supporting various styles and sizes.
  * @param label The button text
  * @param modifier Modifier for styling
@@ -339,49 +500,16 @@ fun AppButton(
   textTransform: TextTransform = TextTransform.UPPERCASE,
   onClick: () -> Unit,
 ) {
-  // Get style values from defaults
-  val backgroundColor = AppButtonDefaults.backgroundColor(type, enabled)
-  val contentColor = AppButtonDefaults.contentColor(type, enabled)
-  AppButtonDefaults.pressedBackgroundColor(type)
-  AppButtonDefaults.pressedContentColor(type, enabled)
-  val focusedBackgroundColor = AppButtonDefaults.pressedBackgroundColor(type)
-  val focusedContentColor = AppButtonDefaults.pressedContentColor(type, enabled)
-  AppButtonDefaults.pressedBorder(type)
-  val border = AppButtonDefaults.border(type, enabled)
-  val pressedBorder = AppButtonDefaults.pressedBorder(type)
-  val height = AppButtonDefaults.height(size)
-  val hPadding = AppButtonDefaults.horizontalPadding(size, type)
-  val textStyle = AppButtonDefaults.textStyle(size)
-  // Stable across recompositions — only rebuilt when the design font size changes.
-  val autoSize = remember(textStyle.fontSize) { AppButtonDefaults.autoSize(textStyle) }
-  val text = AppButtonDefaults.transformText(label, textTransform)
-  val minWidth = AppButtonDefaults.minWidth(size)
+  val style = rememberAppButtonStyle(label, type, size, enabled, textTransform)
+  val buttonModifier = appButtonModifier(modifier, type, size)
   val shape = RoundedCornerShape(50)
-  val vPadding = 0.dp
-  val maxLines = 1
-  // Phones / folded displays keep pixel-parity fixed height; tablets use
-  // heightIn so the button can grow with the label instead of clipping the
-  // text under tablet density (MA-3713).
-  val isPhoneLike = getDeviceType().isPhoneLike
-  val buttonModifier = modifier
-    .then(
-      when {
-        type.isInlineText -> Modifier
-        isPhoneLike -> Modifier.height(height)
-        else -> Modifier.heightIn(min = height)
-      },
-    )
-    .defaultMinSize(minWidth = minWidth)
-
   // Create interaction source for focus state
   val interactionSource = remember { MutableInteractionSource() }
   var isPressed by remember { mutableStateOf(false) }
-
   // Determine colors based on focus state
-  val finalBackgroundColor = if (isPressed) focusedBackgroundColor else backgroundColor
-  val finalContentColor = if (isPressed) focusedContentColor else contentColor
-  val borderColor = if (isPressed) pressedBorder else border
-
+  val finalBackgroundColor = if (isPressed) style.focusedBackgroundColor else style.backgroundColor
+  val finalContentColor = if (isPressed) style.focusedContentColor else style.contentColor
+  val borderColor = if (isPressed) style.pressedBorder else style.border
   // Collect interactions
   LaunchedEffect(interactionSource) {
     interactionSource.interactions.collectLatest { interaction: Interaction ->
@@ -397,58 +525,28 @@ fun AppButton(
 
   // For transparent buttons, use a custom implementation to avoid ripple effects
   if (finalBackgroundColor == Color.Transparent) {
-    Box(
-      modifier = buttonModifier
-        .clip(shape)
-        .background(
-          color = finalBackgroundColor,
-          shape = shape
-        )
-        .clickable(
-          enabled = enabled,
-          interactionSource = interactionSource,
-          onClick = throttledClick
-        )
-        // TalkBack: the Material3 Button branch announces "<label>, button" automatically.
-        // This transparent Box branch needs the Button role added explicitly, and
-        // mergeDescendants so the child label folds into the button node (otherwise
-        // TalkBack reads a nameless "button" and the label as a separate focus stop).
-        .semantics(mergeDescendants = true) { role = Role.Button },
-      contentAlignment = Alignment.Center
-    ) {
-      Text(
-        text = text,
-        style = textStyle,
-        color = finalContentColor,
-        maxLines = maxLines,
-        autoSize = autoSize,
-        modifier = Modifier.padding(
-          horizontal = hPadding,
-          vertical = vPadding
-        )
-      )
-    }
-  } else {
-    // Use Material3 Button for non-transparent backgrounds
-    val buttonColors = ButtonDefaults.buttonColors(
-      containerColor = finalBackgroundColor,
-      contentColor = finalContentColor,
-      disabledContainerColor = backgroundColor,
-      disabledContentColor = contentColor,
-    )
-
-    Button(
-      onClick = throttledClick,
-      enabled = enabled,
+    TransparentAppButton(
+      buttonModifier = buttonModifier,
       shape = shape,
-      colors = buttonColors,
-      border = borderColor,
-      modifier = buttonModifier,
-      contentPadding = PaddingValues(vertical = vPadding, horizontal = hPadding),
+      backgroundColor = finalBackgroundColor,
+      contentColor = finalContentColor,
+      enabled = enabled,
       interactionSource = interactionSource,
-    ) {
-      Text(text = text, style = textStyle, maxLines = maxLines, autoSize = autoSize)
-    }
+      onClick = throttledClick,
+      style = style,
+    )
+  } else {
+    FilledAppButton(
+      buttonModifier = buttonModifier,
+      shape = shape,
+      backgroundColor = finalBackgroundColor,
+      contentColor = finalContentColor,
+      enabled = enabled,
+      border = borderColor,
+      interactionSource = interactionSource,
+      onClick = throttledClick,
+      style = style,
+    )
   }
 }
 

@@ -3,8 +3,10 @@ package com.dmdbrands.gurus.weight.features.common.components
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.FlingBehavior
 import androidx.compose.foundation.gestures.snapping.rememberSnapFlingBehavior
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
@@ -12,6 +14,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Text
@@ -40,6 +43,7 @@ import com.dmdbrands.gurus.weight.theme.MeAppTheme
 import com.dmdbrands.gurus.weight.theme.MeTheme.colorScheme
 import com.dmdbrands.gurus.weight.theme.MeTheme.spacing
 import com.dmdbrands.gurus.weight.theme.MeTheme.typography
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.debounce
@@ -111,6 +115,39 @@ fun <T> AppPicker(
     }
 
     // Picker UI
+    AppPickerContent(
+        modifier = modifier,
+        items = items,
+        currentCenteredIndex = currentCenteredIndex,
+        listState = listState,
+        snapFling = snapFling,
+        coroutineScope = coroutineScope,
+        dividerColor = dividerColor,
+        visibleItemsCount = visibleItemsCount,
+        itemHeight = itemHeight,
+        itemWidth = itemWidth,
+        onItemSelected = onItemSelected,
+        labelMapper = labelMapper,
+        customItem = customItem,
+    )
+}
+
+@Composable
+private fun <T> AppPickerContent(
+    modifier: Modifier,
+    items: List<T>,
+    currentCenteredIndex: Int,
+    listState: LazyListState,
+    snapFling: FlingBehavior,
+    coroutineScope: CoroutineScope,
+    dividerColor: Color,
+    visibleItemsCount: Int,
+    itemHeight: Dp,
+    itemWidth: Dp,
+    onItemSelected: (T) -> Unit,
+    labelMapper: (T, Boolean) -> String,
+    customItem: (@Composable (T, Boolean) -> Unit)?,
+) {
     Box(
         modifier =
             modifier
@@ -126,65 +163,99 @@ fun <T> AppPicker(
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
             items(items.size, key = { index -> index }) { index ->
-                val item = items[index]
-                val isSelected = index == currentCenteredIndex
-                Box(
-                    Modifier
-                        .height(itemHeight)
-                        .width(itemWidth)
-                        .background(Color.Transparent)
-                        .clickable {
-                            coroutineScope.launch { listState.animateScrollToItem(index) }
-                            onItemSelected(item)
-                        }
-                        // TalkBack: the centered item is only bold visually; expose it as
-                        // the selected item so a screen reader can announce it.
-                        .semantics { selected = isSelected },
-                    contentAlignment = Alignment.Center,
-                ) {
-                    if (customItem != null) {
-                        customItem(item, isSelected)
-                    } else {
-                        Text(
-                            text = labelMapper(item, isSelected),
-                            style =
-                                if (isSelected) {
-                                    typography.body2.copy(
-                                        fontWeight = FontWeight.Bold,
-                                    )
-                                } else {
-                                    typography.body2
-                                },
-                            color =
-                                if (isSelected) {
-                                    colorScheme.textBody
-                                } else {
-                                    colorScheme.textSubheading
-                                },
-                            textAlign = TextAlign.Center,
-                        )
-                    }
-                }
+                AppPickerItem(
+                    item = items[index],
+                    isSelected = index == currentCenteredIndex,
+                    index = index,
+                    itemHeight = itemHeight,
+                    itemWidth = itemWidth,
+                    listState = listState,
+                    coroutineScope = coroutineScope,
+                    onItemSelected = onItemSelected,
+                    labelMapper = labelMapper,
+                    customItem = customItem,
+                )
             }
         }
-        // Highlight center with only top and bottom lines
-        HorizontalDivider(
-            Modifier
-                .width(itemWidth)
-                .align(Alignment.Center)
-                .offset(y = -itemHeight / 2),
-            color = dividerColor,
-            thickness = 2.dp,
-        )
-        HorizontalDivider(
-            Modifier
-                .width(itemWidth)
-                .align(Alignment.Center)
-                .offset(y = itemHeight / 2),
-            color = dividerColor,
-            thickness = 2.dp,
-        )
+        AppPickerDividers(itemWidth = itemWidth, itemHeight = itemHeight, dividerColor = dividerColor)
     }
+}
+
+@Composable
+private fun <T> AppPickerItem(
+    item: T,
+    isSelected: Boolean,
+    index: Int,
+    itemHeight: Dp,
+    itemWidth: Dp,
+    listState: LazyListState,
+    coroutineScope: CoroutineScope,
+    onItemSelected: (T) -> Unit,
+    labelMapper: (T, Boolean) -> String,
+    customItem: (@Composable (T, Boolean) -> Unit)?,
+) {
+    Box(
+        Modifier
+            .height(itemHeight)
+            .width(itemWidth)
+            .background(Color.Transparent)
+            .clickable {
+                coroutineScope.launch { listState.animateScrollToItem(index) }
+                onItemSelected(item)
+            }
+            // TalkBack: the centered item is only bold visually; expose it as
+            // the selected item so a screen reader can announce it.
+            .semantics { selected = isSelected },
+        contentAlignment = Alignment.Center,
+    ) {
+        if (customItem != null) {
+            customItem(item, isSelected)
+        } else {
+            Text(
+                text = labelMapper(item, isSelected),
+                style =
+                    if (isSelected) {
+                        typography.body2.copy(
+                            fontWeight = FontWeight.Bold,
+                        )
+                    } else {
+                        typography.body2
+                    },
+                color =
+                    if (isSelected) {
+                        colorScheme.textBody
+                    } else {
+                        colorScheme.textSubheading
+                    },
+                textAlign = TextAlign.Center,
+            )
+        }
+    }
+}
+
+@Composable
+private fun BoxScope.AppPickerDividers(
+    itemWidth: Dp,
+    itemHeight: Dp,
+    dividerColor: Color,
+) {
+    // Highlight center with only top and bottom lines
+    HorizontalDivider(
+        Modifier
+            .width(itemWidth)
+            .align(Alignment.Center)
+            .offset(y = -itemHeight / 2),
+        color = dividerColor,
+        thickness = 2.dp,
+    )
+    HorizontalDivider(
+        Modifier
+            .width(itemWidth)
+            .align(Alignment.Center)
+            .offset(y = itemHeight / 2),
+        color = dividerColor,
+        thickness = 2.dp,
+    )
 }
 
 @Composable

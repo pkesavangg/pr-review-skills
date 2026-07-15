@@ -1,6 +1,7 @@
 package com.dmdbrands.gurus.weight.features.common.components.chart
 
 import androidx.compose.animation.core.LinearEasing
+import androidx.compose.foundation.gestures.FlingBehavior
 import androidx.compose.foundation.layout.height
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -9,6 +10,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.dmdbrands.gurus.weight.domain.model.storage.entry.PeriodSummary
 import com.dmdbrands.gurus.weight.features.common.components.chart.config.ChartConfig
@@ -20,16 +22,21 @@ import com.dmdbrands.gurus.weight.features.common.helper.graph.GraphUtil
 import com.dmdbrands.gurus.weight.features.dashboard.viewmodel.base.BaseDashboardState
 import com.dmdbrands.gurus.weight.features.dashboard.viewmodel.base.BaseGraphIntent
 import com.dmdbrands.gurus.weight.features.dashboard.viewmodel.base.SegmentState
+import com.patrykandpatrick.vico.compose.cartesian.CartesianChart
 import com.patrykandpatrick.vico.compose.cartesian.CartesianChartHost
+import com.patrykandpatrick.vico.compose.cartesian.FadingEdges
 import com.patrykandpatrick.vico.compose.cartesian.InterpolationType
 import com.patrykandpatrick.vico.compose.cartesian.Scroll
 import com.patrykandpatrick.vico.compose.cartesian.SnapBehaviorConfig
+import com.patrykandpatrick.vico.compose.cartesian.VicoScrollState
+import com.patrykandpatrick.vico.compose.cartesian.axis.HorizontalAxis
 import com.patrykandpatrick.vico.compose.cartesian.data.CartesianChartModelProducer
 import com.patrykandpatrick.vico.compose.cartesian.marker.rememberScrubMarkerController
 import com.patrykandpatrick.vico.compose.cartesian.rememberChartSnapFlingBehavior
 import com.patrykandpatrick.vico.compose.cartesian.rememberFadingEdges
 import com.patrykandpatrick.vico.compose.cartesian.rememberVicoScrollState
 import com.patrykandpatrick.vico.compose.cartesian.rememberVicoZoomState
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.debounce
@@ -56,16 +63,70 @@ fun GraphView(
   onScrollTargetConsumed: (Boolean) -> Unit = {},
   chartFillsHeight: Boolean = false,
 ) {
-  val scope = rememberCoroutineScope()
+  val chartHeight = rememberChartHeight()
+  val holder = rememberGraphChart(
+    state = state,
+    segmentState = segmentState,
+    chartConfig = chartConfig,
+    segment = segment,
+    scrollTarget = scrollTarget,
+    canScrollToAnchor = canScrollToAnchor,
+    handleGraphIntent = handleGraphIntent,
+    createFallbackEntry = createFallbackEntry,
+    onScrollTargetConsumed = onScrollTargetConsumed,
+  )
+
+  // Vico requires a stable CartesianChartModelProducer per CartesianChartHost — swapping the
+  // producer instance on the same host (e.g. switching baby, which hands this host a different
+  // per-baby producer) throws "A new CartesianChartModelProducer was provided". Keying the host by
+  // the producer identity disposes the old host and creates a fresh one bound to the new producer.
+  key(modelProducer) {
+    CartesianChartHost(
+      chart = holder.chart,
+      modelProducer = modelProducer,
+      modifier = if (chartFillsHeight) modifier else modifier.height(chartHeight),
+      scrollState = holder.scrollState,
+      animateIn = false,
+      zoomState = rememberVicoZoomState(zoomEnabled = false),
+      flingBehavior = holder.flingBehavior,
+      initialMarkerX = state.markerIndex,
+    )
+  }
+}
+
+/** Values [GraphView]'s [CartesianChartHost] needs, assembled by [rememberGraphChart]. */
+private data class GraphChartHolder(
+  val chart: CartesianChart,
+  val scrollState: VicoScrollState,
+  val flingBehavior: FlingBehavior,
+)
+
+/** Scroll/snap/fading state, assembled by [rememberGraphScroll]. */
+private data class GraphScrollHolder(
+  val scrollState: VicoScrollState,
+  val fadingEdges: FadingEdges,
+  val flingBehavior: FlingBehavior,
+  val horizontalItemPlacer: HorizontalAxis.ItemPlacer,
+)
+
+@Composable
+private fun rememberChartHeight(): Dp {
   val currentDeviceType = getDeviceType()
-  val chartHeight = remember(currentDeviceType) {
+  return remember(currentDeviceType) {
     when (currentDeviceType) {
       DeviceType.Tablet -> 400.dp
       DeviceType.Phone -> 300.dp
       DeviceType.Fold -> 250.dp
     }
   }
+}
 
+/** Builds the scroll state, fading edges, fling behavior and axis item placer for the chart. */
+@Composable
+private fun rememberGraphScroll(
+  segment: GraphSegment,
+  segmentState: SegmentState,
+): GraphScrollHolder {
   val endTs = segmentState.endTimestamp
   val initialStartX = GraphUtil.getRollingWindowStart(segment, endTs)?.toDouble()
     ?: GraphUtil.getStartRange(segment, endTs)?.toDouble()
@@ -97,65 +158,110 @@ fun GraphView(
     initialScroll = initialScroll,
     key = segment to segmentState.isEmptyGraph,
   )
-
-  val snapConfig = remember(segment, startPaddingXStep) {
-    SnapBehaviorConfig(
-      snapToLabel = { currentXLabel, projectedXLabel, isDrag, isForward ->
-        if (isDrag) {
-          GraphSnapHelper.getSnappedPositionOnDrag(xLabel = currentXLabel, segment = segment)
-        } else {
-          GraphSnapHelper.getSnapPositionOnFling(
-            timeStamp = projectedXLabel,
-            segment = segment,
-            isForward = isForward,
-          )
-        }
-      },
-      scrollPaddingXStep = startPaddingXStep,
-      animation = SnapBehaviorConfig.SnapAnimation(snapDurationMillis = 500),
-    )
-  }
+  val snapConfig = rememberSnapConfig(segment, startPaddingXStep)
   val flingBehavior = rememberChartSnapFlingBehavior(scrollState = scrollState, config = snapConfig)
   val horizontalItemPlacer = rememberHorizontalAxisItemPlacer(segment = segment)
 
-  fun onScrollUpdate(min: Long, max: Long) {
-    scope.launch {
-      handleGraphIntent(
-        BaseGraphIntent.ScrollRange(segment, min, max) {
-          // Fallback: no data in visible range — interpolate from chart lines
-          val dataStart = segmentState.startTimestamp
-          val dataEnd = segmentState.endTimestamp
-          val visibleRange = scrollState.visibleXRange
+  return GraphScrollHolder(scrollState, fadingEdges, flingBehavior, horizontalItemPlacer)
+}
 
-          // Outside data range entirely → empty, no interpolation needed
-          if (dataStart == null || dataEnd == null || visibleRange == null ||
-            visibleRange.endInclusive < dataStart.toDouble() || visibleRange.start > dataEnd.toDouble()
-          ) {
-            handleGraphIntent(BaseGraphIntent.UpdateSegmentTarget(segment, emptyList()))
-            return@ScrollRange
-          }
+@Composable
+private fun rememberSnapConfig(
+  segment: GraphSegment,
+  startPaddingXStep: Double,
+): SnapBehaviorConfig = remember(segment, startPaddingXStep) {
+  SnapBehaviorConfig(
+    snapToLabel = { currentXLabel, projectedXLabel, isDrag, isForward ->
+      if (isDrag) {
+        GraphSnapHelper.getSnappedPositionOnDrag(xLabel = currentXLabel, segment = segment)
+      } else {
+        GraphSnapHelper.getSnapPositionOnFling(
+          timeStamp = projectedXLabel,
+          segment = segment,
+          isForward = isForward,
+        )
+      }
+    },
+    scrollPaddingXStep = startPaddingXStep,
+    animation = SnapBehaviorConfig.SnapAnimation(snapDurationMillis = 500),
+  )
+}
 
-          // Within data range — interpolate
-          val visibleLabels = scrollState.getVisibleAxisLabels(horizontalItemPlacer).filter {
-            it in visibleRange && it in dataStart.toDouble()..dataEnd.toDouble()
-          }
-          if (visibleLabels.isNotEmpty()) {
-            val fallbackValues = scrollState.getInterpolatedYValues(
-              xValues = visibleLabels,
-              interpolationType = InterpolationType.MONOTONE,
-            )
-            val fallbackData = visibleLabels.mapIndexedNotNull { index, x ->
-              val ts = x.toLong()
-              val yValues = fallbackValues.mapNotNull { series -> series.getOrNull(index)?.toDouble() }
-              if (yValues.isEmpty()) return@mapIndexedNotNull null
-              createFallbackEntry(ts, yValues, segment)
-            }
-            handleGraphIntent(BaseGraphIntent.UpdateSegmentTarget(segment, fallbackData))
-          }
-        },
+/** Assembles the markers, scroll effects and chart for [GraphView]. */
+@Composable
+private fun rememberGraphChart(
+  state: BaseDashboardState,
+  segmentState: SegmentState,
+  chartConfig: ChartConfig,
+  segment: GraphSegment,
+  scrollTarget: Double?,
+  canScrollToAnchor: Boolean,
+  handleGraphIntent: (BaseGraphIntent) -> Unit,
+  createFallbackEntry: (timestamp: Long, yValues: List<Double>, segment: GraphSegment) -> PeriodSummary?,
+  onScrollTargetConsumed: (Boolean) -> Unit,
+): GraphChartHolder {
+  val scroll = rememberGraphScroll(segment, segmentState)
+
+  val defaultMarker = rememberDefaultMarker(
+    state = state,
+    segmentState = segmentState,
+    segment = segment,
+    markerIndex = state.markerIndex,
+    createFallbackEntry = createFallbackEntry,
+    onTargetsUpdate = { entries -> dispatchTargetsUpdate(entries, segmentState, segment, handleGraphIntent) },
+  )
+  val scrubController = rememberScrubMarkerController(
+    scrollState = scroll.scrollState,
+    onMarkerIndexChanged = { clickX, targets ->
+      handleMarkerIndexChanged(
+        clickX, targets, state, segmentState, scroll.scrollState, scroll.horizontalItemPlacer, segment, handleGraphIntent,
       )
-    }
-  }
+    },
+  )
+
+  GraphScrollEffects(
+    state = state,
+    segmentState = segmentState,
+    segment = segment,
+    scrollState = scroll.scrollState,
+    horizontalItemPlacer = scroll.horizontalItemPlacer,
+    canScrollToAnchor = canScrollToAnchor,
+    scrollTarget = scrollTarget,
+    handleGraphIntent = handleGraphIntent,
+    createFallbackEntry = createFallbackEntry,
+    onScrollTargetConsumed = onScrollTargetConsumed,
+  )
+
+  val chart = rememberProductChart(
+    config = chartConfig,
+    graphState = state,
+    segmentState = segmentState,
+    defaultMarker = defaultMarker,
+    segment = segment,
+    horizontalItemPlacer = scroll.horizontalItemPlacer,
+    fadingEdges = scroll.fadingEdges,
+    scrubController = scrubController,
+    onYRangeSettled = { minY, maxY -> handleGraphIntent(BaseGraphIntent.UpdateSeedYRange(segment, minY, maxY)) },
+  )
+  return GraphChartHolder(chart, scroll.scrollState, scroll.flingBehavior)
+}
+
+/** All scroll/marker-driven [LaunchedEffect]s for the chart, keyed exactly as before. */
+@OptIn(FlowPreview::class)
+@Composable
+private fun GraphScrollEffects(
+  state: BaseDashboardState,
+  segmentState: SegmentState,
+  segment: GraphSegment,
+  scrollState: VicoScrollState,
+  horizontalItemPlacer: HorizontalAxis.ItemPlacer,
+  canScrollToAnchor: Boolean,
+  scrollTarget: Double?,
+  handleGraphIntent: (BaseGraphIntent) -> Unit,
+  createFallbackEntry: (timestamp: Long, yValues: List<Double>, segment: GraphSegment) -> PeriodSummary?,
+  onScrollTargetConsumed: (Boolean) -> Unit,
+) {
+  val scope = rememberCoroutineScope()
 
   // Scroll-to-anchor is now handled by Vico's initialScroll + scrollState key = segment.
   // We only need to acknowledge the consumed target so the caller doesn't re-dispatch it.
@@ -164,67 +270,16 @@ fun GraphView(
     onScrollTargetConsumed(true)
   }
 
-  val defaultMarker = rememberDefaultMarker(
-    state = state,
-    segmentState = segmentState,
-    segment = segment,
-    markerIndex = state.markerIndex,
-    createFallbackEntry = createFallbackEntry,
-    onTargetsUpdate = { entries ->
-      // Skip dispatch if target hasn't changed — prevents redundant recomposition
-      // when marker stays on the same data point across frames during slow scrub.
-      val changed = entries.firstOrNull()?.getTimeStamp() != segmentState.target.firstOrNull()?.getTimeStamp()
-      if (entries.isNotEmpty() && changed) {
-        handleGraphIntent(BaseGraphIntent.UpdateSegmentTarget(segment, entries))
-      }
-    },
-  )
-
-  val scrubController = rememberScrubMarkerController(
-    scrollState = scrollState,
-    onMarkerIndexChanged = { clickX, targets ->
-      if (clickX == null || segmentState.isEmptyGraph) {
-        handleGraphIntent(BaseGraphIntent.UpdateMarkerIndex(null))
-        return@rememberScrubMarkerController null
-      }
-      val visibleRange = scrollState.visibleXRange
-      val visibleLabels = scrollState.getVisibleAxisLabels(itemPlacer = horizontalItemPlacer).filter {
-        visibleRange != null && it in visibleRange
-      }
-      var markerIndex: Double? = null
-      val startTs = segmentState.startTimestamp
-      val endTs = segmentState.endTimestamp
-      if (startTs != null && endTs != null) {
-        val paddedMinCondition = startTs - GraphUtil.calculateXStep(segment = segment).div(2)
-        val paddedMaxCondition = endTs + GraphUtil.calculateXStep(segment = segment).div(2)
-        val outOfBoundaryCondition = clickX !in paddedMinCondition..paddedMaxCondition
-        if (!outOfBoundaryCondition) {
-          val targetMarkerIndex = getTargetPoints(
-            visibleLabels, targets, clickX, segment, paddedMinCondition, paddedMaxCondition,
-          )
-          if (targetMarkerIndex.isNotEmpty()) {
-            val targetIndex = targetMarkerIndex.first().toLong()
-            markerIndex = when {
-              targetIndex in startTs..endTs -> targetMarkerIndex.first()
-              targetIndex < startTs -> startTs.toDouble()
-              targetIndex > endTs -> endTs.toDouble()
-              else -> null
-            }
-          }
-        }
-      }
-      if (state.markerIndex != markerIndex) handleGraphIntent(BaseGraphIntent.UpdateMarkerIndex(markerIndex))
-      markerIndex
-    },
-  )
-
   LaunchedEffect(state.markerIndex == null) {
     val vMin = segmentState.visibleMin
     val vMax = segmentState.visibleMax
     if (state.markerIndex == null && vMin != null && vMax != null) {
       delay(50)
-
-      if (!scrollState.isUserScrolling) onScrollUpdate(vMin, vMax)
+      if (!scrollState.isUserScrolling) {
+        dispatchScrollUpdate(
+          scope, segment, vMin, vMax, segmentState, scrollState, horizontalItemPlacer, handleGraphIntent, createFallbackEntry,
+        )
+      }
     }
   }
 
@@ -247,20 +302,6 @@ fun GraphView(
     }
   }
 
-  val chart = rememberProductChart(
-    config = chartConfig,
-    graphState = state,
-    segmentState = segmentState,
-    defaultMarker = defaultMarker,
-    segment = segment,
-    horizontalItemPlacer = horizontalItemPlacer,
-    fadingEdges = fadingEdges,
-    scrubController = scrubController,
-    onYRangeSettled = { minY, maxY ->
-      handleGraphIntent(BaseGraphIntent.UpdateSeedYRange(segment, minY, maxY))
-    },
-  )
-
   LaunchedEffect(scrollState) {
     snapshotFlow { scrollState.value }
       .debounce(100)
@@ -272,30 +313,144 @@ fun GraphView(
         val relativeMin = GraphUtil.getRelativeStart(segment, min)
         val relativeMax = GraphUtil.getRelativeEnd(segment, max)
         val clipRange = GraphUtil.clipRangeForGraph(segment, relativeMin, relativeMax)
-        onScrollUpdate(clipRange.startMillis, clipRange.endMillis)
+        dispatchScrollUpdate(
+          scope, segment, clipRange.startMillis, clipRange.endMillis, segmentState, scrollState, horizontalItemPlacer,
+          handleGraphIntent, createFallbackEntry,
+        )
         if (!segmentState.isEmptyGraph) {
           val endTs = segmentState.endTimestamp
           if (endTs != null) handleGraphIntent(BaseGraphIntent.UpdateIsEmptyGraph(segment, relativeMin > endTs))
         }
       }
   }
+}
 
-  // Vico requires a stable CartesianChartModelProducer per CartesianChartHost — swapping the
-  // producer instance on the same host (e.g. switching baby, which hands this host a different
-  // per-baby producer) throws "A new CartesianChartModelProducer was provided". Keying the host by
-  // the producer identity disposes the old host and creates a fresh one bound to the new producer.
-  key(modelProducer) {
-    CartesianChartHost(
-      chart = chart,
-      modelProducer = modelProducer,
-      modifier = if (chartFillsHeight) modifier else modifier.height(chartHeight),
-      scrollState = scrollState,
-      animateIn = false,
-      zoomState = rememberVicoZoomState(zoomEnabled = false),
-      flingBehavior = flingBehavior,
-      initialMarkerX = state.markerIndex,
+/** Fire-and-forget scroll-range intent, interpolating fallback targets when needed. */
+private fun dispatchScrollUpdate(
+  scope: CoroutineScope,
+  segment: GraphSegment,
+  min: Long,
+  max: Long,
+  segmentState: SegmentState,
+  scrollState: VicoScrollState,
+  horizontalItemPlacer: HorizontalAxis.ItemPlacer,
+  handleGraphIntent: (BaseGraphIntent) -> Unit,
+  createFallbackEntry: (timestamp: Long, yValues: List<Double>, segment: GraphSegment) -> PeriodSummary?,
+) {
+  scope.launch {
+    handleGraphIntent(
+      BaseGraphIntent.ScrollRange(segment, min, max) {
+        val fallbackData = computeScrollFallback(
+          segmentState, scrollState, horizontalItemPlacer, segment, createFallbackEntry,
+        )
+        if (fallbackData != null) {
+          handleGraphIntent(BaseGraphIntent.UpdateSegmentTarget(segment, fallbackData))
+        }
+      },
     )
   }
+}
+
+/**
+ * Fallback targets for the visible range when no real data lands there.
+ * Returns an empty list to clear targets (visible range fully outside the data),
+ * null to leave targets untouched (no visible labels), or interpolated entries.
+ */
+private fun computeScrollFallback(
+  segmentState: SegmentState,
+  scrollState: VicoScrollState,
+  horizontalItemPlacer: HorizontalAxis.ItemPlacer,
+  segment: GraphSegment,
+  createFallbackEntry: (timestamp: Long, yValues: List<Double>, segment: GraphSegment) -> PeriodSummary?,
+): List<PeriodSummary>? {
+  // Fallback: no data in visible range — interpolate from chart lines
+  val dataStart = segmentState.startTimestamp
+  val dataEnd = segmentState.endTimestamp
+  val visibleRange = scrollState.visibleXRange
+
+  // Outside data range entirely → empty, no interpolation needed
+  if (dataStart == null || dataEnd == null || visibleRange == null ||
+    visibleRange.endInclusive < dataStart.toDouble() || visibleRange.start > dataEnd.toDouble()
+  ) {
+    return emptyList()
+  }
+
+  // Within data range — interpolate
+  val visibleLabels = scrollState.getVisibleAxisLabels(horizontalItemPlacer).filter {
+    it in visibleRange && it in dataStart.toDouble()..dataEnd.toDouble()
+  }
+  if (visibleLabels.isEmpty()) return null
+
+  val fallbackValues = scrollState.getInterpolatedYValues(
+    xValues = visibleLabels,
+    interpolationType = InterpolationType.MONOTONE,
+  )
+  return visibleLabels.mapIndexedNotNull { index, x ->
+    val ts = x.toLong()
+    val yValues = fallbackValues.mapNotNull { series -> series.getOrNull(index)?.toDouble() }
+    if (yValues.isEmpty()) return@mapIndexedNotNull null
+    createFallbackEntry(ts, yValues, segment)
+  }
+}
+
+/** Dispatches marker-target updates, skipping redundant ones (unchanged first timestamp). */
+private fun dispatchTargetsUpdate(
+  entries: List<PeriodSummary>,
+  segmentState: SegmentState,
+  segment: GraphSegment,
+  handleGraphIntent: (BaseGraphIntent) -> Unit,
+) {
+  // Skip dispatch if target hasn't changed — prevents redundant recomposition
+  // when marker stays on the same data point across frames during slow scrub.
+  val changed = entries.firstOrNull()?.getTimeStamp() != segmentState.target.firstOrNull()?.getTimeStamp()
+  if (entries.isNotEmpty() && changed) {
+    handleGraphIntent(BaseGraphIntent.UpdateSegmentTarget(segment, entries))
+  }
+}
+
+/** Resolves the scrub marker index for a tap at [clickX], dispatching the update when it changes. */
+private fun handleMarkerIndexChanged(
+  clickX: Double?,
+  targets: List<Double>,
+  state: BaseDashboardState,
+  segmentState: SegmentState,
+  scrollState: VicoScrollState,
+  horizontalItemPlacer: HorizontalAxis.ItemPlacer,
+  segment: GraphSegment,
+  handleGraphIntent: (BaseGraphIntent) -> Unit,
+): Double? {
+  if (clickX == null || segmentState.isEmptyGraph) {
+    handleGraphIntent(BaseGraphIntent.UpdateMarkerIndex(null))
+    return null
+  }
+  val visibleRange = scrollState.visibleXRange
+  val visibleLabels = scrollState.getVisibleAxisLabels(itemPlacer = horizontalItemPlacer).filter {
+    visibleRange != null && it in visibleRange
+  }
+  var markerIndex: Double? = null
+  val startTs = segmentState.startTimestamp
+  val endTs = segmentState.endTimestamp
+  if (startTs != null && endTs != null) {
+    val paddedMinCondition = startTs - GraphUtil.calculateXStep(segment = segment).div(2)
+    val paddedMaxCondition = endTs + GraphUtil.calculateXStep(segment = segment).div(2)
+    val outOfBoundaryCondition = clickX !in paddedMinCondition..paddedMaxCondition
+    if (!outOfBoundaryCondition) {
+      val targetMarkerIndex = getTargetPoints(
+        visibleLabels, targets, clickX, segment, paddedMinCondition, paddedMaxCondition,
+      )
+      if (targetMarkerIndex.isNotEmpty()) {
+        val targetIndex = targetMarkerIndex.first().toLong()
+        markerIndex = when {
+          targetIndex in startTs..endTs -> targetMarkerIndex.first()
+          targetIndex < startTs -> startTs.toDouble()
+          targetIndex > endTs -> endTs.toDouble()
+          else -> null
+        }
+      }
+    }
+  }
+  if (state.markerIndex != markerIndex) handleGraphIntent(BaseGraphIntent.UpdateMarkerIndex(markerIndex))
+  return markerIndex
 }
 
 // ── getTargetPoints (optimised — single-pass nearest lookup) ──

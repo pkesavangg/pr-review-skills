@@ -52,17 +52,6 @@ fun AppDeviceCard(
 ) {
   val cardSpacing = if (isSavedScale) spacing.md else spacing.sm
   val connectionIcon = DeviceDataHelper.scaleTypeIcon(scale.setupType)
-  val isBpm = DeviceHelper.isBpmDevice(scale.sku)
-  val isWifiSetup =
-    scale.setupType == DeviceSetupType.Wifi ||
-      scale.setupType == DeviceSetupType.EspTouchWifi ||
-      scale.setupType == DeviceSetupType.BtWifiR4
-  val isBluetoothSetup =
-    scale.setupType == DeviceSetupType.Bluetooth ||
-      scale.setupType == DeviceSetupType.Lcbt ||
-      scale.setupType == DeviceSetupType.BtWifiR4
-  val showConnectionStatus =
-    isSavedScale && isBluetoothSetup && !isBpm
 
   Surface(
     modifier =
@@ -84,106 +73,170 @@ fun AppDeviceCard(
       AppDeviceImage(sku = scale.sku)
 
       Spacer(modifier = Modifier.width(spacing.sm))
-      val displaySku = displayLabel ?: scale.sku
-      Column(
+      AppDeviceCardInfo(
+        scale = scale,
+        isSavedScale = isSavedScale,
+        wrapSubtitle = wrapSubtitle,
+        displayLabel = displayLabel,
         modifier = Modifier.weight(1f),
-        verticalArrangement = Arrangement.Center,
-      ) {
-        AppText(
-          text = displaySku,
-          textType = TextType.ListTitle1,
-        )
-        AppText(
-          text = scale.productName.lowercase(),
-          textType = TextType.ListSubtitle,
-          // Catalog cards (Help) wrap the full product name across lines to match the design;
-          // elsewhere the name stays on one line with an ellipsis. (MOB-728)
-          textOverflow = if (wrapSubtitle) TextOverflow.Clip else TextOverflow.Ellipsis,
-          softWrap = wrapSubtitle,
-        )
-        if (isBpm && isSavedScale && scale.userNumber != null) {
-          val displayUser = DeviceDataHelper.formatUserDisplay(scale.hasNumericUsers, scale.userNumber)
-          if (displayUser.isNotEmpty()) {
-            Spacer(modifier = Modifier.height(spacing.x3s))
-            AppText(
-              text = "${AppListStrings.User} $displayUser",
-              textType = TextType.Body,
-            )
-          }
-        }
-        if (showConnectionStatus) {
-          Spacer(modifier = Modifier.height(spacing.x3s))
-          Row(verticalAlignment = Alignment.CenterVertically) {
-            // Only flag incomplete WiFi setup when we are sure: BtWifiR4 scale connected over BT
-            // but reporting WiFi unconfigured. We require isConnected==true so that "unknown"
-            // (null isWifiConfigured prior to first connection) does not trigger a false alarm.
-            val showExclamation =
-              scale.isWifiConfigured != true &&
-              scale.isConnected == true &&
-              scale.setupType == DeviceSetupType.BtWifiR4
-            val setupIndicationIcon =
-              if (showExclamation) {
-                AppIcons.Default.Exclamation
-              } else {
-                AppIcons.Connection.Bluetooth
-              }
-            val iconType = when {
-              showExclamation -> AppIconType.Danger
-              scale.isConnected == false -> AppIconType.Tertiary
-              else -> AppIconType.Primary
-            }
-            AppIcon(
-              id = setupIndicationIcon,
-              // Decorative: the connection status is already announced by the adjacent
-              // "Connected"/"Not Connected"/"Setup Incomplete" text within this card.
-              contentDescription = null,
-              type = iconType,
-              enabled = scale.isConnected == true,
-              onClick = null,
-            )
-            Spacer(modifier = Modifier.width(spacing.x3s))
-            AppText(
-              text =
-                when {
-                  scale.isConnected == false && isBluetoothSetup -> AppListStrings.NotConnected
-                  showExclamation -> AppListStrings.SetupIncomplete
-                  scale.isConnected == true && isBluetoothSetup -> AppListStrings.Connected
-                  else -> ""
-                },
-              textType = TextType.Body,
-            )
-          }
-        }
-      }
+      )
       Spacer(modifier = Modifier.width(spacing.md))
-      if (!isSavedScale && showConnectionIcon) {
-        AppIcon(
-          id = connectionIcon,
-          // Decorative: the scale type/name is already announced by the SKU and
-          // product-name text in this card.
-          contentDescription = null,
-          type = AppIconType.Primary,
-          modifier = Modifier.size(32.dp),
-          enabled = enabled,
-          onClick = null,
-        )
-        Spacer(modifier = Modifier.width(spacing.sm))
-      }
-if(canShowRightCaret){
-  AppIcon(
-    id = AppIcons.Default.RightCaret,
-    // Decorative caret: the whole card is already a single clickable element, so the
-    // navigation affordance does not need a separate spoken label.
-    contentDescription = null,
-    type = AppIconType.Primary,
-    modifier = Modifier.size(32.dp),
-    enabled = enabled,
-    onClick = { onClick(scale) },
-  )
-}
+      AppDeviceCardTrailingIcons(
+        scale = scale,
+        connectionIcon = connectionIcon,
+        isSavedScale = isSavedScale,
+        showConnectionIcon = showConnectionIcon,
+        canShowRightCaret = canShowRightCaret,
+        enabled = enabled,
+        onClick = onClick,
+      )
     }
   }
   HorizontalDivider(thickness = 0.5.dp, color = colorScheme.utility)
+}
+
+/**
+ * Middle info column of [AppDeviceCard]: SKU/display label, product name, optional BPM
+ * user line, and connection status.
+ */
+@Composable
+private fun AppDeviceCardInfo(
+  scale: DeviceModelInfo,
+  isSavedScale: Boolean,
+  wrapSubtitle: Boolean,
+  displayLabel: String?,
+  modifier: Modifier = Modifier,
+) {
+  val isBpm = DeviceHelper.isBpmDevice(scale.sku)
+  val isBluetoothSetup =
+    scale.setupType == DeviceSetupType.Bluetooth ||
+      scale.setupType == DeviceSetupType.Lcbt ||
+      scale.setupType == DeviceSetupType.BtWifiR4
+  val showConnectionStatus = isSavedScale && isBluetoothSetup && !isBpm
+  val displaySku = displayLabel ?: scale.sku
+  Column(
+    modifier = modifier,
+    verticalArrangement = Arrangement.Center,
+  ) {
+    AppText(
+      text = displaySku,
+      textType = TextType.ListTitle1,
+    )
+    AppText(
+      text = scale.productName.lowercase(),
+      textType = TextType.ListSubtitle,
+      // Catalog cards (Help) wrap the full product name across lines to match the design;
+      // elsewhere the name stays on one line with an ellipsis. (MOB-728)
+      textOverflow = if (wrapSubtitle) TextOverflow.Clip else TextOverflow.Ellipsis,
+      softWrap = wrapSubtitle,
+    )
+    if (isBpm && isSavedScale && scale.userNumber != null) {
+      val displayUser = DeviceDataHelper.formatUserDisplay(scale.hasNumericUsers, scale.userNumber)
+      if (displayUser.isNotEmpty()) {
+        Spacer(modifier = Modifier.height(spacing.x3s))
+        AppText(
+          text = "${AppListStrings.User} $displayUser",
+          textType = TextType.Body,
+        )
+      }
+    }
+    if (showConnectionStatus) {
+      Spacer(modifier = Modifier.height(spacing.x3s))
+      AppDeviceCardConnectionStatus(scale = scale, isBluetoothSetup = isBluetoothSetup)
+    }
+  }
+}
+
+/**
+ * Connection-status row (icon + "Connected"/"Not Connected"/"Setup Incomplete") shown
+ * for saved Bluetooth devices.
+ */
+@Composable
+private fun AppDeviceCardConnectionStatus(
+  scale: DeviceModelInfo,
+  isBluetoothSetup: Boolean,
+) {
+  Row(verticalAlignment = Alignment.CenterVertically) {
+    // Only flag incomplete WiFi setup when we are sure: BtWifiR4 scale connected over BT
+    // but reporting WiFi unconfigured. We require isConnected==true so that "unknown"
+    // (null isWifiConfigured prior to first connection) does not trigger a false alarm.
+    val showExclamation =
+      scale.isWifiConfigured != true &&
+      scale.isConnected == true &&
+      scale.setupType == DeviceSetupType.BtWifiR4
+    val setupIndicationIcon =
+      if (showExclamation) {
+        AppIcons.Default.Exclamation
+      } else {
+        AppIcons.Connection.Bluetooth
+      }
+    val iconType = when {
+      showExclamation -> AppIconType.Danger
+      scale.isConnected == false -> AppIconType.Tertiary
+      else -> AppIconType.Primary
+    }
+    AppIcon(
+      id = setupIndicationIcon,
+      // Decorative: the connection status is already announced by the adjacent
+      // "Connected"/"Not Connected"/"Setup Incomplete" text within this card.
+      contentDescription = null,
+      type = iconType,
+      enabled = scale.isConnected == true,
+      onClick = null,
+    )
+    Spacer(modifier = Modifier.width(spacing.x3s))
+    AppText(
+      text =
+        when {
+          scale.isConnected == false && isBluetoothSetup -> AppListStrings.NotConnected
+          showExclamation -> AppListStrings.SetupIncomplete
+          scale.isConnected == true && isBluetoothSetup -> AppListStrings.Connected
+          else -> ""
+        },
+      textType = TextType.Body,
+    )
+  }
+}
+
+/**
+ * Trailing icons of [AppDeviceCard]: the connection-type icon (unsaved scales) and the
+ * navigation caret.
+ */
+@Composable
+private fun AppDeviceCardTrailingIcons(
+  scale: DeviceModelInfo,
+  connectionIcon: Int,
+  isSavedScale: Boolean,
+  showConnectionIcon: Boolean,
+  canShowRightCaret: Boolean,
+  enabled: Boolean,
+  onClick: (DeviceModelInfo) -> Unit,
+) {
+  if (!isSavedScale && showConnectionIcon) {
+    AppIcon(
+      id = connectionIcon,
+      // Decorative: the scale type/name is already announced by the SKU and
+      // product-name text in this card.
+      contentDescription = null,
+      type = AppIconType.Primary,
+      modifier = Modifier.size(32.dp),
+      enabled = enabled,
+      onClick = null,
+    )
+    Spacer(modifier = Modifier.width(spacing.sm))
+  }
+  if (canShowRightCaret) {
+    AppIcon(
+      id = AppIcons.Default.RightCaret,
+      // Decorative caret: the whole card is already a single clickable element, so the
+      // navigation affordance does not need a separate spoken label.
+      contentDescription = null,
+      type = AppIconType.Primary,
+      modifier = Modifier.size(32.dp),
+      enabled = enabled,
+      onClick = { onClick(scale) },
+    )
+  }
 }
 
 @PreviewTheme

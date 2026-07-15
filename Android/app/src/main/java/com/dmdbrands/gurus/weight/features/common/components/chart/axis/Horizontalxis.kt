@@ -40,63 +40,79 @@ internal fun bottomAxis(
   val openSansFamily = FontFamily(Font(R.font.open_sans_semi_bold))
 
   return if (segment != GraphSegment.TOTAL)
-    HorizontalAxis.rememberBottom(
-      valueFormatter =
-        CartesianValueFormatter { _, value, _ ->
-          if (value.toInt() != 0) GraphUtil.formatTimestampForSegment(
-            value.toLong(),
-            segment,
-          ).lowercase() else "–"
-        },
-      itemPlacer = horizontalItemPlacer,
-      guideline = rememberAxisGuidelineComponent(
+    segmentedBottomAxis(segment, separators, horizontalItemPlacer, openSansFamily)
+  else
+    totalBottomAxis(horizontalItemPlacer, openSansFamily)
+}
+
+@Composable
+private fun segmentedBottomAxis(
+  segment: GraphSegment,
+  separators: List<Double>,
+  horizontalItemPlacer: HorizontalAxis.ItemPlacer,
+  openSansFamily: FontFamily,
+): Axis<Axis.Position.Horizontal.Bottom> =
+  HorizontalAxis.rememberBottom(
+    valueFormatter =
+      CartesianValueFormatter { _, value, _ ->
+        if (value.toInt() != 0) GraphUtil.formatTimestampForSegment(
+          value.toLong(),
+          segment,
+        ).lowercase() else "–"
+      },
+    itemPlacer = horizontalItemPlacer,
+    guideline = rememberAxisGuidelineComponent(
+      fill = Fill(MeTheme.colorScheme.utility),
+      thickness = 1.dp,
+    ),
+    label = rememberAxisLabelComponent(
+      style = TextStyle(
+        fontFamily = openSansFamily,
+        color = MeTheme.colorScheme.textSubheading,
+        fontSize = 14.sp,
+      ),
+    ),
+    tick = rememberAxisGuidelineComponent(),
+    tickLength = 20.dp,
+    line = rememberAxisLineComponent(
+      fill = Fill(MeTheme.colorScheme.iconSecondaryDisabled),
+      thickness = 1.dp,
+    ),
+    separators = HorizontalAxis.Separators(
+      values = separators,
+      line = rememberAxisLineComponent(
         fill = Fill(MeTheme.colorScheme.utility),
         thickness = 1.dp,
       ),
-      label = rememberAxisLabelComponent(
-        style = TextStyle(
-          fontFamily = openSansFamily,
-          color = MeTheme.colorScheme.textSubheading,
-          fontSize = 14.sp,
-        ),
+    ),
+    labelVerticalMode = HorizontalAxis.LabelVerticalMode.Inside,
+    labelHorizontalPosition = Position.Horizontal.End,
+  )
+
+@Composable
+private fun totalBottomAxis(
+  horizontalItemPlacer: HorizontalAxis.ItemPlacer,
+  openSansFamily: FontFamily,
+): Axis<Axis.Position.Horizontal.Bottom> =
+  HorizontalAxis.rememberBottom(
+    guideline = null,
+    itemPlacer = horizontalItemPlacer,
+    valueFormatter = CartesianValueFormatter { _, _, _ -> "\u200B" },
+    label = rememberAxisLabelComponent(
+      style = TextStyle(
+        fontFamily = openSansFamily,
+        color = Color.Transparent,
+        fontSize = 14.sp,
       ),
-      tick = rememberAxisGuidelineComponent(),
-      tickLength = 20.dp,
-      line = rememberAxisLineComponent(
-        fill = Fill(MeTheme.colorScheme.iconSecondaryDisabled),
-        thickness = 1.dp,
-      ),
-      separators = HorizontalAxis.Separators(
-        values = separators,
-        line = rememberAxisLineComponent(
-          fill = Fill(MeTheme.colorScheme.utility),
-          thickness = 1.dp,
-        ),
-      ),
-      labelVerticalMode = HorizontalAxis.LabelVerticalMode.Inside,
-      labelHorizontalPosition = Position.Horizontal.End,
-    )
-  else
-    HorizontalAxis.rememberBottom(
-      guideline = null,
-      itemPlacer = horizontalItemPlacer,
-      valueFormatter = CartesianValueFormatter { _, _, _ -> "\u200B" },
-      label = rememberAxisLabelComponent(
-        style = TextStyle(
-          fontFamily = openSansFamily,
-          color = Color.Transparent,
-          fontSize = 14.sp,
-        ),
-      ),
-      tickLength = 20.dp,
-      tick = rememberAxisGuidelineComponent(
-        fill = Fill(Color.Transparent),
-      ),
-      line = rememberAxisLineComponent(
-        fill = Fill(MeTheme.colorScheme.iconSecondaryDisabled),
-        thickness = 1.dp,
-      ),
-      labelVerticalMode = HorizontalAxis.LabelVerticalMode.Inside,
-      labelHorizontalPosition = Position.Horizontal.End,
-    )
-}
+    ),
+    tickLength = 20.dp,
+    tick = rememberAxisGuidelineComponent(
+      fill = Fill(Color.Transparent),
+    ),
+    line = rememberAxisLineComponent(
+      fill = Fill(MeTheme.colorScheme.iconSecondaryDisabled),
+      thickness = 1.dp,
+    ),
+    labelVerticalMode = HorizontalAxis.LabelVerticalMode.Inside,
+    labelHorizontalPosition = Position.Horizontal.End,
+  )

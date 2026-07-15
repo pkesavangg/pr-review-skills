@@ -16,11 +16,13 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.hapticfeedback.HapticFeedback
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.dmdbrands.gurus.weight.resources.AppIcons
@@ -98,77 +100,39 @@ fun <T> AppSwipeableList(
         }
     }
 
-    val heightModifier by remember {
-        derivedStateOf {
-            // Only apply height constraint when there are more items than maxVisibleItems
-            // This allows the list to size naturally and be centered when there are fewer items
-            if (maxVisibleItems != null && hasMeasured && measuredItemHeight > 0.dp && items.size > maxVisibleItems) {
-                // Calculate height based on maxVisibleItems
-                val calculatedHeight = measuredItemHeight * maxVisibleItems
-                Modifier.height(calculatedHeight)
-            } else {
-                Modifier
-            }
-        }
-    }
+    val heightModifier = rememberMaxVisibleHeightModifier(
+        maxVisibleItems = maxVisibleItems,
+        itemCount = { items.size },
+        hasMeasured = { hasMeasured },
+        measuredItemHeight = { measuredItemHeight },
+    )
 
     LazyColumn(
         state = lazyListState,
         contentPadding = contentPadding,
-        modifier = modifier.then(heightModifier).pointerInput(Unit) {
-            awaitPointerEventScope {
-                while (true) {
-                    val event = awaitPointerEvent()
-                    isMultiTouch = event.changes.size > 1
-                    // ... handle single-finger swipe logic here ...
-                }
-            }
-        }
+        modifier = modifier.then(heightModifier).trackMultiTouch { isMultiTouch = it },
     ) {
         itemsIndexed(items, key = { _, item -> keySelector(item) }) { index, item ->
-            // Use remember to cache the scope but ensure content is refreshed
-            val scope = remember(item) { SwipeableListItemScopeImpl(item, index) }
-
-            // Always execute the item content to ensure state changes are captured
-            scope.itemContent(item)
-
-            AppSwipeableListItem(
-              actionContent = { trailingActions(index, item) },
-              isSwipeable = !lazyListState.isScrollInProgress && isItemSwipeable(item) && !isMultiTouch,
-              iconWidth = iconWidth,
-              index = index,
-              onActionOpened = { openedIdx ->
-                    if (openIndex != openedIdx) {
-                        openIndex = openedIdx
-                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                    }
+            AppSwipeableRow(
+                item = item,
+                index = index,
+                iconWidth = iconWidth,
+                isSwipeable = !lazyListState.isScrollInProgress && isItemSwipeable(item) && !isMultiTouch,
+                positionalThreshold = positionalThreshold,
+                velocityThreshold = velocityThreshold,
+                hasMeasured = hasMeasured,
+                maxVisibleItems = maxVisibleItems,
+                density = density,
+                openIndex = openIndex,
+                haptic = haptic,
+                trailingActions = trailingActions,
+                itemContent = itemContent,
+                onOpenIndexChange = { openIndex = it },
+                onMeasured = { height ->
+                    measuredItemHeight = height
+                    hasMeasured = true
                 },
-              showAction = openIndex == index,
-              positionalThreshold = positionalThreshold,
-              velocityThreshold = velocityThreshold,
-            ) { progress ->
-                val swipeableContent = scope.buildSwipeable(progress)
-                // Measure the first item that gets positioned (not just index 0)
-                // This ensures measurement happens even if first item is not visible initially
-                if (!hasMeasured && maxVisibleItems != null) {
-                    Box(
-                        modifier = Modifier.onGloballyPositioned { coordinates ->
-                            val height = with(density) { coordinates.size.height.toDp() }
-                            // Only set if we haven't measured yet and height is valid
-                            if (height > 0.dp && !hasMeasured) {
-                                measuredItemHeight = height
-                                hasMeasured = true
-                            }
-                        },
-                    ) {
-                        swipeableContent()
-                    }
-                } else {
-                    swipeableContent()
-                }
-            }
-
-            scope.buildStatic()?.invoke()
+            )
         }
 
         footerContent?.let {
@@ -178,6 +142,129 @@ fun <T> AppSwipeableList(
         }
     }
 }
+
+// Derives the height constraint applied when there are more items than
+// maxVisibleItems. State is read through lambdas so the derivedStateOf keeps
+// observing the same snapshot state it did when inlined.
+@Composable
+private fun rememberMaxVisibleHeightModifier(
+    maxVisibleItems: Int?,
+    itemCount: () -> Int,
+    hasMeasured: () -> Boolean,
+    measuredItemHeight: () -> Dp,
+): Modifier {
+    val heightModifier by remember {
+        derivedStateOf {
+            // Only apply height constraint when there are more items than maxVisibleItems
+            // This allows the list to size naturally and be centered when there are fewer items
+            if (maxVisibleItems != null && hasMeasured() && measuredItemHeight() > 0.dp && itemCount() > maxVisibleItems) {
+                // Calculate height based on maxVisibleItems
+                val calculatedHeight = measuredItemHeight() * maxVisibleItems
+                Modifier.height(calculatedHeight)
+            } else {
+                Modifier
+            }
+        }
+    }
+    return heightModifier
+}
+
+// Emits a single item row: builds the per-item scope, renders the swipeable
+// item and any static content. Extracted to keep AppSwipeableList short.
+@Composable
+private fun <T> AppSwipeableRow(
+    item: T,
+    index: Int,
+    iconWidth: Dp,
+    isSwipeable: Boolean,
+    positionalThreshold: Float,
+    velocityThreshold: Float,
+    hasMeasured: Boolean,
+    maxVisibleItems: Int?,
+    density: Density,
+    openIndex: Int?,
+    haptic: HapticFeedback,
+    trailingActions: @Composable RowScope.(index: Int, item: T) -> Unit,
+    itemContent: @Composable SwipeableListItemScope.(item: T) -> Unit,
+    onOpenIndexChange: (Int?) -> Unit,
+    onMeasured: (Dp) -> Unit,
+) {
+    // Use remember to cache the scope but ensure content is refreshed
+    val scope = remember(item) { SwipeableListItemScopeImpl(item, index) }
+
+    // Always execute the item content to ensure state changes are captured
+    scope.itemContent(item)
+
+    AppSwipeableListItem(
+      actionContent = { trailingActions(index, item) },
+      isSwipeable = isSwipeable,
+      iconWidth = iconWidth,
+      index = index,
+      onActionOpened = { openedIdx ->
+            if (openIndex != openedIdx) {
+                onOpenIndexChange(openedIdx)
+                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+            }
+        },
+      showAction = openIndex == index,
+      positionalThreshold = positionalThreshold,
+      velocityThreshold = velocityThreshold,
+    ) { progress ->
+        AppSwipeableItemContent(
+            scope = scope,
+            progress = progress,
+            hasMeasured = hasMeasured,
+            maxVisibleItems = maxVisibleItems,
+            density = density,
+            onMeasured = onMeasured,
+        )
+    }
+
+    scope.buildStatic()?.invoke()
+}
+
+// Renders the swipeable content and, while the list height is still being
+// measured, wraps it in a Box that reports the measured item height.
+@Composable
+private fun <T> AppSwipeableItemContent(
+    scope: SwipeableListItemScopeImpl<T>,
+    progress: Float,
+    hasMeasured: Boolean,
+    maxVisibleItems: Int?,
+    density: Density,
+    onMeasured: (Dp) -> Unit,
+) {
+    val swipeableContent = scope.buildSwipeable(progress)
+    // Measure the first item that gets positioned (not just index 0)
+    // This ensures measurement happens even if first item is not visible initially
+    if (!hasMeasured && maxVisibleItems != null) {
+        Box(
+            modifier = Modifier.onGloballyPositioned { coordinates ->
+                val height = with(density) { coordinates.size.height.toDp() }
+                // Only set if we haven't measured yet and height is valid
+                if (height > 0.dp && !hasMeasured) {
+                    onMeasured(height)
+                }
+            },
+        ) {
+            swipeableContent()
+        }
+    } else {
+        swipeableContent()
+    }
+}
+
+// Reports whether more than one pointer is currently down so single-finger
+// swipe handling can be suppressed during multi-touch gestures.
+private fun Modifier.trackMultiTouch(onMultiTouch: (Boolean) -> Unit): Modifier =
+    this.pointerInput(Unit) {
+        awaitPointerEventScope {
+            while (true) {
+                val event = awaitPointerEvent()
+                onMultiTouch(event.changes.size > 1)
+            }
+        }
+    }
 
 @PreviewTheme
 @Composable

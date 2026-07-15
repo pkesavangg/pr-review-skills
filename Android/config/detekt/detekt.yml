@@ -5,6 +5,9 @@ complexity:
   LongMethod:
     active: true
     threshold: 60
+    # Compose @Preview functions are dev-only sample scaffolding, not production code —
+    # exempt them from the line limit rather than hand-splitting sample data. (MOB-1556)
+    ignoreAnnotated: ['Preview', 'PreviewTheme']
   LargeClass:
     active: true
     threshold: 600

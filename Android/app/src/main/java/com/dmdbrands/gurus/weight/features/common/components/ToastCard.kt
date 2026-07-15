@@ -81,57 +81,65 @@ fun ToastCard(
         containerColor = if (toast.isError) colorScheme.loadingError else colorScheme.toastBackground,
       ),
   ) {
-    // The message/icon tint tracks the variant: red for errors, body colour otherwise.
-    val contentColor = if (toast.isError) colorScheme.textError else colorScheme.textBody
-    Row(
-      modifier = Modifier.padding(16.dp),
-      horizontalArrangement = Arrangement.spacedBy(8.dp),
-      verticalAlignment = Alignment.Top,
+    ToastCardBody(toast = toast, clearToast = clearToast)
+  }
+}
+
+@Composable
+private fun ToastCardBody(
+  toast: Toast.Simple,
+  clearToast: () -> Unit,
+) {
+  // The message/icon tint tracks the variant: red for errors, body colour otherwise.
+  val contentColor = if (toast.isError) colorScheme.textError else colorScheme.textBody
+  Row(
+    modifier = Modifier.padding(16.dp),
+    horizontalArrangement = Arrangement.spacedBy(8.dp),
+    verticalAlignment = Alignment.Top,
+  ) {
+    toast.icon?.let {
+      Icon(
+        painter = painterResource(id = it),
+        contentDescription = null,
+        tint = contentColor,
+        modifier = Modifier.testTag("toast_icon").size(24.dp),
+      )
+    }
+    Column(
+      // weight(1f) (not fillMaxWidth) so a leading icon keeps its space in the Row.
+      modifier = Modifier.weight(1f),
+      verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
-      toast.icon?.let {
-        Icon(
-          painter = painterResource(id = it),
-          contentDescription = null,
-          tint = contentColor,
-          modifier = Modifier.testTag("toast_icon").size(24.dp),
-        )
-      }
-      Column(
-        // weight(1f) (not fillMaxWidth) so a leading icon keeps its space in the Row.
-        modifier = Modifier.weight(1f),
-        verticalArrangement = Arrangement.spacedBy(8.dp),
-      ) {
-        toast.title?.let {
-          Text(
-            text = it,
-            modifier = Modifier.testTag("toast_title"),
-            style = MeTheme.typography.heading5,
-            color = contentColor,
-          )
-        }
+      toast.title?.let {
         Text(
-          text = toast.message,
-          modifier = Modifier.testTag("toast_message"),
-          style = MeTheme.typography.body2,
+          text = it,
+          modifier = Modifier.testTag("toast_title"),
+          style = MeTheme.typography.heading5,
           color = contentColor,
         )
-        toast.action?.let {
-          Text(
-            text = it.text.uppercase(),
-            style = MeTheme.typography.button2,
-            fontWeight = FontWeight.Bold,
-            // Error actions ("TRY AGAIN") use the dark body colour per Figma; others the accent.
-            color = if (toast.isError) colorScheme.textBody else colorScheme.primaryAction,
-            modifier =
-              Modifier
-                .testTag("toast_action")
-                .padding(vertical = 6.dp, horizontal = 2.dp)
-                .clickable {
-                  it.action()
-                  clearToast()
-                },
-          )
-        }
+      }
+      Text(
+        text = toast.message,
+        modifier = Modifier.testTag("toast_message"),
+        style = MeTheme.typography.body2,
+        color = contentColor,
+      )
+      toast.action?.let {
+        Text(
+          text = it.text.uppercase(),
+          style = MeTheme.typography.button2,
+          fontWeight = FontWeight.Bold,
+          // Error actions ("TRY AGAIN") use the dark body colour per Figma; others the accent.
+          color = if (toast.isError) colorScheme.textBody else colorScheme.primaryAction,
+          modifier =
+            Modifier
+              .testTag("toast_action")
+              .padding(vertical = 6.dp, horizontal = 2.dp)
+              .clickable {
+                it.action()
+                clearToast()
+              },
+        )
       }
     }
   }

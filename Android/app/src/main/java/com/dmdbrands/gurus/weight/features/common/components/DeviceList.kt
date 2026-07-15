@@ -44,37 +44,7 @@ fun DeviceList(
 ) {
   var selectedType by remember { mutableStateOf(initialSelectedType) }
 
-  val devices = DEVICES
-  val filteredScales = remember(selectedType) {
-    when (selectedType) {
-      DeviceSegmentType.All -> devices
-      DeviceSegmentType.AppSync ->
-        devices.filter {
-          it.setupType == DeviceSetupType.AppSync
-        }
-
-      DeviceSegmentType.Bluetooth ->
-        devices.filter {
-          it.setupType == DeviceSetupType.Bluetooth ||
-            it.setupType == DeviceSetupType.Lcbt ||
-            it.setupType == DeviceSetupType.BtWifiR4 ||
-            it.setupType == DeviceSetupType.BpmBluetooth ||
-            it.setupType == DeviceSetupType.BpmA6Bluetooth ||
-            it.setupType == DeviceSetupType.BabyScale
-        }
-
-      DeviceSegmentType.Wifi ->
-        devices.filter {
-          it.setupType == DeviceSetupType.Wifi ||
-            it.setupType == DeviceSetupType.EspTouchWifi ||
-            it.setupType == DeviceSetupType.BtWifiR4
-        }
-    }
-      // Collapse paired models (e.g. 0220/0222) into a single row keyed by their primary SKU;
-      // the grouped label is applied on the card below. BPM alternates are already excluded
-      // from DEVICES, so this only affects the baby-scale pair.
-      .distinctBy { "${DeviceHelper.primarySku(it.sku)}-${it.setupType.name}" }
-  }
+  val filteredScales = remember(selectedType) { filterDevices(selectedType) }
 
   // Reset scroll position when segment changes for better UX
   LaunchedEffect(selectedType) {
@@ -90,26 +60,10 @@ fun DeviceList(
     header?.let { item(key = "header") { it() } }
     // Header item - Segment control
     item {
-      Box(
-        modifier = Modifier
-          .fillMaxWidth()
-          .padding(start = spacing.sm, end = spacing.sm, bottom = spacing.sm),
-      ) {
-        SegmentButtonGroup(
-          data = listOf(
-            DeviceSegmentType.All,
-            DeviceSegmentType.Bluetooth,
-            DeviceSegmentType.Wifi,
-            DeviceSegmentType.AppSync,
-          ),
-          key = DeviceSegmentType::name,
-          selectedData = selectedType,
-          onSelected = { selectedType = it },
-          size = SegmentButtonSize.Small,
-          type = SegmentButtonType.Scrollable,
-          modifier = Modifier.fillMaxWidth(),
-        )
-      }
+      DeviceSegmentControl(
+        selectedType = selectedType,
+        onSelected = { selectedType = it },
+      )
     }
 
     items(
@@ -127,7 +81,73 @@ fun DeviceList(
       )
     }
 
-    footer?.let { item(key="footer") { it() } }
+    footer?.let { item(key = "footer") { it() } }
+  }
+}
+
+/**
+ * Filters [DEVICES] for the given [selectedType] and collapses paired models into a single row.
+ * Pure, non-UI logic extracted from [DeviceList] to keep the composable focused.
+ */
+private fun filterDevices(selectedType: DeviceSegmentType): List<DeviceModelInfo> {
+  val devices = DEVICES
+  return when (selectedType) {
+    DeviceSegmentType.All -> devices
+    DeviceSegmentType.AppSync ->
+      devices.filter {
+        it.setupType == DeviceSetupType.AppSync
+      }
+
+    DeviceSegmentType.Bluetooth ->
+      devices.filter {
+        it.setupType == DeviceSetupType.Bluetooth ||
+          it.setupType == DeviceSetupType.Lcbt ||
+          it.setupType == DeviceSetupType.BtWifiR4 ||
+          it.setupType == DeviceSetupType.BpmBluetooth ||
+          it.setupType == DeviceSetupType.BpmA6Bluetooth ||
+          it.setupType == DeviceSetupType.BabyScale
+      }
+
+    DeviceSegmentType.Wifi ->
+      devices.filter {
+        it.setupType == DeviceSetupType.Wifi ||
+          it.setupType == DeviceSetupType.EspTouchWifi ||
+          it.setupType == DeviceSetupType.BtWifiR4
+      }
+  }
+    // Collapse paired models (e.g. 0220/0222) into a single row keyed by their primary SKU;
+    // the grouped label is applied on the card below. BPM alternates are already excluded
+    // from DEVICES, so this only affects the baby-scale pair.
+    .distinctBy { "${DeviceHelper.primarySku(it.sku)}-${it.setupType.name}" }
+}
+
+/**
+ * Segment selector header (All, Bluetooth, Wifi, AppSync) shown above the device list.
+ */
+@Composable
+private fun DeviceSegmentControl(
+  selectedType: DeviceSegmentType,
+  onSelected: (DeviceSegmentType) -> Unit,
+) {
+  Box(
+    modifier = Modifier
+      .fillMaxWidth()
+      .padding(start = spacing.sm, end = spacing.sm, bottom = spacing.sm),
+  ) {
+    SegmentButtonGroup(
+      data = listOf(
+        DeviceSegmentType.All,
+        DeviceSegmentType.Bluetooth,
+        DeviceSegmentType.Wifi,
+        DeviceSegmentType.AppSync,
+      ),
+      key = DeviceSegmentType::name,
+      selectedData = selectedType,
+      onSelected = onSelected,
+      size = SegmentButtonSize.Small,
+      type = SegmentButtonType.Scrollable,
+      modifier = Modifier.fillMaxWidth(),
+    )
   }
 }
 

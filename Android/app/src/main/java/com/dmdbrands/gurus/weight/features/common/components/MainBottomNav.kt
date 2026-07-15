@@ -33,9 +33,12 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.navigation3.runtime.NavKey
 import com.dmdbrands.gurus.weight.core.navigation.AppRoute
 import com.dmdbrands.gurus.weight.core.navigation.LocalNavBackStack
+import com.dmdbrands.gurus.weight.domain.model.common.BottomNavItem
 import com.dmdbrands.gurus.weight.features.dashboard.enum.BOTTOM_NAV_ITEMS
+import com.example.nav3integration.TopLevelBackStack
 import com.dmdbrands.gurus.weight.features.dashboard.string.DashboardString
 import com.dmdbrands.gurus.weight.theme.MeAppTheme
 import com.dmdbrands.gurus.weight.theme.MeTheme
@@ -79,78 +82,127 @@ fun MainBottomNav(
     modifier = Modifier.topBorder(0.6.dp, MeTheme.colorScheme.utility),
     containerColor = MeTheme.colorScheme.primaryBackground,
   ) {
-    Row(
-      modifier =
-        Modifier
-          .fillMaxWidth()
-          .padding(horizontal = MeTheme.spacing.xs),
-      horizontalArrangement = Arrangement.SpaceBetween,
-    ) {
-      navItems.forEachIndexed { index, item ->
-        val isSelected = (selectedItem == item)
-        val icon = if (isSelected && item.selectedIcon != null) item.selectedIcon else item.icon
-        if (!showAppsync && item.label === DashboardString.BottomNav.appsync) return@Row
-        NavigationBarItem(
-          icon = {
-            BadgedBox(
-              badge = {
-                val shouldShowBadge = item.route in badgeVisible ||
-                  (item.route == AppRoute.Main.Settings && showUnreadFeedIndicator)
-                if (shouldShowBadge) {
-                  // Dot badge
-                  Badge(
-                    containerColor =MeTheme.colorScheme.danger,
-                      modifier = Modifier
-                        .padding(0.dp)
-                        .offset(y = (18).dp)
-                        .size(8.dp)
-                        .clip(CircleShape)
-                  )
-                }
-              },
-            ) {
-              Image(
-                painter = painterResource(id = icon),
-                contentDescription = null,
-                colorFilter =
-                  if (!isSelected || item.route == AppRoute.Main.AppSync) {
-                    ColorFilter.tint(
-                      MeTheme.colorScheme.textSubheading,
-                    )
-                  } else {
-                    null
-                  },
-              )
-            }
-          },
-          label = {
-            Text(
-              text = item.label,
-              color = MeTheme.colorScheme.textSubheading,
-              fontSize = 10.sp,
-              fontWeight = FontWeight.W400,
-              textAlign = TextAlign.Center,
-            )
-          },
-          selected = false,
-          onClick = {
-            coroutineScope.launch {
-              if (item.label === DashboardString.BottomNav.appsync) {
-                onOpenAppSync()
-              } else {
-                topBackStack.addRoute(item.route, AppRoute.Home, popUpTo = dashRoute)
-                val requiredItem =
-                  navItems.find {
-                    it.route == topBackStack.getStackForTopLevel(AppRoute.Home).lastOrNull()
-                  }
-                if (requiredItem != null && requiredItem != selectedItem) {
-                  selectedItem = requiredItem
-                }
-              }
-            }
-          },
+    MainNavBarRow(
+      navItems = navItems,
+      selectedItem = selectedItem,
+      badgeVisible = badgeVisible,
+      showAppsync = showAppsync,
+      showUnreadFeedIndicator = showUnreadFeedIndicator,
+      onItemClick = { item ->
+        coroutineScope.launch {
+          handleNavItemClick(
+            item = item,
+            topBackStack = topBackStack,
+            dashRoute = dashRoute,
+            navItems = navItems,
+            selectedItem = selectedItem,
+            setSelectedItem = { selectedItem = it },
+            onOpenAppSync = onOpenAppSync,
+          )
+        }
+      },
+    )
+  }
+}
+
+@Composable
+private fun MainNavBarRow(
+  navItems: List<BottomNavItem>,
+  selectedItem: BottomNavItem,
+  badgeVisible: List<AppRoute>,
+  showAppsync: Boolean,
+  showUnreadFeedIndicator: Boolean,
+  onItemClick: (BottomNavItem) -> Unit,
+) {
+  Row(
+    modifier =
+      Modifier
+        .fillMaxWidth()
+        .padding(horizontal = MeTheme.spacing.xs),
+    horizontalArrangement = Arrangement.SpaceBetween,
+  ) {
+    navItems.forEachIndexed { index, item ->
+      val isSelected = (selectedItem == item)
+      if (!showAppsync && item.label === DashboardString.BottomNav.appsync) return@Row
+      val showBadge = item.route in badgeVisible ||
+        (item.route == AppRoute.Main.Settings && showUnreadFeedIndicator)
+      NavigationBarItem(
+        icon = { NavBarBadgedIcon(item = item, isSelected = isSelected, showBadge = showBadge) },
+        label = { NavBarItemLabel(label = item.label) },
+        selected = false,
+        onClick = { onItemClick(item) },
+      )
+    }
+  }
+}
+
+@Composable
+private fun NavBarBadgedIcon(
+  item: BottomNavItem,
+  isSelected: Boolean,
+  showBadge: Boolean,
+) {
+  val icon = if (isSelected && item.selectedIcon != null) item.selectedIcon else item.icon
+  BadgedBox(
+    badge = {
+      if (showBadge) {
+        // Dot badge
+        Badge(
+          containerColor =MeTheme.colorScheme.danger,
+            modifier = Modifier
+              .padding(0.dp)
+              .offset(y = (18).dp)
+              .size(8.dp)
+              .clip(CircleShape)
         )
       }
+    },
+  ) {
+    Image(
+      painter = painterResource(id = icon),
+      contentDescription = null,
+      colorFilter =
+        if (!isSelected || item.route == AppRoute.Main.AppSync) {
+          ColorFilter.tint(
+            MeTheme.colorScheme.textSubheading,
+          )
+        } else {
+          null
+        },
+    )
+  }
+}
+
+@Composable
+private fun NavBarItemLabel(label: String) {
+  Text(
+    text = label,
+    color = MeTheme.colorScheme.textSubheading,
+    fontSize = 10.sp,
+    fontWeight = FontWeight.W400,
+    textAlign = TextAlign.Center,
+  )
+}
+
+private suspend fun handleNavItemClick(
+  item: BottomNavItem,
+  topBackStack: TopLevelBackStack<NavKey>,
+  dashRoute: AppRoute,
+  navItems: List<BottomNavItem>,
+  selectedItem: BottomNavItem,
+  setSelectedItem: (BottomNavItem) -> Unit,
+  onOpenAppSync: () -> Unit,
+) {
+  if (item.label === DashboardString.BottomNav.appsync) {
+    onOpenAppSync()
+  } else {
+    topBackStack.addRoute(item.route, AppRoute.Home, popUpTo = dashRoute)
+    val requiredItem =
+      navItems.find {
+        it.route == topBackStack.getStackForTopLevel(AppRoute.Home).lastOrNull()
+      }
+    if (requiredItem != null && requiredItem != selectedItem) {
+      setSelectedItem(requiredItem)
     }
   }
 }

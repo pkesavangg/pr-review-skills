@@ -20,6 +20,7 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.intl.Locale
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.toUpperCase
+import androidx.compose.ui.unit.Dp
 import com.dmdbrands.gurus.weight.features.common.enums.AppSpacing
 import com.dmdbrands.gurus.weight.features.common.strings.AppPopupStrings
 import com.dmdbrands.gurus.weight.resources.AppIcons
@@ -79,93 +80,128 @@ fun AppPopup(
         ) {
             // Image (if any)
             imageType?.let { imgType ->
-                when (imgType) {
-                    is AppPopupImageType.FullImage -> {
-                        Image(
-                            painter = painterResource(imgType.image),
-                            contentDescription = null,
-                            contentScale = ContentScale.Crop,
-                            modifier =
-                                Modifier
-                                    .fillMaxWidth()
-                                    .background(MeTheme.colorScheme.utility)
-                                    .height(AppSpacing.Modal.Base.ImageHeight),
-                        )
-                    }
-
-                    is AppPopupImageType.DefaultImage -> {
-                        Spacer(Modifier.height(MeTheme.spacing.lg + MeTheme.spacing.md))
-                        Image(
-                            painter = painterResource(imgType.image),
-                            contentDescription = null,
-                        )
-                    }
-
-                    is AppPopupImageType.CustomImage -> {
-                        Spacer(Modifier.height(MeTheme.spacing.lg + MeTheme.spacing.md))
-                        imgType.image()
-                    }
-                }
+                AppPopupImage(imgType)
             }
 
             val topPadding = if (imageType == null) MeTheme.spacing.lg + MeTheme.spacing.md else MeTheme.spacing.md
 
-            Column(
+            AppPopupContent(
+                topPadding = topPadding,
+                heading = heading,
+                supportingText = supportingText,
+                subHeading = subHeading,
+                onPrimaryAction = onPrimaryAction,
+                onSecondaryAction = onSecondaryAction,
+                primaryLabel = primaryLabel,
+                secondaryLabel = secondaryLabel,
+                content = content,
+            )
+        }
+        AppPopupCloseButton(onClose = onClose)
+    }
+}
+
+@Composable
+private fun AppPopupImage(imgType: AppPopupImageType) {
+    when (imgType) {
+        is AppPopupImageType.FullImage -> {
+            Image(
+                painter = painterResource(imgType.image),
+                contentDescription = null,
+                contentScale = ContentScale.Crop,
                 modifier =
                     Modifier
-                        .padding(
-                            top = topPadding,
-                            bottom = MeTheme.spacing.md,
-                            start = MeTheme.spacing.lg,
-                            end = MeTheme.spacing.lg,
-                        ).fillMaxWidth(),
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(MeTheme.spacing.sm),
-            ) {
-                subHeading?.let {
-                    AppText(
-                        it.toUpperCase(Locale.current),
-                        TextType.SubHeading,
-                        textAlign = TextAlign.Center,
-                    )
-                }
-                heading?.let {
-                    AppText(heading, TextType.Title, textAlign = TextAlign.Center)
-                }
-                supportingText?.let {
-                    AppText(supportingText, TextType.Body, textAlign = TextAlign.Center)
-                }
-
-                content?.let {
-                    content()
-                }
-
-                if (onPrimaryAction != null || onSecondaryAction != null) {
-                    Spacer(Modifier.height(MeTheme.spacing.lg))
-                    AppPopupActions(
-                        primaryLabel = primaryLabel,
-                        secondaryLabel = secondaryLabel,
-                        onPrimaryAction = onPrimaryAction ?: {},
-                        onSecondaryAction = onSecondaryAction ?: {},
-                    )
-                }
-            }
+                        .fillMaxWidth()
+                        .background(MeTheme.colorScheme.utility)
+                        .height(AppSpacing.Modal.Base.ImageHeight),
+            )
         }
-        Box(
-            modifier =
-                Modifier
-                    .fillMaxWidth()
-                    .padding(MeTheme.spacing.md),
-            contentAlignment = Alignment.Center,
+
+        is AppPopupImageType.DefaultImage -> {
+            Spacer(Modifier.height(MeTheme.spacing.lg + MeTheme.spacing.md))
+            Image(
+                painter = painterResource(imgType.image),
+                contentDescription = null,
+            )
+        }
+
+        is AppPopupImageType.CustomImage -> {
+            Spacer(Modifier.height(MeTheme.spacing.lg + MeTheme.spacing.md))
+            imgType.image()
+        }
+    }
+}
+
+@Composable
+private fun AppPopupContent(
+    topPadding: Dp,
+    heading: String?,
+    supportingText: String?,
+    subHeading: String?,
+    onPrimaryAction: (() -> Unit)?,
+    onSecondaryAction: (() -> Unit)?,
+    primaryLabel: String,
+    secondaryLabel: String,
+    content: @Composable (() -> Unit)?,
+) {
+    Column(
+        modifier =
+            Modifier
+                .padding(
+                    top = topPadding,
+                    bottom = MeTheme.spacing.md,
+                    start = MeTheme.spacing.lg,
+                    end = MeTheme.spacing.lg,
+                ).fillMaxWidth(),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(MeTheme.spacing.sm),
+    ) {
+        subHeading?.let {
+            AppText(
+                it.toUpperCase(Locale.current),
+                TextType.SubHeading,
+                textAlign = TextAlign.Center,
+            )
+        }
+        heading?.let {
+            AppText(heading, TextType.Title, textAlign = TextAlign.Center)
+        }
+        supportingText?.let {
+            AppText(supportingText, TextType.Body, textAlign = TextAlign.Center)
+        }
+
+        content?.let {
+            content()
+        }
+
+        if (onPrimaryAction != null || onSecondaryAction != null) {
+            Spacer(Modifier.height(MeTheme.spacing.lg))
+            AppPopupActions(
+                primaryLabel = primaryLabel,
+                secondaryLabel = secondaryLabel,
+                onPrimaryAction = onPrimaryAction ?: {},
+                onSecondaryAction = onSecondaryAction ?: {},
+            )
+        }
+    }
+}
+
+@Composable
+private fun AppPopupCloseButton(onClose: () -> Unit) {
+    Box(
+        modifier =
+            Modifier
+                .fillMaxWidth()
+                .padding(MeTheme.spacing.md),
+        contentAlignment = Alignment.Center,
+    ) {
+        AppIcon(
+            id = AppIcons.Filled.Close,
+            contentDescription = AppPopupStrings.LogoContentDescription,
+            modifier = Modifier.align(Alignment.TopEnd),
+            type = AppIconType.Default,
         ) {
-            AppIcon(
-                id = AppIcons.Filled.Close,
-                contentDescription = AppPopupStrings.LogoContentDescription,
-                modifier = Modifier.align(Alignment.TopEnd),
-                type = AppIconType.Default,
-            ) {
-                onClose()
-            }
+            onClose()
         }
     }
 }

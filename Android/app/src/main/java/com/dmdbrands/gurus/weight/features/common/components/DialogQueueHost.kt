@@ -53,85 +53,102 @@ fun DialogQueueHost(
 
     currentDialog?.let { dialog ->
         when (dialog) {
-            is DialogModel.Alert -> {
-                AppDialog(
-                    title = dialog.title,
-                    body = dialog.message,
-                    confirmAction =
-                        ActionButton(
-                            dialog.dismissText,
-                            action = {
-                                dialog.onDismiss?.invoke()
-                                dialogQueueViewModel.dismissCurrent()
-                            },
-                        ),
-                    properties = DialogProperties(dismissOnBackPress = true, dismissOnClickOutside = false),
-                )
-            }
-
-            is DialogModel.Confirm -> {
-                AppDialog(
-                    title = dialog.title,
-                    body = dialog.message,
-                    primaryActionType = dialog.primaryActionType,
-                    confirmAction =
-                        ActionButton(dialog.confirmText) {
-                            dialog.onConfirm?.let { it() }
-                            dialogQueueViewModel.dismissCurrent()
-                        },
-                    dismissAction =
-                        ActionButton(dialog.cancelText) {
-                            dialog.onDismiss?.let { it() }
-                            dialog.onCancel?.invoke()
-                            dialogQueueViewModel.dismissCurrent()
-                        },
-                    dismissOnBackPress = ActionButton(dialog.cancelText) {
-                      dialog.onDismiss?.let { it() }
-                    },
-                    properties = DialogProperties(dismissOnBackPress = true, dismissOnClickOutside = false),
-                )
-            }
-
-            is DialogModel.Custom -> {
-                if (customDialogContent != null) {
-                    // Use ModalDialog for Custom dialogs to get backdrop support
-                    ModalDialog(
-                        onDismiss = {
-                            dialog.onDismiss?.let { it() }
-                            dialogQueueViewModel.dismissCurrent()
-                        },
-                        dismissOnBackPress = dialog.dismissOnBackPress,
-                        dismissOnClickOutside = dialog.dismissOnClickOutside,
-                    ) {
-                        customDialogContent(
-                            dialog,
-                        )
-                    }
-                } else {
-                    // Fallback: treat as alert
-                    AlertDialog(
-                        onDismissRequest = {
-                            dialog.onDismiss?.let { it() }
-                            dialogQueueViewModel.dismissCurrent()
-                        },
-                        title = { Text(dialog.contentKey.toString()) },
-                        text = { Text("Custom dialog: ${dialog.params}") },
-                        confirmButton = {
-                            Button(
-                                onClick = {
-                                    dialogQueueViewModel.dismissCurrent()
-                                },
-                            ) {
-                                Text("OK")
-                            }
-                        },
-                        properties = DialogProperties(
-                            dismissOnBackPress = dialog.dismissOnBackPress,
-                            dismissOnClickOutside = dialog.dismissOnClickOutside,
-                        ),
-                    )
-                }
-            }
+            is DialogModel.Alert -> AlertDialogContent(dialog, dialogQueueViewModel)
+            is DialogModel.Confirm -> ConfirmDialogContent(dialog, dialogQueueViewModel)
+            is DialogModel.Custom -> CustomDialogContent(dialog, dialogQueueViewModel, customDialogContent)
         }
+    }
+}
+
+@Composable
+private fun AlertDialogContent(
+    dialog: DialogModel.Alert,
+    dialogQueueViewModel: DialogQueueViewModel,
+) {
+    AppDialog(
+        title = dialog.title,
+        body = dialog.message,
+        confirmAction =
+            ActionButton(
+                dialog.dismissText,
+                action = {
+                    dialog.onDismiss?.invoke()
+                    dialogQueueViewModel.dismissCurrent()
+                },
+            ),
+        properties = DialogProperties(dismissOnBackPress = true, dismissOnClickOutside = false),
+    )
+}
+
+@Composable
+private fun ConfirmDialogContent(
+    dialog: DialogModel.Confirm,
+    dialogQueueViewModel: DialogQueueViewModel,
+) {
+    AppDialog(
+        title = dialog.title,
+        body = dialog.message,
+        primaryActionType = dialog.primaryActionType,
+        confirmAction =
+            ActionButton(dialog.confirmText) {
+                dialog.onConfirm?.let { it() }
+                dialogQueueViewModel.dismissCurrent()
+            },
+        dismissAction =
+            ActionButton(dialog.cancelText) {
+                dialog.onDismiss?.let { it() }
+                dialog.onCancel?.invoke()
+                dialogQueueViewModel.dismissCurrent()
+            },
+        dismissOnBackPress = ActionButton(dialog.cancelText) {
+          dialog.onDismiss?.let { it() }
+        },
+        properties = DialogProperties(dismissOnBackPress = true, dismissOnClickOutside = false),
+    )
+}
+
+@Composable
+private fun CustomDialogContent(
+    dialog: DialogModel.Custom,
+    dialogQueueViewModel: DialogQueueViewModel,
+    customDialogContent: (@Composable (DialogModel.Custom) -> Unit)?,
+) {
+    if (customDialogContent != null) {
+        // Use ModalDialog for Custom dialogs to get backdrop support
+        ModalDialog(
+            onDismiss = {
+                dialog.onDismiss?.let { it() }
+                dialogQueueViewModel.dismissCurrent()
+            },
+            dismissOnBackPress = dialog.dismissOnBackPress,
+            dismissOnClickOutside = dialog.dismissOnClickOutside,
+        ) {
+            customDialogContent(
+                dialog,
+            )
+        }
+    } else {
+        // Fallback: treat as alert
+        AlertDialog(
+            onDismissRequest = {
+                dialog.onDismiss?.let { it() }
+                dialogQueueViewModel.dismissCurrent()
+            },
+            title = { Text(dialog.contentKey.toString()) },
+            text = { Text("Custom dialog: ${dialog.params}") },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        dialogQueueViewModel.dismissCurrent()
+                    },
+                ) {
+                    Text("OK")
+                }
+            },
+            properties = DialogProperties(
+                dismissOnBackPress = dialog.dismissOnBackPress,
+                dismissOnClickOutside = dialog.dismissOnClickOutside,
+            ),
+        )
     }
 }

@@ -39,39 +39,11 @@ class DecimalInputVisualTransformation(
                 ""
             }
 
-            val formattedText = buildString {
-                if (integerPart.isEmpty() && fractionalPart.isNotEmpty()) {
-                    append('0')
-                } else {
-                    append(integerPart)
-                }
-                if (decimalDigits > 0 && fractionalPart.isNotEmpty()) {
-                    append('.')
-                    append(fractionalPart)
-                } else if (decimalDigits > 0 && integerPart.isNotEmpty() && originalText.contains(".")) {
-                    append('.')
-                    append("0".repeat(decimalDigits))
-                } else if (decimalDigits > 0 && integerPart.isEmpty() && fractionalPart.isEmpty()) {
-                    append('0')
-                    append('.')
-                    append("0".repeat(decimalDigits))
-                }
-            }
+            val formattedText = buildFormattedText(integerPart, fractionalPart, originalText)
 
             // Handle special cases more safely
-            val finalTextToShow = when {
-                digitsOnly.isEmpty() -> ""
-                digitsOnly == "0".repeat(digitsOnly.length) && integerPartLength == 0 && fractionalPartLength <= decimalDigits -> {
-                    buildString {
-                        append("0.")
-                        val zerosNeeded = max(0, decimalDigits - digitsOnly.length)
-                        append("0".repeat(zerosNeeded))
-                        val remainingDigits = digitsOnly.substring(max(0, digitsOnly.length - decimalDigits))
-                        append(remainingDigits)
-                    }.removeSuffix(".")
-                }
-                else -> formattedText
-            }
+            val finalTextToShow =
+                buildFinalText(digitsOnly, integerPartLength, fractionalPartLength, formattedText)
 
             val offsetMapping = createSafeOffsetMapping(originalText, finalTextToShow, integerPartLength, fractionalPart)
 
@@ -83,6 +55,48 @@ class DecimalInputVisualTransformation(
             // Fallback to identity transformation if anything goes wrong
             TransformedText(text, OffsetMapping.Identity)
         }
+    }
+
+    private fun buildFormattedText(
+        integerPart: String,
+        fractionalPart: String,
+        originalText: String
+    ): String = buildString {
+        if (integerPart.isEmpty() && fractionalPart.isNotEmpty()) {
+            append('0')
+        } else {
+            append(integerPart)
+        }
+        if (decimalDigits > 0 && fractionalPart.isNotEmpty()) {
+            append('.')
+            append(fractionalPart)
+        } else if (decimalDigits > 0 && integerPart.isNotEmpty() && originalText.contains(".")) {
+            append('.')
+            append("0".repeat(decimalDigits))
+        } else if (decimalDigits > 0 && integerPart.isEmpty() && fractionalPart.isEmpty()) {
+            append('0')
+            append('.')
+            append("0".repeat(decimalDigits))
+        }
+    }
+
+    private fun buildFinalText(
+        digitsOnly: String,
+        integerPartLength: Int,
+        fractionalPartLength: Int,
+        formattedText: String
+    ): String = when {
+        digitsOnly.isEmpty() -> ""
+        digitsOnly == "0".repeat(digitsOnly.length) && integerPartLength == 0 && fractionalPartLength <= decimalDigits -> {
+            buildString {
+                append("0.")
+                val zerosNeeded = max(0, decimalDigits - digitsOnly.length)
+                append("0".repeat(zerosNeeded))
+                val remainingDigits = digitsOnly.substring(max(0, digitsOnly.length - decimalDigits))
+                append(remainingDigits)
+            }.removeSuffix(".")
+        }
+        else -> formattedText
     }
 
     private fun createSafeOffsetMapping(

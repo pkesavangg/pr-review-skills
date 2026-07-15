@@ -57,64 +57,85 @@ fun PagerBottomAppBar(
     trailingContent: @Composable () -> Unit,
     content: @Composable (Modifier) -> Unit,
 ) {
-    val insets = WindowInsets.ime.union(WindowInsets.navigationBars)
-    Scaffold(
-        modifier = Modifier.fillMaxSize(),
-        containerColor = containerColor,
-        bottomBar = {
-          if (isBottomBarVisible) {
-            BottomAppBar(
-              modifier =
-                Modifier
-                  .fillMaxWidth()
-                  .consumeWindowInsets(insets),
-              containerColor = containerColor,
-              windowInsets = insets,
-            ) {
-              val buttonArrangement = when {
-                shouldCenterMiddleContent && hasMiddleContentOnly -> Arrangement.Center
-                shouldCenterMiddleContent -> Arrangement.SpaceBetween
-                else -> Arrangement.Start
-              }
-              Row(
-                modifier =
-                  Modifier
-                    .fillMaxWidth()
-                    .padding(MeTheme.spacing.sm),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = buttonArrangement,
-              ) {
-                leadingContent()
-                if (!shouldCenterMiddleContent) {
-                  Spacer(modifier = Modifier.weight(1f))
-                }
-                middleContent()
-                if (!shouldCenterMiddleContent) {
-                  Spacer(modifier = Modifier.width(MeTheme.spacing.xs))
-                }
-                trailingContent()
-              }
-            }
-          }
-        },
-        contentWindowInsets = WindowInsets(0, 0, 0, 0),
-    ) { paddingValues ->
-        Column(
-            modifier = Modifier
-              .padding(paddingValues)
-              .then(modifier),
-        ) {
-            content(
-                Modifier
-                  .padding(
-                    WindowInsets.safeDrawing
-                      .only(WindowInsetsSides.Horizontal)
-                      .asPaddingValues(),
-                  )
-                  .background(containerColor),
-            )
-        }
+  val insets = WindowInsets.ime.union(WindowInsets.navigationBars)
+  Scaffold(
+    modifier = Modifier.fillMaxSize(),
+    containerColor = containerColor,
+    bottomBar = {
+      if (isBottomBarVisible) {
+        PagerBottomBar(
+          containerColor = containerColor,
+          insets = insets,
+          shouldCenterMiddleContent = shouldCenterMiddleContent,
+          hasMiddleContentOnly = hasMiddleContentOnly,
+          leadingContent = leadingContent,
+          middleContent = middleContent,
+          trailingContent = trailingContent,
+        )
+      }
+    },
+    contentWindowInsets = WindowInsets(0, 0, 0, 0),
+  ) { paddingValues ->
+    Column(
+      modifier = Modifier
+        .padding(paddingValues)
+        .then(modifier),
+    ) {
+      content(
+        Modifier
+          .padding(
+            WindowInsets.safeDrawing
+              .only(WindowInsetsSides.Horizontal)
+              .asPaddingValues(),
+          )
+          .background(containerColor),
+      )
     }
+  }
+}
+
+@Composable
+private fun PagerBottomBar(
+  containerColor: Color,
+  insets: WindowInsets,
+  shouldCenterMiddleContent: Boolean,
+  hasMiddleContentOnly: Boolean,
+  leadingContent: @Composable () -> Unit,
+  middleContent: @Composable () -> Unit,
+  trailingContent: @Composable () -> Unit,
+) {
+  BottomAppBar(
+    modifier =
+      Modifier
+        .fillMaxWidth()
+        .consumeWindowInsets(insets),
+    containerColor = containerColor,
+    windowInsets = insets,
+  ) {
+    val buttonArrangement = when {
+      shouldCenterMiddleContent && hasMiddleContentOnly -> Arrangement.Center
+      shouldCenterMiddleContent -> Arrangement.SpaceBetween
+      else -> Arrangement.Start
+    }
+    Row(
+      modifier =
+        Modifier
+          .fillMaxWidth()
+          .padding(MeTheme.spacing.sm),
+      verticalAlignment = Alignment.CenterVertically,
+      horizontalArrangement = buttonArrangement,
+    ) {
+      leadingContent()
+      if (!shouldCenterMiddleContent) {
+        Spacer(modifier = Modifier.weight(1f))
+      }
+      middleContent()
+      if (!shouldCenterMiddleContent) {
+        Spacer(modifier = Modifier.width(MeTheme.spacing.xs))
+      }
+      trailingContent()
+    }
+  }
 }
 
 @PreviewTheme

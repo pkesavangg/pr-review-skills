@@ -23,6 +23,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.clipToBounds
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.Dp
@@ -111,105 +112,189 @@ private fun SelectButtonItem(
   val borderColor = colorScheme.iconPrimary
   val contentColor = if (isSelected) colorScheme.inverseAction else colorScheme.iconPrimary
   when (val displayValue = item.displayValue) {
-    is SelectButtonDisplayValue.Text -> {
-      Box(
-        modifier = modifier
-          .size(100.dp)
-          .clip(CircleShape)
-          .background(backgroundColor)
-          .border(
-            width = 2.dp,
-            color = borderColor,
-            shape = CircleShape,
-          )
-          .clickable(enabled = isSelectable) {
-            onItemSelected?.invoke(item.emitValue)
-          }
-          .padding(spacing.sm),
-        contentAlignment = Alignment.Center,
-      ) {
-        val displayText = if (displayValue.prefix.isNotEmpty()) {
-          "${displayValue.prefix}${displayValue.text}"
-        } else {
-          displayValue.text
-        }
-        Text(
-          text = displayText,
-          color = contentColor,
-          style = typography.button1,
-        )
-      }
-    }
+    is SelectButtonDisplayValue.Text ->
+      SelectButtonTextItem(
+        displayValue = displayValue,
+        backgroundColor = backgroundColor,
+        borderColor = borderColor,
+        contentColor = contentColor,
+        isSelectable = isSelectable,
+        item = item,
+        modifier = modifier,
+        onItemSelected = onItemSelected,
+      )
 
-    is SelectButtonDisplayValue.Image -> {
-      val targetAlpha = if (isSelected) SELECTED_ALPHA else UNSELECTED_ALPHA
-      val animatedAlpha = animateFloatAsState(targetValue = targetAlpha, label = "userAlpha")
-      Box(
-        modifier = modifier
-          .size(width = imageWidth, height = imageHeight)
-          .alpha(animatedAlpha.value)
-          .clipToBounds()
-          .clickable(
-            enabled = isSelectable,
-            indication = null,
-            interactionSource = remember { MutableInteractionSource() },
-          ) { onItemSelected?.invoke(item.emitValue) },
-        contentAlignment = Alignment.Center,
-      ) {
-        Image(
-          painter = painterResource(id = displayValue.imageResId),
-          contentDescription = null,
-          modifier = Modifier.fillMaxSize(),
-          contentScale = ContentScale.Fit,
-        )
-      }
-    }
+    is SelectButtonDisplayValue.Image ->
+      SelectButtonImageItem(
+        displayValue = displayValue,
+        isSelected = isSelected,
+        isSelectable = isSelectable,
+        item = item,
+        imageWidth = imageWidth,
+        imageHeight = imageHeight,
+        modifier = modifier,
+        onItemSelected = onItemSelected,
+      )
 
-    is SelectButtonDisplayValue.Gif -> {
-      Box(
-        modifier = modifier
-          .size(width = imageWidth, height = imageHeight)
-          .clipToBounds()
-          .clickable(
-            enabled = isSelectable,
-            indication = null,
-            interactionSource = remember { MutableInteractionSource() },
-          ) { onItemSelected?.invoke(item.emitValue) },
-        contentAlignment = Alignment.Center,
-      ) {
-        AppGifImage(
-          id = displayValue.imageResId,
-          modifier = Modifier.fillMaxSize(),
-        )
-      }
-    }
+    is SelectButtonDisplayValue.Gif ->
+      SelectButtonGifItem(
+        displayValue = displayValue,
+        isSelectable = isSelectable,
+        item = item,
+        imageWidth = imageWidth,
+        imageHeight = imageHeight,
+        modifier = modifier,
+        onItemSelected = onItemSelected,
+      )
 
-    is SelectButtonDisplayValue.ErrorCode -> {
-      val errorImageResId: Int? =
-        if (sku == "0384") {
-          ErrorImageHelper.getErrorImageDrawableRectangle(displayValue.errorCode, isSelected)
-        } else {
-          ErrorImageHelper.getErrorImageDrawable(displayValue.errorCode, isSelected)
-        }
-      if (errorImageResId != null) {
-        Image(
-          painter = painterResource(id = errorImageResId),
-          contentDescription = "Error ${displayValue.errorCode}",
-          modifier = modifier
-            .size(100.dp)
-            .clickable(
-              enabled = isSelectable,
-              indication = null,
-              interactionSource =
-                remember {
-                  MutableInteractionSource()
-                },
-            ) {
-              onItemSelected?.invoke(item.emitValue)
+    is SelectButtonDisplayValue.ErrorCode ->
+      SelectButtonErrorItem(
+        displayValue = displayValue,
+        isSelected = isSelected,
+        isSelectable = isSelectable,
+        item = item,
+        sku = sku,
+        modifier = modifier,
+        onItemSelected = onItemSelected,
+      )
+  }
+}
+
+@Composable
+private fun SelectButtonTextItem(
+  displayValue: SelectButtonDisplayValue.Text,
+  backgroundColor: Color,
+  borderColor: Color,
+  contentColor: Color,
+  isSelectable: Boolean,
+  item: SelectButtonItem,
+  modifier: Modifier = Modifier,
+  onItemSelected: ((String) -> Unit)?,
+) {
+  Box(
+    modifier = modifier
+      .size(100.dp)
+      .clip(CircleShape)
+      .background(backgroundColor)
+      .border(
+        width = 2.dp,
+        color = borderColor,
+        shape = CircleShape,
+      )
+      .clickable(enabled = isSelectable) {
+        onItemSelected?.invoke(item.emitValue)
+      }
+      .padding(spacing.sm),
+    contentAlignment = Alignment.Center,
+  ) {
+    val displayText = if (displayValue.prefix.isNotEmpty()) {
+      "${displayValue.prefix}${displayValue.text}"
+    } else {
+      displayValue.text
+    }
+    Text(
+      text = displayText,
+      color = contentColor,
+      style = typography.button1,
+    )
+  }
+}
+
+@Composable
+private fun SelectButtonImageItem(
+  displayValue: SelectButtonDisplayValue.Image,
+  isSelected: Boolean,
+  isSelectable: Boolean,
+  item: SelectButtonItem,
+  imageWidth: Dp,
+  imageHeight: Dp,
+  modifier: Modifier = Modifier,
+  onItemSelected: ((String) -> Unit)?,
+) {
+  val targetAlpha = if (isSelected) SELECTED_ALPHA else UNSELECTED_ALPHA
+  val animatedAlpha = animateFloatAsState(targetValue = targetAlpha, label = "userAlpha")
+  Box(
+    modifier = modifier
+      .size(width = imageWidth, height = imageHeight)
+      .alpha(animatedAlpha.value)
+      .clipToBounds()
+      .clickable(
+        enabled = isSelectable,
+        indication = null,
+        interactionSource = remember { MutableInteractionSource() },
+      ) { onItemSelected?.invoke(item.emitValue) },
+    contentAlignment = Alignment.Center,
+  ) {
+    Image(
+      painter = painterResource(id = displayValue.imageResId),
+      contentDescription = null,
+      modifier = Modifier.fillMaxSize(),
+      contentScale = ContentScale.Fit,
+    )
+  }
+}
+
+@Composable
+private fun SelectButtonGifItem(
+  displayValue: SelectButtonDisplayValue.Gif,
+  isSelectable: Boolean,
+  item: SelectButtonItem,
+  imageWidth: Dp,
+  imageHeight: Dp,
+  modifier: Modifier = Modifier,
+  onItemSelected: ((String) -> Unit)?,
+) {
+  Box(
+    modifier = modifier
+      .size(width = imageWidth, height = imageHeight)
+      .clipToBounds()
+      .clickable(
+        enabled = isSelectable,
+        indication = null,
+        interactionSource = remember { MutableInteractionSource() },
+      ) { onItemSelected?.invoke(item.emitValue) },
+    contentAlignment = Alignment.Center,
+  ) {
+    AppGifImage(
+      id = displayValue.imageResId,
+      modifier = Modifier.fillMaxSize(),
+    )
+  }
+}
+
+@Composable
+private fun SelectButtonErrorItem(
+  displayValue: SelectButtonDisplayValue.ErrorCode,
+  isSelected: Boolean,
+  isSelectable: Boolean,
+  item: SelectButtonItem,
+  sku: String?,
+  modifier: Modifier = Modifier,
+  onItemSelected: ((String) -> Unit)?,
+) {
+  val errorImageResId: Int? =
+    if (sku == "0384") {
+      ErrorImageHelper.getErrorImageDrawableRectangle(displayValue.errorCode, isSelected)
+    } else {
+      ErrorImageHelper.getErrorImageDrawable(displayValue.errorCode, isSelected)
+    }
+  if (errorImageResId != null) {
+    Image(
+      painter = painterResource(id = errorImageResId),
+      contentDescription = "Error ${displayValue.errorCode}",
+      modifier = modifier
+        .size(100.dp)
+        .clickable(
+          enabled = isSelectable,
+          indication = null,
+          interactionSource =
+            remember {
+              MutableInteractionSource()
             },
-        )
-      }
-    }
+        ) {
+          onItemSelected?.invoke(item.emitValue)
+        },
+    )
   }
 }
 

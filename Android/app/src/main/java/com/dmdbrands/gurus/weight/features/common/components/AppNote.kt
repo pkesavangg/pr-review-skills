@@ -57,54 +57,17 @@ fun AppNote(
           .fillMaxWidth()
           .padding(spacing.sm),
     ) {
-      Row(
-        modifier = Modifier.fillMaxWidth(),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(spacing.xs),
-      ) {
-        // Icon
-        if (icon != null) {
-          AppIcon(
-            id = icon,
-            contentDescription = title ?: "Note",
-            modifier = Modifier.size(24.dp),
-            type = iconType,
-          )
-        }
-
-        // Title or message
-        Column(
-          modifier = Modifier.weight(1f),
-          horizontalAlignment = if (isCenter) Alignment.CenterHorizontally else Alignment.Start,
-          verticalArrangement = Arrangement.Center,
-        ) {
-          if (title != null) {
-            AppText(
-              text = title,
-              textType = TextType.NoteTitle,
-            )
-          } else {
-            AppText(
-              text = message,
-              annotatedText = if (showNote) AppNoteStrings.NotePrefix else null,
-              annotationPosition = AnnotationPosition.Start,
-              spanStyle = if (showNote) SpanStyle(fontWeight = FontWeight.Bold) else null,
-              textType = messageType,
-            )
-          }
-        }
-
-        // Inline button
-        if (buttonText != null && onButtonClick != null) {
-          AppButton(
-            label = buttonText,
-            type = ButtonType.InlineTextPrimary,
-            size = ButtonSize.Small,
-            onClick = onButtonClick,
-            modifier = Modifier.align(Alignment.CenterVertically),
-          )
-        }
-      }
+      AppNoteRow(
+        message = message,
+        showNote = showNote,
+        title = title,
+        icon = icon,
+        iconType = iconType,
+        messageType = messageType,
+        isCenter = isCenter,
+        buttonText = buttonText,
+        onButtonClick = onButtonClick,
+      )
 
       // Optional second-line message (only if title is given)
       if (title != null) {
@@ -116,6 +79,71 @@ fun AppNote(
           textType = messageType,
         )
       }
+    }
+  }
+}
+
+/**
+ * Header row of [AppNote]: leading icon, the title-or-message text column, and an
+ * optional inline button.
+ */
+@Composable
+private fun AppNoteRow(
+  message: String,
+  showNote: Boolean,
+  title: String?,
+  icon: Int?,
+  iconType: AppIconType,
+  messageType: TextType,
+  isCenter: Boolean,
+  buttonText: String?,
+  onButtonClick: (() -> Unit)?,
+) {
+  Row(
+    modifier = Modifier.fillMaxWidth(),
+    verticalAlignment = Alignment.CenterVertically,
+    horizontalArrangement = Arrangement.spacedBy(spacing.xs),
+  ) {
+    // Icon
+    if (icon != null) {
+      AppIcon(
+        id = icon,
+        contentDescription = title ?: "Note",
+        modifier = Modifier.size(24.dp),
+        type = iconType,
+      )
+    }
+    // Title or message
+    Column(
+      modifier = Modifier.weight(1f),
+      horizontalAlignment = if (isCenter) Alignment.CenterHorizontally else Alignment.Start,
+      verticalArrangement = Arrangement.Center,
+    ) {
+      if (title != null) {
+        AppText(
+          text = title,
+          textType = TextType.NoteTitle,
+        )
+      } else {
+        AppText(
+          text = message,
+          annotatedText = if (showNote) AppNoteStrings.NotePrefix else null,
+          annotationPosition = AnnotationPosition.Start,
+          spanStyle = if (showNote) SpanStyle(fontWeight = FontWeight.Bold) else null,
+          textType = messageType,
+        )
+      }
+    }
+
+    // Inline button
+    if (buttonText != null && onButtonClick != null) {
+      AppButton(
+        label = buttonText,
+        type = ButtonType.InlineTextPrimary,
+        size = ButtonSize.Small,
+        onClick = onButtonClick,
+        modifier = Modifier.align(Alignment.CenterVertically),
+      )
     }
   }
 }

@@ -244,7 +244,6 @@ object GraphUtil {
     minX: Long,
     maxX: Long,
   ): GraphLine {
-
     if (metricGraphLine.points.isEmpty()) {
       return metricGraphLine
     }
@@ -254,56 +253,7 @@ object GraphUtil {
       return metricGraphLine
     }
 
-    // Get all metric values (including previous/next for range calculation)
-    val allMetricValues =
-      metricGraphLine.points.map { it.y.value.toFloat().toDoublePreserve() }.filter { it.isFinite() }
-
-    if (allMetricValues.isEmpty()) {
-      return metricGraphLine
-    }
-
-    // Get visible and bracketing points for range calculation
-    val visiblePoints = metricGraphLine.points.filter {
-      it.x.value.toLong() in minX..maxX
-    }
-    val previousPoint = getPreviousAvailablePoint(metricGraphLine, minX)?.toLong()?.toDouble()
-    val nextPoint = getImmediateAvailablePoint(metricGraphLine, maxX)?.toLong()?.toDouble()
-
-    val metricValuesForRange = buildList {
-      previousPoint?.let { add(it) }
-      addAll(visiblePoints.mapNotNull { (it.y.value as? Number)?.toDouble() })
-      nextPoint?.let { add(it) }
-    }
-
-    if (metricValuesForRange.isEmpty()) {
-      return metricGraphLine
-    }
-
-    // Calculate metric range
-    val metricMin = metricValuesForRange.minOrNull() ?: return metricGraphLine
-    val metricMax = metricValuesForRange.maxOrNull() ?: return metricGraphLine
-
-    val metricRange = metricMax - metricMin
-    // Handle single point or minimal variation (matching iOS: metricRange < 0.01)
-    val isSingleMetricPoint = metricRange < 0.01
-    val effectiveMetricMin: Double
-    val effectiveMetricMax: Double
-
-    if (isSingleMetricPoint) {
-      val padding = 1.0
-      effectiveMetricMin = metricMin - padding
-      effectiveMetricMax = metricMax + padding
-    } else {
-      // Add 5% padding (matching iOS implementation)
-      val padding = metricRange * 0.05
-      effectiveMetricMin = metricMin - padding
-      effectiveMetricMax = metricMax + padding
-    }
-
-    val metricRangeSpan = effectiveMetricMax - effectiveMetricMin
-    if (metricRangeSpan <= 0) {
-      return metricGraphLine
-    }
+    val range = effectiveMetricRange(metricGraphLine, minX, maxX) ?: return metricGraphLine
 
     val yAxisSpan = weightMax - weightMin
     val epsilon = yAxisSpan * 0.001 // 0.1% margin for safety bounds
@@ -314,59 +264,17 @@ object GraphUtil {
     val useFallback = safeFallbackValue.isFinite()
 
     // Normalize each point
-    val normalizedPoints = metricGraphLine.points.mapIndexedNotNull { index, point ->
-      val metricValue = (point.y.value as? Number)?.toDouble()
-
-      // Skip points with null or non-finite metric values (matching iOS: skip missing/invalid values)
-      if (metricValue == null || !metricValue.isFinite()) {
-        return@mapIndexedNotNull null
-      }
-
-      val normalizedPoint = if (isSingleMetricPoint) {
-        val positionInRange = weightMin + (yAxisSpan * 0.7)
-        // Validate position is finite before using (matching iOS guard checks)
-        if (positionInRange.isFinite()) {
-          point.copy(
-            y = point.y.copy(value = positionInRange),
-          )
-        } else if (useFallback) {
-          // Fallback to middle of weight range (validated above)
-          point.copy(
-            y = point.y.copy(value = safeFallbackValue),
-          )
-        } else {
-          // If fallback is also invalid, skip this point entirely
-          null
-        }
-      } else {
-        // Clamp value to effective range
-        val clampedValue = maxOf(effectiveMetricMin, minOf(effectiveMetricMax, metricValue))
-
-        // Normalize to weight range
-        val normalizedValue = weightMin + (clampedValue - effectiveMetricMin) *
-          yAxisSpan / metricRangeSpan
-
-        // Apply safety bounds (keep slightly inside bounds)
-        val safeMin = weightMin + epsilon
-        val safeMax = weightMax - epsilon
-        val finalValue = maxOf(safeMin, minOf(safeMax, normalizedValue))
-
-        // Ensure finite value (matching iOS guard checks)
-        if (finalValue.isFinite()) {
-          point.copy(
-            y = point.y.copy(value = finalValue),
-          )
-        } else if (useFallback) {
-          // Fallback to middle of weight range (validated above)
-          point.copy(
-            y = point.y.copy(value = safeFallbackValue),
-          )
-        } else {
-          // If fallback is also invalid, skip this point entirely
-          null
-        }
-      }
-      normalizedPoint
+    val normalizedPoints = metricGraphLine.points.mapIndexedNotNull { _, point ->
+      normalizeMetricPoint(
+        point = point,
+        range = range,
+        weightMin = weightMin,
+        weightMax = weightMax,
+        yAxisSpan = yAxisSpan,
+        epsilon = epsilon,
+        safeFallbackValue = safeFallbackValue,
+        useFallback = useFallback,
+      )
     }
 
     return metricGraphLine.copy(points = normalizedPoints)
@@ -389,44 +297,7 @@ object GraphUtil {
     }
 
     val yAxisSpan = weightMax - weightMin
-
-    // Filter visible + bracketing entries for metric range
-    val visibleY = mutableListOf<Double>()
-    var prevY: Double? = null
-    var nextY: Double? = null
-    for (entry in series) {
-      val x = entry.x.toLong()
-      val y = entry.y
-      if (!y.isFinite()) continue
-      when {
-        x < minX -> prevY = y
-        x > maxX -> { if (nextY == null) nextY = y }
-        else -> visibleY.add(y)
-      }
-    }
-    val metricValuesForRange = buildList {
-      prevY?.let { add(it) }
-      addAll(visibleY)
-      nextY?.let { add(it) }
-    }
-    if (metricValuesForRange.isEmpty()) return null
-
-    val metricMin = metricValuesForRange.min()
-    val metricMax = metricValuesForRange.max()
-    val metricRange = metricMax - metricMin
-    val isSingle = metricRange < 0.01
-    val effMin: Double
-    val effMax: Double
-    if (isSingle) {
-      effMin = metricMin - 1.0
-      effMax = metricMax + 1.0
-    } else {
-      val padding = metricRange * 0.05
-      effMin = metricMin - padding
-      effMax = metricMax + padding
-    }
-    val metricSpan = effMax - effMin
-    if (metricSpan <= 0) return null
+    val range = metricEntryRange(series, minX, maxX) ?: return null
 
     val epsilon = yAxisSpan * 0.001
     val safeMin = weightMin + epsilon
@@ -440,11 +311,11 @@ object GraphUtil {
         result[i] = if (fallback.isFinite()) fallback else weightMin
         continue
       }
-      if (isSingle) {
+      if (range.isSingle) {
         result[i] = weightMin + yAxisSpan * 0.7
       } else {
-        val clamped = y.coerceIn(effMin, effMax)
-        val normalized = weightMin + (clamped - effMin) * yAxisSpan / metricSpan
+        val clamped = y.coerceIn(range.effectiveMin, range.effectiveMax)
+        val normalized = weightMin + (clamped - range.effectiveMin) * yAxisSpan / range.span
         result[i] = normalized.coerceIn(safeMin, safeMax)
       }
     }
@@ -893,4 +764,187 @@ object GraphUtil {
     }
     return Range(start.toEpochMilli(), end.toEpochMilli())
   }
+}
+
+/** Padded, normalized metric bounds shared by the metric-overlay normalizers. */
+private data class MetricRange(
+  val isSingle: Boolean,
+  val effectiveMin: Double,
+  val effectiveMax: Double,
+  val span: Double,
+)
+
+/**
+ * Effective (padded) metric range over the visible + bracketing points of [metricGraphLine].
+ * Returns null for any degenerate case (no values / zero-width span), signalling the caller to
+ * leave the line unchanged. Math matches the inlined iOS-style computation exactly.
+ */
+private fun effectiveMetricRange(
+  metricGraphLine: GraphLine,
+  minX: Long,
+  maxX: Long,
+): MetricRange? {
+  // Get all metric values (including previous/next for range calculation)
+  val allMetricValues =
+    metricGraphLine.points.map { it.y.value.toFloat().toDoublePreserve() }.filter { it.isFinite() }
+
+  if (allMetricValues.isEmpty()) {
+    return null
+  }
+
+  // Get visible and bracketing points for range calculation
+  val visiblePoints = metricGraphLine.points.filter {
+    it.x.value.toLong() in minX..maxX
+  }
+  val previousPoint = GraphUtil.getPreviousAvailablePoint(metricGraphLine, minX)?.toLong()?.toDouble()
+  val nextPoint = GraphUtil.getImmediateAvailablePoint(metricGraphLine, maxX)?.toLong()?.toDouble()
+
+  val metricValuesForRange = buildList {
+    previousPoint?.let { add(it) }
+    addAll(visiblePoints.mapNotNull { (it.y.value as? Number)?.toDouble() })
+    nextPoint?.let { add(it) }
+  }
+
+  if (metricValuesForRange.isEmpty()) {
+    return null
+  }
+
+  // Calculate metric range
+  val metricMin = metricValuesForRange.minOrNull() ?: return null
+  val metricMax = metricValuesForRange.maxOrNull() ?: return null
+
+  val metricRange = metricMax - metricMin
+  // Handle single point or minimal variation (matching iOS: metricRange < 0.01)
+  val isSingleMetricPoint = metricRange < 0.01
+  val effectiveMetricMin: Double
+  val effectiveMetricMax: Double
+
+  if (isSingleMetricPoint) {
+    val padding = 1.0
+    effectiveMetricMin = metricMin - padding
+    effectiveMetricMax = metricMax + padding
+  } else {
+    // Add 5% padding (matching iOS implementation)
+    val padding = metricRange * 0.05
+    effectiveMetricMin = metricMin - padding
+    effectiveMetricMax = metricMax + padding
+  }
+
+  val metricRangeSpan = effectiveMetricMax - effectiveMetricMin
+  if (metricRangeSpan <= 0) {
+    return null
+  }
+
+  return MetricRange(isSingleMetricPoint, effectiveMetricMin, effectiveMetricMax, metricRangeSpan)
+}
+
+/**
+ * Normalizes a single [GraphPoint]'s Y value into the weight range using [range].
+ * Returns null to skip a point (missing/non-finite value with no usable fallback).
+ * Math matches the inlined iOS-style computation exactly.
+ */
+private fun normalizeMetricPoint(
+  point: GraphPoint,
+  range: MetricRange,
+  weightMin: Double,
+  weightMax: Double,
+  yAxisSpan: Double,
+  epsilon: Double,
+  safeFallbackValue: Double,
+  useFallback: Boolean,
+): GraphPoint? {
+  val metricValue = (point.y.value as? Number)?.toDouble()
+
+  // Skip points with null or non-finite metric values (matching iOS: skip missing/invalid values)
+  if (metricValue == null || !metricValue.isFinite()) {
+    return null
+  }
+
+  return if (range.isSingle) {
+    val positionInRange = weightMin + (yAxisSpan * 0.7)
+    // Validate position is finite before using (matching iOS guard checks)
+    if (positionInRange.isFinite()) {
+      point.copy(y = point.y.copy(value = positionInRange))
+    } else if (useFallback) {
+      // Fallback to middle of weight range (validated above)
+      point.copy(y = point.y.copy(value = safeFallbackValue))
+    } else {
+      // If fallback is also invalid, skip this point entirely
+      null
+    }
+  } else {
+    // Clamp value to effective range
+    val clampedValue = maxOf(range.effectiveMin, minOf(range.effectiveMax, metricValue))
+
+    // Normalize to weight range
+    val normalizedValue = weightMin + (clampedValue - range.effectiveMin) *
+      yAxisSpan / range.span
+
+    // Apply safety bounds (keep slightly inside bounds)
+    val safeMin = weightMin + epsilon
+    val safeMax = weightMax - epsilon
+    val finalValue = maxOf(safeMin, minOf(safeMax, normalizedValue))
+
+    // Ensure finite value (matching iOS guard checks)
+    if (finalValue.isFinite()) {
+      point.copy(y = point.y.copy(value = finalValue))
+    } else if (useFallback) {
+      // Fallback to middle of weight range (validated above)
+      point.copy(y = point.y.copy(value = safeFallbackValue))
+    } else {
+      // If fallback is also invalid, skip this point entirely
+      null
+    }
+  }
+}
+
+/**
+ * Padded metric range over the visible + bracketing entries of [series].
+ * Returns null when there are no usable values or the span is non-positive.
+ * Math matches the inlined render-time computation exactly.
+ */
+private fun metricEntryRange(
+  series: List<com.patrykandpatrick.vico.compose.cartesian.data.LineCartesianLayerModel.Entry>,
+  minX: Long,
+  maxX: Long,
+): MetricRange? {
+  // Filter visible + bracketing entries for metric range
+  val visibleY = mutableListOf<Double>()
+  var prevY: Double? = null
+  var nextY: Double? = null
+  for (entry in series) {
+    val x = entry.x.toLong()
+    val y = entry.y
+    if (!y.isFinite()) continue
+    when {
+      x < minX -> prevY = y
+      x > maxX -> { if (nextY == null) nextY = y }
+      else -> visibleY.add(y)
+    }
+  }
+  val metricValuesForRange = buildList {
+    prevY?.let { add(it) }
+    addAll(visibleY)
+    nextY?.let { add(it) }
+  }
+  if (metricValuesForRange.isEmpty()) return null
+
+  val metricMin = metricValuesForRange.min()
+  val metricMax = metricValuesForRange.max()
+  val metricRange = metricMax - metricMin
+  val isSingle = metricRange < 0.01
+  val effMin: Double
+  val effMax: Double
+  if (isSingle) {
+    effMin = metricMin - 1.0
+    effMax = metricMax + 1.0
+  } else {
+    val padding = metricRange * 0.05
+    effMin = metricMin - padding
+    effMax = metricMax + padding
+  }
+  val metricSpan = effMax - effMin
+  if (metricSpan <= 0) return null
+
+  return MetricRange(isSingle, effMin, effMax, metricSpan)
 }
