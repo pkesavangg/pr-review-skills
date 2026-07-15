@@ -390,6 +390,68 @@ struct BabyProfileSetupFormTests {
 
         #expect(emissions >= 3)
     }
+
+    // MARK: - refreshDuplicateNameError (shared duplicate-name check)
+
+    @Test("refreshDuplicateNameError: exact match sets duplicate error and returns true")
+    func refreshDuplicate_exactMatch_setsError() {
+        let form = BabyProfileSetupForm()
+        form.name.value = "Aria"
+
+        let isDuplicate = form.refreshDuplicateNameError(against: ["Aria"])
+
+        #expect(isDuplicate == true)
+        #expect(form.duplicateNameError == BabyScaleSetupStrings.BabyProfile.duplicateNameError)
+    }
+
+    @Test("refreshDuplicateNameError: unique name clears error and returns false")
+    func refreshDuplicate_uniqueName_clearsError() {
+        let form = BabyProfileSetupForm()
+        form.duplicateNameError = BabyScaleSetupStrings.BabyProfile.duplicateNameError
+        form.name.value = "Bella"
+
+        let isDuplicate = form.refreshDuplicateNameError(against: ["Aria"])
+
+        #expect(isDuplicate == false)
+        #expect(form.duplicateNameError == nil)
+    }
+
+    @Test("refreshDuplicateNameError: match is case-insensitive")
+    func refreshDuplicate_caseInsensitive() {
+        let form = BabyProfileSetupForm()
+        form.name.value = "aria"
+
+        #expect(form.refreshDuplicateNameError(against: ["ARIA"]) == true)
+    }
+
+    @Test("refreshDuplicateNameError: surrounding whitespace and newlines are ignored")
+    func refreshDuplicate_trimsWhitespaceAndNewlines() {
+        let form = BabyProfileSetupForm()
+        form.name.value = "  Aria\n"
+
+        #expect(form.refreshDuplicateNameError(against: ["Aria"]) == true)
+    }
+
+    @Test("refreshDuplicateNameError: empty/whitespace-only name is never a duplicate")
+    func refreshDuplicate_emptyName_returnsFalse() {
+        let form = BabyProfileSetupForm()
+        form.duplicateNameError = BabyScaleSetupStrings.BabyProfile.duplicateNameError
+        form.name.value = "   "
+
+        let isDuplicate = form.refreshDuplicateNameError(against: ["   ", "Aria"])
+
+        #expect(isDuplicate == false)
+        #expect(form.duplicateNameError == nil)
+    }
+
+    @Test("refreshDuplicateNameError: no other names means no duplicate")
+    func refreshDuplicate_noOtherNames_returnsFalse() {
+        let form = BabyProfileSetupForm()
+        form.name.value = "Aria"
+
+        #expect(form.refreshDuplicateNameError(against: []) == false)
+        #expect(form.duplicateNameError == nil)
+    }
 }
 
 // MARK: - Test String Constants

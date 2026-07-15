@@ -127,7 +127,7 @@ struct SignupScreen: View {
                 selectedIndex: $signupStore.currentStepIndex,
                 views: stepViews
             )
-            .padding(.top, .spacing2XL)
+            .padding(.top, .spacingXL)
             // Footer Buttons
             footerButtons
             
@@ -147,9 +147,9 @@ struct SignupScreen: View {
         }
         .navigationBarBackButtonHidden(true)
         .background(theme.backgroundSecondary)
-        
+        .screenAccessibilityRoot(AccessibilityID.signupScreenRoot)
     }
-    
+
     private var footerButtons: some View {
         Group {
             if signupStore.currentStep == .profileReady {
@@ -232,6 +232,7 @@ struct SignupScreen: View {
                         signupStore.completeSignup()
                     }
                     .accessibilityHint(accLang.accCancelHint)
+                    .appAccessibility(id: AccessibilityID.signupErrorFinishButton)
                     Spacer()
                     ButtonView(
                         text: SignupStrings.SignupErrorStep.tryAgainButton,

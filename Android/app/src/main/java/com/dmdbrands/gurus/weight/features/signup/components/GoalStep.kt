@@ -14,6 +14,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.testTag
+import com.dmdbrands.gurus.weight.core.shared.utilities.testing.TestTags
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.semantics.heading
@@ -125,7 +127,7 @@ fun GoalStep(
           showTrailingIcon = false,
           imeAction = ImeAction.Next,
           nextFocusRequester = goalWeightFocusRequester,
-          testTag = "starting_weight_input",
+          testTag = TestTags.Goal.StartingWeightInput,
           modifier = Modifier.focusRequester(currentWeightFocusRequester),
           enabled = goalTypeControl.value != GoalType.MAINTAIN.value,
           maxLength = 4,
@@ -143,7 +145,7 @@ fun GoalStep(
       showTrailingIcon = false,
       imeAction = ImeAction.Next,
       onImeAction = onNext,
-      testTag = "goal_weight_input",
+      testTag = TestTags.Goal.GoalWeightInput,
       modifier =
         if (shouldShowCurrentWeight) {
           Modifier.focusRequester(goalWeightFocusRequester)
@@ -171,6 +173,7 @@ fun GoalStep(
           type = SegmentButtonType.Scrollable,
           spacedBy = MeTheme.spacing.xs,
           uppercaseLabels = false,
+          modifier = Modifier.testTag(TestTags.Signup.GoalUnitToggle),
         )
       }
     }

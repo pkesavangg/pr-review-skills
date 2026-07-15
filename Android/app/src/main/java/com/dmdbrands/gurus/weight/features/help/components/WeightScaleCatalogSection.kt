@@ -125,7 +125,7 @@ fun WeightScaleCatalogSection(
           modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = MeTheme.spacing.sm),
-          shape = RoundedCornerShape(MeTheme.borderRadius.md),
+          shape = RoundedCornerShape(MeTheme.borderRadius.lg),
           colors = CardDefaults.cardColors(
             containerColor = MeTheme.colorScheme.primaryBackground,
           ),
@@ -135,6 +135,10 @@ fun WeightScaleCatalogSection(
               AppDeviceCard(
                 scale = scale,
                 isSavedScale = false,
+                // Full product name wraps across lines (matches the Figma card structure).
+                wrapSubtitle = true,
+                // White card rows on the #F6F4F1 (secondary) screen background, per the design.
+                containerColor = MeTheme.colorScheme.primaryBackground,
                 onClick = onScaleSelected,
               )
             }

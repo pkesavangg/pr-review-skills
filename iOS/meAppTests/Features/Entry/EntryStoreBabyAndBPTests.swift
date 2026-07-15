@@ -230,6 +230,31 @@ struct EntryStoreBabyAndBPTests {
         #expect(store.isBabyFormValid == true)
     }
 
+    // Relaxed baby-CREATE validation (MOB-1172): a manual baby entry is valid with weight
+    // OR length present — either alone is enough; only a fully-empty form is invalid.
+    @Test("isBabyFormValid: weight-only is valid, length-only is valid, both-empty is invalid")
+    func isBabyFormValidWeightOrLength() {
+        let (store, _, _, _, _) = makeSUT()
+        store.babyWeightUnit = .lbsOz
+        store.babyLengthUnit = .inches
+        store.babyForm.date.value = Date()
+        store.babyForm.time.value = Date()
+
+        // Both empty -> invalid.
+        #expect(store.isBabyFormValid == false)
+
+        // Weight only -> valid.
+        store.babyForm.pounds.value = "8"
+        store.babyForm.ounces.value = "4"
+        #expect(store.isBabyFormValid == true)
+
+        // Length only -> valid.
+        store.babyForm.pounds.value = ""
+        store.babyForm.ounces.value = ""
+        store.babyForm.inches.value = "20"
+        #expect(store.isBabyFormValid == true)
+    }
+
     @Test("babyWeightError reflects the selected weight unit")
     func babyWeightErrorByUnit() {
         let (store, _, _, _, _) = makeSUT()

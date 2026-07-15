@@ -60,7 +60,7 @@ extension BabyScaleSetupStore {
             navigateToStep(.babyAdded)
         } catch {
             LoggerService.shared.log(level: .error, tag: tag, message: "Failed to save baby profile: \(error)")
-            if isDuplicateNameError(error) {
+            if HTTPError.isConflict(error) {
                 babyProfileForm.duplicateNameError = BabyScaleSetupStrings.BabyProfile.duplicateNameError
             } else {
                 scaleSetupError = .profileSaveFailed
@@ -68,13 +68,16 @@ extension BabyScaleSetupStore {
         }
     }
 
-    /// Returns true when the server rejected the request because the baby name is already taken (HTTP 409 Conflict).
-    private func isDuplicateNameError(_ error: Error) -> Bool {
-        switch error as? HTTPError {
-        case .statusCode(409): return true
-        case .apiError(_, let code): return code == 409
-        default: return false
-        }
+    /// Re-evaluates whether the current name duplicates an already-saved baby's name and sets or
+    /// clears `duplicateNameError` accordingly. Called on every name change so the error surfaces
+    /// (and the Next button disables) as soon as a duplicate is typed — without waiting for the
+    /// server 409 on submit. Delegates the comparison to the shared `BabyProfileSetupForm` helper.
+    @discardableResult
+    func refreshDuplicateBabyNameError() -> Bool {
+        let otherNames = savedBabies
+            .filter { $0.id != editingBaby?.id }
+            .map(\.name)
+        return babyProfileForm.refreshDuplicateNameError(against: otherNames)
     }
 
     // MARK: - Edit Baby

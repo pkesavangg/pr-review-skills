@@ -23,6 +23,7 @@ struct AccuCheckInfoModalView: View {
                 }
                 .accessibilityLabel(BtWifiScaleSetupStrings.A11y.closeAccuCheckLabel)
                 .accessibilityHint(BtWifiScaleSetupStrings.A11y.closeAccuCheckHint)
+                .appAccessibility(id: AccessibilityID.accuCheckInfoCloseButton)
             }
             .padding(.bottom, .spacingXS)
 

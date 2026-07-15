@@ -41,6 +41,7 @@ struct MyKidsAddBabyScreen: View {
                             )
                     }
                     .disabled(!store.isSaveEnabled || isSaving)
+                    .appAccessibility(id: AccessibilityID.myKidsSaveBabyButton)
                 },
                 onLeadingTap: { router.navigateBack() },
                 canShowBorder: true
@@ -56,6 +57,7 @@ struct MyKidsAddBabyScreen: View {
         }
         .background(theme.backgroundSecondary.ignoresSafeArea())
         .navigationBarHidden(true)
+        .screenAccessibilityRoot(AccessibilityID.addBabyScreenRoot)
         .onAppear { store.addBaby() }
         .onChange(of: store.isShowingAddBaby) { _, isShowing in
             if !isShowing { router.navigateBack() }

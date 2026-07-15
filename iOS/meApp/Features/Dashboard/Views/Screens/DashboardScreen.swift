@@ -65,6 +65,7 @@ struct DashboardScreen: View {
                     dashboardScroll(availableHeight: proxy.size.height)
                 }
             }
+            .screenAccessibilityRoot(AccessibilityID.dashboardScreenRoot)
         }
         .refreshable {
             await store.lifecycleManager.refreshAll()
@@ -209,7 +210,8 @@ struct DashboardScreen: View {
             } : nil,
             // Per mock: a bottom border/divider sits under the product title header.
             canShowBorder: showTitle,
-            canShowTitleChevron: showProductSelector
+            canShowTitleChevron: showProductSelector,
+            leadingAccessibilityID: AccessibilityID.dashboardBackButton
         )
         .sheet(isPresented: $isProductTypeSelectorPresented) {
             ProductTypeSelectorSheet(
@@ -289,22 +291,27 @@ struct DashboardScreen: View {
                     store.lifecycleManager.saveChanges()
                     store.gridEditingManager.resetDragState()
                 }
+                .appAccessibility(id: AccessibilityID.dashboardSaveChangesButton)
                 ButtonView(text: lang.resetDashboard, type: .textPrimary, size: .large, isDisabled: store.state.ui.isLoading) {
                     store.lifecycleManager.showResetDashboardAlert()
                 }
+                .appAccessibility(id: AccessibilityID.dashboardResetButton)
             } else {
                 ButtonView(text: lang.editDashboard, type: .outlinedPrimary, size: .large, isDisabled: store.state.ui.isLoading) {
                     store.gridEditingManager.toggleEditMode()
                 }
+                .appAccessibility(id: AccessibilityID.dashboardEditButton)
                 if store.hasGoalSet {
                     ButtonView(text: lang.updateGoal, type: .textPrimary, size: .large, isDisabled: store.state.ui.isLoading) {
                         tabViewModel.navigateToGoalSetting()
                     }
+                    .appAccessibility(id: AccessibilityID.dashboardUpdateGoalButton)
                 }
                 ButtonView(text: lang.metricInfo, type: .textPrimary, size: .large, isDisabled: store.state.ui.isLoading) {
                     let label = store.state.ui.selectedMetricLabel ?? DashboardStrings.weight
                     openMetricInfoWithoutSelection = MetricInfoWrapper(metricLabel: label)
                 }
+                .appAccessibility(id: AccessibilityID.dashboardMetricInfoButton)
             }
         }
         .padding(.bottom, .spacingLG)

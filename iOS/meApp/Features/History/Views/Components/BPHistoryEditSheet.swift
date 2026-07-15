@@ -45,6 +45,12 @@ struct BPHistoryEditSheet: View {
         _entryTime = State(initialValue: parsed)
     }
 
+    // MARK: - Edit permissions
+
+    /// Device-synced readings (BT / Wi-Fi) are note-only: the measured values came from the
+    /// device and stay read-only. Manually-entered readings are fully editable (MOB-1172).
+    private var valuesLocked: Bool { !entry.isManual }
+
     // MARK: - Validation
 
     private var systolicError: String? {
@@ -109,19 +115,21 @@ struct BPHistoryEditSheet: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: .spacingLG) {
-                closeButton
+                header
 
                 MetricInputField(
                     config: TextInputConfig(
                         label: lang.systolic,
                         inputType: .metric,
                         errorMessage: systolicError ?? systolicWarning,
+                        isDisabled: valuesLocked,
                         focusField: .systolic,
                         maxLength: 3,
                         allowWholeNumbers: true
                     ),
                     value: $systolicText,
-                    focusedField: $focusedField
+                    focusedField: $focusedField,
+                    accessibilityIdentifier: AccessibilityID.bpHistoryEditSystolicField
                 ) { focusedField = .diastolic }
                 .onChange(of: systolicText) { _, _ in systolicDirty = true }
 
@@ -130,12 +138,14 @@ struct BPHistoryEditSheet: View {
                         label: lang.diastolic,
                         inputType: .metric,
                         errorMessage: diastolicError ?? diastolicWarning,
+                        isDisabled: valuesLocked,
                         focusField: .diastolic,
                         maxLength: 3,
                         allowWholeNumbers: true
                     ),
                     value: $diastolicText,
-                    focusedField: $focusedField
+                    focusedField: $focusedField,
+                    accessibilityIdentifier: AccessibilityID.bpHistoryEditDiastolicField
                 ) { focusedField = .pulse }
                 .onChange(of: diastolicText) { _, _ in diastolicDirty = true }
 
@@ -144,12 +154,14 @@ struct BPHistoryEditSheet: View {
                         label: lang.pulse,
                         inputType: .metric,
                         errorMessage: pulseError ?? pulseWarning,
+                        isDisabled: valuesLocked,
                         focusField: .pulse,
                         maxLength: 3,
                         allowWholeNumbers: true
                     ),
                     value: $pulseText,
-                    focusedField: $focusedField
+                    focusedField: $focusedField,
+                    accessibilityIdentifier: AccessibilityID.bpHistoryEditPulseField
                 ) { focusedField = .notes }
                 .onChange(of: pulseText) { _, _ in pulseDirty = true }
 
@@ -160,7 +172,8 @@ struct BPHistoryEditSheet: View {
                         focusField: .notes
                     ),
                     value: $notesText,
-                    focusedField: $focusedField
+                    focusedField: $focusedField,
+                    accessibilityIdentifier: AccessibilityID.bpHistoryEditNoteField
                 )
 
                 datePicker
@@ -173,6 +186,7 @@ struct BPHistoryEditSheet: View {
                         size: .large,
                         isDisabled: !isValid || isSaving
                     ) { saveEntry() }
+                    .appAccessibility(id: AccessibilityID.bpHistoryEditSaveButton)
                     Spacer()
                 }
             }
@@ -182,11 +196,12 @@ struct BPHistoryEditSheet: View {
         .background(theme.backgroundSecondary.ignoresSafeArea())
         .presentationDetents([.large])
         .presentationDragIndicator(.visible)
+        .screenAccessibilityRoot(AccessibilityID.bpHistoryEditScreenRoot)
     }
 
     // MARK: - Subviews
 
-    private var closeButton: some View {
+    private var header: some View {
         HStack {
             Spacer()
             Button { dismiss() } label: {
@@ -195,6 +210,8 @@ struct BPHistoryEditSheet: View {
                     .foregroundStyle(theme.textBody)
             }
             .buttonStyle(.plain)
+            .accessibilityLabel(lang.accCloseLabel)
+            .appAccessibility(id: AccessibilityID.bpHistoryEditCloseButton)
         }
     }
 
@@ -208,9 +225,11 @@ struct BPHistoryEditSheet: View {
                 DateLabelView(date: entryDate, isSelected: showDatePicker) {
                     toggleDatePicker()
                 }
+                .appAccessibility(id: AccessibilityID.bpHistoryEditDateButton)
                 TimeLabelView(time: entryTime, isSelected: showTimePicker) {
                     toggleTimePicker()
                 }
+                .appAccessibility(id: AccessibilityID.bpHistoryEditTimeButton)
             }
             .padding(.leading, 2)
 

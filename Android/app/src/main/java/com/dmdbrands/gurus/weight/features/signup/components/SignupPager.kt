@@ -9,6 +9,8 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.testTag
+import com.dmdbrands.gurus.weight.core.shared.utilities.testing.TestTags
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import com.dmdbrands.gurus.weight.features.common.components.AppButton
@@ -90,6 +92,7 @@ fun SignupPager(
         // BACK is disabled on the baby list: once a baby is added the user moves forward
         // (NEXT) or edits via the pencil — they cannot navigate back into the form. (model A)
         enabled = !state.isFirstStep && state.currentStep != SignupStep.BABY_ADDED,
+        modifier = Modifier.testTag(TestTags.Signup.BackButton),
         onClick = onBack,
       )
     },
@@ -101,6 +104,7 @@ fun SignupPager(
           label = SignupStrings.skipButton,
           size = ButtonSize.Small,
           enabled = !state.isLoading,
+          modifier = Modifier.testTag(TestTags.Signup.SkipButton),
           onClick = onSkip,
         )
       }
@@ -115,6 +119,10 @@ fun SignupPager(
         label = if (state.isFinalDataStep) SignupStrings.completeButton else SignupStrings.nextButton,
         size = ButtonSize.Small,
         enabled = state.isCurrentStepValid,
+        // Same footer button; id switches with the label (Create account on the final data step).
+        modifier = Modifier.testTag(
+          if (state.isFinalDataStep) TestTags.Signup.CreateAccountButton else TestTags.Signup.NextButton,
+        ),
         onClick = guardedOnNext,
       )
     },

@@ -4,7 +4,11 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.rememberCoroutineScope
@@ -24,10 +28,12 @@ import com.dmdbrands.gurus.weight.features.common.components.strings.BabyEmptySt
 import com.dmdbrands.gurus.weight.domain.model.common.ProductSelection
 import com.dmdbrands.gurus.weight.domain.services.IProductSelectionManager
 import androidx.lifecycle.compose.collectAsStateWithLifecycle as collectAsState2
+import com.dmdbrands.gurus.weight.features.dashboard.snapshot.components.SnapshotColors
 import com.dmdbrands.gurus.weight.features.history.components.BabyHistoryList
 import com.dmdbrands.gurus.weight.features.history.components.BpHistoryList
-import com.dmdbrands.gurus.weight.features.history.components.HistoryEmptyState
+import com.dmdbrands.gurus.weight.features.history.components.ProductHistoryEmptyState
 import com.dmdbrands.gurus.weight.features.history.components.WeightHistoryList
+import com.dmdbrands.gurus.weight.features.history.strings.HistoryEmptyStateStrings
 import com.dmdbrands.gurus.weight.features.history.strings.HistoryScreenStrings
 import com.dmdbrands.gurus.weight.features.history.viewmodel.HistoryIntent
 import com.dmdbrands.gurus.weight.features.history.viewmodel.HistoryState
@@ -44,6 +50,17 @@ fun HistoryScreen() {
   val viewModel: HistoryViewModel = hiltViewModel()
   val state by viewModel.state.collectAsStateWithLifecycle()
   val isRefreshing = state.isLoading
+
+  // Re-query on resume so returning to History (e.g. after deleting the last entry of a day) shows
+  // the current data — the entry_view Room flows don't reliably re-emit after the delete. (MOB-1173)
+  val lifecycleOwner = LocalLifecycleOwner.current
+  DisposableEffect(lifecycleOwner) {
+    val observer = LifecycleEventObserver { _, event ->
+      if (event == Lifecycle.Event.ON_RESUME) viewModel.refresh()
+    }
+    lifecycleOwner.lifecycle.addObserver(observer)
+    onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
+  }
   HistoryScreenContent(
     state = state,
     productSelectionManager = viewModel.productSelectionManager,
@@ -70,6 +87,16 @@ fun HistoryScreenContent(
   val hasMultipleProducts = (productSelectionManager?.availableProducts
       ?.collectAsState2()?.value?.size ?: 0) > 1
 
+  // Export is enabled when the ACTIVE product has history to export — each product keeps its
+  // own list, so keying off the weight list alone left Balance/Baby exports disabled (MOB-1230).
+  val activeSelection = selectedProduct?.value ?: ProductSelection.MyWeight
+  val canExport = when (activeSelection) {
+    is ProductSelection.MyWeight -> state.historyItems.isNotEmpty()
+    is ProductSelection.BloodPressure -> state.bpHistoryItems.isNotEmpty()
+    is ProductSelection.Baby -> state.babyHistoryItems[activeSelection.profile.id]?.isNotEmpty() == true
+    is ProductSelection.BabyScale -> false
+  }
+
   AppScaffold(
     title = if (productSelectionManager == null) HistoryScreenStrings.Title else null,
     topBarContent = if (productSelectionManager != null) {
@@ -87,7 +114,7 @@ fun HistoryScreenContent(
         contentDescription = HistoryScreenStrings.ExportDataDescription,
         type = AppIconType.Primary,
         modifier = Modifier.padding(end = spacing.sm),
-        enabled = state.historyItems.isNotEmpty(),
+        enabled = canExport,
       ) {
         handleIntent(HistoryIntent.Export)
       }
@@ -100,10 +127,27 @@ fun HistoryScreenContent(
       when (currentProduct) {
         is ProductSelection.MyWeight -> {
           if (state.historyItems.isEmpty()) {
-            HistoryEmptyState(
-              onRetry = { handleIntent(HistoryIntent.Retry) },
-              onConnectScale = { handleIntent(HistoryIntent.OnConnectScale) },
-            )
+            if (state.hasWeightDevice) {
+              ProductHistoryEmptyState(
+                icon = AppIcons.Default.History,
+                iconTint = SnapshotColors.Weight,
+                iconContentDescription = HistoryEmptyStateStrings.NoEntriesIconDescription,
+                title = HistoryEmptyStateStrings.WeightNoEntryTitle,
+                description = HistoryEmptyStateStrings.WeightNoEntryDescription,
+                primaryLabel = HistoryEmptyStateStrings.LogManually,
+                onPrimaryClick = { handleIntent(HistoryIntent.OnLogManually) },
+              )
+            } else {
+              ProductHistoryEmptyState(
+                icon = AppIcons.Default.WeightScale,
+                iconTint = SnapshotColors.Weight,
+                iconContentDescription = HistoryEmptyStateStrings.WeightIconDescription,
+                title = HistoryEmptyStateStrings.WeightNoDeviceTitle,
+                description = HistoryEmptyStateStrings.WeightNoDeviceDescription,
+                primaryLabel = HistoryEmptyStateStrings.AddDevice,
+                onPrimaryClick = { handleIntent(HistoryIntent.OnConnectScale) },
+              )
+            }
           } else {
             WeightHistoryList(
               items = state.historyItems,
@@ -122,10 +166,27 @@ fun HistoryScreenContent(
 
         is ProductSelection.BloodPressure -> {
           if (state.bpHistoryItems.isEmpty()) {
-            HistoryEmptyState(
-              onRetry = { handleIntent(HistoryIntent.Retry) },
-              onConnectScale = { handleIntent(HistoryIntent.OnConnectScale) },
-            )
+            if (state.hasBpmDevice) {
+              ProductHistoryEmptyState(
+                icon = AppIcons.Default.History,
+                iconTint = SnapshotColors.BloodPressure,
+                iconContentDescription = HistoryEmptyStateStrings.NoEntriesIconDescription,
+                title = HistoryEmptyStateStrings.BpmNoEntryTitle,
+                description = HistoryEmptyStateStrings.BpmNoEntryDescription,
+                primaryLabel = HistoryEmptyStateStrings.LogManually,
+                onPrimaryClick = { handleIntent(HistoryIntent.OnLogManually) },
+              )
+            } else {
+              ProductHistoryEmptyState(
+                icon = AppIcons.Default.BloodPressureMonitor,
+                iconTint = SnapshotColors.BloodPressure,
+                iconContentDescription = HistoryEmptyStateStrings.BpmIconDescription,
+                title = HistoryEmptyStateStrings.BpmNoDeviceTitle,
+                description = HistoryEmptyStateStrings.BpmNoDeviceDescription,
+                primaryLabel = HistoryEmptyStateStrings.AddDevice,
+                onPrimaryClick = { handleIntent(HistoryIntent.OnConnectScale) },
+              )
+            }
           } else {
             BpHistoryList(
               items = state.bpHistoryItems,
@@ -143,13 +204,31 @@ fun HistoryScreenContent(
         is ProductSelection.Baby -> {
           val babyGroups = state.babyHistoryItems[currentProduct.profile.id] ?: persistentListOf()
           if (babyGroups.isEmpty()) {
-            HistoryEmptyState(
-              onRetry = { handleIntent(HistoryIntent.Retry) },
-              onConnectScale = { handleIntent(HistoryIntent.OnConnectScale) },
-            )
+            if (state.hasBabyDevice) {
+              ProductHistoryEmptyState(
+                icon = AppIcons.Default.History,
+                iconTint = SnapshotColors.Baby,
+                iconContentDescription = HistoryEmptyStateStrings.NoEntriesIconDescription,
+                title = HistoryEmptyStateStrings.BabyNoEntryTitle,
+                description = HistoryEmptyStateStrings.BabyNoEntryDescription,
+                primaryLabel = HistoryEmptyStateStrings.LogManually,
+                onPrimaryClick = { handleIntent(HistoryIntent.OnLogManually) },
+              )
+            } else {
+              ProductHistoryEmptyState(
+                icon = AppIcons.Default.BabyScale,
+                iconTint = SnapshotColors.Baby,
+                iconContentDescription = HistoryEmptyStateStrings.BabyScaleIconDescription,
+                title = HistoryEmptyStateStrings.BabyNoDeviceTitle,
+                description = HistoryEmptyStateStrings.BabyNoDeviceDescription,
+                primaryLabel = HistoryEmptyStateStrings.AddDevice,
+                onPrimaryClick = { handleIntent(HistoryIntent.OnConnectScale) },
+              )
+            }
           } else {
             BabyHistoryList(
               groups = babyGroups,
+              birthdate = (currentProduct as? ProductSelection.Baby)?.profile?.birthdate,
               onItemClick = {  item ->
                 coroutineScope.launch {
                 navBackStack.addRoute(

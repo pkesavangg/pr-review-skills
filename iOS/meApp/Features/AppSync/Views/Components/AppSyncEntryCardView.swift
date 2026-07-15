@@ -52,6 +52,7 @@ struct AppSyncEntryCardView: View {
                 action: onSave
             )
             .accessibilityHint(AppSyncEntryCardStrings.A11y.saveHint)
+            .appAccessibility(id: AccessibilityID.appSyncEntrySaveButton)
             // Secondary edit button
             ButtonView(
                 text: CommonStrings.edit,
@@ -61,6 +62,7 @@ struct AppSyncEntryCardView: View {
                 action: onEdit
             )
             .accessibilityHint(AppSyncEntryCardStrings.A11y.editHint)
+            .appAccessibility(id: AccessibilityID.appSyncEntryEditButton)
         }
         .padding(.spacingMD)
         .padding(.vertical, .spacingSM)

@@ -485,7 +485,7 @@ struct BabyScaleSetupStoreTests {
         store.scaleItem = makeBabyScaleItem()
         store.handleExit()
         #expect(notification.showAlertCalls == 1)
-        #expect(notification.alertData?.title == "Exit Setup?")
+        #expect(notification.alertData?.title == AlertStrings.ExitSetupAlert.title)
     }
 
     @Test("handleExit does nothing when already exiting")

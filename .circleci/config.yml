@@ -481,6 +481,46 @@ jobs:
             - ~/.gradle/caches
             - ~/.gradle/wrapper
             - ~/.gradle/build-cache
+      # Publish the just-built debug (dev-API) APK to BrowserStack App Automate under a
+      # stable custom_id, so the meAppTest E2E pipeline can reference bs://meApp_android_dev
+      # without building or downloading the app (MOB-1437, "Shape B" upload half).
+      # Runs AFTER save_cache so a BrowserStack outage never costs us the Gradle cache.
+      # Gated to develop: develop is the integration build the E2E suite tests against —
+      # feature-branch builds must not clobber the shared custom_id. Uploading does NOT
+      # consume BrowserStack automate minutes (only test sessions do).
+      - run:
+          name: Upload debug APK to BrowserStack (custom_id=meApp_android_dev)
+          working_directory: Android
+          command: |
+            if [ "$CIRCLE_BRANCH" != "develop" ]; then
+              echo "Not on develop (branch: ${CIRCLE_BRANCH:-unknown}) — skipping upload so feature builds don't overwrite the shared custom_id."
+              exit 0
+            fi
+            if [ -z "$BROWSERSTACK_USERNAME" ] || [ -z "$BROWSERSTACK_ACCESS_KEY" ]; then
+              echo "Error: BROWSERSTACK_USERNAME and/or BROWSERSTACK_ACCESS_KEY is not set. Add them as CircleCI project/context env vars."
+              exit 1
+            fi
+            APK=$(find app/build/outputs/apk/debug -maxdepth 1 -name "*.apk" | head -1)
+            if [ -z "$APK" ]; then
+              echo "Error: no debug APK found under app/build/outputs/apk/debug."
+              exit 1
+            fi
+            echo "Uploading $APK to BrowserStack as custom_id=meApp_android_dev"
+            RESPONSE=$(curl -s -w $'\n%{http_code}' -u "$BROWSERSTACK_USERNAME:$BROWSERSTACK_ACCESS_KEY" \
+              -X POST "https://api-cloud.browserstack.com/app-automate/upload" \
+              -F "file=@$APK" \
+              -F "custom_id=meApp_android_dev")
+            CODE=$(printf '%s' "$RESPONSE" | tail -n1)
+            BODY=$(printf '%s' "$RESPONSE" | sed '$d')
+            echo "BrowserStack upload -> HTTP $CODE"
+            echo "$BODY"
+            # BrowserStack returns HTTP 200 + an "app_url" on success; anything else (401
+            # bad creds, 4xx/5xx) must fail the job rather than silently "succeed".
+            if [ "$CODE" != "200" ] || ! printf '%s' "$BODY" | grep -q '"app_url"'; then
+              echo "Error: BrowserStack upload failed."
+              exit 1
+            fi
+            echo "Uploaded. bs://meApp_android_dev now points at this build."
 
   # android-lint — Android lint + Detekt static analysis
   android-lint:

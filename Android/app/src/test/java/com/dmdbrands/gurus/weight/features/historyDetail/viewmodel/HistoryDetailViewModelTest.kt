@@ -8,8 +8,11 @@ import com.dmdbrands.gurus.weight.domain.model.common.ProductSelection
 import com.dmdbrands.gurus.weight.domain.model.common.WeightUnit
 import com.dmdbrands.gurus.weight.domain.model.storage.Account.Account
 import com.dmdbrands.gurus.weight.data.storage.db.entity.entry.BabyEntryEntity
+import com.dmdbrands.gurus.weight.data.storage.db.entity.entry.BpmEntryEntity
 import com.dmdbrands.gurus.weight.data.storage.db.entity.entry.EntryEntity
+import com.dmdbrands.gurus.weight.domain.model.storage.entry.BpmEntry
 import com.dmdbrands.gurus.weight.domain.enums.BabyEntryType
+import com.dmdbrands.gurus.weight.domain.model.api.entry.EntrySource
 import com.dmdbrands.gurus.weight.domain.model.storage.entry.BabyEntry
 import com.dmdbrands.gurus.weight.domain.model.storage.entry.Entry
 import com.dmdbrands.gurus.weight.domain.model.storage.entry.ScaleEntry
@@ -19,6 +22,7 @@ import com.dmdbrands.gurus.weight.domain.services.IEntryService
 import com.dmdbrands.gurus.weight.domain.services.IHealthConnectService
 import com.dmdbrands.gurus.weight.domain.services.IProductSelectionManager
 import com.dmdbrands.gurus.weight.features.common.components.ButtonType
+import com.dmdbrands.gurus.weight.features.common.model.DialogModel
 import com.dmdbrands.gurus.weight.features.common.model.Toast
 import com.dmdbrands.gurus.weight.testutil.TestFixtures
 import com.dmdbrands.gurus.weight.testutil.initTestDependencies
@@ -34,12 +38,14 @@ import io.mockk.verify
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.RegisterExtension
 
+@Suppress("LargeClass")
 @OptIn(ExperimentalCoroutinesApi::class)
 class HistoryDetailViewModelTest {
 
@@ -91,6 +97,7 @@ class HistoryDetailViewModelTest {
             entryService = entryService,
             healthConnectService = healthConnectService,
             entryReadService = entryReadService,
+            appScope = TestScope(mainDispatcherRule.dispatcher),
             month = month,
             productType = com.dmdbrands.gurus.weight.domain.enums.ProductType.MY_WEIGHT,
         ).initTestDependencies(
@@ -299,24 +306,15 @@ class HistoryDetailViewModelTest {
     }
 
     @Test
-    fun `loadHistoryDetail sets error when entries are empty`() = runTest(mainDispatcherRule.scheduler) {
+    fun `loadHistoryDetail clears items and sets no error when entries are empty`() = runTest(mainDispatcherRule.scheduler) {
         every { entryReadService.getDetail(any(), eq(TEST_MONTH)) } returns flowOf(HistoryDetail.Weight(emptyList()))
 
-        viewModel = HistoryDetailViewModel(
-            accountService = accountService,
-            entryService = entryService,
-            healthConnectService = healthConnectService,
-            entryReadService = entryReadService,
-            month = TEST_MONTH,
-            productType = com.dmdbrands.gurus.weight.domain.enums.ProductType.MY_WEIGHT,
-        ).initTestDependencies(
-            navigationService = navigationService,
-            dialogQueueService = dialogQueueService,
-            productSelectionManager = productSelectionManager,
-        )
+        viewModel = createViewModelRaw()
         advanceUntilIdle()
 
-        assertThat(viewModel.state.value.errorMessage).isNotNull()
+        // Empty is a valid state (e.g. the last entry was just deleted), not an error (MOB-1462).
+        assertThat(viewModel.state.value.historyItems).isEmpty()
+        assertThat(viewModel.state.value.errorMessage).isNull()
     }
 
     @Test
@@ -341,6 +339,7 @@ class HistoryDetailViewModelTest {
             entryService = entryService,
             healthConnectService = healthConnectService,
             entryReadService = entryReadService,
+            appScope = TestScope(mainDispatcherRule.dispatcher),
             month = TEST_MONTH,
             productType = com.dmdbrands.gurus.weight.domain.enums.ProductType.MY_WEIGHT,
         ).initTestDependencies(
@@ -362,102 +361,210 @@ class HistoryDetailViewModelTest {
     }
 
     // -------------------------------------------------------------------------
-    // DeleteEntry — optimistic delete + undo (MOB-598)
+    // DeleteEntry — confirm alert + deferred delete with Undo
     // -------------------------------------------------------------------------
 
-    @Test
-    fun `DeleteEntry deletes and shows Reading deleted toast with Undo`() = runTest {
-        viewModel = createViewModel()
-        advanceUntilIdle()
+    /** Captures the enqueued delete-confirmation alert and invokes its confirm action. */
+    private fun confirmDeleteDialog() {
+        val dialog = slot<DialogModel>()
+        verify { dialogQueueService.enqueue(capture(dialog)) }
+        (dialog.captured as DialogModel.Confirm).onConfirm?.invoke()
+    }
 
-        val entry = TestFixtures.weightEntry
-        viewModel.handleIntent(HistoryDetailIntent.DeleteEntry(entry))
-        advanceUntilIdle()
-
-        coVerify { entryService.deleteEntry(entry) }
+    /** Captures the "Reading deleted · Undo" toast and taps Undo. */
+    private fun tapUndo() {
         val toasts = mutableListOf<Toast>()
         verify { dialogQueueService.showToast(capture(toasts)) }
-        val toast = toasts.first() as Toast.Simple
-        assertThat(toast.message).isEqualTo("Reading deleted.")
-        assertThat(toast.action?.text).isEqualTo("Undo")
+        (toasts.last { it is Toast.Simple } as Toast.Simple).action?.action?.invoke()
     }
 
     @Test
-    fun `DeleteEntry routes a baby entry through entryService deleteEntry`() = runTest {
-        // Baby (and BP) history rows now expose swipe-to-delete, dispatching the same generic
-        // DeleteEntry intent — the service maps them to the unified operationType=delete. (§2.16)
+    fun `DeleteEntry shows the confirm alert and does not delete until confirmed`() = runTest(mainDispatcherRule.scheduler) {
         viewModel = createViewModel()
         advanceUntilIdle()
 
+        viewModel.handleIntent(HistoryDetailIntent.DeleteEntry(TestFixtures.weightEntry))
+
+        // A "Delete this record?" alert is enqueued (Figma 29833-120461); nothing deleted yet.
+        val dialog = slot<DialogModel>()
+        verify { dialogQueueService.enqueue(capture(dialog)) }
+        val confirm = dialog.captured as DialogModel.Confirm
+        assertThat(confirm.title).isEqualTo("Delete this record?")
+        assertThat(confirm.message).isEqualTo("This reading will be removed from your history. This can't be undone.")
+        coVerify(exactly = 0) { entryService.deleteEntry(any()) }
+    }
+
+    @Test
+    fun `DeleteEntry cancelled does not delete`() = runTest(mainDispatcherRule.scheduler) {
+        viewModel = createViewModel()
+        advanceUntilIdle()
+
+        viewModel.handleIntent(HistoryDetailIntent.DeleteEntry(TestFixtures.weightEntry))
+        val dialog = slot<DialogModel>()
+        verify { dialogQueueService.enqueue(capture(dialog)) }
+        (dialog.captured as DialogModel.Confirm).onCancel?.invoke()
+        advanceUntilIdle()
+
+        coVerify(exactly = 0) { entryService.deleteEntry(any()) }
+    }
+
+    @Test
+    fun `Confirming delete hides the row and shows Undo toast without deleting yet`() = runTest(mainDispatcherRule.scheduler) {
+        viewModel = createViewModel()
+        advanceUntilIdle()
+        val entry = TestFixtures.weightEntry
+
+        viewModel.handleIntent(HistoryDetailIntent.DeleteEntry(entry))
+        confirmDeleteDialog()
+
+        // Row hidden via the persisted flag; toast with Undo shown; NOT deleted until the window.
+        coVerify { entryService.setPendingDelete(entry, true) }
+        val toasts = mutableListOf<Toast>()
+        verify { dialogQueueService.showToast(capture(toasts)) }
+        val toast = toasts.last { it is Toast.Simple } as Toast.Simple
+        assertThat(toast.message).isEqualTo("Reading deleted.")
+        assertThat(toast.action?.text).isEqualTo("Undo")
+        coVerify(exactly = 0) { entryService.deleteEntry(any()) }
+    }
+
+    @Test
+    fun `Delete commits after the undo window elapses`() = runTest(mainDispatcherRule.scheduler) {
+        viewModel = createViewModel()
+        advanceUntilIdle()
+        val entry = TestFixtures.weightEntry
+
+        viewModel.handleIntent(HistoryDetailIntent.DeleteEntry(entry))
+        confirmDeleteDialog()
+        advanceUntilIdle() // past the undo window → commit
+
+        coVerify { entryService.deleteEntry(entry) }
+        coVerify { healthConnectService.deleteEntry(entry) }
+    }
+
+    @Test
+    fun `Undo cancels the delete and un-hides the row without deleting or restoring`() = runTest(mainDispatcherRule.scheduler) {
+        viewModel = createViewModel()
+        advanceUntilIdle()
+        val entry = TestFixtures.weightEntry
+
+        viewModel.handleIntent(HistoryDetailIntent.DeleteEntry(entry))
+        confirmDeleteDialog()
+        tapUndo()
+        advanceUntilIdle() // window would have elapsed, but the commit was cancelled
+
+        // Undo clears the persisted flag (un-hides) and nothing is deleted or re-created.
+        coVerify { entryService.setPendingDelete(entry, false) }
+        coVerify(exactly = 0) { entryService.deleteEntry(any()) }
+        // A "Reading restored successfully." confirmation toast is surfaced (Figma 29833-120448).
+        val toasts = mutableListOf<Toast>()
+        verify { dialogQueueService.showToast(capture(toasts)) }
+        val restored = toasts.last { it is Toast.Simple } as Toast.Simple
+        assertThat(restored.message).isEqualTo("Reading restored successfully.")
+        assertThat(restored.icon).isNotNull()
+        assertThat(restored.isError).isFalse()
+    }
+
+    @Test
+    fun `Confirming delete commits a baby entry via entryService deleteEntry`() = runTest(mainDispatcherRule.scheduler) {
+        // Baby (and BP) history rows share the same generic DeleteEntry intent — the service maps
+        // them to the unified operationType=delete. (§2.16)
+        viewModel = createViewModel()
+        advanceUntilIdle()
         val babyEntry = aBabyEntry(id = 9L, weightDecigrams = 30000)
+
         viewModel.handleIntent(HistoryDetailIntent.DeleteEntry(babyEntry))
+        confirmDeleteDialog()
         advanceUntilIdle()
 
         coVerify { entryService.deleteEntry(babyEntry) }
     }
 
     @Test
-    fun `DeleteEntry also deletes from Health Connect`() = runTest {
+    fun `Confirming delete commits a BP entry via entryService deleteEntry`() = runTest(mainDispatcherRule.scheduler) {
         viewModel = createViewModel()
         advanceUntilIdle()
+        val bpEntry = aBpEntry(EntrySource.MANUAL.value)
 
-        val entry = TestFixtures.weightEntry
-        viewModel.handleIntent(HistoryDetailIntent.DeleteEntry(entry))
+        viewModel.handleIntent(HistoryDetailIntent.DeleteEntry(bpEntry))
+        confirmDeleteDialog()
         advanceUntilIdle()
 
-        coVerify { healthConnectService.deleteEntry(entry) }
+        coVerify { entryService.deleteEntry(bpEntry) }
     }
 
     @Test
-    fun `DeleteEntry still shows deleted toast when Health Connect throws`() = runTest {
+    fun `Commit still deletes when Health Connect throws`() = runTest(mainDispatcherRule.scheduler) {
         coEvery { healthConnectService.deleteEntry(any()) } throws RuntimeException("HC error")
         viewModel = createViewModel()
         advanceUntilIdle()
-
         val entry = TestFixtures.weightEntry
+
         viewModel.handleIntent(HistoryDetailIntent.DeleteEntry(entry))
+        confirmDeleteDialog()
         advanceUntilIdle()
 
-        val toasts = mutableListOf<Toast>()
-        verify { dialogQueueService.showToast(capture(toasts)) }
-        assertThat((toasts.first() as Toast.Simple).message).isEqualTo("Reading deleted.")
+        coVerify { entryService.deleteEntry(entry) }
     }
 
     @Test
-    fun `DeleteEntry shows Couldnt delete toast when deleteEntry fails`() = runTest {
+    fun `Delete commit failure un-hides the row and shows Couldnt delete toast`() = runTest(mainDispatcherRule.scheduler) {
         coEvery { entryService.deleteEntry(any()) } throws RuntimeException("db error")
         viewModel = createViewModel()
         advanceUntilIdle()
-
         val entry = TestFixtures.weightEntry
+
         viewModel.handleIntent(HistoryDetailIntent.DeleteEntry(entry))
+        confirmDeleteDialog()
         advanceUntilIdle()
 
+        // Failed commit re-shows the row (clears the flag) and surfaces the error (the last toast).
+        coVerify { entryService.setPendingDelete(entry, false) }
         val toasts = mutableListOf<Toast>()
         verify { dialogQueueService.showToast(capture(toasts)) }
-        val toast = toasts.first() as Toast.Simple
-        assertThat(toast.title).isEqualTo("Couldn't delete!")
-        assertThat(toast.message).isEqualTo("Try again")
+        val toast = toasts.last { it is Toast.Simple } as Toast.Simple
+        // Error variant (Figma 29833-120449): red message + trash icon + a TRY AGAIN retry action.
+        assertThat(toast.message).isEqualTo("Couldn't delete!")
+        assertThat(toast.isError).isTrue()
+        assertThat(toast.icon).isNotNull()
+        assertThat(toast.action?.text).isEqualTo("Try again")
     }
 
     @Test
-    fun `Undo restores the entry and shows Reading restored toast`() = runTest {
+    fun `Try again on the delete-failed toast re-attempts the commit`() = runTest(mainDispatcherRule.scheduler) {
+        coEvery { entryService.deleteEntry(any()) } throws RuntimeException("db error")
         viewModel = createViewModel()
         advanceUntilIdle()
-
         val entry = TestFixtures.weightEntry
+
         viewModel.handleIntent(HistoryDetailIntent.DeleteEntry(entry))
+        confirmDeleteDialog()
+        advanceUntilIdle() // first commit fails → error toast with TRY AGAIN
+
+        // Tap TRY AGAIN on the error toast → re-hides the row and re-attempts the delete.
+        val toasts = mutableListOf<Toast>()
+        verify { dialogQueueService.showToast(capture(toasts)) }
+        (toasts.last { it is Toast.Simple } as Toast.Simple).action?.action?.invoke()
         advanceUntilIdle()
 
-        val deleted = mutableListOf<Toast>()
-        verify { dialogQueueService.showToast(capture(deleted)) }
-        (deleted.first() as Toast.Simple).action?.action?.invoke()
+        coVerify(atLeast = 2) { entryService.deleteEntry(entry) }
+    }
+
+    @Test
+    fun `Deleting the last entry navigates back to History`() = runTest(mainDispatcherRule.scheduler) {
+        val entry = TestFixtures.weightEntry
+        viewModel = createViewModel(entries = listOf(entry))
+        advanceUntilIdle() // initial load → one entry shown
+
+        // After the delete-hide re-query, this detail has no entries left.
+        every { entryReadService.getDetail(any(), eq(TEST_MONTH)) } returns
+            flowOf(HistoryDetail.Weight(emptyList()))
+
+        viewModel.handleIntent(HistoryDetailIntent.DeleteEntry(entry))
+        confirmDeleteDialog()
         advanceUntilIdle()
 
-        coVerify { entryService.restoreEntry(entry) }
-        val all = mutableListOf<Toast>()
-        verify(atLeast = 2) { dialogQueueService.showToast(capture(all)) }
-        assertThat((all.last() as Toast.Simple).message).isEqualTo("Reading restored.")
+        // Nothing left to show here → the ViewModel returns to the History screen (MOB-1173).
+        coVerify { navigationService.navigateBack(topLevel = null) }
     }
 
     // -------------------------------------------------------------------------
@@ -499,6 +606,7 @@ class HistoryDetailViewModelTest {
         viewModel = createViewModel()
         advanceUntilIdle()
 
+        coEvery { entryService.addBabyEntry(any()) } returns 1L
         val original = aBabyEntry(id = 7L, weightDecigrams = 30000, timestamp = "2024-01-01T08:00:00.000Z")
         viewModel.handleIntent(
             HistoryDetailIntent.SaveBabyEdit(
@@ -519,6 +627,8 @@ class HistoryDetailViewModelTest {
         coVerify(exactly = 0) { entryService.editBabyEntry(any()) }
         assertThat(added.captured.entry.id).isEqualTo(0L) // new local id (autogen)
         assertThat(added.captured.entry.entryTimestamp).isEqualTo("2024-02-01T08:00:00.000Z")
+        // Date changed → the entry moved off this month screen, so return to History. (MOB-1173)
+        coVerify { navigationService.navigateBack(any()) }
     }
 
     @Test
@@ -547,6 +657,8 @@ class HistoryDetailViewModelTest {
         // Keeps the ORIGINAL timestamp so the server entryId is unchanged.
         assertThat(slot.captured.entry.entryTimestamp).isEqualTo("2024-01-01T08:00:30.123Z")
         assertThat(slot.captured.babyWeightDecigrams).isEqualTo(31000)
+        // Sub-minute-only change is NOT a date change → stay on the screen (no navigation).
+        coVerify(exactly = 0) { navigationService.navigateBack(any()) }
     }
 
     private fun aBabyEntry(
@@ -610,13 +722,35 @@ class HistoryDetailViewModelTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `loadDetail with empty weight entries sets error`() = runTest {
+    fun `loadDetail with empty weight entries clears items without error`() = runTest {
         every { entryReadService.getDetail(any(), eq(TEST_MONTH)) } returns
             flowOf(HistoryDetail.Weight(emptyList()))
         viewModel = createViewModelRaw()
         advanceUntilIdle()
 
-        assertThat(viewModel.state.value.errorMessage).isNotNull()
+        // Empty result → clear the list, not an error (MOB-1462).
+        assertThat(viewModel.state.value.historyItems).isEmpty()
+        assertThat(viewModel.state.value.errorMessage).isNull()
+    }
+
+    @Test
+    fun `deleting the last entry navigates back reactively`() = runTest {
+        // getDetail is reactive: one entry first, then an empty emission after the last delete.
+        val detailFlow = MutableStateFlow<HistoryDetail>(
+            HistoryDetail.Weight(listOf(TestFixtures.weightEntry)),
+        )
+        every { entryReadService.getDetail(any(), eq(TEST_MONTH)) } returns detailFlow
+        viewModel = createViewModelRaw()
+        advanceUntilIdle()
+        assertThat(viewModel.state.value.historyItems).hasSize(1)
+
+        // Last entry removed → the detail flow re-emits empty; the ViewModel returns to History
+        // (no error). (MOB-1173)
+        detailFlow.value = HistoryDetail.Weight(emptyList())
+        advanceUntilIdle()
+
+        coVerify { navigationService.navigateBack(topLevel = null) }
+        assertThat(viewModel.state.value.errorMessage).isNull()
     }
 
     @Test
@@ -649,44 +783,179 @@ class HistoryDetailViewModelTest {
         assertThat(viewModel.state.value.errorMessage).isNotNull()
     }
 
+
     // -------------------------------------------------------------------------
-    // SaveNote
+    // Weight edit routing by source (MOB-1173)
     // -------------------------------------------------------------------------
 
-    @Test
-    fun `SaveNote updates note via service and reloads detail`() = runTest {
-        coEvery { entryService.updateNote(any(), any()) } returns Unit
-        viewModel = createViewModel()
-        advanceUntilIdle()
-
-        viewModel.handleIntent(HistoryDetailIntent.SaveNote(TestFixtures.weightEntry, "after run"))
-        advanceUntilIdle()
-
-        coVerify { entryService.updateNote(TestFixtures.weightEntry, "after run") }
+    /** Copies [TestFixtures.weightEntry] with the given measurement [source]. */
+    private fun weightEntryWithSource(source: String?): ScaleEntry {
+        val base = TestFixtures.weightEntry
+        return base.copy(
+            scale = base.scale.copy(scaleEntry = base.scale.scaleEntry.copy(source = source)),
+        )
     }
 
     @Test
-    fun `SaveNote with blank note passes null to service`() = runTest {
-        coEvery { entryService.updateNote(any(), any()) } returns Unit
+    fun `EditWeightEntry on a manual reading opens the full weight edit sheet`() = runTest(mainDispatcherRule.scheduler) {
         viewModel = createViewModel()
         advanceUntilIdle()
+        val manual = weightEntryWithSource(EntrySource.MANUAL.value)
 
-        viewModel.handleIntent(HistoryDetailIntent.SaveNote(TestFixtures.weightEntry, "   "))
+        viewModel.handleIntent(HistoryDetailIntent.EditWeightEntry(manual))
         advanceUntilIdle()
 
-        coVerify { entryService.updateNote(TestFixtures.weightEntry, null) }
+        // Manual → full value+note editor (weightEditEntry).
+        assertThat(viewModel.state.value.weightEditEntry).isEqualTo(manual)
     }
 
     @Test
-    fun `SaveNote shows error toast when service fails`() = runTest {
-        coEvery { entryService.updateNote(any(), any()) } throws RuntimeException("db error")
+    fun `EditWeightEntry on a device-synced reading opens the same sheet (values disabled)`() = runTest(mainDispatcherRule.scheduler) {
         viewModel = createViewModel()
         advanceUntilIdle()
+        val device = weightEntryWithSource(EntrySource.BLUETOOTH.value)
 
-        viewModel.handleIntent(HistoryDetailIntent.SaveNote(TestFixtures.weightEntry, "note"))
+        viewModel.handleIntent(HistoryDetailIntent.EditWeightEntry(device))
         advanceUntilIdle()
 
-        verify { dialogQueueService.showToast(any()) }
+        // Same weight edit sheet opens; the sheet disables everything but the note for device readings.
+        assertThat(viewModel.state.value.weightEditEntry).isEqualTo(device)
+    }
+
+    @Test
+    fun `EditWeightEntry on an unknown-source reading opens the same sheet (values disabled)`() = runTest(mainDispatcherRule.scheduler) {
+        viewModel = createViewModel()
+        advanceUntilIdle()
+        val legacy = weightEntryWithSource(null)
+
+        viewModel.handleIntent(HistoryDetailIntent.EditWeightEntry(legacy))
+        advanceUntilIdle()
+
+        // Null/legacy source is treated as non-manual (safe default: note-only, values disabled).
+        assertThat(viewModel.state.value.weightEditEntry).isEqualTo(legacy)
+    }
+
+    @Test
+    fun `SaveWeightEdit on a manual reading edits it in place via editEntry`() = runTest(mainDispatcherRule.scheduler) {
+        viewModel = createViewModel()
+        advanceUntilIdle()
+        val original = weightEntryWithSource(EntrySource.MANUAL.value)
+        val updated = weightEntryWithSource(EntrySource.MANUAL.value)
+
+        viewModel.handleIntent(HistoryDetailIntent.SaveWeightEdit(original = original, updated = updated))
+        advanceUntilIdle()
+
+        // Manual: edit in place via the unified edit API — never delete/recreate.
+        coVerify { entryService.editEntry(updated) }
+        coVerify(exactly = 0) { entryService.deleteEntry(any()) }
+        coVerify(exactly = 0) { entryService.addEntry(entry = any()) }
+        assertThat(viewModel.state.value.weightEditEntry).isNull()
+        // Date unchanged → stay on the current month screen (no navigation).
+        coVerify(exactly = 0) { navigationService.navigateBack(any()) }
+    }
+
+    @Test
+    fun `SaveWeightEdit that changes the date navigates back to History`() = runTest(mainDispatcherRule.scheduler) {
+        viewModel = createViewModel()
+        advanceUntilIdle()
+        val original = weightEntryWithSource(EntrySource.MANUAL.value)
+        // Same entry moved to a different day.
+        val updated = original.copy(
+            entry = original.entry.copy(entryTimestamp = "2024-02-15T09:30:00.000Z"),
+        )
+
+        viewModel.handleIntent(HistoryDetailIntent.SaveWeightEdit(original = original, updated = updated))
+        advanceUntilIdle()
+
+        // Date changed → the entry may leave this month screen, so return to History. (MOB-1173)
+        coVerify { entryService.editEntry(updated) }
+        coVerify { navigationService.navigateBack(any()) }
+    }
+
+    @Test
+    fun `SaveWeightEdit on a device-synced reading only updates the note`() = runTest(mainDispatcherRule.scheduler) {
+        viewModel = createViewModel()
+        advanceUntilIdle()
+        val original = weightEntryWithSource(EntrySource.BLUETOOTH.value)
+        val updated = original.copy(
+            scale = original.scale.copy(scaleEntry = original.scale.scaleEntry.copy(note = "new note")),
+        )
+
+        viewModel.handleIntent(HistoryDetailIntent.SaveWeightEdit(original = original, updated = updated))
+        advanceUntilIdle()
+
+        // Device-synced: values are immutable → persist the note in place, never edit values.
+        coVerify { entryService.updateNote(original, "new note") }
+        coVerify(exactly = 0) { entryService.editEntry(any()) }
+        coVerify(exactly = 0) { entryService.deleteEntry(any()) }
+        assertThat(viewModel.state.value.weightEditEntry).isNull()
+    }
+
+    // -------------------------------------------------------------------------
+    // BP edit (MOB-1173)
+    // -------------------------------------------------------------------------
+
+    private fun aBpEntry(source: String?, timestamp: String = "2024-01-01T08:00:00.000Z"): BpmEntry = BpmEntry(
+        entry = EntryEntity(
+            id = 5L,
+            accountId = "test-account-id",
+            entryTimestamp = timestamp,
+            operationType = "create",
+            deviceType = "bpm",
+            deviceId = "d",
+        ),
+        bpmEntry = BpmEntryEntity(
+            id = 5L,
+            systolic = 120,
+            diastolic = 80,
+            pulse = 70,
+            meanArterial = "93",
+            note = null,
+            source = source,
+        ),
+    )
+
+    @Test
+    fun `EditBpEntry opens the BP edit sheet for any source`() = runTest(mainDispatcherRule.scheduler) {
+        viewModel = createViewModel()
+        advanceUntilIdle()
+        val device = aBpEntry(EntrySource.BLUETOOTH.value)
+
+        viewModel.handleIntent(HistoryDetailIntent.EditBpEntry(device))
+        advanceUntilIdle()
+
+        // Same sheet opens regardless of source; the sheet disables values for device readings.
+        assertThat(viewModel.state.value.bpEditEntry).isEqualTo(device)
+    }
+
+    @Test
+    fun `SaveBpEdit edits in place via editEntry and stays when the date is unchanged`() = runTest(mainDispatcherRule.scheduler) {
+        viewModel = createViewModel()
+        advanceUntilIdle()
+        val original = aBpEntry(EntrySource.MANUAL.value)
+        val updated = original.copy(bpmEntry = original.bpmEntry.copy(systolic = 118))
+
+        viewModel.handleIntent(HistoryDetailIntent.SaveBpEdit(original = original, updated = updated))
+        advanceUntilIdle()
+
+        coVerify { entryService.editEntry(updated) }
+        assertThat(viewModel.state.value.bpEditEntry).isNull()
+        // Date unchanged → stay on the screen.
+        coVerify(exactly = 0) { navigationService.navigateBack(any()) }
+    }
+
+    @Test
+    fun `SaveBpEdit that changes the date navigates back to History`() = runTest(mainDispatcherRule.scheduler) {
+        viewModel = createViewModel()
+        advanceUntilIdle()
+        val original = aBpEntry(EntrySource.MANUAL.value, timestamp = "2024-01-01T08:00:00.000Z")
+        val updated = original.copy(entry = original.entry.copy(entryTimestamp = "2024-03-10T09:30:00.000Z"))
+
+        viewModel.handleIntent(HistoryDetailIntent.SaveBpEdit(original = original, updated = updated))
+        advanceUntilIdle()
+
+        coVerify { entryService.editEntry(updated) }
+        coVerify { navigationService.navigateBack(any()) }
     }
 
     private fun createViewModelRaw(month: String = TEST_MONTH): HistoryDetailViewModel =
@@ -695,6 +964,7 @@ class HistoryDetailViewModelTest {
             entryService = entryService,
             healthConnectService = healthConnectService,
             entryReadService = entryReadService,
+            appScope = TestScope(mainDispatcherRule.dispatcher),
             month = month,
             productType = com.dmdbrands.gurus.weight.domain.enums.ProductType.MY_WEIGHT,
         ).initTestDependencies(

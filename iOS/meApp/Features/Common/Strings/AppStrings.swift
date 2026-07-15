@@ -11,6 +11,10 @@ import Foundation
 struct CommonStrings {
     static let done = "Done"
     static let ok = "OK"
+    /// Accessibility label for the notes remaining-character counter.
+    static func charactersRemaining(_ count: Int) -> String { "\(count) characters remaining" }
+    /// Accessibility label for the notes character counter shown as current / max.
+    static func charactersCount(_ current: Int, _ max: Int) -> String { "\(current) of \(max) characters" }
     static let retry = "Retry"
     static let cancel = "Cancel"
     static let submit = "Submit"
@@ -367,7 +371,7 @@ struct AlertStrings {
     }
 
     struct LogoutAllAccountAlert {
-        static let title = "Log Out All Accounts"
+        static let title = "Log Out of All Accounts"
         static let message = "Are you sure you want to log out of all accounts?"
         static let logoutButton = "Log Out"
         static let cancelButton = "Cancel"
@@ -393,8 +397,8 @@ struct AlertStrings {
         static let returnButton = "Return"
     }
     struct CsvExportAlert {
-        static let title = "Download Weight History"
-        static let message = "An email with your measurement history will be sent to the email address associated with this account."
+        static let title = "Send Weight History"
+        static let message = "We'll send your measurement history to the email address linked to your account."
         static let sendButton = "Send"
         static let cancelButton = "Cancel"
     }
@@ -529,10 +533,10 @@ struct AlertStrings {
     }
 
     struct ExitSetupAlert {
-        static let title = "Confirm"
-        static let message = "Are you sure you want to exit setup?"
-        static let exitButton = "Exit"
-        static let returnButton = "Return"
+        static let title = "Cancel Device Setup?"
+        static let message = "Your progress won't be saved. You can set up your device anytime from Settings → My Devices."
+        static let exitButton = "Yes, Cancel"
+        static let returnButton = "Go Back"
     }
 
     struct ExitBtWifiSetupAlert {
@@ -849,6 +853,9 @@ struct AppAssets {
     static let chevronRight = "chevronRight"
     static let chevronLeft = "chevronLeft"
     static let chevronUpDown = "chevronUpDown"
+    /// Birthday-week balloon badge (purple baby-product disc + white balloon).
+    /// Full-color asset — render with `.renderingMode(.original)`, not templated.
+    static let birthdayBalloon = "birthdayBalloon"
     static let bmiIcon = "bmi"
     static let bodyFatIcon = "bodyFat"
     static let muscleIcon = "muscle"

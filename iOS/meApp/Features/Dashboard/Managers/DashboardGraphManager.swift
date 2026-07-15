@@ -280,10 +280,7 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
 
             return weightSeries + percentileSeries
         case .height:
-            let heightSeries = BabyDashboardChartSupport.dummyHeightSeries(
-                for: babyProfile,
-                operations: allOperations
-            )
+            let heightSeries = BabyDashboardChartSupport.heightSeries(from: allOperations)
             let percentileSeries = BabyDashboardChartSupport.heightPercentileSeries(
                 for: babyProfile,
                 dateRange: percentileDateRange

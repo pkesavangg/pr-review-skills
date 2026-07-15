@@ -103,10 +103,19 @@ object EntryScreenStrings {
   /** Maximum character limit enforced on measurement note text (MOB-438). */
   const val NOTES_MAX_LENGTH = 280
 
-  // Baby
-  const val POUNDS_LABEL = "pounds"
+  // Baby (MOB-1223): field labels name the metric ("weight" / "length"); the unit is rendered
+  // as a right-edge "(unit)" suffix via AppInput.trailingText, matching the weight/BPM pattern.
+  // The layout + unit follow the account's Unit Type (no on-screen toggle):
+  //   lb/oz → two weight fields (lb + oz) + length in; lb → one weight field (lb) + length in;
+  //   kg   → one weight field (kg) + length cm.
+  const val LENGTH_LABEL = "length"
+  // The lb/oz layout labels the pounds field "weight (lb)" and the ounces field "ounces (oz)".
   const val OUNCES_LABEL = "ounces"
-  const val INCHES_LABEL = "inches"
+  const val BABY_WEIGHT_LB_UNIT = "lb"
+  const val BABY_WEIGHT_OZ_UNIT = "oz"
+  const val BABY_WEIGHT_KG_UNIT = "kg"
+  const val BABY_LENGTH_IN_UNIT = "in"
+  const val BABY_LENGTH_CM_UNIT = "cm"
 
   // region Accessibility (TalkBack)
   /** Chevron-icon label when the metrics card is expanded (tapping collapses it). */

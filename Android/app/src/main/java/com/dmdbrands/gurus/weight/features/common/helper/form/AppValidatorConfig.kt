@@ -123,4 +123,18 @@ class AppValidatorConfig {
         const val MIN = 0
         const val MAX = 100 // allows up to 99.9 in (Smart Baby imperial cap)
     }
+
+    // Metric baby manual entry (MOB-1223): single decimal weight field in kg, length in cm.
+    // Caps mirror Smart Baby (babyApp) baby-form-input-validator: kg maxWeightLimit = 450;
+    // cm pattern \d{1,3}(\.\d)? → up to 999.9 (MAX exclusive, so 1000). Same source the
+    // existing lb/oz/in caps came from.
+    object BabyWeightKg {
+        const val MIN = 0
+        const val MAX = 450 // allows up to 449.9 kg (Smart Baby metric cap)
+    }
+
+    object BabyLengthCm {
+        const val MIN = 0
+        const val MAX = 1000 // allows up to 999.9 cm (Smart Baby: 3-digit + 1 decimal)
+    }
 }

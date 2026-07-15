@@ -30,7 +30,11 @@ struct BabyDashboardChartSupportTests {
         )
     }
 
-    private func makeDailySummaries(count: Int, from startDate: Date) -> [BathScaleWeightSummary] {
+    private func makeDailySummaries(
+        count: Int,
+        from startDate: Date,
+        includeLength: Bool = true
+    ) -> [BathScaleWeightSummary] {
         (0..<count).compactMap { offset in
             guard let date = cal.date(byAdding: .day, value: offset, to: startDate) else { return nil }
             return BathScaleWeightSummary(
@@ -39,7 +43,8 @@ struct BabyDashboardChartSupportTests {
                 entryTimestamp: ISO8601DateFormatter().string(from: date),
                 date: date,
                 count: 1,
-                weight: 800 + Double(offset) * 2
+                weight: 800 + Double(offset) * 2,
+                babyLengthInches: includeLength ? 20.0 + Double(offset) * 0.1 : nil
             )
         }
     }
@@ -112,78 +117,6 @@ struct BabyDashboardChartSupportTests {
         #expect(resolved <= today)
     }
 
-    // MARK: - dummyDailySummaries
-
-    @Test("dummyDailySummaries returns non-empty array for a baby born 90 days ago")
-    func dummyDailySummariesNonEmpty() {
-        let baby = makeBabyProfile()
-        let summaries = BabyDashboardChartSupport.dummyDailySummaries(for: baby)
-        #expect(!summaries.isEmpty)
-    }
-
-    @Test("dummyDailySummaries dates are non-decreasing")
-    func dummyDailySummariesDatesOrdered() {
-        let baby = makeBabyProfile()
-        let summaries = BabyDashboardChartSupport.dummyDailySummaries(for: baby)
-        let dates = summaries.map(\.date)
-        let sorted = dates.sorted()
-        #expect(dates == sorted)
-    }
-
-    @Test("dummyDailySummaries has positive weights")
-    func dummyDailySummariesPositiveWeights() {
-        let baby = makeBabyProfile()
-        let summaries = BabyDashboardChartSupport.dummyDailySummaries(for: baby)
-        #expect(summaries.allSatisfy { $0.weight > 0 })
-    }
-
-    @Test("dummyDailySummaries uses baby account id prefix")
-    func dummyDailySummariesUsesCorrectAccountId() {
-        let baby = makeBabyProfile(id: "my-baby")
-        let summaries = BabyDashboardChartSupport.dummyDailySummaries(for: baby)
-        #expect(summaries.allSatisfy { $0.accountId.contains("my-baby") })
-    }
-
-    // MARK: - dummySummaries
-
-    @Test("dummySummaries for week returns at least the daily data")
-    func dummySummariesWeekReturnsDailyData() {
-        let baby = makeBabyProfile()
-        let daily = BabyDashboardChartSupport.dummyDailySummaries(for: baby)
-        let week = BabyDashboardChartSupport.dummySummaries(for: baby, period: .week)
-        // Week extends the daily series forward to the upcoming Sunday so the current
-        // week's chart is fully populated, so it is at least as long as the daily series.
-        #expect(week.count >= daily.count)
-    }
-
-    @Test("dummySummaries for month returns same count as daily")
-    func dummySummariesMonthReturnsDailyData() {
-        let baby = makeBabyProfile()
-        let daily = BabyDashboardChartSupport.dummyDailySummaries(for: baby)
-        let month = BabyDashboardChartSupport.dummySummaries(for: baby, period: .month)
-        #expect(month.count == daily.count)
-    }
-
-    @Test("dummySummaries for year returns monthly aggregated data")
-    func dummySummariesYearReturnsMonthlyData() {
-        let birthday = cal.date(byAdding: .day, value: -200, to: Date()) ?? Date()
-        let baby = makeBabyProfile(birthday: birthday)
-        let year = BabyDashboardChartSupport.dummySummaries(for: baby, period: .year)
-        let daily = BabyDashboardChartSupport.dummyDailySummaries(for: baby)
-        // Aggregated should have fewer items than daily
-        #expect(year.count < daily.count)
-        #expect(!year.isEmpty)
-    }
-
-    @Test("dummySummaries for total returns monthly aggregated data")
-    func dummySummariesTotalReturnsMonthlyData() {
-        let birthday = cal.date(byAdding: .day, value: -200, to: Date()) ?? Date()
-        let baby = makeBabyProfile(birthday: birthday)
-        let total = BabyDashboardChartSupport.dummySummaries(for: baby, period: .total)
-        let year = BabyDashboardChartSupport.dummySummaries(for: baby, period: .year)
-        #expect(total.count == year.count)
-    }
-
     // MARK: - percentileSeries
 
     @Test("percentileSeries returns empty when operations are empty")
@@ -252,30 +185,28 @@ struct BabyDashboardChartSupportTests {
         }
     }
 
-    // MARK: - dummyHeightSeries
+    // MARK: - heightSeries (real recorded length)
 
-    @Test("dummyHeightSeries returns same count as operations")
-    func dummyHeightSeriesMatchesOperationCount() {
-        let baby = makeBabyProfile()
+    @Test("heightSeries returns one point per operation that recorded a length")
+    func heightSeriesMatchesOperationsWithLength() {
         let ops = makeDailySummaries(count: 7, from: cal.date(byAdding: .day, value: -7, to: Date()) ?? Date())
-        let result = BabyDashboardChartSupport.dummyHeightSeries(for: baby, operations: ops)
+        let result = BabyDashboardChartSupport.heightSeries(from: ops)
         #expect(result.count == 7)
     }
 
-    @Test("dummyHeightSeries uses baby_height series name")
-    func dummyHeightSeriesHasCorrectSeriesName() {
-        let baby = makeBabyProfile()
-        let ops = makeDailySummaries(count: 3, from: cal.date(byAdding: .day, value: -3, to: Date()) ?? Date())
-        let result = BabyDashboardChartSupport.dummyHeightSeries(for: baby, operations: ops)
-        #expect(result.allSatisfy { BabyDashboardChartSupport.isHeightSeries($0.series) })
+    @Test("heightSeries omits operations without a recorded length (no synthetic fill)")
+    func heightSeriesOmitsMissingLength() {
+        let ops = makeDailySummaries(count: 5, from: cal.date(byAdding: .day, value: -5, to: Date()) ?? Date(), includeLength: false)
+        let result = BabyDashboardChartSupport.heightSeries(from: ops)
+        #expect(result.isEmpty)
     }
 
-    @Test("dummyHeightSeries values are positive")
-    func dummyHeightSeriesPositiveValues() {
-        let baby = makeBabyProfile()
-        let ops = makeDailySummaries(count: 5, from: cal.date(byAdding: .day, value: -5, to: Date()) ?? Date())
-        let result = BabyDashboardChartSupport.dummyHeightSeries(for: baby, operations: ops)
-        #expect(result.allSatisfy { $0.value > 0 })
+    @Test("heightSeries uses baby_height series name and the recorded length value")
+    func heightSeriesHasCorrectSeriesNameAndValue() {
+        let ops = makeDailySummaries(count: 3, from: cal.date(byAdding: .day, value: -3, to: Date()) ?? Date())
+        let result = BabyDashboardChartSupport.heightSeries(from: ops)
+        #expect(result.allSatisfy { BabyDashboardChartSupport.isHeightSeries($0.series) })
+        #expect(zip(result, ops).allSatisfy { $0.value == $1.babyLengthInches })
     }
 
     // MARK: - heightPercentileSeries
@@ -405,48 +336,38 @@ struct BabyDashboardChartSupportTests {
         #expect(!BabyDashboardChartSupport.isHeightSeries("baby_percentile_fiftieth"))
     }
 
-    // MARK: - dummyHeightValue
+    // MARK: - heightValue (real recorded length at a date)
 
-    @Test("dummyHeightValue returns at least birth length for day 0")
-    func dummyHeightValueAtBirthday() {
-        let baby = makeBabyProfile(birthLengthInches: 19.5)
-        let birthday = BabyDashboardChartSupport.resolvedBirthday(for: baby)
-        let result = BabyDashboardChartSupport.dummyHeightValue(for: baby, on: birthday)
-        #expect(result >= 12.0)
+    @Test("heightValue returns the recorded length for the matching day")
+    func heightValueReturnsRecordedLength() {
+        let start = cal.date(byAdding: .day, value: -5, to: Date()) ?? Date()
+        let ops = makeDailySummaries(count: 5, from: start)
+        let target = ops[2]
+        let result = BabyDashboardChartSupport.heightValue(on: target.date, in: ops)
+        #expect(result == target.babyLengthInches)
     }
 
-    @Test("dummyHeightValue increases over time")
-    func dummyHeightValueIncreasesOverTime() {
-        let baby = makeBabyProfile()
-        let birthday = BabyDashboardChartSupport.resolvedBirthday(for: baby)
-        let day30 = cal.date(byAdding: .day, value: 30, to: birthday) ?? birthday
-        let day90 = cal.date(byAdding: .day, value: 90, to: birthday) ?? birthday
-
-        let h30 = BabyDashboardChartSupport.dummyHeightValue(for: baby, on: day30)
-        let h90 = BabyDashboardChartSupport.dummyHeightValue(for: baby, on: day90)
-
-        #expect(h90 > h30)
+    @Test("heightValue returns nil when no operation recorded a length on that day")
+    func heightValueNilWhenNoLength() {
+        let start = cal.date(byAdding: .day, value: -3, to: Date()) ?? Date()
+        let ops = makeDailySummaries(count: 3, from: start, includeLength: false)
+        let result = BabyDashboardChartSupport.heightValue(on: start, in: ops)
+        #expect(result == nil)
     }
 
-    // MARK: - averageDummyHeight
+    // MARK: - averageHeight (real recorded length)
 
-    @Test("averageDummyHeight falls back to today's height when dates are empty")
-    func averageDummyHeightFallbackForEmpty() {
-        let baby = makeBabyProfile()
-        let result = BabyDashboardChartSupport.averageDummyHeight(for: baby, dates: [])
-        #expect(result > 0)
+    @Test("averageHeight returns nil when no operation recorded a length")
+    func averageHeightNilForNoLength() {
+        let ops = makeDailySummaries(count: 4, from: Date(), includeLength: false)
+        #expect(BabyDashboardChartSupport.averageHeight(from: ops) == nil)
     }
 
-    @Test("averageDummyHeight returns average of heights for given dates")
-    func averageDummyHeightAveragesMultipleDates() {
-        let baby = makeBabyProfile()
-        let birthday = BabyDashboardChartSupport.resolvedBirthday(for: baby)
-        let d1 = cal.date(byAdding: .day, value: 10, to: birthday) ?? birthday
-        let d2 = cal.date(byAdding: .day, value: 20, to: birthday) ?? birthday
-        let avg = BabyDashboardChartSupport.averageDummyHeight(for: baby, dates: [d1, d2])
-        let h1 = BabyDashboardChartSupport.dummyHeightValue(for: baby, on: d1)
-        let h2 = BabyDashboardChartSupport.dummyHeightValue(for: baby, on: d2)
-        let expected = (h1 + h2) / 2
+    @Test("averageHeight returns the mean of recorded lengths")
+    func averageHeightAveragesRecordedLengths() throws {
+        let ops = makeDailySummaries(count: 3, from: cal.date(byAdding: .day, value: -3, to: Date()) ?? Date())
+        let expected = ops.compactMap(\.babyLengthInches).reduce(0, +) / Double(ops.count)
+        let avg = try #require(BabyDashboardChartSupport.averageHeight(from: ops))
         #expect(abs(avg - expected) < 0.001)
     }
 
@@ -457,10 +378,9 @@ struct BabyDashboardChartSupportTests {
         let baby = makeBabyProfile()
         let birthday = BabyDashboardChartSupport.resolvedBirthday(for: baby)
         let date = cal.date(byAdding: .day, value: 60, to: birthday) ?? birthday
-        let heightInches = BabyDashboardChartSupport.dummyHeightValue(for: baby, on: date)
 
         let result = try #require(
-            BabyDashboardChartSupport.heightPercentile(for: baby, heightInches: heightInches, on: date)
+            BabyDashboardChartSupport.heightPercentile(for: baby, heightInches: 22.5, on: date)
         )
 
         #expect(result >= 0)
@@ -482,60 +402,6 @@ struct BabyDashboardChartSupportTests {
     func percentileLineNilForWeight() {
         #expect(BabyDashboardChartSupport.percentileLine(for: "weight") == nil)
         #expect(BabyDashboardChartSupport.percentileLine(for: "baby_height") == nil)
-    }
-
-    // MARK: - Dummy Summaries Cache
-
-    @Test("dummySummaries returns cached result on repeated calls for same profile and period")
-    func dummySummariesCacheHit() {
-        BabyDashboardChartSupport.clearDummySummariesCache()
-        let profile = makeBabyProfile(id: "cache-test-1")
-
-        let first = BabyDashboardChartSupport.dummySummaries(for: profile, period: .week)
-        let second = BabyDashboardChartSupport.dummySummaries(for: profile, period: .week)
-
-        #expect(!first.isEmpty)
-        #expect(first.count == second.count)
-        #expect(first.first?.period == second.first?.period)
-    }
-
-    @Test("dummySummaries invalidates cache for different baby profile")
-    func dummySummariesDifferentProfileRecalculates() {
-        BabyDashboardChartSupport.clearDummySummariesCache()
-        let profile1 = makeBabyProfile(id: "cache-p1")
-        let profile2 = makeBabyProfile(id: "cache-p2")
-
-        let first = BabyDashboardChartSupport.dummySummaries(for: profile1, period: .week)
-        let second = BabyDashboardChartSupport.dummySummaries(for: profile2, period: .week)
-
-        // Both should return data but from separate cache entries
-        #expect(!first.isEmpty)
-        #expect(!second.isEmpty)
-        #expect(first.first?.accountId != second.first?.accountId)
-    }
-
-    @Test("dummySummaries returns different data for different periods")
-    func dummySummariesDifferentPeriodsReturnDifferentData() {
-        BabyDashboardChartSupport.clearDummySummariesCache()
-        let profile = makeBabyProfile(id: "cache-period-test")
-
-        let weekly = BabyDashboardChartSupport.dummySummaries(for: profile, period: .week)
-        let yearly = BabyDashboardChartSupport.dummySummaries(for: profile, period: .year)
-
-        // Year/total uses monthly aggregation so should have fewer entries
-        #expect(weekly.count >= yearly.count)
-    }
-
-    @Test("clearDummySummariesCache forces recomputation")
-    func clearDummySummariesCacheInvalidates() {
-        let profile = makeBabyProfile(id: "cache-clear-test")
-        _ = BabyDashboardChartSupport.dummySummaries(for: profile, period: .week)
-
-        BabyDashboardChartSupport.clearDummySummariesCache()
-
-        // After clearing, next call should produce fresh (but equivalent) data
-        let fresh = BabyDashboardChartSupport.dummySummaries(for: profile, period: .week)
-        #expect(!fresh.isEmpty)
     }
 
     // MARK: - Private-sex gating (Smart Baby percentile.service.ts parity)

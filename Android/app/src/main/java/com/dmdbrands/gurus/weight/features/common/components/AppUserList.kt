@@ -9,6 +9,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.key
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.testTag
+import com.dmdbrands.gurus.weight.core.shared.utilities.testing.TestTags
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.semantics.CustomAccessibilityAction
@@ -78,6 +80,7 @@ fun AppUserList(
                     iconId = AppIcons.Default.Delete,
                     contentDescription = AppListStrings.accDeleteItemLabel,
                     backgroundColor = MeTheme.colorScheme.danger,
+                    modifier = Modifier.testTag("${TestTags.Landing.AccountCardDeleteButton}_${item.id}"),
                 ) {
                     onDeleteRequest(item)
                 }
@@ -129,7 +132,10 @@ fun AppUserList(
               }
               AppUser(
                 account = item,
-                modifier = Modifier.clip(shape).then(deleteActionModifier),
+                modifier = Modifier
+                  .clip(shape)
+                  .testTag("${TestTags.Landing.AccountCardRow}_${item.id}")
+                  .then(deleteActionModifier),
                 onAccountSelect = { onAccountSelect(item) },
                 onLoginRequest = { onLoginRequest(item) },
                 avatarAlpha = 1f - progress,

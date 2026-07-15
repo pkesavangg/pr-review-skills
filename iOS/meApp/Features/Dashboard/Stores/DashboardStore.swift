@@ -75,13 +75,23 @@ class DashboardStore: ObservableObject, DashboardStateProviding {
         DataContentSignature(
             daily: state.dailySummaries.compactMap { summary in
                 guard let summary else { return nil }
-                return "\(summary.period)|\(summary.entryTimestamp)|\(summary.weight)"
+                return summaryContentToken(summary)
             },
             monthly: state.monthlySummaries.compactMap { summary in
                 guard let summary else { return nil }
-                return "\(summary.period)|\(summary.entryTimestamp)|\(summary.weight)"
+                return summaryContentToken(summary)
             }
         )
+    }
+
+    /// Builds the per-summary token used for dashboard change detection. Must include every
+    /// plotted value across products, not just `weight`: BP summaries carry `weight = 0` and
+    /// vary only by systolic/diastolic/pulse, and baby summaries by length — so a weight-only
+    /// token misses BP/baby edits, leaving the graph stuck at its initial (zero) state on
+    /// add/edit (the chart only rebuilds when `dataChangeRevision` ticks).
+    private static func summaryContentToken(_ summary: BathScaleWeightSummary) -> String {
+        let bp = "\(summary.systolic ?? 0)|\(summary.diastolic ?? 0)|\(summary.pulse ?? 0)"
+        return "\(summary.period)|\(summary.entryTimestamp)|\(summary.weight)|\(bp)|\(summary.babyLengthInches ?? 0)"
     }
 
     var isBabySelection: Bool {
@@ -352,6 +362,12 @@ class DashboardStore: ObservableObject, DashboardStateProviding {
             .sink { [weak self] _ in
                 guard let self else { return }
                 self.invalidateContinuousOperationsCache()
+                // Bust the memoized chart series too: its cache key is
+                // operationsCount + yAxisDomain, both of which can stay constant when an
+                // existing day's values change in place (e.g. editing a BP reading whose
+                // systolic/diastolic land inside the current axis band). The content
+                // signature changed here, so the series is genuinely stale.
+                self.cacheManager.invalidateChartSeriesCache()
                 self.graphManager.forceVisibleOperationsRecalculation()
             }
             .store(in: &cancellables)
@@ -603,7 +619,6 @@ class DashboardStore: ObservableObject, DashboardStateProviding {
         state.graph.showCrosshair = false
         state.graph.isScrolling = false
         state.graph.hasDetectedScrollInCurrentGesture = false
-        BabyDashboardChartSupport.clearDummySummariesCache()
     }
 
     var productTypeSelectorStore: ProductTypeStore {
@@ -730,15 +745,9 @@ class DashboardStore: ObservableObject, DashboardStateProviding {
     var continuousOperations: [BathScaleWeightSummary] {
         if let babyProfile = selectedBabyProfile {
             return cacheManager.getContinuousOperations(for: state.graph.selectedPeriod) {
-                let realSummaries = self.babySummaries(for: babyProfile, period: state.graph.selectedPeriod)
-                if !realSummaries.isEmpty {
-                    return realSummaries
-                }
-                // Fallback to dummy data when no real baby entries exist
-                return BabyDashboardChartSupport.dummySummaries(
-                    for: babyProfile,
-                    period: state.graph.selectedPeriod
-                )
+                // Real baby entries only — no synthetic fill. An empty result renders the baby
+                // graph's empty state (see `hasBabyEntries` / `emptyWeightDisplay`).
+                self.babySummaries(for: babyProfile, period: state.graph.selectedPeriod)
             }
         }
 

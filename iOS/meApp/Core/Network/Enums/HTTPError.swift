@@ -95,6 +95,16 @@ enum HTTPError: Error, LocalizedError, Equatable {
         return false
     }
 
+    /// Returns true when `error` represents an HTTP 409 Conflict — used to detect a server-side
+    /// "name already taken" rejection regardless of whether it arrives as `.statusCode` or `.apiError`.
+    static func isConflict(_ error: Error) -> Bool {
+        switch error as? HTTPError {
+        case .statusCode(409): return true
+        case .apiError(_, let code): return code == 409
+        default: return false
+        }
+    }
+
     static func from(status: HTTPStatusCode) -> HTTPError {
         switch status {
         case .unauthorized: return .unauthorized

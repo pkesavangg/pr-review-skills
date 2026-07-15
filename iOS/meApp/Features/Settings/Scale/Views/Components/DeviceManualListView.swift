@@ -15,14 +15,21 @@ struct DeviceManualListView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: .spacingSM) {
-            ScrollView(.horizontal, showsIndicators: false) {
+            ViewThatFits(in: .horizontal) {
                 SegmentedButtonView(
                     segments: DeviceSegment.allCases,
                     selectedSegment: $selectedSegment,
-                    usesIntrinsicWidth: true
+                    fillsAvailableWidth: true
                 )
-                .padding(.horizontal, .spacingSM)
+                ScrollView(.horizontal, showsIndicators: false) {
+                    SegmentedButtonView(
+                        segments: DeviceSegment.allCases,
+                        selectedSegment: $selectedSegment,
+                        usesIntrinsicWidth: true
+                    )
+                }
             }
+            .padding(.horizontal, .spacingSM)
 
             // IMPORTANT: Avoid nested vertical ScrollViews. Let parent handle vertical scrolling.
             LazyVStack(spacing: 0) {
@@ -40,7 +47,7 @@ struct DeviceManualListView: View {
             .padding(.bottom, .spacingXS)
         }
     }
-    
+
     func filteredScales(_ scales: [DeviceItemInfo], for segment: DeviceSegment) -> [DeviceItemInfo] {
         switch segment {
         case .all:

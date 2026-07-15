@@ -25,6 +25,7 @@ struct DateOfBirthStepView: View {
                 ) {
                     withAnimation { showDatePicker.toggle() }
                 }
+                .appAccessibility(id: AccessibilityID.signupDobField)
                 .padding(.top, .spacingLG)
                 .padding(.leading, 2)
                 // The date picker appears when showDatePicker is true

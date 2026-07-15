@@ -184,8 +184,8 @@ struct BottomTabBarViewModelTests {
         _ = sut
     }
 
-    @Test("baby reading with an existing profile auto-assigns on dismiss (assign flow, not the ADD A BABY card)")
-    func babyReadingWithProfileAutoAssignsOnDismiss() async {
+    @Test("baby reading with an existing profile discards (not assigns) the reading on no-action dismiss")
+    func babyReadingWithProfileDiscardsOnDismiss() async {
         let (sut, bluetooth, notification, entry) = makeSUT()
         bluetooth.isSetupInProgress = false
 
@@ -215,11 +215,14 @@ struct BottomTabBarViewModelTests {
         let shown = await waitUntil { notification.showToastCalls >= 1 }
         #expect(shown)
 
-        // No user action → auto-assign to the existing baby on dismiss.
+        // No user action → discard the reading on dismiss. An unassigned reading must never land
+        // in a baby's history without an explicit user decision — even when a profile exists
+        // (matches the no-profile card's timeout behavior).
         notification.toastData?.onDismiss?()
-        // autoAssign hops through a nested Task { @MainActor }, so give it a generous window.
-        let assigned = await waitUntil(timeoutNanoseconds: 5_000_000_000) { entry.assignBabyEntryCalls >= 1 }
-        #expect(assigned, "A baby profile exists — the reading should auto-assign on dismiss")
+        // discardBabyReading hops through a Task { @MainActor }, so give it a generous window.
+        let discarded = await waitUntil(timeoutNanoseconds: 5_000_000_000) { entry.deleteEntryByIdCalls >= 1 }
+        #expect(discarded, "A baby profile exists but no decision was made — the reading should be discarded on dismiss")
+        #expect(entry.assignBabyEntryCalls == 0, "The reading must not be auto-assigned without a user decision")
         _ = sut
     }
 

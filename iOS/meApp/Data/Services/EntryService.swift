@@ -764,7 +764,7 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
             hasher.combine(snapshot.entryTimestamp)
             hasher.combine(snapshot.babyId)
             hasher.combine(snapshot.weightDecigrams)
-            hasher.combine(snapshot.lengthInches)
+            hasher.combine(snapshot.lengthMm)
         }
         return hasher.finalize()
     }
@@ -1974,7 +1974,8 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
         let entryTimestamp: String
         let babyId: String
         let weightDecigrams: Int
-        let lengthInches: Int
+        /// Recorded length in millimeters (the unit `BabyEntry.length` is persisted in).
+        let lengthMm: Int
     }
 
     /// Fetches baby entries for a given babyId and returns snapshots safe for background aggregation.
@@ -1991,7 +1992,7 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
                 entryTimestamp: entry.entryTimestamp,
                 babyId: babyEntry.babyId,
                 weightDecigrams: babyEntry.weight,
-                lengthInches: babyEntry.length
+                lengthMm: babyEntry.length
             )
         }
     }
@@ -2001,6 +2002,19 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
     private nonisolated func decigramsToStoredWeight(_ decigrams: Int) -> Int {
         let kg = Double(decigrams) / BabyPercentileGrowthReference.decigramsToKgFactor
         return ConversionTools.convertKgToStored(kg)
+    }
+
+    /// Average of the recorded lengths (millimeters) for a period, expressed in inches for the
+    /// baby height chart. Only positive (actually recorded) lengths count; returns nil when the
+    /// period has no recorded length, so the height series simply omits that point rather than
+    /// plotting a zero. Averages in mm first to match History's per-day/week length rendering.
+    private nonisolated func avgLengthInches(_ lengthsMm: [Int]) -> Double? {
+        let recorded = lengthsMm.filter { $0 > 0 }
+        guard !recorded.isEmpty else { return nil }
+        // Average in Double and round to the nearest mm rather than integer-dividing, so the
+        // fractional part isn't silently truncated (e.g. [201, 202] → 202mm, not 201mm).
+        let avgMm = Int((Double(recorded.reduce(0, +)) / Double(recorded.count)).rounded())
+        return ConversionTools.convertBabyMmToInches(avgMm)
     }
 
     /// Aggregates baby entry snapshots into daily summaries.
@@ -2026,7 +2040,8 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
                 entryTimestamp: latestTimestamp,
                 date: date,
                 count: daySnapshots.count,
-                weight: avgWeight(storedWeights)
+                weight: avgWeight(storedWeights),
+                babyLengthInches: avgLengthInches(daySnapshots.map(\.lengthMm))
             )
         }.sorted { $0.period < $1.period }
     }
@@ -2055,7 +2070,8 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
                 entryTimestamp: latestTimestamp,
                 date: date,
                 count: monthSnapshots.count,
-                weight: avgWeight(storedWeights)
+                weight: avgWeight(storedWeights),
+                babyLengthInches: avgLengthInches(monthSnapshots.map(\.lengthMm))
             )
         }.sorted { $0.period < $1.period }
     }

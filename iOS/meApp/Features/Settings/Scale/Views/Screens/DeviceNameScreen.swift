@@ -45,7 +45,8 @@ struct DeviceNameScreen: View {
                                     router.navigateBack()
                                 }
                             }
-                        })
+                        }
+                        .appAccessibility(id: AccessibilityID.deviceNameSaveButton))
                 },
                 onLeadingTap: {
                     Task {
@@ -54,7 +55,8 @@ struct DeviceNameScreen: View {
                     }
                 },
                 onTrailingTap: {},
-                canShowBorder: true
+                canShowBorder: true,
+                leadingAccessibilityID: AccessibilityID.deviceNameBackButton
             )
 
             ScrollView(.vertical, showsIndicators: false) {
@@ -68,7 +70,8 @@ struct DeviceNameScreen: View {
                             focusField: .scaleName
                         ),
                         value: $editedName,
-                        focusedField: $focusedField
+                        focusedField: $focusedField,
+                        accessibilityIdentifier: AccessibilityID.deviceNameField
                     ) {
                         // Optional: handle commit
                     }
@@ -84,6 +87,7 @@ struct DeviceNameScreen: View {
             .scrollDismissesKeyboard(.interactively)
         }
         .navigationBarBackButtonHidden(true)
+        .screenAccessibilityRoot(AccessibilityID.deviceNameScreenRoot)
         .background(theme.backgroundSecondary.ignoresSafeArea())
         .onTapGesture {
             focusedField = nil

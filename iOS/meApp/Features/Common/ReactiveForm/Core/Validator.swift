@@ -128,6 +128,17 @@ extension Validator where Value == String {
             return weight <= maximum
         }
     }
+
+    /// Validator that requires the control's value to be *strictly* less than the provided maximum.
+    /// Mirrors `maxValue` but is exclusive of the boundary, so the maximum itself is rejected —
+    /// matching the "value should be less than N" copy shown for weight entry (MOB-1392).
+    /// Uses the `.maxValue` error type so existing error-message wiring is unchanged.
+    public static func maxValueExclusive(_ maximum: Double) -> Validator {
+        Validator(type: .maxValue, value: maximum) { value in
+            guard let num = Double(value) else { return true } // Pass if not a number, other validators will catch it
+            return num < maximum
+        }
+    }
     
     /// Validator that requires the control's value to not exceed an absolute maximum limit.
     public static func maxLimit(_ maximum: Double) -> Validator {
@@ -188,6 +199,17 @@ extension Validator where Value == String {
         let trimmed = value.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { return true } // Let .required handle empty
         return trimmed.allSatisfy(\.isNumber)
+    }
+
+    /// Validator that requires the value to fully match the provided regular expression.
+    /// Empty values pass so required-ness can be enforced separately — mirroring Angular's
+    /// `Validators.pattern`, which treats an empty control as valid. Used to port the Baby app's
+    /// manual weight-entry unit validation (integer pounds, one-decimal ounces, three-decimal kg/lb).
+    public static func pattern(_ pattern: String) -> Validator {
+        Validator(type: .pattern, value: pattern) { value in
+            guard !value.isEmpty else { return true }
+            return value.range(of: pattern, options: .regularExpression) != nil
+        }
     }
 
 }

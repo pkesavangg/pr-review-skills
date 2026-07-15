@@ -411,15 +411,14 @@ class SettingsStore: ObservableObject {
 
     var heightText: String {
         // Height is stored as tenths-of-inches (e.g. "681" == 5′8″ / 173 cm)
-        guard let heightStr = activeAccount?.weightHeight,
-              let storedHeightDouble = Double(heightStr)
-        else {
-            return ""
-        }
+        guard let account = activeAccount else { return "" }
 
-        let storedHeight = Int(round(storedHeightDouble))
+        // Fall back to 770 == 6'5" (the signup form's default) when the account has no
+        // stored height (e.g. a non-weight signup) so the row never shows "0' 0"".
+        let storedDouble = Double(account.weightHeight) ?? 0
+        let storedHeight = storedDouble > 0 ? Int(round(storedDouble)) : 770
 
-        let isMetric = activeAccount?.weightUnit == .kg
+        let isMetric = account.weightUnit == .kg
         return ConversionTools.convertToFormattedHeight(storedHeight, isMetric: isMetric)
     }
 
@@ -452,14 +451,10 @@ class SettingsStore: ObservableObject {
     }
 
     var editHeightText: String {
-        let heightStr = editProfileForm.height.value
-        guard !heightStr.isEmpty,
-              let storedDouble = Double(heightStr)
-        else {
-            return ""
-        }
-
-        let storedHeight = Int(round(storedDouble))
+        // Fall back to 770 == 6'5" (the signup form's default) when the form has no
+        // height value yet so the row never shows a blank or "0' 0"".
+        let storedDouble = Double(editProfileForm.height.value) ?? 0
+        let storedHeight = storedDouble > 0 ? Int(round(storedDouble)) : 770
         let isMetric = activeAccount?.weightUnit == .kg
         return ConversionTools.convertToFormattedHeight(storedHeight, isMetric: isMetric)
     }
@@ -566,10 +561,11 @@ class SettingsStore: ObservableObject {
                 editProfileForm.birthday.value = dob
             }
 
-            // Populate height from account (convert to displayed format)
-            if let heightDouble = Double(account.weightHeight) {
-                editProfileForm.height.value = String(Int(heightDouble))
-            }
+            // Populate height from account (convert to displayed format), falling back to
+            // 770 == 6'5" (the signup form's default) when unset so the row never shows
+            // "0' 0"" and a save persists a valid height.
+            let storedHeight = Double(account.weightHeight) ?? 0
+            editProfileForm.height.value = String(storedHeight > 0 ? Int(storedHeight) : 770)
 
             editProfileForm.firstName.markAsPristine()
             editProfileForm.lastName.markAsPristine()
@@ -1046,6 +1042,13 @@ class SettingsStore: ObservableObject {
 
         editProfileForm.height.value = String(storedHeight)
         editProfileForm.height.markAsDirty()
+
+        // Keep the picker selections in sync with the value the user just chose so that
+        // reopening the height picker shows the updated height rather than the last
+        // account-synced value (which only refreshes on an activeAccount push).
+        let selections = ConversionTools.pickerSelections(from: storedHeight)
+        selectedHeightInches = selections.inches
+        selectedHeightCm = selections.cm
     }
 
     /// Checks if the status array contains USER_SELECTION_IN_PROGRESS

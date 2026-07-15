@@ -75,6 +75,7 @@ struct ConnectingBluetoothView: View {
                             pairAgain?()
                         }
                     .accessibilityHint(BluetoothSetupViewStrings.A11y.pairAgainHint)
+                    .appAccessibility(id: AccessibilityID.bluetoothConnectingPairAgainButton)
                     .frame(maxWidth: .infinity, alignment: .center)
                     .padding(.horizontal, .spacingSM)
                 default:

@@ -100,9 +100,32 @@ class BabyProfileSetupForm: ObservableForm {
 
     // MARK: - Error Messages
 
-    /// Set externally (by the signup store) to surface a duplicate-name validation error.
+    /// Set externally (by the signup / scale-setup store) to surface a duplicate-name validation error.
     /// Re-evaluated on every name change — set when the name matches another baby, cleared otherwise.
-    var duplicateNameError: String?
+    /// `@Published` so the field re-renders the moment it is set, even when the Next-button state
+    /// does not change on that keystroke.
+    @Published var duplicateNameError: String?
+
+    /// Re-evaluates whether the current `name` duplicates any of `otherNames` (case-insensitive,
+    /// whitespace-trimmed) and sets or clears `duplicateNameError` accordingly. Callers pass the
+    /// names of all OTHER babies — i.e. excluding the one being edited. Shared by the scale-setup
+    /// and My Kids flows so the check can never drift between them. Returns true when a duplicate
+    /// is present.
+    ///
+    /// Trims with `.whitespacesAndNewlines` to match the save-path name normalization.
+    @discardableResult
+    func refreshDuplicateNameError(against otherNames: [String]) -> Bool {
+        let trimmed = name.value.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        guard !trimmed.isEmpty else {
+            duplicateNameError = nil
+            return false
+        }
+        let isDuplicate = otherNames.contains {
+            $0.trimmingCharacters(in: .whitespacesAndNewlines).lowercased() == trimmed
+        }
+        duplicateNameError = isDuplicate ? BabyScaleSetupStrings.BabyProfile.duplicateNameError : nil
+        return isDuplicate
+    }
 
     func getNameError() -> String? {
         guard name.isDirty || name.isTouched else { return nil }

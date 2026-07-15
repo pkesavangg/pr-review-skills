@@ -213,7 +213,16 @@ struct SettingsScreen: View {
             })
             .listRowInsets()
             .appAccessibility(id: AccessibilityID.settingsRowAppPermissions)
-            // Notifications moved to the product-scoped "My Weight" section (MOB-417).
+            // Notifications are available for any product (weight / BP / baby), gated on
+            // `shouldShowNotifications` rather than the weight-only section (was MOB-417).
+            if settingsStore.shouldShowNotifications {
+                ActionListItemView(config: ActionListItemConfig(
+                    title: settingsLang.notifications,
+                    value: settingsStore.notificationsOnText,
+                    chevronType: .upDown) { settingsStore.presentNotificationPicker() })
+                .listRowInsets()
+                .appAccessibility(id: AccessibilityID.settingsRowNotifications)
+            }
             ActionListItemView(config: ActionListItemConfig(
                 title: settingsStore.messagesTitleText,
                 showDot: settingsStore.canShowFeedNotificationBadge
@@ -242,12 +251,6 @@ struct SettingsScreen: View {
 
     private func weightScaleSection() -> some View {
         Section(header: sectionHeader(title: settingsLang.myWeight)) {
-            ActionListItemView(config: ActionListItemConfig(
-                title: settingsLang.notifications,
-                value: settingsStore.notificationsOnText,
-                chevronType: .upDown) { settingsStore.presentNotificationPicker() })
-            .listRowInsets()
-            .appAccessibility(id: AccessibilityID.settingsRowNotifications)
             ActionListItemView(config: ActionListItemConfig(
                 title: settingsLang.goalSetting) {
                     router.navigate(to: .goal)
@@ -290,6 +293,7 @@ struct SettingsScreen: View {
                     settingsStore.openPrivacy()
                 })
             .listRowInsets()
+            .appAccessibility(id: AccessibilityID.settingsRowPrivacyPolicy)
 
             ActionListItemView(config: ActionListItemConfig(
                 title: settingsLang.termsOfService
@@ -297,6 +301,7 @@ struct SettingsScreen: View {
                     settingsStore.openTerms()
                 })
             .listRowInsets()
+            .appAccessibility(id: AccessibilityID.settingsRowTermsOfService)
 
             ActionListItemView(config: ActionListItemConfig(
                 title: settingsLang.greaterGoodsWebsite
@@ -304,6 +309,7 @@ struct SettingsScreen: View {
                     settingsStore.openGreaterGoods()
                 })
             .listRowInsets()
+            .appAccessibility(id: AccessibilityID.settingsRowGreaterGoods)
         }
         .listRowBackground(theme.backgroundPrimary)
         .listRowSeparatorTint(theme.statusUtilityPrimary)
@@ -336,6 +342,7 @@ struct SettingsScreen: View {
                         settingsStore.handleLogoutForAllAccounts()
                     })
                 .listRowInsets()
+                .appAccessibility(id: AccessibilityID.settingsRowLogoutAll)
             }
 
             ActionListItemView(config: ActionListItemConfig(

@@ -323,29 +323,21 @@ struct GraphSelectionPresentationResolverTests {
 
     // MARK: - Height fallback
 
-    @Test("falls back to the dummy height curve when no points are available")
-    func fallsBackToDummyHeightWhenNoPoints() throws {
+    @Test("returns nil for height when no recorded length points are available (no synthetic fill)")
+    func returnsNilForHeightWhenNoPoints() {
         let profile = babyProfile()
         let crosshairDate = date(84 * 86_400)
 
-        let result = try #require(
-            resolver.babySelectionPresentation(
-                babyProfile: profile,
-                metric: .height,
-                selectedCrosshairDate: crosshairDate,
-                plottedPoints: [],
-                plotXDate: { $0 },
-                currentUnit: .kg,
-                displayWeight: nil
-            )
+        let result = resolver.babySelectionPresentation(
+            babyProfile: profile,
+            metric: .height,
+            selectedCrosshairDate: crosshairDate,
+            plottedPoints: [],
+            plotXDate: { $0 },
+            currentUnit: .kg,
+            displayWeight: nil
         )
 
-        let expectedHeight = BabyDashboardChartSupport.dummyHeightValue(for: profile, on: crosshairDate)
-        #expect(result.crosshairValue == expectedHeight)
-        #expect(result.percentile == BabyDashboardChartSupport.heightPercentile(
-            for: profile,
-            heightInches: expectedHeight,
-            on: crosshairDate
-        ))
+        #expect(result == nil)
     }
 }

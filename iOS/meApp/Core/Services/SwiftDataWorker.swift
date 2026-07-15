@@ -43,6 +43,10 @@ struct EntryData: Sendable {
     let boneMass: Int?
     let impedance: Int?
     let unit: String?
+    let systolic: Int?
+    let diastolic: Int?
+    let meanArterial: String?
+    let bpmPulse: Int?
 
     /// Converts to BathScaleOperationDTO for API/transfer use
     func toDTO() -> BathScaleOperationDTO {
@@ -53,20 +57,24 @@ struct EntryData: Sendable {
             bodyFat: bodyFat.map { Double($0) },
             boneMass: boneMass.map { Double($0) },
             entryTimestamp: entryTimestamp,
-            entryType: nil,
+            // Carry the real entry type so product filters (dashboard `matchesDTOEntryType`,
+            // per-product streaks) route weight / BP / baby correctly. Was hardcoded nil, which
+            // made every DTO fall back to "scale" — the BP dashboard then matched no entries.
+            entryType: entryType,
             impedance: impedance.map { Double($0) },
             metabolicAge: metabolicAge.map { Double($0) },
             muscleMass: muscleMass.map { Double($0) },
             operationType: operationType,
             proteinPercent: proteinPercent.map { Double($0) },
-            pulse: pulse.map { Double($0) },
+            // Prefer the BP pulse for BP readings; fall back to the body-composition pulse.
+            pulse: (bpmPulse ?? pulse).map { Double($0) },
             serverTimestamp: serverTimestamp,
             skeletalMusclePercent: skeletalMusclePercent.map { Double($0) },
             source: source,
             subcutaneousFatPercent: subcutaneousFatPercent.map { Double($0) },
-            systolic: nil,
-            diastolic: nil,
-            meanArterial: nil,
+            systolic: systolic.map { Double($0) },
+            diastolic: diastolic.map { Double($0) },
+            meanArterial: meanArterial.flatMap { Double($0) },
             unit: unit,
             visceralFatLevel: visceralFatLevel.map { Double($0) },
             water: water.map { Double($0) },
@@ -107,7 +115,12 @@ extension EntryData {
             visceralFatLevel: entry.scaleEntryMetric?.visceralFatLevel,
             boneMass: entry.scaleEntryMetric?.boneMass,
             impedance: entry.scaleEntryMetric?.impedance,
-            unit: entry.scaleEntryMetric?.unit
+            unit: entry.scaleEntryMetric?.unit,
+            // BPMEntry relationship - safe to access in the model's isolation domain
+            systolic: entry.bpmEntry?.systolic,
+            diastolic: entry.bpmEntry?.diastolic,
+            meanArterial: entry.bpmEntry?.meanArterial,
+            bpmPulse: entry.bpmEntry?.pulse
         )
     }
 }
@@ -179,7 +192,7 @@ actor SwiftDataWorker {
         let operationType = "create"
         let calendar = Calendar.current
         let now = Date()
-        
+
         // Calculate date ranges for week and month (date-based filtering like BEFORE commit)
         guard let weekStartDate = calendar.date(byAdding: .day, value: -7, to: now),
               let monthStartDate = calendar.date(byAdding: .day, value: -30, to: now) else {
@@ -189,7 +202,7 @@ actor SwiftDataWorker {
         let nowString = isoFormatter.string(from: now)
         let weekStartString = isoFormatter.string(from: weekStartDate)
         let monthStartString = isoFormatter.string(from: monthStartDate)
-        
+
         // Fetch once ordered DESC (newest first), then derive the week/month slices
         // in memory. This avoids repeating nearly identical SQLite work three times
         // during a single dashboard progress refresh.

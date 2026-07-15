@@ -22,8 +22,9 @@ interface IExportService {
 
     /**
      * Exports entries via the unified `GET /v3/entries/csv` endpoint (MOB-380).
-     * @param category `weight`, `bp`, or null for all.
+     * @param category `weight`, `bp`, `baby`, or null for all.
+     * @param babyId required by the server when [category] is `baby` (spec §2.18); null otherwise.
      * @param download true = stream file to MediaStore Downloads; false = trigger server email.
      */
-    suspend fun exportEntriesCsv(category: String? = null, download: Boolean = false)
+    suspend fun exportEntriesCsv(category: String? = null, babyId: String? = null, download: Boolean = false)
 }

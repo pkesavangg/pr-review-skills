@@ -194,6 +194,46 @@ class HistoryReducerTest {
     }
 
     // -------------------------------------------------------------------------
+    // Device flags (MOB-1221)
+    // -------------------------------------------------------------------------
+
+    @Test
+    fun `SetDeviceFlags stores all three device flags`() {
+        val result = reducer.reduce(
+            HistoryState(),
+            HistoryIntent.SetDeviceFlags(hasWeightDevice = true, hasBpmDevice = true, hasBabyDevice = true),
+        )
+
+        assertThat(result.hasWeightDevice).isTrue()
+        assertThat(result.hasBpmDevice).isTrue()
+        assertThat(result.hasBabyDevice).isTrue()
+    }
+
+    @Test
+    fun `SetDeviceFlags sets each flag independently`() {
+        val result = reducer.reduce(
+            HistoryState(hasWeightDevice = true, hasBpmDevice = true, hasBabyDevice = true),
+            HistoryIntent.SetDeviceFlags(hasWeightDevice = false, hasBpmDevice = true, hasBabyDevice = false),
+        )
+
+        assertThat(result.hasWeightDevice).isFalse()
+        assertThat(result.hasBpmDevice).isTrue()
+        assertThat(result.hasBabyDevice).isFalse()
+    }
+
+    @Test
+    fun `SetDeviceFlags preserves existing history items`() {
+        val state = HistoryState(historyItems = persistentListOf(itemA))
+
+        val result = reducer.reduce(
+            state,
+            HistoryIntent.SetDeviceFlags(hasWeightDevice = true, hasBpmDevice = false, hasBabyDevice = false),
+        )
+
+        assertThat(result.historyItems).containsExactly(itemA)
+    }
+
+    // -------------------------------------------------------------------------
     // Unhandled intents fall through to else -> state
     // -------------------------------------------------------------------------
 
@@ -217,5 +257,8 @@ class HistoryReducerTest {
         assertThat(state.isLoading).isFalse()
         assertThat(state.errorMessage).isNull()
         assertThat(state.historyItems).isEmpty()
+        assertThat(state.hasWeightDevice).isFalse()
+        assertThat(state.hasBpmDevice).isFalse()
+        assertThat(state.hasBabyDevice).isFalse()
     }
 }

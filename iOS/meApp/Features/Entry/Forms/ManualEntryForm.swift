@@ -11,14 +11,19 @@ import Foundation
 /// Only weight field is included for now; additional fields will be added later.
 class ManualEntryForm: ObservableForm {
     /// Weight input (String) measured in lbs by default.
-    /// Validation: required, minValue (>0), maxValue (<= 999 lbs)
-    var weight = FormControl("", validators: [.required, .minValue(), .maxValue(999.0)])
+    /// Validation: required, minValue (>0), maxValue (< 999 lbs — exclusive of the cap so the
+    /// boundary itself surfaces the "value should be less than N" message; see MOB-1392).
+    /// The store swaps in the unit-specific cap (450 kg / 999 lb) via `updateWeightValidators()`.
+    var weight = FormControl("", validators: [.required, .minValue(), .maxValueExclusive(999.0)])
 
     /// Date portion of the entry (default = current day). Future dates not allowed.
     var date = FormControl(Date(), validators: [.futureDate])
 
     /// Time portion of the entry (default = now). Validation is handled by UI restriction.
     var time = FormControl(Date())
+
+    /// Optional free-text note (max 280 chars, enforced by the notes input field).
+    var notes = FormControl("")
 
     /// Additional fields for body composition metrics. 
     var bmi = FormControl("", validators: [.minValue(), .maxValue(99.0)])
@@ -40,6 +45,7 @@ class ManualEntryForm: ObservableForm {
             weight.$value.map { _ in () }.eraseToAnyPublisher(),
             date.$value.map { _ in () }.eraseToAnyPublisher(),
             time.$value.map { _ in () }.eraseToAnyPublisher(),
+            notes.$value.map { _ in () }.eraseToAnyPublisher(),
             bmi.$value.map { _ in () }.eraseToAnyPublisher(),
             bodyFat.$value.map { _ in () }.eraseToAnyPublisher(),
             muscleMass.$value.map { _ in () }.eraseToAnyPublisher(),

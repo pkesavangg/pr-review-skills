@@ -10,6 +10,44 @@ import Testing
 @MainActor
 extension BabyScaleSetupStoreTests {
 
+    // MARK: - refreshDuplicateBabyNameError
+
+    @Test("refreshDuplicateBabyNameError flags a name matching an already-saved baby")
+    func refreshDuplicate_matchesSavedBaby_setsError() {
+        let (store, _, _, _, _, _, _) = makeBabyScaleSUT()
+        store.savedBabies = [Baby(accountId: "acct-1", name: "Aria")]
+        store.babyProfileForm.name.value = "  aria "
+
+        let isDuplicate = store.refreshDuplicateBabyNameError()
+
+        #expect(isDuplicate == true)
+        #expect(store.babyProfileForm.duplicateNameError == BabyScaleSetupStrings.BabyProfile.duplicateNameError)
+    }
+
+    @Test("refreshDuplicateBabyNameError excludes the baby being edited")
+    func refreshDuplicate_excludesEditingBaby() {
+        let (store, _, _, _, _, _, _) = makeBabyScaleSUT()
+        let baby = Baby(accountId: "acct-1", name: "Aria")
+        store.savedBabies = [baby]
+        store.editingBaby = baby
+        store.babyProfileForm.name.value = "Aria"
+
+        let isDuplicate = store.refreshDuplicateBabyNameError()
+
+        #expect(isDuplicate == false)
+        #expect(store.babyProfileForm.duplicateNameError == nil)
+    }
+
+    @Test("refreshDuplicateBabyNameError clears the error for a unique name")
+    func refreshDuplicate_uniqueName_clearsError() {
+        let (store, _, _, _, _, _, _) = makeBabyScaleSUT()
+        store.savedBabies = [Baby(accountId: "acct-1", name: "Aria")]
+        store.babyProfileForm.name.value = "Bella"
+
+        #expect(store.refreshDuplicateBabyNameError() == false)
+        #expect(store.babyProfileForm.duplicateNameError == nil)
+    }
+
     // MARK: - Skip Edit Baby Dialog
 
     @Test("showSkipBabyProfileDialog with editingBaby sets showSkipEditDialog")
@@ -220,7 +258,7 @@ extension BabyScaleSetupStoreTests {
         #expect(store.connectionState == .loading)
     }
 
-    @Test("handleDeviceDiscovery for known baby scale shows alert")
+    @Test("handleDeviceDiscovery for known baby scale shows Known Scale Already Paired alert")
     func handleDeviceDiscovery_knownScale_showsAlert() {
         let (store, notification, _, _, _, _, _) = makeBabyScaleSUT()
         store.scaleItem = makeBabyScaleItem()
@@ -231,7 +269,27 @@ extension BabyScaleSetupStoreTests {
 
         #expect(store.discoveredScale != nil)
         #expect(notification.showAlertCalls == 1)
-        #expect(notification.alertData?.title == "Scale Already Paired")
+        #expect(notification.alertData?.title == BabyScaleSetupStrings.KnownScaleAlreadyPaired.title)
+        #expect(notification.alertData?.message == BabyScaleSetupStrings.KnownScaleAlreadyPaired.message)
+        // Single exit-only action — no "Continue" re-pair path.
+        #expect(notification.alertData?.buttons.count == 1)
+        #expect(notification.alertData?.buttons.first?.title == BabyScaleSetupStrings.KnownScaleAlreadyPaired.exitButton)
+    }
+
+    @Test("handleDeviceDiscovery known baby scale alert action exits setup to dashboard")
+    func handleDeviceDiscovery_knownScale_exitButtonExitsSetup() {
+        var dismissed = false
+        let (store, notification, _, bluetooth, _, _, _) = makeBabyScaleSUT()
+        store.scaleItem = makeBabyScaleItem()
+        store.dismissAction = { dismissed = true }
+        bluetooth.isSetupInProgress = true
+        store.navigateToStep(.wakeup)
+
+        store.handleDeviceDiscovery(makeBabyDiscoveryEvent(isNew: false))
+        notification.alertData?.buttons.first?.action(nil)
+
+        #expect(dismissed == true)
+        #expect(bluetooth.isSetupInProgress == false)
     }
 
     // MARK: - confirmPair (MA-3627)

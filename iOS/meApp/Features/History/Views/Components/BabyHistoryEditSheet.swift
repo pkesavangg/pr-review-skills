@@ -55,6 +55,10 @@ struct BabyHistoryEditSheet: View {
 
     private var isMetric: Bool { historyStore.isMetric }
 
+    /// Device-synced readings (baby scale) are note-only: the measured weight/length came from
+    /// the device and stay read-only. Manually-entered readings are fully editable (MOB-1172).
+    private var valuesLocked: Bool { !entry.isManual }
+
     // MARK: - Validation (driven by BabyEntryForm)
 
     /// Weight is required; length is optional. Range checks come from the form's validators.
@@ -70,7 +74,7 @@ struct BabyHistoryEditSheet: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: .spacingLG) {
-                closeButton
+                header
 
                 if isMetric {
                     MetricInputField(
@@ -78,12 +82,14 @@ struct BabyHistoryEditSheet: View {
                             label: lang.kg,
                             inputType: .metric,
                             errorMessage: form.weightErrorMetric,
+                            isDisabled: valuesLocked,
                             focusField: .weight,
                             allowWholeNumbers: false,
                             decimalPlaces: 3
                         ),
                         value: $form.kg.value,
-                        focusedField: $focusedField
+                        focusedField: $focusedField,
+                        accessibilityIdentifier: AccessibilityID.babyHistoryEditWeightField
                     ) { focusedField = .inches }
 
                     MetricInputField(
@@ -91,11 +97,13 @@ struct BabyHistoryEditSheet: View {
                             label: lang.cm,
                             inputType: .metric,
                             errorMessage: form.lengthErrorCm,
+                            isDisabled: valuesLocked,
                             focusField: .inches,
                             allowWholeNumbers: false
                         ),
                         value: $form.cm.value,
-                        focusedField: $focusedField
+                        focusedField: $focusedField,
+                        accessibilityIdentifier: AccessibilityID.babyHistoryEditLengthField
                     ) { focusedField = .notes }
                 } else {
                     MetricInputField(
@@ -103,23 +111,30 @@ struct BabyHistoryEditSheet: View {
                             label: lang.pounds,
                             inputType: .metric,
                             errorMessage: form.weightError,
+                            isDisabled: valuesLocked,
                             focusField: .weight,
                             maxLength: 3,
                             allowWholeNumbers: true
                         ),
                         value: $form.pounds.value,
-                        focusedField: $focusedField
+                        focusedField: $focusedField,
+                        accessibilityIdentifier: AccessibilityID.babyHistoryEditWeightField
                     ) { focusedField = .ounces }
 
                     MetricInputField(
                         config: TextInputConfig(
                             label: lang.ounces,
                             inputType: .metric,
+                            isDisabled: valuesLocked,
                             focusField: .ounces,
-                            allowWholeNumbers: false
+                            maxLength: 4,
+                            allowWholeNumbers: false,
+                            decimalPlaces: 1,
+                            directDecimalEntry: true
                         ),
                         value: $form.ounces.value,
-                        focusedField: $focusedField
+                        focusedField: $focusedField,
+                        accessibilityIdentifier: AccessibilityID.babyHistoryEditWeightSecondaryField
                     ) { focusedField = .inches }
 
                     MetricInputField(
@@ -127,11 +142,13 @@ struct BabyHistoryEditSheet: View {
                             label: lang.inches,
                             inputType: .metric,
                             errorMessage: form.lengthError,
+                            isDisabled: valuesLocked,
                             focusField: .inches,
                             allowWholeNumbers: false
                         ),
                         value: $form.inches.value,
-                        focusedField: $focusedField
+                        focusedField: $focusedField,
+                        accessibilityIdentifier: AccessibilityID.babyHistoryEditLengthField
                     ) { focusedField = .notes }
                 }
 
@@ -142,7 +159,8 @@ struct BabyHistoryEditSheet: View {
                         focusField: .notes
                     ),
                     value: $form.notes.value,
-                    focusedField: $focusedField
+                    focusedField: $focusedField,
+                    accessibilityIdentifier: AccessibilityID.babyHistoryEditNoteField
                 )
 
                 datePicker
@@ -155,6 +173,7 @@ struct BabyHistoryEditSheet: View {
                         size: .large,
                         isDisabled: !isValid || isSaving
                     ) { saveEntry() }
+                    .appAccessibility(id: AccessibilityID.babyHistoryEditSaveButton)
                     Spacer()
                 }
             }
@@ -164,11 +183,12 @@ struct BabyHistoryEditSheet: View {
         .background(theme.backgroundSecondary.ignoresSafeArea())
         .presentationDetents([.large])
         .presentationDragIndicator(.visible)
+        .screenAccessibilityRoot(AccessibilityID.babyHistoryEditScreenRoot)
     }
 
     // MARK: - Private Views
 
-    private var closeButton: some View {
+    private var header: some View {
         HStack {
             Spacer()
             Button { dismiss() } label: {
@@ -177,6 +197,8 @@ struct BabyHistoryEditSheet: View {
                     .foregroundStyle(theme.textBody)
             }
             .buttonStyle(.plain)
+            .accessibilityLabel(lang.accCloseLabel)
+            .appAccessibility(id: AccessibilityID.babyHistoryEditCloseButton)
         }
     }
 
@@ -190,9 +212,11 @@ struct BabyHistoryEditSheet: View {
                 DateLabelView(date: form.date.value, isSelected: showDatePicker) {
                     toggleDatePicker()
                 }
+                .appAccessibility(id: AccessibilityID.babyHistoryEditDateButton)
                 TimeLabelView(time: form.time.value, isSelected: showTimePicker) {
                     toggleTimePicker()
                 }
+                .appAccessibility(id: AccessibilityID.babyHistoryEditTimeButton)
             }
             .padding(.leading, 2)
 

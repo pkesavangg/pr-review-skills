@@ -192,27 +192,31 @@ extension BtWifiStoreTests {
             #expect(harness.bluetoothSetupManager.lastCancelledBroadcastId == savedScale.broadcastIdString)
         }
 
-        @Test("exit alert message changes for wifi-only, post-connection, and pre-connection contexts")
+        @Test("exit alert uses the unified cancel-device-setup copy; wifi-only keeps its own message")
         func presentExitAlertUsesContextSpecificMessages() throws {
             let harness = BtWifiStoreTestFixtures.makeSUT()
             let store = harness.store
 
+            // WiFi-only reconfiguration is not a device setup, so it keeps its contextual message.
             store.isWifiSetupOnly = true
             store.savedScale = BtWifiStoreTestFixtures.makeScaleSnapshot(id: "wifi-only")
             store.presentExitAlert {}
             let wifiOnlyAlert = try #require(harness.notification.alertData)
             #expect(wifiOnlyAlert.message == AlertStrings.ExitBtWifiSetupAlert.wifiExitMessage)
 
+            // Device-setup exits (post- and pre-connection) share the unified "Cancel Device Setup?" copy.
             store.isWifiSetupOnly = false
             store.savedScale = BtWifiStoreTestFixtures.makeScaleSnapshot(id: "saved")
             store.presentExitAlert {}
             let postConnectionAlert = try #require(harness.notification.alertData)
-            #expect(postConnectionAlert.message == AlertStrings.ExitBtWifiSetupAlert.postConnectionExitMessage)
+            #expect(postConnectionAlert.title == AlertStrings.ExitSetupAlert.title)
+            #expect(postConnectionAlert.message == AlertStrings.ExitSetupAlert.message)
 
             store.savedScale = nil
             store.presentExitAlert {}
             let preConnectionAlert = try #require(harness.notification.alertData)
-            #expect(preConnectionAlert.message == AlertStrings.ExitBtWifiSetupAlert.preConnectionExitMessage)
+            #expect(preConnectionAlert.title == AlertStrings.ExitSetupAlert.title)
+            #expect(preConnectionAlert.message == AlertStrings.ExitSetupAlert.message)
         }
 
         @Test("regular exit presents a confirmation alert and cancel resets exiting state")

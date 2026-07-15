@@ -108,8 +108,13 @@ struct ManualEntryScreen: View {
             ToolbarItemGroup(placement: .keyboard) {
                 Spacer()
                 Button(commonLang.done) {
+                    // Route through the shared helper so we both clear focus AND force
+                    // resignFirstResponder. A multiline `notes` TextEditor inside the
+                    // ScrollView does not reliably dismiss from a programmatic
+                    // `focusedField = nil` alone (SwiftUI quirk), so hideKeyboard() is
+                    // required to actually drop the keyboard. (MOB-1172)
                     withAnimation {
-                        focusedField = nil
+                        dismissKeyboardAndUnfocus()
                     }
                 }
             }
@@ -170,6 +175,17 @@ struct ManualEntryScreen: View {
                             focusedField = nil
                         }
                         .id(entryStore.weightUnit)
+
+                        // Optional note (max 280 chars) — matches the Weight manual-entry mock (MOB-1172).
+                        AppInputField(
+                            config: TextInputConfig(
+                                label: manualEntryLang.notes,
+                                inputType: .notes,
+                                focusField: .notes
+                            ),
+                            value: $entryStore.manualEntryForm.notes.value,
+                            focusedField: $focusedField
+                        )
 
                         Text(labels.date)
                             .fontOpenSans(.heading4)
@@ -244,6 +260,7 @@ struct ManualEntryScreen: View {
                         .accessibilityHint(entryStore.showMetrics
                             ? manualEntryLang.accBodyMetricsCollapseHint
                             : manualEntryLang.accBodyMetricsExpandHint)
+                        .appAccessibility(id: AccessibilityID.manualEntryBodyMetricsButton)
                         .padding(.bottom, .spacingXS)
 
                         if entryStore.showMetrics {

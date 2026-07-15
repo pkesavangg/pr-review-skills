@@ -60,12 +60,17 @@ struct MyAccountsScreen: View {
             ) {
                 accountsStore.canShowAccountSignupScreen = false
                 tabViewModel.selectedTab = .dash
+                // Pop the pushed .myAccounts route so the Settings tab returns to its root
+                // for the newly created account — otherwise the Settings tab stays stuck on
+                // the My Accounts sub-screen (MOB-1482). Mirrors the login/switch callbacks.
+                router.navigateBack()
             }
                 .interactiveDismissDisabled()
         }
         .navigationBarBackButtonHidden(true)
+        .screenAccessibilityRoot(AccessibilityID.myAccountsScreenRoot)
     }
-    
+
     // MARK: Account List
     @ViewBuilder
     private var accountList: some View {
@@ -88,6 +93,8 @@ struct MyAccountsScreen: View {
                     }
                 )
                 .listRowInsets(top: 0, bottom: 0, leading: 0, trailing: 0)
+                .accessibilityElement(children: .contain)
+                .appAccessibility(id: AccessibilityID.accountCardRow + "_" + account.accountID)
             }
         }
         .listRowBackground(theme.backgroundPrimary)
@@ -100,7 +107,7 @@ struct MyAccountsScreen: View {
             ButtonView(text: strings.logIntoExistingAccount, type: .outlinedPrimary, size: .large, isDisabled: false) {
                 accountsStore.handleLoginCTA()
             }
-            
+            .appAccessibility(id: AccessibilityID.myAccountsLoginButton)
         }
         .frame(maxWidth: .infinity)
         .listRowInsets(top: 0, bottom: 0, leading: 0, trailing: 0)
@@ -113,6 +120,7 @@ struct MyAccountsScreen: View {
             ButtonView(text: strings.createNewAccount, type: .inlineTextPrimary, size: .large, isDisabled: false) {
                 accountsStore.handleSignupCTA()
             }
+            .appAccessibility(id: AccessibilityID.myAccountsSignupButton)
         }
         .frame(maxWidth: .infinity)
         .listRowInsets(top: 0, bottom: 0, leading: 0, trailing: 0)

@@ -13,8 +13,10 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.style.TextAlign
 import com.dmdbrands.gurus.weight.core.navigation.AppRoute
+import com.dmdbrands.gurus.weight.core.shared.utilities.testing.TestTags
 import com.dmdbrands.gurus.weight.core.navigation.LocalNavBackStack
 import com.dmdbrands.gurus.weight.features.common.components.AppButton
 import com.dmdbrands.gurus.weight.features.common.components.ButtonSize
@@ -53,6 +55,7 @@ fun LandingScreen() {
         type = ButtonType.PrimaryFilled,
         label = LandingString.Login,
         size = ButtonSize.Large,
+        modifier = Modifier.testTag(TestTags.Landing.LogInButton),
         onClick = {
           coroutineScope.launch {
             backStack.addRoute(
@@ -66,6 +69,7 @@ fun LandingScreen() {
         type = ButtonType.SecondaryOutlined,
         label = LandingString.SignUp,
         size = ButtonSize.Large,
+        modifier = Modifier.testTag(TestTags.Landing.SignUpButton),
         onClick = {
           coroutineScope.launch {
             backStack.addRoute(
@@ -86,7 +90,9 @@ fun LandingScreen() {
       verticalArrangement = Arrangement.spacedBy(MeTheme.spacing.xs),
     ) {
       VersionText(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier
+          .fillMaxWidth()
+          .testTag(TestTags.Landing.VersionLabel),
         textAlign = TextAlign.Center,
         color = MeTheme.colorScheme.textSubheading,
         style = MeTheme.typography.subHeading2,

@@ -149,6 +149,7 @@ extension BabyScaleSetupStore {
         babyProfileForm.formDidChange
             .receive(on: DispatchQueue.main)
             .sink { [weak self] in
+                self?.refreshDuplicateBabyNameError()
                 self?.updateNextEnabled()
             }
             .store(in: &cancellables)

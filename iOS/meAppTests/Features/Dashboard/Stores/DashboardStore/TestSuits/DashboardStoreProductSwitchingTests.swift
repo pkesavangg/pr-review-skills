@@ -187,16 +187,17 @@ extension DashboardStoreTests {
 
         // MARK: - continuousOperations with baby
 
-        @Test("continuousOperations returns baby dummy data when baby is selected")
-        func continuousOperationsReturnsBabyDummyData() {
+        @Test("continuousOperations returns empty for a selected baby with no real entries (no synthetic fill)")
+        func continuousOperationsEmptyForBabyWithoutEntries() {
             let store = DashboardStoreTestSupport.makeSUT().store
             let baby = makeBaby()
             store.selectProductItem(.baby(profile: baby))
 
+            // Dummy/synthetic baby summaries were removed — a baby with no recorded entries now
+            // yields an empty series (drives the baby graph's empty state), not fabricated data.
             let ops = store.continuousOperations
 
-            #expect(!ops.isEmpty)
-            #expect(ops.allSatisfy { $0.accountId.contains(baby.id) })
+            #expect(ops.isEmpty)
         }
 
         @Test("continuousOperations returns empty when weight selected and no data")

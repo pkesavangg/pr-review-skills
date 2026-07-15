@@ -29,8 +29,10 @@ struct BabyHistoryDayListScreen: View {
         VStack(spacing: 0) {
             NavbarHeaderView<AppIconView, AnyView>(
                 title: title,
+                titleLeadingContent: day.isBirthday ? AnyView(BirthdayBalloonBadge()) : nil,
                 leadingContent: { AppIconView(icon: AppAssets.chevronLeft) },
-                onLeadingTap: { router.navigateBack() }
+                onLeadingTap: { router.navigateBack() },
+                leadingAccessibilityID: AccessibilityID.babyHistoryDayBackButton
             )
             .background(theme.backgroundPrimary)
 
@@ -39,6 +41,7 @@ struct BabyHistoryDayListScreen: View {
                 .edgesIgnoringSafeArea(.bottom)
         }
         .background(theme.backgroundSecondary)
+        .screenAccessibilityRoot(AccessibilityID.babyHistoryDayListScreenRoot)
         .navigationBarBackButtonHidden(true)
         .onAppear {
             historyStore.selectBabyDay(day)

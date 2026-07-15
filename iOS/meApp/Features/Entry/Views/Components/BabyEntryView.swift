@@ -75,11 +75,17 @@ struct BabyEntryView: View {
                                     label: babyLang.ounces,
                                     inputType: .metric,
                                     focusField: .ounces,
+                                    // Literal (as-typed) decimal entry so "6" stays "6" and
+                                    // "6.5" stays "6.5", matching BabyHistoryEditSheet. maxLength
+                                    // is 4 so the max "15.9" (4 chars incl. ".") fits in literal mode.
                                     maxLength: 4,
-                                    clearZeroValue: true
+                                    clearZeroValue: true,
+                                    decimalPlaces: 1,
+                                    directDecimalEntry: true
                                 ),
                                 value: $entryStore.babyForm.ounces.value,
-                                focusedField: $focusedField
+                                focusedField: $focusedField,
+                                accessibilityIdentifier: AccessibilityID.babyOuncesField
                             ) {
                                 focusedField = .inches
                             }
@@ -139,7 +145,8 @@ struct BabyEntryView: View {
                         focusField: .notes
                     ),
                     value: $entryStore.babyForm.notes.value,
-                    focusedField: $focusedField
+                    focusedField: $focusedField,
+                    accessibilityIdentifier: AccessibilityID.babyNotesField
                 )
                 .padding(.top, .spacingXS)
 
@@ -157,6 +164,7 @@ struct BabyEntryView: View {
                         toggleDatePicker()
                     }
                     .accessibilityHint(babyLang.accDateHint)
+                    .appAccessibility(id: AccessibilityID.manualEntryDateButton)
                     TimeLabelView(
                         time: entryStore.babyForm.time.value,
                         isSelected: entryStore.showTimePicker
@@ -164,6 +172,7 @@ struct BabyEntryView: View {
                         toggleTimePicker()
                     }
                     .accessibilityHint(babyLang.accTimeHint)
+                    .appAccessibility(id: AccessibilityID.manualEntryTimeButton)
                 }
                 .padding(.top, .spacingXS)
 

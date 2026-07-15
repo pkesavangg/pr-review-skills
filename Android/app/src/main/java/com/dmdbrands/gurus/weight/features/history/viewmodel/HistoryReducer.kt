@@ -24,6 +24,11 @@ data class HistoryState(
     // Keyed by babyId so each baby's history stays scoped to that baby. A single shared
     // list caused every baby to display the last-loaded baby's entries (MOB-1449).
     val babyHistoryItems: ImmutableMap<String, ImmutableList<BabyWeekGroup>> = persistentMapOf(),
+    // Whether a device is paired for each product. Drives which empty state is shown:
+    // "connect a device" (no device) vs "log manually" (device paired, no entries). (MOB-1221)
+    val hasWeightDevice: Boolean = false,
+    val hasBpmDevice: Boolean = false,
+    val hasBabyDevice: Boolean = false,
 ) : IReducer.State
 
 /**
@@ -52,6 +57,14 @@ sealed interface HistoryIntent : IReducer.Intent {
 
     object Export : HistoryIntent
     object OnConnectScale : HistoryIntent
+
+    data class SetDeviceFlags(
+        val hasWeightDevice: Boolean,
+        val hasBpmDevice: Boolean,
+        val hasBabyDevice: Boolean,
+    ) : HistoryIntent
+
+    object OnLogManually : HistoryIntent
 }
 
 /**
@@ -87,6 +100,13 @@ class HistoryReducer : IReducer<HistoryState, HistoryIntent> {
                             .toImmutableMap(),
                     isLoading = false,
                     errorMessage = null,
+                )
+
+            is HistoryIntent.SetDeviceFlags ->
+                state.copy(
+                    hasWeightDevice = intent.hasWeightDevice,
+                    hasBpmDevice = intent.hasBpmDevice,
+                    hasBabyDevice = intent.hasBabyDevice,
                 )
 
             HistoryIntent.Retry -> state.copy(isLoading = true)

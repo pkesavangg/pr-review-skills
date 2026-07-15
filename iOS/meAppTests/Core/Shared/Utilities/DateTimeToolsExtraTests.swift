@@ -72,6 +72,12 @@ struct DateTimeToolsExtraTests {
         #expect(DateTimeTools.getFormattedTime("bad") == DateTimeTools.invalidString)
     }
 
+    @Test("getFormattedTimeLowercased formats 'h:mm a' with lower-cased meridiem")
+    func formattedTimeLowercased() {
+        #expect(DateTimeTools.getFormattedTimeLowercased("2025-05-29") == "12:00 am")
+        #expect(DateTimeTools.getFormattedTimeLowercased("bad") == DateTimeTools.invalidString)
+    }
+
     @Test("getMonth / getMonthYear / getMonthDayYear / getMonthDayYearShort / getYear")
     func monthYearVariants() {
         #expect(DateTimeTools.getMonth("2025-05-29") == "May")

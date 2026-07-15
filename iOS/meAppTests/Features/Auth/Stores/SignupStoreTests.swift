@@ -418,24 +418,32 @@ struct SignupStoreTests {
         #expect(successCalled == true)
     }
 
-    @Test("createUser navigates to signupError when the accumulated product-type write fails")
-    func createUserNavigatesToErrorScreen() async {
+    @Test("createUser completes signup even when the accumulated product-type write fails")
+    func createUserCompletesWhenProductTypeWriteFails() async {
         let (store, accountService, _, _) = makeSUT()
         accountService.signUpResult = .success(())
+        // A brand-new account's PATCH /account/products can transiently 404 before the
+        // account fully propagates. The device profiles saved fine, so signup must still
+        // complete — the product types reconcile on the next sync.
         accountService.updateProductTypesResult = .failure(HTTPError.serverError)
         fillRequiredSignupFields(store)
         store.isGoalSkipped = true
         store.selectedDeviceType = .bpm
 
+        var successCalled = false
+        store.onSignupSuccess = { successCalled = true }
+
         await store.performCreateAccount()
         await store.performSaveDevicesAndFinalize()
 
-        #expect(store.currentStep == .signupError)
+        #expect(store.currentStep != .signupError)
+        #expect(successCalled == true)
+        // The productTypes PATCH failure must NOT flip the successfully-saved device.
         let failedCount = store.deviceStatuses.filter {
             if case .failure = $0.status { return true }
             return false
         }.count
-        #expect(failedCount == 1)
+        #expect(failedCount == 0)
     }
 
     @Test("completeSignup calls onSignupSuccess and resets form")
@@ -611,10 +619,14 @@ struct SignupStoreTests {
     func cancelOnErrorScreenCompletesSignup() async {
         let (store, accountService, _, _) = makeSUT()
         accountService.signUpResult = .success(())
-        accountService.updateProductTypesResult = .failure(HTTPError.serverError)
+        // Force a genuine device-profile save failure (goal creation) so the flow lands
+        // on the error screen — a productTypes PATCH failure alone no longer blocks signup.
+        accountService.createGoalResult = .failure(HTTPError.serverError)
         fillRequiredSignupFields(store)
-        store.isGoalSkipped = true
-        store.selectedDeviceType = .bpm
+        store.isGoalSkipped = false
+        store.selectedDeviceType = .weightScale
+        store.signupForm.goalType.value = GoalType.maintain.rawValue
+        store.signupForm.goalWeight.value = "160"
         var successCalled = false
         store.onSignupSuccess = { successCalled = true }
 
@@ -1294,20 +1306,24 @@ struct SignupStoreTests {
 
     // MARK: - Retry Failed Devices
 
-    @Test("retryFailedDevices succeeds after writeAccumulatedProductTypes failure and advances to allProfilesReady")
+    @Test("retryFailedDevices succeeds after a device-save failure and advances to allProfilesReady")
     func retryFailedDevicesAdvancesToAllProfilesReady() async {
         let (store, accountService, _, _) = makeSUT()
         accountService.signUpResult = .success(())
         fillRequiredSignupFields(store)
-        store.isGoalSkipped = true
-        store.selectedDeviceType = .bpm
+        // Land on the error screen via a genuine device-profile save failure (goal creation);
+        // a productTypes PATCH failure alone no longer blocks signup.
+        store.isGoalSkipped = false
+        store.selectedDeviceType = .weightScale
+        store.signupForm.goalType.value = GoalType.maintain.rawValue
+        store.signupForm.goalWeight.value = "160"
 
-        accountService.updateProductTypesResult = .failure(HTTPError.serverError)
+        accountService.createGoalResult = .failure(HTTPError.serverError)
         await store.performCreateAccount()
         await store.performSaveDevicesAndFinalize()
         #expect(store.currentStep == .signupError)
 
-        accountService.updateProductTypesResult = .success(())
+        accountService.createGoalResult = .success(())
         store.retryFailedDevices()
         // Wait for the retry to actually finish. The store starts on .signupError, so
         // we must NOT treat .signupError as a terminal wait condition (it would return

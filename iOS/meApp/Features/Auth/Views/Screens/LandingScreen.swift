@@ -74,7 +74,7 @@ struct LandingScreen: View {
                             // Fixed logo section — height based on screen height
                             VStack {
                                 Spacer()
-                                LogoView(isFromAccountSwitching: true)
+                                MeHealthLogoCard()
                                     .padding(.bottom, .spacingMD)
                             }
                             .frame(height: proxy.size.height * 0.33) // consistent across previews

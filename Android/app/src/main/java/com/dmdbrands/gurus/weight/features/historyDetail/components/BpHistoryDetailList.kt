@@ -45,13 +45,19 @@ fun BpHistoryDetailList(
             }
         },
     ) { entry ->
-        BpHistoryDetailItem(
-            entry = entry,
-            dateDisplay = entry.getDate(),
-            timeDisplay = entry.getTime(),
-            isExpanded = expandedIds.contains(entry.entry.id),
-            onToggle = { onToggleExpand(entry.entry.id) },
-            onEditEntry = { onEditEntry(entry) },
-        )
+        // Wrap the row in Swipeable so it reveals the Delete trailingAction on left-swipe
+        // (mirrors the weight/baby lists). Without this the swipe layer has no content and the
+        // list renders its "No Swipeable content defined" fallback, so BP entries can't be
+        // deleted. (MOB-1462; same fix MOB-634 applied to the baby list.)
+        Swipeable {
+            BpHistoryDetailItem(
+                entry = entry,
+                dateDisplay = entry.getDate(),
+                timeDisplay = entry.getTime(),
+                isExpanded = expandedIds.contains(entry.entry.id),
+                onToggle = { onToggleExpand(entry.entry.id) },
+                onEditEntry = { onEditEntry(entry) },
+            )
+        }
     }
 }

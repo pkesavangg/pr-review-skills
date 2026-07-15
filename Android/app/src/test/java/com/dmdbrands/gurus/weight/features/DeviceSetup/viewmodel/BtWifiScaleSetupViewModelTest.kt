@@ -19,6 +19,7 @@ import com.dmdbrands.gurus.weight.features.DeviceSetup.reducer.BtWifiScaleSetupI
 import com.dmdbrands.gurus.weight.features.common.model.DialogModel
 import com.dmdbrands.gurus.weight.testutil.initTestDependencies
 import com.google.common.truth.Truth.assertThat
+import com.dmdbrands.library.ggbluetooth.enums.GGPermissionState
 import com.dmdbrands.library.ggbluetooth.enums.GGPermissionType
 import com.greatergoods.blewrapper.GGDeviceService
 import com.greatergoods.blewrapper.GGPermissionService
@@ -76,12 +77,14 @@ class BtWifiScaleSetupViewModelTest {
 
     private lateinit var viewModel: BtWifiScaleSetupViewModel
 
+    private val permissionFlow = MutableStateFlow(mutableMapOf<String, String>())
+
     @BeforeEach
     fun setUp() {
         MockKAnnotations.init(this)
         every { deviceService.pairedScales } returns MutableStateFlow(emptyList())
         every { deviceService.isWeightOnlyModeAlertShown } returns MutableStateFlow(false)
-        every { permissionService.permissionCallBackFlow } returns MutableStateFlow(mutableMapOf<String, String>())
+        every { permissionService.permissionCallBackFlow } returns permissionFlow
         every { connectivityObserver.observe() } returns MutableStateFlow(mockk(relaxed = true))
         every { ggDeviceService.deviceCache } returns MutableStateFlow(mutableMapOf())
         every { entryReadService.latestEntry() } returns flowOf(null)
@@ -210,6 +213,34 @@ class BtWifiScaleSetupViewModelTest {
         )
         assertThat(viewModel.state.value.stepConnectionStates[BtWifiSetupStep.CONNECTING_BLUETOOTH])
             .isEqualTo(ConnectionState.Success)
+    }
+
+    // -------------------------------------------------------------------------
+    // MOB-248 — Bluetooth switched off while on the CONNECTING_BLUETOOTH screen
+    // -------------------------------------------------------------------------
+
+    @Test
+    fun `Bluetooth switched off during CONNECTING_BLUETOOTH surfaces retryable error`() {
+        // Let the init observers/initializeSetup settle first, otherwise they reset the step.
+        advanceScheduler()
+        // Arrive on the connecting screen (scale already paired in the real flow).
+        viewModel.handleIntent(BtWifiScaleSetupIntent.SetCurrentStep(BtWifiSetupStep.CONNECTING_BLUETOOTH))
+        advanceScheduler()
+
+        // Simulate the user switching Bluetooth off — every other required permission
+        // stays enabled so this is unambiguously a BT-switch-off (not a network) failure.
+        permissionFlow.value = mutableMapOf(
+            GGPermissionType.BLUETOOTH_SWITCH to GGPermissionState.DISABLED,
+            GGPermissionType.NEARBY_DEVICE to GGPermissionState.ENABLED,
+            GGPermissionType.LOCATION_SWITCH to GGPermissionState.ENABLED,
+            GGPermissionType.LOCATION to GGPermissionState.ENABLED,
+            GGPermissionType.WIFI_SWITCH to GGPermissionState.ENABLED,
+        )
+        advanceScheduler()
+
+        // The step must move to a retryable error instead of freezing on the connecting state.
+        assertThat(viewModel.state.value.stepConnectionStates[BtWifiSetupStep.CONNECTING_BLUETOOTH])
+            .isEqualTo(ConnectionState.Failed.Error)
     }
 
     @Test

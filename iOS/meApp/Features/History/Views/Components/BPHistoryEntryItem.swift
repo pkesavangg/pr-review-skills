@@ -24,13 +24,18 @@ struct BPHistoryEntryItem: View {
     private var hasNotes: Bool { !(entry.notes ?? "").isEmpty }
 
     private var pressureColor: Color {
-        BPCategory.classify(systolic: entry.systolic, diastolic: entry.diastolic).color(theme: theme)
+        AhaPressureClass.classify(systolic: entry.systolic, diastolic: entry.diastolic).color(theme: theme)
     }
 
     private var combinedAccessibilityLabel: String {
         let day = DateTimeTools.getFormattedDay(entry.entryTimestamp)
         let time = DateTimeTools.getFormattedTime(entry.entryTimestamp)
         return "\(day), \(time), \(entry.systolic) over \(entry.diastolic) \(HistoryListStrings.mmhg), \(HistoryListStrings.pulse) \(entry.pulse)"
+    }
+
+    /// Per-row automation id, suffixed with the entry's stable id so each row resolves to one node.
+    private var rowAccessibilityID: String {
+        "\(AccessibilityID.bpHistoryEntryRow)_\(entry.id.uuidString)"
     }
 
     var body: some View {
@@ -42,7 +47,7 @@ struct BPHistoryEntryItem: View {
                     Text(DateTimeTools.getFormattedDay(entry.entryTimestamp))
                         .fontOpenSans(.heading5)
                         .foregroundColor(isExpanded ? theme.textInverse : theme.textHeading)
-                    Text(DateTimeTools.getFormattedTime(entry.entryTimestamp))
+                    Text(DateTimeTools.getFormattedTimeLowercased(entry.entryTimestamp))
                         .fontOpenSans(.body3)
                         .foregroundStyle(isExpanded ? theme.actionInverseSecondary : theme.textSubheading)
                 }
@@ -84,6 +89,7 @@ struct BPHistoryEntryItem: View {
             // background must be the dark actionPrimary. actionSecondary is the same light
             // token as textInverse, which made the values invisible.
             .background(isExpanded ? theme.actionPrimary : Color.clear)
+            .accessibilityIdentifier(rowAccessibilityID)
             .accessibilityElement(children: .ignore)
             .accessibilityLabel(combinedAccessibilityLabel)
             .accessibilityAddTraits(.isButton)
@@ -114,7 +120,7 @@ struct BPHistoryEntryItem: View {
 
             // Expanded notes section — always shown when expanded
             if isExpanded {
-                HStack(alignment: .top, spacing: .spacingXS) {
+                HStack(alignment: .center, spacing: .spacingXS) {
                     if hasNotes {
                         Text(entry.notes ?? "")
                             .fontOpenSans(.body3)
@@ -130,9 +136,14 @@ struct BPHistoryEntryItem: View {
                         Image(systemName: hasNotes ? "square.and.pencil" : "plus")
                             .font(.system(size: 18))
                             .foregroundStyle(theme.actionPrimary)
+                            // Guarantee at least a 44×44pt tap target (Apple HIG) — the glyph
+                            // stays visually 18pt but the whole square is tappable.
+                            .frame(width: 44, height: 44)
+                            .contentShape(Rectangle())
                     }
                     .buttonStyle(.plain)
                     .accessibilityLabel(hasNotes ? HistoryListStrings.accEditNoteLabel : HistoryListStrings.accAddNoteLabel)
+                    .appAccessibility(id: AccessibilityID.bpHistoryEntryEditNoteButton)
                 }
                 .padding(.spacingSM)
                 .frame(maxWidth: .infinity, alignment: .leading)

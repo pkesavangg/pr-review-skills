@@ -25,11 +25,16 @@ struct BabyHistoryEntryItem: View {
     private var noteIsLong: Bool { (entry.notes ?? "").count > 100 }
 
     private var timeText: String {
-        DateTimeTools.getFormattedTime(entry.entryTimestamp)
+        DateTimeTools.getFormattedTimeLowercased(entry.entryTimestamp)
     }
 
     private var combinedAccessibilityLabel: String {
         "\(timeText), \(HistoryListStrings.weight) \(entry.weightDisplay), \(HistoryListStrings.length) \(entry.lengthDisplay)"
+    }
+
+    /// Per-row automation id, suffixed with the entry's stable id so each row resolves to one node.
+    private var rowAccessibilityID: String {
+        "\(AccessibilityID.babyHistoryEntryRow)_\(entry.id.uuidString)"
     }
 
     var body: some View {
@@ -46,9 +51,7 @@ struct BabyHistoryEntryItem: View {
 
                 // Weight
                 VStack(alignment: .leading, spacing: 2) {
-                    Text(entry.weightDisplay)
-                        .fontOpenSans(.heading5)
-                        .foregroundStyle(isExpanded ? theme.textInverse : theme.babyScaleColor)
+                    BabyValueText(value: entry.weightDisplay, onDarkBackground: isExpanded)
 
                     Text(HistoryListStrings.weight)
                         .fontOpenSans(.body3)
@@ -58,9 +61,7 @@ struct BabyHistoryEntryItem: View {
 
                 // Length — "--" when no length recorded (handled in weightDisplay/lengthDisplay)
                 VStack(alignment: .leading, spacing: 2) {
-                    Text(entry.lengthDisplay)
-                        .fontOpenSans(.heading5)
-                        .foregroundStyle(isExpanded ? theme.textInverse : theme.babyScaleColor)
+                    BabyValueText(value: entry.lengthDisplay, onDarkBackground: isExpanded)
 
                     Text(HistoryListStrings.length)
                         .fontOpenSans(.body3)
@@ -70,9 +71,10 @@ struct BabyHistoryEntryItem: View {
 
                 // Percentile
                 VStack(alignment: .leading, spacing: 2) {
-                    Text(BabyWeightPercentileCalculator.percentileDisplayText(entry.percentile))
-                        .fontOpenSans(.heading5)
-                        .foregroundStyle(isExpanded ? theme.textInverse : theme.babyScaleColor)
+                    BabyValueText(
+                        value: BabyWeightPercentileCalculator.percentileDisplayText(entry.percentile),
+                        onDarkBackground: isExpanded
+                    )
 
                     Text(HistoryListStrings.percentile)
                         .fontOpenSans(.body3)
@@ -92,6 +94,7 @@ struct BabyHistoryEntryItem: View {
             // background must be the dark actionPrimary. actionSecondary is the same light
             // token as textInverse, which made the values invisible.
             .background(isExpanded ? theme.actionPrimary : Color.clear)
+            .accessibilityIdentifier(rowAccessibilityID)
             .accessibilityElement(children: .ignore)
             .accessibilityLabel(combinedAccessibilityLabel)
             .accessibilityAddTraits(.isButton)
@@ -122,7 +125,7 @@ struct BabyHistoryEntryItem: View {
 
             // Expanded notes section
             if isExpanded {
-                HStack(alignment: .top, spacing: .spacingXS) {
+                HStack(alignment: .center, spacing: .spacingXS) {
                     if hasNotes {
                         VStack(alignment: .leading, spacing: 4) {
                             Text(entry.notes ?? "")
@@ -142,6 +145,7 @@ struct BabyHistoryEntryItem: View {
                                         .foregroundColor(theme.actionPrimary)
                                 }
                                 .buttonStyle(.plain)
+                                .appAccessibility(id: AccessibilityID.babyHistoryEntryMoreButton)
                             }
                         }
                     } else {
@@ -158,9 +162,14 @@ struct BabyHistoryEntryItem: View {
                         Image(systemName: hasNotes ? "square.and.pencil" : "plus")
                             .font(.system(size: 18))
                             .foregroundColor(theme.actionPrimary)
+                            // Guarantee at least a 44×44pt tap target (Apple HIG) — the glyph
+                            // stays visually 18pt but the whole square is tappable.
+                            .frame(width: 44, height: 44)
+                            .contentShape(Rectangle())
                     }
                     .buttonStyle(.plain)
                     .accessibilityLabel(hasNotes ? HistoryListStrings.accEditNoteLabel : HistoryListStrings.accAddNoteLabel)
+                    .appAccessibility(id: AccessibilityID.babyHistoryEntryEditNoteButton)
                 }
                 .padding(.spacingSM)
                 .frame(maxWidth: .infinity, alignment: .leading)

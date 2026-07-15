@@ -33,6 +33,12 @@ interface IEntryRepository {
    */
   suspend fun delete(entry: Entry)
 
+  /** Sets/clears the swipe-delete Undo-window flag for an entry (MOB-1173). */
+  suspend fun setPendingDelete(id: Long, pending: Boolean)
+
+  /** Commits any entries still in the Undo window for [accountId] (app-launch flush; MOB-1173). */
+  suspend fun commitPendingDeletes(accountId: String)
+
   /**
    * Updates an existing entry.
    * @param entry The entry to update.
@@ -133,8 +139,8 @@ interface IEntryRepository {
   /** Fetches a single cursor page. Throws on failure. */
   suspend fun getEntriesPage(cursor: String? = null, limit: Int = 20, category: String? = null): EntriesCursorResponse
 
-  /** Streams a CSV export body; null on non-2xx. Throws on network error. */
-  suspend fun exportEntriesCsv(category: String? = null, download: Boolean = false, utcOffset: Int = 0): okhttp3.ResponseBody?
+  /** Streams a CSV export body; null on non-2xx. Throws on network error. `babyId` required when category=baby. */
+  suspend fun exportEntriesCsv(category: String? = null, babyId: String? = null, download: Boolean = false, utcOffset: Int = 0): okhttp3.ResponseBody?
 
   /**
    * Gets the operation count for an account.

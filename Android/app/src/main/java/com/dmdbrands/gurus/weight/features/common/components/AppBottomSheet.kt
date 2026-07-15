@@ -22,7 +22,10 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
+import com.dmdbrands.gurus.weight.core.shared.utilities.testing.TestTags
+import com.dmdbrands.gurus.weight.core.shared.utilities.testing.exposeTestTagsAsResourceId
 import com.dmdbrands.gurus.weight.resources.AppIcons
 import com.dmdbrands.gurus.weight.theme.MeTheme
 import kotlinx.coroutines.launch
@@ -79,7 +82,10 @@ fun AppBottomSheet(
     sheetState = sheetState,
     modifier = modifier
       .systemBarsPadding()
-      .navigationBarsPadding(),
+      .navigationBarsPadding()
+      // Bottom sheet is a separate window; opt its subtree into testTag→resource-id exposure
+      // so tagged controls are Appium-visible (DEBUG-gated). See MOB-1503 / MOB-1099.
+      .exposeTestTagsAsResourceId(),
     onDismissRequest = onDismiss,
     containerColor = containerColor,
     scrimColor = scrimColor,
@@ -141,7 +147,9 @@ private fun AppBottomSheetTopBar(
         text = title,
         style = MeTheme.typography.heading5,
         color = MeTheme.colorScheme.textHeading,
-        modifier = Modifier.align(Alignment.Center),
+        modifier = Modifier
+          .align(Alignment.Center)
+          .testTag(TestTags.BottomSheet.Title),
       )
       Row(
         modifier = Modifier
@@ -158,6 +166,7 @@ private fun AppBottomSheetTopBar(
 private fun DefaultCloseButton(onClick: () -> Unit) {
   AppIconButton(
     id = AppIcons.Default.Close,
+    modifier = Modifier.testTag(TestTags.BottomSheet.CloseButton),
     contentDescription = AppBottomSheetStrings.Close,
     onClick = onClick,
   )

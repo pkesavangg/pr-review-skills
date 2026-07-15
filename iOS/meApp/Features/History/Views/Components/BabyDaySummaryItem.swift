@@ -12,7 +12,9 @@ struct BabyDaySummaryItem: View {
     let day: BabyHistoryDay
 
     private var combinedAccessibilityLabel: String {
-        "\(dateText), \(day.entryCount) \(HistoryListStrings.entries), "
+        let birthdayPrefix = day.isBirthday ? "\(HistoryListStrings.accBirthdayBalloonLabel), " : ""
+        return birthdayPrefix
+            + "\(dateText), \(day.entryCount) \(HistoryListStrings.entries), "
             + "\(HistoryListStrings.weight) \(weightText), "
             + "\(HistoryListStrings.length) \(lengthText)"
     }
@@ -33,18 +35,21 @@ struct BabyDaySummaryItem: View {
         day.lengthDisplay
     }
 
-    private var percentileText: String {
-        BabyWeightPercentileCalculator.percentileDisplayText(day.percentile)
-    }
-
     var body: some View {
         VStack(spacing: 0) {
             HStack {
-                // Date & entry count
-                VStack(alignment: .leading) {
-                    Text(dateText)
-                        .fontOpenSans(.heading5)
-                        .foregroundColor(theme.textHeading)
+                // Date & entry count — balloon precedes the date on the baby's
+                // birthday (MOB-1164). The balloon aligns with the date line, with the
+                // entry count sitting below at the row's leading edge (matches the mock).
+                VStack(alignment: .leading, spacing: 2) {
+                    HStack(spacing: .spacingXS) {
+                        if day.isBirthday {
+                            BirthdayBalloonBadge()
+                        }
+                        Text(dateText)
+                            .fontOpenSans(.heading5)
+                            .foregroundColor(theme.textHeading)
+                    }
 
                     Text("\(day.entryCount) \(HistoryListStrings.entries)")
                         .fontOpenSans(.subHeading2)
@@ -54,9 +59,7 @@ struct BabyDaySummaryItem: View {
 
                 // Weight
                 VStack(alignment: .leading) {
-                    Text(weightText)
-                        .fontOpenSans(.body2)
-                        .foregroundColor(theme.babyScaleColor)
+                    BabyValueText(value: weightText)
                         .lineLimit(1)
                         .fixedSize(horizontal: true, vertical: false)
 
@@ -70,25 +73,9 @@ struct BabyDaySummaryItem: View {
 
                 // Length
                 VStack(alignment: .leading) {
-                    Text(lengthText)
-                        .fontOpenSans(.body2)
-                        .foregroundColor(theme.babyScaleColor)
+                    BabyValueText(value: lengthText)
 
                     Text(HistoryListStrings.length)
-                        .fontOpenSans(.body3)
-                        .foregroundColor(theme.textSubheading)
-                        .lineLimit(1)
-                        .fixedSize(horizontal: true, vertical: false)
-                }
-                .frame(maxWidth: .infinity, alignment: .leading)
-
-                // Percentile
-                VStack(alignment: .leading) {
-                    Text(percentileText)
-                        .fontOpenSans(.body2)
-                        .foregroundColor(theme.babyScaleColor)
-
-                    Text(HistoryListStrings.percentile)
                         .fontOpenSans(.body3)
                         .foregroundColor(theme.textSubheading)
                         .lineLimit(1)
@@ -119,12 +106,18 @@ struct BabyWeekHeaderView: View {
     @Environment(\.appTheme) private var theme
 
     let weekNumber: Int
+    /// Shows the birthday balloon before the week label when this week contains
+    /// the baby's birthday (MOB-1164).
+    var showBirthdayBalloon = false
 
     var body: some View {
-        HStack {
+        HStack(spacing: .spacingXS) {
+            if showBirthdayBalloon {
+                BirthdayBalloonBadge()
+            }
             Text("\(HistoryListStrings.week) \(weekNumber)")
                 .fontOpenSans(.subHeading2)
-                .foregroundColor(theme.textSubheading)
+                .foregroundColor(theme.textBody)
             Spacer()
         }
         .padding(.horizontal, .spacingSM)

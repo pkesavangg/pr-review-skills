@@ -43,6 +43,7 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
+import com.dmdbrands.gurus.weight.core.shared.utilities.testing.TestTags
 import com.dmdbrands.gurus.weight.features.common.components.AppInputDefaults.visualTransformation
 import com.dmdbrands.gurus.weight.features.common.helper.getDeviceType
 import com.dmdbrands.gurus.weight.features.common.helper.isPhoneLike
@@ -104,7 +105,10 @@ object AppInputDefaults {
             AppInputType.EMAIL -> KeyboardType.Email
             AppInputType.NUMBER, AppInputType.BODY_COMP, AppInputType.NUMERIC_STRING
             -> KeyboardType.Number
-            AppInputType.DECIMAL_STRING -> KeyboardType.Decimal
+            // Phone (not Decimal): several OEM keyboards (OnePlus/Samsung) hide the '.' key under
+            // KeyboardType.Decimal, forcing whole-number-only entry. The phone pad always exposes
+            // '.', and the DECIMAL_STRING filter keeps only digits + a single dot. (MOB-1223)
+            AppInputType.DECIMAL_STRING -> KeyboardType.Phone
             AppInputType.PASSWORD -> KeyboardType.Password
         }
 
@@ -227,6 +231,7 @@ fun <T> AppInput(
     CompositionLocalProvider(LocalAutofillHighlightColor provides Color.Transparent) {
         InputFieldBase(
             modifier = taggedModifier,
+            testTag = testTag,
             formControl = formControl,
             label = label?.lowercase(),
             value = AppInputDefaults.valueToString(type, formControl?.value),
@@ -255,9 +260,11 @@ fun <T> AppInput(
 /**
  * Base input composable with full form event support and error handling.
  */
+@Suppress("LongMethod")
 @Composable
 fun <T> InputFieldBase(
     modifier: Modifier = Modifier,
+    testTag: String? = null,
     formControl: FormControl<T>? = null,
     label: String? = null,
     value: String = "",
@@ -358,6 +365,9 @@ fun <T> InputFieldBase(
                     AppIcon(
                         id = iconResId,
                         contentDescription = contentDescription,
+                        modifier = testTag?.let {
+                            Modifier.testTag(it + TestTags.FieldSuffix.VisibilityToggle)
+                        } ?: Modifier,
                         type = AppIconType.Primary, // Always use primary color for eye icon
                         onClick = { passwordVisible = !passwordVisible },
                     )
@@ -380,6 +390,9 @@ fun <T> InputFieldBase(
                     AppIcon(
                         trailingIconId,
                         contentDescription = AppInputStrings.accClearLabel,
+                        modifier = testTag?.let {
+                            Modifier.testTag(it + TestTags.FieldSuffix.ClearButton)
+                        } ?: Modifier,
                         type = clearIconColor, // Use error color for clear icon when in error state
                         onClick = { onTrailingAction?.invoke() ?: clearValueAndNotify() },
                     )

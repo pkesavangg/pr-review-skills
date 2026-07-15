@@ -5,7 +5,10 @@ import com.dmdbrands.gurus.weight.core.rules.MainDispatcherRule
 import com.dmdbrands.gurus.weight.core.service.IAppNavigationService
 import com.dmdbrands.gurus.weight.domain.interfaces.IDialogQueueService
 import com.dmdbrands.gurus.weight.domain.model.common.GroupedHistory
+import com.dmdbrands.gurus.weight.domain.model.common.BabyProfile
 import com.dmdbrands.gurus.weight.domain.model.common.ProductSelection
+import com.dmdbrands.gurus.weight.domain.repository.IDeviceService
+import com.dmdbrands.gurus.weight.domain.repository.IProductSelectionRepository
 import com.dmdbrands.gurus.weight.domain.services.IEntryReadService
 import com.dmdbrands.gurus.weight.domain.services.IEntryService
 import com.dmdbrands.gurus.weight.domain.services.IExportService
@@ -49,6 +52,12 @@ class HistoryViewModelTest {
     @MockK(relaxed = true)
     lateinit var entryCursorPager: com.dmdbrands.gurus.weight.data.services.EntryCursorPager
 
+    @MockK(relaxed = true)
+    lateinit var deviceService: IDeviceService
+
+    @MockK(relaxed = true)
+    lateinit var productSelectionRepository: IProductSelectionRepository
+
     private lateinit var navigationService: IAppNavigationService
     private lateinit var dialogQueueService: IDialogQueueService
     private lateinit var productSelectionManager: IProductSelectionManager
@@ -67,6 +76,8 @@ class HistoryViewModelTest {
             exportService = exportService,
             entryReadService = entryReadService,
             entryCursorPager = entryCursorPager,
+            deviceService = deviceService,
+            productSelectionRepository = productSelectionRepository,
         ).initTestDependencies(
             navigationService = navigationService,
             dialogQueueService = dialogQueueService,
@@ -82,6 +93,12 @@ class HistoryViewModelTest {
             MutableStateFlow(listOf(ProductSelection.MyWeight))
         every { productSelectionManager.selectedProduct } returns
             MutableStateFlow(ProductSelection.MyWeight)
+        // observeDeviceFlags() collects pairedScales as its change trigger, then reads presence
+        // from the hardened per-product sources. (MOB-1221)
+        every { deviceService.pairedScales } returns MutableStateFlow(emptyList())
+        every { deviceService.hasWeightScale } returns MutableStateFlow(false)
+        every { productSelectionManager.hasBabyScaleDevice } returns MutableStateFlow(false)
+        coEvery { productSelectionRepository.hasBpmDevice(any()) } returns false
     }
 
     // -------------------------------------------------------------------------
@@ -110,9 +127,12 @@ class HistoryViewModelTest {
             exportService = exportService,
             entryReadService = entryReadService,
             entryCursorPager = entryCursorPager,
+            deviceService = deviceService,
+            productSelectionRepository = productSelectionRepository,
         ).initTestDependencies(
             navigationService = navigationService,
             dialogQueueService = dialogQueueService,
+            productSelectionManager = productSelectionManager,
         )
         advanceUntilIdle()
 
@@ -144,7 +164,8 @@ class HistoryViewModelTest {
     }
 
     @Test
-    fun `Export confirm callback calls exportService`() = runTest(mainDispatcherRule.scheduler) {
+    fun `Export confirm callback exports the active product category`() = runTest(mainDispatcherRule.scheduler) {
+        // Default selection is MyWeight → category "weight", no babyId.
         val dialogSlot = slot<DialogModel.Confirm>()
         every { dialogQueueService.enqueue(capture(dialogSlot)) } returns Unit
 
@@ -152,7 +173,23 @@ class HistoryViewModelTest {
         dialogSlot.captured.onConfirm?.invoke()
         advanceUntilIdle()
 
-        coVerify { exportService.exportCsvWithPrompt() }
+        coVerify { exportService.exportEntriesCsv(category = "weight", babyId = null, download = false) }
+    }
+
+    @Test
+    fun `Export for a baby passes baby category and babyId`() = runTest(mainDispatcherRule.scheduler) {
+        val baby = ProductSelection.Baby(
+            BabyProfile(id = "baby-1", accountId = "acc-1", name = "Emma"),
+        )
+        every { productSelectionManager.selectedProduct } returns MutableStateFlow(baby)
+        val dialogSlot = slot<DialogModel.Confirm>()
+        every { dialogQueueService.enqueue(capture(dialogSlot)) } returns Unit
+
+        viewModel.handleIntent(HistoryIntent.Export)
+        dialogSlot.captured.onConfirm?.invoke()
+        advanceUntilIdle()
+
+        coVerify { exportService.exportEntriesCsv(category = "baby", babyId = "baby-1", download = false) }
     }
 
     @Test
@@ -170,7 +207,7 @@ class HistoryViewModelTest {
 
     @Test
     fun `Export confirm dismisses loader on exception`() = runTest(mainDispatcherRule.scheduler) {
-        coEvery { exportService.exportCsvWithPrompt() } throws RuntimeException("export fail")
+        coEvery { exportService.exportEntriesCsv(any(), any(), any()) } throws RuntimeException("export fail")
         val dialogSlot = slot<DialogModel.Confirm>()
         every { dialogQueueService.enqueue(capture(dialogSlot)) } returns Unit
 
@@ -193,6 +230,95 @@ class HistoryViewModelTest {
     }
 
     // -------------------------------------------------------------------------
+    // OnLogManually — navigation (MOB-1221)
+    // -------------------------------------------------------------------------
+
+    @Test
+    fun `OnLogManually navigates to Entry under Home top-level`() = runTest(mainDispatcherRule.scheduler) {
+        viewModel.handleIntent(HistoryIntent.OnLogManually)
+        advanceUntilIdle()
+        coVerify { navigationService.navigateTo(AppRoute.Main.Entry, AppRoute.Home) }
+    }
+
+    // -------------------------------------------------------------------------
+    // Device flags derived from the hardened per-product sources (MOB-1221 / PR #2242)
+    // -------------------------------------------------------------------------
+
+    @Test
+    fun `device flags come from hardened per-product sources`() = runTest(mainDispatcherRule.scheduler) {
+        every { deviceService.hasWeightScale } returns MutableStateFlow(true)
+        every { productSelectionManager.hasBabyScaleDevice } returns MutableStateFlow(true)
+        every { entryReadService.accountId } returns "acct-1"
+        coEvery { productSelectionRepository.hasBpmDevice("acct-1") } returns true
+
+        viewModel = HistoryViewModel(
+            entryService = entryService,
+            exportService = exportService,
+            entryReadService = entryReadService,
+            entryCursorPager = entryCursorPager,
+            deviceService = deviceService,
+            productSelectionRepository = productSelectionRepository,
+        ).initTestDependencies(
+            navigationService = navigationService,
+            dialogQueueService = dialogQueueService,
+            productSelectionManager = productSelectionManager,
+        )
+        advanceUntilIdle()
+
+        assertThat(viewModel.state.value.hasWeightDevice).isTrue()
+        assertThat(viewModel.state.value.hasBpmDevice).isTrue()
+        assertThat(viewModel.state.value.hasBabyDevice).isTrue()
+    }
+
+    @Test
+    fun `weight-only ownership sets only the weight flag`() = runTest(mainDispatcherRule.scheduler) {
+        every { deviceService.hasWeightScale } returns MutableStateFlow(true)
+        every { productSelectionManager.hasBabyScaleDevice } returns MutableStateFlow(false)
+        every { entryReadService.accountId } returns "acct-1"
+        coEvery { productSelectionRepository.hasBpmDevice("acct-1") } returns false
+
+        viewModel = HistoryViewModel(
+            entryService = entryService,
+            exportService = exportService,
+            entryReadService = entryReadService,
+            entryCursorPager = entryCursorPager,
+            deviceService = deviceService,
+            productSelectionRepository = productSelectionRepository,
+        ).initTestDependencies(
+            navigationService = navigationService,
+            dialogQueueService = dialogQueueService,
+            productSelectionManager = productSelectionManager,
+        )
+        advanceUntilIdle()
+
+        assertThat(viewModel.state.value.hasWeightDevice).isTrue()
+        assertThat(viewModel.state.value.hasBpmDevice).isFalse()
+        assertThat(viewModel.state.value.hasBabyDevice).isFalse()
+    }
+
+    @Test
+    fun `bpm device is not queried when accountId is null`() = runTest(mainDispatcherRule.scheduler) {
+        every { entryReadService.accountId } returns null
+
+        viewModel = HistoryViewModel(
+            entryService = entryService,
+            exportService = exportService,
+            entryReadService = entryReadService,
+            entryCursorPager = entryCursorPager,
+            deviceService = deviceService,
+            productSelectionRepository = productSelectionRepository,
+        ).initTestDependencies(
+            navigationService = navigationService,
+            dialogQueueService = dialogQueueService,
+            productSelectionManager = productSelectionManager,
+        )
+        advanceUntilIdle()
+
+        assertThat(viewModel.state.value.hasBpmDevice).isFalse()
+        coVerify(exactly = 0) { productSelectionRepository.hasBpmDevice(any()) }
+    }
+
+    // -------------------------------------------------------------------------
     // historyService grouped history subscription
     // -------------------------------------------------------------------------
 
@@ -203,12 +329,15 @@ class HistoryViewModelTest {
         every { entryReadService.getGroupedHistory(any()) } returns flowOf(GroupedHistory.Weight(items))
         val productSelectionManager = mockk<IProductSelectionManager>(relaxed = true)
         every { productSelectionManager.availableProducts } returns MutableStateFlow(listOf(ProductSelection.MyWeight))
+        every { productSelectionManager.hasBabyScaleDevice } returns MutableStateFlow(false)
 
         viewModel = HistoryViewModel(
             entryService = entryService,
             exportService = exportService,
             entryReadService = entryReadService,
             entryCursorPager = entryCursorPager,
+            deviceService = deviceService,
+            productSelectionRepository = productSelectionRepository,
         ).initTestDependencies(
             navigationService = navigationService,
             dialogQueueService = dialogQueueService,

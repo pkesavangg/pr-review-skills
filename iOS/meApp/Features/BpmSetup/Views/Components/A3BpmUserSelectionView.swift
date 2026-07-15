@@ -17,77 +17,81 @@ struct A3BpmUserSelectionView: View {
     private let lang = BpmSetupStrings.SelectUser.self
 
     var body: some View {
-        GeometryReader { geometry in
-            ScrollView(.vertical, showsIndicators: false) {
-                VStack(alignment: .leading, spacing: .spacingLG) {
-                    VStack(alignment: .leading, spacing: .spacingXS) {
-                        Text(lang.title)
-                            .fontOpenSans(.heading4)
-                            .foregroundColor(theme.textHeading)
-                            .multilineTextAlignment(.leading)
-                            .lineLimit(nil)
+        ScrollView(.vertical, showsIndicators: false) {
+            VStack(alignment: .leading, spacing: .spacingLG) {
+                VStack(alignment: .leading, spacing: .spacingXS) {
+                    Text(lang.title)
+                        .fontOpenSans(.heading4)
+                        .foregroundColor(theme.textHeading)
+                        .multilineTextAlignment(.leading)
+                        .lineLimit(nil)
 
-                        Text(lang.description)
-                            .fontOpenSans(.body2)
-                            .foregroundColor(theme.textBody)
-                            .multilineTextAlignment(.leading)
-                            .lineLimit(nil)
-                    }
-                    .accessibilityElement(children: .combine)
-                    .padding(.horizontal, .spacingXSM)
-
-                    if bpmItem.hasNumericUsers {
-                        HStack(spacing: .spacingLG) {
-                            BpmUserIconButton(
-                                iconName: AppAssets.a3BpmUser1,
-                                isSelected: selectedUser == 1
-                            ) {
-                                onSelect(1)
-                            }
-                            .accessibilityLabel(BpmSetupStrings.A11y.userSlotNumericLabel(1))
-                            .accessibilityHint(BpmSetupStrings.A11y.userSlotButtonHint)
-                            .accessibilityAddTraits(selectedUser == 1 ? .isSelected : [])
-
-                            BpmUserIconButton(
-                                iconName: AppAssets.a3BpmUser2,
-                                isSelected: selectedUser == 2
-                            ) {
-                                onSelect(2)
-                            }
-                            .accessibilityLabel(BpmSetupStrings.A11y.userSlotNumericLabel(2))
-                            .accessibilityHint(BpmSetupStrings.A11y.userSlotButtonHint)
-                            .accessibilityAddTraits(selectedUser == 2 ? .isSelected : [])
-                        }
-                        .frame(maxWidth: .infinity, alignment: .center)
-                    } else {
-                        HStack(spacing: .spacingLG) {
-                            BpmUserIconButton(
-                                iconName: AppAssets.a6BpmUserA,
-                                isSelected: selectedUser == 1
-                            ) {
-                                onSelect(1)
-                            }
-                            .accessibilityLabel(BpmSetupStrings.A11y.userSlotAlphaLabel("A"))
-                            .accessibilityHint(BpmSetupStrings.A11y.userSlotButtonHint)
-                            .accessibilityAddTraits(selectedUser == 1 ? .isSelected : [])
-
-                            BpmUserIconButton(
-                                iconName: AppAssets.a6BpmUserB,
-                                isSelected: selectedUser == 2
-                            ) {
-                                onSelect(2)
-                            }
-                            .accessibilityLabel(BpmSetupStrings.A11y.userSlotAlphaLabel("B"))
-                            .accessibilityHint(BpmSetupStrings.A11y.userSlotButtonHint)
-                            .accessibilityAddTraits(selectedUser == 2 ? .isSelected : [])
-                        }
-                        .frame(maxWidth: .infinity, alignment: .center)
-                    }
+                    Text(lang.description)
+                        .fontOpenSans(.body2)
+                        .foregroundColor(theme.textBody)
+                        .multilineTextAlignment(.leading)
+                        .lineLimit(nil)
                 }
-                // MOB-1247: centre setup-slide content to match `ScaleSetupIntroView`.
-                .frame(maxWidth: .infinity)
-                .frame(minHeight: geometry.size.height, alignment: .center)
+                .accessibilityElement(children: .combine)
+                .padding(.horizontal, .spacingXSM)
+
+                if bpmItem.hasNumericUsers {
+                    HStack(spacing: .spacingLG) {
+                        BpmUserIconButton(
+                            iconName: AppAssets.a3BpmUser1,
+                            tint: theme.statusUtilitySecondary,
+                            isSelected: selectedUser == 1
+                        ) {
+                            onSelect(1)
+                        }
+                        .accessibilityLabel(BpmSetupStrings.A11y.userSlotNumericLabel(1))
+                        .accessibilityHint(BpmSetupStrings.A11y.userSlotButtonHint)
+                        .accessibilityAddTraits(selectedUser == 1 ? .isSelected : [])
+                        .appAccessibility(id: AccessibilityID.bpmUserSlot1Button)
+
+                        BpmUserIconButton(
+                            iconName: AppAssets.a3BpmUser2,
+                            tint: theme.statusUtilitySecondary,
+                            isSelected: selectedUser == 2
+                        ) {
+                            onSelect(2)
+                        }
+                        .accessibilityLabel(BpmSetupStrings.A11y.userSlotNumericLabel(2))
+                        .accessibilityHint(BpmSetupStrings.A11y.userSlotButtonHint)
+                        .accessibilityAddTraits(selectedUser == 2 ? .isSelected : [])
+                        .appAccessibility(id: AccessibilityID.bpmUserSlot2Button)
+                    }
+                    .frame(maxWidth: .infinity, alignment: .center)
+                } else {
+                    HStack(spacing: .spacingLG) {
+                        BpmUserIconButton(
+                            iconName: AppAssets.a6BpmUserA,
+                            tint: theme.statusUtilitySecondary,
+                            isSelected: selectedUser == 1
+                        ) {
+                            onSelect(1)
+                        }
+                        .accessibilityLabel(BpmSetupStrings.A11y.userSlotAlphaLabel("A"))
+                        .accessibilityHint(BpmSetupStrings.A11y.userSlotButtonHint)
+                        .accessibilityAddTraits(selectedUser == 1 ? .isSelected : [])
+                        .appAccessibility(id: AccessibilityID.bpmUserSlot1Button)
+
+                        BpmUserIconButton(
+                            iconName: AppAssets.a6BpmUserB,
+                            tint: theme.statusUtilitySecondary,
+                            isSelected: selectedUser == 2
+                        ) {
+                            onSelect(2)
+                        }
+                        .accessibilityLabel(BpmSetupStrings.A11y.userSlotAlphaLabel("B"))
+                        .accessibilityHint(BpmSetupStrings.A11y.userSlotButtonHint)
+                        .accessibilityAddTraits(selectedUser == 2 ? .isSelected : [])
+                        .appAccessibility(id: AccessibilityID.bpmUserSlot2Button)
+                    }
+                    .frame(maxWidth: .infinity, alignment: .center)
+                }
             }
+            .padding(.top, .spacingLG)
         }
     }
 }
@@ -96,15 +100,20 @@ struct A3BpmUserSelectionView: View {
 
 private struct BpmUserIconButton: View {
     let iconName: String
+    /// Semantic fill from the design system (Status/utility-secondary) — overrides
+    /// any color baked into the asset (e.g. the legacy blue in the A3 SVGs).
+    let tint: Color
     let isSelected: Bool
     let onTap: () -> Void
 
     var body: some View {
         Button(action: onTap) {
             Image(iconName)
+                .renderingMode(.template)
                 .resizable()
                 .scaledToFit()
                 .frame(width: 89, height: 161)
+                .foregroundColor(tint)
                 .opacity(isSelected ? 1.0 : 0.72)
                 .accessibilityHidden(true)
         }

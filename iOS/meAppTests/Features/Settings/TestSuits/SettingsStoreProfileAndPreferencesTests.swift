@@ -191,6 +191,43 @@ extension SettingsStoreTests {
             #expect(notification.showToastCalls == 0)
         }
 
+        @Test("updateHeightInForm syncs the metric picker selections to the chosen height (MOB-1468)")
+        func updateHeightSyncsMetricPickerSelections() async {
+            let account = SettingsStoreTestFixtures.makeAccount(unit: .kg)
+            let accountService = MockAccountService()
+            accountService.seedAccounts([account], active: account)
+            let (store, _, _, _, _) = SettingsStoreTestFixtures.makeSUT(accountService: accountService)
+            // Sentinel selections that differ from the target so we can prove the sync ran,
+            // not that the arrays merely happened to already match.
+            store.selectedHeightInches = ["9", "9"]
+            store.selectedHeightCm = ["9", "9", "9"]
+
+            store.updateHeightInForm(fromMetric: true, values: ["1", "7", "3"])
+            await Task.yield()
+
+            // Reopening the picker must reflect the just-chosen 173cm, not the sentinel.
+            let expected = ConversionTools.pickerSelections(from: ConversionTools.convertCmToStoredHeight(173))
+            #expect(store.selectedHeightCm == expected.cm)
+            #expect(store.selectedHeightInches == expected.inches)
+        }
+
+        @Test("updateHeightInForm syncs the imperial picker selections to the chosen height (MOB-1468)")
+        func updateHeightSyncsImperialPickerSelections() async {
+            let account = SettingsStoreTestFixtures.makeAccount(unit: .lb)
+            let accountService = MockAccountService()
+            accountService.seedAccounts([account], active: account)
+            let (store, _, _, _, _) = SettingsStoreTestFixtures.makeSUT(accountService: accountService)
+            store.selectedHeightInches = ["2", "0"]
+            store.selectedHeightCm = ["1", "0", "0"]
+
+            store.updateHeightInForm(fromMetric: false, values: ["5", "9"])
+            await Task.yield()
+
+            let expected = ConversionTools.pickerSelections(from: ConversionTools.convertInchesToStoredHeight((5 * 12) + 9))
+            #expect(store.selectedHeightInches == expected.inches)
+            #expect(store.selectedHeightCm == expected.cm)
+        }
+
         @Test("confirmDiscardProfileChanges returns true when user exits")
         func confirmDiscardProfileChangesReturnsTrueOnExit() async {
             let notification = TestNotificationHelperService()

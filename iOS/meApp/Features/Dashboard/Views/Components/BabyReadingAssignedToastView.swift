@@ -71,6 +71,7 @@ struct BabyReadingAssignedToastView: View {
                         .foregroundColor(theme.textHeading)
                 }
                 .buttonStyle(.plain)
+                .appAccessibility(id: AccessibilityID.babyReadingReassignButton)
             }
             .padding(.spacingXS)
             .background(theme.backgroundPrimary)

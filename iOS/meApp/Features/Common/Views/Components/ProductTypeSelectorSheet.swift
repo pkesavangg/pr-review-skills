@@ -22,13 +22,13 @@ struct ProductTypeSelectorSheet: View {
                 leadingContent: {
                     AnyView(
                         AppIconView(icon: AppAssets.close)
-                            .foregroundColor(theme.actionSecondary)
                     )
                 },
                 onLeadingTap: {
                     isPresented = false
                 },
-                canShowBorder: true
+                canShowBorder: true,
+                leadingAccessibilityID: AccessibilityID.productSelectorCloseButton
             )
 
             // Item list — same pattern as MyAccountsScreen
@@ -45,6 +45,8 @@ struct ProductTypeSelectorSheet: View {
                                 isPresented = false
                             }
                             .listRowInsets(top: 0, bottom: 0, leading: 0, trailing: 0)
+                            .accessibilityElement(children: .contain)
+                            .appAccessibility(id: AccessibilityID.productSelectorRow + "_" + item.id)
                         }
                     }
                     .listRowBackground(theme.backgroundPrimary)
@@ -54,6 +56,7 @@ struct ProductTypeSelectorSheet: View {
                 .scrollContentBackground(.hidden)
             }
         }
+        .screenAccessibilityRoot(AccessibilityID.productSelectorScreenRoot)
     }
 }
 

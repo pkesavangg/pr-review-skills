@@ -27,35 +27,31 @@ struct A3BpmInstructionView: View {
     var wrapsMediaInCard: Bool = true
 
     var body: some View {
-        GeometryReader { geometry in
-            ScrollView(.vertical, showsIndicators: false) {
-                VStack(spacing: .spacingLG) {
-                    VStack(alignment: .leading, spacing: .spacingXS) {
-                        Text(title)
-                            .fontOpenSans(.heading4)
-                            .foregroundColor(theme.textHeading)
-                            .multilineTextAlignment(.leading)
-                            .lineLimit(nil)
-                            .fixedSize(horizontal: false, vertical: true)
+        ScrollView(.vertical, showsIndicators: false) {
+            VStack(spacing: .spacingLG) {
+                VStack(alignment: .leading, spacing: .spacingXS) {
+                    Text(title)
+                        .fontOpenSans(.heading4)
+                        .foregroundColor(theme.textHeading)
+                        .multilineTextAlignment(.leading)
+                        .lineLimit(nil)
+                        .fixedSize(horizontal: false, vertical: true)
 
-                        Text(description)
-                            .fontOpenSans(.body2)
-                            .foregroundColor(theme.textBody)
-                            .multilineTextAlignment(.leading)
-                            .lineLimit(nil)
-                            .fixedSize(horizontal: false, vertical: true)
-                    }
-                    .accessibilityElement(children: .combine)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-
-                    mediaView
-                        .padding(.horizontal, mediaHorizontalPadding)
-                        .frame(maxWidth: .infinity, alignment: .center)
+                    Text(description)
+                        .fontOpenSans(.body2)
+                        .foregroundColor(theme.textBody)
+                        .multilineTextAlignment(.leading)
+                        .lineLimit(nil)
+                        .fixedSize(horizontal: false, vertical: true)
                 }
-                // MOB-1247: centre setup-slide content to match `ScaleSetupIntroView`.
-                .frame(maxWidth: .infinity)
-                .frame(minHeight: geometry.size.height, alignment: .center)
+                .accessibilityElement(children: .combine)
+                .frame(maxWidth: .infinity, alignment: .leading)
+
+                mediaView
+                    .padding(.horizontal, mediaHorizontalPadding)
+                    .frame(maxWidth: .infinity, alignment: .center)
             }
+            .padding(.top, .spacingLG)
         }
     }
 
@@ -79,9 +75,12 @@ struct A3BpmInstructionView: View {
                 Image(uiImage: resourceImage)
                     .resizable()
                     .scaledToFit()
+                    // Cap the size but allow the image to shrink on narrower pages.
+                    // A fixed width here would force the whole content column wider
+                    // than the page, clipping the heading and bleeding to the next slide.
                     .frame(
-                        width: imageMediaSize.width,
-                        height: imageMediaSize.height
+                        maxWidth: imageMediaSize.width,
+                        maxHeight: imageMediaSize.height
                     )
                     .accessibilityLabel(BpmSetupStrings.A11y.deviceImageLabel)
             }
@@ -91,8 +90,8 @@ struct A3BpmInstructionView: View {
                     .resizable()
                     .scaledToFit()
                     .frame(
-                        width: imageMediaSize.width,
-                        height: imageMediaSize.height
+                        maxWidth: imageMediaSize.width,
+                        maxHeight: imageMediaSize.height
                     )
                     .accessibilityLabel(BpmSetupStrings.A11y.deviceImageLabel)
             }
@@ -113,17 +112,20 @@ struct A3BpmInstructionView: View {
     }
 
     private func measurementGifView(gifName: String) -> some View {
+        // Fill the available page width rather than a fixed 370pt. A hard width
+        // wider than the page's inner width forced the whole content block off-centre
+        // (left/right clipped) on larger devices like iPhone 17 Pro. The GIF uses
+        // object-fit: contain, so it keeps its aspect ratio within this frame.
         GifView(
             gifName: gifName,
             subdirectory: gifSubdirectory,
-            width: gifMediaSize.width,
-            height: 250
+            verticalAlignment: gifVerticalAlignment
         )
         .accessibilityLabel(BpmSetupStrings.A11y.gifLabel)
-        .frame(width: gifMediaSize.width, height: 250)
+        .frame(maxWidth: .infinity)
+        .frame(height: 250)
         .clipped()
         .clipShape(RoundedRectangle(cornerRadius: .radiusLG))
-        .frame(maxWidth: .infinity, minHeight: 250, maxHeight: 250)
     }
 
     private var resourceImage: UIImage? {
@@ -148,17 +150,6 @@ struct A3BpmInstructionView: View {
         case .center: return .center
         case .bottom: return .bottom
         }
-    }
-
-    private var gifMediaSize: CGSize {
-        if wrapsMediaInCard {
-            return BpmSetupMediaMetrics.cardContentSize
-        }
-
-        return CGSize(
-            width: DevicePlatform.isMiniPhone ? 350 : 370,
-            height: DevicePlatform.isMiniPhone ? 200 : 250
-        )
     }
 
     private var imageMediaSize: CGSize {

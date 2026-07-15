@@ -160,6 +160,7 @@ struct HistoryListScreen: View {
                 LazyVStack(spacing: 0) {
                     ForEach(store.bpMonths) { month in
                         BPMonthSummaryItem(month: month)
+                            .appAccessibility(id: "\(AccessibilityID.bpHistoryMonthRow)_\(month.id)")
                             .contentShape(Rectangle())
                             .onTapGesture {
                                 guard !isNavigating else { return }
@@ -192,10 +193,14 @@ struct HistoryListScreen: View {
             } else {
                 LazyVStack(spacing: 0) {
                     ForEach(store.babyWeeks) { week in
-                        BabyWeekHeaderView(weekNumber: week.weekNumber)
+                        BabyWeekHeaderView(
+                            weekNumber: week.weekNumber,
+                            showBirthdayBalloon: week.containsBirthday
+                        )
 
                         ForEach(week.days) { day in
                             BabyDaySummaryItem(day: day)
+                                .appAccessibility(id: "\(AccessibilityID.babyHistoryDayRow)_\(day.id)")
                                 .contentShape(Rectangle())
                                 .onTapGesture {
                                     guard !isNavigating else { return }
@@ -251,8 +256,11 @@ struct HistoryListScreen: View {
                 description: ProductTypeStrings.EmptyState.weightNoDeviceDescription,
                 buttonTitle: ProductTypeStrings.EmptyState.addDevice,
                 iconAsset: AppAssets.weightScaleIcon,
-                iconTint: theme.weightScaleColor
-            ) { navigateToAddDevice() }
+                iconTint: theme.weightScaleColor,
+                secondaryButtonTitle: ProductTypeStrings.EmptyState.logManually,
+                onSecondaryButtonTap: { navigateToManualEntry() },
+                onButtonTap: { navigateToAddDevice() }
+            )
         }
     }
 
@@ -272,8 +280,11 @@ struct HistoryListScreen: View {
                 description: ProductTypeStrings.EmptyState.bpNoDeviceDescription,
                 buttonTitle: ProductTypeStrings.EmptyState.addDevice,
                 iconAsset: AppAssets.bpmIcon,
-                iconTint: theme.bpmColor
-            ) { navigateToAddDevice() }
+                iconTint: theme.bpmColor,
+                secondaryButtonTitle: ProductTypeStrings.EmptyState.logManually,
+                onSecondaryButtonTap: { navigateToManualEntry() },
+                onButtonTap: { navigateToAddDevice() }
+            )
         }
     }
 

@@ -8,6 +8,9 @@
 #   3. Pick a connected device from a numbered list
 #   4. Build → install → launch the app on that device
 #
+#   Android extra: at step 3 you can instead choose "Export APK to ~/Downloads"
+#   to just assemble a debug/release .apk and copy it there — no device required.
+#
 # Build → config mapping
 #   iOS:      dev = "Dev" configuration        production = "Production" configuration
 #   Android:  dev = debug build type           production = release build type
@@ -17,6 +20,7 @@
 #   scripts/run.sh ios                # iOS, then prompt build + device
 #   scripts/run.sh android dev        # Android + dev, then prompt device
 #   scripts/run.sh ios production     # iOS + production, then prompt device
+#   scripts/run.sh android dev apk    # Android + dev, assemble APK → ~/Downloads (no device)
 #
 # Notes:
 #   - iOS lists both connected physical devices and available simulators.
@@ -75,15 +79,100 @@ fi
 [[ "$BUILD" == "prod" ]] && BUILD=production
 [[ "$BUILD" == "dev" || "$BUILD" == "production" ]] || die "unknown build: $BUILD"
 
+# ---- (Android only) action: install on a device, or export an APK ----
+# Empty = resolve interactively inside run_android. `apk`/`export` = assemble an
+# .apk and copy it to ~/Downloads instead of installing on a device.
+ACTION="$(printf '%s' "${3:-}" | tr '[:upper:]' '[:lower:]')"
+case "$ACTION" in
+  ""|device|install|run) ACTION="" ;;
+  apk|export) ACTION=apk ;;
+  *) die "invalid action: $ACTION (use: apk)" ;;
+esac
+[[ "$ACTION" == "apk" && "$PLATFORM" != "android" ]] && die "apk export is Android-only"
+
 printf "\n%s→ platform=%s%s  build=%s%s\n" "$dim" "$green$PLATFORM$reset" "$dim" "$green$BUILD$reset" "$reset"
 
 # Pipe xcodebuild through xcbeautify when available, else raw.
 xcrun_build_filter(){ if command -v xcbeautify >/dev/null 2>&1; then xcbeautify; else cat; fi; }
 
+# Install an .app into a booted simulator, bounded by a timeout. `simctl install`
+# produces no output and blocks *indefinitely* when the sim's SpringBoard is
+# crash-looping (a corrupt CoreSimulator display state — the FBSDisplayMonitor
+# boot crash seen on recent runtimes), so cap it and treat a stall as failure.
+# Returns non-zero on timeout or a real install error.
+sim_install(){
+  local dev="$1" app="$2" pid rc watch
+  xcrun simctl install "$dev" "$app" & pid=$!
+  ( sleep 90; kill "$pid" 2>/dev/null ) & watch=$!
+  wait "$pid" 2>/dev/null; rc=$?
+  kill "$watch" 2>/dev/null
+  return $rc
+}
+
 # --------------------------------------------------------------------------
 # Android
 # --------------------------------------------------------------------------
+
+# Android release builds need google-services.json (a CI-injected secret) + a signing
+# config, which a local checkout usually lacks. Offer to fall back to dev instead of a raw
+# Gradle stack trace. Adjusts the global BUILD to dev on fallback; callers derive their own
+# Gradle task from BUILD afterwards. No-op for dev builds.
+android_require_release_or_fallback(){
+  [[ "$BUILD" == "production" ]] || return 0
+  local gs="$REPO_ROOT/Android/app/google-services.json"
+  [[ -f "$gs" ]] && return 0
+  printf "\n%s⚠ Android production builds can't run on a local checkout.%s\n" "$bold" "$reset"
+  printf "  release requires google-services.json (a CI-injected secret) + a signing config.\n"
+  printf "  %sMissing:%s %s\n" "$dim" "$reset" "$gs"
+  local ans; read -rp "Build dev (debug) instead? [Y/n]: " ans; ans="${ans:-y}"
+  case "$ans" in
+    y|Y|yes) BUILD=dev; step "Falling back to dev (debug)" ;;
+    *) die "release needs google-services.json — inject the CI secret to build release locally" ;;
+  esac
+}
+
+# Assemble a standalone APK (no device required) and copy it to ~/Downloads.
+export_android_apk(){
+  android_require_release_or_fallback
+
+  local task variant
+  if [[ "$BUILD" == "dev" ]]; then task=":app:assembleDebug"; variant=debug
+  else task=":app:assembleRelease"; variant=release; fi
+
+  step "Building APK ($task) …"
+  ( cd "$REPO_ROOT/Android" && ./gradlew "$task" ) || die "gradle $task failed"
+
+  # The project stamps the filename with version + build date via onVariants (see
+  # app/build.gradle.kts), so it isn't a fixed app-debug.apk — pick the newest .apk
+  # in the variant output dir. androidTest APKs live in a sibling dir, so they're excluded.
+  local out_dir="$REPO_ROOT/Android/app/build/outputs/apk/$variant"
+  local apk; apk="$(ls -t "$out_dir"/*.apk 2>/dev/null | head -1)"
+  [[ -n "$apk" && -f "$apk" ]] || die "no APK found in $out_dir"
+
+  local downloads="$HOME/Downloads"
+  [[ -d "$downloads" ]] || mkdir -p "$downloads" || die "couldn't create $downloads"
+  local dest="$downloads/$(basename "$apk")"
+  cp -f "$apk" "$dest" || die "couldn't copy APK to $downloads"
+
+  printf "%s✓ %s APK → %s%s (%s)\n" "$green" "$BUILD" "$dest" "$reset" "$(du -h "$dest" | awk '{print $1}')"
+}
+
 run_android(){
+  # Install & launch on a device (default) or just export an APK to ~/Downloads.
+  if [[ -z "${ACTION:-}" ]]; then
+    echo
+    echo "${bold}What do you want to do?${reset}"
+    echo "  1) Install & launch on a device ${dim}(default)${reset}"
+    echo "  2) Export APK to ~/Downloads ${dim}(no device needed)${reset}"
+    read -rp "Select [1]: " a; a="${a:-1}"
+    case "$a" in
+      1|device|install) ACTION=device ;;
+      2|apk|export) ACTION=apk ;;
+      *) die "invalid selection: $a" ;;
+    esac
+  fi
+  if [[ "$ACTION" == "apk" ]]; then export_android_apk; return; fi
+
   local adb; adb="$(command -v adb || echo "$HOME/Library/Android/sdk/platform-tools/adb")"
   [[ -x "$adb" ]] || die "adb not found (install Android platform-tools)"
 
@@ -107,25 +196,11 @@ run_android(){
   [[ "$sel" =~ ^[0-9]+$ ]] && (( sel>=1 && sel<=${#serials[@]} )) || die "invalid selection"
   local serial_sel="${serials[$((sel-1))]}"
 
+  # Android production = release, which this repo gates behind google-services.json (a
+  # CI-injected secret) + a signing config; offer the dev/debug path on a local checkout.
+  android_require_release_or_fallback
   local task
   if [[ "$BUILD" == "dev" ]]; then task=":app:installDebug"; else task=":app:installRelease"; fi
-
-  # Pre-flight: Android production = release, which this repo gates behind google-services.json
-  # (a CI-injected secret) and needs a signing config. Fail fast with a clear message instead of
-  # a Gradle stack trace, and offer the dev/debug path that actually works on a local checkout.
-  if [[ "$BUILD" == "production" ]]; then
-    local gs="$REPO_ROOT/Android/app/google-services.json"
-    if [[ ! -f "$gs" ]]; then
-      printf "\n%s⚠ Android production builds can't run on a local checkout.%s\n" "$bold" "$reset"
-      printf "  release requires google-services.json (a CI-injected secret) + a signing config.\n"
-      printf "  %sMissing:%s %s\n" "$dim" "$reset" "$gs"
-      read -rp "Build dev (debug) instead? [Y/n]: " ans; ans="${ans:-y}"
-      case "$ans" in
-        y|Y|yes) BUILD=dev; task=":app:installDebug"; step "Falling back to dev (debug)" ;;
-        *) die "release needs google-services.json — inject the CI secret to build release locally" ;;
-      esac
-    fi
-  fi
 
   step "Installing ($task) on ${labels[$((sel-1))]} …"
 
@@ -192,19 +267,33 @@ sim, dev = load("SIM_JSON"), load("DEV_JSON")
 sim_udids = {s.get("udid") for r, ds in (sim.get("devices", {}) or {}).items()
              for s in (ds or [])}
 rows = []  # (sort, kind, id, label)
-# physical devices: only those currently connected (tunnelState == connected)
+# Physical devices: list every reachable one, not just those with a live tunnel.
+# tunnelState is only "connected" while something is actively talking to the phone;
+# an idle-but-usable device sits at "disconnected", and CoreDevice raises the tunnel
+# on demand at install time. Filtering on == "connected" hid every idle device (the
+# "my plugged-in phone isn't listed" reports). Instead key off the transport: a real
+# device is on "wired" (USB) or "localNetwork" (Wi-Fi); "sameMachine" is a simulator
+# and None means an offline/remembered pairing — both are not selectable here.
 for d in (dev.get("result", {}) or {}).get("devices", []) or []:
     hw = d.get("hardwareProperties", {}) or {}
     cp = d.get("connectionProperties", {}) or {}
     if str(hw.get("platform", "")).lower() != "ios":   # skip watch/tv/mac
         continue
-    if cp.get("tunnelState") != "connected":           # skip paired-but-offline
+    transport = cp.get("transportType")
+    if transport not in ("wired", "localNetwork"):     # skip simulators / offline pairings
+        continue
+    if cp.get("tunnelState") == "unavailable":         # skip unreachable devices
         continue
     udid = hw.get("udid") or d.get("identifier")
     if not udid or udid in sim_udids:                  # skip sims reported here
         continue
     name = (d.get("deviceProperties", {}) or {}).get("name") or "iOS device"
-    rows.append((0, "device", udid, f"{name}  [device]"))
+    wireless = transport == "localNetwork"
+    tag = "wireless" if wireless else "wired"
+    # live+wired first (safest default pick), then live-wireless, then idle, then
+    # idle-wireless — all kept ahead of simulators (sort keys 1 and 2 below).
+    rank = (0.0 if cp.get("tunnelState") == "connected" else 0.2) + (0.1 if wireless else 0.0)
+    rows.append((rank, "device", udid, f"{name}  [device, {tag}]"))
 # simulators
 for runtime, devs in (sim.get("devices", {}) or {}).items():
     if "iOS" not in runtime:
@@ -242,31 +331,86 @@ PY
     step "Booting simulator …"
     open -a Simulator >/dev/null 2>&1 || true
     xcrun simctl boot "$id_sel" 2>/dev/null || true
+    # `simctl boot` returns before the sim's system services (SpringBoard,
+    # installd) are up. Installing into a half-booted sim races those services;
+    # `bootstatus -b` blocks until boot actually completes.
+    xcrun simctl bootstatus "$id_sel" -b >/dev/null 2>&1 || true
 
+    # Sign the simulator build ad-hoc ("Sign to Run Locally"), exactly like Xcode does —
+    # do NOT disable signing. CODE_SIGNING_ALLOWED=NO skips the CodeSign phase, so the app
+    # ships with no `application-identifier` entitlement; on the Simulator that entitlement
+    # is what provides the default Keychain access group. Without it, SecItemAdd fails with
+    # errSecMissingEntitlement (-34018), the auth token is silently never stored, and the
+    # app bounces back to login ("auto-logout") on the next auth check — while the same
+    # build run from Xcode works. Automatic signing + the project's DEVELOPMENT_TEAM prefix
+    # embeds application-identifier into the simulator entitlements without needing the real
+    # signing certificate (Simulator signing is ad-hoc), so Keychain sessions persist.
     step "Building ($cfg, simulator) …"
     xcodebuild build \
       -project "$IOS_PROJECT" -scheme "$IOS_SCHEME" -configuration "$cfg" \
       -destination "platform=iOS Simulator,id=$id_sel" \
       -derivedDataPath "$DERIVED" \
-      CODE_SIGN_IDENTITY="" CODE_SIGNING_REQUIRED=NO CODE_SIGNING_ALLOWED=NO \
+      -allowProvisioningUpdates \
       | xcrun_build_filter
     [[ ${PIPESTATUS[0]} -eq 0 ]] || die "xcodebuild failed"
 
     local app="$DERIVED/Build/Products/$cfg-iphonesimulator/$IOS_APP_NAME.app"
     [[ -d "$app" ]] || die "built app not found at $app"
 
+    # `simctl install` hangs forever against a crash-looping SpringBoard (a
+    # corrupt CoreSimulator state), so it's bounded by a timeout in sim_install.
+    # If it stalls, fully restart CoreSimulator + reboot the device to clear the
+    # bad state, then retry once — instead of the script silently hanging after
+    # "Installing & launching …" without ever installing anything.
     step "Installing & launching …"
-    xcrun simctl install "$id_sel" "$app"
-    xcrun simctl launch "$id_sel" "$BUNDLE_ID_IOS"
+    local attempt
+    for attempt in 1 2; do
+      if sim_install "$id_sel" "$app"; then break; fi
+      [[ $attempt -eq 2 ]] && die "simulator install failed twice — the sim looks unhealthy; erase it with: xcrun simctl erase $id_sel"
+      printf "\n%s⚠ install stalled — the simulator looks unhealthy (SpringBoard may be crash-looping).%s\n" "$bold" "$reset"
+      step "Restarting CoreSimulator and rebooting the device …"
+      xcrun simctl shutdown "$id_sel" 2>/dev/null || true
+      osascript -e 'quit app "Simulator"' >/dev/null 2>&1 || true
+      killall -9 com.apple.CoreSimulator.CoreSimulatorService 2>/dev/null || true
+      sleep 2
+      open -a Simulator >/dev/null 2>&1 || true
+      xcrun simctl boot "$id_sel" 2>/dev/null || true
+      xcrun simctl bootstatus "$id_sel" -b >/dev/null 2>&1 || true
+    done
+
+    xcrun simctl launch "$id_sel" "$BUNDLE_ID_IOS" \
+      || die "app installed but launch failed — open meApp from the simulator home screen"
   else
     step "Building ($cfg, device) …"
+    # A cold `xcodebuild` only waits ~30s for the device's dev-services tunnel to
+    # come up, whereas Xcode keeps the device warm and waits far longer. On a
+    # just-reconnected or briefly-locked phone that 30s isn't enough and the build
+    # dies with "Timed out waiting for all destinations". Give it Xcode-like
+    # patience so the script is as reliable as building from the IDE.
+    local build_log; build_log="$(mktemp "${TMPDIR:-/tmp}/run-ios.XXXXXX")"
     xcodebuild build \
       -project "$IOS_PROJECT" -scheme "$IOS_SCHEME" -configuration "$cfg" \
       -destination "id=$id_sel" \
+      -destination-timeout 120 \
       -derivedDataPath "$DERIVED" \
       -allowProvisioningUpdates \
-      | xcrun_build_filter
-    [[ ${PIPESTATUS[0]} -eq 0 ]] || die "xcodebuild failed (device builds need a valid signing team)"
+      2>&1 | tee "$build_log" | xcrun_build_filter
+    local rc=${PIPESTATUS[0]}
+    if [[ $rc -ne 0 ]]; then
+      # Classify the failure instead of blaming signing for everything — a locked
+      # device, a not-yet-ready tunnel, and a missing team are entirely different
+      # problems and each needs a different fix.
+      if grep -q "Development services need to be enabled\|Ensure that the device is unlocked\|Timed out waiting for all destinations\|is not available because" "$build_log"; then
+        rm -f "$build_log"
+        die "device wasn't ready — unlock the iPhone and keep it unlocked, confirm Developer Mode is on (Settings ▸ Privacy & Security ▸ Developer Mode), then re-run. (This is usually transient: the device just needs to be warm.)"
+      elif grep -q "requires a development team\|No signing certificate\|No profiles for\|Signing for .* requires" "$build_log"; then
+        rm -f "$build_log"
+        die "signing failed — set a valid Team for the meApp target in Xcode (Signing & Capabilities), then re-run"
+      fi
+      rm -f "$build_log"
+      die "xcodebuild failed (see output above)"
+    fi
+    rm -f "$build_log"
 
     local app="$DERIVED/Build/Products/$cfg-iphoneos/$IOS_APP_NAME.app"
     [[ -d "$app" ]] || die "built app not found at $app"

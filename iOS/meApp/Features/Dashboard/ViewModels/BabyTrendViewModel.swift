@@ -83,19 +83,8 @@ final class BabyTrendViewModel {
         dashboardStore.state.graph.selectedXValue != nil || dashboardStore.state.graph.selectedPoint != nil
     }
 
-    private func fallbackBabyOperations(
-        dashboardStore: DashboardStore,
-        babyProfile: BabyProfile
-    ) -> [BathScaleWeightSummary] {
-        BabyDashboardChartSupport.dummySummaries(
-            for: babyProfile,
-            period: dashboardStore.state.graph.selectedPeriod
-        )
-    }
-
     private func operationsForCurrentAverage(
-        dashboardStore: DashboardStore,
-        babyProfile: BabyProfile
+        dashboardStore: DashboardStore
     ) -> [BathScaleWeightSummary] {
         let labelRangeOperations = dashboardStore.displayManager.getOperationsForLabelDateRange()
         if !labelRangeOperations.isEmpty {
@@ -107,17 +96,12 @@ final class BabyTrendViewModel {
             return visibleOperations
         }
 
-        let continuousOperations = dashboardStore.continuousOperations
-        if !continuousOperations.isEmpty {
-            return continuousOperations
-        }
-
-        return fallbackBabyOperations(dashboardStore: dashboardStore, babyProfile: babyProfile)
+        return dashboardStore.continuousOperations
     }
 
     private func currentDisplayWeight(
         dashboardStore: DashboardStore,
-        babyProfile: BabyProfile
+        babyProfile _: BabyProfile
     ) -> Double {
         guard dashboardStore.hasBabyEntries else { return 0 }
         if hasPointSelected(in: dashboardStore),
@@ -127,19 +111,11 @@ final class BabyTrendViewModel {
         }
 
         let currentAverageWeight = averageWeight(
-            for: operationsForCurrentAverage(dashboardStore: dashboardStore, babyProfile: babyProfile),
+            for: operationsForCurrentAverage(dashboardStore: dashboardStore),
             dashboardStore: dashboardStore
         )
         if abs(currentAverageWeight) >= AppConstants.Precision.doubleEqualityEpsilon {
             return currentAverageWeight
-        }
-
-        let fallbackBabyAverage = averageWeight(
-            for: fallbackBabyOperations(dashboardStore: dashboardStore, babyProfile: babyProfile),
-            dashboardStore: dashboardStore
-        )
-        if abs(fallbackBabyAverage) >= AppConstants.Precision.doubleEqualityEpsilon {
-            return fallbackBabyAverage
         }
 
         if let displayWeight = dashboardStore.displayManager.displayWeight,
@@ -151,19 +127,22 @@ final class BabyTrendViewModel {
         return abs(fallbackAverage) >= AppConstants.Precision.doubleEqualityEpsilon ? fallbackAverage : 0
     }
 
+    /// The height to show in the trend headline: the recorded length at the selected point, or the
+    /// average of recorded lengths across the current range. Returns 0 when no length was recorded
+    /// (the headline then renders the empty "0.0" state — no synthetic value).
     private func currentDisplayHeight(
         dashboardStore: DashboardStore,
-        babyProfile: BabyProfile
+        babyProfile _: BabyProfile
     ) -> Double {
-        if let selectedDate = dashboardStore.state.graph.selectedXValue ?? dashboardStore.state.graph.selectedPoint?.date {
-            return BabyDashboardChartSupport.dummyHeightValue(for: babyProfile, on: selectedDate)
+        if let selectedDate = selectedDate(in: dashboardStore) {
+            return BabyDashboardChartSupport.heightValue(
+                on: selectedDate,
+                in: dashboardStore.continuousOperations
+            ) ?? 0
         }
-
-        let operations = operationsForCurrentAverage(dashboardStore: dashboardStore, babyProfile: babyProfile)
-        let visibleDates = operations.isEmpty
-            ? fallbackBabyOperations(dashboardStore: dashboardStore, babyProfile: babyProfile).map(\.date)
-            : operations.map(\.date)
-        return BabyDashboardChartSupport.averageDummyHeight(for: babyProfile, dates: visibleDates)
+        return BabyDashboardChartSupport.averageHeight(
+            from: operationsForCurrentAverage(dashboardStore: dashboardStore)
+        ) ?? 0
     }
 
     func growthPercentilesSheetState(
@@ -260,10 +239,7 @@ final class BabyTrendViewModel {
             )
         }
 
-        let operations = operationsForCurrentAverage(dashboardStore: dashboardStore, babyProfile: babyProfile)
-        let sourceOperations = operations.isEmpty
-            ? fallbackBabyOperations(dashboardStore: dashboardStore, babyProfile: babyProfile)
-            : operations
+        let sourceOperations = operationsForCurrentAverage(dashboardStore: dashboardStore)
 
         let percentiles = sourceOperations.compactMap { summary in
             let weight = dashboardStore.goalManager.convertWeightToDisplay(Int(summary.weight.rounded()))
@@ -309,16 +285,14 @@ final class BabyTrendViewModel {
             )
         }
 
-        let operations = operationsForCurrentAverage(dashboardStore: dashboardStore, babyProfile: babyProfile)
-        let sourceDates = operations.isEmpty
-            ? fallbackBabyOperations(dashboardStore: dashboardStore, babyProfile: babyProfile).map(\.date)
-            : operations.map(\.date)
+        let operations = operationsForCurrentAverage(dashboardStore: dashboardStore)
 
-        let percentiles = sourceDates.compactMap { date in
-            BabyDashboardChartSupport.heightPercentile(
+        let percentiles = operations.compactMap { summary -> Int? in
+            guard let lengthInches = summary.babyLengthInches, lengthInches > 0 else { return nil }
+            return BabyDashboardChartSupport.heightPercentile(
                 for: babyProfile,
-                heightInches: BabyDashboardChartSupport.dummyHeightValue(for: babyProfile, on: date),
-                on: date
+                heightInches: lengthInches,
+                on: summary.date
             )
         }
 
