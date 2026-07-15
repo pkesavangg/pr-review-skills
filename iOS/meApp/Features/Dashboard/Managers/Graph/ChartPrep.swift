@@ -92,7 +92,7 @@ enum ChartPrep {
         //    Computed inline (rather than via `weightYAxis`) so the domain AND the window ops can also
         //    normalize the co-plotted metric series consistently. (`weightYAxis` stays for the in-place
         //    weight-only settle in `settleWeightChart`.)
-        let yAxisOps = weightYAxisOperations(
+        let yAxisOps = yAxisWindowOperations(
             operations: operations,
             period: period,
             scrollPosition: scrollPosition,
@@ -169,6 +169,108 @@ enum ChartPrep {
         )
     }
 
+    // MARK: - MOB-1516: BPM (systolic / diastolic / pulse)
+
+    /// Build the BPM `ChartModel` — three `.data` series (systolic/diastolic/pulse) + two fixed AHA
+    /// reference lines (120/80). Reuses `GraphDataPreparer.buildBpmChartSeries` (daily wk/mo, monthly yr/total)
+    /// and the adaptive `bpmScale` over the visible window (re-settles on scroll like weight, in place).
+    /// No goal / weightless / metric co-plot. Same x-geometry (full-domain, windowed ticks) as weight.
+    static func buildBpm( // swiftlint:disable:this function_body_length
+        operations: [BathScaleWeightSummary],
+        period: TimePeriod,
+        scrollPosition: Date,
+        calendar: Calendar = .current,
+        config: GraphRenderingConfiguration = GraphRenderingConfiguration()
+    ) -> ChartModel {
+        let preparer = GraphDataPreparer()
+        let plotCalendar = localGregorian(from: calendar)
+
+        // 3 series, already aggregated by the reused builder. Draw order PINNED: systolic → diastolic → pulse
+        // (the legacy render order was unspecified — bucket 2 in `seriesRenderPriority`).
+        let grouped = Dictionary(
+            grouping: preparer.buildBpmChartSeries(from: operations, period: period), by: \.series
+        )
+        var orderedNames: [String] = []
+        var full: [String: [PlottedGraphSeries]] = [:]
+        for name in ["systolic", "diastolic", "pulse"] {
+            let points = (grouped[name] ?? [])
+                .map { PlottedGraphSeries(original: $0, xDate: plotXDate($0.date, period: period, calendar: plotCalendar)) }
+                .sorted { $0.xDate < $1.xDate }
+            if !points.isEmpty {
+                orderedNames.append(name)
+                full[name] = points
+            }
+        }
+
+        // x-geometry — full-domain, scroll-INDEPENDENT (identical to weight; the scroll hang is avoided by
+        // windowing the ticks, not the domain).
+        let visibleLength = config.visibleDomainLength(for: period)
+        let xDomain = config.fullXDomain(for: period, from: operations)
+            ?? xDomainRange(
+                plotted: full[orderedNames.first ?? ""] ?? [],
+                scrollPosition: scrollPosition,
+                visibleLength: visibleLength
+            )
+
+        // Adaptive clinical y-axis over the visible window (mmHg/bpm).
+        let yAxis = bpmYAxis(
+            operations: operations,
+            period: period,
+            scrollPosition: scrollPosition,
+            visibleDomainLength: visibleLength,
+            preparer: preparer
+        )
+
+        let decimated = full.mapValues { ChartDecimator.decimate($0) }
+        let lineWidth: CGFloat = period == .total ? 2 : 3
+        let styles = Dictionary(uniqueKeysWithValues: orderedNames.map {
+            ($0, ChartSeriesStyle(role: .data, lineWidth: lineWidth, showsPoints: true))
+        })
+        let referenceLines = [
+            ChartReferenceLine(value: Double(BpmConstants.normalSystolic), dashed: true, color: .bpmReference),
+            ChartReferenceLine(value: Double(BpmConstants.normalDiastolic), dashed: true, color: .bpmReference)
+        ]
+
+        return ChartModel(
+            period: period,
+            productType: .bpm,
+            orderedSeriesNames: orderedNames,
+            seriesPoints: decimated,
+            fullResolution: full,
+            xDomain: xDomain,
+            visibleDomainLength: visibleLength,
+            xAxisTicks: config.boundedXAxisValues(
+                for: period, from: operations, around: scrollPosition, windows: tickWindowRadius
+            ),
+            goalWeight: nil,
+            seriesStyle: styles,
+            referenceLines: referenceLines,
+            yAxis: yAxis,
+            dataFingerprint: fingerprint(orderedSeriesNames: orderedNames, points: full)
+        )
+    }
+
+    /// The adaptive BPM y-axis for one visible window — `bpmScale` over the windowed ops (visible ∪ bracket),
+    /// so it re-settles as you scroll to windows with different value ranges. Used by `buildBpm` and by the
+    /// in-place scroll-end settle (`DashboardStore.settleChart` for `.bpm`).
+    static func bpmYAxis(
+        operations: [BathScaleWeightSummary],
+        period: TimePeriod,
+        scrollPosition: Date,
+        visibleDomainLength: TimeInterval,
+        preparer: GraphDataPreparer = GraphDataPreparer()
+    ) -> YAxisModel {
+        let windowOps = yAxisWindowOperations(
+            operations: operations,
+            period: period,
+            scrollPosition: scrollPosition,
+            visibleDomainLength: visibleDomainLength,
+            preparer: preparer
+        )
+        let scale = DashboardChartScaleProvider.bpmScale(from: windowOps)
+        return YAxisModel(domain: scale.domain, ticks: scale.ticks, average: scale.average)
+    }
+
     /// The adaptive y-axis (Y-B) for one visible window: visible ∪ bracketing ops (deduped) → `YAxisScale`,
     /// exactly as `DashboardChartManager.updateYAxisCache`. Total isn't scrollable → the whole dataset
     /// defines the axis. This is the ONLY scroll-position-dependent output of the weight model, so a
@@ -187,7 +289,7 @@ enum ChartPrep {
         lastYAxis: YAxisScale? = nil,
         preparer: GraphDataPreparer = GraphDataPreparer()
     ) -> YAxisModel {
-        let yAxisOperations = weightYAxisOperations(
+        let yAxisOperations = yAxisWindowOperations(
             operations: operations,
             period: period,
             scrollPosition: scrollPosition,
@@ -210,7 +312,7 @@ enum ChartPrep {
 
     /// Mirrors `DashboardChartManager.updateYAxisCache`: visible-window ops (with edge buffer) combined
     /// with the bracketing ops, deduped by `entryTimestamp`; falls back to bracket, then all ops.
-    private static func weightYAxisOperations(
+    private static func yAxisWindowOperations(
         operations: [BathScaleWeightSummary],
         period: TimePeriod,
         scrollPosition: Date,

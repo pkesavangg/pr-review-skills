@@ -899,6 +899,14 @@ class DashboardStore: ObservableObject, DashboardStateProviding {
     /// MOB-1516: product-neutral name (Phase G0). `.bpm`/`.baby` dispatch is added in Phase B/Y; today the
     /// body is weight-only and only `productType == .scale` routes here via `TrendChartHost`.
     func rebuildChartModel(scrollPosition: Date) {
+        if productType == .bpm {
+            chartModel = ChartPrep.buildBpm(
+                operations: continuousOperations,
+                period: state.graph.selectedPeriod,
+                scrollPosition: scrollPosition
+            )
+            return
+        }
         chartModel = ChartPrep.buildWeight(
             operations: continuousOperations,
             period: state.graph.selectedPeriod,
@@ -926,6 +934,10 @@ class DashboardStore: ObservableObject, DashboardStateProviding {
     /// → Swift Charts never rebuilds its scroll view (no "~1 s can't scroll again" hitch, #3; no jump; no
     /// wall). A co-plotted metric normalizes to the y-domain, so it still needs a full rebuild. Weight only.
     func settleChart(scrollPosition: Date) {
+        if productType == .bpm {
+            settleBpm(scrollPosition: scrollPosition)
+            return
+        }
         guard coPlottedMetric == nil, let current = chartModel else {
             rebuildChartModel(scrollPosition: scrollPosition)
             return
@@ -941,6 +953,32 @@ class DashboardStore: ObservableObject, DashboardStateProviding {
             anchorWeight: weightlessAnchorWeight,
             convertWeight: goalManager.convertWeightToDisplay,
             chartHeight: state.graph.chartHeight
+        )
+        let newTicks = config.boundedXAxisValues(
+            for: state.graph.selectedPeriod,
+            from: continuousOperations,
+            around: scrollPosition,
+            windows: ChartPrep.tickWindowRadius
+        )
+        let updated = current.withYAxisAndTicks(newYAxis, ticks: newTicks)
+        guard updated != current else { return }
+        chartModel = updated
+    }
+
+    /// MOB-1516: BPM in-place scroll-end settle — recompute ONLY the adaptive `bpmScale` for the landed window
+    /// + refresh the windowed ticks, swapped via `withYAxisAndTicks`. No metric co-plot, so this never needs a
+    /// full rebuild (unlike weight); the scroll region stays byte-identical → no scroll-view rebuild on settle.
+    private func settleBpm(scrollPosition: Date) {
+        guard let current = chartModel else {
+            rebuildChartModel(scrollPosition: scrollPosition)
+            return
+        }
+        let config = GraphRenderingConfiguration()
+        let newYAxis = ChartPrep.bpmYAxis(
+            operations: continuousOperations,
+            period: state.graph.selectedPeriod,
+            scrollPosition: scrollPosition,
+            visibleDomainLength: current.visibleDomainLength
         )
         let newTicks = config.boundedXAxisValues(
             for: state.graph.selectedPeriod,
@@ -986,6 +1024,11 @@ class DashboardStore: ObservableObject, DashboardStateProviding {
             return
         }
         graphManager.applyChartSelectionSync(at: date, operations: continuousOperations)
+        // MOB-1516 (BPM): update the AHA classification from the selected reading so the header + the
+        // systolic/diastolic line recolour to that point (parity with the legacy `handleBpmPointSelection`).
+        if productType == .bpm, let selected = state.graph.selectedPoint {
+            displayManager.handleBpmPointSelection(selected)
+        }
         // MOB-518: refresh the metric tiles (bmi / body fat % / muscle % …) to the SELECTED point's per-point
         // values. The legacy engine did this via `handleCompleteChartSelection`'s `updateMetrics` closure;
         // `applyChartSelectionSync` only sets the graph-selection state (which the weight HEADER reads

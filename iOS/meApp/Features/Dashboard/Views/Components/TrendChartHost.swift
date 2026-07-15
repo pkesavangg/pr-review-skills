@@ -95,7 +95,8 @@ struct TrendChartHost: View {
                 isScrolling: dashboardStore.state.graph.isScrolling,
                 yLabel: { dashboardStore.displayManager.formatYAxisTickLabel($0) },
                 xLabel: formatXAxisLabel,
-                theme: theme
+                theme: theme,
+                bpmClassification: bpmClassification
             )
             // A2 — native scroll phase is the REAL start/commit/end signal (same path the legacy graph
             // uses via `ScrollDetectionModifier`), so there is no view-side timer to approximate it.
@@ -138,6 +139,23 @@ struct TrendChartHost: View {
 
     // MARK: - V4 (6a) selection / crosshair
 
+    /// MOB-1516: the series the host snaps selection to / seeds the latest point from. Weight → the weight
+    /// series; BPM → systolic (the top line, used only as the x-position source — the header shows all three).
+    /// Baby adds its own in Phase Y.
+    private var primarySeriesName: String {
+        switch dashboardStore.productType {
+        case .bpm: return "systolic"
+        default: return DashboardStrings.weight
+        }
+    }
+
+    /// MOB-1516 (BPM): the selected (or window-average) reading's AHA class, so the systolic/diastolic line +
+    /// header recolour with the selection. `nil` for weight/baby.
+    private var bpmClassification: AhaPressureClass? {
+        guard dashboardStore.productType == .bpm else { return nil }
+        return dashboardStore.displayManager.getBpmDisplayValues()?.classification
+    }
+
     /// Plotted x-date of the store's current selection — drives the crosshair rule + (for a real point) the
     /// enlarged point. Derived from the store's validated selection so it reflects both taps and programmatic
     /// auto-select, and clears automatically when the store clears selection (e.g. on scroll-start). Resolves
@@ -148,7 +166,7 @@ struct TrendChartHost: View {
               let selectedDate = dashboardStore.state.graph.selectedXValue,
               let model = dashboardStore.chartModel else { return nil }
         let calendar = Calendar.current
-        let points = model.fullResolution[DashboardStrings.weight] ?? []
+        let points = model.fullResolution[primarySeriesName] ?? []
         let match = points.first { point in
             switch model.period {
             case .week, .month: return calendar.isDate(point.original.date, inSameDayAs: selectedDate)
@@ -207,7 +225,12 @@ struct TrendChartHost: View {
     /// - **Year** shows a line per month → snap to the nearest 1st-of-month.
     /// - **Total** isn't a continuous grid (raw dates, no per-day buckets) → snap to the nearest real entry.
     private func snappedSelectionDate(for raw: Date, in model: ChartModel) -> Date? {
-        let points = model.fullResolution[DashboardStrings.weight] ?? []
+        // MOB-1516 (BPM): the chart plots aggregated daily/monthly points with no continuous day grid, so snap
+        // to the nearest real point for every period — same as weight's `.total`.
+        if dashboardStore.productType == .bpm {
+            return nearestEntry(to: raw, in: model)?.original.date
+        }
+        let points = model.fullResolution[primarySeriesName] ?? []
         guard let firstDate = points.first?.original.date,
               let lastDate = points.last?.original.date else { return nil }
         let calendar = Calendar.current
@@ -281,7 +304,7 @@ struct TrendChartHost: View {
     /// scroll-end, where an empty selection is intended.
     private func selectLatestIfNeeded() {
         guard crosshairDate == nil, let model = dashboardStore.chartModel else { return }
-        let points = model.fullResolution[DashboardStrings.weight] ?? []
+        let points = model.fullResolution[primarySeriesName] ?? []
         guard let latest = points.max(by: { $0.original.date < $1.original.date }) else { return }
         dashboardStore.selectPoint(at: latest.original.date)
     }
@@ -289,13 +312,15 @@ struct TrendChartHost: View {
     /// V4 (6c): formatted goal-weight chip label (nil → no chip), matching the legacy
     /// `formatWeightDisplayText(roundedGoalWeight(goal))`.
     private var goalLabel: String? {
-        guard let goal = dashboardStore.goalWeightForDisplay else { return nil }
+        // MOB-1516: goal chip is weight-only (BPM/baby have no goal).
+        guard dashboardStore.productType == .scale,
+              let goal = dashboardStore.goalWeightForDisplay else { return nil }
         let rounded = dashboardStore.displayManager.roundedGoalWeight(goal)
         return dashboardStore.displayManager.formatWeightDisplayText(rounded)
     }
 
     private func nearestEntry(to date: Date, in model: ChartModel) -> PlottedGraphSeries? {
-        let points = model.fullResolution[DashboardStrings.weight] ?? []
+        let points = model.fullResolution[primarySeriesName] ?? []
         return points.min {
             abs($0.xDate.timeIntervalSince(date)) < abs($1.xDate.timeIntervalSince(date))
         }
