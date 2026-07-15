@@ -259,7 +259,7 @@ class MyAccountsViewModelTest {
     }
 
     @Test
-    fun `RequestRemoveAccount confirm callback calls logout`() = runTest(mainDispatcherRule.scheduler) {
+    fun `RequestRemoveAccount confirm callback calls removeAccountFromDevice`() = runTest(mainDispatcherRule.scheduler) {
         val dialogSlot = slot<DialogModel.Confirm>()
         every { dialogQueueService.enqueue(capture(dialogSlot)) } returns Unit
 
@@ -268,7 +268,7 @@ class MyAccountsViewModelTest {
         advanceUntilIdle()
 
         coVerify {
-            accountService.logout(
+            accountService.removeAccountFromDevice(
                 TestFixtures.secondaryAccount.id,
                 TestFixtures.secondaryAccount.fcmToken,
             )
@@ -290,7 +290,7 @@ class MyAccountsViewModelTest {
 
     @Test
     fun `RequestRemoveAccount confirm dismisses loader on exception`() = runTest(mainDispatcherRule.scheduler) {
-        coEvery { accountService.logout(any(), any()) } throws RuntimeException(ERROR_FAIL)
+        coEvery { accountService.removeAccountFromDevice(any(), any()) } throws RuntimeException(ERROR_FAIL)
         val dialogSlot = slot<DialogModel.Confirm>()
         every { dialogQueueService.enqueue(capture(dialogSlot)) } returns Unit
 
@@ -324,21 +324,73 @@ class MyAccountsViewModelTest {
     }
 
     @Test
-    fun `RequestRemoveAccount with no accountToRemove does not call logout`() = runTest(mainDispatcherRule.scheduler) {
-        // Directly trigger onRemoveAccount via confirm without setting accountToRemove
-        // accountToRemove is null by default, so the let block is skipped
+    fun `RequestRemoveAccount confirm shows loader`() = runTest(mainDispatcherRule.scheduler) {
         val dialogSlot = slot<DialogModel.Confirm>()
         every { dialogQueueService.enqueue(capture(dialogSlot)) } returns Unit
 
-        // Set accountToRemove to null by dispatching SetAccounts (doesn't set accountToRemove)
         viewModel.handleIntent(MyAccountsIntent.RequestRemoveAccount(TestFixtures.secondaryAccount))
-        // Clear accountToRemove by dispatching another RequestRemoveAccount to overwrite? No, we can't.
-        // Actually the confirm callback reads state.value.accountToRemove which was set.
-        // This is covered. Let's skip this and just verify the loader is still shown.
         dialogSlot.captured.onConfirm?.invoke()
         advanceUntilIdle()
 
         verify { dialogQueueService.showLoader(any()) }
+    }
+
+    // -------------------------------------------------------------------------
+    // Remove — post-removal navigation (MOB-1474)
+    // -------------------------------------------------------------------------
+
+    @Test
+    fun `removing the active account with no other accounts navigates to Landing`() = runTest(mainDispatcherRule.scheduler) {
+        coEvery { accountService.removeAccountFromDevice(any(), any()) } returns true
+        coEvery { accountService.getLoggedInAccounts() } returns emptyList()
+        val dialogSlot = slot<DialogModel.Confirm>()
+        every { dialogQueueService.enqueue(capture(dialogSlot)) } returns Unit
+
+        viewModel.handleIntent(MyAccountsIntent.RequestRemoveAccount(TestFixtures.activeAccount))
+        dialogSlot.captured.onConfirm?.invoke()
+        advanceUntilIdle()
+
+        coVerify {
+            accountService.removeAccountFromDevice(
+                TestFixtures.activeAccount.id,
+                TestFixtures.activeAccount.fcmToken,
+            )
+        }
+        coVerify { navigationService.replaceStack(AppRoute.Auth.Landing) }
+    }
+
+    @Test
+    fun `removing the active account with other accounts navigates to MultiAccountLanding`() = runTest(mainDispatcherRule.scheduler) {
+        coEvery { accountService.removeAccountFromDevice(any(), any()) } returns true
+        coEvery { accountService.getLoggedInAccounts() } returns listOf(TestFixtures.secondaryAccount)
+        val dialogSlot = slot<DialogModel.Confirm>()
+        every { dialogQueueService.enqueue(capture(dialogSlot)) } returns Unit
+
+        viewModel.handleIntent(MyAccountsIntent.RequestRemoveAccount(TestFixtures.activeAccount))
+        dialogSlot.captured.onConfirm?.invoke()
+        advanceUntilIdle()
+
+        coVerify { navigationService.replaceStack(AppRoute.Auth.MultiAccountLanding) }
+    }
+
+    @Test
+    fun `removing a non-active account does not navigate`() = runTest(mainDispatcherRule.scheduler) {
+        coEvery { accountService.removeAccountFromDevice(any(), any()) } returns true
+        val dialogSlot = slot<DialogModel.Confirm>()
+        every { dialogQueueService.enqueue(capture(dialogSlot)) } returns Unit
+
+        viewModel.handleIntent(MyAccountsIntent.RequestRemoveAccount(TestFixtures.secondaryAccount))
+        dialogSlot.captured.onConfirm?.invoke()
+        advanceUntilIdle()
+
+        coVerify {
+            accountService.removeAccountFromDevice(
+                TestFixtures.secondaryAccount.id,
+                TestFixtures.secondaryAccount.fcmToken,
+            )
+        }
+        coVerify(exactly = 0) { navigationService.replaceStack(AppRoute.Auth.Landing) }
+        coVerify(exactly = 0) { navigationService.replaceStack(AppRoute.Auth.MultiAccountLanding) }
     }
 
     // -------------------------------------------------------------------------
