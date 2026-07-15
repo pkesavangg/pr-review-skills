@@ -5,6 +5,8 @@ description: Apply the meApp Android design system — MeAppTheme tokens for col
 
 Apply `MeAppTheme` tokens. Never hardcode colors, typography, or spacing.
 
+> Before applying, pull the current Compose **Material 3** pattern via **context7** (`androidx.compose.material3`) or web fallback — component APIs and theming conventions evolve.
+
 The theming task is: $ARGUMENTS
 
 ## Instructions

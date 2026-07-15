@@ -264,9 +264,6 @@ android skills add --skill=r8-analyzer --project=.   # or --skill=all
 
 | Skill | Use for |
 |-------|---------|
-
-| Skill | Use for |
-|-------|---------|
 | `android-cli` | Create projects, manage AVDs, screenshots, UI inspection, on-device runs |
 | `perfetto-trace-analysis` / `perfetto-sql` | Root-cause latency/jank/memory from a real trace |
 | `r8-analyzer` | APK size + keep-rule optimization |
