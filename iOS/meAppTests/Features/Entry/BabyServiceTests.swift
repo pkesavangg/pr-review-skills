@@ -27,8 +27,7 @@ struct BabyServiceTests {
 
     // MARK: - SUT
 
-    // Test factory return; a labeled tuple is clearer than a one-off SUT struct.
-    // swiftlint:disable:next large_tuple
+    // Test factory return: a small struct bundling the SUT and its mocks for each test.
     private struct SUT {
         let service: BabyService
         let repo: MockBabyRepositoryAPI
@@ -72,9 +71,14 @@ struct BabyServiceTests {
 
     private func makeBaby(on sut: SUT, name: String = "Lily", birthday: Date? = nil) async throws -> Baby {
         try await sut.service.saveBaby(
-            name: name, accountId: sut.accountId, deviceId: nil,
-            birthday: birthday, biologicalSex: nil,
-            birthLengthInches: nil, birthWeightLbs: nil, birthWeightOz: nil
+            name: name,
+            accountId: sut.accountId,
+            deviceId: nil,
+            birthday: birthday,
+            biologicalSex: nil,
+            birthLengthInches: nil,
+            birthWeightLbs: nil,
+            birthWeightOz: nil
         )
     }
 
@@ -104,8 +108,12 @@ struct BabyServiceTests {
         let baby = try await makeBaby(on: sut, name: "Emma")
         let clientId = baby.id
         sut.repo.createResult = BabyResponse(
-            id: "srv-emma", name: "Emma", birthdate: nil, sex: nil,
-            birthWeightDecigrams: nil, birthLengthMillimeters: nil
+            id: "srv-emma",
+            name: "Emma",
+            birthdate: nil,
+            sex: nil,
+            birthWeightDecigrams: nil,
+            birthLengthMillimeters: nil
         )
 
         sut.gate.connected = true
@@ -132,8 +140,12 @@ struct BabyServiceTests {
         // Simulate the active-baby selection pointing at the offline baby.
         sut.kv.setValue("baby_\(clientId)", forKey: KvStorageKeys.selectedProductTypeKey(for: sut.accountId))
         sut.repo.createResult = BabyResponse(
-            id: "srv-ptr", name: "Pointer", birthdate: nil, sex: nil,
-            birthWeightDecigrams: nil, birthLengthMillimeters: nil
+            id: "srv-ptr",
+            name: "Pointer",
+            birthdate: nil,
+            sex: nil,
+            birthWeightDecigrams: nil,
+            birthLengthMillimeters: nil
         )
 
         sut.gate.connected = true
@@ -152,8 +164,12 @@ struct BabyServiceTests {
         // Start with a server-created baby (as if already synced).
         let sut = makeSUT(connected: true)
         sut.repo.listResult = [BabyResponse(
-            id: "srv-edit", name: "Old", birthdate: nil, sex: nil,
-            birthWeightDecigrams: nil, birthLengthMillimeters: nil
+            id: "srv-edit",
+            name: "Old",
+            birthdate: nil,
+            sex: nil,
+            birthWeightDecigrams: nil,
+            birthLengthMillimeters: nil
         )]
         try await sut.service.loadBabies(for: sut.accountId)
         let baby = try #require(sut.service.currentBabies.first { $0.id == "srv-edit" })
@@ -161,8 +177,13 @@ struct BabyServiceTests {
         // Go offline and edit.
         sut.gate.connected = false
         try await sut.service.updateBabyProfile(
-            baby, name: "New Name", birthday: nil, biologicalSex: "female",
-            birthLengthInches: nil, birthWeightLbs: nil, birthWeightOz: nil
+            baby,
+            name: "New Name",
+            birthday: nil,
+            biologicalSex: "female",
+            birthLengthInches: nil,
+            birthWeightLbs: nil,
+            birthWeightOz: nil
         )
         #expect(sut.repo.updateCalls == 0)
         #expect(baby.isSynced == false)
@@ -171,8 +192,12 @@ struct BabyServiceTests {
         // Reconnect and sync → PUT to the server id.
         sut.gate.connected = true
         sut.repo.listResult = [BabyResponse(
-            id: "srv-edit", name: "New Name", birthdate: nil, sex: "female",
-            birthWeightDecigrams: nil, birthLengthMillimeters: nil
+            id: "srv-edit",
+            name: "New Name",
+            birthdate: nil,
+            sex: "female",
+            birthWeightDecigrams: nil,
+            birthLengthMillimeters: nil
         )]
         await sut.service.syncBabies(for: sut.accountId)
 
@@ -189,8 +214,12 @@ struct BabyServiceTests {
     func deleteOfflineThenSync() async throws {
         let sut = makeSUT(productTypes: ["myWeight", "baby"], connected: true)
         sut.repo.listResult = [BabyResponse(
-            id: "srv-del", name: "Bye", birthdate: nil, sex: nil,
-            birthWeightDecigrams: nil, birthLengthMillimeters: nil
+            id: "srv-del",
+            name: "Bye",
+            birthdate: nil,
+            sex: nil,
+            birthWeightDecigrams: nil,
+            birthLengthMillimeters: nil
         )]
         try await sut.service.loadBabies(for: sut.accountId)
         let baby = try #require(sut.service.currentBabies.first { $0.id == "srv-del" })
@@ -258,8 +287,12 @@ struct BabyServiceTests {
     func syncNoOpWhenSynced() async throws {
         let sut = makeSUT(connected: true)
         sut.repo.listResult = [BabyResponse(
-            id: "srv-stable", name: "Stable", birthdate: nil, sex: nil,
-            birthWeightDecigrams: nil, birthLengthMillimeters: nil
+            id: "srv-stable",
+            name: "Stable",
+            birthdate: nil,
+            sex: nil,
+            birthWeightDecigrams: nil,
+            birthLengthMillimeters: nil
         )]
         try await sut.service.loadBabies(for: sut.accountId)
 
@@ -287,8 +320,12 @@ struct BabyServiceTests {
         let serverBirthdate = DateTimeTools.formatter("yyyy-MM-dd").string(from: birthday)
         sut.gate.connected = true
         sut.repo.listResult = [BabyResponse(
-            id: "srv-twin", name: "Twin", birthdate: serverBirthdate, sex: nil,
-            birthWeightDecigrams: nil, birthLengthMillimeters: nil
+            id: "srv-twin",
+            name: "Twin",
+            birthdate: serverBirthdate,
+            sex: nil,
+            birthWeightDecigrams: nil,
+            birthLengthMillimeters: nil
         )]
 
         await sut.service.syncBabies(for: sut.accountId)
@@ -308,8 +345,12 @@ struct BabyServiceTests {
     func loadBabiesMergesRemote() async throws {
         let sut = makeSUT(connected: true)
         sut.repo.listResult = [BabyResponse(
-            id: "remote-1", name: "Remote Baby", birthdate: "2026-03-15", sex: "female",
-            birthWeightDecigrams: 32500, birthLengthMillimeters: 510
+            id: "remote-1",
+            name: "Remote Baby",
+            birthdate: "2026-03-15",
+            sex: "female",
+            birthWeightDecigrams: 32500,
+            birthLengthMillimeters: 510
         )]
 
         try await sut.service.loadBabies(for: sut.accountId)
