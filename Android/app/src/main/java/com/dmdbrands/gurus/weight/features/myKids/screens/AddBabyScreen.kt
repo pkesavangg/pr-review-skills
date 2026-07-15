@@ -150,9 +150,11 @@ private fun rememberBabyFormControls(): BabyFormControls {
         FormControl.create<DateTimeValue>(DateTimeValue.Date(System.currentTimeMillis()), emptyList())
     }
     val sex = remember { FormControl.create("", listOf(FormValidations.required())) }
-    val length = remember { FormControl.create("", listOf(FormValidations.decimalRangeValidator(0, 1000))) }
+    // length + oz use the ounces-style BODY_COMP implicit 1-decimal input (type 0 → 0.0), so they
+    // validate with bodyCompValidator on the raw digit string (e.g. "205" → 20.5). (MOB-1223)
+    val length = remember { FormControl.create("", listOf(FormValidations.bodyCompValidator(0, 1000))) }
     val weight = remember { FormControl.create("", listOf(FormValidations.decimalRangeValidator(0, 1000))) }
-    val weightOz = remember { FormControl.create("", listOf(FormValidations.decimalRangeValidator(0, 16))) }
+    val weightOz = remember { FormControl.create("", listOf(FormValidations.bodyCompValidator(0, 16))) }
     return remember { BabyFormControls(name, birthday, sex, length, weight, weightOz) }
 }
 
@@ -185,7 +187,8 @@ private fun seedBabyControls(controls: BabyFormControls, baby: BabyProfile, isMe
             isLbOz -> {
                 val (lb, oz) = ConversionTools.convertDecigramsToLbOz(dg)
                 controls.weight.onValueChange(lb.toString())
-                controls.weightOz.onValueChange(formatOneDecimal(oz))
+                // oz is BODY_COMP (implicit 1-decimal): seed raw digits, 4.5 → "45".
+                controls.weightOz.onValueChange(Math.round(oz * 10).toString())
             }
             isMetric -> controls.weight.onValueChange(formatOneDecimal(ConversionTools.convertDecigramsToKg(dg)))
             else -> controls.weight.onValueChange(formatOneDecimal(ConversionTools.convertDecigramsToLbExact(dg)))
@@ -193,7 +196,8 @@ private fun seedBabyControls(controls: BabyFormControls, baby: BabyProfile, isMe
     }
     baby.birthLengthMillimeters?.takeIf { it > 0 }?.let { mm ->
         val value = if (isMetric) ConversionTools.convertMmToCm(mm) else ConversionTools.convertMmToInches(mm)
-        controls.length.onValueChange(formatOneDecimal(value))
+        // length is BODY_COMP (implicit 1-decimal): seed raw digits, 20.5 → "205".
+        controls.length.onValueChange(Math.round(value * 10).toString())
     }
 }
 
@@ -257,11 +261,12 @@ private fun AddBabyFields(
         // Length — typed, unit per account (cm metric / in imperial).
         AppInput(
             formControl = controls.length,
-            type = AppInputType.DECIMAL_STRING,
+            // Implicit 1-decimal like ounces (type 0 → 0.0, "205" → 20.5); raw digits stored.
+            type = AppInputType.BODY_COMP,
             label = AddBabyStrings.BirthLengthLabel,
             trailingText = if (isMetric) AddBabyStrings.CmUnit else AddBabyStrings.FixedLengthUnit,
             imeAction = ImeAction.Next,
-            maxLength = 5,
+            maxLength = 4,
         )
 
         Spacer(modifier = Modifier.height(MeTheme.spacing.sm))
@@ -322,12 +327,13 @@ private fun BirthWeightInput(
             Column(modifier = Modifier.weight(1f)) {
                 AppInput(
                     formControl = ozControl,
-                    type = AppInputType.DECIMAL_STRING,
+                    // Implicit 1-decimal (type 0 → 0.0, "159" → 15.9); raw digits stored.
+                    type = AppInputType.BODY_COMP,
                     label = AddBabyStrings.BirthWeightLabel,
                     trailingText = AddBabyStrings.BirthWeightModal.OzSuffix,
                     imeAction = ImeAction.Done,
                     onImeAction = { focusManager.clearFocus() },
-                    maxLength = 4,
+                    maxLength = 3,
                 )
             }
         }
@@ -351,7 +357,8 @@ private fun BirthWeightInput(
 private fun weightToDecigrams(weight: String, ounces: String, isMetric: Boolean, isLbOz: Boolean): Int? {
     if (isLbOz) {
         val lbs = weight.toIntOrNull() ?: 0
-        val oz = ounces.toDoubleOrNull() ?: 0.0
+        // oz is BODY_COMP raw digits with an implicit 1-place decimal ("159" → 15.9), so /10.
+        val oz = ounces.toDoubleOrNull()?.div(10.0) ?: 0.0
         if (lbs <= 0 && oz <= 0.0) return null
         return ConversionTools.convertLbOzToDecigrams(lbs, oz)
     }
@@ -362,7 +369,8 @@ private fun weightToDecigrams(weight: String, ounces: String, isMetric: Boolean,
 
 /** Converts the typed birth length to millimeters per the account's unit (cm metric / in imperial). */
 private fun lengthToMm(value: String, isMetric: Boolean): Int? {
-    val v = value.toDoubleOrNull() ?: return null
+    // length is BODY_COMP raw digits with an implicit 1-place decimal ("205" → 20.5), so /10.
+    val v = value.toDoubleOrNull()?.div(10.0) ?: return null
     if (v <= 0.0) return null
     return if (isMetric) ConversionTools.convertCmToMm(v) else ConversionTools.convertInchesToMm(v)
 }

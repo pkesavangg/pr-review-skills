@@ -28,4 +28,10 @@ data class BpmEntryEntity(
     val pulse: Int,
     val meanArterial: String,
     val note: String?,
+    /**
+     * Measurement origin ("manual" / "bluetooth" / …) — distinguishes manually-entered readings
+     * (fully editable) from device-synced ones (note-only). Nullable for pre-v9 rows / legacy
+     * entries. (MOB-1173)
+     */
+    val source: String? = null,
 )

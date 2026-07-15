@@ -115,7 +115,7 @@ struct BPHistoryEditSheet: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: .spacingLG) {
-                closeButton
+                header
 
                 MetricInputField(
                     config: TextInputConfig(
@@ -173,7 +173,7 @@ struct BPHistoryEditSheet: View {
                     ),
                     value: $notesText,
                     focusedField: $focusedField,
-                    accessibilityIdentifier: AccessibilityID.bpHistoryEditNotesField
+                    accessibilityIdentifier: AccessibilityID.bpHistoryEditNoteField
                 )
 
                 datePicker
@@ -196,12 +196,12 @@ struct BPHistoryEditSheet: View {
         .background(theme.backgroundSecondary.ignoresSafeArea())
         .presentationDetents([.large])
         .presentationDragIndicator(.visible)
-        .screenAccessibilityRoot(AccessibilityID.bpHistoryEditSheetRoot)
+        .screenAccessibilityRoot(AccessibilityID.bpHistoryEditScreenRoot)
     }
 
     // MARK: - Subviews
 
-    private var closeButton: some View {
+    private var header: some View {
         HStack {
             Spacer()
             Button { dismiss() } label: {
@@ -210,6 +210,7 @@ struct BPHistoryEditSheet: View {
                     .foregroundStyle(theme.textBody)
             }
             .buttonStyle(.plain)
+            .accessibilityLabel(lang.accCloseLabel)
             .appAccessibility(id: AccessibilityID.bpHistoryEditCloseButton)
         }
     }

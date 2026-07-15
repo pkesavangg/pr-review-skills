@@ -74,13 +74,15 @@ constructor(
 
   // The most recently added baby in this session, captured on persist. Drives the post-setup
   // product switch so the dashboard opens on the newly-added baby. Null when the baby-profile
-  // step was skipped (no baby created), which leaves the active product unchanged.
+  // step was skipped (no baby created); the switch then falls back to the Baby Scale product.
   private var lastPersistedBaby: DomainBabyProfile? = null
 
   // Switch the dashboard to the just-added baby after setup (MOB-422 auto-switch): selects that
-  // baby's product view and turns snapshot mode off. Null (skip flow) leaves the product unchanged.
-  override fun productSelectionAfterSetup(): ProductSelection? =
-    lastPersistedBaby?.let { ProductSelection.Baby(it) }
+  // baby's product view and turns snapshot mode off. When the baby-profile step is skipped, fall
+  // back to the Baby Scale product so the dashboard still opens on baby (empty state + ADD A BABY
+  // CTA) — the just-paired scale's product is the default active view.
+  override fun productSelectionAfterSetup(): ProductSelection =
+    lastPersistedBaby?.let { ProductSelection.Baby(it) } ?: ProductSelection.BabyScale
 
   init {
     lazyInit()

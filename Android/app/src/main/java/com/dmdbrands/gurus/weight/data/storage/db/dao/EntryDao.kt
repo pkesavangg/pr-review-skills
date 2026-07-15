@@ -140,6 +140,20 @@ interface EntryDao {
   @Query("DELETE FROM entry WHERE id = :id")
   suspend fun deleteById(id: Long): Int
 
+  /** Sets/clears the swipe-delete Undo-window flag; hidden from reads via entry_view. (MOB-1173) */
+  @Query("UPDATE entry SET pendingDelete = :pending WHERE id = :id")
+  suspend fun setPendingDelete(id: Long, pending: Boolean)
+
+  /**
+   * Commits any rows still in the Undo window (e.g. after the app was closed mid-window): flips
+   * them to a real, unsynced delete so the next sync pushes them. Called once on app launch.
+   */
+  @Query(
+    "UPDATE entry SET operationType = 'delete', pendingDelete = 0, isSynced = 0 " +
+      "WHERE accountId = :accountId AND pendingDelete = 1",
+  )
+  suspend fun commitPendingDeletes(accountId: String)
+
   // Get Methods
   /**
    * Get all entries with their related details for a specific account.

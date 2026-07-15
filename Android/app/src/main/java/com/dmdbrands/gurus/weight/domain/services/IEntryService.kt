@@ -19,7 +19,26 @@ interface IEntryService {
 
   /** Updates only an entry's note locally (e.g. editing from History). Device-local; see MOB-438. */
   suspend fun updateNote(entry: Entry, note: String?)
+
+  /**
+   * Edits an entry in place via operationType=edit on the unified /v3/entries/ endpoint: re-stamps
+   * the row (same local id) as edit + unsynced, upserts it locally (REPLACE by id) and pushes it.
+   * Used for manual weight edits from History (MOB-1173); mirrors [editBabyEntry].
+   */
+  suspend fun editEntry(entry: Entry)
   suspend fun deleteEntry(entry: Entry)
+
+  /**
+   * Marks/unmarks an entry as pending-delete during the swipe-delete Undo window: the row is hidden
+   * from reads but not actually deleted, so Undo just clears the flag (MOB-1173).
+   */
+  suspend fun setPendingDelete(entry: Entry, pending: Boolean)
+
+  /**
+   * Commits any entries still flagged pending-delete (e.g. the app was closed mid-window) into real
+   * deletes and pushes them. Called once on app launch. (MOB-1173)
+   */
+  suspend fun commitPendingDeletes()
 
   /**
    * Restores a soft-deleted entry (Undo from the History delete toast). Re-stamps the row as

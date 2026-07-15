@@ -65,7 +65,6 @@
     <ID>LongMethod:BabyCdcPercentilesBottomSheet.kt$@Composable fun BabyCdcPercentilesBottomSheet( heightInches: Double?, heightPercentile: Int?, weightLbs: Int?, weightOz: Double?, weightPercentile: Int?, onDismiss: () -&gt; Unit, )</ID>
     <ID>LongMethod:BabyDashboardViewModel.kt$BabyDashboardViewModel$private fun updateBabySegmentRanges(entries: List&lt;PeriodBabySummary&gt;, segments: List&lt;GraphSegment&gt;)</ID>
     <ID>LongMethod:BabyDayHistoryItem.kt$@Composable fun BabyDayHistoryItem( item: BabyEntry, isMetric: Boolean = false, isExpanded: Boolean = false, onToggleExpand: () -&gt; Unit = {}, onEditEntry: () -&gt; Unit = {}, )</ID>
-    <ID>LongMethod:BabyEntrySection.kt$@Composable fun BabyEntrySection( controls: BabyEntryFormControls, onImeAction: () -&gt; Unit, )</ID>
     <ID>LongMethod:BabyHistoryItem.kt$@Composable fun BabyHistoryItem( item: BabyWeekHistory, onClick: () -&gt; Unit, )</ID>
     <ID>LongMethod:BabyScaleBLESetupViewModel.kt$BabyScaleBLESetupViewModel$private fun wakeUpScale()</ID>
     <ID>LongMethod:BabyScaleComponents.kt$@Composable fun BabyListContent( babyProfiles: ImmutableList&lt;BabyProfile&gt;, onEditBaby: (Int) -&gt; Unit, onDeleteBaby: (Int) -&gt; Unit, onAddBaby: () -&gt; Unit, modifier: Modifier = Modifier, )</ID>

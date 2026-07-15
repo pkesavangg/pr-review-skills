@@ -148,6 +148,15 @@ final class DateTimeTools { // swiftlint:disable:this type_body_length
         return formatter("h:mm a").string(from: date)
     }
 
+    /// Formats a time string as 'h:mm a' with a lower-cased meridiem (e.g., '3:45 pm'),
+    /// matching the History row design. Returns empty string if invalid.
+    static func getFormattedTimeLowercased(_ timeString: String) -> String {
+        guard let date = parse(timeString) else { return invalidString }
+        return formatter("h:mm a").string(from: date)
+            .replacingOccurrences(of: "AM", with: "am")
+            .replacingOccurrences(of: "PM", with: "pm")
+    }
+
     /// Returns the month abbreviation (e.g., 'May') from a date string. Returns '---' if invalid.
     static func getMonth(_ dateString: String) -> String {
         guard let date = parse(dateString) else { return invalidString }

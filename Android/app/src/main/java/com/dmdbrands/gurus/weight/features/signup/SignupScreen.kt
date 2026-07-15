@@ -16,6 +16,8 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.testTag
+import com.dmdbrands.gurus.weight.core.shared.utilities.testing.TestTags
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalWindowInfo
@@ -104,6 +106,7 @@ fun SignupScreenContent(
         navigationIcon = {
             AppIconButton(
                 AppIcons.Default.Close,
+                modifier = Modifier.testTag(TestTags.Signup.CloseButton),
                 contentDescription = SignupStrings.accCloseLabel,
             ) {
                 handleBack()
@@ -113,6 +116,7 @@ fun SignupScreenContent(
         actions = {
             AppIconButton(
                 AppIcons.Outlined.Help,
+                modifier = Modifier.testTag(TestTags.Signup.HelpButton),
                 contentDescription = SignupStrings.accHelpLabel,
             ) { handleIntent.invoke(SignupIntent.OpenHelpModal) }
         },

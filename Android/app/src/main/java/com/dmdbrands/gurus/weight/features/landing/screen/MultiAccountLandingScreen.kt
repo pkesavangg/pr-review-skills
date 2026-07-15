@@ -16,6 +16,8 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.testTag
+import com.dmdbrands.gurus.weight.core.shared.utilities.testing.TestTags
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.res.painterResource
@@ -98,12 +100,14 @@ fun MultiAccountLandingScreenContent(
             AppButton(
                 label = MyAccountsScreenStrings.LogIntoExistingAccount,
                 type = ButtonType.PrimaryOutlined,
+                modifier = Modifier.testTag(TestTags.Landing.LogInToExistingAccountButton),
                 onClick = { handleIntent(MultiAccountLandingIntent.Login()) },
             )
             Spacer(modifier = Modifier.height(spacing.sm))
             AppButton(
                 label = MyAccountsScreenStrings.CreateNewAccount,
                 type = ButtonType.TextPrimary,
+                modifier = Modifier.testTag(TestTags.Landing.CreateNewAccountButton),
                 onClick = { handleIntent(MultiAccountLandingIntent.CreateAccount) },
             )
         }

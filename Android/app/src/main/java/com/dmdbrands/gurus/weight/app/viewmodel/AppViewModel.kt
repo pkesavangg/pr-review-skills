@@ -92,6 +92,7 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
@@ -192,6 +193,13 @@ class AppViewModel
         accountService.activeAccountFlow.collect {
           currentAccountId = it?.id
         }
+      }
+
+      // Once per launch, after the account is available: commit any entries left in the swipe-delete
+      // Undo window by a previous process kill (the pendingDelete flag persists). (MOB-1173)
+      viewModelScope.launch {
+        accountService.activeAccountFlow.firstOrNull { it != null }
+        entryService.commitPendingDeletes()
       }
 
       viewModelScope.launch {

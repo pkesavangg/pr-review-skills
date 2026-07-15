@@ -328,9 +328,9 @@ final class HistoryStore: ObservableObject {
     // MARK: - Handle export
     func handleExport() {
         let title = isBabyMode
-            ? HistoryListStrings.downloadBabyHistory
+            ? HistoryListStrings.sendBabyHistory
             : isBloodPressureMode
-                ? HistoryListStrings.downloadBPHistory
+                ? HistoryListStrings.sendBPHistory
                 : alertLang.CsvExportAlert.title
         let alert = AlertModel(
             title: title,
@@ -1176,19 +1176,52 @@ final class HistoryStore: ObservableObject {
             )
         }.sorted { $0.id > $1.id }
 
-        // Group days into weeks of 7
-        var weeks: [BabyHistoryWeek] = []
-        let chunks = days.chunked(into: 7)
-        let totalWeeks = chunks.count
-        for (index, chunk) in chunks.enumerated() {
-            let weekNumber = totalWeeks - index
-            weeks.append(BabyHistoryWeek(
-                id: "week-\(weekNumber)",
-                weekNumber: weekNumber,
-                days: chunk
-            ))
+        // Group days into weeks anchored to the baby's date of birth — 1:1 with the Baby app:
+        //   week = (whole days between birthday and entry day) / 7 + 1
+        // so the birth week (days 0–6) is Week 1, days 7–13 are Week 2, and so on. This is
+        // independent of how many days actually have entries (a sparse log no longer collapses
+        // distinct baby-age weeks into one). Weeks are ordered newest-first (highest number on top).
+        guard let birthday = profile?.birthday else {
+            // No birthday on the profile — fall back to legacy 7-recorded-day chunking so the
+            // list still renders when the baby's date of birth is unavailable.
+            var weeks: [BabyHistoryWeek] = []
+            let chunks = days.chunked(into: 7)
+            let totalWeeks = chunks.count
+            for (index, chunk) in chunks.enumerated() {
+                let weekNumber = totalWeeks - index
+                weeks.append(BabyHistoryWeek(
+                    id: "week-\(weekNumber)",
+                    weekNumber: weekNumber,
+                    days: chunk
+                ))
+            }
+            return weeks
         }
-        return weeks
+
+        let calendar = Calendar.current
+        let birthdayStart = calendar.startOfDay(for: birthday)
+        let dayFormatter = DateFormatter()
+        dayFormatter.dateFormat = "yyyy-MM-dd"
+        dayFormatter.timeZone = TimeZone.current // match localDayString so the day round-trips exactly
+
+        func weekNumber(forDayId dayId: String) -> Int {
+            guard let dayDate = dayFormatter.date(from: dayId) else { return 1 }
+            let dayStart = calendar.startOfDay(for: dayDate)
+            let dayDiff = calendar.dateComponents([.day], from: birthdayStart, to: dayStart).day ?? 0
+            // Clamp to 1 so any stray entry dated on/before the birthday still lands in Week 1.
+            return max(1, dayDiff / 7 + 1)
+        }
+
+        let weekGroups = Dictionary(grouping: days) { weekNumber(forDayId: $0.id) }
+        return weekGroups
+            .map { number, weekDays in
+                BabyHistoryWeek(
+                    id: "week-\(number)",
+                    weekNumber: number,
+                    days: weekDays.sorted { $0.id > $1.id }
+                )
+            }
+            .sorted { $0.weekNumber > $1.weekNumber }
     }
 
     deinit {

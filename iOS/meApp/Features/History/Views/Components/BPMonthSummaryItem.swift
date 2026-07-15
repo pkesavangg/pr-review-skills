@@ -25,7 +25,7 @@ struct BPMonthSummaryItem: View {
     }
 
     private var pressureColor: Color {
-        BPCategory.classify(systolic: month.avgSystolic, diastolic: month.avgDiastolic).color(theme: theme)
+        AhaPressureClass.classify(systolic: month.avgSystolic, diastolic: month.avgDiastolic).color(theme: theme)
     }
 
     var body: some View {

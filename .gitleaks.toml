@@ -101,6 +101,11 @@ tags = ["phi", "mrn", "hipaa"]
     '''features/DeviceUsers/screens/DeviceUserListScreen\.kt''',
     '''features/settings/strings/SettingsScreenStrings\.kt''',
 
+    # Central UI test-tag constants — string literals like
+    # ChangePassword = "settings_row_change_password" trip the generic-secret
+    # rule on the "Password" substring; these are testTag ids, not credentials.
+    '''core/shared/utilities/testing/TestTags\.kt''',
+
     # iOS settings strings — contains "changePassword" UI label, not a credential
     '''Features/Settings/Strings/SettingsStrings\.swift''',
 

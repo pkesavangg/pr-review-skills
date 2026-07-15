@@ -21,6 +21,8 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.testTag
+import com.dmdbrands.gurus.weight.core.shared.utilities.testing.TestTags
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.res.painterResource
@@ -62,6 +64,7 @@ private val DeviceIconSize = 56.dp
  * @param onFinish invoked on FINISH — completes signup; account + saved devices persist.
  * @param onTryAgain invoked on TRY AGAIN — retries the failed device's product creation.
  */
+@Suppress("LongMethod")
 @Composable
 fun SignupErrorStep(
     failedDeviceId: String,
@@ -122,12 +125,14 @@ fun SignupErrorStep(
                 label = SignupErrorStrings.finish,
                 type = ButtonType.TextPrimary,
                 size = ButtonSize.Small,
+                modifier = Modifier.testTag(TestTags.Signup.FinishButton),
                 onClick = onFinish,
             )
             AppButton(
                 label = SignupErrorStrings.tryAgain,
                 type = ButtonType.SecondaryFilled,
                 size = ButtonSize.Small,
+                modifier = Modifier.testTag(TestTags.Signup.TryAgainButton),
                 onClick = onTryAgain,
             )
         }

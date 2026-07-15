@@ -256,8 +256,11 @@ struct HistoryListScreen: View {
                 description: ProductTypeStrings.EmptyState.weightNoDeviceDescription,
                 buttonTitle: ProductTypeStrings.EmptyState.addDevice,
                 iconAsset: AppAssets.weightScaleIcon,
-                iconTint: theme.weightScaleColor
-            ) { navigateToAddDevice() }
+                iconTint: theme.weightScaleColor,
+                secondaryButtonTitle: ProductTypeStrings.EmptyState.logManually,
+                onSecondaryButtonTap: { navigateToManualEntry() },
+                onButtonTap: { navigateToAddDevice() }
+            )
         }
     }
 
@@ -277,8 +280,11 @@ struct HistoryListScreen: View {
                 description: ProductTypeStrings.EmptyState.bpNoDeviceDescription,
                 buttonTitle: ProductTypeStrings.EmptyState.addDevice,
                 iconAsset: AppAssets.bpmIcon,
-                iconTint: theme.bpmColor
-            ) { navigateToAddDevice() }
+                iconTint: theme.bpmColor,
+                secondaryButtonTitle: ProductTypeStrings.EmptyState.logManually,
+                onSecondaryButtonTap: { navigateToManualEntry() },
+                onButtonTap: { navigateToAddDevice() }
+            )
         }
     }
 

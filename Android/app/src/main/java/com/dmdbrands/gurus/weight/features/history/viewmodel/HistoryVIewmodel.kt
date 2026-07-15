@@ -120,6 +120,16 @@ constructor(
     }
   }
 
+  /**
+   * Re-query all history for the currently available products. Room's entry_view flows don't
+   * reliably re-emit after a swipe-delete's `pendingDelete` UPDATE, so the History screen calls
+   * this on resume — e.g. when returning after deleting the last entry of a day — to reflect the
+   * change immediately. (MOB-1173)
+   */
+  fun refresh() {
+    loadAllHistory(productSelectionManager.availableProducts.value)
+  }
+
   private fun loadAllHistory(availableProducts: List<ProductSelection>) {
     if (entryReadService.accountId == null) return
 

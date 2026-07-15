@@ -23,8 +23,6 @@ enum BabyDashboardChartSupport {
     private static let percentileSeriesPrefix = "baby_percentile_"
     private static let heightSeriesName = "baby_height"
     private static let defaultBabyAgeDays = 84
-    private static let dummyHistoryWindowDays = 180
-    private static let defaultBirthWeightLbs = 7.4
     private static let defaultBirthLengthInches = 19.5
     private static let heightTickStep = 5.0
     private static let minimumHeightAxisMax = 25.0
@@ -38,10 +36,6 @@ enum BabyDashboardChartSupport {
         .ninetyFifth: 1.3
     ]
 
-    static func clearDummySummariesCache() {
-        // Compatibility hook kept for callers that still reset baby chart state.
-    }
-
     static func resolvedBirthday(
         for babyProfile: BabyProfile,
         calendar: Calendar = .current,
@@ -51,68 +45,6 @@ enum BabyDashboardChartSupport {
         let fallbackBirthday = calendar.date(byAdding: .day, value: -defaultBabyAgeDays, to: normalizedToday)
             ?? normalizedToday
         return calendar.startOfDay(for: min(babyProfile.birthday ?? fallbackBirthday, normalizedToday))
-    }
-
-    static func dummySummaries(
-        for babyProfile: BabyProfile,
-        period: TimePeriod,
-        calendar: Calendar = .current
-    ) -> [BathScaleWeightSummary] {
-        switch period {
-        case .week:
-            return dummyDailySummaries(
-                for: babyProfile,
-                calendar: calendar,
-                endDate: upcomingSunday(from: Date(), calendar: calendar)
-            )
-        case .month:
-            return dummyDailySummaries(for: babyProfile, calendar: calendar)
-        case .year, .total:
-            let daily = dummyDailySummaries(for: babyProfile, calendar: calendar)
-            return aggregateMonthly(daily, calendar: calendar)
-        }
-    }
-
-    static func dummyDailySummaries(
-        for babyProfile: BabyProfile,
-        calendar: Calendar = .current,
-        endDate: Date? = nil
-    ) -> [BathScaleWeightSummary] {
-        let today = calendar.startOfDay(for: endDate ?? Date())
-        let birthday = resolvedBirthday(for: babyProfile, calendar: calendar, today: today)
-        let startDate = max(
-            birthday,
-            calendar.date(byAdding: .day, value: -dummyHistoryWindowDays, to: today) ?? birthday
-        )
-        let birthWeightStored = storedBirthWeight(for: babyProfile)
-        let dayFormatter = DateFormatter()
-        dayFormatter.calendar = calendar
-        dayFormatter.dateFormat = "yyyy-MM-dd"
-        let isoFormatter = ISO8601DateFormatter()
-
-        let totalDays = max(0, calendar.dateComponents([.day], from: startDate, to: today).day ?? 0)
-        return (0...totalDays).compactMap { offset in
-            guard let date = calendar.date(byAdding: .day, value: offset, to: startDate) else { return nil }
-            let dayOfLife = max(0, calendar.dateComponents([.day], from: birthday, to: date).day ?? 0)
-            return BathScaleWeightSummary(
-                accountId: "dummy_baby_\(babyProfile.id)",
-                period: dayFormatter.string(from: date),
-                entryTimestamp: isoFormatter.string(from: date),
-                date: date,
-                count: 1,
-                weight: Double(dummyStoredWeight(forDayOfLife: dayOfLife, birthWeightStored: birthWeightStored))
-            )
-        }
-    }
-
-    private static func upcomingSunday(
-        from date: Date,
-        calendar: Calendar = .current
-    ) -> Date {
-        let normalizedDate = calendar.startOfDay(for: date)
-        let weekday = calendar.component(.weekday, from: normalizedDate)
-        let daysUntilSunday = (8 - weekday) % 7
-        return calendar.date(byAdding: .day, value: daysUntilSunday, to: normalizedDate) ?? normalizedDate
     }
 
     static func percentileSeries(
@@ -159,15 +91,17 @@ enum BabyDashboardChartSupport {
         }
     }
 
-    static func dummyHeightSeries(
-        for babyProfile: BabyProfile,
-        operations: [BathScaleWeightSummary],
-        calendar: Calendar = .current
+    /// Real baby length series in inches — one point per period that actually recorded a length.
+    /// Periods without a recorded length are omitted (no synthetic fill), mirroring how the weight
+    /// series only plots real weigh-ins.
+    static func heightSeries(
+        from operations: [BathScaleWeightSummary]
     ) -> [GraphSeries] {
-        operations.map { summary in
-            GraphSeries(
+        operations.compactMap { summary in
+            guard let lengthInches = summary.babyLengthInches, lengthInches > 0 else { return nil }
+            return GraphSeries(
                 date: summary.date,
-                value: dummyHeightValue(for: babyProfile, on: summary.date, calendar: calendar),
+                value: lengthInches,
                 series: heightSeriesName
             )
         }
@@ -319,11 +253,7 @@ enum BabyDashboardChartSupport {
         babyProfile: BabyProfile,
         calendar: Calendar = .current
     ) -> YAxisScale {
-        let primaryValues = dummyHeightSeries(
-            for: babyProfile,
-            operations: operations,
-            calendar: calendar
-        ).map(\.value)
+        let primaryValues = heightSeries(from: operations).map(\.value)
         let percentileValues = heightPercentileSeries(
             for: babyProfile,
             operations: operations,
@@ -340,11 +270,7 @@ enum BabyDashboardChartSupport {
         dateRange: ClosedRange<Date>,
         calendar: Calendar = .current
     ) -> YAxisScale {
-        let primaryValues = dummyHeightSeries(
-            for: babyProfile,
-            operations: operations,
-            calendar: calendar
-        ).map(\.value)
+        let primaryValues = heightSeries(from: operations).map(\.value)
         let percentileValues = heightPercentileSeries(
             for: babyProfile,
             dateRange: dateRange,
@@ -397,30 +323,23 @@ enum BabyDashboardChartSupport {
         seriesName == heightSeriesName
     }
 
-    static func dummyHeightValue(
-        for babyProfile: BabyProfile,
+    /// The real recorded length (inches) for the period whose date matches `date` (same day),
+    /// or nil when that period recorded no length. Used for the selected-point height readout.
+    static func heightValue(
         on date: Date,
+        in operations: [BathScaleWeightSummary],
         calendar: Calendar = .current
-    ) -> Double {
-        let birthday = resolvedBirthday(for: babyProfile, calendar: calendar, today: date)
-        let normalizedDate = calendar.startOfDay(for: date)
-        let dayOfLife = max(0, calendar.dateComponents([.day], from: birthday, to: normalizedDate).day ?? 0)
-        return dummyHeightInches(
-            forDayOfLife: dayOfLife,
-            birthLengthInches: resolvedBirthLengthInches(for: babyProfile)
-        )
+    ) -> Double? {
+        let targetDay = calendar.startOfDay(for: date)
+        return operations.first {
+            calendar.isDate($0.date, inSameDayAs: targetDay) && ($0.babyLengthInches ?? 0) > 0
+        }?.babyLengthInches
     }
 
-    static func averageDummyHeight(
-        for babyProfile: BabyProfile,
-        dates: [Date],
-        calendar: Calendar = .current
-    ) -> Double {
-        guard !dates.isEmpty else {
-            return dummyHeightValue(for: babyProfile, on: Date(), calendar: calendar)
-        }
-
-        let values = dates.map { dummyHeightValue(for: babyProfile, on: $0, calendar: calendar) }
+    /// Average of the real recorded lengths (inches) across `operations`, or nil when none recorded a length.
+    static func averageHeight(from operations: [BathScaleWeightSummary]) -> Double? {
+        let values = operations.compactMap { $0.babyLengthInches }.filter { $0 > 0 }
+        guard !values.isEmpty else { return nil }
         return values.reduce(0, +) / Double(values.count)
     }
 
@@ -503,42 +422,21 @@ enum BabyDashboardChartSupport {
         return last.percentile
     }
 
-    private static func storedBirthWeight(for babyProfile: BabyProfile) -> Int {
-        let lbs = babyProfile.birthWeightLbs ?? floor(defaultBirthWeightLbs)
-        let oz = babyProfile.birthWeightOz ?? ((defaultBirthWeightLbs - floor(defaultBirthWeightLbs)) * 16.0)
-        return ConversionTools.convertLbsToStored(lbs + (oz / 16.0))
-    }
-
-    private static func dummyStoredWeight(forDayOfLife day: Int, birthWeightStored: Int) -> Int {
-        let birthWeightLbs = ConversionTools.convertStoredToLbs(birthWeightStored)
-        let earlyDip: Double
-        if day <= 5 {
-            earlyDip = -0.04 * Double(day)
-        } else if day <= 12 {
-            earlyDip = -0.20 + (Double(day - 5) * 0.028)
-        } else {
-            earlyDip = 0
-        }
-
-        let earlyGrowth = min(Double(max(day - 12, 0)), 90) * 0.045
-        let laterGrowth = max(Double(day - 102), 0) * 0.018
-        let weeklyVariation = sin(Double(day) / 8.0) * 0.06
-        let lbs = max(4.0, birthWeightLbs + earlyDip + earlyGrowth + laterGrowth + weeklyVariation)
-        return ConversionTools.convertLbsToStored(lbs)
-    }
-
     private static func resolvedBirthLengthInches(for babyProfile: BabyProfile) -> Double {
         max(12.0, babyProfile.birthLengthInches ?? defaultBirthLengthInches)
     }
 
-    private static func dummyHeightInches(
+    /// P50 backbone for the height *reference* band. Unlike baby weight — which has a real WHO/CDC
+    /// dataset (`BabyPercentileGrowthReference`) — no length reference dataset ships in the app, so
+    /// the height reference curves are modeled from the baby's birth length. This backs only the
+    /// reference band; the baby's own plotted length comes from real entries via `heightSeries`.
+    private static func referenceHeightInchesP50(
         forDayOfLife day: Int,
         birthLengthInches: Double
     ) -> Double {
         let earlyGrowth = min(Double(day), 90) * 0.026
         let laterGrowth = max(Double(day - 90), 0) * 0.010
-        let weeklyVariation = sin(Double(day) / 11.0) * 0.08
-        return max(12.0, birthLengthInches + earlyGrowth + laterGrowth + weeklyVariation)
+        return max(12.0, birthLengthInches + earlyGrowth + laterGrowth)
     }
 
     private static func percentileHeightInches(
@@ -548,7 +446,7 @@ enum BabyDashboardChartSupport {
     ) -> Double {
         let spreadMultiplier = 1.0 + (min(Double(day), 365) / 365.0) * 0.2
         let offset = (heightPercentileOffsets[line] ?? 0) * spreadMultiplier
-        return dummyHeightInches(forDayOfLife: day, birthLengthInches: birthLengthInches) + offset
+        return referenceHeightInchesP50(forDayOfLife: day, birthLengthInches: birthLengthInches) + offset
     }
 
     // MARK: - Weight Conversion Helpers
@@ -725,33 +623,6 @@ enum BabyDashboardChartSupport {
             return [first]
         }
         return [first, last]
-    }
-
-    private static func aggregateMonthly(
-        _ dailySummaries: [BathScaleWeightSummary],
-        calendar: Calendar = .current
-    ) -> [BathScaleWeightSummary] {
-        let monthFormatter = DateFormatter()
-        monthFormatter.calendar = calendar
-        monthFormatter.dateFormat = "yyyy-MM"
-        let isoFormatter = ISO8601DateFormatter()
-
-        let grouped = Dictionary(grouping: dailySummaries) { summary in
-            calendar.date(from: calendar.dateComponents([.year, .month], from: summary.date)) ?? summary.date
-        }
-
-        return grouped.keys.sorted().compactMap { monthStart in
-            guard let summaries = grouped[monthStart], !summaries.isEmpty else { return nil }
-            let averageWeight = summaries.map(\.weight).reduce(0, +) / Double(summaries.count)
-            return BathScaleWeightSummary(
-                accountId: summaries.first?.accountId ?? "dummy_baby",
-                period: monthFormatter.string(from: monthStart),
-                entryTimestamp: isoFormatter.string(from: monthStart),
-                date: monthStart,
-                count: summaries.count,
-                weight: averageWeight
-            )
-        }
     }
 }
 // swiftlint:enable file_length

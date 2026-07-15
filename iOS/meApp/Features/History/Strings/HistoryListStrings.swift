@@ -25,14 +25,14 @@ enum HistoryListStrings {
     static let diastolic = "diastolic"
     static let notes = "Notes"
     static let noNotesPlaceholder = "no notes yet — tap plus icon to add one."
-    static let downloadBPHistory = "Download BP History"
-    static let downloadBabyHistory = "Download Baby History"
+    static let sendBPHistory = "Send BP History"
+    static let sendBabyHistory = "Send Baby History"
 
     // Baby
     static let weight = "weight"
     static let length = "length"
     static let percentile = "percent"
-    static let week = "week"
+    static let week = "Week"
     static let oz = "oz"
     static let kg = "kg"
     static let lb = "lb"

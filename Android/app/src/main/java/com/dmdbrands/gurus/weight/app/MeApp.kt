@@ -29,6 +29,7 @@ import com.dmdbrands.gurus.weight.core.navigation.LocalNavBackStack
 import com.dmdbrands.gurus.weight.core.navigation.LocalDialogQueueService
 import com.dmdbrands.gurus.weight.core.navigation.LocalProductSelectionManager
 import com.dmdbrands.gurus.weight.core.power.LocalPowerSaveMode
+import com.dmdbrands.gurus.weight.core.shared.utilities.testing.exposeTestTagsAsResourceId
 import com.dmdbrands.gurus.weight.features.common.components.DialogHost
 import com.dmdbrands.gurus.weight.features.common.components.ProductSelectionBottomSheet
 import com.dmdbrands.gurus.weight.features.common.components.DeviceDiscoveredModal
@@ -125,7 +126,7 @@ fun MeApp() {
       if (shouldShowModal) {
         ModalBottomSheet(
           sheetState = sheetState,
-          modifier = Modifier.navigationBarsPadding(),
+          modifier = Modifier.navigationBarsPadding().exposeTestTagsAsResourceId(),
           onDismissRequest = { appViewModel.handleIntent(AppIntent.OnPopUpDismiss) },
           containerColor = colorScheme.primaryBackground,
           scrimColor = colorScheme.overlay,

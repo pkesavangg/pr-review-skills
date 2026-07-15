@@ -68,7 +68,9 @@ fun BpmEntry.toUnifiedRequest(): UnifiedEntryRequest = UnifiedEntryRequest(
     diastolic = diastolic,
     pulse = pulse,
     note = note,
-    source = EntrySource.MANUAL.value,
+    // Send the reading's own origin; default to manual for pre-v9/legacy rows without a stored
+    // source (matches the baby mapper). (MOB-1173)
+    source = bpmEntry.source ?: EntrySource.MANUAL.value,
 )
 
 /**
@@ -238,6 +240,8 @@ private fun UnifiedEntry.toBpmEntry(accountId: String): BpmEntry {
         pulse = pulse ?: 0,
         meanArterial = ((sys + 2 * dia) / 3.0).roundToInt().toString(),
         note = note,
+        // Persist the reading's origin so History can gate edit (manual vs device-synced). (MOB-1173)
+        source = source,
     )
     return BpmEntry(entry = entryEntity, bpmEntry = bpmEntity)
 }
