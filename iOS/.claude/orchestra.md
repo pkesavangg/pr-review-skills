@@ -390,3 +390,32 @@ These skill groups can run concurrently when their inputs are independent:
 | Review finds issues | Fix all findings, re-run the specific review skill |
 | Plan goes sideways | STOP. Re-enter plan mode. Re-assess approach. |
 | User corrects you | Update `tasks/lessons.md` immediately. Apply the lesson. |
+
+---
+
+## 11. iOS ↔ Android Parity
+
+So a task maps to comparable skills on either platform. Kept in sync with `Android/.claude/orchestra.md` §8 (MOB-1008). When you add or rename a skill on one platform, update this table in **both** orchestras.
+
+| Task | iOS | Android |
+|------|-----|---------|
+| New feature scaffold | `feature-slice` | `feature-slice` (MVI) |
+| DI wiring | `wire-service` | `wire-service` (Hilt) |
+| Navigation | `wire-navigation` | `wire-navigation` (AppRoute/Nav3) |
+| Strings | `add-strings` | `add-strings` |
+| Theme / tokens | `theme-guide` | `theme-guide` (MeAppTheme) |
+| Logging | `logging-guide` | `logging-guide` (AppLog) |
+| Analytics | `analytics` | `analytics` |
+| Storage / DB | `storage-change` + `swiftdata` | `room-change` |
+| Lint / format | `swiftlint` / `review-lint` | `detekt-fix` / `review-lint` |
+| Pre-commit review | `self-review` (5 checks) | `self-review` (5 checks) |
+| Build | `build` | `build` |
+| Tests + coverage | `verify-tests` | `verify-tests` (JaCoCo) |
+| Unit tests | `gen-test-file` | `unit-tests` / `android-service-test-writer` |
+| Device/emulator run | *(physical device only)* | `verify-on-emulator` |
+| DI impact | `di-impact-finder` | `hilt-impact-finder` |
+| Coverage gaps | `coverage-gap-finder` | `coverage-gap-finder` |
+| Perf | `ios-perf-analyzer` (static) | `compose-perf-analyzer` (Perfetto) |
+| Dependency upgrade | *(gap)* | `upgrade-deps` (doc-sourced) |
+| Asset / drawable | *(gap)* | `drawable-import` / `drawable-scan` |
+| Git / Jira / PR | repo-root generic | repo-root generic |

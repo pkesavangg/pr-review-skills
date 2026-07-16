@@ -124,12 +124,20 @@ so `bmr.getter` still faults per row (21 % of the hang). No `propertiesToFetch` 
 > rendering; `fetchEntriesAsDTO` / `fetchAllEntryData` / `fetchProgressData` / `applyRemoteOperations` are all
 > off the main thread. The ~2 % residual is a few small reads, not worth chasing.
 >
-> **Remaining before merge:** (1) a **correctness pass on the sync merge** — `applyRemoteOperations` (a write)
-> now runs from a background task, so confirm entry counts / no dupes / graph+history populate after a big-account
-> login; (2) commit to the branch + PR to `develop`; (3) unit test that the hot `@MainActor → worker` calls stay
-> off-main (guard against regressing back to a direct `await worker.…`).
+> **✅ MERGED (PR #2268, merge commit `dce7e549d`, branch `MOB-516-cold-login-hang-off-main`).** All the
+> pre-merge items are done: the sync-merge correctness pass passed, the branch merged to `develop`, and
+> off-main routing coverage landed in commit `1da2854a1` (new `SwiftDataWorkerTests` + `EntryServiceTests`,
+> incl. `getEntryCountRoutesThroughWorker` asserting the worker path over the main-actor repo). SwiftLint /
+> test-regression follow-ups: `64358e978`, `360ed42cc`. The verified-merged code confirms the design in the
+> status block above — stock `@ModelActor` retained, all four hot `@MainActor → worker` calls wrapped in
+> `Task.detached` (`EntryService.swift`).
 
 ### Fix 1 ★ — force `SwiftDataWorker` genuinely off the main thread (the primary fix)
+
+> ⚠️ **Superseded — see the status block above (§3.1).** The custom-executor approach below was ATTEMPTED,
+> CRASHED at runtime ("Unexpected executor"), and REVERTED. The shipped fix keeps the stock `@ModelActor` and
+> instead calls the worker from `Task.detached` contexts. This subsection is kept only as the record of what
+> was tried.
 
 Give the worker a **custom `ModelExecutor` backed by a dedicated background `DispatchQueue`**, so every
 operation (reads AND the sync merge/saves) runs off-main. This alone converts the ~37 s main-thread hang into

@@ -234,3 +234,12 @@ Android CI runs on CircleCI with the following gates:
 - [Account Switching Flow](docs/account-switching-flow.md)
 - [Product Types — Current State](docs/product-types-current-state.md)
 - [Dashboard: Latest vs Average](docs/dashboard-hybrid-latest-vs-average.md)
+
+### Keeping docs current
+
+These docs are **maintained** — a code change that outdates one should update it in the same task. This is enforced, not just requested:
+
+- A root PostToolUse hook (`.claude/settings.json`) runs [`scripts/docs-freshness-check.sh`](scripts/docs-freshness-check.sh) on every edit. It prints `📝 Docs check …` naming the doc a changed path affects **and how significant the change is** — `NEW FILE`, `major change (N lines)`, or `minor change (N lines)`. Update the doc for NEW/major hits; for a minor hit only if behaviour/schema actually changed.
+- The [`/update-architecture`](iOS/.claude/skills/update-architecture/SKILL.md) skill owns the full source→doc map and does the update (`architecture.md` **and** the `docs/` folder). Run it when the hook fires or after any structural change.
+- The same hook also prints `🌐 Also mirror this to Confluence …` — the wiki hub mirrors these docs. Run [`/update-confluence`](.claude/skills/update-confluence/SKILL.md) to publish upward; it drafts the edit and **writes only after you approve**. The page tree + IDs + change→page map are in [`docs/confluence.md`](docs/confluence.md).
+- Adding/moving a maintained doc? Update the map in **both** `scripts/docs-freshness-check.sh` and the skill so they stay identical. Adding/moving a Confluence page? Update `docs/confluence.md` and the `CONF_PAGE` note in the script.

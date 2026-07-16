@@ -24,6 +24,13 @@ interface IProductSelectionRepository {
 
     suspend fun getBabyProfiles(accountId: String): List<BabyProfile>
 
+    /**
+     * Reactive stream of the account's (non-deleted) baby profiles. Emits on any baby-list change —
+     * add, delete, or an offline baby's id being remapped to its server id on sync — so the product
+     * switcher live-updates instead of only reacting to `productTypes` changes (MOB-1476).
+     */
+    fun observeBabyProfiles(accountId: String): Flow<List<BabyProfile>>
+
     suspend fun hasBpmDevice(accountId: String): Boolean
 
     suspend fun hasBabyScaleDevice(accountId: String): Boolean
