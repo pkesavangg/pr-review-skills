@@ -5,6 +5,7 @@ import com.dmdbrands.gurus.weight.core.navigation.AppRoute
 import com.dmdbrands.gurus.weight.core.shared.utilities.ConversionTools
 import com.dmdbrands.gurus.weight.core.shared.utilities.DateTimeConverter
 import com.dmdbrands.gurus.weight.core.shared.utilities.logging.AppLog
+import com.dmdbrands.gurus.weight.data.storage.datastore.UserDataStore
 import com.dmdbrands.gurus.weight.domain.model.common.BabyProfile
 import com.dmdbrands.gurus.weight.domain.model.common.ProductSelection
 import com.dmdbrands.gurus.weight.domain.model.storage.entry.PeriodBabySummary
@@ -27,6 +28,7 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.collections.immutable.toImmutableList
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.launch
 import android.content.Context
 
@@ -36,6 +38,7 @@ class BabyDashboardViewModel @AssistedInject constructor(
   @ApplicationContext private val context: Context,
   private val entryReadService: IEntryReadService,
   private val entryService: IEntryService,
+  private val userDataStore: UserDataStore,
 ) : BaseDashboardViewModel<BabyDashboardState, BaseGraphIntent>(
   reducer = BabyDashboardReducer(),
 ) {
@@ -57,9 +60,38 @@ class BabyDashboardViewModel @AssistedInject constructor(
 
   override fun onDependenciesReady() {
     handleIntent(BabyDashboardIntent.SetBabyProfile(babyProduct.profile))
+    subscribeBabyWeightUnit()
     startGraphSubscriptions()
     loadPercentiles()
   }
+
+  /**
+   * The baby graph, header and percentile overlay all render in the account's baby weight unit
+   * (My Kids setting). When it changes, re-derive the percentile overlay (kg/cm vs lb/in), the
+   * seeded Y ranges and the plotted series so the change reflects immediately — the same way the
+   * adult weight graph reacts to its unit. (MOB-1499)
+   */
+  private fun subscribeBabyWeightUnit() {
+    viewModelScope.launch {
+      userDataStore.babyWeightUnitForCurrentAccountFlow.distinctUntilChanged().collect { unit ->
+        handleIntent(BabyDashboardIntent.SetBabyWeightUnit(unit))
+        loadPercentiles()
+        updateBabySegmentRanges(latestDailyEntries, listOf(GraphSegment.WEEK, GraphSegment.MONTH))
+        updateBabySegmentRanges(latestMonthlyEntries, listOf(GraphSegment.YEAR, GraphSegment.TOTAL))
+        rebuildAllProducers()
+      }
+    }
+  }
+
+  /** Decigrams → display weight in the active unit (kg for metric, decimal lb otherwise). */
+  private fun weightToDisplay(decigrams: Int): Double =
+    if (_state.value.isMetric) ConversionTools.convertDecigramsToKgExact(decigrams.toDouble())
+    else ConversionTools.convertDecigramsToLbExact(decigrams)
+
+  /** Millimetres → display length in the active unit (cm for metric, inches otherwise). */
+  private fun heightToDisplay(millimeters: Int): Double =
+    if (_state.value.isMetric) ConversionTools.convertMmToCmExact(millimeters.toDouble())
+    else ConversionTools.convertMmToInchesExact(millimeters)
 
   override fun handleIntent(intent: BaseGraphIntent) {
     if (intent is BabyDashboardIntent) {
@@ -189,10 +221,10 @@ class BabyDashboardViewModel @AssistedInject constructor(
 
       val yValues: List<Double> = when (_state.value.selectedMetric) {
         BabyMetric.WEIGHT -> seedSource.mapNotNull { e ->
-          e.avgWeightDecigrams?.let { ConversionTools.convertDecigramsToLbExact(it) }
+          e.avgWeightDecigrams?.let { weightToDisplay(it) }
         }
         BabyMetric.HEIGHT -> seedSource.mapNotNull { e ->
-          e.avgLengthMillimeters?.let { it / 25.4 }
+          e.avgLengthMillimeters?.let { heightToDisplay(it) }
         }
       }.filter { it.isFinite() && it > 0.0 }
 
@@ -294,7 +326,7 @@ class BabyDashboardViewModel @AssistedInject constructor(
     val sorted = entries.sortedBy { DateTimeConverter.isoToTimestamp(it.entryTimestamp) }
     val pairs = sorted.mapNotNull { e ->
       val ts = DateTimeConverter.isoToTimestamp(e.entryTimestamp)
-      val w = e.avgWeightDecigrams?.let { ConversionTools.convertDecigramsToLbExact(it) }
+      val w = e.avgWeightDecigrams?.let { weightToDisplay(it) }
       if (w != null) ts to w else null
     }
     if (pairs.isEmpty()) return emptyList()
@@ -305,7 +337,7 @@ class BabyDashboardViewModel @AssistedInject constructor(
     val sorted = entries.sortedBy { DateTimeConverter.isoToTimestamp(it.entryTimestamp) }
     val pairs = sorted.mapNotNull { e ->
       val ts = DateTimeConverter.isoToTimestamp(e.entryTimestamp)
-      val h = e.avgLengthMillimeters?.let { ConversionTools.convertMmToInchesExact(it) }
+      val h = e.avgLengthMillimeters?.let { heightToDisplay(it) }
       if (h != null) ts to h else null
     }
     if (pairs.isEmpty()) return emptyList()
@@ -321,8 +353,9 @@ class BabyDashboardViewModel @AssistedInject constructor(
     } ?: return
     viewModelScope.launch(Dispatchers.IO) {
       BabyPercentileHelper.loadIfNeeded(context)
-      val weightSeries = BabyPercentileHelper.getWeightPercentileSeries(profile.sex, birthDateMillis)
-      val heightSeries = BabyPercentileHelper.getLengthPercentileSeries(profile.sex, birthDateMillis)
+      val isMetric = _state.value.isMetric
+      val weightSeries = BabyPercentileHelper.getWeightPercentileSeries(profile.sex, birthDateMillis, isMetric)
+      val heightSeries = BabyPercentileHelper.getLengthPercentileSeries(profile.sex, birthDateMillis, isMetric)
       handleIntent(BabyDashboardIntent.SetWeightPercentile(weightSeries))
       handleIntent(BabyDashboardIntent.SetHeightPercentile(heightSeries))
     }

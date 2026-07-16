@@ -211,15 +211,21 @@ fun DashboardScreen() {
               if (seg == GraphSegment.WEEK || seg == GraphSegment.MONTH) dt.format(java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd"))
               else dt.format(java.time.format.DateTimeFormatter.ofPattern("yyyy-MM"))
             }
-            // Chart plots ONE metric at a time (weight in lbs OR height in inches).
-            // Convert the interpolated Y back to storage units for PeriodBabySummary.
+            // Chart plots ONE metric at a time, in the account's baby unit (kg/cm for metric,
+            // lb/in otherwise). Convert the interpolated Y back to storage units for
+            // PeriodBabySummary using the SAME unit the series was plotted in. (MOB-1499)
             val isWeight = state.selectedMetric == BabyMetric.WEIGHT
+            val isMetric = state.isMetric
             PeriodBabySummary(
               period = period,
               entryTimestamp = DateTimeConverter.timestampToIso(ts),
               babyId = babyProduct.profile.id,
-              avgWeightDecigrams = if (isWeight) ConversionTools.convertLbToDecigrams(y) else null,
-              avgLengthMillimeters = if (!isWeight) ConversionTools.convertInchesToMm(y) else null,
+              avgWeightDecigrams = if (isWeight) {
+                if (isMetric) ConversionTools.convertKgToDecigrams(y) else ConversionTools.convertLbToDecigrams(y)
+              } else null,
+              avgLengthMillimeters = if (!isWeight) {
+                if (isMetric) ConversionTools.convertCmToMm(y) else ConversionTools.convertInchesToMm(y)
+              } else null,
             )
           },
         ) { s ->

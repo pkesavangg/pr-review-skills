@@ -182,7 +182,7 @@ fun HistoryDetailScreenContent(
                         ProductType.BABY -> {
                             BabyDayHistoryList(
                                 entries = state.historyItems.filterIsInstance<BabyEntry>(),
-                                isMetric = state.isMetric,
+                                babyWeightUnit = state.babyWeightUnit,
                                 onEditEntry = { handleIntent(HistoryDetailIntent.EditBabyEntry(it)) },
                                 onItemDelete = { handleIntent(HistoryDetailIntent.DeleteEntry(it)) },
                             )

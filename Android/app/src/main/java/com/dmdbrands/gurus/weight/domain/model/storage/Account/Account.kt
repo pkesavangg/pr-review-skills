@@ -178,5 +178,11 @@ fun Account.toAccountInfo(): AccountInfo {
     isHealthKitOn = this.isHealthKitOn,
     isMFPOn = this.isMFPOn,
     isMFPValid = this.isMFPValid,
+    // Carry the account's product list + measurement system so the offline self-sync
+    // (checkActiveAccountLocalValidity -> syncAccountSettingsWithServer -> upsertProductSettings)
+    // preserves them instead of falling back to the "weight" / metric defaults, which otherwise
+    // clobbers a non-weight account (e.g. a BPM-only signup) on offline relaunch. (MOB-1499)
+    productTypes = this.productTypes,
+    measurementUnits = this.measurementUnits.value,
   )
 }

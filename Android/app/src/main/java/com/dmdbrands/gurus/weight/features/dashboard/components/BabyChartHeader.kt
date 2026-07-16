@@ -19,6 +19,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.dmdbrands.gurus.weight.core.shared.utilities.ConversionTools
 import com.dmdbrands.gurus.weight.core.shared.utilities.DateTimeConverter
+import com.dmdbrands.gurus.weight.domain.model.common.WeightUnit
 import com.dmdbrands.gurus.weight.domain.model.storage.entry.PeriodBabySummary
 import com.dmdbrands.gurus.weight.features.common.components.chart.ChartHeader
 import com.dmdbrands.gurus.weight.features.common.enums.GraphSegment
@@ -95,54 +96,71 @@ private fun BabyValueDisplay(
   segmentState: SegmentState,
 ) {
   val selectedMetric = babyState?.selectedMetric ?: BabyMetric.WEIGHT
+  val unit = babyState?.weightUnit ?: WeightUnit.LB_OZ
   val target = segmentState.target.filterIsInstance<PeriodBabySummary>()
 
   when (selectedMetric) {
     BabyMetric.WEIGHT -> {
       val avgDecigrams = target.mapNotNull { it.avgWeightDecigrams }
         .takeIf { it.isNotEmpty() }?.average()?.toInt()
-      if (avgDecigrams != null) {
-        val lbs = ConversionTools.convertDecigramsToLb(avgDecigrams)
-        val oz = ConversionTools.convertDecigramsToOz(avgDecigrams)
-        Row(verticalAlignment = Alignment.Bottom) {
-          Text(text = "$lbs", style = MeTheme.typography.heading2, color = SnapshotColors.Baby)
-          Spacer(modifier = Modifier.width(4.dp))
-          Text(text = DashboardSnapshotStrings.Lbs, style = MeTheme.typography.subHeading2, color = MeTheme.colorScheme.textSubheading, modifier = Modifier.offset(y = (-10).dp))
-          Spacer(modifier = Modifier.width(8.dp))
-          Text(text = String.format(java.util.Locale.US, "%.1f", oz), style = MeTheme.typography.heading2, color = SnapshotColors.Baby)
-          Spacer(modifier = Modifier.width(4.dp))
-          Text(text = DashboardSnapshotStrings.Oz, style = MeTheme.typography.subHeading2, color = MeTheme.colorScheme.textSubheading, modifier = Modifier.offset(y = (-10).dp))
+      when (unit) {
+        // kg: single decimal value.
+        WeightUnit.KG -> {
+          val kg = avgDecigrams?.let { ConversionTools.convertDecigramsToKg(it) } ?: 0.0
+          BabyMetricValue(String.format(java.util.Locale.US, "%.2f", kg), DashboardSnapshotStrings.Kg)
         }
-      } else {
-        Row(verticalAlignment = Alignment.Bottom) {
-          Text(text = DashboardSnapshotStrings.ZeroBabyLbs, style = MeTheme.typography.heading2, color = SnapshotColors.Baby)
-          Spacer(modifier = Modifier.width(4.dp))
-          Text(text = DashboardSnapshotStrings.Lbs, style = MeTheme.typography.subHeading2, color = MeTheme.colorScheme.textSubheading, modifier = Modifier.offset(y = (-10).dp))
-          Spacer(modifier = Modifier.width(8.dp))
-          Text(text = DashboardSnapshotStrings.ZeroBabyOz, style = MeTheme.typography.heading2, color = SnapshotColors.Baby)
-          Spacer(modifier = Modifier.width(4.dp))
-          Text(text = DashboardSnapshotStrings.Oz, style = MeTheme.typography.subHeading2, color = MeTheme.colorScheme.textSubheading, modifier = Modifier.offset(y = (-10).dp))
+        // Decimal pounds.
+        WeightUnit.LB -> {
+          val lb = avgDecigrams?.let { ConversionTools.convertDecigramsToLbExact(it) } ?: 0.0
+          BabyMetricValue(String.format(java.util.Locale.US, "%.1f", lb), DashboardSnapshotStrings.Lb)
+        }
+        // lb + oz (default baby unit).
+        else -> {
+          val lbsText = avgDecigrams?.let { "${ConversionTools.convertDecigramsToLb(it)}" }
+            ?: DashboardSnapshotStrings.ZeroBabyLbs
+          val ozText = avgDecigrams
+            ?.let { String.format(java.util.Locale.US, "%.1f", ConversionTools.convertDecigramsToOz(it)) }
+            ?: DashboardSnapshotStrings.ZeroBabyOz
+          Row(verticalAlignment = Alignment.Bottom) {
+            Text(text = lbsText, style = MeTheme.typography.heading2, color = SnapshotColors.Baby)
+            Spacer(modifier = Modifier.width(4.dp))
+            // Singular "lb" — app-wide weight suffix convention (WeightUnit.LB.label), even in the
+            // lb-oz compound. (MOB-1499)
+            Text(text = DashboardSnapshotStrings.Lb, style = MeTheme.typography.subHeading2, color = MeTheme.colorScheme.textSubheading, modifier = Modifier.offset(y = (-10).dp))
+            Spacer(modifier = Modifier.width(8.dp))
+            Text(text = ozText, style = MeTheme.typography.heading2, color = SnapshotColors.Baby)
+            Spacer(modifier = Modifier.width(4.dp))
+            Text(text = DashboardSnapshotStrings.Oz, style = MeTheme.typography.subHeading2, color = MeTheme.colorScheme.textSubheading, modifier = Modifier.offset(y = (-10).dp))
+          }
         }
       }
     }
     BabyMetric.HEIGHT -> {
       val avgMm = target.mapNotNull { it.avgLengthMillimeters }
         .takeIf { it.isNotEmpty() }?.average()?.toInt()
-      if (avgMm != null) {
-        val inches = ConversionTools.convertMmToInches(avgMm)
-        Row(verticalAlignment = Alignment.Bottom) {
-          Text(text = String.format(java.util.Locale.US, "%.1f", inches), style = MeTheme.typography.heading2, color = SnapshotColors.Baby)
-          Spacer(modifier = Modifier.width(4.dp))
-          Text(text = DashboardSnapshotStrings.Inches, style = MeTheme.typography.subHeading2, color = MeTheme.colorScheme.textSubheading, modifier = Modifier.offset(y = (-10).dp))
-        }
+      if (unit == WeightUnit.KG) {
+        val cm = avgMm?.let { ConversionTools.convertMmToCm(it) } ?: 0.0
+        BabyMetricValue(String.format(java.util.Locale.US, "%.1f", cm), DashboardSnapshotStrings.Cm)
       } else {
-        Row(verticalAlignment = Alignment.Bottom) {
-          Text(text = DashboardSnapshotStrings.ZeroBabyOz, style = MeTheme.typography.heading2, color = SnapshotColors.Baby)
-          Spacer(modifier = Modifier.width(4.dp))
-          Text(text = DashboardSnapshotStrings.Inches, style = MeTheme.typography.subHeading2, color = MeTheme.colorScheme.textSubheading, modifier = Modifier.offset(y = (-10).dp))
-        }
+        val inches = avgMm?.let { ConversionTools.convertMmToInches(it) } ?: 0.0
+        BabyMetricValue(String.format(java.util.Locale.US, "%.1f", inches), DashboardSnapshotStrings.Inches)
       }
     }
+  }
+}
+
+/** Single big value + unit suffix, matching the baby chart header styling. */
+@Composable
+private fun BabyMetricValue(value: String, unit: String) {
+  Row(verticalAlignment = Alignment.Bottom) {
+    Text(text = value, style = MeTheme.typography.heading2, color = SnapshotColors.Baby)
+    Spacer(modifier = Modifier.width(4.dp))
+    Text(
+      text = unit,
+      style = MeTheme.typography.subHeading2,
+      color = MeTheme.colorScheme.textSubheading,
+      modifier = Modifier.offset(y = (-10).dp),
+    )
   }
 }
 
@@ -197,11 +215,11 @@ private fun BabyCdcSheetLauncher(
   }
 
   BabyCdcPercentilesBottomSheet(
-    heightInches = avgMm?.let { ConversionTools.convertMmToInches(it) },
+    lengthMillimeters = avgMm,
     heightPercentile = lengthPct,
-    weightLbs = avgDecigrams?.let { ConversionTools.convertDecigramsToLb(it) },
-    weightOz = avgDecigrams?.let { ConversionTools.convertDecigramsToOz(it) },
+    weightDecigrams = avgDecigrams,
     weightPercentile = weightPct,
+    babyWeightUnit = babyState?.weightUnit ?: WeightUnit.LB_OZ,
     onDismiss = onDismiss,
   )
 }

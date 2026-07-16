@@ -18,9 +18,13 @@ import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.withStyle
+import com.dmdbrands.gurus.weight.core.shared.utilities.ConversionTools
 import com.dmdbrands.gurus.weight.domain.model.common.BabyWeekHistory
+import com.dmdbrands.gurus.weight.domain.model.common.WeightUnit
 import com.dmdbrands.gurus.weight.features.common.components.AppIcon
+import com.dmdbrands.gurus.weight.features.common.helper.BabyPercentileHelper
 import com.dmdbrands.gurus.weight.features.common.components.AppIconType
+import java.util.Locale
 import com.dmdbrands.gurus.weight.features.history.strings.HistoryItemStrings
 import com.dmdbrands.gurus.weight.resources.AppIcons
 import com.dmdbrands.gurus.weight.theme.MeTheme
@@ -35,6 +39,7 @@ import com.dmdbrands.gurus.weight.theme.MeTheme
 fun BabyHistoryItem(
     item: BabyWeekHistory,
     onClick: () -> Unit,
+    babyWeightUnit: WeightUnit = WeightUnit.LB_OZ,
     showBalloon: Boolean = false,
 ) {
     val babyColor = MeTheme.colorScheme.baby
@@ -42,33 +47,53 @@ fun BabyHistoryItem(
     val boldStyle = SpanStyle(color = babyColor, fontWeight = FontWeight.Bold)
     val unitStyle = SpanStyle(color = unitColor, fontWeight = FontWeight.Normal)
 
+    // Weight per My Kids unit: "8 lbs 14.9 oz" (LB_OZ), "8.9 lbs" (LB) or "4.05 kg" (KG).
     val weightText = buildAnnotatedString {
-        if (item.weightLb != null) {
-            withStyle(boldStyle) { append("${item.weightLb} ") }
-            withStyle(unitStyle) { append("lbs ") }
-        }
-        if (item.weightOz != null) {
-            withStyle(boldStyle) { append("${item.weightOz}") }
-            withStyle(unitStyle) { append(" oz") }
-        }
-        if (item.weightLb == null && item.weightOz == null) {
-            withStyle(boldStyle) { append("--") }
-        }
-    }
-
-    val lengthText = buildAnnotatedString {
-        if (item.lengthInches != null) {
-            withStyle(boldStyle) { append("${item.lengthInches.toInt()}") }
-            withStyle(unitStyle) { append(" in") }
+        val dg = item.weightDecigrams
+        if (dg != null) {
+            when (babyWeightUnit) {
+                WeightUnit.KG -> {
+                    withStyle(boldStyle) { append(String.format(Locale.US, "%.2f", ConversionTools.convertDecigramsToKg(dg))) }
+                    withStyle(unitStyle) { append(" kg") }
+                }
+                WeightUnit.LB -> {
+                    withStyle(boldStyle) { append(String.format(Locale.US, "%.1f", ConversionTools.convertDecigramsToLbExact(dg))) }
+                    withStyle(unitStyle) { append(" lb") }
+                }
+                else -> {
+                    withStyle(boldStyle) { append("${ConversionTools.convertDecigramsToLb(dg)} ") }
+                    withStyle(unitStyle) { append("lb ") }
+                    withStyle(boldStyle) { append(String.format(Locale.US, "%.1f", ConversionTools.convertDecigramsToOz(dg))) }
+                    withStyle(unitStyle) { append(" oz") }
+                }
+            }
         } else {
             withStyle(boldStyle) { append("--") }
         }
     }
 
+    val lengthText = buildAnnotatedString {
+        val mm = item.lengthMillimeters
+        if (mm != null) {
+            if (babyWeightUnit == WeightUnit.KG) {
+                withStyle(boldStyle) { append(String.format(Locale.US, "%.1f", ConversionTools.convertMmToCm(mm))) }
+                withStyle(unitStyle) { append(" cm") }
+            } else {
+                withStyle(boldStyle) { append("${ConversionTools.convertMmToInches(mm).toInt()}") }
+                withStyle(unitStyle) { append(" in") }
+            }
+        } else {
+            withStyle(boldStyle) { append("--") }
+        }
+    }
+
+    // Capped to "> 99" / "< 1" at the extremes (matches the CDC sheet + babyApp reference —
+    // never "100th"/"0th"). "--" for null. (MOB-1499)
     val percentText = buildAnnotatedString {
-        if (item.percentile != null) {
-            withStyle(boldStyle) { append("${item.percentile}") }
-            withStyle(unitStyle) { append(" th") }
+        val label = BabyPercentileHelper.formatPercentileNumber(item.percentile)
+        if (label != null) {
+            withStyle(boldStyle) { append(label) }
+            if (label.all { it.isDigit() }) withStyle(unitStyle) { append(" th") }
         } else {
             withStyle(boldStyle) { append("--") }
         }
