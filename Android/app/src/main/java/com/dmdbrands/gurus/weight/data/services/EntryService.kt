@@ -151,6 +151,57 @@ class EntryService(
         entryRepository.updateNote(entry, note)
     }
 
+    /**
+     * Edits an entry in place (MOB-1173). Keeps the row's local id and re-stamps it
+     * operationType=edit + unsynced, upserts it locally (insert is a REPLACE by id) and pushes the
+     * edit to POST /v3/entries/ — the same endpoint create uses. Mirrors [editBabyEntry]; the
+     * weight→LB canonical conversion matches [addEntry] so stored weight stays consistent.
+     */
+    override suspend fun editEntry(entry: Entry) {
+        val currentAccountId = accountId ?: return
+        try {
+            var editEntry = entry.updateEntry(
+                entry.entry.copy(
+                    accountId = currentAccountId,
+                    operationType = OperationType.EDIT.name,
+                    isSynced = false,
+                ),
+            )
+            if (editEntry is ScaleEntry) {
+                editEntry = editEntry.copy(
+                    scale = editEntry.scale.copy(
+                        scaleEntry = editEntry.scale.scaleEntry.copy(
+                            weight = convertWeight(
+                                editEntry.scale.scaleEntry.weight,
+                                editEntry.entry.unit,
+                                WeightUnit.LB,
+                            ),
+                        ),
+                    ),
+                )
+            }
+            entryRepository.insert(editEntry)
+            syncOperationsInternal(currentAccountId)
+            // Mirror the edited reading to Health Connect (MOB-1173). The sync loop only mirrors
+            // CREATE ops passed via newEntries; an in-place edit flows through getUnSynced instead,
+            // so without this HC keeps the pre-edit value. Best-effort, same as create/delete;
+            // a no-op for note-only device-synced edits (notes aren't in HC).
+            tryLocalIntegration(editEntry)
+        } catch (e: Exception) {
+            AppLog.e(TAG, "Error editing entry", e)
+        }
+    }
+
+    override suspend fun setPendingDelete(entry: Entry, pending: Boolean) {
+        entryRepository.setPendingDelete(entry.entry.id, pending)
+    }
+
+    override suspend fun commitPendingDeletes() {
+        val currentAccountId = accountId ?: return
+        entryRepository.commitPendingDeletes(currentAccountId)
+        syncOperationsInternal(currentAccountId)
+    }
+
     /** Deletes an entry both locally and remotely. */
     override suspend fun deleteEntry(entry: Entry) {
         val currentAccountId = accountId ?: return
@@ -472,12 +523,16 @@ class EntryService(
             _lastUpdated.collect {
                 try {
                     val entries = entryRepository.getEntriesByAccount(accountId, false)
-                    AppLog.d(TAG, "User has scale entries (>= 3), checking goal card ${entries.size} - accountid - $accountId")
-                    if (entries.size >= GOAL_CARD_MIN_ENTRIES) {
+                    // The Set-Goal card is a weight-product feature, so gate it on weight
+                    // (ScaleEntry) readings only — BP and baby entries must not count toward the
+                    // 3-entry threshold.
+                    val weightEntryCount = entries.count { it is ScaleEntry }
+                    AppLog.d(TAG, "Weight entries: $weightEntryCount (need $GOAL_CARD_MIN_ENTRIES) - accountId=$accountId")
+                    if (weightEntryCount >= GOAL_CARD_MIN_ENTRIES) {
                         goalService.checkGoalCard()
-                        AppLog.d(TAG, "User has scale entries (>= 3), checking goal card")
+                        AppLog.d(TAG, "Weight entries >= $GOAL_CARD_MIN_ENTRIES — checking goal card")
                     } else {
-                        AppLog.d(TAG, "User has only scale entries, not enough for goal card")
+                        AppLog.d(TAG, "Not enough weight entries for goal card")
                     }
                 } catch (e: Exception) {
                     AppLog.e(TAG, "Error checking entries for goal card in init", e.toString())

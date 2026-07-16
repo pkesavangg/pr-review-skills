@@ -55,7 +55,6 @@ class EntryServiceTest {
     }
     private val fakeEntry: Entry = mockk(relaxed = true)
     private val fakeEntry2: Entry = mockk(relaxed = true)
-    private val fakeEntry3: Entry = mockk(relaxed = true)
 
     @BeforeEach
     fun setUp() {
@@ -409,8 +408,9 @@ class EntryServiceTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `initializeGoalCardMonitoring calls checkGoalCard when entries at least 3`() = runTest {
-        coEvery { entryRepository.getEntriesByAccount(testAccountId, false) } returns listOf(fakeEntry, fakeEntry2, fakeEntry3)
+    fun `initializeGoalCardMonitoring calls checkGoalCard when weight entries at least 3`() = runTest {
+        coEvery { entryRepository.getEntriesByAccount(testAccountId, false) } returns
+            listOf(realScaleEntry(), realScaleEntry(), realScaleEntry())
 
         service.initializeGoalCardMonitoring(testAccountId)
         Thread.sleep(200)
@@ -419,8 +419,21 @@ class EntryServiceTest {
     }
 
     @Test
-    fun `initializeGoalCardMonitoring does not call checkGoalCard when entries less than 3`() = runTest {
-        coEvery { entryRepository.getEntriesByAccount(testAccountId, false) } returns listOf(fakeEntry, fakeEntry2)
+    fun `initializeGoalCardMonitoring does not call checkGoalCard when weight entries less than 3`() = runTest {
+        coEvery { entryRepository.getEntriesByAccount(testAccountId, false) } returns
+            listOf(realScaleEntry(), realScaleEntry())
+
+        service.initializeGoalCardMonitoring(testAccountId)
+        Thread.sleep(200)
+
+        coVerify(exactly = 0) { goalService.checkGoalCard() }
+    }
+
+    @Test
+    fun `initializeGoalCardMonitoring counts only weight entries, not BP or baby`() = runTest {
+        // 2 weight + 1 BP + 1 baby → only 2 weight readings, below the 3-weight threshold.
+        coEvery { entryRepository.getEntriesByAccount(testAccountId, false) } returns
+            listOf(realScaleEntry(), realScaleEntry(), realBpmEntry(), babyEntry())
 
         service.initializeGoalCardMonitoring(testAccountId)
         Thread.sleep(200)
@@ -480,6 +493,25 @@ class EntryServiceTest {
         service.updateAllData(testAccountId)
         service.addEntry(realScaleEntry())
 
+        coVerify { healthConnectService.syncData(any()) }
+        coVerify { healthConnectRepository.syncEntry(any()) }
+    }
+
+    @Test
+    fun `edit scale entry mirrors the edited reading to Health Connect (MOB-1173)`() = runTest {
+        coEvery { entryRepository.getUnSynced(testAccountId) } returns emptyList()
+        coEvery { entryRepository.getOperationCount(testAccountId) } returns 0
+        coEvery { accountRepository.getSyncTimeStamp() } returns flowOf("")
+        coEvery { entryRepository.sendBatchToAPI(any()) } returns
+            UnifiedEntryResponse(entries = emptyList(), timestamp = "2024-01-02T00:00:00.000Z")
+        coEvery { entryRepository.getEntriesSync(any(), any()) } returns
+            EntriesSyncResponse(entries = emptyList(), timestamp = null)
+        coEvery { healthConnectService.checkIntegrated() } returns true
+
+        service.updateAllData(testAccountId)
+        service.editEntry(realScaleEntry())
+
+        // Edit no longer leaves HC stale: the edited reading is pushed to Health Connect too.
         coVerify { healthConnectService.syncData(any()) }
         coVerify { healthConnectRepository.syncEntry(any()) }
     }

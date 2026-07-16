@@ -25,6 +25,7 @@ import com.dmdbrands.gurus.weight.theme.MeTheme
 fun BloodPressureSection(
     controls: BloodPressureFormControls,
     onImeAction: () -> Unit,
+    enabled: Boolean = true,
 ) {
     val systolicFocusRequester = remember { FocusRequester() }
     val diastolicFocusRequester = remember { FocusRequester() }
@@ -37,6 +38,7 @@ fun BloodPressureSection(
         imeAction = ImeAction.Next,
         nextFocusRequester = diastolicFocusRequester,
         maxLength = 3,
+        enabled = enabled,
         modifier = Modifier
             .fillMaxWidth()
             .focusRequester(systolicFocusRequester),
@@ -48,6 +50,7 @@ fun BloodPressureSection(
         imeAction = ImeAction.Next,
         nextFocusRequester = pulseFocusRequester,
         maxLength = 3,
+        enabled = enabled,
         modifier = Modifier
             .fillMaxWidth()
             .focusRequester(diastolicFocusRequester),
@@ -59,11 +62,13 @@ fun BloodPressureSection(
         imeAction = ImeAction.Done,
         onImeAction = onImeAction,
         maxLength = 3,
+        enabled = enabled,
         modifier = Modifier
             .fillMaxWidth()
             .focusRequester(pulseFocusRequester),
     )
     Spacer(modifier = Modifier.height(MeTheme.spacing.xs))
+    // Note stays editable for both manual and device-synced readings.
     AppTextArea(
         formControl = controls.notes,
         label = EntryScreenStrings.NOTES_LABEL,
@@ -76,5 +81,6 @@ fun BloodPressureSection(
         mode = DateTimeInputMode.DateTime,
         label = EntryScreenStrings.DATE_LABEL,
         maxValue = null,
+        enabled = enabled,
     )
 }

@@ -43,6 +43,8 @@ final class MockEntryService: EntryServiceProtocol {
     private(set) var lastLoadedBabyDashboardId: String?
     private(set) var assignBabyEntryCalls = 0
     private(set) var lastAssignedBabyId: String?
+    private(set) var remapBabyIdCalls = 0
+    private(set) var lastRemapBabyIds: (old: String, new: String)?
     var assignBabyEntryError: Error?
 
     func syncAllEntriesWithRemote() async { syncAllEntriesWithRemoteCalls += 1 }
@@ -82,6 +84,10 @@ final class MockEntryService: EntryServiceProtocol {
         assignBabyEntryCalls += 1
         lastAssignedBabyId = babyId
         if let assignBabyEntryError { throw assignBabyEntryError }
+    }
+    func remapBabyId(from oldId: String, to newId: String) async {
+        remapBabyIdCalls += 1
+        lastRemapBabyIds = (oldId, newId)
     }
     func fetchEntrySnapshot(byId id: UUID) async throws -> EntrySnapshot? {
         fetchEntrySnapshotByIdCalls += 1

@@ -27,7 +27,8 @@ struct BabyGrowthPercentilesSheet: View {
                     dismiss()
                 },
                 canShowBorder: true,
-                canShowPresentationIndicator: true
+                canShowPresentationIndicator: true,
+                leadingAccessibilityID: AccessibilityID.babyGrowthPercentilesCloseButton
             )
 
             VStack(alignment: .leading, spacing: .spacingLG) {
@@ -52,6 +53,7 @@ struct BabyGrowthPercentilesSheet: View {
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         }
         .background(theme.backgroundSecondary)
+        .screenAccessibilityRoot(AccessibilityID.babyGrowthPercentilesSheetRoot)
     }
 
     private var heightCard: some View {

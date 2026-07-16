@@ -16,7 +16,8 @@ struct DeviceLogSheetView: View {
                 leadingContent: { Image(AppAssets.xmark) },
                 onLeadingTap: { dismiss() },
                 canShowBorder: true,
-                canShowPresentationIndicator: true
+                canShowPresentationIndicator: true,
+                leadingAccessibilityID: AccessibilityID.deviceLogCloseButton
             )
             ScrollView(.vertical, showsIndicators: false) {
                 VStack(alignment: .leading, spacing: 0) {
@@ -37,6 +38,7 @@ struct DeviceLogSheetView: View {
                                     deviceType: scale.deviceType
                                 )
                             )
+                            .appAccessibility(id: AccessibilityID.deviceLogRow + "_" + (scale.sku ?? scale.id))
                             Divider()
                                 .frame(height: 0.5)
                                 .frame(maxWidth: .infinity)
@@ -47,8 +49,9 @@ struct DeviceLogSheetView: View {
             }
         }
         .background(theme.backgroundSecondary.ignoresSafeArea())
+        .screenAccessibilityRoot(AccessibilityID.deviceLogScreenRoot)
     }
-    
+
     private func scaleIcon(for sku: String?) -> Image {
         // Map SKU for display (e.g., 0022 -> 0383) for SCALES lookup
         let lookupSku = DeviceHelper.mapSkuForDisplay(sku ?? "")

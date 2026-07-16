@@ -14,8 +14,10 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.platform.testTag
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.dmdbrands.gurus.weight.core.config.AppConfig
+import com.dmdbrands.gurus.weight.core.shared.utilities.testing.TestTags
 import com.dmdbrands.gurus.weight.features.common.components.AppIconButton
 import com.dmdbrands.gurus.weight.features.common.components.AppScaffold
 import com.dmdbrands.gurus.weight.features.common.components.PreviewTheme
@@ -60,7 +62,7 @@ private fun HelpContent(
     title = HelpScreenStrings.Title,
     enable = true,
     navigationIcon = {
-      AppIconButton(AppIcons.Default.Close, contentDescription = HelpScreenStrings.accCloseLabel) {
+      AppIconButton(AppIcons.Default.Close, modifier = Modifier.testTag(TestTags.Help.CloseButton), contentDescription = HelpScreenStrings.accCloseLabel) {
         handleIntent(HelpIntent.OnBack)
       }
     },
@@ -75,7 +77,8 @@ private fun HelpContent(
     Column(
       modifier = scaffoldModifier
         .fillMaxSize()
-        .verticalScroll(rememberScrollState()),
+        .verticalScroll(rememberScrollState())
+        .testTag(TestTags.Help.ScreenRoot),
     ) {
       ContactUsContent(handleIntent)
       Spacer(Modifier.height(MeTheme.spacing.xl))

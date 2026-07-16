@@ -69,12 +69,14 @@ struct BtWifiScaleSetupScreen: View {
                     } label: {
                         AppIconView(icon: AppAssets.helpCircle)
                             .foregroundColor(theme.statusIconPrimary)
-                    })
+                    }
+                    .appAccessibility(id: AccessibilityID.scaleSetupHelpButton))
                     : AnyView(EmptyView())
                 },
                 onLeadingTap: { setupStore.handleExit() },
                 onTrailingTap: {},
                 canShowPresentationIndicator: savedScale == nil, // Show back button only if not opening from saved scale
+                leadingAccessibilityID: AccessibilityID.scaleSetupCloseButton
             )
             
             // Step views with swiper
@@ -128,8 +130,9 @@ struct BtWifiScaleSetupScreen: View {
                 setupStore.cleanup()
             }
         }
+        .screenAccessibilityRoot(AccessibilityID.btWifiScaleSetupScreenRoot)
     }
-    
+
     private var footerButtons: some View {
         HStack {
             // Hide Back/Next buttons when used for settings WiFi configuration
@@ -143,6 +146,7 @@ struct BtWifiScaleSetupScreen: View {
                     ButtonView(text: commonLang.skip, type: .inlineTextTertiary, size: .large, isDisabled: false) {
                         setupStore.handleSkipWifiStep()
                     }
+                    .appAccessibility(id: AccessibilityID.scaleSetupSkipButton)
                     Spacer()
                 } else {
                     // Otherwise, show the standard Back/Next buttons.
@@ -156,6 +160,7 @@ struct BtWifiScaleSetupScreen: View {
                         }
                         setupStore.handleBackButtonClick()
                     }
+                    .appAccessibility(id: AccessibilityID.scaleSetupBackButton)
                     Spacer()
                     ButtonView(text: setupStore.nextButtonText,
                                type: .filledPrimary,
@@ -168,6 +173,7 @@ struct BtWifiScaleSetupScreen: View {
                         }
                         setupStore.handleNextButtonClick()
                     }
+                    .appAccessibility(id: AccessibilityID.scaleSetupNextButton)
                 }
             } else if setupStore.currentStep == .completeProfile {
                 // Complete Profile Setup: Back / Skip / Next (MOB-1388).
@@ -181,6 +187,7 @@ struct BtWifiScaleSetupScreen: View {
                     }
                     setupStore.handleBackButtonClick()
                 }
+                .appAccessibility(id: AccessibilityID.scaleSetupBackButton)
                 Spacer()
                 ButtonView(text: commonLang.skip, type: .inlineTextTertiary, size: .small, isDisabled: false) {
                     withAnimation {
@@ -216,6 +223,7 @@ struct BtWifiScaleSetupScreen: View {
                     }
                     setupStore.handleNextButtonClick()
                 }
+                .appAccessibility(id: AccessibilityID.scaleSetupNextButton)
                 Spacer()
             } else {
                 ButtonView(text: commonLang.back,
@@ -228,6 +236,7 @@ struct BtWifiScaleSetupScreen: View {
                     }
                     setupStore.handleBackButtonClick()
                 }
+                .appAccessibility(id: AccessibilityID.scaleSetupBackButton)
                 Spacer()
                 ButtonView(text: setupStore.nextButtonText,
                            type: .filledPrimary,
@@ -240,6 +249,7 @@ struct BtWifiScaleSetupScreen: View {
                     }
                     setupStore.handleNextButtonClick()
                 }
+                .appAccessibility(id: AccessibilityID.scaleSetupNextButton)
             }
         }
     }

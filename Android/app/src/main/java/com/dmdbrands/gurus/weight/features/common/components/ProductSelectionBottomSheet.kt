@@ -48,7 +48,7 @@ fun ProductSelectionBottomSheet(
             ProductRow(
                 label = product.displayName(),
                 color = product.displayColor(),
-                isSelected = product == selectedProduct,
+                isSelected = product.isSameSelectionAs(selectedProduct),
                 onClick = {
                     onSelect(product)
                     onDismiss()

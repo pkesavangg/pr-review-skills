@@ -27,7 +27,8 @@ struct BPHistoryMonthListScreen: View {
             NavbarHeaderView<AppIconView, AnyView>(
                 title: title,
                 leadingContent: { AppIconView(icon: AppAssets.chevronLeft) },
-                onLeadingTap: { router.navigateBack() }
+                onLeadingTap: { router.navigateBack() },
+                leadingAccessibilityID: AccessibilityID.bpHistoryMonthBackButton
             )
             .background(theme.backgroundPrimary)
 
@@ -36,6 +37,7 @@ struct BPHistoryMonthListScreen: View {
                 .edgesIgnoringSafeArea(.bottom)
         }
         .background(theme.backgroundSecondary)
+        .screenAccessibilityRoot(AccessibilityID.bpHistoryMonthListScreenRoot)
         .navigationBarBackButtonHidden(true)
         .onAppear {
             historyStore.selectBPMonth(month)

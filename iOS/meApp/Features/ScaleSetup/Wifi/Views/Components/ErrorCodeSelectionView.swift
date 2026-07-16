@@ -53,6 +53,7 @@ struct ErrorCodeSelectionView: View {
                     onErrorSelected?(nil)
                     onClickButton?()
                 }
+                .appAccessibility(id: AccessibilityID.wifiErrorCodeSeeSomethingElseButton)
             }
             .padding(.top, .spacingLG)
         }

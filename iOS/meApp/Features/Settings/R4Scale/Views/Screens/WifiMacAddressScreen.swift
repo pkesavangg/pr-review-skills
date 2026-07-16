@@ -13,11 +13,11 @@ import UIKit
 final class WifiMacAddressViewModel: ObservableObject {
     @Published var macAddress: String
     @Injector private var notificationService: NotificationHelperServiceProtocol
-    
+
     init(macAddress: String) {
         self.macAddress = macAddress
     }
-    
+
     func copyMacAddress() {
         UIPasteboard.general.string = macAddress
         notificationService.showToast(ToastModel(message: ToastStrings.copiedToClipboard))
@@ -30,7 +30,7 @@ struct WifiMacAddressScreen: View {
     @Environment(\.appTheme) private var theme
     @StateObject private var viewModel: WifiMacAddressViewModel
     let lang = WifiMacAddressScreenStrings.self
-    
+
     init(macAddress: String) {
         _viewModel = StateObject(wrappedValue: WifiMacAddressViewModel(macAddress: macAddress))
     }
@@ -43,7 +43,8 @@ struct WifiMacAddressScreen: View {
                 trailingContent: { EmptyView() },
                 onLeadingTap: { router.navigateBack() },
                 onTrailingTap: {},
-                canShowBorder: true
+                canShowBorder: true,
+                leadingAccessibilityID: AccessibilityID.wifiMacBackButton
             )
 
             VStack(alignment: .leading, spacing: .spacingMD) {
@@ -69,6 +70,7 @@ struct WifiMacAddressScreen: View {
                         ) {
                                 viewModel.copyMacAddress()
                             }
+                            .appAccessibility(id: AccessibilityID.wifiMacCopyButton)
                     }
                     .frame(maxWidth: .infinity, alignment: .center)
                 }
@@ -83,7 +85,8 @@ struct WifiMacAddressScreen: View {
         .frame(maxHeight: .infinity, alignment: .top)
         .background(theme.backgroundSecondary.ignoresSafeArea())
         .navigationBarHidden(true)
-        
+
+        .screenAccessibilityRoot(AccessibilityID.wifiMacScreenRoot)
     }
 }
 

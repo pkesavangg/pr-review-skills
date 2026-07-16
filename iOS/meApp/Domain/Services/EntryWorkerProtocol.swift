@@ -77,6 +77,11 @@ protocol EntryWorkerProtocol: Sendable {
     /// Fetches entries as DTOs, newest first (pre-existing worker API).
     func fetchEntriesAsDTO(accountId: String, operationType: String) async throws -> [BathScaleOperationDTO]
 
+    /// Counts all entries for an account (any operation type), off the main actor, so the
+    /// COUNT no longer takes the SQLite store lock on the main thread and stall behind a
+    /// concurrent cold-login merge on the same store (MOB-516).
+    func fetchEntryCount(accountId: String) async throws -> Int
+
     /// Fetches all entries as lightweight `EntryData`, newest first, extracted off
     /// the main actor. Backs History's off-main month grouping (`getMonthsAll`) so the
     /// full-table read no longer blocks the main thread on large accounts (MOB-1433).

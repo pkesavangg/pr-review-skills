@@ -134,6 +134,7 @@ struct WifiConnectionConfirmView: View {
             .accessibilityLabel(WifiScaleSetupStrings.A11y.setupCompleteOptionLabel)
             .accessibilityHint(WifiScaleSetupStrings.A11y.setupCompleteOptionHint)
             .accessibilityAddTraits(selectedOption == .complete ? .isSelected : [])
+            .appAccessibility(id: AccessibilityID.wifiSetupCompleteOptionButton)
         }
     }
 
@@ -146,6 +147,7 @@ struct WifiConnectionConfirmView: View {
             .accessibilityLabel(WifiScaleSetupStrings.A11y.apModeOptionLabel)
             .accessibilityHint(WifiScaleSetupStrings.A11y.apModeOptionHint)
             .accessibilityAddTraits(selectedOption == .apMode ? .isSelected : [])
+            .appAccessibility(id: AccessibilityID.wifiApModeOptionButton)
         }
     }
 
@@ -182,6 +184,7 @@ struct WifiConnectionConfirmView: View {
             isDisabled: false
         ) { onClickButton?() }
         .accessibilityHint(WifiScaleSetupStrings.A11y.seeSomethingElseHint)
+        .appAccessibility(id: AccessibilityID.wifiConnectionConfirmSeeSomethingElseButton)
     }
     
     private func handleCompleteSelection() {

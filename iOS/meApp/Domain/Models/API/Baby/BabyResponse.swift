@@ -52,6 +52,7 @@ extension BabyResponse {
             name: name,
             deviceId: deviceId,
             isSynced: true,
+            isServerCreated: true,
             birthday: birthdayDate,
             biologicalSex: sex,
             birthLengthInches: birthLengthInchesValue,

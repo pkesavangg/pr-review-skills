@@ -127,7 +127,7 @@ fun GoalStep(
           showTrailingIcon = false,
           imeAction = ImeAction.Next,
           nextFocusRequester = goalWeightFocusRequester,
-          testTag = "starting_weight_input",
+          testTag = TestTags.Goal.StartingWeightInput,
           modifier = Modifier.focusRequester(currentWeightFocusRequester),
           enabled = goalTypeControl.value != GoalType.MAINTAIN.value,
           maxLength = 4,
@@ -145,7 +145,7 @@ fun GoalStep(
       showTrailingIcon = false,
       imeAction = ImeAction.Next,
       onImeAction = onNext,
-      testTag = "goal_weight_input",
+      testTag = TestTags.Goal.GoalWeightInput,
       modifier =
         if (shouldShowCurrentWeight) {
           Modifier.focusRequester(goalWeightFocusRequester)

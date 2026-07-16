@@ -43,6 +43,7 @@ struct AhaRatingCard: View {
             .cornerRadius(.radiusMD)
         }
         .buttonStyle(.plain)
+        .appAccessibility(id: AccessibilityID.ahaRatingCard)
         .sheet(isPresented: $showSheet) {
             AhaRatingSheet()
         }

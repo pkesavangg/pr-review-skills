@@ -130,4 +130,17 @@ final class MockEntryWorker: EntryWorkerProtocol {
         }
         return allEntryDataResult
     }
+
+    var entryCountResult = 0
+    var entryCountError: Error?
+    private(set) var fetchEntryCountCalls = 0
+
+    func fetchEntryCount(accountId: String) async throws -> Int {
+        fetchEntryCountCalls += 1
+        if let entryCountError { throw entryCountError }
+        if let backingRepo {
+            return try await backingRepo.fetchEntryCount(forUserId: accountId)
+        }
+        return entryCountResult
+    }
 }

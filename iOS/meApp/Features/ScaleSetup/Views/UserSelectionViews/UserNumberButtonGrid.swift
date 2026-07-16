@@ -54,6 +54,7 @@ struct UserNumberButtonGrid: View {
                         .accessibilityHint(ScaleSetupStrings.A11y.userNumberHint)
                         .accessibilityAddTraits(.isButton)
                         .accessibilityAddTraits(isSelected ? .isSelected : [])
+                        .appAccessibility(id: AccessibilityID.userNumberButton(number))
                     }
                 }
             }

@@ -15,21 +15,21 @@ struct DeviceSettingsScreen: View {
     var scaleType: DeviceModelType
     @State private var isOtherSettingsSheetPresented = false
     @State private var isSoftwareUpdatePresented = false
-    
+
     private static let titleTruncationLength = 25
     private var fallbackProductURL: URL { AppConstants.LegalURLs.greaterGoodsWebsite }
     private var truncatedTitle: String {
         let title = scaleSettingsStore.nickname ?? scale.nickname ?? scale.deviceName ?? ""
         return title.count > Self.titleTruncationLength ? "\(title.prefix(Self.titleTruncationLength))…" : title
     }
-    
+
     init(scale: Device, scaleType: DeviceModelType) {
         self.scale = scale
         self.scaleType = scaleType
         _scaleSettingsStore = StateObject(wrappedValue: DeviceSettingsStore(scale: scale))
     }
     let lang = DeviceSettingsStrings.self
-    
+
     var body: some View {
         VStack(alignment: .center, spacing: 0) {
             NavbarHeaderView(
@@ -38,9 +38,10 @@ struct DeviceSettingsScreen: View {
                 trailingContent: { EmptyView() },
                 onLeadingTap: { router.navigateBack() },
                 onTrailingTap: {},
-                canShowBorder: true
+                canShowBorder: true,
+                leadingAccessibilityID: AccessibilityID.deviceSettingsBackButton
             )
-            
+
             List {
                 scaleImageSection()
                 if scaleType == .bluetoothR4 && scaleSettingsStore.isDeviceConnected {
@@ -57,7 +58,7 @@ struct DeviceSettingsScreen: View {
                 }
                 supportSection()
                 deleteScaleSection()
-                
+
                 // Other section should be enable for the R4 scales and if canEnableTestingFeatures flag is true
                 if scaleType == .bluetoothR4 && AppConstants.canEnableTestingFeatures == true {
                     othersSection()
@@ -82,11 +83,12 @@ struct DeviceSettingsScreen: View {
             )
         }
         .navigationBarHidden(true)
+        .screenAccessibilityRoot(AccessibilityID.deviceSettingsScreenRoot)
         .onAppear {
             scaleSettingsStore.refreshScaleData()
         }
     }
-    
+
     // MARK: - Sections as Functions
     private func scaleImageSection() -> some View {
         // Map SKU for display (e.g., 0022 -> 0383) for SCALES lookup
@@ -103,23 +105,23 @@ struct DeviceSettingsScreen: View {
             .listRowBackground(Color.clear)
             .themeDropShadow()
     }
-    
+
     private func setupWiFiItem() -> some View {
         scaleStatusSection {
             DeviceStatusBanner(type: .setupIncomplete {
                 router.navigate(to: .wifi(scale: scale))
-            })
+            }, actionAccessibilityID: AccessibilityID.deviceSettingsSetupWifiButton)
         }
     }
-    
+
     private func enableBodyMetricsItem() -> some View {
         scaleStatusSection {
             DeviceStatusBanner(type: .weightOnly {
                 scaleSettingsStore.handleEnableBodyMetrics()
-            })
+            }, actionAccessibilityID: AccessibilityID.deviceSettingsEnableBodyMetricsButton)
         }
     }
-    
+
     private func deleteScaleSection() -> some View {
         Section {
             ActionListItemView(
@@ -133,49 +135,17 @@ struct DeviceSettingsScreen: View {
                         }
                     }
             )
+            .appAccessibility(id: AccessibilityID.deviceSettingsDeleteButton)
         }
         .listRowInsets()
         .listRowBackground(theme.backgroundPrimary)
         .listRowSeparatorTint(theme.statusUtilityPrimary)
     }
-    
+
     private func settingsSection() -> some View {
         Section(header: SectionHeader(title: lang.settingsSectionHeader)) {
             if scaleType == .bluetoothR4 {
-                ActionListItemView(
-                    config: ActionListItemConfig(
-                        title: lang.mode,
-                        value: scaleSettingsStore.isBodyMetrics ? "All Body metrics" : "Weight only"
-                    ) {
-                            router.navigate(to: .deviceModes(
-                                scale: scale,
-                                isWeighOnlyModeEnabledByOthers: scaleSettingsStore.isWeighOnlyModeEnabledByOthers
-                            ))
-                        }
-                )
-                ActionListItemView(
-                    config: ActionListItemConfig(
-                        title: lang.displayMetrics
-                    ) {
-                        router.navigate(to: .displayMetrics(
-                            scale: scale,
-                            isWeighOnlyModeEnabledByOthers: scaleSettingsStore.isWeighOnlyModeEnabledByOthers
-                        ))
-                    }
-                )
-                ActionListItemView(
-                    config: ActionListItemConfig(
-                        title: lang.users,
-                        value: scaleSettingsStore.displayName,
-                        chevronType: scaleSettingsStore.isFetchingUsersList ? .loading : .right,
-                        isDisabled: !scaleSettingsStore.isDeviceConnected
-                    ) {
-                            Task {
-                                let fetchedUsersList = await scaleSettingsStore.ensureUsersList()
-                                router.navigate(to: .users(scale: scale, usersList: fetchedUsersList))
-                            }
-                        }
-                )
+                r4SettingsRows()
             }
             ActionListItemView(
                 config: ActionListItemConfig(
@@ -183,7 +153,8 @@ struct DeviceSettingsScreen: View {
                     value: scaleSettingsStore.nickname
                 ) { router.navigate(to: .deviceNameScreen(scale: scale)) }
             )
-            
+            .appAccessibility(id: AccessibilityID.deviceSettingsScaleNameRow)
+
             if let userNumber = scale.userNumber, scaleType != .bluetoothR4 {
                 ActionListItemView(config: ActionListItemConfig(title: lang.userNumber, value: lang.userNumberInfo(userNumber), chevronType: .none))
             }
@@ -192,7 +163,50 @@ struct DeviceSettingsScreen: View {
         .listRowBackground(theme.backgroundPrimary)
         .listRowSeparatorTint(theme.statusUtilityPrimary)
     }
-    
+
+    /// R4-only rows (Mode / Display Metrics / Users). Extracted so `settingsSection()`
+    /// stays within the SwiftLint function-body length budget.
+    @ViewBuilder
+    private func r4SettingsRows() -> some View {
+        ActionListItemView(
+            config: ActionListItemConfig(
+                title: lang.mode,
+                value: scaleSettingsStore.isBodyMetrics ? "All Body metrics" : "Weight only"
+            ) {
+                router.navigate(to: .deviceModes(
+                    scale: scale,
+                    isWeighOnlyModeEnabledByOthers: scaleSettingsStore.isWeighOnlyModeEnabledByOthers
+                ))
+            }
+        )
+        .appAccessibility(id: AccessibilityID.deviceSettingsModeRow)
+        ActionListItemView(
+            config: ActionListItemConfig(
+                title: lang.displayMetrics
+            ) {
+                router.navigate(to: .displayMetrics(
+                    scale: scale,
+                    isWeighOnlyModeEnabledByOthers: scaleSettingsStore.isWeighOnlyModeEnabledByOthers
+                ))
+            }
+        )
+        .appAccessibility(id: AccessibilityID.deviceSettingsDisplayMetricsRow)
+        ActionListItemView(
+            config: ActionListItemConfig(
+                title: lang.users,
+                value: scaleSettingsStore.displayName,
+                chevronType: scaleSettingsStore.isFetchingUsersList ? .loading : .right,
+                isDisabled: !scaleSettingsStore.isDeviceConnected
+            ) {
+                Task {
+                    let fetchedUsersList = await scaleSettingsStore.ensureUsersList()
+                    router.navigate(to: .users(scale: scale, usersList: fetchedUsersList))
+                }
+            }
+        )
+        .appAccessibility(id: AccessibilityID.deviceSettingsUsersRow)
+    }
+
     private func connectionSection() -> some View {
         Section(header: SectionHeader(title: lang.connectionSectionHeader)) {
             ActionListItemView(
@@ -201,6 +215,7 @@ struct DeviceSettingsScreen: View {
                     value: scaleSettingsStore.isDeviceConnected ? DeviceBluetoothStrings.connected : DeviceBluetoothStrings.notConnected
                 ) { router.navigate(to: .deviceBluetoothScreen(scale: scale)) }
             )
+            .appAccessibility(id: AccessibilityID.deviceSettingsBluetoothRow)
             if scaleType == .bluetoothR4 {
                 ActionListItemView(
                     config: ActionListItemConfig(
@@ -209,6 +224,7 @@ struct DeviceSettingsScreen: View {
                         isDisabled: !scaleSettingsStore.isDeviceConnected
                     ) { router.navigate(to: .wifi(scale: scale)) }
                 )
+                .appAccessibility(id: AccessibilityID.deviceSettingsWifiRow)
                 ActionListItemView(
                     config: ActionListItemConfig(
                         title: lang.wifiMacAddress,
@@ -227,13 +243,14 @@ struct DeviceSettingsScreen: View {
                             }
                         }
                 )
+                .appAccessibility(id: AccessibilityID.deviceSettingsWifiMacRow)
             }
         }
         .listRowInsets()
         .listRowBackground(theme.backgroundPrimary)
         .listRowSeparatorTint(theme.statusUtilityPrimary)
     }
-    
+
     private func supportSection() -> some View {
         Section(header: SectionHeader(title: lang.supportSectionHeader)) {
             ActionListItemView(
@@ -243,7 +260,7 @@ struct DeviceSettingsScreen: View {
                     chevronType: .none
                 ) {}
             )
-            
+
             ActionListItemView(
                 config: ActionListItemConfig(
                     title: lang.sku.uppercased(),
@@ -251,7 +268,7 @@ struct DeviceSettingsScreen: View {
                     chevronType: .none
                 )
             )
-            
+
             ActionListItemView(
                 config: ActionListItemConfig(
                     title: lang.datePaired,
@@ -264,12 +281,13 @@ struct DeviceSettingsScreen: View {
                     title: lang.productGuide
                 ) { scaleSettingsStore.openProductGuide(for: DeviceHelper.mapSkuForDisplay(scale.sku ?? "")) }
             )
+            .appAccessibility(id: AccessibilityID.deviceSettingsProductGuideRow)
         }
         .listRowInsets()
         .listRowBackground(theme.backgroundPrimary)
         .listRowSeparatorTint(theme.statusUtilityPrimary)
     }
-    
+
     private func othersSection() -> some View {
         Section(header: SectionHeader(title: lang.othersSectionHeader)) {
             ActionListItemView(
@@ -294,11 +312,13 @@ struct DeviceSettingsScreen: View {
                         }
                     }
             )
+            .appAccessibility(id: AccessibilityID.deviceSettingsSoftwareUpdateRow)
             ActionListItemView(
                 config: ActionListItemConfig(
                     title: lang.otherSettings
                 ) { isOtherSettingsSheetPresented = true }
             )
+            .appAccessibility(id: AccessibilityID.deviceSettingsOtherSettingsRow)
             ActionListItemView(
                 config: ActionListItemConfig(
                     title: lang.sessionImpedance,
@@ -313,12 +333,13 @@ struct DeviceSettingsScreen: View {
                         Task { await scaleSettingsStore.setSessionImpedance(scaleSettingsStore.isImpedanceSwitchedOnForSession) }
                     }
             )
+            .appAccessibility(id: AccessibilityID.deviceSettingsSessionImpedanceToggle)
         }
         .listRowInsets()
         .listRowBackground(theme.backgroundPrimary)
         .listRowSeparatorTint(theme.statusUtilityPrimary)
     }
-    
+
     @ViewBuilder
     private func scaleStatusSection<Content: View>(_ content: @escaping () -> Content) -> some View {
         Section {
@@ -328,5 +349,5 @@ struct DeviceSettingsScreen: View {
         .listRowBackground(theme.backgroundPrimary)
         .listRowSeparatorTint(theme.statusUtilityPrimary)
     }
-    
+
 }

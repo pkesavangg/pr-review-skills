@@ -25,6 +25,7 @@ struct ThreeReadingAverageCard: View {
             )
         }
         .buttonStyle(.plain)
+        .appAccessibility(id: AccessibilityID.threeReadingAverageCard)
         .sheet(isPresented: $showDetail) {
             ThreeReadingAverageSheet(average: average, readings: recentReadings)
         }

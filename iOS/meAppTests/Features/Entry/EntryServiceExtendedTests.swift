@@ -187,6 +187,32 @@ struct EntryServiceExtendedTests {
         #expect(months.isEmpty)
     }
 
+    @Test("getMonthsAll serves a warm cache on repeat, then re-reads after invalidation (MOB-516)")
+    func getMonthsAllCachesAndInvalidates() async throws {
+        let repo = MockEntryRepository()
+        repo.entries = [
+            EntryTestFixtures.makeEntry(timestamp: "2026-03-01T08:00:00Z", weight: 1800),
+            EntryTestFixtures.makeEntry(timestamp: "2026-02-01T08:00:00Z", weight: 1750)
+        ]
+        let worker = MockEntryWorker()
+        let sut = makeSUT(repo: repo, worker: worker)
+
+        let first = try await sut.getMonthsAll()
+        let second = try await sut.getMonthsAll()
+
+        #expect(first.count == 2)
+        #expect(second.map(\.id) == first.map(\.id))
+        // Cache hit: the second call is served from `monthsCacheByType`, not a fresh worker read —
+        // this is what stops redundant callers (Settings hasEntries, History re-entry, no-op sync)
+        // from each stacking a full-table read on the serial worker (MOB-516).
+        #expect(worker.fetchAllEntryDataCalls == 1)
+
+        // Any entry mutation clears the cache synchronously via the invalidation sink; next read re-fetches.
+        sut.entrySaved.send(EntryNotification(from: EntryTestFixtures.makeEntry()))
+        _ = try await sut.getMonthsAll()
+        #expect(worker.fetchAllEntryDataCalls == 2)
+    }
+
     // MARK: - getMonthDetail
 
     @Test("getMonthDetail: returns only creates for month")

@@ -54,6 +54,7 @@ struct MyKidsScreen: View {
         }
         .navigationBarBackButtonHidden(true)
         .background(theme.backgroundSecondary.ignoresSafeArea())
+        .screenAccessibilityRoot(AccessibilityID.myKidsScreenRoot)
         .task { await store.loadBabies() }
         .sheet(isPresented: $store.isShowingAddBaby) {
             addBabySheet
@@ -77,6 +78,7 @@ struct MyKidsScreen: View {
             ) {
                 store.addBaby()
             }
+            .appAccessibility(id: AccessibilityID.myKidsAddBabyButton)
             .frame(maxWidth: .infinity)
             .padding(.horizontal, .spacingSM)
 
@@ -105,6 +107,8 @@ struct MyKidsScreen: View {
             ForEach(store.babies, id: \.id) { baby in
                 babyRow(baby)
                     .listRowInsets(top: 0, bottom: 0, leading: 0, trailing: 0)
+                    .accessibilityElement(children: .contain)
+                    .appAccessibility(id: AccessibilityID.myKidsBabyRow + "_" + baby.id)
             }
         } header: {
             Text(lang.subtitle)
@@ -128,6 +132,7 @@ struct MyKidsScreen: View {
             ) {
                 store.addBaby()
             }
+            .appAccessibility(id: AccessibilityID.myKidsAddBabyButton)
         }
         .frame(maxWidth: .infinity)
         .listRowInsets(top: 0, bottom: 0, leading: 0, trailing: 0)
@@ -162,6 +167,7 @@ struct MyKidsScreen: View {
                     .font(.system(size: 20))
                     .foregroundColor(theme.statusIconPrimary)
             }
+            .appAccessibility(id: AccessibilityID.myKidsEditBabyButton + "_" + baby.id)
         }
         .padding(.spacingSM)
         .frame(height: 72)
@@ -213,6 +219,7 @@ struct MyKidsScreen: View {
                                 )
                         }
                         .disabled(!store.isSaveEnabled)
+                        .appAccessibility(id: AccessibilityID.myKidsSaveBabyButton)
                     },
                     onLeadingTap: { store.isShowingAddBaby = false },
                     canShowBorder: true
@@ -227,6 +234,7 @@ struct MyKidsScreen: View {
                     .padding(.horizontal, .spacingSM)
             }
             .background(theme.backgroundSecondary.ignoresSafeArea())
+            .screenAccessibilityRoot(AccessibilityID.addBabyScreenRoot)
         }
         .presentationDragIndicator(.visible)
     }

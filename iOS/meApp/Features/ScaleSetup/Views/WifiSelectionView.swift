@@ -117,6 +117,7 @@ struct WifiSelectionView: View {
             isDisabled: false,
             action: onRefresh
         )
+        .appAccessibility(id: AccessibilityID.wifiSelectionRefreshButton)
         .frame(maxWidth: .infinity, alignment: .center)
     }
 }

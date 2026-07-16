@@ -16,8 +16,10 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.testTag
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.dmdbrands.gurus.weight.core.navigation.LocalNavBackStack
+import com.dmdbrands.gurus.weight.core.shared.utilities.testing.TestTags
 import com.dmdbrands.gurus.weight.features.MyAccounts.reducer.MyAccountsIntent
 import com.dmdbrands.gurus.weight.features.MyAccounts.reducer.MyAccountsState
 import com.dmdbrands.gurus.weight.features.MyAccounts.strings.MyAccountsScreenStrings
@@ -65,7 +67,7 @@ fun MyAccountsScreenContent(
   AppScaffold(
     title = MyAccountsScreenStrings.Title,
     navigationIcon = {
-      AppIconButton(AppIcons.Default.Close, contentDescription = MyAccountsScreenStrings.accCloseLabel) {
+      AppIconButton(AppIcons.Default.Close, modifier = Modifier.testTag(TestTags.Account.CloseButton), contentDescription = MyAccountsScreenStrings.accCloseLabel) {
         onNavigateBack() // Start scanning when navigating back
         coroutineScope.launch {
           backStack.removeLast()
@@ -76,7 +78,8 @@ fun MyAccountsScreenContent(
     Column(
       modifier =
         Modifier
-          .fillMaxSize(),
+          .fillMaxSize()
+          .testTag(TestTags.Account.ScreenRoot),
       verticalArrangement = Arrangement.Top,
       horizontalAlignment = Alignment.CenterHorizontally,
     ) {
@@ -94,12 +97,14 @@ fun MyAccountsScreenContent(
           Spacer(modifier = Modifier.height(MeTheme.spacing.x3l))
           AppButton(
             label = MyAccountsScreenStrings.LogIntoExistingAccount,
+            modifier = Modifier.testTag(TestTags.Account.LogInToExistingButton),
             type = ButtonType.PrimaryOutlined,
             onClick = { handleIntent(MyAccountsIntent.LoginToAccount()) },
           )
           Spacer(modifier = Modifier.height(MeTheme.spacing.sm))
           AppButton(
             label = MyAccountsScreenStrings.CreateNewAccount,
+            modifier = Modifier.testTag(TestTags.Account.CreateNewAccountButton),
             type = ButtonType.TextPrimary,
             onClick = { handleIntent(MyAccountsIntent.CreateAccount) },
           )

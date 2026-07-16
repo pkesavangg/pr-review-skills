@@ -56,6 +56,7 @@ struct WifiPasswordEntryView: View {
                             ),
                             value: $store.networkForm.password.value,
                             focusedField: $focusedField,
+                            accessibilityIdentifier: AccessibilityID.wifiPasswordField,
                             onCommit: {
                                 store.networkForm.touchAndValidatePassword()
                                 hideKeyboard()
@@ -73,6 +74,7 @@ struct WifiPasswordEntryView: View {
                         }
                         
                         CustomToggleView(isOn: $store.networkForm.networkHasNoPassword, text: lang.noPasswordToggle)
+                            .appAccessibility(id: AccessibilityID.wifiNoPasswordToggle)
                             .padding(.top, 0)
                     }
                     .padding(.top, .spacingLG)
@@ -106,9 +108,10 @@ struct WifiPasswordEntryView: View {
                         store.handleBackButtonClick()
                     }
                 }
-            
+                .appAccessibility(id: AccessibilityID.wifiPasswordBackButton)
+
             Spacer()
-            
+
             ButtonView(
                 text: lang.connectButtonTitle,
                 type: .filledPrimary,
@@ -120,6 +123,7 @@ struct WifiPasswordEntryView: View {
                         store.handleNextButtonClick()
                     }
                 }
+                .appAccessibility(id: AccessibilityID.wifiPasswordConnectButton)
         }
     }
     

@@ -129,6 +129,7 @@ struct ChangePasswordScreen: View {
                 ButtonView(text: screenLang.forgotPassword, type: .inlineTextPrimary, size: .large, isDisabled: false) {
                     settingsStore.showForgotPasswordAlert()
                 }
+                .appAccessibility(id: AccessibilityID.changePasswordForgotPasswordButton)
             }
             .scrollDismissesKeyboard(.interactively)
             .padding(.horizontal, .spacingSM)
@@ -137,6 +138,7 @@ struct ChangePasswordScreen: View {
             .padding(.bottom, .spacingXL)
         }
         .background(theme.backgroundSecondary.ignoresSafeArea())
+        .screenAccessibilityRoot(AccessibilityID.changePasswordScreenRoot)
         .onTapGesture {
             focusedField = nil
             hideKeyboard()

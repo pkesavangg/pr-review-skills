@@ -48,6 +48,13 @@ protocol BabyServiceProtocol: AnyObject {
 
     /// Load babies for the given account from SwiftData.
     func loadBabies(for accountId: String) async throws
+
+    /// Reconciles locally-queued baby profile changes with the server (MOB-1527): pushes pending
+    /// deletes, creates (with client-id → server-id remapping and lost-reply dedupe), and edits,
+    /// then merges the server list into the local store without dropping not-yet-synced records.
+    /// Runs before entry sync so an offline baby has its server id before its entries are pushed.
+    /// - Parameter accountId: The account whose baby profiles to reconcile.
+    func syncBabies(for accountId: String) async
 }
 
 /// Convenience extension preserving the original 3-parameter signature.

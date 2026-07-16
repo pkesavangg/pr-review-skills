@@ -13,12 +13,14 @@ import com.dmdbrands.gurus.weight.domain.model.api.notification.NotificationSett
 import com.dmdbrands.gurus.weight.domain.model.api.user.BodyCompUpdateRequest
 import com.dmdbrands.gurus.weight.domain.model.api.user.ProfileUpdateRequest
 import com.dmdbrands.gurus.weight.domain.repository.IAccountRepository
+import com.dmdbrands.gurus.weight.domain.repository.IBabyProfileRepository
 import com.dmdbrands.gurus.weight.domain.repository.IBodyCompositionRepository
 import com.dmdbrands.gurus.weight.domain.repository.IDeviceService
 import com.dmdbrands.gurus.weight.domain.repository.IGoalRepository
 import com.dmdbrands.gurus.weight.domain.repository.INotificationRepository
 import com.dmdbrands.gurus.weight.domain.repository.IUserSettingsRepository
 import com.dmdbrands.gurus.weight.domain.services.IOfflineHandlerService
+import kotlinx.coroutines.flow.first
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -37,6 +39,7 @@ class OfflineHandlerService
     private val notificationRepository: INotificationRepository,
     private val userSettingsRepository: IUserSettingsRepository,
     private val goalRepository: IGoalRepository,
+    private val babyProfileRepository: IBabyProfileRepository,
     connectivityObserver: IConnectivityObserver,
     dialogQueueService: IDialogQueueService,
     appNavigationService: IAppNavigationService,
@@ -63,6 +66,9 @@ class OfflineHandlerService
         syncBodyCompositionData()
         // Sync device data if there are unsynced devices
         syncDeviceData()
+        // Push pending baby creates/edits/deletes BEFORE entry sync (which runs after this in the
+        // reconnect pipeline) so an offline baby has its server id before its entries are POSTed.
+        syncBabyData()
         // Sync notification settings if there are unsynced notification accounts
         syncNotificationData()
         syncGoalData()
@@ -233,6 +239,20 @@ class OfflineHandlerService
         AppLog.i(TAG, "Successfully synced weightless settings for account: ${unsyncedAccount.id}")
       } catch (e: Exception) {
         AppLog.e(TAG, "Failed to sync weightless settings for account ${unsyncedAccount.id}", e)
+      }
+    }
+
+    /**
+     * Pushes pending offline baby profile mutations (create/edit/delete) for the active account.
+     * Delegated to the repository, which owns the DAO + API and the id-remap (MOB-1476).
+     */
+    private suspend fun syncBabyData() {
+      try {
+        val accountId = accountRepository.getActiveAccount().first()?.id ?: return
+        babyProfileRepository.syncPendingBabies(accountId)
+        AppLog.i(TAG, "Successfully synced pending baby profiles for account: $accountId")
+      } catch (e: Exception) {
+        AppLog.e(TAG, "Error syncing baby profiles", e)
       }
     }
 

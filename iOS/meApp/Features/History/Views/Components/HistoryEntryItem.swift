@@ -157,6 +157,7 @@ struct HistoryEntryItem: View {
                                 size: entry.metricItems.count
                             ) { onMetricTap(entry, item.metric) }
                             .id("\(entry.id.uuidString)-metric-\(index)")
+                            .appAccessibility(id: "\(AccessibilityID.historyMetricRow)_\(entry.id.uuidString)_\(item.metric.rawValue)")
                         }
                     }
                 }

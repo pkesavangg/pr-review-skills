@@ -41,6 +41,12 @@ data class EntryEntity(
     override val attempts: Int = 0,
     override val unit: WeightUnit = WeightUnit.LB,
     override val isSynced: Boolean = false,
+    /**
+     * True while the row is in the swipe-delete Undo window: hidden from all reads (via
+     * `entry_view`) but not yet actually deleted. Committed to a real delete when the window
+     * elapses or on next app launch; cleared back to false on Undo. (MOB-1173 delete)
+     */
+    val pendingDelete: Boolean = false,
 ) : BaseEntryEntity
 
 interface BaseEntryEntity {
