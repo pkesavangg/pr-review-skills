@@ -86,6 +86,7 @@ struct CustomizeSettingsView: View {
         }
         .accessibilityLabel("\(item.title). \(item.subtitle)")
         .accessibilityHint(isSelected ? BtWifiScaleSetupStrings.A11y.settingsItemDoneHint : BtWifiScaleSetupStrings.A11y.settingsItemHint)
+        .appAccessibility(id: AccessibilityID.customizeSettingsItem(item.rawValue))
     }
 }
 

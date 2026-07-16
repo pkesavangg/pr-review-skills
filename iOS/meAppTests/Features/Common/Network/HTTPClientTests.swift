@@ -71,6 +71,21 @@ struct HTTPClientTests {
         #expect(true)
     }
 
+    @Test("send returns EmptyResponse for 2xx with non-JSON plain-text body")
+    func send_emptyResponse_nonJSONSuccessBody_returnsEmptyResponse() async throws {
+        // Regression: POST /integrations/suggestion returns 201 with a plain-text
+        // "Created" body. Callers ask for EmptyResponse, so the body must be ignored
+        // instead of failing a JSON decode and surfacing a fake "couldn't send" error.
+        let (sut, _, _, _, _) = makeSUT { request in
+                let response = makeHTTPResponse(statusCode: 201, request: request)
+                return (Data("Created".utf8), response)
+            }
+
+        let result: EmptyResponse = try await sut.send(.login, method: .post, body: EmptyBody())
+        _ = result
+        #expect(true)
+    }
+
     @Test("get throws decodingError for 204 no content with non-empty response type")
     func get_noContent_withDecodableType_throwsDecodingError() async {
         let (sut, _, _, _, _) = makeSUT { request in

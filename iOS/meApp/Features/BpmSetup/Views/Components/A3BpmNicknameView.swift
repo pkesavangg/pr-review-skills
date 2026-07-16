@@ -30,7 +30,8 @@ struct A3BpmNicknameView: View {
                     submitLabel: .done
                 ),
                 value: $nickname,
-                focusedField: $focusedField
+                focusedField: $focusedField,
+                accessibilityIdentifier: AccessibilityID.bpmNicknameField
             ) {
                 focusedField = nil
             }

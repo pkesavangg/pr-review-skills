@@ -10,6 +10,18 @@
 > - `performance-remediation-plan.md` — task definitions + acceptance criteria (the "what").
 > - `performance-issues-overview.md` — plain-English summary for non-engineers.
 > - `MOB-1433-implementation-plan.md` — the entry fetch/sync pipeline that already shipped (the "already done").
+>
+> **⚠️ Update (post-MOB-518, and post the MOB-516 cold-login fix).** Two things have shipped since this plan
+> was written:
+> - **Task 2 (chart engine) largely shipped in MOB-518 (PR #2237)** — H1 (percentile binary-search via
+>   `PercentileChartWindowing`/`SortedArrayIndex`) + a v2 weight-graph engine rebuild. The only Task-2 residual
+>   is **H3** (Step 2b — the `visibleChartSeriesData` cache re-key), which was **left as-is (option C)**:
+>   the property still exists and is still keyed on raw `scrollPosition` (`BaseSectionViewModel.swift:219`).
+> - **The cold-login main-thread hang** (a MOB-1433 follow-up, not in the table below) shipped separately in
+>   PR #2268 — see [`MOB-516-cold-login-hang-fix.md`](MOB-516-cold-login-hang-fix.md).
+>
+> So the current top lever is **Task 1's durable incremental-aggregation**, not Task 2. The per-task detail
+> below is retained; treat the Task-2 sections as the record of what shipped + the H3 residual.
 
 **Platform:** iOS only (`meApp/iOS/meApp`) · **Base branch:** `develop` · **Commit/branch prefix:** `MOB-XXXX` per task.
 
@@ -24,8 +36,8 @@ than the companion docs (written 2026-06-05) first framed it.
 
 | # | Task | Status | Fixes the user-visible… | Blocks 5.1.0? |
 |---|------|--------|--------------------------|:---:|
-| **2** | **Chart engine** | 🔴 **Not started — DO FIRST** | graph **stutter/hang while scrolling** | **Yes** |
-| **1** | Data load — incremental aggregation | 🟡 residual (off-main move done) | **slow screen-open on 10k accounts** | Yes (residual) |
+| **1** | Data load — incremental aggregation | 🟡 **residual — TOP LEVER NOW** (off-main move done) | **slow screen-open on 10k accounts** | Yes (residual) |
+| **2** | **Chart engine** | 🟡 **largely shipped (MOB-518)** — residual = H3 cache re-key | graph **stutter/hang while scrolling** | Unblocked |
 | **3** | Disk writes & logging | 🟡 residual (merge batching done) | battery / disk churn during sync | No |
 | **4** | Memory/CPU + MetricKit | 🟡 residual (HealthKit settings done) | memory / background kills / field data | No |
 
@@ -54,7 +66,11 @@ each section's header and in `performance-remediation-plan.md` §"Rough sizing".
 
 ---
 
-## 2. TASK 2 — Chart engine: kill scroll stutter + make it multi-series-ready 🔴 START HERE
+## 2. TASK 2 — Chart engine: kill scroll stutter + make it multi-series-ready ✅ LARGELY SHIPPED (MOB-518, PR #2237)
+
+> **Status:** H1 (percentile path) + the v2 weight-graph engine shipped in MOB-518. Residual = **H3** (Step 2b,
+> the `visibleChartSeriesData` cache re-key), left as-is (option C). The "how to fix" below is retained as the
+> shipped record + the H3 to-do; see the §2.1 execution log for what landed.
 
 **What it's for.** Two hot paths run per-frame during a scroll gesture instead of once per settle. On the
 weight chart it's a hitch; on the 5.1.0 baby percentile graph (5–10 lines) it multiplies into a hang. Fixing it
@@ -127,7 +143,7 @@ settles on finger-lift, the y-axis matches the visible window, and the crosshair
 Animation Hitches trace (Profile build, physical device) on a **5k-entry weight** account **and** a **baby
 percentile** account shows steady-state scroll **< ~5 ms/s hitch, no frame > 16.7 ms.**
 
-### 2.1 Execution log & open decision (MOB-518, branch `MOB-518-chart-engine-scroll-hitch-multi-series`) — 2026-07-08
+### 2.1 Execution log & open decision (MOB-518, branch `MOB-518-chart-engine-scroll-hitch-multi-series`) — 2026-07-08 · ✅ MERGED (PR #2237)
 
 **Step 2a (H1) — DONE.**
 - Added a generic O(log n) `SortedArrayIndex.first/last(in:where:)` helper (`GraphDataPreparer.swift`, top-level);
@@ -177,10 +193,12 @@ Step 2b) would optimise a property that never runs during a real scroll. Pick on
   path" that isn't hot. Prevents the next reader from re-chasing it (the systematic fix).
 - [ ] **B — Re-key it anyway** on a quantized scroll bucket + dataHash (as originally written), in case it is
   re-wired into the render path later. (Optimises code nothing currently calls.)
-- [ ] **C — Leave as-is**, just document that it is orphaned.
+- [x] **C — Leave as-is**, just document that it is orphaned. ← **this is what shipped.** MOB-518 merged
+  (PR #2237) with `visibleChartSeriesData` **not** deleted and **not** re-keyed — still keyed on raw
+  `scrollPosition` (`BaseSectionViewModel.swift:219`). 2a delivered the live win; 2b stays a documented cleanup
+  (the H3 residual). Revisit only if the property is ever re-wired into the live render path.
 
-*Default if unanswered: I hold at C (no deletion of a tested protocol API without your call) — 2a already delivers
-the live win; 2b is cleanup either way.*
+*(Resolved to C as the default anticipated.)*
 
 ---
 

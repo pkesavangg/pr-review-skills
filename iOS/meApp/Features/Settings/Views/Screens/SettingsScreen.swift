@@ -293,6 +293,7 @@ struct SettingsScreen: View {
                     settingsStore.openPrivacy()
                 })
             .listRowInsets()
+            .appAccessibility(id: AccessibilityID.settingsRowPrivacyPolicy)
 
             ActionListItemView(config: ActionListItemConfig(
                 title: settingsLang.termsOfService
@@ -300,6 +301,7 @@ struct SettingsScreen: View {
                     settingsStore.openTerms()
                 })
             .listRowInsets()
+            .appAccessibility(id: AccessibilityID.settingsRowTermsOfService)
 
             ActionListItemView(config: ActionListItemConfig(
                 title: settingsLang.greaterGoodsWebsite
@@ -307,6 +309,7 @@ struct SettingsScreen: View {
                     settingsStore.openGreaterGoods()
                 })
             .listRowInsets()
+            .appAccessibility(id: AccessibilityID.settingsRowGreaterGoods)
         }
         .listRowBackground(theme.backgroundPrimary)
         .listRowSeparatorTint(theme.statusUtilityPrimary)
@@ -339,6 +342,7 @@ struct SettingsScreen: View {
                         settingsStore.handleLogoutForAllAccounts()
                     })
                 .listRowInsets()
+                .appAccessibility(id: AccessibilityID.settingsRowLogoutAll)
             }
 
             ActionListItemView(config: ActionListItemConfig(

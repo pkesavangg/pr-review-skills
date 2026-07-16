@@ -75,7 +75,7 @@ import android.content.Context
     BabyEntryEntity::class,
   ],
   views = [ActiveEntryEntity::class],
-  version = 10,
+  version = 11,
   exportSchema = true,
 )
 @TypeConverters(DateConverter::class, JsonConverter::class, WeightUnitConverter::class)
@@ -313,6 +313,17 @@ abstract class AppDatabase : RoomDatabase() {
       }
     }
 
+    // ----- Migration 10 → 11 -----
+    // baby — add existsOnServer flag for offline baby create/sync (MOB-1476). New column defaults to
+    // 0; every pre-existing baby was created on the server (the only way a row existed before this
+    // ticket), so backfill them to 1. Offline creates set it to 0 explicitly in code.
+    internal val MIGRATION_10_11 = object : Migration(10, 11) {
+      override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL("ALTER TABLE baby ADD COLUMN existsOnServer INTEGER NOT NULL DEFAULT 0")
+        db.execSQL("UPDATE baby SET existsOnServer = 1")
+      }
+    }
+
     @Volatile
     private var instance: AppDatabase? = null
 
@@ -350,7 +361,7 @@ abstract class AppDatabase : RoomDatabase() {
                 }
               },
             )
-            .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10)
+            .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10, MIGRATION_10_11)
             .fallbackToDestructiveMigration(false)
             .build()
         Companion.instance = instance

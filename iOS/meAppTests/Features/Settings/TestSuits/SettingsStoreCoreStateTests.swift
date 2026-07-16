@@ -12,26 +12,9 @@ extension SettingsStoreTests {
             let accountService = MockAccountService()
             accountService.seedAccounts([account, SettingsStoreTestFixtures.makeAccount(id: "acct-2", email: "two@example.com", firstName: "Two")], active: account)
             let entryService = MockEntryService()
-            entryService.getMonthsAllResult = .success([
-                HistoryMonth(
-                    id: "2026-03",
-                    weight: 150,
-                    entryTimestamp: "2026-03",
-                    count: 3,
-                    weights: nil,
-                    change: nil,
-                    bodyFat: nil,
-                    muscleMass: nil,
-                    water: nil,
-                    bmi: nil,
-                    date: nil,
-                    time: nil,
-                    month: "03",
-                    year: "2026",
-                    min: nil,
-                    max: nil
-                )
-            ])
+            // MOB-516: `checkEntries()` now drives `hasEntries` off the cheap `getEntryCount()`
+            // instead of the full `getMonthsAll()` read, so seed the count the store actually reads.
+            entryService.getEntryCountResult = .success(3)
             let (store, _, _, _, _) = SettingsStoreTestFixtures.makeSUT(accountService: accountService, entryService: entryService)
 
             await SettingsStoreTestFixtures.waitUntil {
@@ -41,7 +24,7 @@ extension SettingsStoreTests {
             #expect(store.activeAccount?.accountId == account.accountId)
             #expect(store.canShowLogOutAllItems == true)
             #expect(store.hasEntries == true)
-            #expect(entryService.getMonthsAllCalls > 0)
+            #expect(entryService.getEntryCountCalls > 0)
         }
 
         @Test("derived texts reflect active account settings")
@@ -248,33 +231,14 @@ extension SettingsStoreTests {
             let accountService = MockAccountService()
             accountService.seedAccounts([account], active: account)
             let entryService = MockEntryService()
-            entryService.getMonthsAllResult = .success([])
+            entryService.getEntryCountResult = .success(0)
             let (store, _, _, _, _) = SettingsStoreTestFixtures.makeSUT(
                 accountService: accountService,
                 entryService: entryService,
                 seedDefaultAccount: false
             )
             await SettingsStoreTestFixtures.waitUntil { store.hasEntries == false }
-            entryService.getMonthsAllResult = .success([
-                HistoryMonth(
-                    id: "2026-03",
-                    weight: 150,
-                    entryTimestamp: "2026-03",
-                    count: 3,
-                    weights: nil,
-                    change: nil,
-                    bodyFat: nil,
-                    muscleMass: nil,
-                    water: nil,
-                    bmi: nil,
-                    date: nil,
-                    time: nil,
-                    month: "03",
-                    year: "2026",
-                    min: nil,
-                    max: nil
-                )
-            ])
+            entryService.getEntryCountResult = .success(3)
 
             entryService.entrySaved.send(EntryNotification(from: EntryTestFixtures.makeEntry()))
             await SettingsStoreTestFixtures.waitUntil { store.hasEntries == true }
@@ -498,33 +462,16 @@ extension SettingsStoreTests {
             let accountService = MockAccountService()
             accountService.seedAccounts([account], active: account)
             let entryService = MockEntryService()
-            entryService.getMonthsAllResult = .success([
-                HistoryMonth(
-                    id: "2026-03",
-                    weight: 150,
-                    entryTimestamp: "2026-03",
-                    count: 3,
-                    weights: nil,
-                    change: nil,
-                    bodyFat: nil,
-                    muscleMass: nil,
-                    water: nil,
-                    bmi: nil,
-                    date: nil,
-                    time: nil,
-                    month: "03",
-                    year: "2026",
-                    min: nil,
-                    max: nil
-                )
-            ])
+            // MOB-516: initial state has entries, then a count failure must clear `hasEntries` —
+            // drive both through `getEntryCountResult`, the source `checkEntries()` now reads.
+            entryService.getEntryCountResult = .success(3)
             let (store, _, _, _, _) = SettingsStoreTestFixtures.makeSUT(
                 accountService: accountService,
                 entryService: entryService,
                 seedDefaultAccount: false
             )
             await SettingsStoreTestFixtures.waitUntil { store.hasEntries == true }
-            entryService.getMonthsAllResult = .failure(AccountTestError.apiFailed)
+            entryService.getEntryCountResult = .failure(AccountTestError.apiFailed)
 
             entryService.entryDeleted.send(EntryNotification(from: EntryTestFixtures.makeEntry()))
             await SettingsStoreTestFixtures.waitUntil { store.hasEntries == false }

@@ -97,6 +97,7 @@ struct BtWifiSetupErrorStateView: View {
                             action: onTryAgain
                         )
                         .accessibilityHint(ScaleSetupStrings.A11y.tryAgainHint)
+                        .appAccessibility(id: AccessibilityID.btWifiErrorTryAgainButton)
 
                         ButtonView(
                             text: commonStrings.support,
@@ -106,6 +107,7 @@ struct BtWifiSetupErrorStateView: View {
                             action: onSupport
                         )
                         .accessibilityHint(ScaleSetupStrings.A11y.supportHint)
+                        .appAccessibility(id: AccessibilityID.btWifiErrorSupportButton)
                     }
                     .padding(.top, .spacingXL)
                 }

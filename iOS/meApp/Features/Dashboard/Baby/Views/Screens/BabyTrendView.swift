@@ -96,6 +96,7 @@ struct BabyTrendView: View {
                 }
             }
             .buttonStyle(.plain)
+            .appAccessibility(id: AccessibilityID.babyPercentilesButton)
             .accessibilityLabel(babyInfoAccessibilityLabel)
             .accessibilityHint(BabyDashboardStrings.accPercentilesHint)
 
@@ -206,6 +207,7 @@ struct BabyTrendView: View {
                 )
         }
         .buttonStyle(.plain)
+        .appAccessibility(id: "\(AccessibilityID.babyMetricToggle)_\(metric.rawValue.lowercased())")
         .accessibilityAddTraits(displayState.selectedMetric == metric ? .isSelected : [])
     }
 }

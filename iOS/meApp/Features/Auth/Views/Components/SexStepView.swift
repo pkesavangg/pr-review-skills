@@ -26,6 +26,7 @@ struct SexStepView: View {
                         signupStore.signupForm.gender.value = sex.rawValue
                     }
                     .accessibilityValue(isSelected ? accLang.accSelectedValue : accLang.accNotSelectedValue)
+                    .appAccessibility(id: "\(AccessibilityID.signupSexButton)_\(sex.rawValue)")
                 }
             }
             .frame(maxWidth: .infinity, alignment: .center)

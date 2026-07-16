@@ -52,10 +52,12 @@ struct BabyScaleSetupScreen: View {
                             AppIconView(icon: AppAssets.helpCircle)
                                 .foregroundColor(theme.statusIconPrimary)
                         }
+                        .appAccessibility(id: AccessibilityID.scaleSetupHelpButton)
                     },
                     onLeadingTap: { setupStore.handleExit() },
                     onTrailingTap: {},
-                    canShowPresentationIndicator: true
+                    canShowPresentationIndicator: true,
+                    leadingAccessibilityID: AccessibilityID.scaleSetupCloseButton
                 )
 
                 // MARK: - Step Views
@@ -100,6 +102,7 @@ struct BabyScaleSetupScreen: View {
             }
             setupStore.cleanup()
         }
+        .screenAccessibilityRoot(AccessibilityID.babyScaleSetupScreenRoot)
     }
 
     /// Steps where the footer should show "FINISH" instead of "NEXT".
@@ -123,6 +126,7 @@ struct BabyScaleSetupScreen: View {
                 withAnimation { hideKeyboard() }
                 setupStore.handleBackButtonClick()
             }
+            .appAccessibility(id: AccessibilityID.scaleSetupBackButton)
 
             Spacer()
 
@@ -136,6 +140,7 @@ struct BabyScaleSetupScreen: View {
                     withAnimation { hideKeyboard() }
                     setupStore.showSkipBabyProfileDialog()
                 }
+                .appAccessibility(id: AccessibilityID.scaleSetupSkipButton)
 
                 Spacer()
             }
@@ -151,6 +156,7 @@ struct BabyScaleSetupScreen: View {
                 withAnimation { hideKeyboard() }
                 setupStore.handleNextButtonClick()
             }
+            .appAccessibility(id: AccessibilityID.scaleSetupNextButton)
         }
     }
 
@@ -203,6 +209,7 @@ struct BabyScaleSetupScreen: View {
                     size: .large,
                     isDisabled: false
                 ) { onConfirm() }
+                .appAccessibility(id: AccessibilityID.babySkipDialogConfirmButton)
 
                 ButtonView(
                     text: lang.SkipDialog.goBack,
@@ -210,6 +217,7 @@ struct BabyScaleSetupScreen: View {
                     size: .large,
                     isDisabled: false
                 ) { onCancel() }
+                .appAccessibility(id: AccessibilityID.babySkipDialogCancelButton)
             }
             .padding(.spacingMD)
             .background(theme.backgroundPrimary)

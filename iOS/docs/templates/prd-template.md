@@ -55,6 +55,23 @@
 
 ---
 
+## Documentation Impact
+
+Which maintained docs / Confluence pages this change will outdate. Derive from the source→doc
+map (`scripts/docs-freshness-check.sh` / the `/update-architecture` Scope table) and the
+Confluence map in `docs/confluence.md`. Put a single `—` row and tick "No documentation impact"
+if the change touches nothing documented.
+
+| Change area | Local doc to update | Confluence page |
+|-------------|---------------------|-----------------|
+| {e.g. new SwiftData model / schema field} | `docs/database-schema.md` | meApp - Development (`1552482315`) |
+| {e.g. new feature / service / DI} | `iOS/architecture.md` | meApp - Development (`1552482315`) |
+| {e.g. new/changed skill · run.sh · CI · hook} | `docs/automation.md` | meApp - Development (`1552482315`) |
+
+- [ ] No documentation impact — the change touches nothing in the maps above.
+
+---
+
 ## New Mocks Required
 
 | Mock | Protocol | Location |
@@ -93,5 +110,7 @@ _(Run `/gen-mock-single` for each, or spawn `gen-mock-batch` agent if 2+)_
 - [ ] Scaffold test file (`/gen-test-file`)
 - [ ] Write all tests, reach coverage threshold
 - [ ] Run `coverage-gap-finder` agent if any file is below threshold
+- [ ] Update affected docs per **Documentation Impact** (`/update-architecture` → `architecture.md` + `docs/`)
+- [ ] Mirror to Confluence if a page is affected (`/update-confluence` — drafts, then you approve before it writes)
 - [ ] Self-review (`/self-review`)
 - [ ] Commit, raise PR, log work

@@ -87,6 +87,7 @@ struct BabyListStepView: View {
                     onAddBaby()
                 }
                 .padding(.top, .spacingSM)
+                .appAccessibility(id: AccessibilityID.babyListAddButton)
             }
         }
     }
@@ -116,6 +117,7 @@ struct BabyListStepView: View {
                 onAddBaby()
             }
             .frame(maxWidth: .infinity, alignment: .center)
+            .appAccessibility(id: AccessibilityID.babyListAddButton)
 
             Spacer()
         }

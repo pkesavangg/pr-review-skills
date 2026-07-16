@@ -41,6 +41,7 @@ struct LoadingScreen: View {
                 VersionView()
             }
         }
+        .screenAccessibilityRoot(AccessibilityID.loadingScreenRoot)
     }
 
 }

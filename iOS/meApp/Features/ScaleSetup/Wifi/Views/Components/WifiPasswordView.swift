@@ -42,6 +42,7 @@ struct WifiPasswordView: View {
                             ),
                             value: $store.networkForm.ssid.value,
                             focusedField: $focusedField,
+                            accessibilityIdentifier: AccessibilityID.wifiNetworkNameField,
                             onCommit: {
                                 store.networkForm.touchAndValidateSSID()
                                 focusedField = .password
@@ -77,6 +78,7 @@ struct WifiPasswordView: View {
                             ),
                             value: $store.networkForm.password.value,
                             focusedField: $focusedField,
+                            accessibilityIdentifier: AccessibilityID.wifiPasswordField,
                             onCommit: {
                                 store.networkForm.touchAndValidatePassword()
                                 hideKeyboard()
@@ -94,6 +96,7 @@ struct WifiPasswordView: View {
                         }
                         
                         CustomToggleView(isOn: $store.networkForm.networkHasNoPassword, text: lang.networkHasNoPassword)
+                            .appAccessibility(id: AccessibilityID.wifiNoPasswordToggle)
                             .padding(.top, 0)
                     }
                     

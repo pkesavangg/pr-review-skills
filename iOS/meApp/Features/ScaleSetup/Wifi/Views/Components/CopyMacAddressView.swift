@@ -48,6 +48,7 @@ struct CopyMacAddressView: View {
                     isDisabled: false,
                     action: copyMacAddress
                 )
+                .appAccessibility(id: AccessibilityID.wifiCopyMacAddressButton)
                 .frame(maxWidth: .infinity, alignment: .center)
             }
         }

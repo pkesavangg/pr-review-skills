@@ -57,6 +57,7 @@ struct DeviceModesScreen: View {
                                 Image(AppAssets.helpCircle)
                                     .accessibilityLabel("Help")
                             })
+                            .appAccessibility(id: AccessibilityID.deviceModesHelpButton)
                         } else {
                             ButtonView(
                                 text: CommonStrings.save.uppercased(),
@@ -71,6 +72,7 @@ struct DeviceModesScreen: View {
                                     }
                                 }
                             .accessibilityLabel("Save scale mode preferences")
+                            .appAccessibility(id: AccessibilityID.deviceModesSaveButton)
                         }
                     }
                 },
@@ -84,9 +86,10 @@ struct DeviceModesScreen: View {
                     }
                 },
                 onTrailingTap: {},
-                canShowBorder: true
+                canShowBorder: true,
+                leadingAccessibilityID: AccessibilityID.deviceModesBackButton
             )
-            
+
             if viewModel.isWeighOnlyModeEnabledByOthers {
                 weightOnlyInfo()
                     .padding([.horizontal, .top], .spacingSM)
@@ -108,6 +111,7 @@ struct DeviceModesScreen: View {
         }
         .background(theme.backgroundSecondary.ignoresSafeArea())
         .navigationBarBackButtonHidden(true)
+        .screenAccessibilityRoot(AccessibilityID.deviceModesScreenRoot)
         .task {
             // Load scale mode data when the screen appears
             await viewModel.loadScaleModeData()

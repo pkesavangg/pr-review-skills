@@ -30,6 +30,7 @@ struct HelpModalView: View {
                     AppIconView(icon: appAssets.xmarkSmall, size: IconSize(width: 20, height: 20))
                         .foregroundColor(theme.statusIconPrimary)
                 }
+                .appAccessibility(id: AccessibilityID.helpModalCloseButton)
             }
             .padding(.bottom, .spacingXS)
             
@@ -54,15 +55,19 @@ struct HelpModalView: View {
                     ButtonView(text: helpLang.gettingStartedGuide, type: .inlineTextPrimary, size: .large, isDisabled: false) {
                         openProductManual(sku: sku)
                     }
+                    .appAccessibility(id: AccessibilityID.helpModalGettingStartedButton)
                 }
                 CallButtonView()
+                    .appAccessibility(id: AccessibilityID.helpModalCallButton)
                 EmailButtonView()
+                    .appAccessibility(id: AccessibilityID.helpModalEmailButton)
             }
             .padding(.top, .spacingLG)
         }
         .padding(.spacingMD)
         .background(theme.backgroundSecondary)
         .cornerRadius(.radiusXL)
+        .screenAccessibilityRoot(AccessibilityID.helpModalScreenRoot)
         .inAppBrowser(
             url: productURL ?? fallbackProductURL,
             isPresented: $showProductBrowser
