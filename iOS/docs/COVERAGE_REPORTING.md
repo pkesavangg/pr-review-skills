@@ -30,7 +30,7 @@ python3 --version
 ```
 
 ## Command 1 (Interactive)
-Run from repo root (`meApp-1`):
+Run from the repo root:
 
 ```bash
 CONFIGURATION=Dev ./iOS/scripts/run_tests_with_coverage.sh
@@ -39,7 +39,7 @@ CONFIGURATION=Dev ./iOS/scripts/run_tests_with_coverage.sh
 No manual `SCHEME` or `DEVICE_ID` is required. The script prompts for both.
 
 ## Command 2 (Direct, No Prompts)
-Run from repo root (`meApp-1`):
+Run from the repo root:
 
 ```bash
 SCHEME="meAppTests 1" DEVICE_ID=<device-udid> CONFIGURATION=Dev ./iOS/scripts/run_tests_with_coverage.sh
