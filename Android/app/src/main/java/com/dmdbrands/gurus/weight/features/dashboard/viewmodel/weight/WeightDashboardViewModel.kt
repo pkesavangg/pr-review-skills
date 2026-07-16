@@ -150,7 +150,10 @@ class WeightDashboardViewModel @Inject constructor(
     val sorted = entries.sortedBy { it.getTimeStamp() }
     val pairs = sorted.mapNotNull { e ->
       val w = e.weight
-      if (w.isFinite()) e.getTimeStamp() to w else null
+      // Only plot a real (positive) weight. A 0.0 is finite but not a valid reading — plotting it
+      // drew a spurious point at the zero baseline on an otherwise-empty graph (MOB-1537). This
+      // matches the axis seed filter (> 0.0) so the point and the Y-range agree.
+      if (w.isFinite() && w > 0.0) e.getTimeStamp() to w else null
     }
     if (pairs.isEmpty()) return emptyList()
     return listOf(SeriesData(pairs.map { it.first }, pairs.map { it.second }))
