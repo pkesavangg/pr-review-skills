@@ -67,7 +67,7 @@ struct MyAccountsScreen: View {
             }
                 .interactiveDismissDisabled()
         }
-        .navigationBarBackButtonHidden(true)
+        .navigationBarHidden(true)
         .screenAccessibilityRoot(AccessibilityID.myAccountsScreenRoot)
     }
 
