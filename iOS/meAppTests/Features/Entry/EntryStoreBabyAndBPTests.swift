@@ -284,15 +284,11 @@ struct EntryStoreBabyAndBPTests {
         store.babyForm.lb.validate()
         #expect(store.babyWeightError != nil)
 
-        // lb/oz reports per-field: babyWeightError stays nil and the error surfaces on the
-        // specific field (here, ounces) via babyOuncesError.
         store.babyWeightUnit = .lbsOz
         store.babyForm.ounces.value = "99"  // above max 15.9
         store.babyForm.ounces.markAsTouched()
         store.babyForm.ounces.validate()
-        #expect(store.babyWeightError == nil)
-        #expect(store.babyOuncesError != nil)
-        #expect(store.babyPoundsError == nil)
+        #expect(store.babyWeightError != nil)
     }
 
     @Test("babyLengthError reflects the selected length unit")
