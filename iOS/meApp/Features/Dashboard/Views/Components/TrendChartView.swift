@@ -100,6 +100,14 @@ struct TrendChartView: View {
         let domainWidth = model.xDomain.upperBound.timeIntervalSince(model.xDomain.lowerBound)
         return domainWidth > model.visibleDomainLength + 1
     }
+
+    /// Leading inset that frames the plot's left edge (see the `.padding(.leading:)` at the end of `body`).
+    /// Applied only when the chart is NOT scrollable — which is exactly the set of cases we want it in:
+    /// TOTAL (never scrollable), the EMPTY state (no data series), and a week/month/year whose data fits a
+    /// single window. A scrollable multi-window week/month/year is deliberately left flush: its left frame is
+    /// the period-boundary gridline (Sunday / 1st / Jan 1) and content scrolls beneath it, so an inset there
+    /// would just re-open the leading gap the `HorizontalEdgeClip` exists to hide. (MOB-1516)
+    private var leadingInset: CGFloat { isScrollable ? 0 : .spacingSM }
     /// Fixed width the y-axis number is centered in, so it sits off the trailing screen edge with a gap
     /// (parity with the legacy `BaseGraphView.yAxisLabelWidth`).
     private let yAxisLabelWidth: CGFloat = 40
@@ -535,7 +543,9 @@ struct TrendChartView: View {
         // Inset the plot from the left screen edge so the leading "starting" rule (and the data line) aren't
         // flush against it — the trailing edge is already inset by the y-axis label column. Aligns the plot's
         // left edge with the header title (same `.spacingSM` leading), giving the left a framed look too.
-        .padding(.leading, .spacingSM)
+        // Applied only when the chart is NOT scrollable (total, empty state, and single-window week/month/year)
+        // — a scrollable multi-window week/month/year stays flush; see `leadingInset`. (MOB-1516)
+        .padding(.leading, leadingInset)
     }
 }
 

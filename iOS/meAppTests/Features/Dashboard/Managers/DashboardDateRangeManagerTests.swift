@@ -272,6 +272,32 @@ struct DashboardDateRangeManagerTests {
         #expect(total.operations.map { $0.period } == ["2026-03-02", "2026-03-03", "2026-03-04"])
     }
 
+    @Test("month operations: day-snapping keeps a partially-visible edge day in the window (Apple-Health parity)")
+    func monthOperationsDaySnapIncludesPartialEdgeDay() {
+        let sut = makeSUT()
+        // Daily dots sit at local midnight; a mid-day left edge must still count the edge day, so the
+        // window average covers whole visible days (Apple Health) — mirrors the .week branch. The old
+        // exact-instant filter dropped the Mar 15 dot because its midnight < the 12:00 scroll instant.
+        let ops = [
+            DashboardTestFixtures.makeSummary(period: "2026-03-15", date: date("2026-03-15")),
+            DashboardTestFixtures.makeSummary(period: "2026-03-20", date: date("2026-03-20")),
+            DashboardTestFixtures.makeSummary(period: "2026-04-02", date: date("2026-04-02"))
+        ]
+
+        let result = sut.getOperationsForLabelDateRange(
+            period: .month,
+            xScrollPosition: isoDate("2026-03-15T12:00:00Z"),   // mid-day → hits the visible-window branch
+            visibleDomainLength: { _ in 20 * 24 * 60 * 60 },     // < a month → no fully-contained calendar month
+            continuousOperations: ops,
+            dateBounds: nil,
+            cachedPeriod: nil,
+            cachedScrollPos: nil,
+            cachedOps: []
+        )
+
+        #expect(result.operations.map(\.period) == ["2026-03-15", "2026-03-20", "2026-04-02"])
+    }
+
     private func date(_ value: String) -> Date {
         DateTimeTools.getDateFromDateString(value, format: "yyyy-MM-dd")
     }
