@@ -57,6 +57,7 @@ final class MockScaleSetupBluetoothService: BluetoothServiceProtocol {
 
     // MARK: - Device Synchronisation
     func resyncAndScan() async -> Result<Void, BluetoothServiceError> { .success(()) }
+    func refreshScanProfileForNonR4Scales() async {}
     func syncDevices(_ devices: [Device]) {}
 
     // MARK: - Device CRUD

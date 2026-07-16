@@ -369,13 +369,17 @@ struct BabyEntriesIntegrationTests {
     func remapBabyIdRewritesMatchingEntries() async throws {
         let repo = MockEntryRepository()
         let matching = Entry(
-            entryTimestamp: "2026-01-01T00:00:00Z", accountId: "acct-1",
-            operationType: OperationType.create.rawValue, entryType: EntryType.baby.rawValue
+            entryTimestamp: "2026-01-01T00:00:00Z",
+            accountId: "acct-1",
+            operationType: OperationType.create.rawValue,
+            entryType: EntryType.baby.rawValue
         )
         matching.babyEntry = BabyEntry(babyId: "client-1", length: 500, weight: 30000)
         let other = Entry(
-            entryTimestamp: "2026-01-02T00:00:00Z", accountId: "acct-1",
-            operationType: OperationType.create.rawValue, entryType: EntryType.baby.rawValue
+            entryTimestamp: "2026-01-02T00:00:00Z",
+            accountId: "acct-1",
+            operationType: OperationType.create.rawValue,
+            entryType: EntryType.baby.rawValue
         )
         other.babyEntry = BabyEntry(babyId: "other-baby", length: 400, weight: 20000)
         repo.entries = [matching, other]
@@ -391,8 +395,10 @@ struct BabyEntriesIntegrationTests {
     func remapBabyIdNoOpWhenEqual() async throws {
         let repo = MockEntryRepository()
         let entry = Entry(
-            entryTimestamp: "2026-01-01T00:00:00Z", accountId: "acct-1",
-            operationType: OperationType.create.rawValue, entryType: EntryType.baby.rawValue
+            entryTimestamp: "2026-01-01T00:00:00Z",
+            accountId: "acct-1",
+            operationType: OperationType.create.rawValue,
+            entryType: EntryType.baby.rawValue
         )
         entry.babyEntry = BabyEntry(babyId: "same", length: 500, weight: 30000)
         repo.entries = [entry]
