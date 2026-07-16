@@ -4,5 +4,18 @@
     "security-guidance@claude-plugins-official": true,
     "claude-code-setup@claude-plugins-official": true,
     "skill-creator@claude-plugins-official": true
+  },
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "FILE=$(echo \"$CLAUDE_TOOL_INPUT\" | python3 -c \"import sys,json; d=json.load(sys.stdin); print(d.get('file_path',''))\" 2>/dev/null); ROOT=$(git rev-parse --show-toplevel 2>/dev/null); if [ -n \"$ROOT\" ] && [ -n \"$FILE\" ] && [ -f \"$ROOT/scripts/docs-freshness-check.sh\" ]; then bash \"$ROOT/scripts/docs-freshness-check.sh\" \"$FILE\"; fi"
+          }
+        ]
+      }
+    ]
   }
 }

@@ -20,7 +20,7 @@
 | Ticket | GG-**High**, **In Progress**, 5 pts, on **MOB DEV Sprint 31**, "Blocks 5.1.0", assignee Kesavan |
 | Dedicated MOB-517 commits | **None** — the overlapping work landed under **MOB-1433** (PR #2218) |
 | Core fix (pre-fetch signature gate) | ❌ **Not implemented** — the `toOperationDTO()` map still runs on every load |
-| Cold-login hang (Instruments, 2026-07-13) | ❌ **SEVERE — ~37 s of main-thread hangs** in a 59 s trace… |
+| Cold-login hang (Instruments, 2026-07-13) | ❌ **SEVERE — ~37 s of main-thread hangs** in a 59 s trace… **(now FIXED + merged under MOB-516, PR #2268 — see §9)** |
 | …but is it MOB-517's map? | ❌ **NO.** Attribution: `performDashboardDataLoad` ≈ **9 %**, `toOperationDTO` **0 %**. The freeze is **History `getMonthsAll` + on-login sync contention** (§2). |
 | MOB-517's actual severity | **Warm-load optimization** (latency/battery/multi-product), **not** the cold hang. Size it from a **warm** trace (§8). |
 | Label hygiene | ⚠️ carries only `ios`; missing `release-meapp-5.1.0` despite "Blocks 5.1.0" |
@@ -51,7 +51,7 @@ real cold-login blocker needs its **own** ticket (§9).
 - [x] **Downgrade MOB-517 to GG-Medium, do it as a warm-load optimization** — the cold trace proves it's not
   the hang; confirm the warm-load cost with a warm trace, then schedule *(recommended given §2).* 
 - [ ] **Defer MOB-517** — MOB-1433's off-main move is "good enough"; re-scope as a post-release optimization.
-- [ ] **Raise the cold-login-hang ticket first** (§9) — that is the actual 5.1.0 freeze, independent of MOB-517.
+- [x] **Raise the cold-login-hang ticket first** (§9) — ✅ **done and SHIPPED** as the MOB-516 cold-login fix (PR #2268); that was the actual 5.1.0 freeze, independent of MOB-517.
 
 ---
 
@@ -212,7 +212,13 @@ as a gate**.
 
 ---
 
-## 9. Related — the ACTUAL cold-login hang (separate ticket)
+## 9. Related — the ACTUAL cold-login hang (separate ticket) — ✅ SHIPPED
+
+> **Update:** this cold-login hang has since been **fixed and merged** under MOB-516 (PR #2268, merge commit
+> `dce7e549d`, branch `MOB-516-cold-login-hang-off-main`) — the four hot `@MainActor → worker` calls now run
+> from `Task.detached` contexts, moving the reads/merge off the main thread. See
+> [MOB-516-cold-login-hang-fix.md](MOB-516-cold-login-hang-fix.md) for the shipped mechanism. The framing below
+> is the original pre-fix analysis, kept for the trail.
 
 The §2 trace surfaced the real 5.1.0 cold-login blocker, which is **not** MOB-517:
 
