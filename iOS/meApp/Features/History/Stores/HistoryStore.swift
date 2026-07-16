@@ -70,17 +70,11 @@ final class HistoryStore: ObservableObject {
         return nil
     }
 
-    /// Lower bound for the baby history edit date picker. Dates before the selected
-    /// baby's birthday are disabled (greyed out, non-tappable) so an edited entry can't
-    /// be dated before the baby was born — no validation error is shown (MOB-1567).
-    /// Falls back to the historical default when no birthday is set, and ignores a
-    /// future birthday so the picker range stays valid (`start <= end`).
+    /// Lower bound for the baby history edit date picker — see
+    /// `ProductSelection.babyEntryMinimumDate` (birthday-anchored, Jan 1, 2000 fallback,
+    /// ignores future birthdays; MOB-1567).
     var babyEntryMinimumDate: Date {
-        guard case .baby(let profile) = productTypeStore.selectedItem,
-              let birthday = profile.birthday,
-              birthday <= Date()
-        else { return AppConstants.Entry.babyDatePickerMinimum }
-        return birthday
+        productTypeStore.selectedItem.babyEntryMinimumDate
     }
 
     // MARK: - UI Flags

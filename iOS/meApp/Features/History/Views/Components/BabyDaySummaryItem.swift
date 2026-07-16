@@ -15,8 +15,8 @@ struct BabyDaySummaryItem: View {
         let birthdayPrefix = day.isBirthday ? "\(HistoryListStrings.accBirthdayBalloonLabel), " : ""
         return birthdayPrefix
             + "\(dateText), \(day.entryCount) \(HistoryListStrings.entries), "
-            + "\(HistoryListStrings.weightWithPercentile(weightPercentileText)) \(weightText), "
-            + "\(HistoryListStrings.lengthWithPercentile(lengthPercentileText)) \(lengthText)"
+            + "\(weightSubLabel) \(weightText), "
+            + "\(lengthSubLabel) \(lengthText)"
     }
 
     /// Weight-for-age percentile shown beside the weight value ("50th"); "--" for a placeholder.
@@ -27,6 +27,21 @@ struct BabyDaySummaryItem: View {
     /// Length-for-age percentile shown beside the length value ("60th"); "--" for a placeholder.
     private var lengthPercentileText: String {
         BabyWeightPercentileCalculator.percentileDisplayText(day.lengthPercentile)
+    }
+
+    /// Weight sub-label: "weight (50th %)" when a percentile is available, else just "weight" —
+    /// avoids a "weight (-- %)" reading on placeholder / withheld-sex / no-value rows (MOB-1567).
+    private var weightSubLabel: String {
+        day.percentile < 0
+            ? HistoryListStrings.weight
+            : HistoryListStrings.weightWithPercentile(weightPercentileText)
+    }
+
+    /// Length sub-label: "length (60th %)" when a percentile is available, else just "length".
+    private var lengthSubLabel: String {
+        day.lengthPercentile < 0
+            ? HistoryListStrings.length
+            : HistoryListStrings.lengthWithPercentile(lengthPercentileText)
     }
 
     private var dateText: String {
@@ -78,7 +93,7 @@ struct BabyDaySummaryItem: View {
                         .lineLimit(1)
                         .fixedSize(horizontal: true, vertical: false)
 
-                    Text(HistoryListStrings.weightWithPercentile(weightPercentileText))
+                    Text(weightSubLabel)
                         .fontOpenSans(.subHeading2)
                         .foregroundColor(secondaryTextColor)
                         .lineLimit(1)
@@ -90,7 +105,7 @@ struct BabyDaySummaryItem: View {
                 VStack(alignment: .leading) {
                     BabyValueText(value: lengthText, onDarkBackground: isHighlighted)
 
-                    Text(HistoryListStrings.lengthWithPercentile(lengthPercentileText))
+                    Text(lengthSubLabel)
                         .fontOpenSans(.body3)
                         .foregroundColor(secondaryTextColor)
                         .lineLimit(1)

@@ -79,18 +79,10 @@ final class EntryStore: ObservableObject {
         return weightPresent && weightValid && lengthValid && babyForm.date.isValid
     }
 
-    /// Lower bound for the baby entry date picker. Dates before the selected baby's
-    /// birthday are disabled (greyed out, non-tappable) in the graphical picker so an
-    /// entry can't be dated before the baby was born — no validation error is shown
-    /// (MOB-1567). Falls back to the historical default (Jan 1, 2000) when the profile
-    /// has no birthday, and ignores a birthday in the future so the picker range stays
-    /// valid (`start <= end`).
+    /// Lower bound for the baby entry date picker — see `ProductSelection.babyEntryMinimumDate`
+    /// (birthday-anchored, Jan 1, 2000 fallback, ignores future birthdays; MOB-1567).
     var babyEntryMinimumDate: Date {
-        guard case .baby(let profile) = productTypeStore.selectedItem,
-              let birthday = profile.birthday,
-              birthday <= Date()
-        else { return AppConstants.Entry.babyDatePickerMinimum }
-        return birthday
+        productTypeStore.selectedItem.babyEntryMinimumDate
     }
 
     var maxSelectableTime: Date {
