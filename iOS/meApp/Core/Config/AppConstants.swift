@@ -7,6 +7,14 @@ struct AppConstants {
     struct Input {
         static let notesMaxCharacters = 280
     }
+
+    /// Constants for manual/edit entry forms
+    struct Entry {
+        /// Fallback lower bound for the baby entry date picker when the selected baby
+        /// has no birthday set. Jan 1, 2000 (MOB-1567). When a birthday is present the
+        /// picker uses that instead so earlier dates are disabled.
+        static let babyDatePickerMinimum = Date(timeIntervalSince1970: 946_684_800)
+    }
     struct TimeoutsAndRetention {
         static let logRetentionDays = 5 // Number of days to retain logs
         static let bluetoothTimeoutNs = 5 * 60 * 1_000_000_000 // Timeout for Bluetooth operations in seconds 5 minutes

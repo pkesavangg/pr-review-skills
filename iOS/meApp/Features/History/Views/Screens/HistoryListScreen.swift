@@ -201,6 +201,8 @@ struct HistoryListScreen: View {
                             BabyDaySummaryItem(day: day)
                                 .contentShape(Rectangle())
                                 .onTapGesture {
+                                    // A synthetic birthday row (no real entries) has no day detail.
+                                    guard !day.isBirthdayPlaceholder else { return }
                                     guard !isNavigating else { return }
                                     isNavigating = true
                                     router.navigate(to: .babyHistoryDayList(day: day))

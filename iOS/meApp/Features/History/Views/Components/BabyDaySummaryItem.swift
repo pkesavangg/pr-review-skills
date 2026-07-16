@@ -15,8 +15,18 @@ struct BabyDaySummaryItem: View {
         let birthdayPrefix = day.isBirthday ? "\(HistoryListStrings.accBirthdayBalloonLabel), " : ""
         return birthdayPrefix
             + "\(dateText), \(day.entryCount) \(HistoryListStrings.entries), "
-            + "\(HistoryListStrings.weight) \(weightText), "
-            + "\(HistoryListStrings.length) \(lengthText)"
+            + "\(HistoryListStrings.weightWithPercentile(weightPercentileText)) \(weightText), "
+            + "\(HistoryListStrings.lengthWithPercentile(lengthPercentileText)) \(lengthText)"
+    }
+
+    /// Weight-for-age percentile shown beside the weight value ("50th"); "--" for a placeholder.
+    private var weightPercentileText: String {
+        BabyWeightPercentileCalculator.percentileDisplayText(day.percentile)
+    }
+
+    /// Length-for-age percentile shown beside the length value ("60th"); "--" for a placeholder.
+    private var lengthPercentileText: String {
+        BabyWeightPercentileCalculator.percentileDisplayText(day.lengthPercentile)
     }
 
     private var dateText: String {
@@ -35,6 +45,11 @@ struct BabyDaySummaryItem: View {
         day.lengthDisplay
     }
 
+    /// A synthetic birthday row gets a purple highlight with inverse text (MOB-1450).
+    private var isHighlighted: Bool { day.isBirthdayPlaceholder }
+    private var primaryTextColor: Color { isHighlighted ? theme.textInverse : theme.textHeading }
+    private var secondaryTextColor: Color { isHighlighted ? theme.actionInverseSecondary : theme.textSubheading }
+
     var body: some View {
         VStack(spacing: 0) {
             HStack {
@@ -48,24 +63,24 @@ struct BabyDaySummaryItem: View {
                         }
                         Text(dateText)
                             .fontOpenSans(.heading5)
-                            .foregroundColor(theme.textHeading)
+                            .foregroundColor(primaryTextColor)
                     }
 
                     Text("\(day.entryCount) \(HistoryListStrings.entries)")
                         .fontOpenSans(.subHeading2)
-                        .foregroundColor(theme.textSubheading)
+                        .foregroundColor(secondaryTextColor)
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
 
                 // Weight
                 VStack(alignment: .leading) {
-                    BabyValueText(value: weightText)
+                    BabyValueText(value: weightText, onDarkBackground: isHighlighted)
                         .lineLimit(1)
                         .fixedSize(horizontal: true, vertical: false)
 
-                    Text(HistoryListStrings.weight)
+                    Text(HistoryListStrings.weightWithPercentile(weightPercentileText))
                         .fontOpenSans(.subHeading2)
-                        .foregroundColor(theme.textSubheading)
+                        .foregroundColor(secondaryTextColor)
                         .lineLimit(1)
                         .fixedSize(horizontal: true, vertical: false)
                 }
@@ -73,28 +88,31 @@ struct BabyDaySummaryItem: View {
 
                 // Length
                 VStack(alignment: .leading) {
-                    BabyValueText(value: lengthText)
+                    BabyValueText(value: lengthText, onDarkBackground: isHighlighted)
 
-                    Text(HistoryListStrings.length)
+                    Text(HistoryListStrings.lengthWithPercentile(lengthPercentileText))
                         .fontOpenSans(.body3)
-                        .foregroundColor(theme.textSubheading)
+                        .foregroundColor(secondaryTextColor)
                         .lineLimit(1)
                         .fixedSize(horizontal: true, vertical: false)
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
 
-                // Chevron icon
-                AppIconView(icon: AppAssets.chevronRight, size: IconSize(
-                    width: 32, height: 32
-                ))
-                    .foregroundColor(theme.statusIconPrimary)
+                // No chevron on a 0-entry birthday placeholder row — it is not navigable (MOB-1450).
+                if !day.isBirthdayPlaceholder {
+                    AppIconView(icon: AppAssets.chevronRight, size: IconSize(
+                        width: 32, height: 32
+                    ))
+                        .foregroundColor(theme.statusIconPrimary)
+                }
             }
             .padding(.vertical, .spacingMD)
             .padding(.horizontal, .spacingSM)
+            .background(isHighlighted ? theme.babyScaleColor : Color.clear)
             .accessibilityElement(children: .ignore)
             .accessibilityLabel(combinedAccessibilityLabel)
-            .accessibilityHint(HistoryListStrings.accDayRowHint)
-            .accessibilityAddTraits(.isButton)
+            .accessibilityHint(day.isBirthdayPlaceholder ? "" : HistoryListStrings.accDayRowHint)
+            .accessibilityAddTraits(day.isBirthdayPlaceholder ? [] : .isButton)
             Divider()
                 .foregroundColor(theme.actionPrimary)
         }

@@ -48,8 +48,8 @@ struct EntryStoreBabyAndBPTests {
         return (store, entryService, notificationService, accountService, productTypeStore)
     }
 
-    private func makeBabyProfile(id: String = "baby-1") -> BabyProfile {
-        BabyProfile(id: id, name: "Aria")
+    private func makeBabyProfile(id: String = "baby-1", birthday: Date? = nil) -> BabyProfile {
+        BabyProfile(id: id, name: "Aria", birthday: birthday)
     }
 
     private func fillBabyLbsOz(_ store: EntryStore) {
@@ -60,6 +60,42 @@ struct EntryStoreBabyAndBPTests {
         store.babyForm.inches.value = "20"
         store.babyForm.date.value = Date()
         store.babyForm.time.value = Date()
+    }
+
+    // MARK: - babyEntryMinimumDate (MOB-1567)
+
+    @Test("babyEntryMinimumDate: returns the selected baby's birthday when set")
+    func babyEntryMinimumDateUsesBirthday() {
+        let (store, _, _, _, productTypeStore) = makeSUT()
+        let birthday = Calendar.current.date(byAdding: .month, value: -3, to: Date()) ?? Date()
+        productTypeStore.select(.baby(profile: makeBabyProfile(birthday: birthday)))
+
+        #expect(store.babyEntryMinimumDate == birthday)
+    }
+
+    @Test("babyEntryMinimumDate: falls back to the default when no birthday is set")
+    func babyEntryMinimumDateFallsBackWhenNoBirthday() {
+        let (store, _, _, _, productTypeStore) = makeSUT()
+        productTypeStore.select(.baby(profile: makeBabyProfile(birthday: nil)))
+
+        #expect(store.babyEntryMinimumDate == AppConstants.Entry.babyDatePickerMinimum)
+    }
+
+    @Test("babyEntryMinimumDate: ignores a future birthday so the picker range stays valid")
+    func babyEntryMinimumDateIgnoresFutureBirthday() {
+        let (store, _, _, _, productTypeStore) = makeSUT()
+        let future = Calendar.current.date(byAdding: .day, value: 7, to: Date()) ?? Date()
+        productTypeStore.select(.baby(profile: makeBabyProfile(birthday: future)))
+
+        #expect(store.babyEntryMinimumDate == AppConstants.Entry.babyDatePickerMinimum)
+    }
+
+    @Test("babyEntryMinimumDate: falls back to the default for a non-baby selection")
+    func babyEntryMinimumDateNonBabySelection() {
+        let (store, _, _, _, productTypeStore) = makeSUT()
+        productTypeStore.select(.myWeight)
+
+        #expect(store.babyEntryMinimumDate == AppConstants.Entry.babyDatePickerMinimum)
     }
 
     // MARK: - saveBabyEntry

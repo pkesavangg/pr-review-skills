@@ -226,7 +226,9 @@ struct BabyHistoryEditSheet: View {
             DatePickerView(
                 isPresented: $showDatePicker,
                 date: $form.date.value,
-                startDate: Date(timeIntervalSince1970: 946684800),
+                // Dates before the baby's birthday are disabled so an entry can't
+                // be dated before the baby was born (MOB-1567).
+                startDate: historyStore.babyEntryMinimumDate,
                 endDate: Date()
             )
             .onChange(of: showDatePicker) { _, isPresented in

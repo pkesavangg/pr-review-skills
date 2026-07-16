@@ -54,24 +54,13 @@ struct BabyHistoryEntryItem: View {
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
 
-                // Length — "--" when no length recorded (handled in weightDisplay/lengthDisplay)
+                // Length — "--" when no length recorded (handled in weightDisplay/lengthDisplay).
+                // Per the design, individual entry rows show weight + length only — the growth
+                // percentile lives on the week-history summary row, not here (MOB-1567).
                 VStack(alignment: .leading, spacing: 2) {
                     BabyValueText(value: entry.lengthDisplay, onDarkBackground: isExpanded)
 
                     Text(HistoryListStrings.length)
-                        .fontOpenSans(.body3)
-                        .foregroundStyle(isExpanded ? theme.actionInverseSecondary : theme.textSubheading)
-                }
-                .frame(maxWidth: .infinity, alignment: .leading)
-
-                // Percentile
-                VStack(alignment: .leading, spacing: 2) {
-                    BabyValueText(
-                        value: BabyWeightPercentileCalculator.percentileDisplayText(entry.percentile),
-                        onDarkBackground: isExpanded
-                    )
-
-                    Text(HistoryListStrings.percentile)
                         .fontOpenSans(.body3)
                         .foregroundStyle(isExpanded ? theme.actionInverseSecondary : theme.textSubheading)
                 }
