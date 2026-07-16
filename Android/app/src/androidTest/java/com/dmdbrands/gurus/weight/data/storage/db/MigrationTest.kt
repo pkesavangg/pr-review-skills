@@ -15,8 +15,8 @@ import org.junit.Test
 import org.junit.runner.RunWith
 
 /**
- * Validates the single [AppDatabase.MIGRATION_1_2] — the only production upgrade path,
- * shipped 5.0.x (Room v1) → Me.Health 2.0 (v2). DB versions 2–10 never shipped and were
+ * Validates the single [AppDatabase.MIGRATION_1_12] — the only production upgrade path,
+ * shipped 5.0.x (Room v1) → Me.Health 2.0 (v12). DB versions 2–11 never shipped and were
  * collapsed into this one migration (MOB-1537 / MOB-1526).
  *
  * The v1 baseline in 1.json still carries the Phase-2 `baby_profiles`/`baby_entry` tables, which a
@@ -118,7 +118,7 @@ class MigrationTest {
             close()
         }
 
-        val db = helper.runMigrationsAndValidate(TEST_DB, 2, true, AppDatabase.MIGRATION_1_2)
+        val db = helper.runMigrationsAndValidate(TEST_DB, 12, true, AppDatabase.MIGRATION_1_12)
 
         // Account survived + new columns default correctly.
         db.query("SELECT * FROM account WHERE accountId = 'acct-1'").use { cursor ->

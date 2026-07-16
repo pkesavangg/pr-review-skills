@@ -75,7 +75,11 @@ import android.content.Context
     BabyEntryEntity::class,
   ],
   views = [ActiveEntryEntity::class],
-  version = 2,
+  // 12 (not 2) so a dev device still on the never-shipped intermediate v2 — same version number,
+  // different schema — is treated as an upgrade with no migration path and destructively wiped,
+  // instead of crashing on Room's identity-hash check. Production (shipped v1) migrates via
+  // MIGRATION_1_12. (MOB-1537, PR #2280 review)
+  version = 12,
   exportSchema = true,
 )
 @TypeConverters(DateConverter::class, JsonConverter::class, WeightUnitConverter::class)
@@ -110,12 +114,14 @@ abstract class AppDatabase : RoomDatabase() {
         "              AND d.operationType = 'delete'\n" +
         "          )"
 
-    // ----- Migration 1 -> 2 -----
+    // ----- Migration 1 -> 12 -----
     // The ONLY production upgrade path: shipped 5.0.x (Room v1, weight/BP only) -> Me.Health 2.0
-    // (v2, full multi-product schema). DB versions 2-10 only ever existed on internal builds and
-    // were never released, so the historical per-step chain was collapsed into this single
-    // migration (MOB-1537 / MOB-1526). It goes straight to the v2 shape with no intermediate churn.
-    internal val MIGRATION_1_2 = object : Migration(1, 2) {
+    // (full multi-product schema). DB versions 2-11 only ever existed on internal builds and were
+    // never released, so the historical per-step chain was collapsed into this single migration
+    // (MOB-1537 / MOB-1526). The target version is 12 (not 2) so a dev device still on the old
+    // never-shipped v2 is wiped rather than crashing on the identity-hash check; the SQL below is
+    // the same v2 shape — only the endVersion changed.
+    internal val MIGRATION_1_12 = object : Migration(1, 12) {
       @Suppress("LongMethod")
       override fun migrate(connection: SQLiteConnection) {
         // Columns added to the pre-existing weight/BP tables. None of these exist on a shipped
@@ -251,10 +257,12 @@ abstract class AppDatabase : RoomDatabase() {
                 }
               },
             )
-            .addMigrations(MIGRATION_1_2)
-            // Only v1 (shipped 5.0.x) ever reached production; internal builds at the old DB
-            // versions 2-10 are wiped cleanly on downgrade rather than crashing. (MOB-1537)
-            .fallbackToDestructiveMigrationOnDowngrade(dropAllTables = true)
+            .addMigrations(MIGRATION_1_12)
+            // Only v1 (shipped 5.0.x) ever reached production and it takes MIGRATION_1_12. Every
+            // never-shipped internal build (old v2-v11) has no path to v12, so it's destructively
+            // wiped instead of crashing — including a device still on the old same-numbered v2,
+            // which a downgrade-only fallback would miss. (MOB-1537, PR #2280 review)
+            .fallbackToDestructiveMigration(dropAllTables = true)
             .build()
         Companion.instance = instance
         instance
