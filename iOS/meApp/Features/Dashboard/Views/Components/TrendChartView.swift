@@ -42,6 +42,16 @@ private struct GoalChipYKey: PreferenceKey {
     }
 }
 
+/// MOB-1516 — clips the LEFT/RIGHT edges to the view's bounds while leaving TOP/BOTTOM effectively unbounded.
+/// Used on the chart so Swift Charts' horizontal y-gridlines can't bleed past the leading rule into the left
+/// padding gap during a scroll, WITHOUT cropping the top/bottom y-axis tick labels (or the floating date
+/// callout), which a plain `.clipped()` would cut off.
+private struct HorizontalEdgeClip: Shape {
+    func path(in rect: CGRect) -> Path {
+        Path(CGRect(x: rect.minX, y: rect.minY - 10_000, width: rect.width, height: rect.height + 20_000))
+    }
+}
+
 struct TrendChartView: View {
 
     let model: ChartModel
@@ -76,12 +86,28 @@ struct TrendChartView: View {
     /// MOB-1516: chart container height — baby growth charts are taller (498) than weight/BPM (265).
     var chartHeight: CGFloat = 265
 
-    private var isScrollable: Bool { model.period != .total }
+    /// Scrollable only when the data domain is actually WIDER than one visible window. When the domain is
+    /// exactly one window (empty account, a single reading, or data confined to one week/month/year) there is
+    /// nothing to scroll — and allowing the drag let the value-aligned scroll offset the viewport-sized
+    /// content, opening a leading gap where the plot edge / gridlines showed "behind" the starting rule. Total
+    /// is never scrollable. (MOB-1516)
+    private var isScrollable: Bool {
+        guard model.period != .total else { return false }
+        // Empty state (no data series) never scrolls — it shows the current period's grid statically. Its
+        // synthesized current-period domain can be marginally wider than one nominal window (e.g. a 31-day
+        // month vs the ~30.4-day month window), which would otherwise flip scrolling on for a blank chart.
+        guard !model.orderedSeriesNames.isEmpty else { return false }
+        let domainWidth = model.xDomain.upperBound.timeIntervalSince(model.xDomain.lowerBound)
+        return domainWidth > model.visibleDomainLength + 1
+    }
     /// Fixed width the y-axis number is centered in, so it sits off the trailing screen edge with a gap
     /// (parity with the legacy `BaseGraphView.yAxisLabelWidth`).
     private let yAxisLabelWidth: CGFloat = 40
     private func pointArea(selected: Bool) -> CGFloat {
-        let diameter: CGFloat = selected ? (isScrollable ? 12 : 8) : (isScrollable ? 8 : 4)
+        // Point size tracks the PERIOD (total draws thinner line + smaller dots), not scroll-ability — a
+        // single-reading week is now non-scrollable but must keep the normal week dot size.
+        let isTotal = model.period == .total
+        let diameter: CGFloat = selected ? (isTotal ? 8 : 12) : (isTotal ? 4 : 8)
         let radius = diameter / 2
         return .pi * radius * radius
     }
@@ -94,6 +120,25 @@ struct TrendChartView: View {
     /// clamp-to-edge). `nil` when no goal is set.
     private var clampedGoalValue: Double? {
         model.goalWeight.map { min(max($0, yDomain.lowerBound), yDomain.upperBound) }
+    }
+
+    /// MOB-1516 — WEIGHT only: the horizontal y-axis gridlines are shown ONLY when a goal is set. With no goal
+    /// the weight plot reads clean (just the trend line + the y-axis numbers, which always render); setting a
+    /// goal brings the gridlines back alongside the goal chip so the goal has a grid to read against. BPM and
+    /// baby always keep their gridlines — they have no goal concept, so gating on it would strand them without
+    /// any horizontal reference.
+    private var showsYAxisGridlines: Bool {
+        model.productType != .scale || model.goalWeight != nil
+    }
+
+    /// MOB-1516 — WEIGHT only: hide the y-axis number labels (the 0/25/50/75/100 placeholder scale) when the
+    /// chart is BOTH empty (no readings) AND has no goal set — there's no data or goal for them to describe, so
+    /// the placeholder axis is just noise (the reference empty state shows the box + vertical grid + x labels
+    /// only). The column keeps its reserved width (labels drawn transparent, not removed) so the plot frame
+    /// stays the same width as a populated chart. As soon as there's data OR a goal, the numbers return.
+    /// BPM/baby always show their numbers.
+    private var hidesYAxisNumbers: Bool {
+        model.productType == .scale && model.orderedSeriesNames.isEmpty && model.goalWeight == nil
     }
 
     /// Window width. Total isn't scrollable → show the whole span.
@@ -119,11 +164,13 @@ struct TrendChartView: View {
         return model.xAxisTicks.dropLast().map { calendar.startOfDay(for: $0) }
     }
 
-    /// Label ticks — week/month/year drop the phantom so labels stop at the last real unit; total keeps it
-    /// (matches the legacy `adjustedLabelTicks`).
+    /// Label ticks — week/month/year drop the phantom so labels stop at the last real unit.
     private var labelTicks: [Date] {
+        // MOB-1516 — the TOTAL section never shows x-axis labels, in any situation (with or without entries,
+        // single or multiple readings); its plot height is kept consistent via `xAxisLabelSpacerTicks`.
+        guard model.period != .total else { return [] }
         guard !model.xAxisTicks.isEmpty else { return [] }
-        let base = model.period == .total ? model.xAxisTicks : Array(model.xAxisTicks.dropLast())
+        let base = Array(model.xAxisTicks.dropLast())
         // Week only: snap labels to the same day boundary (midnight) as the gridlines so each day label
         // sits ON its rule — matching month/year, where "1"/"Jan" sit on the boundary rule. Without this the
         // label stays at the noon tick, half a column right of the midnight gridline → the "wrong side" look.
@@ -134,6 +181,21 @@ struct TrendChartView: View {
         guard model.period == .week else { return base }
         let calendar = Calendar.current
         return base.map { calendar.startOfDay(for: $0) }
+    }
+
+    /// MOB-1516 — reserve the x-axis label-row height whenever no labels are drawn (`labelTicks` empty): the
+    /// TOTAL section always, and week/month/year when there are no entries. Otherwise the collapsed label row
+    /// lets the plot grow taller than a populated one — so an empty week/month/year matched the taller look
+    /// instead of the (label-height-reserving) total. Reserving here keeps every empty section the same
+    /// height as total. The reservation is an invisible caption-height label (see `xAxisLabelSpacerTicks`).
+    private var reservesXAxisLabelSpace: Bool {
+        labelTicks.isEmpty
+    }
+
+    private var xAxisLabelSpacerTicks: [Date] {
+        guard reservesXAxisLabelSpace else { return [] }
+        let lower = model.xDomain.lowerBound
+        return [lower.addingTimeInterval(model.xDomain.upperBound.timeIntervalSince(lower) / 2)]
     }
 
     /// MOB-518 — the 1st of each month within the tick window, for the SOLID month-divider rule. Drawn as a
@@ -336,14 +398,21 @@ struct TrendChartView: View {
         .chartXScale(domain: ChartDomainSanitizer.orderedDates(model.xDomain))
         .chartYAxis {
             AxisMarks(values: model.yAxis.ticks) { value in
-                AxisGridLine()
+                // MOB-1516 — weight hides the horizontal gridlines when no goal is set (see
+                // `showsYAxisGridlines`), and hides the number labels entirely when empty AND goal-less (see
+                // `hidesYAxisNumbers`). BPM/baby always keep both.
+                if showsYAxisGridlines {
+                    AxisGridLine()
+                }
                 if let doubleValue = value.as(Double.self) {
                     AxisValueLabel {
                         // Parity with the legacy `yAxisMarks`: center the number in a fixed-width box so it
                         // sits off the right screen edge with a gap, instead of the bare label hugging the
-                        // trailing edge.
+                        // trailing edge. Drawn transparent (not removed) when `hidesYAxisNumbers` so the
+                        // reserved column width — and thus the plot frame width — stays constant.
                         Text(yLabel(doubleValue))
                             .frame(width: yAxisLabelWidth, alignment: .center)
+                            .opacity(hidesYAxisNumbers ? 0 : 1)
                     }
                 }
             }
@@ -387,17 +456,33 @@ struct TrendChartView: View {
                     }
                 }
             }
-        }
-        // Trailing "closing" rule: a fixed 1 pt vertical line at the plot's right edge (where the y-axis
-        // begins), so the last week/month/year window reads as a closed frame instead of an open right side.
-        // `.chartPlotStyle` styles the FIXED viewport (content scrolls within it), so the line stays put at
-        // the window's right edge as you scroll — matching the leading period-boundary rule on the left.
-        .chartPlotStyle { plot in
-            plot.overlay(alignment: .trailing) {
-                Rectangle()
-                    .fill(theme.statusIconSecondaryDisabled)
-                    .frame(width: 1)
+            // MOB-1516 — reserve the label-row height for a single-reading total (labels hidden) so its plot
+            // stays the same height/position as the other periods. Invisible caption label, no gridline/tick.
+            AxisMarks(values: xAxisLabelSpacerTicks) { _ in
+                AxisValueLabel { Text(verbatim: "0").font(.caption).foregroundStyle(.clear) }
             }
+        }
+        // Fixed 1 pt rules on ALL FOUR plot edges, so every window reads as a fully closed frame (box).
+        // `.chartPlotStyle` styles the FIXED viewport (content scrolls within it), so the rules stay put at
+        // the window's edges as you scroll. The trailing "closing" rule sits where the y-axis begins; the
+        // leading "starting" rule frames the left — previously the left relied on a period-boundary gridline
+        // (Sunday / Jan 1), which total / month / empty states don't have. MOB-1516: the top + bottom
+        // horizontals close the box — without them the empty graph showed only the left/right rules + the
+        // vertical gridlines, with no top/bottom border.
+        .chartPlotStyle { plot in
+            plot
+                .overlay(alignment: .leading) {
+                    Rectangle().fill(theme.statusIconSecondaryDisabled).frame(width: 1)
+                }
+                .overlay(alignment: .trailing) {
+                    Rectangle().fill(theme.statusIconSecondaryDisabled).frame(width: 1)
+                }
+                .overlay(alignment: .top) {
+                    Rectangle().fill(theme.statusIconSecondaryDisabled).frame(height: 1)
+                }
+                .overlay(alignment: .bottom) {
+                    Rectangle().fill(theme.statusIconSecondaryDisabled).frame(height: 1)
+                }
         }
         // Issue #2 — publish the selected point's (clamped) x so the overlay below can float the date label
         // ABOVE the chart. `.chartBackground` only emits a preference here (Color.clear) — it doesn't render
@@ -425,6 +510,11 @@ struct TrendChartView: View {
         // single, smooth, adaptive settle (Y-B). No animation fires during a drag (nothing changes then).
         .animation(.easeInOut(duration: 0.25), value: yDomain)
         .frame(height: chartHeight)
+        // MOB-1516 — clip ONLY the left/right edges so Swift Charts' horizontal y-gridlines (which draw a
+        // hair past the plot's leading edge while scrolling) can't bleed left into the leading padding gap
+        // past the starting rule. Top/bottom stay unclipped so the y-axis tick labels (e.g. the top "100")
+        // and the floating date callout are NOT cropped — which a plain `.clipped()` would do.
+        .clipShape(HorizontalEdgeClip())
         // Issue #2 — the date callout floats in the gap ABOVE the plot, at the selected x (from the preference
         // above). It OVERFLOWS the chart's top edge into the header gap (no ancestor clips it), so it does NOT
         // compress the plot or crowd the x-axis labels / section buttons — it reads as "above the graph", like
@@ -451,6 +541,10 @@ struct TrendChartView: View {
                 }
             }
         }
+        // Inset the plot from the left screen edge so the leading "starting" rule (and the data line) aren't
+        // flush against it — the trailing edge is already inset by the y-axis label column. Aligns the plot's
+        // left edge with the header title (same `.spacingSM` leading), giving the left a framed look too.
+        .padding(.leading, .spacingSM)
     }
 }
 
