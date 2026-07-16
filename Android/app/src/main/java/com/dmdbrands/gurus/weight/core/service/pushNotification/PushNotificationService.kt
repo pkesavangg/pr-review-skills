@@ -4,6 +4,7 @@ import com.dmdbrands.gurus.weight.MainActivity
 import com.dmdbrands.gurus.weight.R
 import com.dmdbrands.gurus.weight.core.service.AppNotificationEventService
 import com.dmdbrands.gurus.weight.core.service.NotificationEventType
+import com.dmdbrands.gurus.weight.core.service.NotificationReceivedPayload
 import com.dmdbrands.gurus.weight.core.shared.utilities.logging.AppLog
 import com.dmdbrands.gurus.weight.domain.enums.NotificationChannel
 import com.dmdbrands.gurus.weight.domain.repository.IAppRepository
@@ -121,6 +122,16 @@ class PushNotificationService : FirebaseMessagingService() {
       val firstName = resolveFirstName(payload.accountId)
       showEntryNotification(payload, firstName, notificationName)
       AppNotificationEventService.emit(NotificationEventType.NOTIFICATION_RECEIVED)
+      // Carry the reading so a foregrounded app can show the in-app "saved to your log" card
+      // for this Wi-Fi / remotely-synced reading instead of a generic toast (MOB-1537).
+      AppNotificationEventService.emitReceived(
+        NotificationReceivedPayload(
+          accountId = payload.accountId,
+          destination = payload.destination,
+          measurement = payload.measurement,
+          monthKey = payload.monthKey,
+        ),
+      )
     }
   }
 

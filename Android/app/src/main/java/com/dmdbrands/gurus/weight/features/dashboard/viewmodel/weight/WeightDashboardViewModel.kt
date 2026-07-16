@@ -65,6 +65,8 @@ class WeightDashboardViewModel @Inject constructor(
         is WeightDashboardIntent.ResetDashboard -> showResetDashboardAlert()
         is WeightDashboardIntent.UpdateVisibleKeys -> updateVisibleKeys(intent.keys, intent.dashboardType)
         is WeightDashboardIntent.NavigateToGoal -> navigateTo(AppRoute.AccountSettings.Goal)
+        is WeightDashboardIntent.OpenMetricInfo ->
+          navigateTo(AppRoute.Dashboard.MetricInfo(intent.info, intent.key, intent.source))
         is WeightDashboardIntent.SetSelectedStat -> {
           viewModelScope.launch { dashboardService.setSelectedKey(intent.stat?.key) }
         }

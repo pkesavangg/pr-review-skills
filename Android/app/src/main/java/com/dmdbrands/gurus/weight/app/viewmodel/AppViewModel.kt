@@ -4,13 +4,12 @@ import androidx.lifecycle.viewModelScope
 import com.dmdbrands.gurus.weight.app.components.ReconnectScale
 import com.dmdbrands.gurus.weight.app.string.AppString.SCALEDISCOVEREDTIMEOUT
 import com.dmdbrands.gurus.weight.core.navigation.AppRoute
-import com.dmdbrands.gurus.weight.core.network.ITokenManager
-import com.dmdbrands.gurus.weight.core.network.TokenMigrationHelper
 import com.dmdbrands.gurus.weight.core.power.interfaces.IPowerSaveModeObserver
 import com.dmdbrands.gurus.weight.core.service.AppNotificationEventService
 import com.dmdbrands.gurus.weight.core.service.BluetoothPreferencesService
 import com.dmdbrands.gurus.weight.core.service.IAppNavigationService
 import com.dmdbrands.gurus.weight.core.service.NotificationEventType
+import com.dmdbrands.gurus.weight.core.service.NotificationReceivedPayload
 import com.dmdbrands.gurus.weight.core.service.NotificationTapPayload
 import com.dmdbrands.gurus.weight.core.service.WeightOnlyModeEventService
 import com.dmdbrands.gurus.weight.core.service.WeightOnlyModeEventType
@@ -115,7 +114,6 @@ class AppViewModel
     private val entryReadService: IEntryReadService,
     private val logManager: LogManager,
     private val appNavigationService: IAppNavigationService,
-    private val tokenManager: ITokenManager,
     private val dashboardService: IDashboardService,
     private val accountService: IAccountService,
     private val dialogUtility: IDialogUtility,
@@ -127,7 +125,6 @@ class AppViewModel
     private val feedService: IFeedService,
     private val ggInAppMessagingService: GGInAppMessagingService,
     private val accountFlagService: IAccountFlagService,
-    private val tokenMigrationHelper: TokenMigrationHelper,
     private val analyticsService: IAnalyticsService,
     private val powerSaveModeObserver: IPowerSaveModeObserver,
   ) : BaseIntentViewModel<AppState, AppIntent>(
@@ -210,16 +207,13 @@ class AppViewModel
           AppLog.e("MainActivity", "Failed to cleanup old logs", e)
         }
 
-        // Migrate tokens from DataStore to EncryptedSharedPreferences (one-time)
-        // then load all tokens into TokenManager's in-memory map
+        // Auth-event observers. Token migration (DataStore → EncryptedSharedPreferences) and
+        // loading tokens into TokenManager now happen in LoadingScreenViewModel.waitForMigration()
+        // so the startup login check can't race ahead of them (MOB-1537 / MOB-1526).
         try {
           initEvents()
-          tokenMigrationHelper.migrateIfNeeded()
-          tokenManager.loadAllTokens()
-          tokenManager.getCurrentAccountID()
-          AppLog.v(TAG, "Loaded all tokens into TokenManager")
         } catch (e: Exception) {
-          AppLog.e(TAG, "Failed to load tokens into TokenManager", e)
+          AppLog.e(TAG, "Failed to initialise auth events", e)
         }
       }
     }
@@ -452,12 +446,18 @@ class AppViewModel
             }
 
             NotificationEventType.NOTIFICATION_RECEIVED -> {
+              // The "saved to your log" card is shown from the receivedEvents collector below,
+              // which carries the reading value/product. Here we just pull the new entry in.
               entryService.syncOperations()
-              dialogQueueService.showToast(Toast.Simple(message = "Success! Entry added"))
             }
 
             else -> {}
           }
+        }
+      }
+      viewModelScope.launch {
+        AppNotificationEventService.receivedEvents.collect { payload ->
+          showRemoteSyncToast(payload)
         }
       }
       viewModelScope.launch {
@@ -775,7 +775,7 @@ class AppViewModel
       dialogQueueService.showToast(
         Toast.Custom(
           ReadingToast(
-            reading = "${latest.systolic}/${latest.diastolic} mmHg pulse ${latest.pulse}",
+            reading = "${latest.systolic}/${latest.diastolic} mmhg ${latest.pulse} pulse",
             type = ProductType.BLOOD_PRESSURE,
             timestamp = "Just now",
             additionalCount = additionalCount,
@@ -1178,6 +1178,35 @@ class AppViewModel
      * from [saveEntry] so it can be reused. [sourceSku]
      * is the originating device SKU (null for synthesized/debug readings).
      */
+    /**
+     * Foreground handler for a Wi-Fi / remotely-synced reading (arrives as an FCM push). Unlike a
+     * Bluetooth reading — which is unsaved and shows SAVE/DISCARD — this one is already saved
+     * server-side, so it shows the single-VIEW "New Reading saved to your log" card (Figma
+     * 30456-24170). Falls back to a simple confirmation if the push carried no measurement/product
+     * (the "without measurement" push variant). (MOB-1537)
+     */
+    private fun showRemoteSyncToast(payload: NotificationReceivedPayload) {
+      val productType = payload.destination?.let { ProductType.fromId(it) }
+      val measurement = payload.measurement
+      if (productType == null || measurement.isNullOrBlank()) {
+        dialogQueueService.showToast(Toast.Simple(message = "Success! Entry added"))
+        return
+      }
+      dialogQueueService.showToast(
+        Toast.Custom(
+          ReadingToast(
+            reading = measurement,
+            type = productType,
+            timestamp = "Just now",
+            savedToLog = true,
+            onView = {
+              viewModelScope.launch { navigationService.navigateTo(AppRoute.Main.History) }
+            },
+          ),
+        ),
+      )
+    }
+
     private fun showReadingToast(
       entry: List<ScaleEntry>,
       readingType: ProductType,

@@ -287,19 +287,16 @@ class BabyDashboardViewModel @AssistedInject constructor(
     val percentile = _state.value.activePercentile
     viewModelScope.launch(Dispatchers.Main) {
       producer.runTransaction(animate = false) {
-        // Always push percentile layer first (even empty placeholder)
-        // so Vico layer order matches chart config (percentile=layer0, data=layer1)
+        // Push the percentile band layer first (percentile=layer0, data=layer1) ONLY when a
+        // series is available. When it isn't — e.g. a "Private" gender baby — we push the data
+        // series alone and the chart config drops the percentile layer too (hasPercentile =
+        // activePercentile != null), so no stray band/placeholder line is drawn (MOB-1537).
         if (percentile != null) {
           lineSeries {
             percentile.allBands().forEach { band ->
               series(x = percentile.xTimestamps, y = band)
             }
           }
-        } else {
-          // Placeholder: single series matching data X range so layer exists
-          val xValues = series.firstOrNull()?.xValues ?: listOf(0L)
-          val yValues = xValues.map { 0.0 }
-          lineSeries { series(x = xValues, y = yValues) }
         }
         lineSeries {
           series.forEach { s -> series(x = s.xValues, y = s.yValues) }

@@ -6,6 +6,8 @@ import androidx.lifecycle.asFlow
 import androidx.work.WorkInfo
 import androidx.work.WorkManager
 import com.dmdbrands.gurus.weight.core.navigation.AppRoute
+import com.dmdbrands.gurus.weight.core.network.ITokenManager
+import com.dmdbrands.gurus.weight.core.network.TokenMigrationHelper
 import com.dmdbrands.gurus.weight.core.rules.MainDispatcherRule
 import com.dmdbrands.gurus.weight.core.service.IAppNavigationService
 import com.dmdbrands.gurus.weight.domain.repository.IDeviceService
@@ -22,6 +24,7 @@ import com.google.common.truth.Truth.assertThat
 import io.mockk.MockKAnnotations
 import io.mockk.coEvery
 import io.mockk.coVerify
+import io.mockk.coVerifyOrder
 import io.mockk.every
 import io.mockk.impl.annotations.MockK
 import io.mockk.just
@@ -53,6 +56,12 @@ class LoadingScreenViewModelTest {
 
     @MockK(relaxed = true)
     lateinit var workManager: WorkManager
+
+    @MockK(relaxed = true)
+    lateinit var tokenMigrationHelper: TokenMigrationHelper
+
+    @MockK(relaxed = true)
+    lateinit var tokenManager: ITokenManager
 
     @MockK(relaxUnitFun = true)
     lateinit var accountService: IAccountService
@@ -129,6 +138,8 @@ class LoadingScreenViewModelTest {
     private fun createViewModel(): LoadingScreenViewModel {
         return LoadingScreenViewModel(
             workManager = workManager,
+            tokenMigrationHelper = tokenMigrationHelper,
+            tokenManager = tokenManager,
             accountService = accountService,
             appNavigationService = appNavigationService,
             entryService = entryService,
@@ -181,6 +192,27 @@ class LoadingScreenViewModelTest {
             appNavigationService.emitAuthEvent(
                 AuthState.LoggedInFromLoading(TestFixtures.activeAccount)
             )
+        }
+    }
+
+    // -------------------------------------------------------------------------
+    // Token migration ordering (MOB-1537 / MOB-1526 login-loop regression)
+    // -------------------------------------------------------------------------
+
+    @Test
+    fun `start runs token migration and loads tokens before checking login`() = runTest(mainDispatcherRule.scheduler) {
+        setupLoggedInFlow()
+
+        createViewModel()
+        advanceUntilIdle()
+
+        // The 5.0.3 -> 5.1.0 logout loop was caused by the login check racing ahead of the
+        // DataStore -> EncryptedSharedPreferences token copy. The startup flow must migrate and
+        // load tokens BEFORE it calls the API-backed login check.
+        coVerifyOrder {
+            tokenMigrationHelper.migrateIfNeeded()
+            tokenManager.loadAllTokens()
+            accountService.checkLoginStatusForActiveAccount()
         }
     }
 
