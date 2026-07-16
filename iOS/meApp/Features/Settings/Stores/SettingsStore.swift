@@ -1711,13 +1711,13 @@ class SettingsStore: ObservableObject {
     /// when its backing product is present, otherwise it renders locked and pinned to the
     /// system default (per the Me App 2.0 "Unit Type" design):
     /// - "My Weight" editable when a weight scale is paired.
-    /// - "My Kids" editable when a baby scale or baby profile exists.
+    /// - "My Kids" editable when a real baby profile exists (not the paired-but-no-profile placeholder).
     /// No-op when the row is hidden (BPM active / BP-only) as a defensive guard.
     func presentUnitPicker() {
         guard shouldShowUnitType else { return }
         let picker = UnitTypePickerModalView(
             isMyWeightEnabled: hasWeightScale,
-            isMyKidsEnabled: hasBabyScale,
+            isMyKidsEnabled: hasBabyProfile,
             selectedWeightUnit: activeAccount?.weightUnit ?? .lb,
             selectedMeasurementUnits: selectedMeasurementUnits,
             onCancel: { [weak self] in
@@ -1739,7 +1739,7 @@ class SettingsStore: ObservableObject {
         // Only persist a section that is actually editable; a locked section is pinned to the
         // system default in the UI and must not overwrite the account's stored value.
         let weightUnitChanged = hasWeightScale && account.weightUnit != weightUnit
-        let measurementUnitsChanged = hasBabyScale && selectedMeasurementUnits != measurementUnits
+        let measurementUnitsChanged = hasBabyProfile && selectedMeasurementUnits != measurementUnits
         guard weightUnitChanged || measurementUnitsChanged else { return }
 
         Task {

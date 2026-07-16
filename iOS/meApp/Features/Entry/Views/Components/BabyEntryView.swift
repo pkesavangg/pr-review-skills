@@ -56,16 +56,15 @@ struct BabyEntryView: View {
                             focusedField = .inches
                         }
                     case .lbsOz:
-                        // Pounds and ounces are validated and error-reported separately. Each
-                        // field renders its own message in the field component's built-in error
-                        // slot, so the two fields stay the same height and no manual offset is
-                        // needed. Top-aligned as a defensive guard.
-                        HStack(alignment: .top, spacing: .spacingSM) {
+                        HStack(spacing: .spacingSM) {
                             MetricInputField(
                                 config: TextInputConfig(
                                     label: babyLang.pounds,
                                     inputType: .metric,
-                                    errorMessage: entryStore.babyPoundsError,
+                                    // The combined pounds+ounces weight error renders in this field's
+                                    // built-in error slot (like the length field), so it scales with
+                                    // Dynamic Type instead of relying on a fixed negative offset.
+                                    errorMessage: entryStore.babyWeightError,
                                     focusField: .pounds,
                                     maxLength: 3,
                                     allowWholeNumbers: true
@@ -81,7 +80,6 @@ struct BabyEntryView: View {
                                 config: TextInputConfig(
                                     label: babyLang.ounces,
                                     inputType: .metric,
-                                    errorMessage: entryStore.babyOuncesError,
                                     focusField: .ounces,
                                     // Cents-style auto-decimal entry (same as the length field) so
                                     // typing "4" renders "0.4" and "159" renders "15.9". maxLength is

@@ -182,6 +182,44 @@ extension SettingsStoreTests {
             #expect(notification.toastData?.message == ToastStrings.unitSettingUpdated)
         }
 
+        @Test("saveUnitSelections does not persist measurement units for a pending baby placeholder")
+        func saveUnitSelectionsIgnoresPendingBabyPlaceholder() async {
+            let notification = TestNotificationHelperService()
+            let account = AccountTestFixtures.makeAccountSnapshot(
+                id: "acct-1",
+                isActiveAccount: true,
+                measurementUnits: "imperialLbOz",
+                weightUnit: .lb
+            )
+            let accountService = MockAccountService()
+            accountService.seedAccounts([account], active: account)
+            accountService.updateMeasurementUnitsResult = .success(())
+            let (store, _, _, _, _) = SettingsStoreTestFixtures.makeSUT(
+                notification: notification,
+                accountService: accountService,
+                seedDefaultAccount: false
+            )
+            await SettingsStoreTestFixtures.waitUntil { store.activeAccount?.accountId == account.accountId }
+
+            // Only the paired-but-no-profile placeholder is present: "My Kids" is locked, so a
+            // measurement-units change must NOT persist (hasBabyProfile, not hasBabyScale).
+            guard let productTypeStore = DependencyContainer.shared.dependencies["ProductTypeStoreProtocol"] as? MockProductTypeStore else {
+                Issue.record("Expected the store's product-type store to be a MockProductTypeStore")
+                return
+            }
+            productTypeStore.availableItems = [
+                .baby(profile: BabyProfile(id: BabyProfile.pendingSelectionId, name: "Baby Scale"))
+            ]
+
+            store.saveUnitSelections(weightUnit: .lb, measurementUnits: .metric)
+            // Give any erroneously-spawned task a chance to run.
+            try? await Task.sleep(nanoseconds: 200_000_000)
+
+            #expect(accountService.updateMeasurementUnitsCalls == 0)
+            #expect(accountService.updateBodyCompCalls == 0)
+            #expect(notification.showLoaderCalls == 0)
+        }
+
         @Test("saveUnitSelections updates both weight unit and measurement units")
         func saveUnitSelectionsUpdatesBoth() async {
             let notification = TestNotificationHelperService()
