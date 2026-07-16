@@ -26,6 +26,7 @@ struct BabyEntryView: View {
                             config: TextInputConfig(
                                 label: babyLang.kg,
                                 inputType: .metric,
+                                errorMessage: entryStore.babyWeightError,
                                 focusField: .babyKg,
                                 maxLength: 6,
                                 clearZeroValue: true,
@@ -42,6 +43,7 @@ struct BabyEntryView: View {
                             config: TextInputConfig(
                                 label: babyLang.lb,
                                 inputType: .metric,
+                                errorMessage: entryStore.babyWeightError,
                                 focusField: .babyLb,
                                 maxLength: 6,
                                 clearZeroValue: true,
@@ -59,6 +61,10 @@ struct BabyEntryView: View {
                                 config: TextInputConfig(
                                     label: babyLang.pounds,
                                     inputType: .metric,
+                                    // The combined pounds+ounces weight error renders in this field's
+                                    // built-in error slot (like the length field), so it scales with
+                                    // Dynamic Type instead of relying on a fixed negative offset.
+                                    errorMessage: entryStore.babyWeightError,
                                     focusField: .pounds,
                                     maxLength: 3,
                                     allowWholeNumbers: true
@@ -89,14 +95,6 @@ struct BabyEntryView: View {
                                 focusedField = .inches
                             }
                         }
-                    }
-
-                    if let weightError = entryStore.babyWeightError {
-                        Text(weightError)
-                            .fontOpenSans(.body4)
-                            .foregroundColor(theme.textError)
-                            .padding(.leading, .spacingSM)
-                            .padding(.top, -20)
                     }
                 }
 
