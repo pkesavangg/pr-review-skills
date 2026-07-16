@@ -654,10 +654,15 @@ class SettingsStore: ObservableObject {
                     notificationService.showToast(ToastModel(title: toastLang.success, message: toastLang.profileSaved))
                 }
 
-                // they learn the profile only from the scan advertisement. Re-broadcast it on every
-                // profile save, independent of the R4-only `shouldUpdateR4Profile` gate, so a
-                // gender/height/dob change reaches a non-R4 scale. No-op when no scan is running.
-                await bluetoothService.refreshScanProfileForNonR4Scales()
+                // A3/A6 scales don't accept a live profile push — they learn the profile only from
+                // the scan advertisement, so a scale-relevant change (name/dob/gender/height) must
+                // be re-broadcast to reach a non-R4 scale. Gate on the same fields as the R4 push so
+                // an email-/last-name-/zip-only edit doesn't needlessly tear down and restart the
+                // smart scan (which risks an unnecessary reconnect prompt — see MOB-193). No-op when
+                // no scan is running.
+                if shouldUpdateR4Profile {
+                    await bluetoothService.refreshScanProfileForNonR4Scales()
+                }
 
                 resetEditProfileForm()
                 router.navigateBack()
