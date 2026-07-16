@@ -85,7 +85,6 @@ struct WifiMacAddressScreen: View {
         .frame(maxHeight: .infinity, alignment: .top)
         .background(theme.backgroundSecondary.ignoresSafeArea())
         .navigationBarHidden(true)
-
         .screenAccessibilityRoot(AccessibilityID.wifiMacScreenRoot)
     }
 }
