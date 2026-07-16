@@ -148,6 +148,7 @@ struct SettingsScreen: View {
         Section {
             profileHeaderContent()
                 .accessibilityElement(children: .combine)
+                .appAccessibility(id: AccessibilityID.settingsProfileHeader)
                 .frame(maxWidth: .infinity)
                 .listRowBackground(Color.clear)
                 .listRowInsets(top: .spacingSM, bottom: .spacingSM)
