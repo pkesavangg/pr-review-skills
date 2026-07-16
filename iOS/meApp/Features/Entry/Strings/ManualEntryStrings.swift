@@ -16,12 +16,15 @@ struct ManualEntryStrings {
     static let pulse = "pulse"
     static let notes = "notes"
 
-    static let pounds = "weight (lb)"
-    static let ounces = "weight (oz)"
-    static let inches = "length (in)"
-    static let kg = "weight (kg)"
-    static let lb = "weight (lb)"
-    static let cm = "length (cm)"
+    // Baby weight/length fields show a plain label on the left with the unit as a
+    // fixed trailing suffix on the right edge (matches the weight-entry field and the
+    // Figma mock; MOB-1170 pattern). `InputFieldLabels.weight` supplies the weight label.
+    static let lengthLabel = "length"
+    static let unitLb = "(lb)"
+    static let unitOz = "(oz)"
+    static let unitKg = "(kg)"
+    static let unitIn = "(in)"
+    static let unitCm = "(cm)"
 
     // Baby validation error messages
     static let required = "Required."
