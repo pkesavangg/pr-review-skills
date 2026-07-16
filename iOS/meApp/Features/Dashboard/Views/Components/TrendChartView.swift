@@ -456,19 +456,47 @@ struct TrendChartView: View {
 
 // MARK: - AXChartDescriptorRepresentable (VoiceOver Audio Graph)
 
-/// Exposes the weight chart to VoiceOver as a navigable Audio Graph, mirroring the legacy
-/// `BaseGraphView` descriptor (title "Weight trend chart", categorical Date x-axis, numeric Weight y-axis,
-/// per-series data points). Built purely from the immutable `ChartModel` this view already holds — no store
-/// access — so it stays in lock-step with what's drawn. MOB-518 review restored this after the v2 rebuild
-/// had left the primary chart with no accessibility semantics.
+/// Exposes the chart to VoiceOver as a navigable Audio Graph, mirroring the legacy `BaseGraphView`
+/// descriptor (categorical Date x-axis, numeric y-axis, per-series data points). MOB-1516: the title and
+/// y-axis name are parameterized by `model.productType` (weight / blood pressure / baby) so BPM and baby
+/// charts no longer announce as "Weight trend chart", and only real-reading (`.data`) series are exposed —
+/// the baby `.reference` percentile curves are analytic overlays, not navigable readings, so they are
+/// excluded from the audio graph. Built purely from the immutable `ChartModel` this view already holds —
+/// no store access — so it stays in lock-step with what's drawn. MOB-518 review restored this after the v2
+/// rebuild had left the primary chart with no accessibility semantics.
 extension TrendChartView: AXChartDescriptorRepresentable {
+
+    /// MOB-1516: VoiceOver chart title, parameterized by product.
+    private var accChartTitle: String {
+        switch model.productType {
+        case .scale: return DashboardStrings.accWeightChartLabel
+        case .bpm: return DashboardStrings.accBpmChartLabel
+        case .baby: return DashboardStrings.accBabyChartLabel
+        }
+    }
+
+    /// MOB-1516: VoiceOver y-axis name, parameterized by product.
+    private var accYAxisName: String {
+        switch model.productType {
+        case .scale: return DashboardStrings.accChartWeightYAxisName
+        case .bpm: return DashboardStrings.accChartBpmYAxisName
+        case .baby: return DashboardStrings.accChartBabyYAxisName
+        }
+    }
+
+    /// MOB-1516: only real-reading (`.data`) series are exposed to VoiceOver — the baby `.reference`
+    /// percentile curves are analytic overlays, not navigable data points.
+    private var accessibleSeriesNames: [String] {
+        model.orderedSeriesNames.filter { model.style(for: $0).role == .data }
+    }
+
     func makeChartDescriptor() -> AXChartDescriptor {
         let dateFormatter = DateFormatter()
         dateFormatter.dateStyle = .medium
         dateFormatter.timeStyle = .none
 
-        // Ordered unique date strings across all plotted series (full resolution) → categorical x-axis.
-        let allPoints = model.orderedSeriesNames
+        // Ordered unique date strings across all plotted DATA series (full resolution) → categorical x-axis.
+        let allPoints = accessibleSeriesNames
             .flatMap { model.fullResolution[$0] ?? [] }
             .sorted { $0.original.date < $1.original.date }
         var seenDates = Set<String>()
@@ -488,12 +516,12 @@ extension TrendChartView: AXChartDescriptorRepresentable {
             ? yDomain
             : yDomain.lowerBound...(yDomain.lowerBound + 1)
         let yAxis = AXNumericDataAxisDescriptor(
-            title: DashboardStrings.accChartWeightYAxisName,
+            title: accYAxisName,
             range: safeRange,
             gridlinePositions: model.yAxis.ticks
         ) { yLabel($0) }
 
-        var seriesDescriptors = model.orderedSeriesNames.compactMap { name -> AXDataSeriesDescriptor? in
+        var seriesDescriptors = accessibleSeriesNames.compactMap { name -> AXDataSeriesDescriptor? in
             guard let points = model.fullResolution[name], !points.isEmpty else { return nil }
             let dataPoints = points
                 .sorted { $0.original.date < $1.original.date }
@@ -505,7 +533,7 @@ extension TrendChartView: AXChartDescriptorRepresentable {
         }
 
         return AXChartDescriptor(
-            title: DashboardStrings.accWeightChartLabel,
+            title: accChartTitle,
             summary: nil,
             xAxis: xAxis,
             yAxis: yAxis,
