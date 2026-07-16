@@ -37,6 +37,11 @@ final class DashboardLifecycleManager: DashboardLifecycleManaging { // swiftlint
 
     // PERFORMANCE: Debounce entry lifecycle changes to coalesce rapid-fire saves/deletes
     private var entryLifecycleDebounceTask: Task<Void, Never>?
+    // MOB-1582: set when an ADD occurs; consumed by the debounced handler so a coalesced
+    // window that contains at least one add advances the selection to the latest entry
+    // (an update/delete alone preserves the current selection). Reset only when the handler
+    // actually runs, so it survives debounce cancel-and-reschedule.
+    private var pendingEntryAdded = false
     private var deferredSyncTask: Task<Void, Never>?
     private var settingsRefreshTask: Task<Void, Never>?
     private var onAppearRefreshTask: Task<Void, Never>?
@@ -321,6 +326,7 @@ final class DashboardLifecycleManager: DashboardLifecycleManaging { // swiftlint
     // MARK: - Entry Lifecycle Management
 
     func onEntryAdded(_: EntryNotification) {
+        pendingEntryAdded = true
         handleEntryLifecycleChange()
     }
 
@@ -340,12 +346,15 @@ final class DashboardLifecycleManager: DashboardLifecycleManaging { // swiftlint
         entryLifecycleDebounceTask = Task { @MainActor in
             try? await Task.sleep(nanoseconds: 250_000_000) // 250ms
             guard !Task.isCancelled else { return }
-            performEntryLifecycleChange()
+            // Consume the add flag only once we actually run (survives cancel-and-reschedule).
+            let didAdd = pendingEntryAdded
+            pendingEntryAdded = false
+            performEntryLifecycleChange(entryAdded: didAdd)
         }
     }
 
     // swiftlint:disable:next function_body_length
-    private func performEntryLifecycleChange() {
+    private func performEntryLifecycleChange(entryAdded: Bool) {
         guard let stateProvider else { return }
 
         // Baby summaries are published by EntryService only via an explicit reload — unlike
@@ -391,20 +400,38 @@ final class DashboardLifecycleManager: DashboardLifecycleManaging { // swiftlint
         Task { @MainActor in
             if let selectedPoint = stateProvider.state.graph.selectedPoint {
                 let calendar = Calendar.current
+                let period = stateProvider.state.graph.selectedPeriod
                 let continuousOps = (stateProvider as? DashboardStore)?.continuousOperations ?? []
-                let updatedPoint: BathScaleWeightSummary? = {
-                    switch stateProvider.state.graph.selectedPeriod {
-                    case .week, .month:
-                        return continuousOps.first { calendar.isDate($0.date, inSameDayAs: selectedPoint.date) }
-                    case .year, .total:
-                        return continuousOps.first { calendar.isDate($0.date, equalTo: selectedPoint.date, toGranularity: .month) }
-                    }
-                }()
+                // MOB-1582: selection is bucketed by day (week/month) or month (year/total).
+                let selectionGranularity: Calendar.Component = (period == .year || period == .total) ? .month : .day
 
-                if let updatedPoint = updatedPoint {
-                    self.graphManager.updateSelectedPoint(updatedPoint)
+                // MOB-1582: when an entry was ADDED and a newer entry now exists than the one currently
+                // selected — e.g. a new entry logged on a new day — advance the selection to the latest
+                // entry so the chart highlights the just-added point (the dashboard defaults to the most
+                // recent entry). `applyChartSelectionSync` moves `selectedXValue` (what the crosshair
+                // reads), not just `selectedPoint`, which `updateSelectedPoint` alone never did — so the
+                // crosshair actually moves. An update/delete (entryAdded == false) preserves the current
+                // selection, re-pinned in place to its refreshed same day/month point (values may have
+                // changed without the selected bucket moving).
+                let latest = continuousOps.max(by: { $0.date < $1.date })
+                if entryAdded, let latest,
+                   calendar.compare(latest.date, to: selectedPoint.date, toGranularity: selectionGranularity) == .orderedDescending {
+                    self.graphManager.applyChartSelectionSync(at: latest.date, operations: continuousOps)
                 } else {
-                    await self.graphManager.handleChartSelection(at: nil)
+                    let updatedPoint: BathScaleWeightSummary? = {
+                        switch period {
+                        case .week, .month:
+                            return continuousOps.first { calendar.isDate($0.date, inSameDayAs: selectedPoint.date) }
+                        case .year, .total:
+                            return continuousOps.first { calendar.isDate($0.date, equalTo: selectedPoint.date, toGranularity: .month) }
+                        }
+                    }()
+
+                    if let updatedPoint = updatedPoint {
+                        self.graphManager.updateSelectedPoint(updatedPoint)
+                    } else {
+                        await self.graphManager.handleChartSelection(at: nil)
+                    }
                 }
             }
 
