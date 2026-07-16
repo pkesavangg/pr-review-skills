@@ -128,10 +128,13 @@ struct BabyHistoryEditSheet: View {
                             errorMessage: form.ouncesError,
                             isDisabled: valuesLocked,
                             focusField: .ounces,
-                            maxLength: 4,
+                            // Cents-style auto-decimal entry, matching the create screen
+                            // (BabyEntryView): typing "4" renders "0.4" and "159" renders "15.9".
+                            // maxLength 3 caps input at "99.9"; the ounces validator rejects > 15.9.
+                            maxLength: 3,
                             allowWholeNumbers: false,
-                            decimalPlaces: 1,
-                            directDecimalEntry: true
+                            clearZeroValue: true,
+                            decimalPlaces: 1
                         ),
                         value: $form.ounces.value,
                         focusedField: $focusedField,

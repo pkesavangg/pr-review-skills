@@ -26,6 +26,7 @@ struct BabyEntryView: View {
                             config: TextInputConfig(
                                 label: babyLang.kg,
                                 inputType: .metric,
+                                errorMessage: entryStore.babyWeightError,
                                 focusField: .babyKg,
                                 maxLength: 6,
                                 clearZeroValue: true,
@@ -42,6 +43,7 @@ struct BabyEntryView: View {
                             config: TextInputConfig(
                                 label: babyLang.lb,
                                 inputType: .metric,
+                                errorMessage: entryStore.babyWeightError,
                                 focusField: .babyLb,
                                 maxLength: 6,
                                 clearZeroValue: true,
@@ -54,74 +56,47 @@ struct BabyEntryView: View {
                             focusedField = .inches
                         }
                     case .lbsOz:
-                        // Pounds and ounces are validated and error-reported separately, each
-                        // field showing its own message underneath. Top-aligned so an error on
-                        // one field doesn't push the other field's input box down.
+                        // Pounds and ounces are validated and error-reported separately. Each
+                        // field renders its own message in the field component's built-in error
+                        // slot, so the two fields stay the same height and no manual offset is
+                        // needed. Top-aligned as a defensive guard.
                         HStack(alignment: .top, spacing: .spacingSM) {
-                            VStack(alignment: .leading, spacing: 0) {
-                                MetricInputField(
-                                    config: TextInputConfig(
-                                        label: babyLang.pounds,
-                                        inputType: .metric,
-                                        focusField: .pounds,
-                                        maxLength: 3,
-                                        allowWholeNumbers: true
-                                    ),
-                                    value: $entryStore.babyForm.pounds.value,
-                                    focusedField: $focusedField,
-                                    accessibilityIdentifier: AccessibilityID.babyWeightField
-                                ) {
-                                    focusedField = .ounces
-                                }
-
-                                if let poundsError = entryStore.babyPoundsError {
-                                    Text(poundsError)
-                                        .fontOpenSans(.body4)
-                                        .foregroundColor(theme.textError)
-                                        .padding(.leading, .spacingSM)
-                                        .padding(.top, -20)
-                                }
+                            MetricInputField(
+                                config: TextInputConfig(
+                                    label: babyLang.pounds,
+                                    inputType: .metric,
+                                    errorMessage: entryStore.babyPoundsError,
+                                    focusField: .pounds,
+                                    maxLength: 3,
+                                    allowWholeNumbers: true
+                                ),
+                                value: $entryStore.babyForm.pounds.value,
+                                focusedField: $focusedField,
+                                accessibilityIdentifier: AccessibilityID.babyWeightField
+                            ) {
+                                focusedField = .ounces
                             }
 
-                            VStack(alignment: .leading, spacing: 0) {
-                                MetricInputField(
-                                    config: TextInputConfig(
-                                        label: babyLang.ounces,
-                                        inputType: .metric,
-                                        focusField: .ounces,
-                                        // Cents-style auto-decimal entry (same as the length field) so
-                                        // typing "4" renders "0.4" and "159" renders "15.9". maxLength is
-                                        // 3 digits → caps input at "99.9"; the ounces validator (≤ 15.9)
-                                        // rejects anything above 15.9.
-                                        maxLength: 3,
-                                        clearZeroValue: true,
-                                        decimalPlaces: 1
-                                    ),
-                                    value: $entryStore.babyForm.ounces.value,
-                                    focusedField: $focusedField
-                                ) {
-                                    focusedField = .inches
-                                }
-
-                                if let ouncesError = entryStore.babyOuncesError {
-                                    Text(ouncesError)
-                                        .fontOpenSans(.body4)
-                                        .foregroundColor(theme.textError)
-                                        .padding(.leading, .spacingSM)
-                                        .padding(.top, -20)
-                                }
+                            MetricInputField(
+                                config: TextInputConfig(
+                                    label: babyLang.ounces,
+                                    inputType: .metric,
+                                    errorMessage: entryStore.babyOuncesError,
+                                    focusField: .ounces,
+                                    // Cents-style auto-decimal entry (same as the length field) so
+                                    // typing "4" renders "0.4" and "159" renders "15.9". maxLength is
+                                    // 3 digits → caps input at "99.9"; the ounces validator (≤ 15.9)
+                                    // rejects anything above 15.9.
+                                    maxLength: 3,
+                                    clearZeroValue: true,
+                                    decimalPlaces: 1
+                                ),
+                                value: $entryStore.babyForm.ounces.value,
+                                focusedField: $focusedField
+                            ) {
+                                focusedField = .inches
                             }
                         }
-                    }
-
-                    // kg / decimal-lb modes report a single weight error here; lb/oz reports
-                    // per-field above and returns nil for this shared slot.
-                    if let weightError = entryStore.babyWeightError {
-                        Text(weightError)
-                            .fontOpenSans(.body4)
-                            .foregroundColor(theme.textError)
-                            .padding(.leading, .spacingSM)
-                            .padding(.top, -20)
                     }
                 }
 
