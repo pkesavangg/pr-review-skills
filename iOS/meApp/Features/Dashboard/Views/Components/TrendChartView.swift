@@ -122,23 +122,16 @@ struct TrendChartView: View {
         model.goalWeight.map { min(max($0, yDomain.lowerBound), yDomain.upperBound) }
     }
 
-    /// MOB-1516 — WEIGHT only: the horizontal y-axis gridlines are shown ONLY when a goal is set. With no goal
-    /// the weight plot reads clean (just the trend line + the y-axis numbers, which always render); setting a
-    /// goal brings the gridlines back alongside the goal chip so the goal has a grid to read against. BPM and
-    /// baby always keep their gridlines — they have no goal concept, so gating on it would strand them without
-    /// any horizontal reference.
-    private var showsYAxisGridlines: Bool {
-        model.productType != .scale || model.goalWeight != nil
-    }
-
-    /// MOB-1516 — WEIGHT only: hide the y-axis number labels (the 0/25/50/75/100 placeholder scale) when the
-    /// chart is BOTH empty (no readings) AND has no goal set — there's no data or goal for them to describe, so
-    /// the placeholder axis is just noise (the reference empty state shows the box + vertical grid + x labels
-    /// only). The column keeps its reserved width (labels drawn transparent, not removed) so the plot frame
-    /// stays the same width as a populated chart. As soon as there's data OR a goal, the numbers return.
-    /// BPM/baby always show their numbers.
-    private var hidesYAxisNumbers: Bool {
-        model.productType == .scale && model.orderedSeriesNames.isEmpty && model.goalWeight == nil
+    /// MOB-1516 — ALL products: an empty chart with no goal shows NO y-axis — neither the horizontal gridlines
+    /// nor the placeholder number labels (0/25/50/75/100) — so the plot reads as a clean box + vertical grid +
+    /// x-axis labels only. "Empty" = no real reading (`.data`) series: baby's percentile REFERENCE curves are
+    /// analytic overlays, not readings, so a curves-only baby chart still counts as empty here. Any real data
+    /// OR a goal brings both back (only weight has a goal; for BPM/baby the rule is simply "no readings →
+    /// hide"). Numbers are drawn transparent (not removed), so the reserved column width — and thus the plot
+    /// frame width — stays constant.
+    private var hidesYAxis: Bool {
+        let hasReadings = model.orderedSeriesNames.contains { model.style(for: $0).role == .data }
+        return !hasReadings && model.goalWeight == nil
     }
 
     /// Window width. Total isn't scrollable → show the whole span.
@@ -398,21 +391,19 @@ struct TrendChartView: View {
         .chartXScale(domain: ChartDomainSanitizer.orderedDates(model.xDomain))
         .chartYAxis {
             AxisMarks(values: model.yAxis.ticks) { value in
-                // MOB-1516 — weight hides the horizontal gridlines when no goal is set (see
-                // `showsYAxisGridlines`), and hides the number labels entirely when empty AND goal-less (see
-                // `hidesYAxisNumbers`). BPM/baby always keep both.
-                if showsYAxisGridlines {
+                // MOB-1516: an empty, goal-less weight chart hides its whole y-axis — gridlines AND numbers
+                // (see `hidesYAxis`). Any data or a goal (and all BPM/baby) shows both.
+                if !hidesYAxis {
                     AxisGridLine()
                 }
                 if let doubleValue = value.as(Double.self) {
                     AxisValueLabel {
                         // Parity with the legacy `yAxisMarks`: center the number in a fixed-width box so it
-                        // sits off the right screen edge with a gap, instead of the bare label hugging the
-                        // trailing edge. Drawn transparent (not removed) when `hidesYAxisNumbers` so the
-                        // reserved column width — and thus the plot frame width — stays constant.
+                        // sits off the right screen edge with a gap. Drawn transparent (not removed) when
+                        // `hidesYAxis` so the reserved column width — and thus the plot frame width — stays put.
                         Text(yLabel(doubleValue))
                             .frame(width: yAxisLabelWidth, alignment: .center)
-                            .opacity(hidesYAxisNumbers ? 0 : 1)
+                            .opacity(hidesYAxis ? 0 : 1)
                     }
                 }
             }
