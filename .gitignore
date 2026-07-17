@@ -73,6 +73,11 @@ Android/.claude/*
 !iOS/.claude/MCP_SERVERS.md
 !iOS/.claude/settings.json
 !Android/.claude/skills/
+!Android/.claude/agents/
+!Android/.claude/commands/
+!Android/.claude/orchestra.md
+# the global `build/` rule (Gradle output) also hides the `build` skill dir — re-include it
+!Android/.claude/skills/build/
 
 # Developer convenience scripts
 Android/run.sh

@@ -22,6 +22,7 @@ import com.dmdbrands.gurus.weight.features.settings.viewmodel.SettingsIntent
 import com.dmdbrands.gurus.weight.features.settings.viewmodel.SettingsState
 import com.dmdbrands.gurus.weight.features.weightless.helper.WeightlessHelper
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
@@ -73,9 +74,17 @@ constructor(
     dispatch: (SettingsIntent) -> Unit,
   ) {
     scope.launch {
-      accountService.loggedInAccountsFlow.collect {
-        val account = accountService.getCurrentAccount()
-        val hasMultipleAccounts = it.size > 1
+      // Drive the account off activeAccountFlow, not loggedInAccountsFlow: the active flow carries
+      // the locally-derived productTypes (e.g. "baby" injected once a baby profile exists) and
+      // re-emits when the baby table changes. loggedInAccountsFlow only watches the account table,
+      // so adding a baby left Settings' account stale — the dashboard updated but the "My Kids"
+      // unit-type section stayed locked. loggedInAccountsFlow is still combined in for the count. (MOB-1499)
+      combine(
+        accountService.activeAccountFlow,
+        accountService.loggedInAccountsFlow,
+      ) { account, loggedInAccounts ->
+        account to (loggedInAccounts.size > 1)
+      }.collect { (account, hasMultipleAccounts) ->
         dispatch(SettingsIntent.UpdateAccount(account, hasMultipleAccounts))
       }
     }

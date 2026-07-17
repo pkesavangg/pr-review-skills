@@ -37,5 +37,10 @@ data class BabyProfileEntity(
     val lastUpdated: String? = null,
     val isSynced: Boolean = false,
     val isDeleted: Boolean = false,
+    // True once the baby has been created on the server at least once. An offline-created baby
+    // starts false (its babyId is a client UUID) and flips to true after the create POST +
+    // id-remap. Drives POST-vs-PUT at sync time and guards refresh()'s reconcile-delete from
+    // wiping a not-yet-synced offline baby (MOB-1476).
+    val existsOnServer: Boolean = false,
     val activeBabyId: String? = null,
 )

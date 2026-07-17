@@ -62,6 +62,8 @@ class ProductSelectionManagerTest {
         every { productSelectionRepository.observeSelectedProductType() } returns flowOf(ProductType.MY_WEIGHT)
         every { productSelectionRepository.observeSelectedBabyProfileId() } returns flowOf(null)
         every { productSelectionRepository.observeHasUserSelected() } returns flowOf(false)
+        // Default: no baby profiles for the reactive baby observer (overridden per-test). (MOB-1476)
+        every { productSelectionRepository.observeBabyProfiles(any()) } returns flowOf(emptyList())
         // Default: account does not own a baby scale (overridden per-test). (MOB-416)
         coEvery { productSelectionRepository.hasBabyScaleDevice(any()) } returns false
         // Default: reactive account observer sees no emissions (overridden in the reactive test).

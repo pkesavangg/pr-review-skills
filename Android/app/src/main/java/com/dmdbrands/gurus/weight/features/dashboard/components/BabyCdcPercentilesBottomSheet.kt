@@ -17,6 +17,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import com.dmdbrands.gurus.weight.core.shared.utilities.ConversionTools
+import com.dmdbrands.gurus.weight.domain.model.common.WeightUnit
 import com.dmdbrands.gurus.weight.features.common.components.AppBottomSheet
 import com.dmdbrands.gurus.weight.features.common.helper.BabyPercentileHelper
 import com.dmdbrands.gurus.weight.features.dashboard.snapshot.components.SnapshotColors
@@ -35,13 +37,14 @@ import com.dmdbrands.gurus.weight.theme.MeTheme
  */
 @Composable
 fun BabyCdcPercentilesBottomSheet(
-  heightInches: Double?,
+  lengthMillimeters: Int?,
   heightPercentile: Int?,
-  weightLbs: Int?,
-  weightOz: Double?,
+  weightDecigrams: Int?,
   weightPercentile: Int?,
+  babyWeightUnit: WeightUnit,
   onDismiss: () -> Unit,
 ) {
+  val isMetric = babyWeightUnit == WeightUnit.KG
   AppBottomSheet(
     title = DashboardString.Baby.CdcPercentiles.Title,
     onDismiss = onDismiss,
@@ -74,14 +77,17 @@ fun BabyCdcPercentilesBottomSheet(
 
       Spacer(modifier = Modifier.height(MeTheme.spacing.md))
 
-      // Height card — "21.7 inches" + "6 %"
+      // Height card — "21.7 inches" / "55.1 cm" + "6 %"
       BabyPercentileCard(
         modifier = Modifier.padding(horizontal = MeTheme.spacing.xs),
       ) {
+        val heightValue = lengthMillimeters?.let {
+          if (isMetric) ConversionTools.convertMmToCm(it) else ConversionTools.convertMmToInches(it)
+        }
         BabyValueWithUnit(
-          value = heightInches?.let { String.format(java.util.Locale.US, "%.1f", it) }
+          value = heightValue?.let { String.format(java.util.Locale.US, "%.1f", it) }
             ?: DashboardString.Baby.CdcPercentiles.Placeholder,
-          unit = DashboardString.Baby.CdcPercentiles.Inches,
+          unit = if (isMetric) DashboardString.Baby.CdcPercentiles.Cm else DashboardString.Baby.CdcPercentiles.Inches,
           modifier = Modifier.weight(1f),
         )
         BabyPercentileValue(percentile = heightPercentile)
@@ -89,24 +95,15 @@ fun BabyCdcPercentilesBottomSheet(
 
       Spacer(modifier = Modifier.height(MeTheme.spacing.sm))
 
-      // Weight card — "14 lbs  4.4 oz" + "8 %"
+      // Weight card — "14 lbs  4.4 oz" (lb-oz) / "14.3 lbs" (lb) / "6.48 kg" (kg) + "8 %"
       BabyPercentileCard(
         modifier = Modifier.padding(horizontal = MeTheme.spacing.xs),
       ) {
-        Row(
+        BabyCdcWeightValue(
+          weightDecigrams = weightDecigrams,
+          babyWeightUnit = babyWeightUnit,
           modifier = Modifier.weight(1f),
-          verticalAlignment = Alignment.Bottom,
-        ) {
-          BabyValueWithUnit(
-            value = weightLbs?.toString() ?: DashboardString.Baby.CdcPercentiles.Placeholder,
-            unit = DashboardString.Baby.CdcPercentiles.Lbs,
-          )
-          BabyValueWithUnit(
-            value = weightOz?.let { String.format(java.util.Locale.US, "%.1f", it) }
-              ?: DashboardString.Baby.CdcPercentiles.Placeholder,
-            unit = DashboardString.Baby.CdcPercentiles.Oz,
-          )
-        }
+        )
         BabyPercentileValue(percentile = weightPercentile)
       }
     }
@@ -134,6 +131,41 @@ private fun BabyPercentileCard(
     horizontalArrangement = Arrangement.spacedBy(MeTheme.spacing.md),
     content = content,
   )
+}
+
+/** Weight value in the active baby unit: "14 lbs 4.4 oz" (lb-oz), "14.3 lbs" (lb) or "6.48 kg" (kg). */
+@Composable
+private fun BabyCdcWeightValue(
+  weightDecigrams: Int?,
+  babyWeightUnit: WeightUnit,
+  modifier: Modifier = Modifier,
+) {
+  val placeholder = DashboardString.Baby.CdcPercentiles.Placeholder
+  Row(modifier = modifier, verticalAlignment = Alignment.Bottom) {
+    when (babyWeightUnit) {
+      WeightUnit.KG -> BabyValueWithUnit(
+        value = weightDecigrams?.let { String.format(java.util.Locale.US, "%.2f", ConversionTools.convertDecigramsToKg(it)) }
+          ?: placeholder,
+        unit = DashboardString.Baby.CdcPercentiles.Kg,
+      )
+      WeightUnit.LB -> BabyValueWithUnit(
+        value = weightDecigrams?.let { String.format(java.util.Locale.US, "%.1f", ConversionTools.convertDecigramsToLbExact(it)) }
+          ?: placeholder,
+        unit = DashboardString.Baby.CdcPercentiles.Lbs,
+      )
+      else -> {
+        BabyValueWithUnit(
+          value = weightDecigrams?.let { ConversionTools.convertDecigramsToLb(it).toString() } ?: placeholder,
+          unit = DashboardString.Baby.CdcPercentiles.Lbs,
+        )
+        BabyValueWithUnit(
+          value = weightDecigrams?.let { String.format(java.util.Locale.US, "%.1f", ConversionTools.convertDecigramsToOz(it)) }
+            ?: placeholder,
+          unit = DashboardString.Baby.CdcPercentiles.Oz,
+        )
+      }
+    }
+  }
 }
 
 /** Big purple value (heading2, ExtraBold) + small lowercase unit text trailing it at the baseline. */

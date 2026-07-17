@@ -267,6 +267,17 @@ class HistoryDetailReducerTest {
     }
 
     @Test
+    fun `SetBabyWeightUnit updates the baby weight unit`() {
+        val result = reducer.reduce(
+            HistoryDetailState(),
+            HistoryDetailIntent.SetBabyWeightUnit(com.dmdbrands.gurus.weight.domain.model.common.WeightUnit.LB),
+        )
+
+        assertThat(result?.babyWeightUnit)
+            .isEqualTo(com.dmdbrands.gurus.weight.domain.model.common.WeightUnit.LB)
+    }
+
+    @Test
     fun `SetMetric preserves other fields`() {
         val state = HistoryDetailState(
             isMetric = false,

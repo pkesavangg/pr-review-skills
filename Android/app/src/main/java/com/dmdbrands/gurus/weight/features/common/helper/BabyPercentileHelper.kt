@@ -92,11 +92,13 @@ object BabyPercentileHelper {
 
   /**
    * Returns all 7 WHO weight percentile curves from birth to end of CSV data.
-   * Values converted from decigrams to lbs.
+   * Values converted from decigrams to kg when [isMetric], otherwise lbs — matching the baby
+   * graph's data series so the overlay aligns with the plotted curve. (MOB-1499)
    */
   fun getWeightPercentileSeries(
     sex: String?,
     birthDateMillis: Long,
+    isMetric: Boolean = false,
   ): PercentileSeries? {
     val data = when (sex?.lowercase()) {
       "male" -> boyWeightData
@@ -104,16 +106,19 @@ object BabyPercentileHelper {
       else -> null
     } ?: return null
 
-    return buildPercentileSeries(data, birthDateMillis) { ConversionTools.convertDecigramsToLbExact(it) }
+    return buildPercentileSeries(data, birthDateMillis) {
+      if (isMetric) ConversionTools.convertDecigramsToKgExact(it) else ConversionTools.convertDecigramsToLbExact(it)
+    }
   }
 
   /**
    * Returns all 7 WHO length percentile curves from birth to end of CSV data.
-   * Values converted from mm to inches.
+   * Values converted from mm to cm when [isMetric], otherwise inches. (MOB-1499)
    */
   fun getLengthPercentileSeries(
     sex: String?,
     birthDateMillis: Long,
+    isMetric: Boolean = false,
   ): PercentileSeries? {
     val data = when (sex?.lowercase()) {
       "male" -> boyLengthData
@@ -121,7 +126,9 @@ object BabyPercentileHelper {
       else -> null
     } ?: return null
 
-    return buildPercentileSeries(data, birthDateMillis) { it / 25.4 }
+    return buildPercentileSeries(data, birthDateMillis) {
+      if (isMetric) ConversionTools.convertMmToCmExact(it) else ConversionTools.convertMmToInchesExact(it)
+    }
   }
 
   @Deprecated("Use getWeightPercentileSeries instead", ReplaceWith("getWeightPercentileSeries(sex, birthDateMillis)"))
