@@ -25,6 +25,7 @@ object ConversionTools {
   private const val STORED_TO_LBS_FACTOR = 10.0
   private const val STORED_TO_KG_FACTOR = 22.046
   private const val CM_TO_INCH_FACTOR = 0.254
+  private const val CM_PER_INCH = 2.54
   private const val INCHES_PER_FOOT = 12
   private const val STORED_HEIGHT_TO_INCHES_FACTOR = 10.0
   private const val BMI_CALCULATION_FACTOR = 100000
@@ -113,6 +114,31 @@ object ConversionTools {
    */
   fun convertStoredHeightToCm(stored: Int): Double {
     return (stored * CM_TO_INCH_FACTOR)
+  }
+
+  /**
+   * Height (cm) to transmit to a Bluetooth scale profile so the scale's own display matches
+   * what the app shows the user (MOB-715).
+   *
+   * The scale re-derives its display from the cm we send: in metric it shows the cm directly;
+   * in imperial it converts cm -> ft/in by ROUNDING to the nearest inch. The app, however,
+   * displays imperial height by TRUNCATING stored tenths-of-inches to whole inches (stored/10).
+   * Sending the full-precision cm let the scale round UP while the app truncated DOWN — e.g.
+   * 71.7in stored: app shows 5'11", scale showed 6'0"; likewise 5'10" -> 5'11".
+   *
+   * Fix: for imperial, build the cm from the app's displayed whole inches so the scale rounds
+   * straight back to the same ft/in. For metric, send the exact rounded cm the app displays.
+   *
+   * @param stored Height in stored format (tenths of inches)
+   * @param isMetric Whether the account displays height in cm (true) or ft/in (false)
+   */
+  fun convertStoredHeightToScaleCm(stored: Int, isMetric: Boolean): Double {
+    return if (isMetric) {
+      round(stored * CM_TO_INCH_FACTOR)
+    } else {
+      val displayedInches = stored / STORED_HEIGHT_TO_INCHES_FACTOR.toInt() // truncation — matches app display
+      round(displayedInches * CM_PER_INCH)
+    }
   }
 
   /**
