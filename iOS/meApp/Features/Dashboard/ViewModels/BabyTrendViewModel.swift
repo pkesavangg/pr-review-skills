@@ -135,10 +135,19 @@ final class BabyTrendViewModel {
         babyProfile _: BabyProfile
     ) -> Double {
         if let selectedDate = selectedDate(in: dashboardStore) {
-            return BabyDashboardChartSupport.heightValue(
+            if let recorded = BabyDashboardChartSupport.heightValue(
                 on: selectedDate,
                 in: dashboardStore.continuousOperations
-            ) ?? 0
+            ) {
+                return recorded
+            }
+            // Gap selection (no recorded length that day): Hermite-interpolate the recorded lengths — parity
+            // with baby weight (via displayWeight) and the weight/BPM graphs. 0 when there's nothing to
+            // interpolate from.
+            return dashboardStore.graphManager.interpolatedSummaryValue(
+                at: selectedDate,
+                from: dashboardStore.continuousOperations
+            ) { $0.babyLengthInches } ?? 0
         }
         return BabyDashboardChartSupport.averageHeight(
             from: operationsForCurrentAverage(dashboardStore: dashboardStore)

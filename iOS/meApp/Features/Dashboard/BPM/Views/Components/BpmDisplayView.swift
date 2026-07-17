@@ -58,23 +58,21 @@ struct BpmDisplayView: View {
                                 }
 
                                 HStack(alignment: .lastTextBaseline, spacing: Layout.slashSpacing) {
-                                    Text("\(values.systolic)")
-                                        .fontWeight(.heavy)
-                                        .fontOpenSans(.heading1)
-                                        .foregroundColor(values.classification.color(theme: theme))
-                                        .lineLimit(1)
-                                        .fixedSize()
+                                    bpNumber(
+                                        "\(values.systolic)",
+                                        color: values.classification.color(theme: theme),
+                                        alignment: .trailing
+                                    )
 
                                     SlashDividerView(
                                         color: theme.textSubheading.opacity(0.45)
                                     )
 
-                                    Text("\(values.diastolic)")
-                                        .fontWeight(.heavy)
-                                        .fontOpenSans(.heading1)
-                                        .foregroundColor(values.classification.color(theme: theme))
-                                        .lineLimit(1)
-                                        .fixedSize()
+                                    bpNumber(
+                                        "\(values.diastolic)",
+                                        color: values.classification.color(theme: theme),
+                                        alignment: .leading
+                                    )
                                 }
                                 .opacity(isGraphLoading ? 0 : 1)
                                 .overlay(alignment: .topTrailing) {
@@ -191,6 +189,31 @@ struct BpmDisplayView: View {
         .sheet(isPresented: $showAhaRatingSheet) {
             AhaRatingSheet()
         }
+    }
+
+    // MARK: - Fixed-width BP number
+
+    /// A blood-pressure value rendered in a FIXED 3-digit-wide slot, so selecting different readings
+    /// (e.g. 150/100 vs 140/93) never reflows the header — the slash, the AHA help button, and the pulse
+    /// column all stay put. A hidden "000" ghost (same heavy heading font, monospaced digits) reserves the
+    /// widest BP width; the real value floats inside it, hugging the slash (systolic trailing, diastolic
+    /// leading). The slot equals today's widest case (3 digits), so nothing gets wider — smaller values just
+    /// stop shrinking the block.
+    private func bpNumber(_ text: String, color: Color, alignment: Alignment) -> some View {
+        Text(verbatim: "000")
+            .fontWeight(.heavy)
+            .fontOpenSans(.heading1)
+            .monospacedDigit()
+            .hidden()
+            .overlay(alignment: alignment) {
+                Text(text)
+                    .fontWeight(.heavy)
+                    .fontOpenSans(.heading1)
+                    .monospacedDigit()
+                    .foregroundColor(color)
+                    .lineLimit(1)
+                    .fixedSize()
+            }
     }
 
     // MARK: - Skeletons

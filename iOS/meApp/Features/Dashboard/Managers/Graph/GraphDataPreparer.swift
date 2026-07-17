@@ -217,13 +217,51 @@ struct GraphDataPreparer { // swiftlint:disable:this type_body_length
         }
         guard rawYs.allSatisfy({ $0 != nil }) else { return nil }
         let ys = rawYs.compactMap { $0 }
-
-        let count = xs.count
-        if count == 1 { return ys[0] }
-
         let targetTime = normalizedPlotDate(date, for: period).timeIntervalSinceReferenceDate
+        return hermiteInterpolate(xs: xs, ys: ys, targetTime: targetTime)
+    }
 
-        // Clamp to edge values outside data bounds
+    /// Hermite-interpolated value of an ARBITRARY per-summary metric at `date` — BPM systolic/diastolic/pulse,
+    /// baby length, etc. The generic sibling of `interpolatedDisplayWeight` (which is weight + weightless-aware):
+    /// only points where `valueExtractor` returns a non-nil value contribute (each BPM series has its own
+    /// gaps), and there is no weightless handling. Same monotone-cubic spline + same noon plot-x normalization
+    /// as the weight path — applied uniformly to samples AND target — so a gap value lands on the same curve
+    /// the chart draws. (MOB-1516)
+    func interpolatedValue(
+        at date: Date,
+        from operations: [BathScaleWeightSummary],
+        period: TimePeriod,
+        valueExtractor: (BathScaleWeightSummary) -> Double?
+    ) -> Double? {
+        let pairs = operations
+            .compactMap { op -> (date: Date, value: Double)? in valueExtractor(op).map { (op.date, $0) } }
+            .sorted { $0.date < $1.date }
+        guard !pairs.isEmpty else { return nil }
+        let xs = pairs.map { normalizedPlotDate($0.date, for: period).timeIntervalSinceReferenceDate }
+        let ys = pairs.map(\.value)
+        let targetTime = normalizedPlotDate(date, for: period).timeIntervalSinceReferenceDate
+        return hermiteInterpolate(xs: xs, ys: ys, targetTime: targetTime)
+    }
+
+    /// Hermite interpolation directly over already-PLOTTED points (their `xDate` + display `original.value`),
+    /// with NO summary re-normalization — used by the baby crosshair resolver, which works in plotted/display
+    /// space. Yields the same curve as `interpolatedDisplayWeight`/`interpolatedValue` (a uniform x-shift
+    /// doesn't change the spline), so the crosshair value matches the header. (MOB-1516)
+    func interpolatedPlottedValue(at plottedDate: Date, points: [PlottedGraphSeries]) -> Double? {
+        let sorted = points.sorted { $0.xDate < $1.xDate }
+        let xs = sorted.map { $0.xDate.timeIntervalSinceReferenceDate }
+        let ys = sorted.map { $0.original.value }
+        return hermiteInterpolate(xs: xs, ys: ys, targetTime: plottedDate.timeIntervalSinceReferenceDate)
+    }
+
+    /// Pure monotone-cubic (Fritsch–Carlson) evaluation at `targetTime` over sorted `(xs, ys)`. Clamps to the
+    /// edge values outside the data bounds, rounds to 2 dp, returns nil for empty/non-finite input. The single
+    /// spline shared by `interpolatedDisplayWeight` (weight), `interpolatedValue` (BPM/baby) and
+    /// `interpolatedPlottedValue` (baby crosshair). (MOB-1516)
+    private func hermiteInterpolate(xs: [Double], ys: [Double], targetTime: Double) -> Double? {
+        let count = xs.count
+        guard count > 0 else { return nil }
+        if count == 1 { return ys[0] }
         if targetTime <= xs[0] { return ys[0] }
         if targetTime >= xs[count - 1] { return ys[count - 1] }
 
@@ -234,7 +272,6 @@ struct GraphDataPreparer { // swiftlint:disable:this type_body_length
 
         let result = hermiteEval(xVal: targetTime, x0: xs[i], x1: xs[i + 1], y0: ys[i], y1: ys[i + 1], m0: tangents[i], m1: tangents[i + 1])
         guard result.isFinite else { return nil }
-
         return (result * 100).rounded(.toNearestOrAwayFromZero) / 100
     }
 

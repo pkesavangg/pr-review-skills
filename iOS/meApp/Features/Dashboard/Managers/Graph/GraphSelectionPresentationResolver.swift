@@ -12,6 +12,10 @@ struct BabyGraphSelectionPresentation {
 /// rendering can stay focused on marks and annotations.
 struct GraphSelectionPresentationResolver {
 
+    /// Interpolation over the plotted points is delegated to the shared graph spline (the same Fritsch–Carlson
+    /// Hermite the weight/BPM graphs use), so a gap crosshair value matches the header. (MOB-1516)
+    private let dataPreparer = GraphDataPreparer()
+
     // swiftlint:disable:next function_parameter_count
     func babySelectionPresentation(
         babyProfile: BabyProfile?,
@@ -83,8 +87,10 @@ struct GraphSelectionPresentationResolver {
             return exactValue
         }
 
-        if let interpolatedValue = interpolatedPrimaryValue(at: plottedDate, primaryPoints: primaryPoints) {
-            return interpolatedValue
+        // MOB-1516: gap selection → Hermite-interpolate over the plotted points (parity with the weight/BPM
+        // graphs), replacing the previous linear 2-point lerp so the crosshair value matches the header.
+        if let interpolated = dataPreparer.interpolatedPlottedValue(at: plottedDate, points: primaryPoints) {
+            return interpolated
         }
 
         return fallbackValue(
@@ -93,29 +99,6 @@ struct GraphSelectionPresentationResolver {
             metric: metric,
             displayWeight: displayWeight
         )
-    }
-
-    private func interpolatedPrimaryValue(
-        at plottedDate: Date,
-        primaryPoints: [PlottedGraphSeries]
-    ) -> Double? {
-        guard let previousPoint = primaryPoints.last(where: { $0.xDate < plottedDate }),
-              let nextPoint = primaryPoints.first(where: { $0.xDate > plottedDate }) else {
-            return nil
-        }
-
-        let lowerTime = previousPoint.xDate.timeIntervalSinceReferenceDate
-        let upperTime = nextPoint.xDate.timeIntervalSinceReferenceDate
-        let selectedTime = plottedDate.timeIntervalSinceReferenceDate
-        let interval = upperTime - lowerTime
-
-        guard interval > AppConstants.Precision.doubleEqualityEpsilon else {
-            return previousPoint.original.value
-        }
-
-        let progress = (selectedTime - lowerTime) / interval
-        return previousPoint.original.value
-            + ((nextPoint.original.value - previousPoint.original.value) * progress)
     }
 
     private func fallbackValue(

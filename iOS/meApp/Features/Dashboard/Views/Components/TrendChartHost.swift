@@ -260,11 +260,10 @@ struct TrendChartHost: View {
     /// - **Year** shows a line per month → snap to the nearest 1st-of-month.
     /// - **Total** isn't a continuous grid (raw dates, no per-day buckets) → snap to the nearest real entry.
     private func snappedSelectionDate(for raw: Date, in model: ChartModel) -> Date? {
-        // MOB-1516 (BPM/baby): these plot sparse aggregated points with no continuous day grid, so snap to the
-        // nearest real point for every period — same as weight's `.total`.
-        if dashboardStore.productType == .bpm || dashboardStore.productType == .baby {
-            return nearestEntry(to: raw, in: model)?.original.date
-        }
+        // MOB-1516: ALL products use the same period-aware gridline snapping (week→day, month→Sunday/1st/entry,
+        // year→month-1st, total→nearest entry). A tap on an empty day/month is an in-between selection whose
+        // value is Hermite-interpolated per product — weight via `calculateDisplayWeight`, BPM via
+        // `getBpmDisplayValues`, baby weight/height via `currentDisplay*` + the crosshair resolver.
         let points = model.fullResolution[primarySeriesName] ?? []
         guard let firstDate = points.first?.original.date,
               let lastDate = points.last?.original.date else { return nil }
