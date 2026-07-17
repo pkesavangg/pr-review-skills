@@ -39,8 +39,11 @@ struct MyAccountsScreen: View {
         }
         .onAppear {
             accountsStore.onAccountSwitchSuccess = {
+                // All three account-entry paths (switch/login/signup) change the active
+                // account, so SettingsScreen's `activeAccount` onChange pops the Settings
+                // stack to root — that's the single source of truth for the reset. No
+                // explicit navigateBack() here, otherwise it would double-pop.
                 tabViewModel.selectedTab = .dash
-                router.navigateBack()
             }
         }
         .sheet(isPresented: $accountsStore.canShowLoginScreen) {
@@ -48,9 +51,9 @@ struct MyAccountsScreen: View {
                 prefilledEmail: accountsStore.emailForLogin,
                 isFromAccountSwitching: true
             ) {
+                // Reset handled by SettingsScreen's activeAccount onChange (see above).
                 accountsStore.canShowLoginScreen = false
                 tabViewModel.selectedTab = .dash
-                router.navigateBack()
             }
                 .interactiveDismissDisabled()
         }
@@ -58,9 +61,9 @@ struct MyAccountsScreen: View {
             SignupScreen(
                 isFromAccountSwitching: true
             ) {
+                // Reset handled by SettingsScreen's activeAccount onChange (see above).
                 accountsStore.canShowAccountSignupScreen = false
                 tabViewModel.selectedTab = .dash
-
             }
                 .interactiveDismissDisabled()
         }
