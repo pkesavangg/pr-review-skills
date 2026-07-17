@@ -400,6 +400,38 @@ struct EntryServiceTests {
         #expect(logged)
     }
 
+    // MARK: - Baby-before-entry ordering (MOB-1527)
+
+    @Test("pushPendingEntries reconciles a pending offline baby before pushing entries")
+    func eagerPushReconcilesPendingOfflineBabyFirst() async throws {
+        guard NetworkMonitor.shared.isConnected else { return } // eager push is online-only
+        let sut = makeSUT()
+        let baby = MockBabyService()
+        // An offline-created baby awaiting its server id (never pushed): isServerCreated == false.
+        baby.babies = [Baby(accountId: "acct-1", name: "Lily", isServerCreated: false)]
+        DependencyContainer.shared.register(baby)
+        DependencyContainer.shared.register(baby as BabyServiceProtocol)
+
+        await sut.pushPendingEntries()
+
+        #expect(baby.syncBabiesCalls == 1)
+    }
+
+    @Test("pushPendingEntries does NOT reconcile babies when none are pending offline")
+    func eagerPushSkipsBabyReconcileWhenAllSynced() async throws {
+        guard NetworkMonitor.shared.isConnected else { return }
+        let sut = makeSUT()
+        let baby = MockBabyService()
+        // Already on the server — nothing to remap, so no baby reconcile should be triggered.
+        baby.babies = [Baby(accountId: "acct-1", name: "Emma", isSynced: true, isServerCreated: true)]
+        DependencyContainer.shared.register(baby)
+        DependencyContainer.shared.register(baby as BabyServiceProtocol)
+
+        await sut.pushPendingEntries()
+
+        #expect(baby.syncBabiesCalls == 0)
+    }
+
     private func makeSUT(
         repo: MockEntryRepository? = nil,
         remote: MockEntryRepositoryAPI? = nil,

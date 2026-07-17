@@ -12,10 +12,15 @@ import SwiftData
 @MainActor
 extension BluetoothService {
     func startSmartScan() async throws {
-        guard let activeAccount = activeAccount else {
+        // MOB-193: read the account from the source of truth, not the locally cached copy.
+        // The A3/A6 SDK computes body composition (incl. athlete vs normal) from the profile
+        // handed to `scan(.ME_HEALTH, accountData)` here at scan-start, so it must reflect the
+        // latest saved profile — the cached `self.activeAccount` lags a settings change because
+        // it is fed by a `.receive(on: DispatchQueue.main)` subscription.
+        guard let account = accountService.activeAccount ?? activeAccount else {
             throw BluetoothServiceError.noActiveAccount
         }
-        guard let accountData = await getProfileInfo(from: activeAccount) else {
+        guard let accountData = await getProfileInfo(from: account) else {
             throw BluetoothServiceError.noProfileInfo
         }
         ggBleSDK.scan(.ME_HEALTH, accountData) { [weak self] result in

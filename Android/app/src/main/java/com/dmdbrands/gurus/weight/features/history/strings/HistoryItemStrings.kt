@@ -19,6 +19,12 @@ object HistoryItemStrings {
 
     /** Helper text shown in the expanded note area when an entry has no note yet (MOB-438, MOB-1163). */
     const val NoNoteYet = "no notes yet — tap plus icon to add one."
+
+    /** Inline "read more" link appended to a note clamped to 2 lines (MOB-1499). */
+    const val More = "more"
+
+    /** TalkBack click action label for the clamped-note "more" expander (MOB-1499). */
+    const val ShowFullNote = "show full note"
     const val EditNoteContentDescription = "edit entry"
 
     /** Content description for the add-note (+) affordance shown when an entry has no note (MOB-1163). */

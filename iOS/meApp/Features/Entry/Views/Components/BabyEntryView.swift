@@ -26,6 +26,7 @@ struct BabyEntryView: View {
                             config: TextInputConfig(
                                 label: babyLang.kg,
                                 inputType: .metric,
+                                errorMessage: entryStore.babyWeightError,
                                 focusField: .babyKg,
                                 maxLength: 6,
                                 clearZeroValue: true,
@@ -42,6 +43,7 @@ struct BabyEntryView: View {
                             config: TextInputConfig(
                                 label: babyLang.lb,
                                 inputType: .metric,
+                                errorMessage: entryStore.babyWeightError,
                                 focusField: .babyLb,
                                 maxLength: 6,
                                 clearZeroValue: true,
@@ -59,6 +61,10 @@ struct BabyEntryView: View {
                                 config: TextInputConfig(
                                     label: babyLang.pounds,
                                     inputType: .metric,
+                                    // The combined pounds+ounces weight error renders in this field's
+                                    // built-in error slot (like the length field), so it scales with
+                                    // Dynamic Type instead of relying on a fixed negative offset.
+                                    errorMessage: entryStore.babyWeightError,
                                     focusField: .pounds,
                                     maxLength: 3,
                                     allowWholeNumbers: true
@@ -75,29 +81,20 @@ struct BabyEntryView: View {
                                     label: babyLang.ounces,
                                     inputType: .metric,
                                     focusField: .ounces,
-                                    // Literal (as-typed) decimal entry so "6" stays "6" and
-                                    // "6.5" stays "6.5", matching BabyHistoryEditSheet. maxLength
-                                    // is 4 so the max "15.9" (4 chars incl. ".") fits in literal mode.
-                                    maxLength: 4,
+                                    // Cents-style auto-decimal entry (same as the length field) so
+                                    // typing "4" renders "0.4" and "159" renders "15.9". maxLength is
+                                    // 3 digits → caps input at "99.9"; the ounces validator (≤ 15.9)
+                                    // rejects anything above 15.9.
+                                    maxLength: 3,
                                     clearZeroValue: true,
-                                    decimalPlaces: 1,
-                                    directDecimalEntry: true
+                                    decimalPlaces: 1
                                 ),
                                 value: $entryStore.babyForm.ounces.value,
-                                focusedField: $focusedField,
-                                accessibilityIdentifier: AccessibilityID.babyOuncesField
+                                focusedField: $focusedField
                             ) {
                                 focusedField = .inches
                             }
                         }
-                    }
-
-                    if let weightError = entryStore.babyWeightError {
-                        Text(weightError)
-                            .fontOpenSans(.body4)
-                            .foregroundColor(theme.textError)
-                            .padding(.leading, .spacingSM)
-                            .padding(.top, -20)
                     }
                 }
 

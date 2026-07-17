@@ -5,6 +5,8 @@ object AddBabyStrings {
     const val EditTitle = "Edit Baby"
     const val Save = "SAVE"
     const val NameLabel = "name"
+    /** Shown under the name field when the entered name matches an existing baby on the account. */
+    const val DuplicateNameError = "baby name already exists"
     const val BirthdayLabel = "baby's birthday"
     const val BiologicalSexLabel = "Biological Sex"
     const val BirthLengthLabel = "Birth Length"

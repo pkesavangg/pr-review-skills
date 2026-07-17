@@ -38,7 +38,8 @@ struct EditProfileScreen: View {
         .pickerSheet(
             isPresented: $settingsStore.showGenderPicker,
             selectedValues: [settingsStore.editProfileForm.gender.value],
-            options: [Sex.allCases],
+            // "private" is not offered when editing the user profile.
+            options: [Sex.allCases.filter { $0 != .private }],
             displayValue: capitalizedSexDisplay,
             title: SettingsStrings.biologicalSex
         ) { vals in

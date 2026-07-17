@@ -47,6 +47,41 @@ commands:
               *)   echo "Unexpected status $CODE (network/proxy?)." ;;
             esac
 
+  skip_if_unchanged:
+    description: >
+      Halt the job (reporting success) when the branch changed no files under the given path prefix
+      or .circleci/. Diffs the WHOLE branch against its merge-base with develop — never `git diff
+      HEAD~1`, which on a MERGE commit only compares the first parent and hides the branch's own
+      changes, so merging develop into a red branch made lint/tests skip and report green (MOB-1562).
+      Never skips on the develop/main integration branches — those always run the full suite.
+    parameters:
+      path_prefix:
+        type: string
+        description: Top-level directory that gates this job, e.g. "iOS" or "Android".
+    steps:
+      - run:
+          name: Skip if no << parameters.path_prefix >> changes
+          command: |
+            # Integration branches always run the full suite — never skip on a stale heuristic.
+            if [ "$CIRCLE_BRANCH" = "develop" ] || [ "$CIRCLE_BRANCH" = "main" ]; then
+              echo "On $CIRCLE_BRANCH — running (integration branches are never skipped)."
+              exit 0
+            fi
+            # Compare the ENTIRE branch to its base, not HEAD~1. HEAD~1 on a merge commit
+            # ("Merge develop into <feature>") diffs only the first parent, so the branch's own
+            # << parameters.path_prefix >> changes are invisible and the job wrongly skips (MOB-1562).
+            git fetch --quiet --depth=200 origin develop 2>/dev/null || true
+            BASE=$(git merge-base FETCH_HEAD HEAD 2>/dev/null || git merge-base origin/develop HEAD 2>/dev/null || true)
+            if [ -z "$BASE" ]; then
+              echo "Could not determine merge-base vs develop — running (won't risk skipping)."
+              exit 0
+            fi
+            CHANGED=$(git diff --name-only "$BASE" HEAD)
+            if [ -n "$CHANGED" ] && ! echo "$CHANGED" | grep -qE "^<< parameters.path_prefix >>/|^\.circleci/"; then
+              echo "No << parameters.path_prefix >> changes since $BASE — skipping job."
+              circleci-agent step halt
+            fi
+
 jobs:
   # gitleaks — secrets scan, runs on every branch
   gitleaks:
@@ -75,22 +110,19 @@ jobs:
     resource_class: m4pro.medium
     steps:
       - checkout
-      - run:
-          name: Skip if no iOS changes
-          command: |
-            CHANGED=$(git diff --name-only HEAD~1 2>/dev/null || git diff --name-only HEAD)
-            if [ -n "$CHANGED" ] && ! echo "$CHANGED" | grep -qE "^iOS/|^\.circleci/"; then
-              echo "No iOS changes detected, skipping job."
-              circleci-agent step halt
-            fi
+      - skip_if_unchanged:
+          path_prefix: iOS
       - run:
           name: Install SwiftLint
           # `brew install` does NOT upgrade an already-installed formula, so the SwiftLint
           # pre-baked into the Xcode image (older) would run instead of the version the
           # codebase is converged against. That version skew makes `--strict` flag/clear
           # different rules in CI vs. locally. Force the latest so lint is deterministic.
+          # `brew update` can exit non-zero on the CI image even when it succeeds
+          # (spurious tap/formula warnings); with CircleCI's `-eo pipefail` that would
+          # kill the step before SwiftLint is ever installed, so tolerate its exit code.
           command: |
-            brew update
+            brew update || true
             brew upgrade swiftlint || brew install swiftlint
             swiftlint version
       - run:
@@ -105,14 +137,8 @@ jobs:
     resource_class: m4pro.medium
     steps:
       - checkout
-      - run:
-          name: Skip if no iOS changes
-          command: |
-            CHANGED=$(git diff --name-only HEAD~1 2>/dev/null || git diff --name-only HEAD)
-            if [ -n "$CHANGED" ] && ! echo "$CHANGED" | grep -qE "^iOS/|^\.circleci/"; then
-              echo "No iOS changes detected, skipping job."
-              circleci-agent step halt
-            fi
+      - skip_if_unchanged:
+          path_prefix: iOS
       - run:
           name: Restore GoogleService-Info.plist
           command: |
@@ -206,14 +232,8 @@ jobs:
     resource_class: m4pro.medium
     steps:
       - checkout
-      - run:
-          name: Skip if no iOS changes
-          command: |
-            CHANGED=$(git diff --name-only HEAD~1 2>/dev/null || git diff --name-only HEAD)
-            if [ -n "$CHANGED" ] && ! echo "$CHANGED" | grep -qE "^iOS/|^\.circleci/"; then
-              echo "No iOS changes detected, skipping job."
-              circleci-agent step halt
-            fi
+      - skip_if_unchanged:
+          path_prefix: iOS
       - run:
           name: Restore GoogleService-Info.plist
           command: |
@@ -395,14 +415,8 @@ jobs:
     resource_class: m4pro.medium
     steps:
       - checkout
-      - run:
-          name: Skip if no iOS changes
-          command: |
-            CHANGED=$(git diff --name-only HEAD~1 2>/dev/null || git diff --name-only HEAD)
-            if [ -n "$CHANGED" ] && ! echo "$CHANGED" | grep -qE "^iOS/|^\.circleci/"; then
-              echo "No iOS changes detected, skipping job."
-              circleci-agent step halt
-            fi
+      - skip_if_unchanged:
+          path_prefix: iOS
       - run:
           name: Audit SPM Dependencies
           working_directory: iOS
@@ -456,14 +470,8 @@ jobs:
     resource_class: large
     steps:
       - checkout
-      - run:
-          name: Skip if no Android changes
-          command: |
-            CHANGED=$(git diff --name-only HEAD~1 2>/dev/null || git diff --name-only HEAD)
-            if [ -n "$CHANGED" ] && ! echo "$CHANGED" | grep -qE "^Android/|^\.circleci/"; then
-              echo "No Android changes detected, skipping job."
-              circleci-agent step halt
-            fi
+      - skip_if_unchanged:
+          path_prefix: Android
       - restore_cache:
           keys:
             - gradle-v1-{{ checksum "Android/gradle/libs.versions.toml" }}-{{ checksum "Android/app/build.gradle.kts" }}
@@ -533,14 +541,8 @@ jobs:
     resource_class: xlarge
     steps:
       - checkout
-      - run:
-          name: Skip if no Android changes
-          command: |
-            CHANGED=$(git diff --name-only HEAD~1 2>/dev/null || git diff --name-only HEAD)
-            if [ -n "$CHANGED" ] && ! echo "$CHANGED" | grep -qE "^Android/|^\.circleci/"; then
-              echo "No Android changes detected, skipping job."
-              circleci-agent step halt
-            fi
+      - skip_if_unchanged:
+          path_prefix: Android
       - restore_cache:
           keys:
             - gradle-v1-{{ checksum "Android/gradle/libs.versions.toml" }}-{{ checksum "Android/app/build.gradle.kts" }}
@@ -570,14 +572,8 @@ jobs:
     resource_class: large
     steps:
       - checkout
-      - run:
-          name: Skip if no Android changes
-          command: |
-            CHANGED=$(git diff --name-only HEAD~1 2>/dev/null || git diff --name-only HEAD)
-            if [ -n "$CHANGED" ] && ! echo "$CHANGED" | grep -qE "^Android/|^\.circleci/"; then
-              echo "No Android changes detected, skipping job."
-              circleci-agent step halt
-            fi
+      - skip_if_unchanged:
+          path_prefix: Android
       - restore_cache:
           keys:
             - gradle-v1-{{ checksum "Android/gradle/libs.versions.toml" }}-{{ checksum "Android/app/build.gradle.kts" }}

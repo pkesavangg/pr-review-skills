@@ -896,7 +896,30 @@ class DashboardStore: ObservableObject, DashboardStateProviding {
     /// `state.graph.chartHeight`) — so output is at parity. Called by `WeightChartHost` only when a
     /// rebuild-relevant input changes (data / period / unit / goal / scroll-settle) — never per scroll frame.
     /// Weight only for now; baby/BPM stay on the legacy engine.
-    func rebuildWeightChartModel(scrollPosition: Date) {
+    /// MOB-1516: product-neutral name (Phase G0). `.bpm`/`.baby` dispatch is added in Phase B/Y; today the
+    /// body is weight-only and only `productType == .scale` routes here via `TrendChartHost`.
+    func rebuildChartModel(scrollPosition: Date) {
+        if productType == .bpm {
+            chartModel = ChartPrep.buildBpm(
+                operations: continuousOperations,
+                period: state.graph.selectedPeriod,
+                scrollPosition: scrollPosition
+            )
+            return
+        }
+        if productType == .baby {
+            guard let profile = selectedBabyProfile else { chartModel = nil; return }
+            chartModel = ChartPrep.buildBaby(
+                operations: continuousOperations,
+                period: state.graph.selectedPeriod,
+                scrollPosition: scrollPosition,
+                babyProfile: profile,
+                metric: selectedBabyMetric,
+                convertWeight: goalManager.convertWeightToDisplay,
+                convertDecigramsToDisplay: convertBabyDecigramsToDisplay
+            )
+            return
+        }
         chartModel = ChartPrep.buildWeight(
             operations: continuousOperations,
             period: state.graph.selectedPeriod,
@@ -923,9 +946,20 @@ class DashboardStore: ObservableObject, DashboardStateProviding {
     /// `ChartModel.withYAxisAndTicks`, leaving `xDomain`/`visibleDomainLength`/`seriesPoints` byte-identical
     /// → Swift Charts never rebuilds its scroll view (no "~1 s can't scroll again" hitch, #3; no jump; no
     /// wall). A co-plotted metric normalizes to the y-domain, so it still needs a full rebuild. Weight only.
-    func settleWeightChart(scrollPosition: Date) {
+    func settleChart(scrollPosition: Date) {
+        if productType == .bpm {
+            settleBpm(scrollPosition: scrollPosition)
+            return
+        }
+        if productType == .baby {
+            // Baby: window-adaptive reference-driven y-axis + full-domain curves → a full rebuild is cheap and
+            // correct (no metric co-plot). seriesPoints/x-geometry come out byte-identical, so Swift Charts
+            // still doesn't rebuild its scroll view; only the y-axis + windowed ticks change.
+            rebuildChartModel(scrollPosition: scrollPosition)
+            return
+        }
         guard coPlottedMetric == nil, let current = chartModel else {
-            rebuildWeightChartModel(scrollPosition: scrollPosition)
+            rebuildChartModel(scrollPosition: scrollPosition)
             return
         }
         let config = GraphRenderingConfiguration()
@@ -951,6 +985,32 @@ class DashboardStore: ObservableObject, DashboardStateProviding {
         chartModel = updated
     }
 
+    /// MOB-1516: BPM in-place scroll-end settle — recompute ONLY the adaptive `bpmScale` for the landed window
+    /// + refresh the windowed ticks, swapped via `withYAxisAndTicks`. No metric co-plot, so this never needs a
+    /// full rebuild (unlike weight); the scroll region stays byte-identical → no scroll-view rebuild on settle.
+    private func settleBpm(scrollPosition: Date) {
+        guard let current = chartModel else {
+            rebuildChartModel(scrollPosition: scrollPosition)
+            return
+        }
+        let config = GraphRenderingConfiguration()
+        let newYAxis = ChartPrep.bpmYAxis(
+            operations: continuousOperations,
+            period: state.graph.selectedPeriod,
+            scrollPosition: scrollPosition,
+            visibleDomainLength: current.visibleDomainLength
+        )
+        let newTicks = config.boundedXAxisValues(
+            for: state.graph.selectedPeriod,
+            from: continuousOperations,
+            around: scrollPosition,
+            windows: ChartPrep.tickWindowRadius
+        )
+        let updated = current.withYAxisAndTicks(newYAxis, ticks: newTicks)
+        guard updated != current else { return }
+        chartModel = updated
+    }
+
     /// Scroll-END commit for the v2 weight engine (single source of truth). `landed` is where the native
     /// value-aligned scroll actually rested — already on the fine grid (a fling on the period boundary via
     /// `majorAlignment`, a slow drag on any day / month-1st via `matching`; see
@@ -962,9 +1022,9 @@ class DashboardStore: ObservableObject, DashboardStateProviding {
     /// overrides the legacy manager's month floor-snap in `handleScrollPhaseChange(.idle)` (which fires just
     /// before this), so month is likewise left exactly where it rests. Weight only; baby/BPM keep the
     /// legacy manager path.
-    func commitWeightScroll(landedAt landed: Date) {
+    func commitScroll(landedAt landed: Date) {
         graphManager.updateScrollPosition(to: landed)
-        settleWeightChart(scrollPosition: landed)
+        settleChart(scrollPosition: landed)
         // A scroll clears the selection, so refresh the metric tiles for the NEW visible window (visible-window
         // average) — otherwise they'd keep the values of the point the user just scrolled away from, out of sync
         // with the header. This runs ONCE at scroll-end (isScrolling is already false here) and is de-duped by
@@ -975,7 +1035,7 @@ class DashboardStore: ObservableObject, DashboardStateProviding {
     /// V4 (6a): apply a validated weight-chart selection at `date` (already snapped to a real entry by the
     /// host), resolving `selectedPoint`/`selectedXValue`/`showCrosshair` per period exactly as the legacy
     /// programmatic auto-select does (`applyChartSelectionSync`). `nil` clears the selection. Weight only.
-    func selectWeightPoint(at date: Date?) {
+    func selectPoint(at date: Date?) {
         guard let date else {
             graphManager.state.clearSelection()
             // Selection cleared → the metric tiles fall back to the visible-window average / latest (parity
@@ -984,6 +1044,11 @@ class DashboardStore: ObservableObject, DashboardStateProviding {
             return
         }
         graphManager.applyChartSelectionSync(at: date, operations: continuousOperations)
+        // MOB-1516 (BPM): update the AHA classification from the selected reading so the header + the
+        // systolic/diastolic line recolour to that point (parity with the legacy `handleBpmPointSelection`).
+        if productType == .bpm, let selected = state.graph.selectedPoint {
+            displayManager.handleBpmPointSelection(selected)
+        }
         // MOB-518: refresh the metric tiles (bmi / body fat % / muscle % …) to the SELECTED point's per-point
         // values. The legacy engine did this via `handleCompleteChartSelection`'s `updateMetrics` closure;
         // `applyChartSelectionSync` only sets the graph-selection state (which the weight HEADER reads

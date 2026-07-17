@@ -7,23 +7,23 @@ import SwiftUI
 
 /// Radio-style Unit Type dialog presented via `notificationService.showModal`.
 ///
-/// Three layouts driven by `UnitDisplayMode`:
-/// - `.myWeight` — a single weight-unit list (`lb & ft` / `kg & cm`) bound to `WeightUnit`.
-/// - `.myKids`   — a "My Kids" section only (`MeasurementUnits`) for baby-scale readings.
-/// - `.both`     — both sections with a divider; shown when weight scale + baby scale are paired.
-///                 "My Weight" changes apply to the weight scale; "My Kids" changes apply to the baby scale.
+/// Both sections ("My Weight" and "My Kids") are always visible. A section whose
+/// backing product is absent renders **locked** — greyed out, non-editable, and
+/// pinned to the system default unit (per the Me App 2.0 "Unit Type" design):
+/// - "My Weight" is editable when a weight scale is present, otherwise locked.
+/// - "My Kids" is editable when a baby scale or baby profile is present, otherwise locked.
 ///
-/// `onSave` always returns both values; the unchanged unit is passed through unmodified.
+/// `onSave` returns both values; the caller persists only the section(s) that are enabled,
+/// so a locked section's default is never written back to the account.
 struct UnitTypePickerModalView: View {
     @Environment(\.appTheme) private var theme
 
-    enum UnitDisplayMode {
-        case myWeight
-        case myKids
-        case both
-    }
+    /// System default units used to display (and pin) a locked section.
+    static let defaultWeightUnit: WeightUnit = .lb
+    static let defaultMeasurementUnits: MeasurementUnits = .imperialLbOz
 
-    let mode: UnitDisplayMode
+    let isMyWeightEnabled: Bool
+    let isMyKidsEnabled: Bool
     let onCancel: () -> Void
     let onSave: (WeightUnit, MeasurementUnits) -> Void
 
@@ -34,17 +34,24 @@ struct UnitTypePickerModalView: View {
     private let commonLang = CommonStrings.self
 
     init(
-        mode: UnitDisplayMode,
+        isMyWeightEnabled: Bool,
+        isMyKidsEnabled: Bool,
         selectedWeightUnit: WeightUnit,
         selectedMeasurementUnits: MeasurementUnits,
         onCancel: @escaping () -> Void,
         onSave: @escaping (WeightUnit, MeasurementUnits) -> Void
     ) {
-        self.mode = mode
+        self.isMyWeightEnabled = isMyWeightEnabled
+        self.isMyKidsEnabled = isMyKidsEnabled
         self.onCancel = onCancel
         self.onSave = onSave
-        _selectedWeightUnit = State(initialValue: selectedWeightUnit)
-        _selectedMeasurementUnits = State(initialValue: selectedMeasurementUnits)
+        // A locked section is pinned to the system default; an enabled one reflects the account.
+        _selectedWeightUnit = State(
+            initialValue: isMyWeightEnabled ? selectedWeightUnit : Self.defaultWeightUnit
+        )
+        _selectedMeasurementUnits = State(
+            initialValue: isMyKidsEnabled ? selectedMeasurementUnits : Self.defaultMeasurementUnits
+        )
     }
 
     var body: some View {
@@ -54,11 +61,7 @@ struct UnitTypePickerModalView: View {
                 .foregroundStyle(theme.textHeading)
                 .accessibilityAddTraits(.isHeader)
 
-            switch mode {
-            case .myWeight: weightOnlyLayout
-            case .myKids:   kidsOnlyLayout
-            case .both:     bothLayout
-            }
+            unitSections
 
             actionButtons
         }
@@ -67,80 +70,64 @@ struct UnitTypePickerModalView: View {
         .clipShape(.rect(cornerRadius: .radiusXL))
     }
 
-    // MARK: - Layouts
+    // MARK: - Layout
 
-    private var bothLayout: some View {
+    private var unitSections: some View {
         VStack(alignment: .leading, spacing: 0) {
-            Text(lang.myWeight)
-                .fontOpenSans(.heading5)
-                .foregroundStyle(theme.textHeading)
-                .padding(.bottom, .spacingXS)
+            sectionHeader(lang.myWeight, isEnabled: isMyWeightEnabled)
 
             radioRow(
                 title: lang.lbFeet,
-                isSelected: selectedWeightUnit == .lb
+                isSelected: selectedWeightUnit == .lb,
+                isEnabled: isMyWeightEnabled
             ) { selectedWeightUnit = .lb }
             radioRow(
                 title: lang.kgCm,
-                isSelected: selectedWeightUnit == .kg
+                isSelected: selectedWeightUnit == .kg,
+                isEnabled: isMyWeightEnabled
             ) { selectedWeightUnit = .kg }
 
             Divider()
                 .padding(.vertical, .spacingSM)
 
-            Text(lang.myKids)
-                .fontOpenSans(.heading5)
-                .foregroundStyle(theme.textHeading)
-                .padding(.bottom, .spacingXS)
+            sectionHeader(lang.myKids, isEnabled: isMyKidsEnabled)
 
             radioRow(
                 title: lang.lbsOzIn,
-                isSelected: selectedMeasurementUnits == .imperialLbOz
+                isSelected: selectedMeasurementUnits == .imperialLbOz,
+                isEnabled: isMyKidsEnabled
             ) { selectedMeasurementUnits = .imperialLbOz }
             radioRow(
                 title: lang.lbsDecimalIn,
-                isSelected: selectedMeasurementUnits == .imperialLbDecimal
+                isSelected: selectedMeasurementUnits == .imperialLbDecimal,
+                isEnabled: isMyKidsEnabled
             ) { selectedMeasurementUnits = .imperialLbDecimal }
             radioRow(
                 title: lang.kgCm,
-                isSelected: selectedMeasurementUnits == .metric
-            ) { selectedMeasurementUnits = .metric }
-        }
-    }
-
-    private var weightOnlyLayout: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            radioRow(
-                title: lang.lbFeet,
-                isSelected: selectedWeightUnit == .lb
-            ) { selectedWeightUnit = .lb }
-            radioRow(
-                title: lang.kgCm,
-                isSelected: selectedWeightUnit == .kg
-            ) { selectedWeightUnit = .kg }
-        }
-    }
-
-    private var kidsOnlyLayout: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            radioRow(
-                title: lang.lbsOzIn,
-                isSelected: selectedMeasurementUnits == .imperialLbOz
-            ) { selectedMeasurementUnits = .imperialLbOz }
-            radioRow(
-                title: lang.lbsDecimalIn,
-                isSelected: selectedMeasurementUnits == .imperialLbDecimal
-            ) { selectedMeasurementUnits = .imperialLbDecimal }
-            radioRow(
-                title: lang.kgCm,
-                isSelected: selectedMeasurementUnits == .metric
+                isSelected: selectedMeasurementUnits == .metric,
+                isEnabled: isMyKidsEnabled
             ) { selectedMeasurementUnits = .metric }
         }
     }
 
     // MARK: - Components
 
-    private func radioRow(title: String, isSelected: Bool, onTap: @escaping () -> Void) -> some View {
+    private func sectionHeader(_ title: String, isEnabled: Bool) -> some View {
+        Text(title)
+            .fontOpenSans(.heading5)
+            .foregroundStyle(theme.textHeading)
+            .opacity(isEnabled ? 1 : lockedOpacity)
+            .padding(.bottom, .spacingXS)
+    }
+
+    private let lockedOpacity: Double = 0.4
+
+    private func radioRow(
+        title: String,
+        isSelected: Bool,
+        isEnabled: Bool,
+        onTap: @escaping () -> Void
+    ) -> some View {
         Button(action: onTap) {
             HStack(spacing: .spacingSM) {
                 ZStack {
@@ -165,6 +152,8 @@ struct UnitTypePickerModalView: View {
             .padding(.vertical, .spacingSM)
         }
         .buttonStyle(.plain)
+        .disabled(!isEnabled)
+        .opacity(isEnabled ? 1 : lockedOpacity)
         .accessibilityElement(children: .combine)
         .accessibilityAddTraits(isSelected ? [.isButton, .isSelected] : .isButton)
     }

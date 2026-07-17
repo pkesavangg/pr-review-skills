@@ -394,12 +394,17 @@ final class DashboardDateRangeManager: DashboardDateRangeManagerProtocol {
                 visibleDomainLength: visibleDomainLength(.month),
                 continuousOperations: continuousOperations
             )
-            result = filterOperationsInDateRange(
+            // Apple-Health day snapping: filter by *whole day*, not the raw scroll instant, so a
+            // partially-visible edge day (its midnight dot is on screen) is still counted in the
+            // window average — and the average stays stable as the scroll nudges within the same
+            // set of visible days. Mirrors the .week branch below; the calendar-month branch is
+            // unaffected (its bounds are already day-aligned).
+            result = filterOperationsInDateRangeByDay(
                 operations: continuousOperations,
                 start: labelRange.start,
                 end: labelRange.end
             )
-            
+
         case .year:
             let labelRange = getLabelDateRangeForYear(
                 xScrollPosition: currentScrollPos,

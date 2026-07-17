@@ -24,7 +24,7 @@ Claude Code is the primary dev tool. The shared AI-context is committed (see `.g
 | **MCP servers** | `iOS/.claude/MCP_SERVERS.md` | Atlassian (Jira/Confluence), GitHub, Figma, Context7 setup. |
 | **skill-creator** | enabled in `.claude/settings.json` + `iOS/.claude/settings.json` | Scaffold/validate new skills in `SKILL.md` format. |
 
-**Format & placement rules:** every skill is a `<name>/SKILL.md` directory (flat `.md` files are not discovered). Generic skills live at the repo root so they trigger anywhere; platform skills are scoped to their subtree (symlink into root if one must be reachable from the bare root). Full rules in the [skills README](../.claude/skills/README.md).
+**Format & placement rules:** every skill is a `<name>/SKILL.md` directory (flat `.md` files are not discovered). Generic skills live at the repo root so they trigger anywhere; platform skills are scoped to their subtree (`iOS/.claude/skills/`, `Android/.claude/skills/`). A scoped skill only auto-triggers when Claude is rooted in that subtree, so all **iOS skills are mirrored into the repo-root `.claude/skills/` as relative symlinks** — this is what lets them trigger from the monorepo root. **When you add or remove an iOS skill, regenerate the mirror** with [`scripts/sync-root-skill-links.sh`](../scripts/sync-root-skill-links.sh) (`--check` verifies it in CI). Full rules in the [skills README](../.claude/skills/README.md).
 
 **Phase 2:** `phase2-context` and `phase2-design-system` skills carry the Me.Health 2.0 multi-product API + design context (see [`/CLAUDE.md`](../CLAUDE.md) → Phase 2).
 
@@ -38,17 +38,30 @@ Run automatically as Claude edits files:
 | Edit `Info.plist` / `GoogleService-Info.plist` / `.env` / `Secrets` / `keys.plist` | Sensitive-config warning |
 | Edit a `*Tests/*.swift` file | Reminder: unit tests run on a **physical device**, not the simulator |
 | Every 5 / 10 / 20+ Swift edits in a session | Suggest running `/post-change-guard` |
-| `git commit` (Bash) | Reminder to run `/self-review` first |
+| `git commit` (Bash) | **Blocks the commit** via [`scripts/commit-review-gate.sh`](../scripts/commit-review-gate.sh) unless `/self-review` has passed on the current working tree, and reports the **specific reason**: not-yet-reviewed · reviewed-but-`NEEDS FIXES` (echoes the outstanding findings) · stale-because-files-changed (lists which). Bypass: `git commit --no-verify`. (Only fires for commits made *through Claude Code*; terminal commits are gated by Lefthook below.) |
+
+### Docs-freshness hook (root `.claude/settings.json`)
+
+Monorepo-wide, so it also catches Android edits (the iOS hooks above only fire under `iOS/`):
+
+| Trigger | Action |
+|---------|--------|
+| Edit/Write any source file | Run [`scripts/docs-freshness-check.sh`](../scripts/docs-freshness-check.sh); if the path maps to a maintained doc, print `📝 Docs check …` (naming the doc + change significance) and `🌐 Also mirror this to Confluence …` (naming the hub page) |
+
+The source→doc map lives in the script's `doc_for()` and, identically, in the [`update-architecture`](../iOS/.claude/skills/update-architecture/SKILL.md) skill's Scope table — the skill does the actual update (`architecture.md` + `docs/`). Each hit is classified by change size: **`NEW FILE`** (structural), **`major change (N lines)`** when ≥ `MAJOR_LINES` (default 20) added+deleted lines, else **`minor change (N lines)`** — NEW/major say "update the doc", minor says "only if behaviour/schema changed". `architecture.md` is flagged only for **newly-added** structural files; existing-file edits map to their specific doc (schema, product types, etc.) or nothing. Deduped per (doc, tier) per day, so a minor note never hides a later major one. It's a reminder, never a gate.
+
+**Confluence mirror.** Every mapped change also prints a `🌐` line pointing at the [Me App Confluence hub](confluence.md) (the `meApp - Development` page mirrors this repo's architecture + automation docs). Run [`/update-confluence`](../.claude/skills/update-confluence/SKILL.md) to publish upward — it reads the target page, drafts the section edit from repo state, and **writes only after you approve** (Confluence is a shared, hand-curated wiki, so writes are never automatic). The `🌐` line is shown at most once per day. Full page tree + IDs + the change→page map: [`docs/confluence.md`](confluence.md).
 
 ---
 
 ## 2. Git hooks — Lefthook (`.lefthook.yml`)
 
-Local pre-commit / commit-msg gates. Setup: `brew install lefthook detekt && lefthook install`. Bypass in emergencies with `git commit --no-verify`.
+Local pre-commit / commit-msg gates. Setup: `brew install lefthook detekt swiftlint && lefthook install`. Bypass in emergencies with `git commit --no-verify`.
 
 | Stage | Check | What it does |
 |-------|-------|--------------|
 | `pre-commit` | **detekt** | Static analysis on staged `*.kt` (uses `Android/config/detekt/detekt.yml` + baseline). Update baseline: `cd Android && ./gradlew detektBaseline`. |
+| `pre-commit` | **swiftlint** | SwiftLint on staged iOS `*.swift` (`iOS/.swiftlint.yml` — includes the custom snapshot-boundary + accessibility rules). Fails on error-severity violations. Auto-fix the correctable ones with `/swiftlint`. |
 | `pre-commit` | **gitleaks** | `gitleaks protect --staged` secrets scan (warns if gitleaks not installed). |
 | `commit-msg` | **jira-ticket** | Requires a Jira key (`[A-Z]+-[0-9]+`, e.g. `MOB-1234`) in the message. Skips Merge/Revert/fixup!/squash!. |
 
@@ -80,6 +93,10 @@ iOS coverage thresholds (per-layer 75–85%) are documented in [`/iOS/docs/COVER
 | Script | Purpose |
 |--------|---------|
 | [`scripts/check-skill-links.sh`](../scripts/check-skill-links.sh) | Flag broken `.md` references across skills, CLAUDE.md, and orchestra.md. Exit 1 on a broken link — safe in CI / pre-commit. |
+| [`scripts/sync-root-skill-links.sh`](../scripts/sync-root-skill-links.sh) | Mirror iOS skills into the repo-root `.claude/skills/` as relative symlinks so they trigger from the monorepo root. Run after adding/removing an iOS skill; `--check` exits 1 if out of sync — safe in CI / pre-commit. |
+| [`scripts/review-fingerprint.sh`](../scripts/review-fingerprint.sh) | Stable working-tree fingerprint (staging-independent) used by the `/self-review` pass-marker and the Claude `git commit` gate to prove self-review ran on exactly the code being committed. |
+| [`scripts/commit-review-gate.sh`](../scripts/commit-review-gate.sh) | Layer-2 commit gate: blocks a Claude-Code `git commit` unless `/self-review` passed on the current tree, printing the specific block reason + outstanding findings. Honors `--no-verify`. Called by the `git commit` PreToolUse hook. |
+| [`scripts/docs-freshness-check.sh`](../scripts/docs-freshness-check.sh) | Map a changed source path (or the whole working tree) to the maintained doc it affects and print a staleness reminder. Runs per-edit via the root docs-freshness hook; also runnable manually or in CI. Always exits 0. |
 | `iOS/scripts/find-device.sh` | Resolve a connected physical device ID for test runs. |
 | `iOS/scripts/run_tests_with_coverage.sh` | Run unit tests on device + produce coverage. |
 | `iOS/scripts/export_coverage_reports.py` | Export/parse coverage reports. |
@@ -91,5 +108,6 @@ iOS coverage thresholds (per-layer 75–85%) are documented in [`/iOS/docs/COVER
 ## Related
 
 - Skill catalog & taxonomy: [`.claude/skills/README.md`](../.claude/skills/README.md)
+- Confluence hub structure & sync: [`confluence.md`](confluence.md)
 - iOS orchestration: [`/iOS/.claude/orchestra.md`](../iOS/.claude/orchestra.md)
 - Monorepo conventions: [`/CLAUDE.md`](../CLAUDE.md) · iOS: [`/iOS/CLAUDE.md`](../iOS/CLAUDE.md) · Android: [`/Android/CLAUDE.md`](../Android/CLAUDE.md)

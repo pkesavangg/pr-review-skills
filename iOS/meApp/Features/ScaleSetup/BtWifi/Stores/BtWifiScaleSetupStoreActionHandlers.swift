@@ -215,10 +215,8 @@ extension BtWifiScaleSetupStore {
             let hasNetwork = networkMonitor.isConnected
             if !hasPermissions || !hasNetwork {
                 navigateToStep(.permissions)
-            } else if !isProfileComplete() {
-                navigateToStep(.completeProfile)
             } else {
-                navigateToStep(.wakeup)
+                navigateToStep(.completeProfile)
             }
         case .completeProfile:
             saveCompleteProfileAndProceed()

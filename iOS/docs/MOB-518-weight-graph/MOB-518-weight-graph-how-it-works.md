@@ -354,9 +354,18 @@ state**, read reactively by the header view. Priority:
 2. No selection → the **visible-window average** (label: "{period} average", e.g. "week average").
 3. No entries in the window → "no entries in {period}"; none at all → "no entries".
 
-The window average is an **interpolated** mean across the visible range (Hermite samples over the committed
-window), recomputed **on finger-lift**, not mid-drag. Because it's read reactively from the store, tapping a
-point or committing a scroll updates it automatically — no separate wiring in the view.
+The window average is the **plain arithmetic mean of the day dots inside the visible window** — Apple-Health
+behaviour: each day counts once (data is already aggregated to one summary per day), over the **whole visible
+days** (the window snaps to day boundaries; Week and Month both filter by-day via
+`getOperationsForLabelDateRange`), recomputed **on finger-lift**, not mid-drag. The **Hermite-interpolated**
+mean (`interpolatedAverageForVisibleRange`) is only a **fallback** for a window that contains *no* readings but
+where the account has data elsewhere. Because it's read reactively from the store, tapping a point or
+committing a scroll updates it automatically — no separate wiring in the view.
+
+> Note the hybrid latest-day rule still applies: the newest day contributes its *latest reading* (not that
+> day's average) to both its plotted point and the window average — see
+> [dashboard-hybrid-latest-vs-average.md](../../../docs/dashboard-hybrid-latest-vs-average.md). This is a
+> deliberate deviation from Apple Health, which would use the newest day's daily average too.
 
 **Analogy.** The header is a **live caption** that reads the author's notes (store state), not something the
 frame paints on its own.

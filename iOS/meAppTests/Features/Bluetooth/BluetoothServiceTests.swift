@@ -69,6 +69,29 @@ struct BluetoothServiceTests {
         #expect(updated == true)
     }
 
+    @Test("MOB-184: live account switch clears the in-memory reconnect dismissal cache")
+    func accountSwitchClearsInMemoryReconnectSkips() async {
+        let account = MockAccountService()
+        let sut = makeSUT(account: account)
+        let accountA = AccountTestFixtures.makeAccountSnapshot(id: "mob184-A", email: "a@example.com", isLoggedIn: true, isActiveAccount: true)
+        account.activeAccount = accountA
+        _ = await waitUntil { sut.activeAccount?.accountId == "mob184-A" }
+
+        // Account A cancels the reconnect / duplicate-user alert for a shared scale — recorded in
+        // the in-memory session cache (checked before the account-scoped persisted store).
+        sut.reconnectAlertSkippedDevices = ["SHARED-BROADCAST"]
+        #expect(sut.isReconnectAlertDismissed("SHARED-BROADCAST") == true)
+
+        // Live switch to Account B on the same running app.
+        let accountB = AccountTestFixtures.makeAccountSnapshot(id: "mob184-B", email: "b@example.com", isLoggedIn: true, isActiveAccount: true)
+        account.activeAccount = accountB
+        _ = await waitUntil { sut.activeAccount?.accountId == "mob184-B" }
+
+        // Account A's in-memory suppression must not leak to Account B on the shared scale.
+        #expect(sut.reconnectAlertSkippedDevices.isEmpty)
+        #expect(sut.isReconnectAlertDismissed("SHARED-BROADCAST") == false)
+    }
+
     @Test("scale subscription filters to bluetooth scale source types")
     func scalesSubscriptionFiltersBluetoothTypes() async {
         let scale = MockScaleService()
