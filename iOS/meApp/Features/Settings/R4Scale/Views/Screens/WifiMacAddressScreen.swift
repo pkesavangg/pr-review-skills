@@ -13,11 +13,11 @@ import UIKit
 final class WifiMacAddressViewModel: ObservableObject {
     @Published var macAddress: String
     @Injector private var notificationService: NotificationHelperServiceProtocol
-    
+
     init(macAddress: String) {
         self.macAddress = macAddress
     }
-    
+
     func copyMacAddress() {
         UIPasteboard.general.string = macAddress
         notificationService.showToast(ToastModel(message: ToastStrings.copiedToClipboard))
@@ -30,7 +30,7 @@ struct WifiMacAddressScreen: View {
     @Environment(\.appTheme) private var theme
     @StateObject private var viewModel: WifiMacAddressViewModel
     let lang = WifiMacAddressScreenStrings.self
-    
+
     init(macAddress: String) {
         _viewModel = StateObject(wrappedValue: WifiMacAddressViewModel(macAddress: macAddress))
     }
@@ -84,7 +84,7 @@ struct WifiMacAddressScreen: View {
         }
         .frame(maxHeight: .infinity, alignment: .top)
         .background(theme.backgroundSecondary.ignoresSafeArea())
-        .navigationBarBackButtonHidden(true)
+        .navigationBarHidden(true)
         .screenAccessibilityRoot(AccessibilityID.wifiMacScreenRoot)
     }
 }

@@ -86,7 +86,7 @@ struct DeviceNameScreen: View {
             }
             .scrollDismissesKeyboard(.interactively)
         }
-        .navigationBarBackButtonHidden(true)
+        .navigationBarHidden(true)
         .screenAccessibilityRoot(AccessibilityID.deviceNameScreenRoot)
         .background(theme.backgroundSecondary.ignoresSafeArea())
         .onTapGesture {
