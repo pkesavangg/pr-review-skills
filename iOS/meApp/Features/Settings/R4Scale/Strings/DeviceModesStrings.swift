@@ -28,7 +28,7 @@ struct DeviceModesStrings {
     static let medicalNoteDescription = "If you have certain medical conditions —like implanted medical devices or you are pregnant — " +
         "you should not use All Body Metrics Mode without first consulting your doctor."
     static let changeScaleModeTitle = "Change the Scale Mode"
-    static let r4scaleSetupTitle = "Scale Setup - 0412"
+    static let r4scaleSetupTitle = "Device Setup - 0412"
     
     // Display Metrics
     static let displayMetricsTitle = "Display Metrics"

@@ -273,7 +273,7 @@ final class MockContentViewModelBluetoothService: BluetoothServiceProtocol {
     func startLiveMeasurement(broadcastId: String) async -> Result<Void, BluetoothServiceError> { .failure(.notImplemented) }
     func stopLiveMeasurement(broadcastId: String) async -> Result<Void, BluetoothServiceError> { .failure(.notImplemented) }
     func getMeasurementLiveData(broadcastId: String) async -> Result<MeasurementLiveData, BluetoothServiceError> { .failure(.notImplemented) }
-    func getScaleUserList(broadcastId: String, skipConnectionCheck: Bool) async -> Result<[DeviceUser], BluetoothServiceError> { .failure(.notImplemented) }
+    func getScaleUserList(broadcastId: String, skipConnectionCheck: Bool, sku: String?) async -> Result<[DeviceUser], BluetoothServiceError> { .failure(.notImplemented) }
     func getDeviceLogs(broadcastId: String) async -> Result<DeviceLogs, BluetoothServiceError> { .failure(.notImplemented) }
     func updateWeightOnlyMode(broadcastId: String?) async -> Result<Void, BluetoothServiceError> { .failure(.notImplemented) }
     func deleteR4Scales() async -> Result<Void, BluetoothServiceError> { .failure(.notImplemented) }

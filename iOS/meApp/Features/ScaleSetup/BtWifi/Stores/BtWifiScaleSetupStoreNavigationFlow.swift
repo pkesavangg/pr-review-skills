@@ -30,7 +30,7 @@ extension BtWifiScaleSetupStore {
             direction: 1,
             steps: steps,
             canSkipPermissions: arePermissionsEnabled(),
-            canSkipCompleteProfile: isProfileComplete()
+            canSkipCompleteProfile: canAutoSkipCompleteProfile
         )
         guard nextIndex < steps.count else {
             dismissAction?()
@@ -38,27 +38,27 @@ extension BtWifiScaleSetupStore {
         }
         currentStepIndex = nextIndex
     }
-    
+
     func moveToPreviousStep() {
         // Don't navigate if we're exiting
         guard !isExiting else { return }
-        
+
         // Settings WiFi setup: show exit alert when trying to go back from WiFi list
         if handleSettingsWifiSetupExit() {
             return
         }
-        
+
         let previousIndex = setupCoordinator.adjustedIndex(
             from: currentStepIndex - 1,
             direction: -1,
             steps: steps,
             canSkipPermissions: arePermissionsEnabled(),
-            canSkipCompleteProfile: isProfileComplete()
+            canSkipCompleteProfile: canAutoSkipCompleteProfile
         )
         guard previousIndex >= 0 else { return }
         currentStepIndex = previousIndex
     }
-    
+
     // MARK: - Configuration
     /// Configures the store for the given SKU, optionally injecting a previously-discovered
     /// scale and its discovery event (used when the flow originates from the *Scale Discovered* sheet).
@@ -98,24 +98,24 @@ extension BtWifiScaleSetupStore {
         let lookupSku = DeviceHelper.mapSkuForDisplay(sku)
         let resolved = SCALES.first { $0.sku == lookupSku } ?? SCALES.first
         self.scaleItem = resolved
-        
+
         // Reset exiting flag when configuring
         isExiting = false
-        
+
         // Store reconnect and duplicate flags
         self.isReconnect = isReconnect
         self.isDuplicated = isDuplicated
-        
+
         // Log setup state similar to Angular version
         LoggerService.shared.log(
             level: .info,
             tag: tag,
             message: "BtWifi setup started - Is Wifi setup: \(isWifiSetupOnly), Is Duplicated: \(isDuplicated), Is Reconnecting: \(isReconnect)"
         )
-        
+
         // Set setup in progress flag immediately for ALL setup flows to prevent goal modals from appearing during setup
         self.bluetoothService.isSetupInProgress = true
-        
+
         // Determine if this is a standalone Wi-Fi setup flow (opened from Settings > Wi-Fi)
         if let savedScaleParam = saveScale {
             self.savedScale = savedScaleParam.toSnapshot()
@@ -124,13 +124,13 @@ extension BtWifiScaleSetupStore {
         } else {
             self.isWifiSetupOnly = false
         }
-        
+
         // Reset pairing/discovery state
         resetDiscoveryState()
         // Inject discovery context if provided.
         self.discoveredScale = discoveredScale
         self.discoveryEvent = discoveryEvent
-        
+
         // Reset error state
         self.scaleSetupError = .none
 
@@ -143,7 +143,7 @@ extension BtWifiScaleSetupStore {
         self.currentCustomizeSetting = .none
         self.selectedCustomizeItems = []
         self.visitedCustomizeItems = []
-        
+
         // Set the starting step (defaults to intro, but may be permissions or connectingBluetooth for direct flow)
         let startStep: BtWifiScaleSetupStep = {
             if isReconnect && !isDuplicated {
@@ -169,26 +169,26 @@ extension BtWifiScaleSetupStore {
         } else {
             currentStepIndex = 0
         }
-        
+
         // Evaluate initial next-button state.
         updateNextEnabled()
     }
-    
+
     // MARK: - Exit / Help
     func performExitCleanup() {
         // Ensure exiting flag is set first to prevent any navigation
         isExiting = true
-        
+
         // Store current step and index before dismissing to prevent navigation
         let wasOnGatheringNetwork = currentStep == .gatheringNetwork
         let wasOnAvailableWifiList = currentStep == .availableWifiList
         let currentIndex = currentStepIndex
-        
+
         // Cancel any ongoing network operations to prevent navigation after exit
         cancelNetworkScanTimeout()
         fetchWifiNetworksTask?.cancel()
         fetchWifiNetworksTask = nil
-        
+
         // Lock the step index to current step to prevent any navigation
         // This ensures the view stays on the current screen during dismissal
         if wasOnGatheringNetwork || wasOnAvailableWifiList {
@@ -199,10 +199,10 @@ extension BtWifiScaleSetupStore {
                 isRevertingStepIndex = false
             }
         }
-        
+
         // Post notification to refresh dashboard when setup is dismissed
         NotificationCenter.default.post(name: .dashboardMetricsUpdated, object: nil)
-        
+
         // Clear setup in progress flag immediately
         bluetoothService.isSetupInProgress = false
 
@@ -223,18 +223,18 @@ extension BtWifiScaleSetupStore {
                 self.connectionState = .success
             }
         }
-        
+
         // Perform cleanup operations that don't affect UI
         if savedScale == nil { disconnectDevice() }
         cancelWifi()
         checkGoalModalAfterSetup()
-        
+
         // Resume scanning and sync devices after setup exits
         Task { [weak self] in
             guard let self = self else { return }
             await self.resumeScanningAndSyncDevices()
         }
-        
+
         // Clean up the store to break retain cycles after a delay
         Task { @MainActor [weak self] in
             try? await Task.sleep(nanoseconds: 500_000_000)
@@ -248,7 +248,7 @@ extension BtWifiScaleSetupStore {
             performExitCleanup()
             return true
         }
-        
+
         return await withCheckedContinuation { cont in
             presentExitAlert(
                 onConfirm: { [weak self] in
@@ -260,7 +260,7 @@ extension BtWifiScaleSetupStore {
                 })
         }
     }
-    
+
     /// Shows the generic Help modal used across the app.
     func showHelpModal() {
         notificationService.showModal(ModalData(
@@ -269,7 +269,7 @@ extension BtWifiScaleSetupStore {
             })
         ))
     }
-    
+
     /// Shows Bluetooth turned off alert
     func showBluetoothTurnedOffAlert() {
         let alertStrings = AlertStrings.BluetoothTurnedOffAlert.self
@@ -300,15 +300,15 @@ extension BtWifiScaleSetupStore {
         if currentStep == .gatheringNetwork {
             return scaleSetupError == .duplicatesFound
         }
-        
+
         // Show footer for viewSettings step
         if currentStep == .viewSettings {
             return true
         }
-        
+
         return !stepsToHideFooter.contains(currentStep)
     }
-    
+
     /// Checks if the back button should be disabled based on the current step.
     func shouldDisableBackButton() -> Bool {
         return currentStep == .intro
@@ -316,5 +316,5 @@ extension BtWifiScaleSetupStore {
             || currentStep == .customizeSettings
             || currentStep == .availableWifiList
     }
-    
+
 }

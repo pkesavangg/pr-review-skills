@@ -5,6 +5,10 @@
 
 extension AccessibilityID {
     // MARK: - Settings Screen rows
+    /// Profile header at the top of the Settings screen. Long-pressing it switches accounts
+    /// (MOB-223), so QA automation needs a stable handle. Mirror this on the Android
+    /// `UserProfileSection` avatar `testTag` when that side is tagged.
+    static let settingsProfileHeader = "settings_profile_header"
     static let settingsRowUserProfile = "settings_row_user_profile"
     static let settingsRowGoalSetting = "settings_row_goal_setting"
     static let settingsRowUnitType = "settings_row_unit_type"
