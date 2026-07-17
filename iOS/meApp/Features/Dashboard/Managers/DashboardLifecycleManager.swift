@@ -413,7 +413,7 @@ final class DashboardLifecycleManager: DashboardLifecycleManaging { // swiftlint
                 // crosshair actually moves. An update/delete (entryAdded == false) preserves the current
                 // selection, re-pinned in place to its refreshed same day/month point (values may have
                 // changed without the selected bucket moving).
-                let latest = continuousOps.max(by: { $0.date < $1.date })
+                let latest = continuousOps.max { $0.date < $1.date }
                 if entryAdded, let latest,
                    calendar.compare(latest.date, to: selectedPoint.date, toGranularity: selectionGranularity) == .orderedDescending {
                     self.graphManager.applyChartSelectionSync(at: latest.date, operations: continuousOps)
