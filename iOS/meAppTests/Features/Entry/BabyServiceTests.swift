@@ -27,7 +27,7 @@ struct BabyServiceTests {
 
     // MARK: - SUT
 
-    // Test factory return: a small struct bundling the SUT and its mocks for each test.
+    // Test factory return; a small struct is clearer than a wide labeled tuple.
     private struct SUT {
         let service: BabyService
         let repo: MockBabyRepositoryAPI

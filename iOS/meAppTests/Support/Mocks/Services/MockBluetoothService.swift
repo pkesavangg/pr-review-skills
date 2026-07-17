@@ -47,6 +47,7 @@ final class MockBluetoothService: BluetoothServiceProtocol {
     private(set) var getScaleUserListCalls = 0
     private(set) var updateWeightOnlyModeCalls = 0
     private(set) var updateUserProfileForR4ScalesCalls = 0
+    private(set) var refreshScanProfileForNonR4ScalesCalls = 0
     private(set) var deleteR4ScalesCalls = 0
     private(set) var confirmSmartPairCalls = 0
     private(set) var deleteUserByTokenCalls = 0
@@ -158,6 +159,9 @@ final class MockBluetoothService: BluetoothServiceProtocol {
     func resyncAndScan() async -> Result<Void, BluetoothServiceError> {
         resyncAndScanCalls += 1
         return resyncAndScanResult
+    }
+    func refreshScanProfileForNonR4Scales() async {
+        refreshScanProfileForNonR4ScalesCalls += 1
     }
     func syncDevices(_ devices: [DeviceSnapshot]) {
         syncDevicesCalls += 1

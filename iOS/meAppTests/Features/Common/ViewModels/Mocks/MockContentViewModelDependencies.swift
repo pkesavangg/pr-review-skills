@@ -251,6 +251,7 @@ final class MockContentViewModelBluetoothService: BluetoothServiceProtocol {
     func receiveBpmReading(broadcastId: String) async -> Result<Void, BluetoothServiceError> { .failure(.notImplemented) }
 
     func resyncAndScan() async -> Result<Void, BluetoothServiceError> { .failure(.notImplemented) }
+    func refreshScanProfileForNonR4Scales() async {}
     func syncDevices(_ devices: [DeviceSnapshot]) {}
     func addNewDevice(_ device: Device, metaData: DeviceMetaData?, _ skipDuplicateCheck: Bool?) async -> Result<Device, BluetoothServiceError> { .failure(.notImplemented) }
     func confirmSmartPair(device: Device, token: String, displayName: String, userNumber: Int?) async -> Result<UserCreationResponse, BluetoothServiceError> { .failure(.notImplemented) }

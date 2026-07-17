@@ -586,13 +586,20 @@ class SettingsStore: ObservableObject {
         let firstNameValue = removeWhiteSpace(editProfileForm.firstName.value)
         let dobValue = DateTimeTools.formatDateToYMD_Local(editProfileForm.birthday.value)
 
-        // Check if firstName or dob changed (only these affect R4 scale profile)
-        let firstNameChanged = firstNameValue != (activeAccount?.firstName ?? "")
-        let dobChanged = dobValue != (activeAccount?.dob ?? "")
-        let shouldUpdateR4Profile = firstNameChanged || dobChanged
-
         // Convert form height to Double for the profile
         let formHeightDouble = Double(editProfileForm.height.value) ?? (Double(activeAccount?.weightHeight ?? "0") ?? 0.0)
+
+        // MOB-193: Every profile field the scale uses to compute body-composition metrics
+        // (name, dob/age, gender, height) must trigger a re-push to R4 scales. Previously only
+        // firstName/dob were checked, so gender- or height-only edits persisted to the account
+        // but were never sent to the scale — the scale kept its old profile and returned stale,
+        // identical metrics (e.g. Male vs Female showing the same body fat / muscle values).
+        let firstNameChanged = firstNameValue != (activeAccount?.firstName ?? "")
+        let dobChanged = dobValue != (activeAccount?.dob ?? "")
+        let genderChanged = editProfileForm.gender.value != activeAccount?.gender
+        let storedHeight = Double(activeAccount?.weightHeight ?? "0") ?? 0.0
+        let heightChanged = formHeightDouble != storedHeight
+        let shouldUpdateR4Profile = firstNameChanged || dobChanged || genderChanged || heightChanged
 
         let profile = Profile(
             firstName: firstNameValue,
@@ -621,7 +628,8 @@ class SettingsStore: ObservableObject {
                     activityLevel: activeAccount?.activityLevel ?? .normal
                 )
                 _ = try await accountService.updateBodyComp(bodyComp)
-                // Only update R4 scales profile if firstName or dob changed
+                // Only update R4 scales profile if a metric-affecting field changed
+                // (firstName, dob, gender, or height) — see shouldUpdateR4Profile above.
                 if shouldUpdateR4Profile {
                     // Update R4 scales profile and check for USER_SELECTION_IN_PROGRESS status
                     let profileUpdateResult = await bluetoothService.updateUserProfileForR4Scales()
@@ -644,6 +652,16 @@ class SettingsStore: ObservableObject {
                 } else {
                     // No R4 profile update needed, just show success toast
                     notificationService.showToast(ToastModel(title: toastLang.success, message: toastLang.profileSaved))
+                }
+
+                // A3/A6 scales don't accept a live profile push — they learn the profile only from
+                // the scan advertisement, so a scale-relevant change (name/dob/gender/height) must
+                // be re-broadcast to reach a non-R4 scale. Gate on the same fields as the R4 push so
+                // an email-/last-name-/zip-only edit doesn't needlessly tear down and restart the
+                // smart scan (which risks an unnecessary reconnect prompt — see MOB-193). No-op when
+                // no scan is running.
+                if shouldUpdateR4Profile {
+                    await bluetoothService.refreshScanProfileForNonR4Scales()
                 }
 
                 resetEditProfileForm()
@@ -896,6 +914,7 @@ class SettingsStore: ObservableObject {
                 // Update R4 scales profile and check for USER_SELECTION_IN_PROGRESS status
                 let profileUpdateResult = await bluetoothService.updateUserProfileForR4Scales()
                 logger.log(level: .info, tag: tag, message: "updateUserProfileForR4Scales result updateWeightUnit: \(profileUpdateResult)")
+                await bluetoothService.refreshScanProfileForNonR4Scales()
 
                 switch profileUpdateResult {
                 case let .success(statusArray):
@@ -943,6 +962,7 @@ class SettingsStore: ObservableObject {
                 // Update R4 scales profile and check for USER_SELECTION_IN_PROGRESS status
                 let profileUpdateResult = await bluetoothService.updateUserProfileForR4Scales()
                 logger.log(level: .info, tag: tag, message: "updateUserProfileForR4Scales result updateActivityLevel: \(profileUpdateResult)")
+                await bluetoothService.refreshScanProfileForNonR4Scales()
                 switch profileUpdateResult {
                 case let .success(statusArray):
                     // Suppress success toast during user selection to prevent misleading feedback,
@@ -1413,6 +1433,7 @@ class SettingsStore: ObservableObject {
                 // Update R4 scales profile and check for USER_SELECTION_IN_PROGRESS status
                 let profileUpdateResult = await bluetoothService.updateUserProfileForR4Scales()
                 logger.log(level: .info, tag: tag, message: "updateUserProfileForR4Scales result createGoal: \(profileUpdateResult)")
+                await bluetoothService.refreshScanProfileForNonR4Scales()
 
                 switch profileUpdateResult {
                 case let .success(statusArray):
@@ -1744,6 +1765,8 @@ class SettingsStore: ObservableObject {
                 if weightUnitChanged {
                     let profileUpdateResult = await bluetoothService.updateUserProfileForR4Scales()
                     logger.log(level: .info, tag: tag, message: "updateUserProfileForR4Scales result saveUnitSelections: \(profileUpdateResult)")
+                    // MOB-193: re-broadcast the updated profile to A3/A6 scales (see above).
+                    await bluetoothService.refreshScanProfileForNonR4Scales()
                     // Suppress success toast during user selection to prevent misleading feedback,
                     // since the scale profile isn't updated at that time.
                     if case let .success(statusArray) = profileUpdateResult,

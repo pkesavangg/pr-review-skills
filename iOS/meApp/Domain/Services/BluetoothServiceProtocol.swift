@@ -111,6 +111,13 @@ protocol BluetoothServiceProtocol {
     /// Performs a dedicated scan intended for scale pairing.
     func scanForPairing()
 
+    /// MOB-193: Re-broadcasts the current account profile to non-R4 (A3/A6) scales by restarting
+    /// the smart scan. Those scales receive the profile only via the scan advertisement, so a
+    /// profile change (activity level, gender, height, dob, unit, goal) otherwise isn't seen by
+    /// the scale until the next scan restart. R4 scales are handled by
+    /// `updateUserProfileForR4Scales()`. No-op when no scan is running.
+    func refreshScanProfileForNonR4Scales() async
+
     // MARK: - Device Synchronisation
     /// Forces a re-sync of locally stored devices with the Bluetooth plugin and re-starts scanning.
     /// - Returns: Result<Void, BluetoothServiceError>

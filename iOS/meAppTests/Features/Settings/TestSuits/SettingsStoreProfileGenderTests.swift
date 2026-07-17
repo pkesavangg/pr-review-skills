@@ -155,6 +155,64 @@ extension SettingsStoreTests {
             #expect(notification.showToastCalls == 0)
         }
 
+        @Test("saveProfile re-broadcasts the scan profile to non-R4 scales when a scale field changes")
+        func saveProfileRebroadcastsToNonR4ScalesOnScaleFieldChange() async {
+            let notification = TestNotificationHelperService()
+            let account = SettingsStoreTestFixtures.makeAccount()
+            let accountService = MockAccountService()
+            accountService.seedAccounts([account], active: account)
+            accountService.updateProfileResult = .success(())
+            accountService.updateBodyCompResult = .success(())
+            let bluetooth = MockBluetoothService()
+            bluetooth.updateUserProfileForR4ScalesResult = .success([])
+            let (store, _, _, _, _) = SettingsStoreTestFixtures.makeSUT(
+                notification: notification,
+                accountService: accountService,
+                bluetoothService: bluetooth
+            )
+            await SettingsStoreTestFixtures.waitUntil { store.activeAccount?.accountId == account.accountId }
+            // Baseline the form from the account, then change a scale-relevant field (gender).
+            store.populateEditFormIfNeeded()
+            store.editProfileForm.gender.value = .male
+            store.editProfileForm.gender.markAsDirty()
+            store.editProfileForm.validate()
+
+            store.saveProfile(router: Router<SettingsRoute>())
+            await SettingsStoreTestFixtures.waitUntil { accountService.updateProfileCalls == 1 && notification.dismissLoaderCalls == 1 }
+
+            #expect(bluetooth.refreshScanProfileForNonR4ScalesCalls == 1)
+        }
+
+        @Test("saveProfile does not re-broadcast to non-R4 scales when only a non-scale field changes")
+        func saveProfileDoesNotRebroadcastOnNonScaleFieldChange() async {
+            let notification = TestNotificationHelperService()
+            let account = SettingsStoreTestFixtures.makeAccount()
+            let accountService = MockAccountService()
+            accountService.seedAccounts([account], active: account)
+            accountService.updateProfileResult = .success(())
+            accountService.updateBodyCompResult = .success(())
+            let bluetooth = MockBluetoothService()
+            let (store, _, _, _, _) = SettingsStoreTestFixtures.makeSUT(
+                notification: notification,
+                accountService: accountService,
+                bluetoothService: bluetooth
+            )
+            await SettingsStoreTestFixtures.waitUntil { store.activeAccount?.accountId == account.accountId }
+            // Baseline the form from the account, then edit only a non-scale field (zipcode). No
+            // scale-relevant field (name/dob/gender/height) changed, so neither the R4 push nor the
+            // non-R4 scan re-broadcast should fire (MOB-193 — avoids an unnecessary reconnect prompt).
+            store.populateEditFormIfNeeded()
+            store.editProfileForm.zipcode.value = "600042"
+            store.editProfileForm.zipcode.markAsDirty()
+            store.editProfileForm.validate()
+
+            store.saveProfile(router: Router<SettingsRoute>())
+            await SettingsStoreTestFixtures.waitUntil { accountService.updateProfileCalls == 1 && notification.dismissLoaderCalls == 1 }
+
+            #expect(bluetooth.refreshScanProfileForNonR4ScalesCalls == 0)
+            #expect(bluetooth.updateUserProfileForR4ScalesCalls == 0)
+        }
+
         @Test("updateWeightUnit user selection in progress shows pending alert")
         func updateWeightUnitUserSelectionInProgressShowsPendingAlert() async {
             let notification = TestNotificationHelperService()
