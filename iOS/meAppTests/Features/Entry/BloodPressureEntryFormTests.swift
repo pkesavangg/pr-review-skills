@@ -204,12 +204,12 @@ struct BloodPressureEntryFormTests {
 // MARK: - Test String Constants
 
 private enum BPFormTestText {
-    static let required = "This field is required"
-    static let maxLimit = "This value cannot be over 500."
+    static let required = "this field is required"
+    static let maxLimit = "this value cannot be over 500."
     static let futureDate = "future dates not accepted"
-    static let systolicReversed = "Systolic should be higher than diastolic"
-    static let diastolicReversed = "Diastolic should be lower than systolic"
+    static let systolicReversed = "systolic should be higher than diastolic"
+    static let diastolicReversed = "diastolic should be lower than systolic"
     static func typicalRange(_ min: Int, _ max: Int) -> String {
-        "This value is outside the typical range of \(min) to \(max)."
+        "this value is outside the typical range of \(min) to \(max)."
     }
 }

@@ -253,4 +253,16 @@ object TestTags {
     const val ClearButton = "_clear_button"
     const val VisibilityToggle = "_visibility_toggle"
   }
+
+  /**
+   * Derives a unique per-row tag by suffixing a base row tag with the item's stable id,
+   * e.g. `rowTag(Landing.AccountCardRow, account.id)` -> `account_card_row_<id>`.
+   *
+   * A list renders many rows, so a single shared tag would match many nodes; suffixing with the
+   * item's stable id keeps every repeated row / per-row control resolving to exactly one node.
+   * Use this (or [Modifier.rowTestTag][com.dmdbrands.gurus.weight.core.shared.utilities.testing.rowTestTag])
+   * instead of hand-writing the `_` join. Mirrors the iOS
+   * `"\(AccessibilityID.accountCardRow)_\(id)"` contained-list-row pattern.
+   */
+  fun rowTag(base: String, stableId: Any): String = "${base}_$stableId"
 }

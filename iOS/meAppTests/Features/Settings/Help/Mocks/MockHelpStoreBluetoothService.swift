@@ -53,6 +53,7 @@ final class MockHelpStoreBluetoothService: BluetoothServiceProtocol {
     func connectBpm(broadcastId: String, userNumber: Int, replaceUser: Bool, pairedSKUMonitors: [DeviceSnapshot]) async -> Result<UserCreationResponse, BluetoothServiceError> { .failure(.notImplemented) }
     func receiveBpmReading(broadcastId: String) async -> Result<Void, BluetoothServiceError> { .failure(.notImplemented) }
     func resyncAndScan() async -> Result<Void, BluetoothServiceError> { .success(()) }
+    func refreshScanProfileForNonR4Scales() async {}
     func syncDevices(_ devices: [DeviceSnapshot]) {}
     func addNewDevice(_ device: Device, metaData: DeviceMetaData?, _ skipDuplicateCheck: Bool?) async -> Result<Device, BluetoothServiceError> { .failure(.notImplemented) }
     func confirmSmartPair(device: Device, token: String, displayName: String, userNumber: Int?) async -> Result<UserCreationResponse, BluetoothServiceError> { .failure(.notImplemented) }
@@ -74,7 +75,7 @@ final class MockHelpStoreBluetoothService: BluetoothServiceProtocol {
     func startLiveMeasurement(broadcastId: String) async -> Result<Void, BluetoothServiceError> { .failure(.notImplemented) }
     func stopLiveMeasurement(broadcastId: String) async -> Result<Void, BluetoothServiceError> { .failure(.notImplemented) }
     func getMeasurementLiveData(broadcastId: String) async -> Result<MeasurementLiveData, BluetoothServiceError> { .failure(.notImplemented) }
-    func getScaleUserList(broadcastId: String, skipConnectionCheck: Bool) async -> Result<[DeviceUser], BluetoothServiceError> { .failure(.notImplemented) }
+    func getScaleUserList(broadcastId: String, skipConnectionCheck: Bool, sku: String?) async -> Result<[DeviceUser], BluetoothServiceError> { .failure(.notImplemented) }
     func updateWeightOnlyMode(broadcastId: String?) async -> Result<Void, BluetoothServiceError> { .failure(.notImplemented) }
     func deleteR4Scales() async -> Result<Void, BluetoothServiceError> { .failure(.notImplemented) }
     func convertHexToInt(_ hex: String) -> Int64 { 0 }

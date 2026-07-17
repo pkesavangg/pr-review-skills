@@ -34,7 +34,8 @@ struct CompleteProfileSetupView: View {
         .pickerSheet(
             isPresented: $store.showProfileGenderPicker,
             selectedValues: [store.profileGender],
-            options: [Sex.allCases],
+            // "private" is not offered during scale-setup profile completion.
+            options: [Sex.allCases.filter { $0 != .private }],
             displayValue: capitalizedSexDisplay,
             title: lang.biologicalSex
         ) { vals in

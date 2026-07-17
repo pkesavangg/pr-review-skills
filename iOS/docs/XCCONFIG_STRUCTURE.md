@@ -15,7 +15,7 @@ Location: `meApp/Core/Config/`
 
 - `Dev.xcconfig`
   - `APP_ENV = DEV`
-  - `API_BASE_URL = ec2-34-197-4-77.compute-1.amazonaws.com/v3`
+  - `API_BASE_URL = ec2-13-217-141-203.compute-1.amazonaws.com:3005/v3`
 - `Production.xcconfig`
   - `APP_ENV = PRODUCTION`
   - `API_BASE_URL = api.weightgurus.com/v3`

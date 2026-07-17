@@ -51,6 +51,7 @@ final class MockContentViewModelEntryService: EntryServiceProtocol {
     func deleteEntry(_ entry: Entry) async throws {}
     func deleteEntry(entryId: UUID) async throws {}
     func assignBabyEntry(entryId: UUID, babyId: String) async throws {}
+    func remapBabyId(from oldId: String, to newId: String) async {}
     func fetchEntrySnapshot(byId id: UUID) async throws -> EntrySnapshot? { nil }
     func fetchAllEntrySnapshots() async throws -> [EntrySnapshot] {
         fetchAllEntrySnapshotsCalls += 1
@@ -250,6 +251,7 @@ final class MockContentViewModelBluetoothService: BluetoothServiceProtocol {
     func receiveBpmReading(broadcastId: String) async -> Result<Void, BluetoothServiceError> { .failure(.notImplemented) }
 
     func resyncAndScan() async -> Result<Void, BluetoothServiceError> { .failure(.notImplemented) }
+    func refreshScanProfileForNonR4Scales() async {}
     func syncDevices(_ devices: [DeviceSnapshot]) {}
     func addNewDevice(_ device: Device, metaData: DeviceMetaData?, _ skipDuplicateCheck: Bool?) async -> Result<Device, BluetoothServiceError> { .failure(.notImplemented) }
     func confirmSmartPair(device: Device, token: String, displayName: String, userNumber: Int?) async -> Result<UserCreationResponse, BluetoothServiceError> { .failure(.notImplemented) }
@@ -271,7 +273,7 @@ final class MockContentViewModelBluetoothService: BluetoothServiceProtocol {
     func startLiveMeasurement(broadcastId: String) async -> Result<Void, BluetoothServiceError> { .failure(.notImplemented) }
     func stopLiveMeasurement(broadcastId: String) async -> Result<Void, BluetoothServiceError> { .failure(.notImplemented) }
     func getMeasurementLiveData(broadcastId: String) async -> Result<MeasurementLiveData, BluetoothServiceError> { .failure(.notImplemented) }
-    func getScaleUserList(broadcastId: String, skipConnectionCheck: Bool) async -> Result<[DeviceUser], BluetoothServiceError> { .failure(.notImplemented) }
+    func getScaleUserList(broadcastId: String, skipConnectionCheck: Bool, sku: String?) async -> Result<[DeviceUser], BluetoothServiceError> { .failure(.notImplemented) }
     func getDeviceLogs(broadcastId: String) async -> Result<DeviceLogs, BluetoothServiceError> { .failure(.notImplemented) }
     func updateWeightOnlyMode(broadcastId: String?) async -> Result<Void, BluetoothServiceError> { .failure(.notImplemented) }
     func deleteR4Scales() async -> Result<Void, BluetoothServiceError> { .failure(.notImplemented) }

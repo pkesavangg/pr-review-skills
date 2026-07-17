@@ -8,27 +8,13 @@
     <ID>ForbiddenImport:AuthTokenInterceptor.kt$import kotlinx.coroutines.runBlocking</ID>
     <ID>ForbiddenImport:MainActivity.kt$import kotlinx.coroutines.runBlocking</ID>
     <ID>ForbiddenImport:TokenAuthenticator.kt$import kotlinx.coroutines.runBlocking</ID>
-    <ID>LargeClass:AccountRepository.kt$AccountRepository : IAccountRepository</ID>
-    <ID>LargeClass:AccountRepositoryTest.kt$AccountRepositoryTest</ID>
-    <ID>LargeClass:AccountService.kt$AccountService : BaseServiceIAccountService</ID>
-    <ID>LargeClass:AccountServiceTest.kt$AccountServiceTest</ID>
     <ID>LargeClass:AppViewModel.kt$AppViewModel : BaseIntentViewModel</ID>
-    <ID>LargeClass:AppViewModelTest.kt$AppViewModelTest</ID>
     <ID>LargeClass:BtWifiScaleSetupViewModel.kt$BtWifiScaleSetupViewModel : DeviceSetupViewmodel</ID>
     <ID>LargeClass:DeviceDetailsViewModel.kt$DeviceDetailsViewModel : BaseIntentViewModel</ID>
-    <ID>LargeClass:DeviceServiceTest.kt$DeviceServiceTest</ID>
-    <ID>LargeClass:EntryViewModelTest.kt$EntryViewModelTest</ID>
-    <ID>LargeClass:FeedServiceTest.kt$FeedServiceTest</ID>
-    <ID>LargeClass:GoalServiceTest.kt$GoalServiceTest</ID>
     <ID>LargeClass:HealthConnectService.kt$HealthConnectService : BaseServiceIHealthConnectService</ID>
-    <ID>LargeClass:HealthConnectServiceTest.kt$HealthConnectServiceTest</ID>
-    <ID>LargeClass:HealthConnectViewModelTest.kt$HealthConnectViewModelTest</ID>
-    <ID>LargeClass:IntegrationViewModelTest.kt$IntegrationViewModelTest</ID>
-    <ID>LargeClass:MigrationServiceTest.kt$MigrationServiceTest</ID>
-    <ID>LargeClass:SignupViewModelTest.kt$SignupViewModelTest</ID>
     <ID>LargeClass:WifiScaleSetupViewModel.kt$WifiScaleSetupViewModel : DeviceSetupViewmodelDefaultLifecycleObserver</ID>
-    <ID>LongMethod:AccountRepository.kt$AccountRepository$override suspend fun addAccount(account: Account): Account</ID>
-    <ID>LongMethod:AccountService.kt$AccountService$override suspend fun checkLoginStatusForLoggedInAccounts(): Boolean</ID>
+    <ID>LongMethod:AccountPersistenceDataSource.kt$AccountPersistenceDataSource$suspend fun addAccount(account: Account): Account</ID>
+    <ID>LongMethod:AccountValidationService.kt$AccountValidationService$suspend fun checkLoginStatusForLoggedInAccounts(): Boolean</ID>
     <ID>LongMethod:AccountSwitchInfoModal.kt$@Composable fun AccountSwitchInfoModal( userInitial: String, onAddAccount: () -&gt; Unit, onClose: () -&gt; Unit )</ID>
     <ID>LongMethod:AddDeviceScreen.kt$@Composable fun AddScaleScreenContent( state: AddScaleState, handleIntent: (AddDeviceIntent) -&gt; Unit, )</ID>
     <ID>LongMethod:AddHealthConnect.kt$@Composable fun AddHealthConnect( modifier: Modifier = Modifier, secondaryActionLabel: String? = null, onClose: () -&gt; Unit, onPrimaryAction: () -&gt; Unit, onSecondaryAction: (() -&gt; Unit)? = null )</ID>
@@ -64,7 +50,6 @@
     <ID>LongMethod:BLEDiscoveryManager.kt$BLEDiscoveryManager$override fun handleScanResponse(response: GGScanResponse.DeviceDetail)</ID>
     <ID>LongMethod:BabyCdcPercentilesBottomSheet.kt$@Composable fun BabyCdcPercentilesBottomSheet( heightInches: Double?, heightPercentile: Int?, weightLbs: Int?, weightOz: Double?, weightPercentile: Int?, onDismiss: () -&gt; Unit, )</ID>
     <ID>LongMethod:BabyDashboardViewModel.kt$BabyDashboardViewModel$private fun updateBabySegmentRanges(entries: List&lt;PeriodBabySummary&gt;, segments: List&lt;GraphSegment&gt;)</ID>
-    <ID>LongMethod:BabyDayHistoryItem.kt$@Composable fun BabyDayHistoryItem( item: BabyEntry, isMetric: Boolean = false, isExpanded: Boolean = false, onToggleExpand: () -&gt; Unit = {}, onEditEntry: () -&gt; Unit = {}, )</ID>
     <ID>LongMethod:BabyHistoryItem.kt$@Composable fun BabyHistoryItem( item: BabyWeekHistory, onClick: () -&gt; Unit, )</ID>
     <ID>LongMethod:BabyScaleBLESetupViewModel.kt$BabyScaleBLESetupViewModel$private fun wakeUpScale()</ID>
     <ID>LongMethod:BabyScaleComponents.kt$@Composable fun BabyListContent( babyProfiles: ImmutableList&lt;BabyProfile&gt;, onEditBaby: (Int) -&gt; Unit, onDeleteBaby: (Int) -&gt; Unit, onAddBaby: () -&gt; Unit, modifier: Modifier = Modifier, )</ID>

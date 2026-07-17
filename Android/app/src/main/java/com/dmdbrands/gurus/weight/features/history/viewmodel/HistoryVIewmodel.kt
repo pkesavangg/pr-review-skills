@@ -1,6 +1,8 @@
 package com.dmdbrands.gurus.weight.features.history.viewmodel
 
 import androidx.lifecycle.viewModelScope
+import com.dmdbrands.gurus.weight.data.storage.datastore.UserDataStore
+import kotlinx.coroutines.flow.distinctUntilChanged
 import com.dmdbrands.gurus.weight.core.navigation.AppRoute
 import com.dmdbrands.gurus.weight.core.shared.utilities.logging.AppLog
 import com.dmdbrands.gurus.weight.domain.model.api.entry.EntryCategory
@@ -31,6 +33,7 @@ constructor(
   private val entryCursorPager: com.dmdbrands.gurus.weight.data.services.EntryCursorPager,
   private val deviceService: IDeviceService,
   private val productSelectionRepository: IProductSelectionRepository,
+  private val userDataStore: UserDataStore,
 ) : BaseIntentViewModel<HistoryState, HistoryIntent>(
   HistoryReducer(),
 ) {
@@ -60,6 +63,16 @@ constructor(
   override fun onDependenciesReady() {
     observeAndLoadHistory()
     observeDeviceFlags()
+    observeBabyWeightUnit()
+  }
+
+  /** Keep the baby week rows in the current My Kids unit (lb-oz / lb / kg). (MOB-1499) */
+  private fun observeBabyWeightUnit() {
+    viewModelScope.launch {
+      userDataStore.babyWeightUnitForCurrentAccountFlow
+        .distinctUntilChanged()
+        .collect { handleIntent(HistoryIntent.SetBabyWeightUnit(it)) }
+    }
   }
 
   init {

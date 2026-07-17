@@ -16,6 +16,12 @@ import kotlinx.coroutines.test.runTest
 import org.junit.Test
 import org.junit.runner.RunWith
 
+/**
+ * Instrumented tests for [EntryDao] (CRUD/sync) and the read queries that were moved to
+ * [EntryReadDao] as part of the DAO layer reorganization (MOB-1509). Read/query methods
+ * (getLatestEntry, getEntriesByOperationType, getOldestEntry, streak/count/history queries,
+ * graph/month-detail queries) now live on [EntryReadDao] and are exercised via [entryReadDao].
+ */
 @OptIn(ExperimentalCoroutinesApi::class)
 @RunWith(AndroidJUnit4::class)
 class EntryDaoTest : BaseDaoTest() {
@@ -36,6 +42,13 @@ class EntryDaoTest : BaseDaoTest() {
         entryDao.delete(entry.copy(entry = entry.entry.copy(id = entryId)))
         return entryId
     }
+
+    /** Raw row count for a table — used to assert FK-cascade removal of child rows. */
+    private fun tableRowCount(table: String): Int =
+        db.query("SELECT COUNT(*) FROM $table", null).use { cursor ->
+            cursor.moveToFirst()
+            cursor.getInt(0)
+        }
 
     // -------------------------------------------------------------------------
     // insert (Entry) @Transaction — scale
@@ -141,7 +154,7 @@ class EntryDaoTest : BaseDaoTest() {
 
         val updated = entry.copy(
             entry = entry.entry.copy(id = entryId),
-            bpmEntry = entry.bpmEntry.copy( systolic = 140, diastolic = 90),
+            bpmEntry = entry.bpmEntry.copy(systolic = 140, diastolic = 90),
         )
         entryDao.update(updated)
 
@@ -235,7 +248,7 @@ class EntryDaoTest : BaseDaoTest() {
     }
 
     // -------------------------------------------------------------------------
-    // getLatestEntry (Flow)
+    // getLatestEntry (Flow) — moved to EntryReadDao
     // -------------------------------------------------------------------------
 
     @Test
@@ -244,7 +257,7 @@ class EntryDaoTest : BaseDaoTest() {
         entryDao.insert(scaleEntry(entryTimestamp = "2025-06-10T12:00:00.000Z", weight = 180.0))
         entryDao.insert(scaleEntry(entryTimestamp = "2025-06-15T12:00:00.000Z", weight = 175.0))
 
-        val result = entryDao.getLatestEntry("acc-1").first()
+        val result = entryReadDao.getLatestEntry("acc-1").first()
         assertThat(result).isNotNull()
         assertThat(result?.scaleEntry?.weight).isEqualTo(175.0)
     }
@@ -253,7 +266,7 @@ class EntryDaoTest : BaseDaoTest() {
     fun getLatestEntry_nullForEmptyAccount() = runTest {
         insertParentAccount()
 
-        assertThat(entryDao.getLatestEntry("acc-1").first()).isNull()
+        assertThat(entryReadDao.getLatestEntry("acc-1").first()).isNull()
     }
 
     @Test
@@ -262,7 +275,7 @@ class EntryDaoTest : BaseDaoTest() {
         insertAndSoftDelete("2025-06-15T12:00:00.000Z")
         entryDao.insert(scaleEntry(entryTimestamp = "2025-06-10T12:00:00.000Z", weight = 175.0))
 
-        assertThat(entryDao.getLatestEntry("acc-1").first()?.scaleEntry?.weight).isEqualTo(175.0)
+        assertThat(entryReadDao.getLatestEntry("acc-1").first()?.scaleEntry?.weight).isEqualTo(175.0)
     }
 
     // -------------------------------------------------------------------------
@@ -308,64 +321,12 @@ class EntryDaoTest : BaseDaoTest() {
         assertThat(entryDao.getEntryById(999L)).isNull()
     }
 
-    // -------------------------------------------------------------------------
-    // getEntriesByTimeRange
-    // -------------------------------------------------------------------------
+    // removed: getEntriesByTimeRange no longer in the DAO API (MOB-1509 androidTest repair)
 
-    @Test
-    fun getEntriesByTimeRange_returnsInRange() = runTest {
-        insertParentAccount()
-        entryDao.insert(scaleEntry(entryTimestamp = "2025-06-10T12:00:00.000Z"))
-        entryDao.insert(scaleEntry(entryTimestamp = "2025-06-15T12:00:00.000Z"))
-        entryDao.insert(scaleEntry(entryTimestamp = "2025-06-20T12:00:00.000Z"))
-
-        val result = entryDao.getEntriesByTimeRange(
-            "acc-1", "2025-06-12T00:00:00.000Z", "2025-06-18T00:00:00.000Z",
-        ).first()
-        assertThat(result).hasSize(1)
-    }
-
-    @Test
-    fun getEntriesByTimeRange_dedupsToOnePerDay() = runTest {
-        insertParentAccount()
-        // Two entries on the same day within the range
-        entryDao.insert(scaleEntry(entryTimestamp = "2025-06-15T08:00:00.000Z", weight = 180.0))
-        entryDao.insert(scaleEntry(entryTimestamp = "2025-06-15T20:00:00.000Z", weight = 170.0))
-
-        val result = entryDao.getEntriesByTimeRange(
-            "acc-1", "2025-06-14T00:00:00.000Z", "2025-06-16T00:00:00.000Z",
-        ).first()
-        // Query uses MAX(entryTimestamp) GROUP BY day — should return only the latest per day
-        assertThat(result).hasSize(1)
-        assertThat(result[0].scaleEntry?.weight).isEqualTo(170.0)
-    }
-
-    @Test
-    fun getEntriesByTimeRange_excludesOutOfRange() = runTest {
-        insertParentAccount()
-        entryDao.insert(scaleEntry(entryTimestamp = "2025-01-01T12:00:00.000Z"))
-
-        val result = entryDao.getEntriesByTimeRange(
-            "acc-1", "2025-06-01T00:00:00.000Z", "2025-06-30T00:00:00.000Z",
-        ).first()
-        assertThat(result).isEmpty()
-    }
+    // removed: getEntriesByDeviceType no longer in the DAO API (MOB-1509 androidTest repair)
 
     // -------------------------------------------------------------------------
-    // getEntriesByDeviceType
-    // -------------------------------------------------------------------------
-
-    @Test
-    fun getEntriesByDeviceType_filtersCorrectly() = runTest {
-        insertParentAccount()
-        entryDao.insert(scaleEntry(entryTimestamp = "2025-06-15T12:00:00.000Z"))
-        entryDao.insert(bpmEntry(entryTimestamp = "2025-06-16T12:00:00.000Z"))
-
-        assertThat(entryDao.getEntriesByDeviceType("acc-1", "scale").first()).hasSize(1)
-    }
-
-    // -------------------------------------------------------------------------
-    // getEntriesByOperationType
+    // getEntriesByOperationType — moved to EntryReadDao
     // -------------------------------------------------------------------------
 
     @Test
@@ -374,7 +335,7 @@ class EntryDaoTest : BaseDaoTest() {
         entryDao.insert(scaleEntry(entryTimestamp = "2025-06-15T12:00:00.000Z", operationType = "create"))
         entryDao.insert(scaleEntry(entryTimestamp = "2025-06-16T12:00:00.000Z", operationType = "update"))
 
-        assertThat(entryDao.getEntriesByOperationType("acc-1", "create").first()).hasSize(1)
+        assertThat(entryReadDao.getEntriesByOperationType("acc-1", "create").first()).hasSize(1)
     }
 
     // -------------------------------------------------------------------------
@@ -442,33 +403,33 @@ class EntryDaoTest : BaseDaoTest() {
         insertAndSoftDelete("2025-06-15T12:00:00.000Z")
         entryDao.insert(scaleEntry(entryTimestamp = "2025-06-16T12:00:00.000Z"))
 
-        assertThat(entryDao.getTotalCount("acc-1")).isEqualTo(1)
+        assertThat(entryReadDao.getTotalCount("acc-1")).isEqualTo(1)
     }
 
     // -------------------------------------------------------------------------
-    // Aggregation queries — monthly averages
+    // Aggregation queries — monthly averages (moved to EntryReadDao.getWeightMonthlyGraphData)
     // -------------------------------------------------------------------------
 
     @Test
-    fun getMonthlyBodyScaleAveragesWithJoin_computesCorrectAverages() = runTest {
+    fun getWeightMonthlyGraphData_computesCorrectAverages() = runTest {
         insertParentAccount()
         entryDao.insert(scaleEntry(entryTimestamp = "2025-06-10T12:00:00.000Z", weight = 180.0))
         entryDao.insert(scaleEntry(entryTimestamp = "2025-06-20T12:00:00.000Z", weight = 170.0))
 
-        val result = entryDao.getMonthlyBodyScaleAveragesWithJoin("acc-1").first()
+        val result = entryReadDao.getWeightMonthlyGraphData("acc-1").first()
         assertThat(result).hasSize(1)
         assertThat(result[0].period).isEqualTo("2025-06")
         assertThat(result[0].weight).isWithin(0.1).of(175.0)
     }
 
     @Test
-    fun getMonthlyBodyScaleAveragesWithJoin_groupsAcrossMultipleMonths() = runTest {
+    fun getWeightMonthlyGraphData_groupsAcrossMultipleMonths() = runTest {
         insertParentAccount()
         entryDao.insert(scaleEntry(entryTimestamp = "2025-05-15T12:00:00.000Z", weight = 185.0))
         entryDao.insert(scaleEntry(entryTimestamp = "2025-06-15T12:00:00.000Z", weight = 180.0))
         entryDao.insert(scaleEntry(entryTimestamp = "2025-07-15T12:00:00.000Z", weight = 175.0))
 
-        val result = entryDao.getMonthlyBodyScaleAveragesWithJoin("acc-1").first()
+        val result = entryReadDao.getWeightMonthlyGraphData("acc-1").first()
         assertThat(result).hasSize(3)
         // Ordered DESC by period
         assertThat(result[0].period).isEqualTo("2025-07")
@@ -476,74 +437,66 @@ class EntryDaoTest : BaseDaoTest() {
         assertThat(result[2].period).isEqualTo("2025-05")
     }
 
-    // -------------------------------------------------------------------------
-    // Aggregation queries — monthly latest
-    // -------------------------------------------------------------------------
-
-    @Test
-    fun getMonthlyBodyScaleLatestWithJoin_returnsLatestPerMonth() = runTest {
-        insertParentAccount()
-        entryDao.insert(scaleEntry(entryTimestamp = "2025-06-10T12:00:00.000Z", weight = 180.0))
-        entryDao.insert(scaleEntry(entryTimestamp = "2025-06-20T12:00:00.000Z", weight = 170.0))
-
-        val result = entryDao.getMonthlyBodyScaleLatestWithJoin("acc-1").first()
-        assertThat(result).hasSize(1)
-        assertThat(result[0].weight).isEqualTo(170.0)
-    }
+    // removed: getMonthlyBodyScaleLatestWithJoin (monthly-latest) has no replacement DAO API;
+    // monthly graph data is averages-only now (MOB-1509 androidTest repair)
 
     // -------------------------------------------------------------------------
-    // Aggregation queries — daily averages
+    // Aggregation queries — daily (moved to EntryReadDao.getWeightDailyGraphData, MA-3965 hybrid)
     // -------------------------------------------------------------------------
 
     @Test
-    fun getDaywiseBodyScaleAveragesWithJoin_groupsByDay() = runTest {
+    fun getWeightDailyGraphData_groupsByDay() = runTest {
         insertParentAccount()
         entryDao.insert(scaleEntry(entryTimestamp = "2025-06-15T08:00:00.000Z", weight = 180.0))
         entryDao.insert(scaleEntry(entryTimestamp = "2025-06-15T20:00:00.000Z", weight = 170.0))
         entryDao.insert(scaleEntry(entryTimestamp = "2025-06-16T12:00:00.000Z", weight = 175.0))
 
-        assertThat(entryDao.getDaywiseBodyScaleAveragesWithJoin("acc-1").first()).hasSize(2)
+        assertThat(entryReadDao.getWeightDailyGraphData("acc-1").first()).hasSize(2)
     }
 
-    // -------------------------------------------------------------------------
-    // Aggregation queries — daily latest
-    // -------------------------------------------------------------------------
+    // removed: getDaywiseBodyScaleAveragesWithJoin (pure daily average) — daily graph is now the
+    // MA-3965 latest-vs-average hybrid (EntryReadDao.getWeightDailyGraphData); the single-day
+    // latest-entry semantics are covered by EntryReadDaoHybridTest (MOB-1509 androidTest repair)
 
+    /**
+     * On the latest (and here, only) day the hybrid daily graph query surfaces that day's
+     * latest entry rather than the average — 170 (the 20:00 reading), not 175.
+     */
     @Test
-    fun getDaywiseBodyScaleLatestWithJoin_returnsLatestPerDay() = runTest {
+    fun getWeightDailyGraphData_latestDay_returnsLatestPerDay() = runTest {
         insertParentAccount()
         entryDao.insert(scaleEntry(entryTimestamp = "2025-06-15T08:00:00.000Z", weight = 180.0))
         entryDao.insert(scaleEntry(entryTimestamp = "2025-06-15T20:00:00.000Z", weight = 170.0))
 
-        val result = entryDao.getDaywiseBodyScaleLatestWithJoin("acc-1").first()
+        val result = entryReadDao.getWeightDailyGraphData("acc-1").first()
         assertThat(result).hasSize(1)
         assertThat(result[0].weight).isEqualTo(170.0)
     }
 
     // -------------------------------------------------------------------------
-    // getMonthDetail
+    // getWeightMonthDetail — moved to EntryReadDao (month arg is now "Mon YYYY")
     // -------------------------------------------------------------------------
 
     @Test
-    fun getMonthDetail_returnsEntriesForMonth() = runTest {
+    fun getWeightMonthDetail_returnsEntriesForMonth() = runTest {
         insertParentAccount()
         entryDao.insert(scaleEntry(entryTimestamp = "2025-06-15T12:00:00.000Z"))
         entryDao.insert(scaleEntry(entryTimestamp = "2025-07-15T12:00:00.000Z"))
 
-        assertThat(entryDao.getMonthDetail("acc-1", "2025-06").first()).hasSize(1)
+        assertThat(entryReadDao.getWeightMonthDetail("acc-1", "Jun 2025").first()).hasSize(1)
     }
 
     // -------------------------------------------------------------------------
-    // History queries
+    // History queries — moved to EntryReadDao
     // -------------------------------------------------------------------------
 
     @Test
-    fun getMonthlyHistory_returnsMonthNamesAndWeightChange() = runTest {
+    fun getWeightMonthlyHistory_returnsMonthNamesAndWeightChange() = runTest {
         insertParentAccount()
         entryDao.insert(scaleEntry(entryTimestamp = "2025-06-01T12:00:00.000Z", weight = 180.0))
         entryDao.insert(scaleEntry(entryTimestamp = "2025-06-30T12:00:00.000Z", weight = 175.0))
 
-        val result = entryDao.getMonthlyHistory("acc-1").first()
+        val result = entryReadDao.getWeightMonthlyHistory("acc-1").first()
         assertThat(result).isNotEmpty()
         val june = result[0]
         assertThat(june.entryTimestamp).contains("Jun")
@@ -559,14 +512,14 @@ class EntryDaoTest : BaseDaoTest() {
         // Entry older than 365 days
         entryDao.insert(scaleEntry(entryTimestamp = "2024-01-01T12:00:00.000Z", weight = 200.0))
 
-        val result = entryDao.getMonthlyHistoryLastYear("acc-1").first()
+        val result = entryReadDao.getMonthlyHistoryLastYear("acc-1").first()
         // Recent entry must appear, old entry must be excluded
         assertThat(result).hasSize(1)
         assertThat(result[0].entryTimestamp).contains("Mar")
     }
 
     // -------------------------------------------------------------------------
-    // Streak queries
+    // Streak queries — moved to EntryReadDao
     // -------------------------------------------------------------------------
 
     @Test
@@ -576,7 +529,7 @@ class EntryDaoTest : BaseDaoTest() {
         entryDao.insert(scaleEntry(entryTimestamp = "2025-06-15T20:00:00.000Z"))
         entryDao.insert(scaleEntry(entryTimestamp = "2025-06-16T12:00:00.000Z"))
 
-        assertThat(entryDao.getStreakData("acc-1")).hasSize(2)
+        assertThat(entryReadDao.getStreakData("acc-1")).hasSize(2)
     }
 
     @Test
@@ -588,35 +541,35 @@ class EntryDaoTest : BaseDaoTest() {
         // Gap
         entryDao.insert(scaleEntry(entryTimestamp = "2025-06-20T12:00:00.000Z"))
 
-        assertThat(entryDao.getLongestStreakCount("acc-1")).isEqualTo(3)
+        assertThat(entryReadDao.getLongestStreakCount("acc-1")).isEqualTo(3)
     }
 
     @Test
     fun getLongestStreakCount_returnsZeroForEmptyAccount() = runTest {
         insertParentAccount()
-        assertThat(entryDao.getLongestStreakCount("acc-1")).isEqualTo(0)
+        assertThat(entryReadDao.getLongestStreakCount("acc-1")).isEqualTo(0)
     }
 
     // -------------------------------------------------------------------------
-    // Metrics
+    // Metrics — verified via getEntryById relations (getMetricsByEntryId removed)
     // -------------------------------------------------------------------------
 
     @Test
-    fun getMetricsByEntryId_returnsMetrics() = runTest {
+    fun getEntryById_returnsMetrics() = runTest {
         insertParentAccount()
         val entryId = entryDao.insert(scaleEntry(entryTimestamp = "2025-06-15T12:00:00.000Z"))
 
-        val result = entryDao.getMetricsByEntryId(entryId).first()
-        assertThat(result.bmr).isEqualTo(1800.0)
-        assertThat(result.pulse).isEqualTo(72)
+        val result = entryDao.getEntryById(entryId)?.scaleEntryMetric
+        assertThat(result?.bmr).isEqualTo(1800.0)
+        assertThat(result?.pulse).isEqualTo(72)
     }
 
     @Test
-    fun getScaleEntryById_returnsScaleEntry() = runTest {
+    fun getEntryById_returnsScaleEntry() = runTest {
         insertParentAccount()
         val entryId = entryDao.insert(scaleEntry(entryTimestamp = "2025-06-15T12:00:00.000Z", weight = 180.0))
 
-        val result = entryDao.getScaleEntryById(entryId)
+        val result = entryDao.getEntryById(entryId)?.scaleEntry
         assertThat(result).isNotNull()
         assertThat(result?.weight).isEqualTo(180.0)
     }
@@ -655,8 +608,8 @@ class EntryDaoTest : BaseDaoTest() {
 
         entryDao.insertBodyScales(listOf(bodyScaleEntry(id = id1), bodyScaleEntry(id = id2)))
 
-        assertThat(entryDao.getScaleEntryById(id1)).isNotNull()
-        assertThat(entryDao.getScaleEntryById(id2)).isNotNull()
+        assertThat(entryDao.getEntryById(id1)?.scaleEntry).isNotNull()
+        assertThat(entryDao.getEntryById(id2)?.scaleEntry).isNotNull()
     }
 
     @Test
@@ -667,8 +620,8 @@ class EntryDaoTest : BaseDaoTest() {
 
         entryDao.insertScaleEntries(listOf(bodyScaleEntry(id = id1), bodyScaleEntry(id = id2)))
 
-        assertThat(entryDao.getScaleEntryById(id1)).isNotNull()
-        assertThat(entryDao.getScaleEntryById(id2)).isNotNull()
+        assertThat(entryDao.getEntryById(id1)?.scaleEntry).isNotNull()
+        assertThat(entryDao.getEntryById(id2)?.scaleEntry).isNotNull()
     }
 
     @Test
@@ -681,8 +634,8 @@ class EntryDaoTest : BaseDaoTest() {
 
         entryDao.insertBodyScaleMetrics(listOf(bodyScaleMetric(id = id1), bodyScaleMetric(id = id2)))
 
-        assertThat(entryDao.getMetricsByEntryId(id1).first()).isNotNull()
-        assertThat(entryDao.getMetricsByEntryId(id2).first()).isNotNull()
+        assertThat(entryDao.getEntryById(id1)?.scaleEntryMetric).isNotNull()
+        assertThat(entryDao.getEntryById(id2)?.scaleEntryMetric).isNotNull()
     }
 
     // -------------------------------------------------------------------------
@@ -698,9 +651,9 @@ class EntryDaoTest : BaseDaoTest() {
 
         entryDao.updateBodyScaleMetric(bodyScaleMetric(id = entryId, bmr = 2000.0, pulse = 80))
 
-        val result = entryDao.getMetricsByEntryId(entryId).first()
-        assertThat(result.bmr).isEqualTo(2000.0)
-        assertThat(result.pulse).isEqualTo(80)
+        val result = entryDao.getEntryById(entryId)?.scaleEntryMetric
+        assertThat(result?.bmr).isEqualTo(2000.0)
+        assertThat(result?.pulse).isEqualTo(80)
     }
 
     // -------------------------------------------------------------------------
@@ -719,10 +672,11 @@ class EntryDaoTest : BaseDaoTest() {
     @Test
     fun deleteAccount_cascadesToSubEntities() = runTest {
         insertParentAccount()
-        val entryId = entryDao.insert(scaleEntry(entryTimestamp = "2025-06-15T12:00:00.000Z"))
+        entryDao.insert(scaleEntry(entryTimestamp = "2025-06-15T12:00:00.000Z"))
 
         accountDao.deleteAccountById("acc-1")
-        assertThat(entryDao.getScaleEntryById(entryId)).isNull()
+        // The body_scale_entry child rows must be cascade-deleted along with the parent entries.
+        assertThat(tableRowCount("body_scale_entry")).isEqualTo(0)
     }
 
     // -------------------------------------------------------------------------
@@ -739,25 +693,10 @@ class EntryDaoTest : BaseDaoTest() {
         assertThat(entryDao.getOperationCount("acc-1")).isEqualTo(0)
     }
 
-    // -------------------------------------------------------------------------
-    // getEntriesInRange
-    // -------------------------------------------------------------------------
-
-    @Test
-    fun getEntriesInRange_returnsInRange() = runTest {
-        insertParentAccount()
-        entryDao.insert(scaleEntry(entryTimestamp = "2025-06-10T12:00:00.000Z"))
-        entryDao.insert(scaleEntry(entryTimestamp = "2025-06-15T12:00:00.000Z"))
-        entryDao.insert(scaleEntry(entryTimestamp = "2025-06-20T12:00:00.000Z"))
-
-        val result = entryDao.getEntriesInRange(
-            "acc-1", "2025-06-12T00:00:00.000Z", "2025-06-18T00:00:00.000Z",
-        ).first()
-        assertThat(result).hasSize(1)
-    }
+    // removed: getEntriesInRange no longer in the DAO API (MOB-1509 androidTest repair)
 
     // -------------------------------------------------------------------------
-    // getEntriesSince
+    // getEntriesSince — moved to EntryReadDao
     // -------------------------------------------------------------------------
 
     @Test
@@ -767,11 +706,11 @@ class EntryDaoTest : BaseDaoTest() {
         entryDao.insert(scaleEntry(entryTimestamp = "2025-06-15T12:00:00.000Z"))
         entryDao.insert(scaleEntry(entryTimestamp = "2025-06-20T12:00:00.000Z"))
 
-        assertThat(entryDao.getEntriesSince("acc-1", "2025-06-14T00:00:00.000Z").first()).hasSize(2)
+        assertThat(entryReadDao.getEntriesSince("acc-1", "2025-06-14T00:00:00.000Z").first()).hasSize(2)
     }
 
     // -------------------------------------------------------------------------
-    // getOldestEntry
+    // getOldestEntry — moved to EntryReadDao
     // -------------------------------------------------------------------------
 
     @Test
@@ -780,7 +719,7 @@ class EntryDaoTest : BaseDaoTest() {
         entryDao.insert(scaleEntry(entryTimestamp = "2025-06-15T12:00:00.000Z", weight = 180.0))
         entryDao.insert(scaleEntry(entryTimestamp = "2025-06-10T12:00:00.000Z", weight = 185.0))
 
-        val result = entryDao.getOldestEntry("acc-1")
+        val result = entryReadDao.getOldestEntry("acc-1")
         assertThat(result).isNotNull()
         assertThat(result?.scaleEntry?.weight).isEqualTo(185.0)
     }
@@ -789,7 +728,7 @@ class EntryDaoTest : BaseDaoTest() {
     fun getOldestEntry_returnsNullForEmptyAccount() = runTest {
         insertParentAccount()
 
-        assertThat(entryDao.getOldestEntry("acc-1")).isNull()
+        assertThat(entryReadDao.getOldestEntry("acc-1")).isNull()
     }
 
     @Test
@@ -798,7 +737,7 @@ class EntryDaoTest : BaseDaoTest() {
         insertAndSoftDelete("2025-06-10T12:00:00.000Z")
         entryDao.insert(scaleEntry(entryTimestamp = "2025-06-15T12:00:00.000Z", weight = 180.0))
 
-        val result = entryDao.getOldestEntry("acc-1")
+        val result = entryReadDao.getOldestEntry("acc-1")
         assertThat(result?.scaleEntry?.weight).isEqualTo(180.0)
     }
 
@@ -810,33 +749,22 @@ class EntryDaoTest : BaseDaoTest() {
     fun getLatestEntry_emitsUpdatedValueAfterNewInsert() = runTest {
         insertParentAccount()
 
-        assertThat(entryDao.getLatestEntry("acc-1").first()).isNull()
+        assertThat(entryReadDao.getLatestEntry("acc-1").first()).isNull()
 
         entryDao.insert(scaleEntry(entryTimestamp = "2025-06-15T12:00:00.000Z", weight = 180.0))
 
-        assertThat(entryDao.getLatestEntry("acc-1").first()?.scaleEntry?.weight).isEqualTo(180.0)
+        assertThat(entryReadDao.getLatestEntry("acc-1").first()?.scaleEntry?.weight).isEqualTo(180.0)
     }
 
     @Test
-    fun getEntriesByDeviceType_reactsToNewEntries() = runTest {
+    fun getWeightMonthDetail_reactsToNewEntries() = runTest {
         insertParentAccount()
 
-        assertThat(entryDao.getEntriesByDeviceType("acc-1", "scale").first()).isEmpty()
+        assertThat(entryReadDao.getWeightMonthDetail("acc-1", "Jun 2025").first()).isEmpty()
 
         entryDao.insert(scaleEntry(entryTimestamp = "2025-06-15T12:00:00.000Z"))
 
-        assertThat(entryDao.getEntriesByDeviceType("acc-1", "scale").first()).hasSize(1)
-    }
-
-    @Test
-    fun getMonthDetail_reactsToNewEntries() = runTest {
-        insertParentAccount()
-
-        assertThat(entryDao.getMonthDetail("acc-1", "2025-06").first()).isEmpty()
-
-        entryDao.insert(scaleEntry(entryTimestamp = "2025-06-15T12:00:00.000Z"))
-
-        assertThat(entryDao.getMonthDetail("acc-1", "2025-06").first()).hasSize(1)
+        assertThat(entryReadDao.getWeightMonthDetail("acc-1", "Jun 2025").first()).hasSize(1)
     }
 
     // -------------------------------------------------------------------------
@@ -850,8 +778,8 @@ class EntryDaoTest : BaseDaoTest() {
         entryDao.insert(scaleEntry(accountId = "acc-1", entryTimestamp = "2025-06-15T12:00:00.000Z", weight = 180.0))
         entryDao.insert(scaleEntry(accountId = "acc-2", entryTimestamp = "2025-06-16T12:00:00.000Z", weight = 170.0))
 
-        assertThat(entryDao.getLatestEntry("acc-1").first()?.scaleEntry?.weight).isEqualTo(180.0)
-        assertThat(entryDao.getLatestEntry("acc-2").first()?.scaleEntry?.weight).isEqualTo(170.0)
+        assertThat(entryReadDao.getLatestEntry("acc-1").first()?.scaleEntry?.weight).isEqualTo(180.0)
+        assertThat(entryReadDao.getLatestEntry("acc-2").first()?.scaleEntry?.weight).isEqualTo(170.0)
     }
 
     @Test
@@ -891,7 +819,7 @@ class EntryDaoTest : BaseDaoTest() {
     @Test
     fun getTotalCount_returnsZeroForEmptyAccount() = runTest {
         insertParentAccount()
-        assertThat(entryDao.getTotalCount("acc-1")).isEqualTo(0)
+        assertThat(entryReadDao.getTotalCount("acc-1")).isEqualTo(0)
     }
 
     @Test
@@ -939,8 +867,8 @@ class EntryDaoTest : BaseDaoTest() {
         insertParentAccount()
         insertAndSoftDelete("2025-06-15T12:00:00.000Z")
 
-        // getEntriesByOperationType queries entry table (not entry_view), so it includes deleted
-        val result = entryDao.getEntriesByOperationType("acc-1", "delete").first()
+        // getEntriesByOperationType queries the entry table (not entry_view), so it includes deleted
+        val result = entryReadDao.getEntriesByOperationType("acc-1", "delete").first()
         assertThat(result).hasSize(1)
     }
 
@@ -965,32 +893,17 @@ class EntryDaoTest : BaseDaoTest() {
     }
 
     // -------------------------------------------------------------------------
-    // Daily average value verification
+    // Monthly history across multiple months (moved to EntryReadDao)
     // -------------------------------------------------------------------------
 
     @Test
-    fun getDaywiseBodyScaleAveragesWithJoin_computesCorrectAverage() = runTest {
-        insertParentAccount()
-        entryDao.insert(scaleEntry(entryTimestamp = "2025-06-15T08:00:00.000Z", weight = 180.0))
-        entryDao.insert(scaleEntry(entryTimestamp = "2025-06-15T20:00:00.000Z", weight = 170.0))
-
-        val result = entryDao.getDaywiseBodyScaleAveragesWithJoin("acc-1").first()
-        assertThat(result).hasSize(1)
-        assertThat(result[0].weight).isWithin(0.1).of(175.0)
-    }
-
-    // -------------------------------------------------------------------------
-    // Monthly history across multiple months
-    // -------------------------------------------------------------------------
-
-    @Test
-    fun getMonthlyHistory_groupsAcrossMultipleMonths() = runTest {
+    fun getWeightMonthlyHistory_groupsAcrossMultipleMonths() = runTest {
         insertParentAccount()
         entryDao.insert(scaleEntry(entryTimestamp = "2025-05-15T12:00:00.000Z", weight = 185.0))
         entryDao.insert(scaleEntry(entryTimestamp = "2025-06-15T12:00:00.000Z", weight = 180.0))
         entryDao.insert(scaleEntry(entryTimestamp = "2025-07-15T12:00:00.000Z", weight = 175.0))
 
-        val result = entryDao.getMonthlyHistory("acc-1").first()
+        val result = entryReadDao.getWeightMonthlyHistory("acc-1").first()
         assertThat(result).hasSize(3)
         // Ordered DESC by period
         assertThat(result[0].entryTimestamp).contains("Jul")

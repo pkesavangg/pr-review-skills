@@ -73,7 +73,7 @@ struct DeviceBluetoothScreen: View {
         }
         .frame(maxHeight: .infinity, alignment: .top)
         .background(theme.backgroundSecondary.ignoresSafeArea())
-        .navigationBarBackButtonHidden(true)
+        .navigationBarHidden(true)
         .screenAccessibilityRoot(AccessibilityID.deviceBluetoothScreenRoot)
     }
 
@@ -108,11 +108,11 @@ struct DeviceBluetoothScreen: View {
             scaleType: DeviceTypeHelper.determineDeviceModelType(for: scale)
         )
     }
-    
+
     private func getScaleDisplayName() -> String {
         return scale.nickname ?? scale.deviceName ?? ""
     }
-    
+
     private var permissionItems: some View {
         VStack(spacing: 0) {
             permissionRow(

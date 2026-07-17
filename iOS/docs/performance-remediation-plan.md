@@ -15,11 +15,11 @@
 | Task | Status now | What's left |
 |---|---|---|
 | **1 — Data load** | 🟡 **Partly shipped (MOB-1433)** | Off-main fetch+map (`SwiftDataWorker.fetchEntriesAsDTO`, `SwiftDataWorker.swift:229-242`), `#Index<Entry>` (`Entry.swift:23-28`), relationship prefetch, and a signature cache over the *aggregation* (`EntryService.swift:2152-2185`) all landed. **Still open (the durable fix, deferred in MOB-1433 §5c):** the full-history fetch+map still runs on *every* load (the signature gates aggregation, **not** the fetch); streak/progress still read the whole table on a cache miss (`getStreak` `:733`, `getProgress` `:476` — no incremental running totals); the **Baby load's fetch is still on the main actor** (`fetchBabyEntrySnapshots` `EntryService.swift:1870-1871`). |
-| **2 — Chart engine** | 🔴 **Not started** | H1 + H3 both still present (verified below). This is now the **top remaining lever, the graph-scroll-hang work**, and still **blocks the 5.1.0 baby/BPM graphs**. |
+| **2 — Chart engine** | 🟡 **Largely shipped (MOB-518, PR #2237)** | H1 (percentile path) FIXED — binary-search via `PercentileChartWindowing`/`SortedArrayIndex` (commit `813f0f98a`) + a v2 weight-graph engine rebuild. **Residual = H3** (`visibleChartSeriesData` still keyed on raw `scrollPosition`, `BaseSectionViewModel.swift:219`, not re-keyed). No longer blocks the 5.1.0 baby/BPM graphs (they land on the fixed engine). |
 | **3 — Disk/logging** | 🟡 **Half shipped (MOB-1433)** | Merge batching DONE — `mergeRemoteOperations` moved to `SwiftDataWorker+EntryMerge.applyRemoteOperations` (chunked 500/save; push chunked ≤100). **Still open:** logging still does per-row insert+save with no persistence floor (`LoggerRepository.swift:57-58`, `LoggerService.swift:60-61`); `saveNewEntries` local bulk-save is still per-row (`EntryService.swift:227-237`). |
 | **4 — Memory/CPU + MetricKit** | 🟡 **Partly shipped (MOB-1433)** | HealthKit settings-read-once + per-account forward marker DONE (`IntegrationsService.swift:248,257,276`). **Still open:** `syncAllData` `FetchDescriptor` is still unbounded — no `fetchLimit`/delta/`autoreleasepool` (`HealthKitService.swift:225-228`); account-switch fan-out unchanged (`AccountService.swift:1524-1526`); no MetricKit anywhere. |
 
-**Revised suggested order:** **Task 2 (chart engine) first** — it is entirely untouched, it is the remaining graph-scroll hang, and it gates the 5.1.0 graphs. Then Task 1's *durable* incremental-aggregation (the deferred MOB-1433 §5c piece — cheap signature gate **before** the fetch, incremental streak/progress totals, move the baby fetch off-main), then Task 3 logging + Task 4 residuals. **MetricKit early** if possible, to rank residual hangs from the field.
+**Revised suggested order (post-MOB-518):** Task 2 (chart engine) **largely shipped in MOB-518** — H1 + v2 weight-graph engine are done; only the H3 cache re-key remains. The **top remaining lever is now Task 1's *durable* incremental-aggregation** (the deferred MOB-1433 §5c piece — cheap signature gate **before** the fetch, incremental streak/progress totals, move the baby fetch off-main), then the Task 2 H3 residual, then Task 3 logging + Task 4 residuals. **MetricKit early** if possible, to rank residual hangs from the field.
 
 > **Current file:line references** (verified 2026-07-08 — the ones in "Verified facts" below were written pre-MOB-1433 and have shifted): H1 percentile bypass — `BaseGraphChartContent.swift:60-64`, `.filter` `:71`, linear scans `:100-101`; H3 visible cache keyed on raw `scrollPosition` — `BaseSectionViewModel.swift:211`, per-frame `.filter` `:222`; binary-search helper (exists, in use) — `GraphDataPreparer.swift:469,482`; `pointsToRender` (≤200 cap, intact) — `BaseGraphViewCacheSupport.swift:70`.
 
@@ -53,7 +53,7 @@ All confirmed by reading the working tree (and one Instruments trace on a 4,000-
 - All existing unit tests pass; new tests added per task; coverage gates met (Data/Services 80%/85%, ViewModels 80%).
 - **Behavior parity:** graphs, summaries, averages-on-scroll-end, dynamic y-axis, week/month/year/total, new-entry/delete/unit/weightless updates all identical to current — verified by tests + manual QA script in each task.
 
-**Suggested order (revised post-MOB-1433):** **Task 2 → Task 1-residual → (Task 3 ∥ Task 4).** Task 1's biggest lever (the off-main move) already shipped in MOB-1433 and cleared the loading-screen freeze, so **Task 2 (chart engine) is now the top untouched lever** and it gates the 5.1.0 graphs. Wire MetricKit (Task 4) early if possible so field data ranks the rest. *(Original pre-MOB-1433 order was Task 1 → Task 2 → Task 3 ∥ Task 4.)*
+**Suggested order (revised post-MOB-518):** Task 2 (chart engine) **largely shipped in MOB-518** — H1 + the v2 weight-graph engine cleared the graph-scroll hang and unblocked the 5.1.0 graphs; only the H3 cache re-key remains. Remaining order: **Task 1-residual (durable incremental-aggregation) → Task 2 H3 → (Task 3 ∥ Task 4).** Wire MetricKit (Task 4) early if possible so field data ranks the rest. *(Pre-MOB-1433 order was Task 1 → Task 2 → Task 3 ∥ Task 4; the post-MOB-1433 revision made Task 2 first — now itself superseded by MOB-518.)*
 
 ---
 
@@ -83,7 +83,7 @@ All confirmed by reading the working tree (and one Instruments trace on a 4,000-
 ---
 
 ## Task 2 — Chart engine: scroll hitch/hang + multi-series readiness
-**Status: 🔴 NOT STARTED — this is the current top priority (the "graph loading/hanging" work) and still blocks the 5.1.0 baby/BPM graphs.** Both hotspots verified present on `develop` 2026-07-08.
+**Status: 🟡 LARGELY SHIPPED in MOB-518 (PR #2237).** H1 (percentile path) is fixed via binary search (`PercentileChartWindowing` + generic `SortedArrayIndex`, commit `813f0f98a`) and a v2 weight-graph engine rebuild landed; this no longer blocks the 5.1.0 baby/BPM graphs. **Residual: H3** — `visibleChartSeriesData` is still keyed on raw `scrollPosition` (`BaseSectionViewModel.swift:219`), not re-keyed/removed (open decision, see `MOB-516-implementation-plan.md` §2.1 Step 2b). The H1/H3 "approach" below is retained; H1 documents what shipped, H3 is the remaining item.
 **Fixes:** scroll stutter/hang (H1, H3); **prerequisite for baby/BPM graphs.**
 
 **Approach:**
@@ -139,7 +139,7 @@ All confirmed by reading the working tree (and one Instruments trace on a 4,000-
 | Task | Remaining status | Source files | Test files | Risk | Blocks 5.1.0? |
 |---|---|---|---|---|---|
 | 1 — Data load | 🟡 durable incremental-aggregation only (off-main move done) | ~2–3 | ~2 | Med–High (incremental totals + possible persisted summary/migration) | **Yes** (residual) |
-| 2 — Chart engine | 🔴 not started — **do first** | ~4–5 | ~3 | Med (downsampling/selection correctness) | **Yes** |
+| 2 — Chart engine | 🟡 largely shipped (MOB-518); residual = H3 cache re-key | ~1 | ~1 | Low (H3 only) | Unblocked |
 | 3 — Disk/logging | 🟡 logging floor + `saveNewEntries` only (merge batching done) | ~2 | ~1 | Low | No |
 | 4 — Memory/CPU + MetricKit | 🟡 HealthKit fetch-bound + account-switch + MetricKit (settings/marker done) | ~4 | ~2 | Med (HealthKit delta logic) | No |
 

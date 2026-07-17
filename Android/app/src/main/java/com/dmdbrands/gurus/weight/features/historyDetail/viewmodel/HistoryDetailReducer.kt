@@ -5,6 +5,7 @@ import com.dmdbrands.gurus.weight.domain.model.storage.entry.BabyEntry
 import com.dmdbrands.gurus.weight.domain.model.storage.entry.BpmEntry
 import com.dmdbrands.gurus.weight.domain.model.storage.entry.Entry
 import com.dmdbrands.gurus.weight.domain.model.storage.entry.ScaleEntry
+import com.dmdbrands.gurus.weight.domain.model.common.WeightUnit
 import androidx.compose.runtime.Stable
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.persistentListOf
@@ -17,6 +18,10 @@ import kotlinx.collections.immutable.toImmutableList
 data class HistoryDetailState(
   val isLoading: Boolean = false,
   val isMetric: Boolean = false,
+  // Baby (My Kids) weight unit — LB_OZ / LB / KG. Drives 3-way baby entry display: lb-oz vs
+  // decimal lb vs kg (and in vs cm). Separate from [isMetric], which only distinguishes
+  // metric/imperial and can't tell LB_OZ from LB. (MOB-1499)
+  val babyWeightUnit: WeightUnit = WeightUnit.LB_OZ,
   val errorMessage: String? = null,
   val month: String = "",
   val itemsOpened: ImmutableList<Long> = persistentListOf(),
@@ -88,6 +93,7 @@ sealed interface HistoryDetailIntent : IReducer.Intent {
   ) : HistoryDetailIntent
   data class SetRefreshing(val isRefreshing: Boolean) : HistoryDetailIntent
   data class SetMetric(val isMetric: Boolean) : HistoryDetailIntent
+  data class SetBabyWeightUnit(val unit: WeightUnit) : HistoryDetailIntent
 
   /** Sets whether this baby day-detail falls on the baby's birth date (birthday balloon header). */
   data class SetBirthdayBalloon(val show: Boolean) : HistoryDetailIntent
@@ -123,6 +129,7 @@ class HistoryDetailReducer : IReducer<HistoryDetailState, HistoryDetailIntent> {
         )
       is HistoryDetailIntent.SetRefreshing -> state.copy(isLoading = intent.isRefreshing)
       is HistoryDetailIntent.SetMetric -> state.copy(isMetric = intent.isMetric)
+      is HistoryDetailIntent.SetBabyWeightUnit -> state.copy(babyWeightUnit = intent.unit)
       is HistoryDetailIntent.SetBirthdayBalloon -> state.copy(showBirthdayBalloon = intent.show)
       HistoryDetailIntent.Retry -> state.copy(isLoading = true)
       else -> state

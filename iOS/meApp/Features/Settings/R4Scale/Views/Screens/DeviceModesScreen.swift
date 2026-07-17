@@ -18,7 +18,7 @@ struct DeviceModesScreen: View {
 
     // MARK: - Observed Objects
     @StateObject private var viewModel: DeviceModesViewModel
-    
+
     // MARK: - Properties
     let scale: Device
     let isR4DeviceSetup: Bool
@@ -110,7 +110,7 @@ struct DeviceModesScreen: View {
             .padding(.horizontal, .spacingSM)
         }
         .background(theme.backgroundSecondary.ignoresSafeArea())
-        .navigationBarBackButtonHidden(true)
+        .navigationBarHidden(true)
         .screenAccessibilityRoot(AccessibilityID.deviceModesScreenRoot)
         .task {
             // Load scale mode data when the screen appears
@@ -128,20 +128,20 @@ struct DeviceModesScreen: View {
             registerDeactivation { true }
         }
     }
-    
+
     private func weightOnlyInfo() -> some View {
         NoteBox {
             VStack(alignment: .leading, spacing: .spacingXS) {
                 HStack {
                     AppIconView(icon: AppAssets.weightOnlyMode, size: IconSize(width: 20, height: 20))
                         .foregroundColor(theme.statusIconPrimary)
-                    
+
                     Text(lang.weightOnlyBannerTitle)
                         .fontWeight(.bold)
                         .fontOpenSans(.body3)
                         .foregroundColor(theme.textHeading)
                 }
-                
+
                 Text(lang.temporarilyEnableAllBodyMetrics)
                     .fontOpenSans(.body3)
                     .foregroundColor(theme.textBody)
@@ -158,7 +158,7 @@ struct DeviceModesScreen: View {
             accountId: "preview-account",
             sku: "0412",
             deviceName: "Preview Scale",
-            deviceType: "scale"       
+            deviceType: "scale"
         )
     )
     .environmentObject(Theme.shared)
@@ -172,7 +172,7 @@ struct DeviceModesScreen: View {
             accountId: "preview-account",
             sku: "0412",
             deviceName: "Preview Scale",
-            deviceType: "scale"       
+            deviceType: "scale"
         )
     )
     .environmentObject(Theme.shared)
@@ -187,7 +187,7 @@ struct DeviceModesScreen: View {
             accountId: "preview-account",
             sku: "0412",
             deviceName: "R4 Scale Setup",
-            deviceType: "scale"       
+            deviceType: "scale"
         ),
         isR4DeviceSetup: true
     )
@@ -377,7 +377,7 @@ final class DeviceModesViewModel: ObservableObject {
             dto.displayMetrics.removeAll { $0 == heartRateKey }
         }
     }
-    
+
     private func showUpdateAccountFailedAlert(onSuccess: (() -> Void)? = nil) {
         let alert = AlertModel(
             title: AlertStrings.UpdateAccountFailedAlert.title,
@@ -393,7 +393,7 @@ final class DeviceModesViewModel: ObservableObject {
         )
         notificationService.showAlert(alert)
     }
-    
+
     /// Presents a confirm-discard alert; returns true if the user confirms exit.
     func confirmDiscardChanges() async -> Bool {
         let alertLang = AlertStrings.EditProfileExitAlert.self
@@ -428,7 +428,7 @@ final class DeviceModesViewModel: ObservableObject {
             backdropDismiss: true
         ))
     }
-    
+
     func openBIAModel() {
          notificationService.showModal(ModalData(
             presentedView: AnyView(BIAInfoModalView {

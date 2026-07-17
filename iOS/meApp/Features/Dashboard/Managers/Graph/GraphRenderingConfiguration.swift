@@ -51,13 +51,11 @@ struct GraphRenderingConfiguration {
             useFixedDomain: useFixedDomain
         )
 
-        let shouldRepeat = DateTimeTools.shouldRepeatXAxisLabels(for: period, entryCount: operations.count)
-
         switch period {
         case .week:  return weeklyTicks(from: visibleStart, to: visibleEnd)
         case .month: return monthlyTicks(from: visibleStart, to: visibleEnd)
         case .year:  return yearlyTicks(from: visibleStart, to: visibleEnd)
-        case .total: return totalTicks(from: visibleStart, to: visibleEnd, operations: operations, shouldRepeat: shouldRepeat)
+        case .total: return totalTicks(from: visibleStart, to: visibleEnd, operations: operations)
         }
     }
 
@@ -68,7 +66,35 @@ struct GraphRenderingConfiguration {
     /// natively within this once-computed domain (no live re-windowing), which keeps the scroll region
     /// stable across a y-settle. Returns `nil` for an empty dataset. `operations` must be sorted ascending.
     func fullXDomain(for period: TimePeriod, from operations: [BathScaleWeightSummary]) -> ClosedRange<Date>? {
-        guard let minDate = operations.first?.date, let maxDate = operations.last?.date else { return nil }
+        guard let minDate = operations.first?.date, let maxDate = operations.last?.date else {
+            return emptyStateDomain(for: period)
+        }
+        // Two periods need a clean window so points read inset instead of pinned to an edge:
+        //   • WEEK (any number of readings) → the data bracketed to whole Sun→Sat calendar weeks: the domain
+        //     opens on the Sunday of the FIRST reading's week and closes on the Saturday of the LATER of the
+        //     last reading's week and the CURRENT week — so the graph stays scrollable forward from the data up
+        //     to today (a lone June reading is still scrollable to the current July week). A first entry
+        //     mid-week (e.g. Wednesday) then shows the WHOLE week with its point on the correct weekday — the
+        //     empty lead-in days (Sun–Tue) ARE the leading space — instead of the domain starting at the entry
+        //     and pinning it to the left edge. Month already extends to the current month; year does now too.
+        //   • TOTAL (any number of readings) → the data range padded by 6 months on BOTH ends, so the first
+        //     and last readings sit inset with equal breathing room. Previously the first reading was flush
+        //     against the left edge while the trailing year-end pad left a gap only on the right; a single
+        //     reading now centres in a 12-month window. TOTAL isn't scrollable and draws no x-axis ticks, so
+        //     this padding is purely for legibility. (MOB-1516)
+        if period == .week,
+           let firstWeek = gregorian.dateInterval(of: .weekOfYear, for: minDate),
+           let lastWeek = gregorian.dateInterval(of: .weekOfYear, for: maxDate) {
+            // Upper bound = the LATER of the last reading's week and the current week, so it's scrollable
+            // forward to today. −1s so the weekly tick generator's exclusive week end doesn't spill a phantom
+            // day into the following week. A single reading in the current week → both coincide → its own week.
+            return firstWeek.start...max(lastWeek.end, currentPeriodEnd(for: .week)).addingTimeInterval(-1)
+        }
+        if period == .total {
+            let lower = gregorian.date(byAdding: .month, value: -6, to: minDate) ?? minDate
+            let upper = gregorian.date(byAdding: .month, value: 6, to: maxDate) ?? maxDate
+            return lower...upper
+        }
         let (start, end) = axisRange(
             period: period,
             minDate: minDate,
@@ -108,23 +134,22 @@ struct GraphRenderingConfiguration {
         around scrollPosition: Date,
         windows: Double
     ) -> [Date] {
+        // TOTAL draws no x-axis ticks in any situation — no labels AND no gridlines (a single reading is a
+        // bare centred point; multi-reading totals drop the month/year markers too). The renderer reserves
+        // the label-row height so the plot keeps the same height as the other periods. (MOB-1516)
         guard let domain = boundedXDomain(for: period, from: operations, around: scrollPosition, windows: windows) else { return [] }
-        let shouldRepeat = DateTimeTools.shouldRepeatXAxisLabels(for: period, entryCount: operations.count)
         switch period {
         case .week:  return weeklyTicks(from: domain.lowerBound, to: domain.upperBound)
         case .month: return monthlyWeeklyTicks(from: domain.lowerBound, to: domain.upperBound)
         case .year:  return yearlyTicks(from: domain.lowerBound, to: domain.upperBound)
-        case .total: return totalTicks(from: domain.lowerBound, to: domain.upperBound, operations: operations, shouldRepeat: shouldRepeat)
+        case .total: return []
         }
     }
 
     // MARK: - Period-Specific Tick Generators
 
     func weeklyTicks(from start: Date, to end: Date) -> [Date] {
-        var cal = Calendar(identifier: .gregorian)
-        cal.timeZone = calendar.timeZone
-        cal.locale = calendar.locale
-        cal.firstWeekday = 1 // Sunday
+        let cal = gregorian
 
         let (startDate, endDate) = (min(start, end), max(start, end))
         let weekStart = cal.dateInterval(of: .weekOfYear, for: startDate)?.start ?? startDate
@@ -200,10 +225,7 @@ struct GraphRenderingConfiguration {
     /// (`boundedXAxisValues`); the legacy `monthlyTicks` (used by `xAxisValues`, shared with
     /// baby/BPM) is intentionally left unchanged.
     func monthlyWeeklyTicks(from start: Date, to end: Date) -> [Date] {
-        var cal = Calendar(identifier: .gregorian)
-        cal.timeZone = calendar.timeZone
-        cal.locale = calendar.locale
-        cal.firstWeekday = 1 // Sunday
+        let cal = gregorian
 
         let (startDate, endDate) = (min(start, end), max(start, end))
 
@@ -232,7 +254,7 @@ struct GraphRenderingConfiguration {
     }
 
     func yearlyTicks(from start: Date, to end: Date) -> [Date] {
-        let cal = yearlyCalendar
+        let cal = gregorian
         let (startDate, endDate) = (min(start, end), max(start, end))
         let yearStart = cal.dateInterval(of: .year, for: startDate)?.start ?? startDate
         let yearEndExclusive = cal.dateInterval(of: .year, for: endDate)?.end ?? endDate
@@ -262,8 +284,7 @@ struct GraphRenderingConfiguration {
     func totalTicks(
         from start: Date,
         to end: Date,
-        operations: [BathScaleWeightSummary],
-        shouldRepeat: Bool
+        operations: [BathScaleWeightSummary]
     ) -> [Date] {
         areEntriesInSameEra(operations)
             ? yearlyTicks(from: start, to: end)
@@ -292,13 +313,13 @@ struct GraphRenderingConfiguration {
 
         if period == .year,
            calendar.isDate(bounds.min, equalTo: bounds.max, toGranularity: .year) {
-            var components = yearlyCalendar.dateComponents([.year], from: bounds.min)
+            var components = gregorian.dateComponents([.year], from: bounds.min)
             components.month = 1
             components.day = 1
             components.hour = 12
             components.minute = 0
             components.second = 0
-            return yearlyCalendar.date(from: components) ?? bounds.min
+            return gregorian.date(from: components) ?? bounds.min
         }
 
         let domainReferenceDate = anchorDate ?? bounds.max
@@ -334,9 +355,9 @@ struct GraphRenderingConfiguration {
             return calendar.date(from: components) ?? position
 
         case .year:
-            var components = yearlyCalendar.dateComponents([.year, .month], from: position)
+            var components = gregorian.dateComponents([.year, .month], from: position)
             components.day = 1; components.hour = 12; components.minute = 0; components.second = 0
-            return yearlyCalendar.date(from: components) ?? position
+            return gregorian.date(from: components) ?? position
 
         case .total:
             return position
@@ -460,12 +481,26 @@ struct GraphRenderingConfiguration {
 
     // MARK: - Private
 
-    /// Gregorian calendar for yearly tick generation — keeps ticks and snap targets aligned.
-    private var yearlyCalendar: Calendar {
+    /// Sunday-first Gregorian calendar in the injected timezone/locale. Used by the yearly tick + scroll math
+    /// (where it keeps ticks and snap targets aligned) AND the weekly tick generators + the single-reading
+    /// week domain, so week bracketing is deterministic regardless of the injected calendar's `firstWeekday`.
+    private var gregorian: Calendar {
         var cal = Calendar(identifier: .gregorian)
         cal.timeZone = calendar.timeZone
         cal.locale = calendar.locale
+        cal.firstWeekday = 1 // Sunday
         return cal
+    }
+
+    /// MOB-1516 — x-domain for the EMPTY state (no readings): the CURRENT calendar period around `now`, so an
+    /// empty week/month/year still renders its own vertical gridlines + x-axis labels (sun–sat, the weekly
+    /// 5/12/19/26 grid, the twelve months) instead of a blank box. Previously an empty dataset returned nil
+    /// here → no domain and no ticks were produced. TOTAL gets the current calendar year for a sensible header
+    /// extent, but still draws NO ticks (`boundedXAxisValues` returns none for total) — it stays a bare box, as
+    /// before. `-1s` so a period's exclusive interval end doesn't spill a phantom unit into the next period.
+    private func emptyStateDomain(for period: TimePeriod) -> ClosedRange<Date>? {
+        let unit: Calendar.Component = period == .week ? .weekOfYear : (period == .month ? .month : .year)
+        return gregorian.dateInterval(of: unit, for: now()).map { $0.start...$0.end.addingTimeInterval(-1) }
     }
 
     private func areEntriesInSameEra(_ ops: [BathScaleWeightSummary]) -> Bool {
@@ -526,10 +561,11 @@ struct GraphRenderingConfiguration {
 
         if useFixedDomain {
             if period == .year {
-                let cal = yearlyCalendar
+                let cal = gregorian
                 let start = cal.dateInterval(of: .year, for: minDate)?.start ?? adjMin
                 let end = cal.dateInterval(of: .year, for: maxDate)?.end.addingTimeInterval(-1) ?? adjMax
-                return (start, end)
+                // Extend forward to the current year (parity with month) so it's scrollable up to today.
+                return (start, max(end, currentPeriodEnd(for: .year)))
             }
             if period == .month {
                 let monthStart = calendar.dateInterval(of: .month, for: minDate)?.start ?? adjMin
@@ -559,10 +595,10 @@ struct GraphRenderingConfiguration {
         let now = now()
         switch period {
         case .week:
-            let weekday = calendar.component(.weekday, from: now)
-            let days = (7 - weekday + 7) % 7
-            if let sat = calendar.date(byAdding: .day, value: days, to: calendar.startOfDay(for: now)),
-               let noon = calendar.date(byAdding: .hour, value: 12, to: sat) { return noon }
+            // End of the current week (next Sunday, exclusive) so the latest 7-day window rests as a FULL
+            // Sun→Sat week. The old Saturday-noon cut the window ~½ day short, squishing the last column
+            // against the trailing rule (visible even with multiple entries). (MOB-1516)
+            if let interval = gregorian.dateInterval(of: .weekOfYear, for: now) { return interval.end }
         case .month:
             if let interval = calendar.dateInterval(of: .month, for: now) { return interval.end.addingTimeInterval(-1) }
         case .year, .total:

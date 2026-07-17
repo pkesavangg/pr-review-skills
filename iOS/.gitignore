@@ -38,6 +38,9 @@ fastlane/test_output/
 # Archives
 *.xcarchive
 
+# Instruments traces (recorded while profiling; large binary bundles, never commit)
+*.trace/
+
 # Playground
 timeline.xctimeline
 playground.xcworkspace

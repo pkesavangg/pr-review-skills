@@ -188,7 +188,7 @@ struct BabyEntryFormTests {
 // MARK: - Test String Constants
 
 private enum BabyFormTestText {
-    static let invalidWeight = "Please enter a valid weight."
-    static let invalidLength = "Please enter a valid length."
+    static let invalidWeight = "please enter a valid weight."
+    static let invalidLength = "please enter a valid length."
     static let futureDate = "future dates not accepted"
 }

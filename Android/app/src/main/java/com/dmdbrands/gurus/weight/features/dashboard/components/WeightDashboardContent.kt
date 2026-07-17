@@ -139,7 +139,19 @@ fun WeightDashboardContent(
               GraphUtil.formatDateRange(min, max, state.selectedSegment)
             }
           }
-          // TODO: Navigate to MetricInfo via intent
+          val info = fromPeriodSummaries(
+            periodBodyScaleSummaries = activeSegmentState.target.filterIsInstance<PeriodBodyScaleSummary>(),
+            isSingleEntry = isSingleEntry,
+            rangeText = rangeText,
+          )
+          val key = (state.selectedStat?.key as? DashboardKey.Metric)?.key ?: MetricKey.WEIGHT
+          handleIntent(
+            WeightDashboardIntent.OpenMetricInfo(
+              info = info,
+              key = key,
+              source = getSourceFromSegment(state.selectedSegment),
+            ),
+          )
         },
       )
     }
