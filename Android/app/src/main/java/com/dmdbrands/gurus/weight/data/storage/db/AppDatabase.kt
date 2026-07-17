@@ -6,7 +6,7 @@ import androidx.room.RoomDatabase
 import androidx.room.TypeConverters
 import androidx.room.migration.Migration
 import androidx.sqlite.SQLiteConnection
-import androidx.sqlite.db.SupportSQLiteDatabase
+import androidx.sqlite.execSQL
 import androidx.sqlite.driver.bundled.BundledSQLiteDriver
 import androidx.work.ExistingWorkPolicy
 import androidx.work.OneTimeWorkRequestBuilder
@@ -75,7 +75,11 @@ import android.content.Context
     BabyEntryEntity::class,
   ],
   views = [ActiveEntryEntity::class],
-  version = 11,
+  // 12 (not 2) so a dev device still on the never-shipped intermediate v2 — same version number,
+  // different schema — is treated as an upgrade with no migration path and destructively wiped,
+  // instead of crashing on Room's identity-hash check. Production (shipped v1) migrates via
+  // MIGRATION_1_12. (MOB-1537, PR #2280 review)
+  version = 12,
   exportSchema = true,
 )
 @TypeConverters(DateConverter::class, JsonConverter::class, WeightUnitConverter::class)
@@ -95,47 +99,52 @@ abstract class AppDatabase : RoomDatabase() {
   abstract fun entryReadDao(): EntryReadDao
 
   companion object {
-    internal val MIGRATION_1_2 = object : Migration(1, 2) {
-      override fun migrate(db: SupportSQLiteDatabase) {
-        db.execSQL("ALTER TABLE device ADD COLUMN productType TEXT DEFAULT NULL")
-      }
-    }
 
-    internal val MIGRATION_2_3 = object : Migration(2, 3) {
-      override fun migrate(db: SupportSQLiteDatabase) {
-        db.execSQL("ALTER TABLE device ADD COLUMN lastModified INTEGER DEFAULT NULL")
-      }
-    }
+    // Exact CREATE VIEW text for entry_view. Must match the @DatabaseView on ActiveEntryEntity and
+    // the generated v2 schema BYTE-FOR-BYTE (indentation included): Room's post-migration schema
+    // validation compares the SQL stored in sqlite_master against this string. (MOB-1537 / MOB-1526)
+    private const val ENTRY_VIEW_SQL =
+      "CREATE VIEW `entry_view` AS SELECT * FROM entry e\n" +
+        "        WHERE e.operationType != 'delete'\n" +
+        "          AND e.pendingDelete = 0\n" +
+        "          AND NOT EXISTS (\n" +
+        "            SELECT 1 FROM entry d\n" +
+        "            WHERE d.accountId = e.accountId\n" +
+        "              AND d.entryTimestamp = e.entryTimestamp\n" +
+        "              AND d.operationType = 'delete'\n" +
+        "          )"
 
-    internal val MIGRATION_3_4 = object : Migration(3, 4) {
-      override fun migrate(db: SupportSQLiteDatabase) {
-        db.execSQL("ALTER TABLE account ADD COLUMN activeBabyId TEXT DEFAULT NULL")
-      }
-    }
-
-    // ----- Migration 4 → 5 -----
-    // Task 1: account — add 4 new columns
-    // Task 2: notification_settings — add willReceiveEmails
-    // Task 3: baby_entry — rename babyProfileId→babyId, photo→photoUri (table recreation)
-    // Task 4: bpm_entry — rename PK id→entryId (table recreation)
-    // Task 5: baby_profiles → baby table, rename PK + columns, add new fields (table recreation)
-    @Suppress("LongMethod")
-    internal val MIGRATION_4_5 = object : Migration(4, 5) {
-      override fun migrate(db: SupportSQLiteDatabase) {
-
-        // ── Task 1: account — add 3 columns ────────────────────────────────────
-        db.execSQL("ALTER TABLE account ADD COLUMN hasSeenAppReview INTEGER NOT NULL DEFAULT 0")
-        db.execSQL("ALTER TABLE account ADD COLUMN hasSeenScaleReview INTEGER NOT NULL DEFAULT 0")
-        db.execSQL("ALTER TABLE account ADD COLUMN accountSettings TEXT DEFAULT NULL")
-
-        // ── Task 2: notification_settings — add willReceiveEmails ───────────────
-        db.execSQL(
-          "ALTER TABLE notification_settings ADD COLUMN willReceiveEmails INTEGER NOT NULL DEFAULT 0",
+    // ----- Migration 1 -> 12 -----
+    // The ONLY production upgrade path: shipped 5.0.x (Room v1, weight/BP only) -> Me.Health 2.0
+    // (full multi-product schema). DB versions 2-11 only ever existed on internal builds and were
+    // never released, so the historical per-step chain was collapsed into this single migration
+    // (MOB-1537 / MOB-1526). The target version is 12 (not 2) so a dev device still on the old
+    // never-shipped v2 is wiped rather than crashing on the identity-hash check; the SQL below is
+    // the same v2 shape — only the endVersion changed.
+    internal val MIGRATION_1_12 = object : Migration(1, 12) {
+      @Suppress("LongMethod")
+      override fun migrate(connection: SQLiteConnection) {
+        // Columns added to the pre-existing weight/BP tables. None of these exist on a shipped
+        // 5.0.x DB (they were all introduced by Phase 2), so a plain ADD COLUMN is safe.
+        connection.execSQL("ALTER TABLE device ADD COLUMN productType TEXT DEFAULT NULL")
+        connection.execSQL("ALTER TABLE device ADD COLUMN lastModified INTEGER DEFAULT NULL")
+        connection.execSQL("ALTER TABLE account ADD COLUMN hasSeenAppReview INTEGER NOT NULL DEFAULT 0")
+        connection.execSQL("ALTER TABLE account ADD COLUMN hasSeenScaleReview INTEGER NOT NULL DEFAULT 0")
+        connection.execSQL("ALTER TABLE account ADD COLUMN accountSettings TEXT DEFAULT NULL")
+        connection.execSQL("ALTER TABLE notification_settings ADD COLUMN willReceiveEmails INTEGER NOT NULL DEFAULT 0")
+        connection.execSQL("ALTER TABLE body_scale_entry ADD COLUMN note TEXT DEFAULT NULL")
+        connection.execSQL("ALTER TABLE bpm_entry ADD COLUMN source TEXT DEFAULT NULL")
+        connection.execSQL("ALTER TABLE entry ADD COLUMN pendingDelete INTEGER NOT NULL DEFAULT 0")
+        connection.execSQL(
+          "CREATE INDEX IF NOT EXISTS `index_entry_accountId_operationType` ON `entry` (`accountId`, `operationType`)",
         )
 
-        // ── Task 5: baby_profiles → baby (table rename + column renames + new fields)
-        //    Do this before Task 3 because baby_entry has a FK into this table.
-        db.execSQL(
+        // New Phase 2 tables. Drop any legacy baby tables first: they never existed on a shipped
+        // 5.0.x DB (no-op there), but an internal Phase-2 v1 build may carry an old-shape
+        // baby_profiles/baby_entry -> drop so the fresh v2 tables below are the ones that stick.
+        connection.execSQL("DROP TABLE IF EXISTS `baby_entry`")
+        connection.execSQL("DROP TABLE IF EXISTS `baby_profiles`")
+        connection.execSQL(
           """
           CREATE TABLE IF NOT EXISTS `baby` (
             `babyId` TEXT NOT NULL,
@@ -151,38 +160,19 @@ abstract class AppDatabase : RoomDatabase() {
             `createdAt` INTEGER,
             `dueDate` TEXT,
             `lastUpdated` TEXT,
-            `isSynced` INTEGER NOT NULL DEFAULT 0,
-            `isDeleted` INTEGER NOT NULL DEFAULT 0,
-            `activeBabyId` TEXT DEFAULT NULL,
-            PRIMARY KEY(`babyId`)
+            `isSynced` INTEGER NOT NULL,
+            `isDeleted` INTEGER NOT NULL,
+            `existsOnServer` INTEGER NOT NULL,
+            `activeBabyId` TEXT,
+            PRIMARY KEY(`babyId`),
+            FOREIGN KEY(`accountId`) REFERENCES `account`(`accountId`) ON UPDATE NO ACTION ON DELETE CASCADE
           )
           """.trimIndent(),
         )
-        db.execSQL(
-          "CREATE INDEX IF NOT EXISTS `index_baby_accountId` ON `baby` (`accountId`)",
-        )
-        // Copy data — birthDate (Long) is cast to TEXT to match new String? type
-        db.execSQL(
+        connection.execSQL("CREATE INDEX IF NOT EXISTS `index_baby_accountId` ON `baby` (`accountId`)")
+        connection.execSQL(
           """
-          INSERT INTO `baby`
-            (babyId, accountId, name, birthdate, sex, birthWeightDecigrams,
-             birthLengthMillimeters, isBorn, isOwnedByAccount, permissions, createdAt,
-             dueDate, lastUpdated, isSynced, isDeleted, activeBabyId)
-          SELECT
-            id, accountId, name,
-            CASE WHEN birthDate IS NULL THEN NULL ELSE CAST(birthDate AS TEXT) END,
-            biologicalSex, birthWeightDecigrams, birthLengthMillimeters,
-            isBorn, isOwnedByAccount, babyPermissions, createdAt,
-            NULL, NULL, 0, 0, NULL
-          FROM `baby_profiles`
-          """.trimIndent(),
-        )
-        db.execSQL("DROP TABLE IF EXISTS `baby_profiles`")
-
-        // ── Task 3: baby_entry — rename babyProfileId→babyId, photo→photoUri ──
-        db.execSQL(
-          """
-          CREATE TABLE IF NOT EXISTS `baby_entry_new` (
+          CREATE TABLE IF NOT EXISTS `baby_entry` (
             `id` INTEGER NOT NULL,
             `babyId` TEXT NOT NULL,
             `babyWeightDecigrams` INTEGER,
@@ -199,82 +189,13 @@ abstract class AppDatabase : RoomDatabase() {
             `isPlaceholder` INTEGER,
             `source` TEXT,
             PRIMARY KEY(`id`),
-            FOREIGN KEY(`id`) REFERENCES `entry`(`id`) ON DELETE CASCADE,
-            FOREIGN KEY(`babyId`) REFERENCES `baby`(`babyId`) ON DELETE CASCADE
+            FOREIGN KEY(`id`) REFERENCES `entry`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE,
+            FOREIGN KEY(`babyId`) REFERENCES `baby`(`babyId`) ON UPDATE NO ACTION ON DELETE CASCADE
           )
           """.trimIndent(),
         )
-        db.execSQL(
-          "CREATE INDEX IF NOT EXISTS `index_baby_entry_babyId` ON `baby_entry_new` (`babyId`)",
-        )
-        db.execSQL(
-          """
-          INSERT INTO `baby_entry_new`
-            (id, babyId, babyWeightDecigrams, babyLengthMillimeters, entryNote, entryType,
-             feedingTimeLeft, feedingTimeRight, feedingMilliliters, diaperType, sleepTime,
-             babyDisplayWeightDecigrams, photoUri, isPlaceholder, source)
-          SELECT
-            id, babyProfileId, babyWeightDecigrams, babyLengthMillimeters, entryNote, entryType,
-            feedingTimeLeft, feedingTimeRight, feedingMilliliters, diaperType, sleepTime,
-            babyDisplayWeightDecigrams, photo, isPlaceholder, source
-          FROM `baby_entry`
-          """.trimIndent(),
-        )
-        db.execSQL("DROP TABLE IF EXISTS `baby_entry`")
-        db.execSQL("ALTER TABLE `baby_entry_new` RENAME TO `baby_entry`")
-
-        // ── Task 4: bpm_entry — rename PK id → entryId ─────────────────────────
-        db.execSQL(
-          """
-          CREATE TABLE IF NOT EXISTS `bpm_entry_new` (
-            `entryId` INTEGER NOT NULL,
-            `systolic` INTEGER NOT NULL,
-            `diastolic` INTEGER NOT NULL,
-            `pulse` INTEGER NOT NULL,
-            `meanArterial` TEXT NOT NULL,
-            `note` TEXT,
-            PRIMARY KEY(`entryId`),
-            FOREIGN KEY(`entryId`) REFERENCES `entry`(`id`) ON DELETE CASCADE
-          )
-          """.trimIndent(),
-        )
-        db.execSQL(
-          """
-          INSERT INTO `bpm_entry_new` (entryId, systolic, diastolic, pulse, meanArterial, note)
-          SELECT id, systolic, diastolic, pulse, meanArterial, note
-          FROM `bpm_entry`
-          """.trimIndent(),
-        )
-        db.execSQL("DROP TABLE IF EXISTS `bpm_entry`")
-        db.execSQL("ALTER TABLE `bpm_entry_new` RENAME TO `bpm_entry`")
-      }
-    }
-
-    // ----- Migration 5 → 6 -----
-    // Add composite index on (accountId, operationType) to speed up entry_view's NOT EXISTS subquery.
-    internal val MIGRATION_5_6 = object : Migration(5, 6) {
-      override fun migrate(db: SupportSQLiteDatabase) {
-        db.execSQL("CREATE INDEX IF NOT EXISTS `index_entry_accountId_operationType` ON `entry` (`accountId`, `operationType`)")
-      }
-    }
-
-    // ----- Migration 6 → 7 -----
-    // body_scale_entry — add nullable note column for weight-entry notes (MOB-438).
-    internal val MIGRATION_6_7 = object : Migration(6, 7) {
-      override fun migrate(db: SupportSQLiteDatabase) {
-        db.execSQL("ALTER TABLE body_scale_entry ADD COLUMN note TEXT DEFAULT NULL")
-      }
-    }
-
-    // ----- Migration 7 → 8 -----
-    // Phase 2 (MOB-377): per-account product settings (productTypes + measurementUnits).
-    // Renumbered to 7→8 from the original 6→7 to resolve a version collision with the
-    // MOB-438 note migration above during the dev → phase2-dev merge.
-    // `internal` (not `private`) so MigrationTest can drive the full 1→8 chain — matches the
-    // other MIGRATION_* siblings above.
-    internal val MIGRATION_7_8 = object : Migration(7, 8) {
-      override fun migrate(db: SupportSQLiteDatabase) {
-        db.execSQL(
+        connection.execSQL("CREATE INDEX IF NOT EXISTS `index_baby_entry_babyId` ON `baby_entry` (`babyId`)")
+        connection.execSQL(
           """
           CREATE TABLE IF NOT EXISTS `product_settings` (
             `accountId` TEXT NOT NULL,
@@ -282,45 +203,20 @@ abstract class AppDatabase : RoomDatabase() {
             `measurementUnits` TEXT NOT NULL,
             `isSynced` INTEGER NOT NULL,
             PRIMARY KEY(`accountId`),
-            FOREIGN KEY(`accountId`) REFERENCES `account`(`accountId`) ON DELETE CASCADE
+            FOREIGN KEY(`accountId`) REFERENCES `account`(`accountId`) ON UPDATE NO ACTION ON DELETE CASCADE
           )
           """.trimIndent(),
         )
-        // Backfill existing accounts with the weight-only default so the relation is populated.
-        db.execSQL(
+        // Back-fill existing accounts with the weight-only default so the relation is populated.
+        connection.execSQL(
           "INSERT OR IGNORE INTO `product_settings` (`accountId`, `productTypes`, `measurementUnits`, `isSynced`) " +
             "SELECT `accountId`, '[\"weight\"]', 'metric', 0 FROM `account`",
         )
-      }
-    }
 
-    // ----- Migration 8 → 9 -----
-    // bpm_entry — add nullable source column so a BP reading's origin (manual vs device-synced) is
-    // known in History, gating edit (manual = values+note editable, device = note-only). (MOB-1173)
-    internal val MIGRATION_8_9 = object : Migration(8, 9) {
-      override fun migrate(db: SupportSQLiteDatabase) {
-        db.execSQL("ALTER TABLE bpm_entry ADD COLUMN source TEXT DEFAULT NULL")
-      }
-    }
-
-    // ----- Migration 9 → 10 -----
-    // entry — add pendingDelete flag for the swipe-delete Undo window: a row stays in the DB but is
-    // hidden (via entry_view) until the window elapses (or next launch), so Undo just clears it and
-    // nothing is ever re-created. Room recreates entry_view (now filtering pendingDelete). (MOB-1173)
-    internal val MIGRATION_9_10 = object : Migration(9, 10) {
-      override fun migrate(db: SupportSQLiteDatabase) {
-        db.execSQL("ALTER TABLE entry ADD COLUMN pendingDelete INTEGER NOT NULL DEFAULT 0")
-      }
-    }
-
-    // ----- Migration 10 → 11 -----
-    // baby — add existsOnServer flag for offline baby create/sync (MOB-1476). New column defaults to
-    // 0; every pre-existing baby was created on the server (the only way a row existed before this
-    // ticket), so backfill them to 1. Offline creates set it to 0 explicitly in code.
-    internal val MIGRATION_10_11 = object : Migration(10, 11) {
-      override fun migrate(db: SupportSQLiteDatabase) {
-        db.execSQL("ALTER TABLE baby ADD COLUMN existsOnServer INTEGER NOT NULL DEFAULT 0")
-        db.execSQL("UPDATE baby SET existsOnServer = 1")
+        // Recreate entry_view with the v2 definition (filters delete + pendingDelete). A shipped
+        // 5.0.x DB has an older view; drop + create to converge.
+        connection.execSQL("DROP VIEW IF EXISTS `entry_view`")
+        connection.execSQL(ENTRY_VIEW_SQL)
       }
     }
 
@@ -361,8 +257,12 @@ abstract class AppDatabase : RoomDatabase() {
                 }
               },
             )
-            .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10, MIGRATION_10_11)
-            .fallbackToDestructiveMigration(false)
+            .addMigrations(MIGRATION_1_12)
+            // Only v1 (shipped 5.0.x) ever reached production and it takes MIGRATION_1_12. Every
+            // never-shipped internal build (old v2-v11) has no path to v12, so it's destructively
+            // wiped instead of crashing — including a device still on the old same-numbered v2,
+            // which a downgrade-only fallback would miss. (MOB-1537, PR #2280 review)
+            .fallbackToDestructiveMigration(dropAllTables = true)
             .build()
         Companion.instance = instance
         instance

@@ -25,15 +25,15 @@ class HelpStore: ObservableObject {
     private let appReviewHandler: AppReviewHandlerProtocol
     var kvStorage = KvStorageService.shared
     var theme = Theme.shared
-    
+
     @Published var activeAccount: AccountSnapshot?
-    
+
     // MARK: - Product Manual Browser State
     @Published var showProductBrowser: Bool = false
     @Published var productURL: URL?
     // NEW – debug-menu state
     @Published var showDebugMenu = false
-    
+
     // MARK: - Scale Log State
     @Published var showScaleLogSheet = false
     @Published var scales: [DeviceSnapshot] = []
@@ -44,22 +44,22 @@ class HelpStore: ObservableObject {
         }
         return scales.first?.isConnected == true
     }
-    
+
     var shouldShowScaleTroubleshooting: Bool {
         !scales.isEmpty
     }
-    
+
     var cancellables: Set<AnyCancellable> = []
     private let loaderLang = LoaderStrings.self
     private let toastLang = ToastStrings.self
-    
+
     // ───────────────────────────────
     //  Five-tap detection (private)
     // ───────────────────────────────
     private var headerTapCounter = 0
     private var firstTapTime: Date?
     private let tag = "HelpStore"
-    
+
     init(appReviewHandler: AppReviewHandlerProtocol? = nil) {
         self.appReviewHandler = appReviewHandler ?? AppReviewService.shared
         deviceService.scalesPublisher
@@ -69,18 +69,18 @@ class HelpStore: ObservableObject {
             }
             .store(in: &cancellables)
     }
-    
+
     /// Presents the in-app browser for the given product SKU.
     func openProductManual(sku: String) {
         guard let url = URL(string: "\(AppConstants.Product.baseURL)/\(sku)") else { return }
         productURL = url
         showProductBrowser = true
     }
-    
+
     /// Call from the view's tap gesture on the header.
     func handleHeaderTap() {
         let now = Date()
-        
+
         if let first = firstTapTime, now.timeIntervalSince(first) < 5 {
             headerTapCounter += 1
         } else {
@@ -88,7 +88,7 @@ class HelpStore: ObservableObject {
             headerTapCounter = 1
             firstTapTime = now
         }
-        
+
         if headerTapCounter >= 5 {
             // Success – trigger sheet
             headerTapCounter = 0
@@ -96,12 +96,12 @@ class HelpStore: ObservableObject {
             showDebugMenu = true
         }
     }
-    
+
     /// Resets the flag after the sheet is dismissed (optional helper).
     func dismissDebugMenu() {
         showDebugMenu = false
     }
-    
+
     // MARK: - Debug Menu Actions
     /// Sends Weight Gurus application logs to support.
     func sendWeightGurusLog() {
@@ -127,7 +127,7 @@ class HelpStore: ObservableObject {
             notificationService.dismissLoader()
         }
     }
-    
+
     /// Triggers a resync of all entries with the server.
     func resyncEntries() {
         Task {
@@ -135,12 +135,12 @@ class HelpStore: ObservableObject {
             if networkStatus {
                 logger.log(level: .info, tag: tag, message: "Entry resync started")
                 notificationService.showLoader(LoaderModel(text: loaderLang.resync))
-                
+
                 do {
                     // Clear local entries and sync timestamp
                     await entryService.clearAllData()
                     try await entryService.clearLastSyncTimestamp()
-                    
+
                     // Resync with server
                     await entryService.syncAllEntriesWithRemote()
                     // Show success toast after a delay
@@ -160,16 +160,16 @@ class HelpStore: ObservableObject {
             }
         }
     }
-    
+
     /// Clears all local persistence (dangerous!).
     func clearAllLocalData() {
         Task {
             let alertLang = AlertStrings.DataClearingAlert.self
             logger.log(level: .info, tag: tag, message: "Clear all local data started")
-            
+
             // Show loading indicator
             notificationService.showLoader(LoaderModel(text: LoaderStrings.pleaseWait))
-            
+
             do {
                 // Clear all data from repositories
                 try await Task.sleep(for: .seconds(3)) // Simulate delay for UI
@@ -188,7 +188,7 @@ class HelpStore: ObservableObject {
                 )
                 notificationService.showAlert(alert)
                 logger.log(level: .info, tag: tag, message: "Clear all local data completed successfully")
-                
+
             } catch {
                 // Show error alert
                 notificationService.dismissLoader()
@@ -204,7 +204,7 @@ class HelpStore: ObservableObject {
             }
         }
     }
-    
+
     /// Shows the system/app rating modal.
     func showAppRateModal() {
         logger.log(level: .info, tag: tag, message: "Presenting app rating modal")
@@ -212,7 +212,7 @@ class HelpStore: ObservableObject {
             await appReviewHandler.triggerAppReview(isFromDebug: true)
         }
     }
-    
+
     /// Sends scale-specific logs.
     func sendScaleLogHandler(device: DeviceSnapshot? = nil) {
         let resolvedDevice: DeviceSnapshot? = {
@@ -235,7 +235,7 @@ class HelpStore: ObservableObject {
     private func sendScaleLogsToServer(device: DeviceSnapshot) {
         Task {
             notificationService.showLoader(LoaderModel(text: loaderLang.sendingLogs))
-            
+
             do {
                 let result = await bluetoothService.getDeviceLogs(broadcastId: device.broadcastIdString ?? "")
                 switch result {
@@ -264,23 +264,23 @@ class HelpStore: ObservableObject {
             notificationService.dismissLoader()
         }
     }
-    
+
     private func showErrorToast() {
         notificationService.showToast(ToastModel(
             title: toastLang.resyncErrorTitle,
             message: toastLang.resyncError
         ))
     }
-    
+
     func openHelp() {
         notificationService.showModal(ModalData(
             presentedView: AnyView(ModelNumberHelpModalView {
                 self.notificationService.dismissModal()
             }),
-            backdropDismiss: true
+            backdropDismiss: false
         ))
     }
-    
+
     deinit {
         cancellables.forEach { $0.cancel() }
     }

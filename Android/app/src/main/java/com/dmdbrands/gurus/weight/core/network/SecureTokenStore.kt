@@ -25,13 +25,25 @@ class SecureTokenStore(context: Context) : ISecureTokenStore {
     companion object {
         private const val TAG = "SecureTokenStore"
         private const val PREFS_FILE_NAME = "secure_tokens"
+        private const val META_PREFS_FILE_NAME = "secure_tokens_meta"
         private const val TOKEN_KEY_PREFIX = "token_"
         private const val MIGRATION_COMPLETED_KEY = "migration_completed"
         private const val MIGRATION_RETRY_COUNT_KEY = "migration_retry_count"
+        private const val ENCRYPTION_FAILURE_COUNT_KEY = "encryption_failure_count"
     }
 
     private val gson = Gson()
     private val sharedPreferences: SharedPreferences?
+
+    /**
+     * Plain (unencrypted) prefs for counters that MUST survive the encrypted store being
+     * unavailable. The retry/failure caps are meaningless if they live in the encrypted file,
+     * because that file is exactly what's missing when [isAvailable] is false — the count would
+     * always read back as 0 and the safeguard would never trip, allowing an infinite re-login
+     * loop (MOB-1537 / MOB-1526). These hold no secrets, only small integers.
+     */
+    private val metaPrefs: SharedPreferences =
+        context.getSharedPreferences(META_PREFS_FILE_NAME, Context.MODE_PRIVATE)
 
     /**
      * Whether encrypted storage is available.
@@ -161,26 +173,26 @@ class SecureTokenStore(context: Context) : ISecureTokenStore {
     }
 
     /**
-     * Gets the number of migration retry attempts.
-     * Returns 0 if encrypted storage is unavailable (to allow retry counting in plain prefs).
+     * Gets the number of migration retry attempts. Backed by plain prefs so the count is readable
+     * even when the encrypted store is unavailable (that's precisely when the cap must hold).
      */
-    fun getMigrationRetryCount(): Int {
-        val prefs = sharedPreferences ?: return 0
-        return try {
-            prefs.getInt(MIGRATION_RETRY_COUNT_KEY, 0)
-        } catch (e: Exception) {
-            AppLog.w(TAG, "Failed to read migration retry count, defaulting to 0: ${e.message}")
-            0
-        }
-    }
+    fun getMigrationRetryCount(): Int =
+        metaPrefs.getInt(MIGRATION_RETRY_COUNT_KEY, 0)
 
     fun incrementMigrationRetryCount() {
-        val prefs = sharedPreferences ?: return
-        try {
-            val current = prefs.getInt(MIGRATION_RETRY_COUNT_KEY, 0)
-            prefs.edit().putInt(MIGRATION_RETRY_COUNT_KEY, current + 1).apply()
-        } catch (e: Exception) {
-            AppLog.e(TAG, "Failed to increment migration retry count", e.toString())
-        }
+        val current = metaPrefs.getInt(MIGRATION_RETRY_COUNT_KEY, 0)
+        metaPrefs.edit().putInt(MIGRATION_RETRY_COUNT_KEY, current + 1).apply()
+    }
+
+    override fun getEncryptionFailureCount(): Int =
+        metaPrefs.getInt(ENCRYPTION_FAILURE_COUNT_KEY, 0)
+
+    override fun incrementEncryptionFailureCount() {
+        val current = metaPrefs.getInt(ENCRYPTION_FAILURE_COUNT_KEY, 0)
+        metaPrefs.edit().putInt(ENCRYPTION_FAILURE_COUNT_KEY, current + 1).apply()
+    }
+
+    override fun resetEncryptionFailureCount() {
+        metaPrefs.edit().putInt(ENCRYPTION_FAILURE_COUNT_KEY, 0).apply()
     }
 }

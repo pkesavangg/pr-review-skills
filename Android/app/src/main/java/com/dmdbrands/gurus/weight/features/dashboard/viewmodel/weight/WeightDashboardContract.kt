@@ -2,7 +2,9 @@ package com.dmdbrands.gurus.weight.features.dashboard.viewmodel.weight
 
 import androidx.compose.runtime.Stable
 import com.dmdbrands.gurus.weight.domain.enums.DashboardType
+import com.dmdbrands.gurus.weight.domain.enums.MetricKey
 import com.dmdbrands.gurus.weight.domain.interfaces.IReducer
+import com.dmdbrands.gurus.weight.domain.model.storage.entry.DashboardMetric
 import com.dmdbrands.gurus.weight.domain.model.common.WeightProgress
 import com.dmdbrands.gurus.weight.domain.model.common.WeightUnit
 import com.dmdbrands.gurus.weight.domain.model.goal.Goal
@@ -11,6 +13,7 @@ import com.dmdbrands.gurus.weight.domain.model.storage.entry.PeriodBodyScaleSumm
 import com.dmdbrands.gurus.weight.features.common.enums.GraphSegment
 import com.dmdbrands.gurus.weight.features.common.model.DashboardKey
 import com.dmdbrands.gurus.weight.features.common.model.Stat
+import com.dmdbrands.gurus.weight.features.metricinfo.MetricInfoSource
 import com.dmdbrands.gurus.weight.features.dashboard.viewmodel.base.BaseGraphIntent
 import com.dmdbrands.gurus.weight.features.dashboard.viewmodel.base.BaseGraphReducer
 import com.dmdbrands.gurus.weight.features.dashboard.viewmodel.base.BaseDashboardState
@@ -77,6 +80,13 @@ sealed interface WeightDashboardIntent : BaseGraphIntent {
   data object ResetComplete : WeightDashboardIntent
   data class UpdateVisibleKeys(val keys: List<DashboardKey>, val dashboardType: DashboardType) : WeightDashboardIntent
   data object NavigateToGoal : WeightDashboardIntent
+
+  /** Open the Metric Info screen for the current graph selection (MOB-1537). */
+  data class OpenMetricInfo(
+    val info: DashboardMetric,
+    val key: MetricKey,
+    val source: MetricInfoSource,
+  ) : WeightDashboardIntent
 }
 
 // ── Reducer (extends BaseGraphReducer for shared intents) ──
@@ -120,6 +130,7 @@ class WeightDashboardReducer : BaseGraphReducer<WeightDashboardState>(), IReduce
       is WeightDashboardIntent.ResetComplete -> state.copy(resetSignal = state.resetSignal + 1)
       is WeightDashboardIntent.UpdateVisibleKeys -> state
       is WeightDashboardIntent.NavigateToGoal -> state
+      is WeightDashboardIntent.OpenMetricInfo -> state
     }
     // Base graph intents — delegate to BaseGraphReducer
     else -> reduceBaseIntent(state, intent)

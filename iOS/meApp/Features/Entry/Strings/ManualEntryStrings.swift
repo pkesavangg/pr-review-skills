@@ -27,16 +27,16 @@ struct ManualEntryStrings {
     static let unitCm = "(cm)"
 
     // Baby validation error messages
-    static let required = "Required."
-    static let invalidWeight = "Please enter a valid weight."
-    static let invalidLength = "Please enter a valid length."
+    static let required = "required."
+    static let invalidWeight = "please enter a valid weight."
+    static let invalidLength = "please enter a valid length."
 
     // BP validation error messages
-    static let maxLimit = "This value cannot be over 500."
-    static let systolicReversed = "Systolic should be higher than diastolic"
-    static let diastolicReversed = "Diastolic should be lower than systolic"
+    static let maxLimit = "this value cannot be over 500."
+    static let systolicReversed = "systolic should be higher than diastolic"
+    static let diastolicReversed = "diastolic should be lower than systolic"
     static func typicalRange(_ min: Int, _ max: Int) -> String {
-        "This value is outside the typical range of \(min) to \(max)."
+        "this value is outside the typical range of \(min) to \(max)."
     }
 
     // MARK: - Accessibility (VoiceOver) — spoken text only, not shown on screen

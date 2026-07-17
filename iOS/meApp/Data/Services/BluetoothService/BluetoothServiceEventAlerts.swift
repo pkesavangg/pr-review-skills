@@ -17,7 +17,7 @@ extension BluetoothService {
             return
         }
 
-        if skipDevices.contains(deviceDetails.broadcastIdString) || reconnectAlertSkippedDevices.contains(deviceDetails.broadcastIdString) {
+        if skipDevices.contains(deviceDetails.broadcastIdString) || isReconnectAlertDismissed(deviceDetails.broadcastIdString) {
             return
         }
 
@@ -53,6 +53,12 @@ extension BluetoothService {
 
             Task { @MainActor in
                 self.notificationService.dismissAllModals()
+
+                // The user opted to reconnect, so clear any persisted dismissal for this scale —
+                // a future genuine duplicate/reconnect condition should be allowed to alert again.
+                if let broadcastId = discoveredScale.broadcastIdString {
+                    self.clearReconnectAlertDismissal(broadcastId)
+                }
 
                 if let userToDelete = userToDelete, let token = userToDelete.token, !token.isEmpty {
                     let response = await self.deleteScaleByBroadcastId(
@@ -100,7 +106,9 @@ extension BluetoothService {
                     AlertButtonModel(title: alertStrings.DuplicateUserAlert.cancelButton, type: .secondary) { _ in
                         Task {
                             if let broadcastId = discoveredScale.broadcastIdString {
-                                self.reconnectAlertSkippedDevices.append(broadcastId)
+                                // Persist the dismissal so the alert doesn't reappear on the next
+                                // app launch (MOB-184) — the in-memory list alone was lost on relaunch.
+                                self.persistReconnectAlertDismissal(broadcastId)
                                 _ = await self.disconnectDevice(broadcastId: broadcastId)
                             }
                         }
@@ -118,7 +126,9 @@ extension BluetoothService {
                     AlertButtonModel(title: alertStrings.ReconnectDeviceAlert.cancelButton, type: .secondary) { _ in
                         Task {
                             if let broadcastId = discoveredScale.broadcastIdString {
-                                self.reconnectAlertSkippedDevices.append(broadcastId)
+                                // Persist the dismissal so the alert doesn't reappear on the next
+                                // app launch (MOB-184) — the in-memory list alone was lost on relaunch.
+                                self.persistReconnectAlertDismissal(broadcastId)
                                 _ = await self.disconnectDevice(broadcastId: broadcastId)
                             }
                         }
@@ -131,6 +141,48 @@ extension BluetoothService {
         }
 
         notificationService.showAlert(alert)
+    }
+
+    // MARK: - Reconnect / Duplicate-user alert dismissal persistence (MOB-184)
+
+    /// KvStorage key for the set of broadcastIds the current account has dismissed the
+    /// reconnect / duplicate-user alert for. Scoped per account so one account's CANCEL doesn't
+    /// suppress the alert for another account that shares the same physical scale.
+    private var reconnectAlertSkipStorageKey: String {
+        "reconnectAlertSkippedDevices_\(activeAccount?.accountId ?? "unknown")"
+    }
+
+    /// Whether the reconnect / duplicate-user alert has already been dismissed for this broadcastId,
+    /// checking both the in-memory list (this session) and the persisted set (previous launches).
+    func isReconnectAlertDismissed(_ broadcastId: String) -> Bool {
+        if reconnectAlertSkippedDevices.contains(broadcastId) { return true }
+        return loadPersistedReconnectSkips().contains(broadcastId)
+    }
+
+    /// Records that the user dismissed (CANCEL) the reconnect / duplicate-user alert for this
+    /// broadcastId, persisting it so the choice survives app relaunches (MOB-184).
+    func persistReconnectAlertDismissal(_ broadcastId: String) {
+        if !reconnectAlertSkippedDevices.contains(broadcastId) {
+            reconnectAlertSkippedDevices.append(broadcastId)
+        }
+        var skips = loadPersistedReconnectSkips()
+        guard !skips.contains(broadcastId) else { return }
+        skips.append(broadcastId)
+        KvStorageService.shared.setCodable(skips, forKey: reconnectAlertSkipStorageKey)
+    }
+
+    /// Clears a persisted dismissal for this broadcastId (e.g. when the user chooses to reconnect),
+    /// so a future genuine duplicate/reconnect condition can alert again.
+    func clearReconnectAlertDismissal(_ broadcastId: String) {
+        reconnectAlertSkippedDevices.removeAll { $0 == broadcastId }
+        var skips = loadPersistedReconnectSkips()
+        guard skips.contains(broadcastId) else { return }
+        skips.removeAll { $0 == broadcastId }
+        KvStorageService.shared.setCodable(skips, forKey: reconnectAlertSkipStorageKey)
+    }
+
+    private func loadPersistedReconnectSkips() -> [String] {
+        KvStorageService.shared.getCodable(forKey: reconnectAlertSkipStorageKey, as: [String].self) ?? []
     }
 
     func findUserToDelete(userList: [DeviceUser], discoveredScale: DeviceSnapshot) -> DeviceUser? {

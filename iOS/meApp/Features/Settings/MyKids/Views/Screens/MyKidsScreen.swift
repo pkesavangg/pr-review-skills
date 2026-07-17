@@ -52,7 +52,7 @@ struct MyKidsScreen: View {
                 babyList
             }
         }
-        .navigationBarBackButtonHidden(true)
+        .navigationBarHidden(true)
         .background(theme.backgroundSecondary.ignoresSafeArea())
         .screenAccessibilityRoot(AccessibilityID.myKidsScreenRoot)
         .task { await store.loadBabies() }

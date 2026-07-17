@@ -403,9 +403,8 @@ class EntryReadRepository @Inject constructor(
                             date = day.date,
                             dateKey = day.dateKey,
                             entryCount = day.entryCount,
-                            weightLb = day.babyWeightDecigrams?.let { ConversionTools.convertDecigramsToLb(it) },
-                            weightOz = day.babyWeightDecigrams?.let { ConversionTools.convertDecigramsToOz(it) },
-                            lengthInches = day.babyLengthMillimeters?.let { ConversionTools.convertMmToInches(it) },
+                            weightDecigrams = day.babyWeightDecigrams,
+                            lengthMillimeters = day.babyLengthMillimeters,
                             percentile = weekRowPercentile(day, sex, birthDateMillis),
                         )
                     },

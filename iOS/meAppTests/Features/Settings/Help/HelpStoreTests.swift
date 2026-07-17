@@ -321,6 +321,13 @@ struct HelpStoreTests {
         store.openHelp()
         #expect(notification.showModalCalls == 1)
     }
+
+    @Test("openHelp modal is not dismissible via backdrop/scrim tap (MOB-1549)")
+    func openHelp_modalIsNotBackdropDismissible() {
+        let (store, notification, _, _, _, _, _) = makeSUT()
+        store.openHelp()
+        #expect(notification.modalViewData.last?.backdropDismiss == false)
+    }
 }
 
 // MARK: - Test Errors

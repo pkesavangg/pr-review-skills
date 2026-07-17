@@ -130,6 +130,17 @@ enum DashboardChartStyleProvider {
             return (ahaColor, isOutsideMonthInterval ? ahaColor.opacity(0.4) : ahaColor)
         }
 
+        // MOB-1516: baby — the 7 WHO/CDC percentile curves share one neutral colour; the real data series
+        // (weight or height) is baby purple. Parity with the legacy `BabyDashboardChartStyle`
+        // (percentileLineColor → statusUtilityPrimary; weightColor → babyScale). (v2 path only — the legacy
+        // baby renderer colours via `BaseGraphChartContent.resolveColors`, unaffected.)
+        if productType == .baby {
+            if BabyDashboardChartSupport.isPercentileSeries(seriesName) {
+                return (theme.statusUtilityPrimary, theme.statusUtilityPrimary)
+            }
+            return (theme.babyScaleColor, theme.babyScaleColor)
+        }
+
         // Weight line uses the weight-scale brand blue; the co-plotted selected-metric line uses
         // the high-contrast neutral (white on dark / black on light). `actionSecondary` is
         // `neutral-100`, which in dark mode is the chart background color — so the metric line

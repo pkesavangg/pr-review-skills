@@ -7,6 +7,7 @@ object DashboardSnapshotStrings {
     const val Oz = "oz"
     const val Inches = "in"
     const val Kg = "kg"
+    const val Cm = "cm"
     const val St = "st"
     const val Mmhg = "mmhg"
     const val Pulse = "pulse"

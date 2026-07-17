@@ -188,11 +188,16 @@ struct BluetoothServiceConfigOperationsTests {
     func updateUserProfileForR4ScalesSuccess() async {
         let sdk = MockBluetoothSDKClient()
         let entry = MockEntryService()
+        // MOB-193: updateUserProfileForR4Scales now reads the account from the source of truth
+        // (accountService.activeAccount), not the cached sut.activeAccount, so seed the service.
+        let account = AccountTestFixtures.makeAccountSnapshot(id: "acct-profile", email: "profile@example.com", isLoggedIn: true, isActiveAccount: true)
+        let accountService = MockAccountService()
+        accountService.seedAccounts([account], active: account)
         let latestEntry = HealthKitTestFixtures.makeEntry(accountId: "acct-profile", weight: 730)
         latestEntry.scaleEntry = BathScaleEntry(weight: 730)
         entry.latestEntry = latestEntry
-        let sut = makeSUT(entry: entry, sdk: sdk)
-        sut.activeAccount = AccountTestFixtures.makeAccountSnapshot(id: "acct-profile", email: "profile@example.com", isLoggedIn: true, isActiveAccount: true)
+        let sut = makeSUT(account: accountService, entry: entry, sdk: sdk)
+        sut.activeAccount = account
         let r4Device = makeDevice(
             id: "r4-profile",
             broadcastIdString: "ABC123",

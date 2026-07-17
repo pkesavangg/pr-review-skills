@@ -77,8 +77,10 @@ object DashboardString {
       const val SectionTitle = "Understanding Growth Percentiles"
       const val SectionBody = "CDC charts show how a child\u2019s height and weight compare to others the same age. A percentile means what percentage of children measure below that number."
       const val Inches = "inches"
-      const val Lbs = "lbs"
+      const val Lbs = "lb"
       const val Oz = "oz"
+      const val Kg = "kg"
+      const val Cm = "cm"
       const val Percent = "%"
       const val Placeholder = "--"
     }

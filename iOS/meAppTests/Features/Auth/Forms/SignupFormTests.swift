@@ -318,13 +318,13 @@ struct SignupFormTests {
 }
 
 private enum SignupFormTestText {
-    static let required = "This field is required"
-    static let leaveBlank = "This field is required"
+    static let required = "this field is required"
+    static let leaveBlank = "this field is required"
     static let email = "must use a valid email"
     static let emailMaxLength = "email should not exceed 100 characters"
     static let passwordMaxLength = "password should not exceed 50 characters"
     static let signupPasswordMinLength = "minimum of 6 characters needed"
-    static let noWhiteSpace = "This field is required"
+    static let noWhiteSpace = "this field is required"
     static let futureDate = "future dates not accepted"
     static let passwordMatch = "both passwords must match"
     static let valueShouldNotBeEqual = "value should not be equal to starting weight"
