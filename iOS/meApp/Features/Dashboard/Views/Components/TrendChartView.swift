@@ -1,5 +1,5 @@
 //
-//  WeightChartView.swift
+//  TrendChartView.swift
 //  meApp
 //
 //  MOB-518 — v2 weight-graph engine (greenfield strangler rebuild).
@@ -42,7 +42,17 @@ private struct GoalChipYKey: PreferenceKey {
     }
 }
 
-struct WeightChartView: View {
+/// MOB-1516 — clips the LEFT/RIGHT edges to the view's bounds while leaving TOP/BOTTOM effectively unbounded.
+/// Used on the chart so Swift Charts' horizontal y-gridlines can't bleed past the leading rule into the left
+/// padding gap during a scroll, WITHOUT cropping the top/bottom y-axis tick labels (or the floating date
+/// callout), which a plain `.clipped()` would cut off.
+private struct HorizontalEdgeClip: Shape {
+    func path(in rect: CGRect) -> Path {
+        Path(CGRect(x: rect.minX, y: rect.minY - 10_000, width: rect.width, height: rect.height + 20_000))
+    }
+}
+
+struct TrendChartView: View {
 
     let model: ChartModel
     @Binding var scrollX: Date
@@ -65,14 +75,47 @@ struct WeightChartView: View {
     let yLabel: (Double) -> String
     let xLabel: (Date) -> String
     let theme: AppColors.Palette
+    /// MOB-1516 (BPM): the selected/window reading's AHA class, so systolic+diastolic recolour on selection.
+    /// `nil` for weight/baby → the colour provider uses its default. A cheap injected colour swap (no model
+    /// rebuild), like `activeMonthInterval`/`isScrolling`.
+    var bpmClassification: AhaPressureClass?
+    /// MOB-1516 (baby): the selected reading's value → a horizontal crosshair rule at that y. `nil` otherwise.
+    var horizontalCrosshairValue: Double?
+    /// MOB-1516 (baby): "NN%" growth percentile for the selected reading, floated on the crosshair. `nil` else.
+    var percentileCalloutText: String?
+    /// MOB-1516: chart container height — baby growth charts are taller (498) than weight/BPM (265).
+    var chartHeight: CGFloat = 265
 
-    private var isScrollable: Bool { model.period != .total }
-    private var lineWidth: CGFloat { isScrollable ? 3 : 2 }
+    /// Scrollable only when the data domain is actually WIDER than one visible window. When the domain is
+    /// exactly one window (empty account, a single reading, or data confined to one week/month/year) there is
+    /// nothing to scroll — and allowing the drag let the value-aligned scroll offset the viewport-sized
+    /// content, opening a leading gap where the plot edge / gridlines showed "behind" the starting rule. Total
+    /// is never scrollable. (MOB-1516)
+    private var isScrollable: Bool {
+        guard model.period != .total else { return false }
+        // Empty state (no data series) never scrolls — it shows the current period's grid statically. Its
+        // synthesized current-period domain can be marginally wider than one nominal window (e.g. a 31-day
+        // month vs the ~30.4-day month window), which would otherwise flip scrolling on for a blank chart.
+        guard !model.orderedSeriesNames.isEmpty else { return false }
+        let domainWidth = model.xDomain.upperBound.timeIntervalSince(model.xDomain.lowerBound)
+        return domainWidth > model.visibleDomainLength + 1
+    }
+
+    /// Leading inset that frames the plot's left edge (see the `.padding(.leading:)` at the end of `body`).
+    /// Applied only when the chart is NOT scrollable — which is exactly the set of cases we want it in:
+    /// TOTAL (never scrollable), the EMPTY state (no data series), and a week/month/year whose data fits a
+    /// single window. A scrollable multi-window week/month/year is deliberately left flush: its left frame is
+    /// the period-boundary gridline (Sunday / 1st / Jan 1) and content scrolls beneath it, so an inset there
+    /// would just re-open the leading gap the `HorizontalEdgeClip` exists to hide. (MOB-1516)
+    private var leadingInset: CGFloat { isScrollable ? 0 : .spacingSM }
     /// Fixed width the y-axis number is centered in, so it sits off the trailing screen edge with a gap
     /// (parity with the legacy `BaseGraphView.yAxisLabelWidth`).
     private let yAxisLabelWidth: CGFloat = 40
     private func pointArea(selected: Bool) -> CGFloat {
-        let diameter: CGFloat = selected ? (isScrollable ? 12 : 8) : (isScrollable ? 8 : 4)
+        // Point size tracks the PERIOD (total draws thinner line + smaller dots), not scroll-ability — a
+        // single-reading week is now non-scrollable but must keep the normal week dot size.
+        let isTotal = model.period == .total
+        let diameter: CGFloat = selected ? (isTotal ? 8 : 12) : (isTotal ? 4 : 8)
         let radius = diameter / 2
         return .pi * radius * radius
     }
@@ -85,6 +128,18 @@ struct WeightChartView: View {
     /// clamp-to-edge). `nil` when no goal is set.
     private var clampedGoalValue: Double? {
         model.goalWeight.map { min(max($0, yDomain.lowerBound), yDomain.upperBound) }
+    }
+
+    /// MOB-1516 — ALL products: an empty chart with no goal shows NO y-axis — neither the horizontal gridlines
+    /// nor the placeholder number labels (0/25/50/75/100) — so the plot reads as a clean box + vertical grid +
+    /// x-axis labels only. "Empty" = no real reading (`.data`) series: baby's percentile REFERENCE curves are
+    /// analytic overlays, not readings, so a curves-only baby chart still counts as empty here. Any real data
+    /// OR a goal brings both back (only weight has a goal; for BPM/baby the rule is simply "no readings →
+    /// hide"). Numbers are drawn transparent (not removed), so the reserved column width — and thus the plot
+    /// frame width — stays constant.
+    private var hidesYAxis: Bool {
+        let hasReadings = model.orderedSeriesNames.contains { model.style(for: $0).role == .data }
+        return !hasReadings && model.goalWeight == nil
     }
 
     /// Window width. Total isn't scrollable → show the whole span.
@@ -110,11 +165,13 @@ struct WeightChartView: View {
         return model.xAxisTicks.dropLast().map { calendar.startOfDay(for: $0) }
     }
 
-    /// Label ticks — week/month/year drop the phantom so labels stop at the last real unit; total keeps it
-    /// (matches the legacy `adjustedLabelTicks`).
+    /// Label ticks — week/month/year drop the phantom so labels stop at the last real unit.
     private var labelTicks: [Date] {
+        // MOB-1516 — the TOTAL section never shows x-axis labels, in any situation (with or without entries,
+        // single or multiple readings); its plot height is kept consistent via `xAxisLabelSpacerTicks`.
+        guard model.period != .total else { return [] }
         guard !model.xAxisTicks.isEmpty else { return [] }
-        let base = model.period == .total ? model.xAxisTicks : Array(model.xAxisTicks.dropLast())
+        let base = Array(model.xAxisTicks.dropLast())
         // Week only: snap labels to the same day boundary (midnight) as the gridlines so each day label
         // sits ON its rule — matching month/year, where "1"/"Jan" sit on the boundary rule. Without this the
         // label stays at the noon tick, half a column right of the midnight gridline → the "wrong side" look.
@@ -125,6 +182,21 @@ struct WeightChartView: View {
         guard model.period == .week else { return base }
         let calendar = Calendar.current
         return base.map { calendar.startOfDay(for: $0) }
+    }
+
+    /// MOB-1516 — reserve the x-axis label-row height whenever no labels are drawn (`labelTicks` empty): the
+    /// TOTAL section always, and week/month/year when there are no entries. Otherwise the collapsed label row
+    /// lets the plot grow taller than a populated one — so an empty week/month/year matched the taller look
+    /// instead of the (label-height-reserving) total. Reserving here keeps every empty section the same
+    /// height as total. The reservation is an invisible caption-height label (see `xAxisLabelSpacerTicks`).
+    private var reservesXAxisLabelSpace: Bool {
+        labelTicks.isEmpty
+    }
+
+    private var xAxisLabelSpacerTicks: [Date] {
+        guard reservesXAxisLabelSpace else { return [] }
+        let lower = model.xDomain.lowerBound
+        return [lower.addingTimeInterval(model.xDomain.upperBound.timeIntervalSince(lower) / 2)]
     }
 
     /// MOB-518 — the 1st of each month within the tick window, for the SOLID month-divider rule. Drawn as a
@@ -231,14 +303,40 @@ struct WeightChartView: View {
         return geo[anchor].minY + yInPlot
     }
 
+    /// MOB-1516: map a reference-line colour role to a theme token (keeps `ChartModel` free of theme types).
+    private func referenceLineColor(_ role: ChartReferenceLineColor) -> Color {
+        switch role {
+        case .bpmReference: return theme.textSubheading.opacity(0.4)
+        }
+    }
+
     var body: some View {
         Chart {
+            // MOB-1516 (BPM): fixed horizontal reference rules (systolic 120 / diastolic 80), drawn FIRST so
+            // the data series render on top. Empty for weight/baby → nothing drawn.
+            ForEach(Array(model.referenceLines.enumerated()), id: \.offset) { _, line in
+                RuleMark(y: .value("Reference", line.value))
+                    .lineStyle(StrokeStyle(lineWidth: 1, dash: line.dashed ? [4, 4] : []))
+                    .foregroundStyle(referenceLineColor(line.color))
+            }
+
             ForEach(model.orderedSeriesNames, id: \.self) { name in
+                // MOB-1516: per-series style (role/lineWidth/showsPoints) is baked into the model. Weight/BPM
+                // series are `.data` (line + dots); baby percentile curves are `.reference` (line only).
+                let style = model.style(for: name)
                 let regularColors = DashboardChartStyleProvider.seriesColors(
-                    for: name, productType: model.productType, theme: theme, isOutsideMonthInterval: false
+                    for: name,
+                    productType: model.productType,
+                    theme: theme,
+                    bpmClassification: bpmClassification,
+                    isOutsideMonthInterval: false
                 )
                 let outsideColors = DashboardChartStyleProvider.seriesColors(
-                    for: name, productType: model.productType, theme: theme, isOutsideMonthInterval: true
+                    for: name,
+                    productType: model.productType,
+                    theme: theme,
+                    bpmClassification: bpmClassification,
+                    isOutsideMonthInterval: true
                 )
                 ForEach(model.seriesPoints[name] ?? []) { plotted in
                     let value = min(max(plotted.original.value, yDomain.lowerBound), yDomain.upperBound)
@@ -253,14 +351,16 @@ struct WeightChartView: View {
                     )
                     .foregroundStyle(colors.line)
                     .interpolationMethod(.monotone)
-                    .lineStyle(StrokeStyle(lineWidth: lineWidth))
+                    .lineStyle(StrokeStyle(lineWidth: style.lineWidth))
 
-                    PointMark(
-                        x: .value("Date", plotted.xDate),
-                        y: .value(name, value)
-                    )
-                    .symbolSize(pointArea(selected: isSelected))
-                    .foregroundStyle(colors.point)
+                    if style.showsPoints {
+                        PointMark(
+                            x: .value("Date", plotted.xDate),
+                            y: .value(name, value)
+                        )
+                        .symbolSize(pointArea(selected: isSelected))
+                        .foregroundStyle(colors.point)
+                    }
                 }
             }
 
@@ -273,6 +373,22 @@ struct WeightChartView: View {
                     .lineStyle(StrokeStyle(lineWidth: 1))
             }
 
+            // MOB-1516 (baby) — horizontal crosshair at the selected reading's value, carrying the "NN%"
+            // growth percentile as an annotation (parity with the legacy baby horizontal rule + callout).
+            if let horizontalCrosshairValue {
+                RuleMark(y: .value("SelectedValue", horizontalCrosshairValue))
+                    .zIndex(-100)
+                    .foregroundStyle(theme.actionPrimary)
+                    .lineStyle(StrokeStyle(lineWidth: 1))
+                    .annotation(position: .top, alignment: .trailing, spacing: 2) {
+                        if let percentileCalloutText {
+                            Text(percentileCalloutText)
+                                .fontOpenSans(.subHeading2)
+                                .foregroundStyle(theme.textSubheading)
+                        }
+                    }
+            }
+
             // V4 (6c) — the goal chip is NOT drawn inside the plot (an `.annotation(position: .trailing)` pins
             // it to the plot's INNER trailing edge, left of the y-axis numbers — the "shows differently" bug).
             // It's floated as an overlay over the trailing y-axis label column instead (see `goalChipY` +
@@ -283,14 +399,19 @@ struct WeightChartView: View {
         .chartXScale(domain: ChartDomainSanitizer.orderedDates(model.xDomain))
         .chartYAxis {
             AxisMarks(values: model.yAxis.ticks) { value in
-                AxisGridLine()
+                // MOB-1516: an empty, goal-less weight chart hides its whole y-axis — gridlines AND numbers
+                // (see `hidesYAxis`). Any data or a goal (and all BPM/baby) shows both.
+                if !hidesYAxis {
+                    AxisGridLine()
+                }
                 if let doubleValue = value.as(Double.self) {
                     AxisValueLabel {
                         // Parity with the legacy `yAxisMarks`: center the number in a fixed-width box so it
-                        // sits off the right screen edge with a gap, instead of the bare label hugging the
-                        // trailing edge.
+                        // sits off the right screen edge with a gap. Drawn transparent (not removed) when
+                        // `hidesYAxis` so the reserved column width — and thus the plot frame width — stays put.
                         Text(yLabel(doubleValue))
                             .frame(width: yAxisLabelWidth, alignment: .center)
+                            .opacity(hidesYAxis ? 0 : 1)
                     }
                 }
             }
@@ -334,17 +455,33 @@ struct WeightChartView: View {
                     }
                 }
             }
-        }
-        // Trailing "closing" rule: a fixed 1 pt vertical line at the plot's right edge (where the y-axis
-        // begins), so the last week/month/year window reads as a closed frame instead of an open right side.
-        // `.chartPlotStyle` styles the FIXED viewport (content scrolls within it), so the line stays put at
-        // the window's right edge as you scroll — matching the leading period-boundary rule on the left.
-        .chartPlotStyle { plot in
-            plot.overlay(alignment: .trailing) {
-                Rectangle()
-                    .fill(theme.statusIconSecondaryDisabled)
-                    .frame(width: 1)
+            // MOB-1516 — reserve the label-row height for a single-reading total (labels hidden) so its plot
+            // stays the same height/position as the other periods. Invisible caption label, no gridline/tick.
+            AxisMarks(values: xAxisLabelSpacerTicks) { _ in
+                AxisValueLabel { Text(verbatim: "0").font(.caption).foregroundStyle(.clear) }
             }
+        }
+        // Fixed 1 pt rules on ALL FOUR plot edges, so every window reads as a fully closed frame (box).
+        // `.chartPlotStyle` styles the FIXED viewport (content scrolls within it), so the rules stay put at
+        // the window's edges as you scroll. The trailing "closing" rule sits where the y-axis begins; the
+        // leading "starting" rule frames the left — previously the left relied on a period-boundary gridline
+        // (Sunday / Jan 1), which total / month / empty states don't have. MOB-1516: the top + bottom
+        // horizontals close the box — without them the empty graph showed only the left/right rules + the
+        // vertical gridlines, with no top/bottom border.
+        .chartPlotStyle { plot in
+            plot
+                .overlay(alignment: .leading) {
+                    Rectangle().fill(theme.statusIconSecondaryDisabled).frame(width: 1)
+                }
+                .overlay(alignment: .trailing) {
+                    Rectangle().fill(theme.statusIconSecondaryDisabled).frame(width: 1)
+                }
+                .overlay(alignment: .top) {
+                    Rectangle().fill(theme.statusIconSecondaryDisabled).frame(height: 1)
+                }
+                .overlay(alignment: .bottom) {
+                    Rectangle().fill(theme.statusIconSecondaryDisabled).frame(height: 1)
+                }
         }
         // Issue #2 — publish the selected point's (clamped) x so the overlay below can float the date label
         // ABOVE the chart. `.chartBackground` only emits a preference here (Color.clear) — it doesn't render
@@ -371,7 +508,12 @@ struct WeightChartView: View {
         // The model is only rebuilt at scroll-END, so the y-domain changes once per settle → this is the
         // single, smooth, adaptive settle (Y-B). No animation fires during a drag (nothing changes then).
         .animation(.easeInOut(duration: 0.25), value: yDomain)
-        .frame(height: 265)
+        .frame(height: chartHeight)
+        // MOB-1516 — clip ONLY the left/right edges so Swift Charts' horizontal y-gridlines (which draw a
+        // hair past the plot's leading edge while scrolling) can't bleed left into the leading padding gap
+        // past the starting rule. Top/bottom stay unclipped so the y-axis tick labels (e.g. the top "100")
+        // and the floating date callout are NOT cropped — which a plain `.clipped()` would do.
+        .clipShape(HorizontalEdgeClip())
         // Issue #2 — the date callout floats in the gap ABOVE the plot, at the selected x (from the preference
         // above). It OVERFLOWS the chart's top edge into the header gap (no ancestor clips it), so it does NOT
         // compress the plot or crowd the x-axis labels / section buttons — it reads as "above the graph", like
@@ -398,24 +540,58 @@ struct WeightChartView: View {
                 }
             }
         }
+        // Inset the plot from the left screen edge so the leading "starting" rule (and the data line) aren't
+        // flush against it — the trailing edge is already inset by the y-axis label column. Aligns the plot's
+        // left edge with the header title (same `.spacingSM` leading), giving the left a framed look too.
+        // Applied only when the chart is NOT scrollable (total, empty state, and single-window week/month/year)
+        // — a scrollable multi-window week/month/year stays flush; see `leadingInset`. (MOB-1516)
+        .padding(.leading, leadingInset)
     }
 }
 
 // MARK: - AXChartDescriptorRepresentable (VoiceOver Audio Graph)
 
-/// Exposes the weight chart to VoiceOver as a navigable Audio Graph, mirroring the legacy
-/// `BaseGraphView` descriptor (title "Weight trend chart", categorical Date x-axis, numeric Weight y-axis,
-/// per-series data points). Built purely from the immutable `ChartModel` this view already holds — no store
-/// access — so it stays in lock-step with what's drawn. MOB-518 review restored this after the v2 rebuild
-/// had left the primary chart with no accessibility semantics.
-extension WeightChartView: AXChartDescriptorRepresentable {
+/// Exposes the chart to VoiceOver as a navigable Audio Graph, mirroring the legacy `BaseGraphView`
+/// descriptor (categorical Date x-axis, numeric y-axis, per-series data points). MOB-1516: the title and
+/// y-axis name are parameterized by `model.productType` (weight / blood pressure / baby) so BPM and baby
+/// charts no longer announce as "Weight trend chart", and only real-reading (`.data`) series are exposed —
+/// the baby `.reference` percentile curves are analytic overlays, not navigable readings, so they are
+/// excluded from the audio graph. Built purely from the immutable `ChartModel` this view already holds —
+/// no store access — so it stays in lock-step with what's drawn. MOB-518 review restored this after the v2
+/// rebuild had left the primary chart with no accessibility semantics.
+extension TrendChartView: AXChartDescriptorRepresentable {
+
+    /// MOB-1516: VoiceOver chart title, parameterized by product.
+    private var accChartTitle: String {
+        switch model.productType {
+        case .scale: return DashboardStrings.accWeightChartLabel
+        case .bpm: return DashboardStrings.accBpmChartLabel
+        case .baby: return DashboardStrings.accBabyChartLabel
+        }
+    }
+
+    /// MOB-1516: VoiceOver y-axis name, parameterized by product.
+    private var accYAxisName: String {
+        switch model.productType {
+        case .scale: return DashboardStrings.accChartWeightYAxisName
+        case .bpm: return DashboardStrings.accChartBpmYAxisName
+        case .baby: return DashboardStrings.accChartBabyYAxisName
+        }
+    }
+
+    /// MOB-1516: only real-reading (`.data`) series are exposed to VoiceOver — the baby `.reference`
+    /// percentile curves are analytic overlays, not navigable data points.
+    private var accessibleSeriesNames: [String] {
+        model.orderedSeriesNames.filter { model.style(for: $0).role == .data }
+    }
+
     func makeChartDescriptor() -> AXChartDescriptor {
         let dateFormatter = DateFormatter()
         dateFormatter.dateStyle = .medium
         dateFormatter.timeStyle = .none
 
-        // Ordered unique date strings across all plotted series (full resolution) → categorical x-axis.
-        let allPoints = model.orderedSeriesNames
+        // Ordered unique date strings across all plotted DATA series (full resolution) → categorical x-axis.
+        let allPoints = accessibleSeriesNames
             .flatMap { model.fullResolution[$0] ?? [] }
             .sorted { $0.original.date < $1.original.date }
         var seenDates = Set<String>()
@@ -435,12 +611,12 @@ extension WeightChartView: AXChartDescriptorRepresentable {
             ? yDomain
             : yDomain.lowerBound...(yDomain.lowerBound + 1)
         let yAxis = AXNumericDataAxisDescriptor(
-            title: DashboardStrings.accChartWeightYAxisName,
+            title: accYAxisName,
             range: safeRange,
             gridlinePositions: model.yAxis.ticks
         ) { yLabel($0) }
 
-        var seriesDescriptors = model.orderedSeriesNames.compactMap { name -> AXDataSeriesDescriptor? in
+        var seriesDescriptors = accessibleSeriesNames.compactMap { name -> AXDataSeriesDescriptor? in
             guard let points = model.fullResolution[name], !points.isEmpty else { return nil }
             let dataPoints = points
                 .sorted { $0.original.date < $1.original.date }
@@ -452,7 +628,7 @@ extension WeightChartView: AXChartDescriptorRepresentable {
         }
 
         return AXChartDescriptor(
-            title: DashboardStrings.accWeightChartLabel,
+            title: accChartTitle,
             summary: nil,
             xAxis: xAxis,
             yAxis: yAxis,

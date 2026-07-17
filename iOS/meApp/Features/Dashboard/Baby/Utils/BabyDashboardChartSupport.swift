@@ -21,7 +21,7 @@ struct BabyWeightDisplay {
 // swiftlint:disable:next type_body_length
 enum BabyDashboardChartSupport {
     private static let percentileSeriesPrefix = "baby_percentile_"
-    private static let heightSeriesName = "baby_height"
+    static let heightSeriesName = "baby_height"   // MOB-1516: internal so ChartPrep/TrendChartHost can name it
     private static let defaultBabyAgeDays = 84
     private static let defaultBirthLengthInches = 19.5
     private static let heightTickStep = 5.0

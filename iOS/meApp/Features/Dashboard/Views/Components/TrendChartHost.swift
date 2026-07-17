@@ -1,5 +1,5 @@
 //
-//  WeightChartHost.swift
+//  TrendChartHost.swift
 //  meApp
 //
 //  MOB-518 — v2 weight-graph engine (greenfield strangler rebuild).
@@ -18,7 +18,7 @@
 
 import SwiftUI
 
-struct WeightChartHost: View {
+struct TrendChartHost: View {
 
     @ObservedObject var dashboardStore: DashboardStore
     @Environment(\.appTheme) private var theme
@@ -76,7 +76,7 @@ struct WeightChartHost: View {
             // Scroll START clears any selection (the store also clears its own on `.interacting`); drop the
             // local raw value so the next tap re-triggers `onChange(selectedX)`.
             guard !isScrolling else { selectedX = nil; return }
-            dashboardStore.commitWeightScroll(landedAt: scrollX)
+            dashboardStore.commitScroll(landedAt: scrollX)
         }
     }
 
@@ -84,7 +84,7 @@ struct WeightChartHost: View {
     @ViewBuilder
     private var chartContent: some View {
         if let model = dashboardStore.chartModel {
-            WeightChartView(
+            TrendChartView(
                 model: model,
                 scrollX: $scrollX,
                 selectedX: $selectedX,
@@ -95,7 +95,11 @@ struct WeightChartHost: View {
                 isScrolling: dashboardStore.state.graph.isScrolling,
                 yLabel: { dashboardStore.displayManager.formatYAxisTickLabel($0) },
                 xLabel: formatXAxisLabel,
-                theme: theme
+                theme: theme,
+                bpmClassification: bpmClassification,
+                horizontalCrosshairValue: horizontalCrosshairValue,
+                percentileCalloutText: percentileCalloutText,
+                chartHeight: chartHeight
             )
             // A2 — native scroll phase is the REAL start/commit/end signal (same path the legacy graph
             // uses via `ScrollDetectionModifier`), so there is no view-side timer to approximate it.
@@ -116,9 +120,12 @@ struct WeightChartHost: View {
             // types). Within a period the id is stable, so a y-settle still animates in place (no teardown).
             .id(model.period)
         } else {
-            Color.clear.frame(height: 265)
+            Color.clear.frame(height: chartHeight)
         }
     }
+
+    /// MOB-1516: baby growth charts are taller (498) than weight/BPM (265).
+    private var chartHeight: CGFloat { dashboardStore.productType == .baby ? 498 : 265 }
 
     // MARK: - Model rebuild / scroll adoption
 
@@ -133,10 +140,56 @@ struct WeightChartHost: View {
     }
 
     private func rebuild(at position: Date) {
-        dashboardStore.rebuildWeightChartModel(scrollPosition: position)
+        dashboardStore.rebuildChartModel(scrollPosition: position)
     }
 
     // MARK: - V4 (6a) selection / crosshair
+
+    /// MOB-1516: the series the host snaps selection to / seeds the latest point from. Weight → the weight
+    /// series; BPM → systolic (the top line, used only as the x-position source — the header shows all three).
+    /// Baby adds its own in Phase Y.
+    private var primarySeriesName: String {
+        switch dashboardStore.productType {
+        case .bpm: return "systolic"
+        case .baby:
+            return dashboardStore.selectedBabyMetric == .height
+                ? BabyDashboardChartSupport.heightSeriesName
+                : DashboardStrings.weight
+        default: return DashboardStrings.weight
+        }
+    }
+
+    /// MOB-1516 (BPM): the selected (or window-average) reading's AHA class, so the systolic/diastolic line +
+    /// header recolour with the selection. `nil` for weight/baby.
+    private var bpmClassification: AhaPressureClass? {
+        guard dashboardStore.productType == .bpm else { return nil }
+        return dashboardStore.displayManager.getBpmDisplayValues()?.classification
+    }
+
+    /// MOB-1516 (baby): resolved selection presentation (interpolated value at the crosshair + WHO/CDC growth
+    /// percentile) for the current store selection. Drives the horizontal crosshair + "NN%" callout. `nil`
+    /// off-baby or when nothing is selected.
+    private var babyPresentation: BabyGraphSelectionPresentation? {
+        guard dashboardStore.productType == .baby,
+              dashboardStore.state.graph.showCrosshair,
+              let model = dashboardStore.chartModel,
+              let selectedDate = dashboardStore.state.graph.selectedXValue else { return nil }
+        return dashboardStore.graphManager.resolveBabySelectionPresentation(
+            babyProfile: dashboardStore.selectedBabyProfile,
+            metric: dashboardStore.selectedBabyMetric,
+            selectedCrosshairDate: selectedDate,
+            plottedPoints: model.fullResolution[primarySeriesName] ?? [],
+            plotXDate: { ChartPrep.plotXDate($0, period: model.period, calendar: .current) },
+            currentUnit: dashboardStore.currentUnit,
+            displayWeight: dashboardStore.displayManager.displayWeight
+        )
+    }
+
+    /// MOB-1516 (baby): the selected reading's value → the view's horizontal crosshair. `nil` otherwise.
+    private var horizontalCrosshairValue: Double? { babyPresentation?.crosshairValue }
+
+    /// MOB-1516 (baby): "NN%" growth percentile for the crosshair callout. `nil` otherwise.
+    private var percentileCalloutText: String? { babyPresentation?.percentile.map { "\($0)%" } }
 
     /// Plotted x-date of the store's current selection — drives the crosshair rule + (for a real point) the
     /// enlarged point. Derived from the store's validated selection so it reflects both taps and programmatic
@@ -148,7 +201,7 @@ struct WeightChartHost: View {
               let selectedDate = dashboardStore.state.graph.selectedXValue,
               let model = dashboardStore.chartModel else { return nil }
         let calendar = Calendar.current
-        let points = model.fullResolution[DashboardStrings.weight] ?? []
+        let points = model.fullResolution[primarySeriesName] ?? []
         let match = points.first { point in
             switch model.period {
             case .week, .month: return calendar.isDate(point.original.date, inSameDayAs: selectedDate)
@@ -190,7 +243,7 @@ struct WeightChartHost: View {
               let snapped = snappedSelectionDate(for: raw, in: model) else {
             return
         }
-        dashboardStore.selectWeightPoint(at: snapped)
+        dashboardStore.selectPoint(at: snapped)
     }
 
     /// The date we SELECT for a raw tapped x, per period. When the snapped date has NO real reading this is
@@ -207,7 +260,12 @@ struct WeightChartHost: View {
     /// - **Year** shows a line per month → snap to the nearest 1st-of-month.
     /// - **Total** isn't a continuous grid (raw dates, no per-day buckets) → snap to the nearest real entry.
     private func snappedSelectionDate(for raw: Date, in model: ChartModel) -> Date? {
-        let points = model.fullResolution[DashboardStrings.weight] ?? []
+        // MOB-1516 (BPM/baby): these plot sparse aggregated points with no continuous day grid, so snap to the
+        // nearest real point for every period — same as weight's `.total`.
+        if dashboardStore.productType == .bpm || dashboardStore.productType == .baby {
+            return nearestEntry(to: raw, in: model)?.original.date
+        }
+        let points = model.fullResolution[primarySeriesName] ?? []
         guard let firstDate = points.first?.original.date,
               let lastDate = points.last?.original.date else { return nil }
         let calendar = Calendar.current
@@ -281,21 +339,23 @@ struct WeightChartHost: View {
     /// scroll-end, where an empty selection is intended.
     private func selectLatestIfNeeded() {
         guard crosshairDate == nil, let model = dashboardStore.chartModel else { return }
-        let points = model.fullResolution[DashboardStrings.weight] ?? []
+        let points = model.fullResolution[primarySeriesName] ?? []
         guard let latest = points.max(by: { $0.original.date < $1.original.date }) else { return }
-        dashboardStore.selectWeightPoint(at: latest.original.date)
+        dashboardStore.selectPoint(at: latest.original.date)
     }
 
     /// V4 (6c): formatted goal-weight chip label (nil → no chip), matching the legacy
     /// `formatWeightDisplayText(roundedGoalWeight(goal))`.
     private var goalLabel: String? {
-        guard let goal = dashboardStore.goalWeightForDisplay else { return nil }
+        // MOB-1516: goal chip is weight-only (BPM/baby have no goal).
+        guard dashboardStore.productType == .scale,
+              let goal = dashboardStore.goalWeightForDisplay else { return nil }
         let rounded = dashboardStore.displayManager.roundedGoalWeight(goal)
         return dashboardStore.displayManager.formatWeightDisplayText(rounded)
     }
 
     private func nearestEntry(to date: Date, in model: ChartModel) -> PlottedGraphSeries? {
-        let points = model.fullResolution[DashboardStrings.weight] ?? []
+        let points = model.fullResolution[primarySeriesName] ?? []
         return points.min {
             abs($0.xDate.timeIntervalSince(date)) < abs($1.xDate.timeIntervalSince(date))
         }
@@ -315,13 +375,13 @@ struct WeightChartHost: View {
     /// increments on every real data mutation, so unlike the old view-side endpoint hash this can't go stale.
     private var rebuildSignal: Int {
         var hasher = Hasher()
-        hasher.combine(BaseGraphViewCacheManager.dataChangeSignature(
+        hasher.combine(ChartRebuildSignature.dataChangeSignature(
             dataRevision: dashboardStore.dataChangeRevision,
             selectedMetricLabel: dashboardStore.state.ui.selectedMetricLabel,
             productType: dashboardStore.productType,
             selectedProductItem: dashboardStore.selectedProductItem
         ))
-        hasher.combine(BaseGraphViewCacheManager.settingsChangeSignature(
+        hasher.combine(ChartRebuildSignature.settingsChangeSignature(
             currentUnitRawValue: dashboardStore.currentUnit.rawValue,
             isWeightlessModeEnabled: dashboardStore.isWeightlessModeEnabled
         ))
