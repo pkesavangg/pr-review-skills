@@ -158,6 +158,26 @@ grep -i 'login_submit_button' ui.xml     # → resource-id present
 
 Appium then selects it with `~login_submit_button` (accessibility-id) or by `resource-id`.
 
+## Enforcement (MOB-1509)
+
+Two automated gates keep coverage from regressing — the Android mirror of the iOS SwiftLint rule +
+`AccessibilityIDContractUITests`:
+
+1. **No inline-literal tags** — `scripts/check-testtags.sh` bans `.testTag("…")` / `testTag = "…"`
+   string literals (tag from a `TestTags` constant instead). It runs in the `android-lint` CI job
+   and as a `.lefthook.yml` pre-commit hook. Pre-existing literals awaiting migration (MOB-1502)
+   are baselined in `Android/config/testtags-baseline.txt`, so only **new** literals fail; drop a
+   baseline line as each is migrated. (Regenerate: `scripts/check-testtags.sh --update-baseline`.)
+   This mirrors iOS `accessibility_identifier_string_literal`; like iOS, "interactive control with
+   no tag at all" is not machine-checked here — that stays a review concern.
+
+2. **Resource-id contract test** — `TestTagModifiersTest` (androidTest) asserts each applied tag
+   resolves to exactly one node and that the per-window exposure rule holds. It runs in CI on a
+   headless Gradle Managed Device via the `android-instrumented` job, scoped to this class:
+   `./gradlew :app:pixel6Api30AtdDebugAndroidTest -Pandroid.testInstrumentationRunnerArguments.class=…TestTagModifiersTest`.
+   The rest of the `androidTest` suite compiles and can be run locally / phased into this job
+   class-by-class as each is verified device-green.
+
 ## Adding a new screen — checklist (Definition of Done)
 
 - [ ] Screen root tagged with `Modifier.testTag(TestTags.<Group>.ScreenRoot)`.

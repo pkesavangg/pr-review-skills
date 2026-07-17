@@ -1,4 +1,4 @@
-package com.dmdbrands.gurus.weight.features.scaleMode
+package com.dmdbrands.gurus.weight.features.deviceMode
 
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.padding
@@ -17,20 +17,20 @@ import com.dmdbrands.gurus.weight.features.common.components.AppIconButton
 import com.dmdbrands.gurus.weight.features.common.components.AppScaffold
 import com.dmdbrands.gurus.weight.features.common.components.AppText
 import com.dmdbrands.gurus.weight.features.common.components.TextType
-import com.dmdbrands.gurus.weight.features.scaleMode.strings.ScaleModeStrings
+import com.dmdbrands.gurus.weight.features.deviceMode.strings.DeviceModeStrings
 import com.dmdbrands.gurus.weight.resources.AppIcons
 import com.dmdbrands.gurus.weight.theme.MeAppTheme
 import org.junit.Rule
 import org.junit.Test
 
 /**
- * Instrumented Compose UI tests for the scale Mode / Display Metrics app-bar TalkBack semantics
+ * Instrumented Compose UI tests for the Device Mode / Display Metrics app-bar TalkBack semantics
  * (MOB-858 — Phase 8). The "Save" affordance in these screens is a clickable [AppText] rather
  * than a real button, so the screens now apply Role.Button; this pins that down.
  *
  * Requires a device/emulator because it uses the real Compose test rule.
  */
-class ScaleModeAccessibilityTest {
+class DeviceModeAccessibilityTest {
 
     @get:Rule
     val composeTestRule = createComposeRule()
@@ -40,16 +40,16 @@ class ScaleModeAccessibilityTest {
         composeTestRule.setContent {
             MeAppTheme {
                 AppScaffold(
-                    title = ScaleModeStrings.Title,
+                    title = DeviceModeStrings.Title,
                     navigationIcon = {
                         AppIconButton(
                             AppIcons.Default.Close,
-                            contentDescription = ScaleModeStrings.accCloseLabel,
+                            contentDescription = DeviceModeStrings.accCloseLabel,
                         ) {}
                     },
                     actions = {
                         AppText(
-                            text = ScaleModeStrings.Save,
+                            text = DeviceModeStrings.Save,
                             textType = TextType.ListTitle1,
                             modifier = Modifier
                                 .padding(end = 8.dp)
@@ -61,7 +61,7 @@ class ScaleModeAccessibilityTest {
             }
         }
 
-        composeTestRule.onNodeWithText(ScaleModeStrings.Save)
+        composeTestRule.onNodeWithText(DeviceModeStrings.Save)
             .assert(SemanticsMatcher.expectValue(SemanticsProperties.Role, Role.Button))
     }
 
@@ -70,18 +70,18 @@ class ScaleModeAccessibilityTest {
         composeTestRule.setContent {
             MeAppTheme {
                 AppScaffold(
-                    title = ScaleModeStrings.Title,
+                    title = DeviceModeStrings.Title,
                     navigationIcon = {
                         AppIconButton(
                             AppIcons.Default.Close,
-                            contentDescription = ScaleModeStrings.accCloseLabel,
+                            contentDescription = DeviceModeStrings.accCloseLabel,
                         ) {}
                     },
                 ) {}
             }
         }
 
-        composeTestRule.onNodeWithContentDescription(ScaleModeStrings.accCloseLabel)
+        composeTestRule.onNodeWithContentDescription(DeviceModeStrings.accCloseLabel)
             .assertExists()
     }
 }

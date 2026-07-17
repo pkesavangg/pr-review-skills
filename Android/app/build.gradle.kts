@@ -70,6 +70,23 @@ android {
 
   testOptions {
     unitTests.isReturnDefaultValues = true
+
+    // Gradle Managed Device — lets CI run instrumented (androidTest) contract tests on a
+    // headless, auto-provisioned emulator without a manually-started AVD (MOB-1509). ATD
+    // ("Automated Test Device") images are stripped-down and CI-optimised. AGP downloads the
+    // system image on first run. Task: `:app:pixel6Api30AtdDebugAndroidTest`.
+    managedDevices {
+      localDevices {
+        create("pixel6Api30Atd") {
+          device = "Pixel 6"
+          apiLevel = 30
+          systemImageSource = "aosp-atd"
+          // ATD images are x86-only; the app ships x86 native libs, so pin the tested ABI
+          // (silences the AGP-10 default-change warning and avoids an arm64 test-apk mismatch).
+          testedAbi = "x86"
+        }
+      }
+    }
   }
 
   buildTypes {

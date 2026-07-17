@@ -8,10 +8,10 @@ import androidx.compose.ui.test.onNodeWithText
 import com.dmdbrands.gurus.weight.domain.enums.DashboardType
 import com.dmdbrands.gurus.weight.domain.model.common.WeightUnit
 import com.dmdbrands.gurus.weight.domain.model.storage.Account.Account
-import com.dmdbrands.gurus.weight.features.common.enums.ScaleSetupType
-import com.dmdbrands.gurus.weight.features.common.model.ScaleInfo
+import com.dmdbrands.gurus.weight.features.common.enums.DeviceSetupType
+import com.dmdbrands.gurus.weight.features.common.model.DeviceModelInfo
 import com.dmdbrands.gurus.weight.features.common.strings.AppListStrings
-import com.dmdbrands.gurus.weight.features.common.strings.ScaleStrings
+import com.dmdbrands.gurus.weight.features.common.strings.DeviceStrings
 import com.dmdbrands.gurus.weight.theme.MeAppTheme
 import org.junit.Rule
 import org.junit.Test
@@ -52,27 +52,27 @@ class ListsAndCardsAccessibilityTest {
     )
 
     @Test
-    fun appScaleImage_hasProductContentDescriptionFromStrings() {
+    fun appDeviceImage_hasProductContentDescriptionFromStrings() {
         composeTestRule.setContent {
             MeAppTheme {
-                AppScaleImage(sku = "0412")
+                AppDeviceImage(sku = "0412")
             }
         }
 
         composeTestRule
-            .onNodeWithContentDescription("0412 ${ScaleStrings.accScaleImageSuffix}")
+            .onNodeWithContentDescription("0412 ${DeviceStrings.accScaleImageSuffix}")
             .assertExists()
     }
 
     @Test
-    fun appScaleCard_decorativeIconsAreNotAnnounced() {
+    fun appDeviceCard_decorativeIconsAreNotAnnounced() {
         composeTestRule.setContent {
             MeAppTheme {
-                AppScaleCard(
-                    scale = ScaleInfo(
+                AppDeviceCard(
+                    scale = DeviceModelInfo(
                         productName = "Bluetooth Smart Scale",
                         sku = "0375",
-                        setupType = ScaleSetupType.Bluetooth,
+                        setupType = DeviceSetupType.Bluetooth,
                         bodyComp = false,
                         isConnected = true,
                         isWifiConfigured = false,
