@@ -10,6 +10,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.first
 import java.util.Date
 import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.atomic.AtomicBoolean
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -65,6 +66,18 @@ constructor(
         private const val TAG = "TokenManager"
     }
 
+    /**
+     * Guards against an encryption-failure storm. When the encrypted store is unavailable, many
+     * concurrent token reads (getAccessToken, getAccountExpiresAt, refresh, …) each throw and would
+     * each emit [AuthState.EncryptionFailure] → each triggers a logout → the app "blinks/loops"
+     * (MOB-1537 / MOB-1526). We handle the failure once per process instead. Reset when a token is
+     * saved successfully (i.e. encryption is working again).
+     */
+    // AtomicBoolean (not @Volatile) so the once-per-process guard is atomic: concurrent token reads
+    // that all fail when encryption is down race here, and only the winner of compareAndSet(false,
+    // true) emits the forced-logout event — preventing the logout storm / blink loop. (MOB-1537)
+    private val encryptionFailureHandled = AtomicBoolean(false)
+
     private val _tokens = MutableStateFlow<Token?>(null)
     override val tokens: StateFlow<Token?> = _tokens
 
@@ -89,6 +102,10 @@ constructor(
         // Persist to encrypted storage
         try {
             secureTokenStore.saveToken(token.accountId, token)
+            // Encryption is working again — clear the failure guard/counter so a future genuine
+            // failure is handled afresh.
+            encryptionFailureHandled.set(false)
+            secureTokenStore.resetEncryptionFailureCount()
         } catch (e: EncryptionUnavailableException) {
             handleEncryptionFailure(token.accountId, e)
             return
@@ -253,10 +270,22 @@ constructor(
    * [AuthState.EncryptionFailure] to force re-login for all accounts.
    */
   private suspend fun handleEncryptionFailure(accountId: String?, e: EncryptionUnavailableException) {
-    AppLog.e(TAG, "Encryption unavailable — forcing re-login for all accounts", e)
     accountTokens.clear()
     _tokens.value = null
     _otherUserToken.value = null
+    // Only emit the forced-logout event once per process. Repeated concurrent token reads all fail
+    // when encryption is down; emitting for each would cause a logout storm / infinite blink loop.
+    // compareAndSet makes the check-and-claim atomic so exactly one concurrent caller proceeds.
+    if (!encryptionFailureHandled.compareAndSet(false, true)) {
+      AppLog.w(TAG, "Encryption unavailable — already handled this session, suppressing re-emit")
+      return
+    }
+    secureTokenStore.incrementEncryptionFailureCount()
+    AppLog.e(
+      TAG,
+      "Encryption unavailable — forcing re-login (failure #${secureTokenStore.getEncryptionFailureCount()})",
+      e,
+    )
     appNavigationService.emitAuthEvent(AuthState.EncryptionFailure(accountId))
   }
 }

@@ -64,8 +64,7 @@ struct GraphRenderingConfigurationTests {
             operations: [
                 DashboardTestFixtures.makeSummary(date: date("2026-01-01")),
                 DashboardTestFixtures.makeSummary(date: date("2026-12-01"))
-            ],
-            shouldRepeat: false
+            ]
         )
         let totalMultiEra = sut.totalTicks(
             from: date("2024-01-01"),
@@ -73,8 +72,7 @@ struct GraphRenderingConfigurationTests {
             operations: [
                 DashboardTestFixtures.makeSummary(date: date("2024-01-01")),
                 DashboardTestFixtures.makeSummary(date: date("2026-12-01"))
-            ],
-            shouldRepeat: false
+            ]
         )
 
         #expect(weekTicks.count == 8)
@@ -213,6 +211,126 @@ struct GraphRenderingConfigurationTests {
         #expect(!sut.fallbackTimeLabel(for: .week).isEmpty)
         #expect(!sut.fallbackTimeLabel(for: .year).isEmpty)
         #expect(!sut.fallbackTimeLabel(for: .total).isEmpty)
+    }
+
+    // MARK: - MOB-1516 — single-reading domain insets (no flush-left point)
+
+    @Test("fullXDomain week: a lone reading spans its full Sun→Sat containing week (inset, even columns)")
+    func fullWeekDomainSingleReadingInset() {
+        let sut = makeSUT()
+        // 2026-03-19 is a Thursday. Before the fix the domain began exactly here (flush left) and ended at
+        // Saturday-noon (squished last column).
+        let thursday = isoDate("2026-03-19T00:00:00Z")
+        let ops = [DashboardTestFixtures.makeSummary(date: thursday)]
+
+        let domain = sut.fullXDomain(for: .week, from: ops)
+        #expect(domain != nil)
+        // Opens on the containing week's Sunday (2026-03-15) — strictly before the reading, so the point sits
+        // at its weekday inset from the left edge.
+        #expect(domain?.lowerBound == isoDate("2026-03-15T00:00:00Z"))
+        // A full 7-day window that ends just before the next Sunday (2026-03-22) → even day columns with the
+        // last column (Saturday) no longer flush against the right rule.
+        #expect(domain.map { $0.upperBound < isoDate("2026-03-22T00:00:00Z") } == true)
+        #expect(domain.map { $0.upperBound.timeIntervalSince($0.lowerBound) > 6 * DashboardConstants.TimeInterval.day } == true)
+    }
+
+    @Test("fullXDomain week: a mid-week first entry still opens on the containing week's Sunday")
+    func fullWeekDomainMultiEntryBracketsWholeWeek() {
+        // now is inside the week of 2026-03-15 (Sunday); FIRST entry is Wednesday, LAST is Friday of that week.
+        let sut = makeSUT(now: date("2026-03-18"))
+        let ops = [
+            DashboardTestFixtures.makeSummary(date: date("2026-03-18")),
+            DashboardTestFixtures.makeSummary(date: date("2026-03-20"))
+        ]
+        let domain = sut.fullXDomain(for: .week, from: ops)
+        // Left edge = the Sunday of the first entry's week (2026-03-15), NOT Wednesday — so the whole Sun→Sat
+        // week renders with the first point on its weekday instead of pinned to the left edge.
+        #expect(domain?.lowerBound == isoDate("2026-03-15T00:00:00Z"))
+        // Right edge = just before the next Sunday (2026-03-22 00:00, exclusive) so the last column is even.
+        #expect(domain.map { $0.upperBound < isoDate("2026-03-22T00:00:00Z") } == true)
+        #expect(domain.map { $0.upperBound.timeIntervalSince($0.lowerBound) > 6 * DashboardConstants.TimeInterval.day } == true)
+    }
+
+    @Test("fullXDomain week: extends forward to the current week when the last reading is in a past week")
+    func fullWeekDomainExtendsToCurrentWeek() {
+        // Reading in the week of 2026-06-15 (Mon; that week is Sun 2026-06-14 → Sat 2026-06-20); "now" is a
+        // month later, in the week Sun 2026-07-12 → Sat 2026-07-18.
+        let sut = makeSUT(now: isoDate("2026-07-16T12:00:00Z"))
+        let ops = [DashboardTestFixtures.makeSummary(date: isoDate("2026-06-15T00:00:00Z"))]
+
+        let domain = sut.fullXDomain(for: .week, from: ops)
+        // Opens on the reading's week Sunday…
+        #expect(domain?.lowerBound == isoDate("2026-06-14T00:00:00Z"))
+        // …and runs forward to the CURRENT week's end (just before next Sunday 2026-07-19), so today's week is
+        // reachable by scrolling — not stopping at the June reading's week.
+        #expect(domain.map { $0.upperBound < isoDate("2026-07-19T00:00:00Z") } == true)
+        #expect(domain.map { $0.upperBound > isoDate("2026-07-12T00:00:00Z") } == true)
+    }
+
+    @Test("fullXDomain year: extends forward to the current year when the last reading is in a past year")
+    func fullYearDomainExtendsToCurrentYear() {
+        let sut = makeSUT(now: isoDate("2026-07-16T12:00:00Z"))
+        let ops = [DashboardTestFixtures.makeSummary(date: isoDate("2025-04-10T00:00:00Z"))]
+
+        let domain = sut.fullXDomain(for: .year, from: ops)
+        #expect(domain?.lowerBound == isoDate("2025-01-01T00:00:00Z"))
+        // Runs through the end of the CURRENT year (2026), not just the reading's year (2025).
+        #expect(domain.map { $0.upperBound >= isoDate("2026-12-31T00:00:00Z") } == true)
+        #expect(domain.map { $0.upperBound < isoDate("2027-01-01T00:00:00Z") } == true)
+    }
+
+    @Test("fullXDomain empty state: no readings still yields the current period's domain + ticks (blank total)")
+    func fullDomainEmptyStateRendersCurrentPeriod() {
+        // now = 2026-07-16 (a Thursday in the week Sun 2026-07-12 → Sat 2026-07-18).
+        let sut = makeSUT(now: isoDate("2026-07-16T12:00:00Z"))
+        let empty: [BathScaleWeightSummary] = []
+        let around = isoDate("2026-07-16T12:00:00Z")
+
+        // WEEK → the current Sun→Sat week, with day gridlines/labels (no longer a blank box).
+        let week = sut.fullXDomain(for: .week, from: empty)
+        #expect(week?.lowerBound == isoDate("2026-07-12T00:00:00Z"))
+        #expect(week.map { $0.upperBound < isoDate("2026-07-19T00:00:00Z") } == true)
+        #expect(!sut.boundedXAxisValues(for: .week, from: empty, around: around, windows: 10).isEmpty)
+
+        // MONTH → the current calendar month, with the weekly grid.
+        let month = sut.fullXDomain(for: .month, from: empty)
+        #expect(month?.lowerBound == isoDate("2026-07-01T00:00:00Z"))
+        #expect(!sut.boundedXAxisValues(for: .month, from: empty, around: around, windows: 10).isEmpty)
+
+        // YEAR → the current calendar year, with the twelve months.
+        let year = sut.fullXDomain(for: .year, from: empty)
+        #expect(year?.lowerBound == isoDate("2026-01-01T00:00:00Z"))
+        #expect(!sut.boundedXAxisValues(for: .year, from: empty, around: around, windows: 10).isEmpty)
+
+        // TOTAL → a domain exists (current year) but NO ticks are drawn — stays a bare box, as before.
+        #expect(sut.fullXDomain(for: .total, from: empty) != nil)
+        #expect(sut.boundedXAxisValues(for: .total, from: empty, around: around, windows: 10).isEmpty)
+    }
+
+    @Test("fullXDomain total: pads the data range 6 months on both ends and emits no x-axis ticks")
+    func fullTotalDomainPadsBothEnds() {
+        let sut = makeSUT()
+
+        // Single reading → a 12-month window centred on it (point mid-plot, not flush left).
+        let reading = date("2026-07-16")
+        let singleOps = [DashboardTestFixtures.makeSummary(date: reading)]
+        let single = sut.fullXDomain(for: .total, from: singleOps)
+        #expect(single?.lowerBound == date("2026-01-16"))
+        #expect(single?.upperBound == date("2027-01-16"))
+
+        // Multiple readings → 6-month pad BEFORE the first and AFTER the last (equal breathing room, so the
+        // first reading is no longer flush against the left edge). Mirrors the reported jul-2024/jul-2026 data.
+        let multi = [
+            DashboardTestFixtures.makeSummary(date: date("2024-07-01")),
+            DashboardTestFixtures.makeSummary(date: date("2026-07-01"))
+        ]
+        let domain = sut.fullXDomain(for: .total, from: multi)
+        #expect(domain?.lowerBound == date("2024-01-01"))
+        #expect(domain?.upperBound == date("2027-01-01"))
+
+        // TOTAL never emits x-axis ticks (no labels, no gridlines), single reading OR many.
+        #expect(sut.boundedXAxisValues(for: .total, from: singleOps, around: reading, windows: 10).isEmpty)
+        #expect(sut.boundedXAxisValues(for: .total, from: multi, around: date("2026-07-01"), windows: 10).isEmpty)
     }
 
     // Parse in GMT (not the device timezone) so `date("2026-03-01")` is exactly 2026-03-01T00:00:00Z.

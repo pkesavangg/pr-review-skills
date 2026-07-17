@@ -184,8 +184,10 @@ fun WeightHistoryDetailItemDetails(
         modifier = Modifier.padding(start = MeTheme.spacing.sm),
       )
     }
-    // No divider here (per Figma): the weight header + note form one continuous grey block and the
-    // first metric row (white) provides the visual break into the metrics list. (MOB-1173)
+    HorizontalDivider(
+      thickness = 0.5.dp,
+      color = MeTheme.colorScheme.utility,
+    )
     metrics.forEachIndexed { index, metric ->
       AnimatedMetricItem(
         stat = metric,

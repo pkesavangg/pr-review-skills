@@ -6,40 +6,21 @@ import com.dmdbrands.gurus.weight.core.network.utility.HttpErrorResponse
 import com.dmdbrands.gurus.weight.core.shared.utilities.logging.AppLog
 import com.dmdbrands.gurus.weight.data.api.IAuthAPI
 import com.dmdbrands.gurus.weight.data.api.IUserAPI
+import com.dmdbrands.gurus.weight.data.repository.account.AccountPersistenceDataSource
+import com.dmdbrands.gurus.weight.data.repository.account.AccountRemoteDataSource
 import com.dmdbrands.gurus.weight.data.storage.datastore.UserDataStore
 import com.dmdbrands.gurus.weight.data.storage.db.dao.AccountDao
 import com.dmdbrands.gurus.weight.data.storage.db.dao.BabyProfileDao
 import com.dmdbrands.gurus.weight.data.storage.db.entity.account.AccountEntityMapper
 import com.dmdbrands.gurus.weight.data.storage.db.entity.account.DashboardSettingsEntity
-import com.dmdbrands.gurus.weight.data.storage.db.entity.account.GoalSettingsEntity
-import com.dmdbrands.gurus.weight.data.storage.db.entity.account.IntegrationsSettingsEntity
-import com.dmdbrands.gurus.weight.data.storage.db.entity.account.ProductSettingsEntity
-import com.dmdbrands.gurus.weight.data.storage.db.entity.account.NotificationSettingsEntity
-import com.dmdbrands.gurus.weight.data.storage.db.entity.account.StreaksSettingsEntity
-import com.dmdbrands.gurus.weight.data.storage.db.entity.account.WeightCompSettingsEntity
-import com.dmdbrands.gurus.weight.data.storage.db.entity.account.WeightlessSettingsEntity
 import com.dmdbrands.gurus.weight.domain.enums.DashboardType
-import com.dmdbrands.gurus.weight.domain.enums.MetricKeyConstants
-import com.dmdbrands.gurus.weight.domain.enums.MilestoneKey
-import com.dmdbrands.gurus.weight.domain.enums.ProgressKeyConstants
 import com.dmdbrands.gurus.weight.domain.model.PartialAccount
 import com.dmdbrands.gurus.weight.domain.enums.ProductType
-import com.dmdbrands.gurus.weight.domain.model.api.auth.ChangePasswordRequest
 import com.dmdbrands.gurus.weight.domain.model.api.auth.ChangePasswordResponse
-import com.dmdbrands.gurus.weight.domain.model.api.auth.EmailCheckRequest
 import com.dmdbrands.gurus.weight.domain.model.common.MeasurementUnits
-import com.dmdbrands.gurus.weight.domain.model.api.auth.LoginRequest
 import com.dmdbrands.gurus.weight.domain.model.api.auth.LoginResponse
-import com.dmdbrands.gurus.weight.domain.model.api.auth.LogoutRequest
-import com.dmdbrands.gurus.weight.domain.model.api.auth.PasswordResetRequest
-import com.dmdbrands.gurus.weight.domain.model.api.auth.RefreshTokenRequest
 import com.dmdbrands.gurus.weight.domain.model.api.auth.SignupRequest
-import com.dmdbrands.gurus.weight.domain.model.api.dashboard.DashboardMetricsRequest
-import com.dmdbrands.gurus.weight.domain.model.api.dashboard.DashboardTypeRequest
-import com.dmdbrands.gurus.weight.domain.model.api.dashboard.ProgressMetricsRequest
 import com.dmdbrands.gurus.weight.domain.model.api.user.AccountInfo
-import com.dmdbrands.gurus.weight.domain.model.api.user.BodyCompUpdateRequest
-import com.dmdbrands.gurus.weight.domain.model.api.user.MeasurementUnitsRequest
 import com.dmdbrands.gurus.weight.domain.model.api.user.ProductsRequest
 import com.dmdbrands.gurus.weight.domain.model.api.user.AccountToken
 import com.dmdbrands.gurus.weight.features.common.enums.toGraphSegment
@@ -67,6 +48,11 @@ import javax.inject.Singleton
 /**
  * Implementation of the IAccountRepository interface.
  * Handles account operations using Room database and API calls.
+ *
+ * This is a thin coordinator: raw network calls are delegated to [AccountRemoteDataSource] and the
+ * account-aggregate persistence (entity + settings writes) to [AccountPersistenceDataSource]. Both
+ * collaborators are built from this repository's own injected dependencies, so DI wiring and unit
+ * tests that mock the DAO/APIs are unaffected. Split out under MOB-1499 to clear detekt `LargeClass`.
  */
 @Singleton
 class AccountRepository
@@ -84,6 +70,9 @@ constructor(
     private const val TAG = "AccountRepository"
   }
 
+  private val remote = AccountRemoteDataSource(authAPI, userAPI)
+  private val persistence = AccountPersistenceDataSource(accountDao)
+
   // API Operations
 
   /**
@@ -95,7 +84,7 @@ constructor(
   ): Account {
     AppLog.d(TAG, "login API call")
     return try {
-      val loginResponse = authAPI.login(LoginRequest(email, password))
+      val loginResponse = remote.login(email, password)
       val account = addAccountFromLoginResponse(loginResponse)
       AppLog.i(TAG, "login API call succeeded, account: ${account.id}")
       account
@@ -111,7 +100,7 @@ constructor(
   override suspend fun signup(request: SignupRequest): Account {
     AppLog.d(TAG, "signup API call")
     return try {
-      val loginResponse = authAPI.createAccount(request)
+      val loginResponse = remote.signup(request)
       val account = addAccountFromLoginResponse(loginResponse)
        AppLog.i(TAG, "signup API call succeeded, account: ${account.id}")
       account
@@ -126,17 +115,8 @@ constructor(
    * @param accountId The account ID to get info for
    * @return AccountInfo for the specified account
    */
-  override suspend fun getAccountFromAPI(accountId: String): AccountInfo {
-    AppLog.d(TAG, "getAccountFromAPI for account: $accountId")
-    return try {
-      val result = authAPI.getAccountWithToken(accountId)
-      AppLog.i(TAG, "getAccountFromAPI succeeded for account: $accountId")
-      result
-    } catch (e: Exception) {
-      AppLog.e(TAG, "getAccountFromAPI failed for account: $accountId", e)
-      throw e
-    }
-  }
+  override suspend fun getAccountFromAPI(accountId: String): AccountInfo =
+    remote.getAccountFromAPI(accountId)
 
   /**
    * Updates password via API and returns true if successful.
@@ -148,8 +128,7 @@ constructor(
   ): ChangePasswordResponse {
     AppLog.d(TAG, "updatePassword API call for account: $accountId")
     return try {
-      val request = ChangePasswordRequest(oldPassword, newPassword)
-      val response = userAPI.changePassword(request)
+      val response = remote.changePassword(oldPassword, newPassword)
       setTokensForAccount(
         Token(
           accountId = accountId,
@@ -167,84 +146,40 @@ constructor(
     }
   }
 
-  override suspend fun updateDashboardMetrics(dashboardKeys: List<String>) {
-    AppLog.d("AccountRepository", "Updating dashboard metrics on server: $dashboardKeys")
-    userAPI.updateDashboardMetrics(
-      request = DashboardMetricsRequest(
-        dashboardMetrics = dashboardKeys,
-      ),
-    )
-    AppLog.d("AccountRepository", "Dashboard metrics updated successfully on server")
-  }
+  override suspend fun updateDashboardMetrics(dashboardKeys: List<String>) =
+    remote.updateDashboardMetrics(dashboardKeys)
 
-  override suspend fun updateProgressMetrics(progressKeys: List<String>) {
-    try {
-      AppLog.d("AccountRepository", "Updating progress metrics on server: $progressKeys")
-      userAPI.updateProgressMetrics(
-        request = ProgressMetricsRequest(
-          progressMetrics = progressKeys,
-        ),
-      )
-    }
-    catch (e: Exception){
-      AppLog.e("AccountRepository", "Failed while updating the progress metrics")
-    }
-    AppLog.d("AccountRepository", "Progress metrics updated successfully on server")
-  }
+  override suspend fun updateProgressMetrics(progressKeys: List<String>) =
+    remote.updateProgressMetrics(progressKeys)
 
-  override suspend fun updateDashboardType(dashboardType: String) {
-    AppLog.d("AccountRepository", "Updating dashboard type on server: $dashboardType")
-    userAPI.updateDashboardType(
-      request = DashboardTypeRequest(
-        dashboardType = dashboardType,
-      ),
-    )
-    AppLog.d("AccountRepository", "Dashboard type updated successfully on server")
-  }
+  override suspend fun updateDashboardType(dashboardType: String) =
+    remote.updateDashboardType(dashboardType)
 
   /**
    * Requests password reset via API and returns true if successful.
    */
-  override suspend fun resetPassword(email: String): Response<Unit> {
-    AppLog.d(TAG, "resetPassword API call")
-    return try {
-      val response = authAPI.requestPasswordReset(PasswordResetRequest(email))
-      AppLog.i(TAG, "resetPassword API call succeeded")
-      response
-    } catch (e: Exception) {
-      AppLog.e(TAG, "resetPassword API call failed", e)
-      throw e
-    }
-  }
+  override suspend fun resetPassword(email: String): Response<Unit> =
+    remote.resetPassword(email)
 
-  /**
-   * Updates profile via API and updates the local database with the new profile data.
-   * @param profileData The profile data to update
-   * @return The updated account from the database
-   */
-  override suspend fun emailCheck(email: String): Boolean {
-    val response = authAPI.emailCheck(EmailCheckRequest(email))
-    AppLog.d(TAG, "emailCheck -> isAvailable=${response.isAvailable}")
-    return response.isAvailable
-  }
+  override suspend fun emailCheck(email: String): Boolean =
+    remote.emailCheck(email)
 
   override suspend fun updateMeasurementUnits(measurementUnits: MeasurementUnits) {
-    val response = userAPI.updateMeasurementUnits(MeasurementUnitsRequest(measurementUnits.value))
+    val account = remote.updateMeasurementUnits(measurementUnits)
     // Persist the server-confirmed account state (incl. productTypes/measurementUnits) locally.
-    syncAccountSettingsWithServer(response.account, isOnline = true)
+    syncAccountSettingsWithServer(account, isOnline = true)
   }
 
   override suspend fun updateProducts(productTypes: List<String>) {
-    val response = userAPI.updateProducts(ProductsRequest(productTypes))
+    val account = remote.updateProducts(productTypes)
     // Persist the server-confirmed account state (incl. productTypes) locally.
-    syncAccountSettingsWithServer(response.account, isOnline = true)
+    syncAccountSettingsWithServer(account, isOnline = true)
   }
 
   override suspend fun updateProfile(profileData: ProfileUpdateRequest) {
     try {
       // Call API to update profile
-      val response = userAPI.updateProfile(profileData)
-      val updatedAccountInfo = response.account
+      val updatedAccountInfo = remote.updateProfile(profileData)
       updateAccount(
         updatedAccountInfo.id,
         PartialAccount(
@@ -280,220 +215,24 @@ constructor(
 
   // DB Operations
 
-  /**
-   * Adds an account to the database with all entity relations and returns the domain model.
-   * Inserts the main account entity and all related settings entities.
-   */
-  override suspend fun addAccount(account: Account): Account {
-    val accountEntity = AccountEntityMapper.toEntity(account)
-    val existingAccount = accountDao.getAccountEntity(account.id)
-    if (existingAccount != null) {
-      // Account exists - update it instead of replacing to avoid CASCADE DELETE
-      val updatedAccountEntity = accountEntity.copy(
-        // Preserve any local-only fields if needed
-      )
-      accountDao.updateAccount(updatedAccountEntity)
-    } else {
-      // New account - safe to insert
-      accountDao.insertAccount(accountEntity)
-    }
+  override suspend fun addAccount(account: Account): Account =
+    persistence.addAccount(account)
 
-    // Insert WeightCompSettings entity with data from account
-    val weightCompSettings =
-      WeightCompSettingsEntity(
-        accountId = account.id,
-        height = account.height ?: 1700, // Default height if not set
-        activityLevel = account.activityLevel ?: "normal", // Default activity level
-        weightUnit = account.weightUnit.value, // Default weight unit
-        isSynced = true, // New account data is already synced
-      )
-    if (existingAccount != null) {
-      accountDao.updateWeightCompSettings(weightCompSettings)
-    } else {
-      accountDao.insertWeightCompSettings(weightCompSettings)
-    }
-
-    val notificationCompSettings =
-      NotificationSettingsEntity(
-        accountId = account.id,
-        isSynced = true,
-        shouldSendEntryNotifications = account.shouldSendEntryNotifications ?: false,
-        shouldSendWeightInEntryNotifications = account.shouldSendWeightInEntryNotifications ?: false,
-      )
-    if (existingAccount != null) {
-      accountDao.updateNotificationSettings(notificationCompSettings)
-    } else {
-      accountDao.insertNotificationSettings(notificationCompSettings)
-    }
-
-    // Insert StreaksSettings entity with data from account
-    val streaksSettings =
-      StreaksSettingsEntity(
-        accountId = account.id,
-        isStreakOn = account.isStreakOn ?: false,
-        streakTimestamp = System.currentTimeMillis().toString(),
-        isSynced = true,
-      )
-    if (existingAccount != null) {
-      accountDao.updateStreaksSettings(streaksSettings)
-    } else {
-      accountDao.insertStreaksSettings(streaksSettings)
-    }
-
-    // Insert WeightlessSettings entity with data from account
-    val weightlessSettings =
-      WeightlessSettingsEntity(
-        accountId = account.id,
-        isWeightlessOn = account.isWeightlessOn ?: false,
-        weightlessTimestamp = System.currentTimeMillis().toString(),
-        weightlessWeight = account.weightlessWeight?.toFloat() ?: 0.0f,
-        isSynced = true,
-      )
-    if (existingAccount != null) {
-      accountDao.updateWeightlessSettings(weightlessSettings)
-    } else {
-      accountDao.insertWeightlessSettings(weightlessSettings)
-    }
-    val goalEntity =
-      GoalSettingsEntity(
-        accountId = account.id,
-        goalType = account.goalType,
-        weight = account.initialWeight.toFloat(),
-        goalWeight = account.goalWeight.toString(),
-        goalPercent = account.goalPercent.toFloat(), // Will be calculated when needed
-        isSynced = true,
-      )
-    if (existingAccount != null) {
-      accountDao.updateGoalSettings(goalEntity)
-    } else {
-      accountDao.insertGoalSettings(goalEntity)
-    }
-
-    val integrationEntity = IntegrationsSettingsEntity(
-      accountId = account.id,
-      isSynced = true,
-      isFitbitOn = account.isFitbitOn,
-      isFitbitValid = account.isFitbitValid,
-      isHealthConnectOn = account.isHealthConnectOn,
-      isHealthKitOn = account.isHealthKitOn,
-      isMFPOn = account.isMFPOn,
-      isMFPValid = account.isMFPValid,
-    )
-    if (existingAccount != null) {
-      accountDao.updateIntegrationsSettings(integrationEntity)
-    } else {
-      accountDao.insertIntegrationsSettings(integrationEntity)
-    }
-    val dashboardSettings =
-      DashboardSettingsEntity(
-        accountId = account.id,
-        dashboardMetrics = account.dashboardMetrics ?: MetricKeyConstants.DEFAULT_4_METRICS,
-        dashboardMilestones = account.progressMetrics ?: MilestoneKey.getDefaultMilestones().map { ProgressKeyConstants.ENUM_TO_CAMEL_CASE[it] ?: it.name.lowercase() },
-        dashboardType = account.dashboardType ?: DashboardType.DASHBOARD_4_METRICS.name,
-        isSynced = true,
-      )
-    if (existingAccount != null) {
-      accountDao.updateDashboardSettings(dashboardSettings)
-    } else {
-      accountDao.insertDashboardSettings(dashboardSettings)
-    }
-
-    // Product settings (Phase 2 / MOB-377)
-    val productSettings = ProductSettingsEntity(
-      accountId = account.id,
-      productTypes = account.productTypes,
-      measurementUnits = account.measurementUnits.value,
-      isSynced = true,
-    )
-    if (existingAccount != null) {
-      accountDao.updateProductSettings(productSettings)
-    } else {
-      accountDao.insertProductSettings(productSettings)
-    }
-    AppLog.d(TAG, "Added account with all entity relations: ${account.id}")
-    return account
-  }
-
-  /**
-   * Updates an account in the database with partial data and returns the updated domain model.
-   * Only the fields provided in partialUpdate will be updated, others will remain unchanged.
-   * @param accountId The ID of the account to update
-   * @param partialUpdate Partial account data to update
-   * @return The updated account
-   */
   override suspend fun updateAccount(
     accountId: String,
     partialUpdate: PartialAccount,
-  ) {
-    // Get current account entity from database by ID
-    val accountEntity =
-      accountDao.getAccountEntity(accountId)
-        ?: throw IllegalStateException("Account not found for ID: $accountId")
+  ) = persistence.updateAccount(accountId, partialUpdate)
 
-    // Merge current account with partial update
-    val updatedAccountEntity =
-      accountEntity.copy(
-        firstName = partialUpdate.firstName ?: accountEntity.firstName,
-        lastName = partialUpdate.lastName ?: accountEntity.lastName,
-        dob = partialUpdate.dob ?: accountEntity.dob,
-        email = partialUpdate.email ?: accountEntity.email,
-        expiresAt = partialUpdate.expiresAt ?: accountEntity.expiresAt,
-        fcmToken = partialUpdate.fcmToken ?: accountEntity.fcmToken,
-        gender = partialUpdate.gender ?: accountEntity.gender,
-        isActiveAccount = partialUpdate.isActiveAccount ?: accountEntity.isActiveAccount,
-        isLoggedIn = partialUpdate.isLoggedIn ?: accountEntity.isLoggedIn,
-        isExpired = partialUpdate.isExpired ?: accountEntity.isExpired,
-        isSynced = partialUpdate.isSynced ?: accountEntity.isSynced,
-        lastActiveTime = partialUpdate.lastActiveTime ?: accountEntity.lastActiveTime,
-        zipcode = partialUpdate.zipcode ?: accountEntity.zipcode,
-      )
+  override suspend fun updateLocalDashboardType(accountId: String, dashboardType: DashboardType) =
+    persistence.updateLocalDashboardType(accountId, dashboardType)
 
-    // Update account entity in database
-    accountDao.updateAccount(updatedAccountEntity)
-  }
-
-  /**
-   * Updates only the dashboard type while preserving existing metrics and milestones.
-   * @param accountId The account ID
-   * @param dashboardType The new dashboard type to set
-   */
-  override suspend fun updateLocalDashboardType(accountId: String, dashboardType: DashboardType) {
-    // Get existing settings to preserve metrics and milestones
-    val existingSettings = accountDao.getDashboardSettings(accountId).first()
-
-    val settings = DashboardSettingsEntity(
-      accountId = accountId,
-      dashboardMetrics = existingSettings?.dashboardMetrics ?: emptyList(),
-      dashboardMilestones = existingSettings?.dashboardMilestones ?: emptyList(),
-      dashboardType = dashboardType.value,
-      isSynced = true,
-    )
-    accountDao.insertDashboardSettings(settings)
-  }
-
-  /**
-   * Updates dashboard settings including metrics and milestones for the given account.
-   * @param accountId The account ID
-   * @param dashboardMetrics List of metric keys
-   * @param dashboardMilestones List of milestone keys
-   * @param dashboardType The dashboard type
-   */
   override suspend fun updateDashboardSettings(
     accountId: String,
     dashboardMetrics: List<String>,
     dashboardMilestones: List<String>,
     dashboardType: DashboardType,
     isSynced: Boolean
-  ) {
-    val settings = DashboardSettingsEntity(
-      accountId = accountId,
-      dashboardMetrics = dashboardMetrics,
-      dashboardMilestones = dashboardMilestones,
-      dashboardType = dashboardType.value,
-      isSynced = isSynced,
-    )
-    accountDao.insertDashboardSettings(settings)
-  }
+  ) = persistence.updateDashboardSettings(accountId, dashboardMetrics, dashboardMilestones, dashboardType, isSynced)
 
   /**
    * Gets the stored active account from the database as a Flow.
@@ -580,17 +319,7 @@ constructor(
   override suspend fun refreshToken(
     refreshToken: String,
     accountId: String?,
-  ): Token {
-    AppLog.v(TAG, "Refreshing token for account: $accountId")
-    val response = authAPI.refreshToken(RefreshTokenRequest(refreshToken))
-    return Token(
-      accountId = accountId ?: "", // Preserve the account ID
-      isActive = true,
-      accessToken = response.accessToken,
-      refreshToken = response.refreshToken,
-      expiresAt = response.expiresAt,
-    )
-  }
+  ): Token = remote.refreshToken(refreshToken, accountId)
 
   /**
    * Updates the last active time for the account in the database.
@@ -622,24 +351,7 @@ constructor(
   override suspend fun updateAccountInfo(
     accountId: String,
     accountInfo: AccountInfo,
-  ) {
-    try {
-      // Use updateAccount with only the profile fields from API response
-      val partialUpdate =
-        PartialAccount(
-          firstName = accountInfo.firstName,
-          lastName = accountInfo.lastName,
-          email = accountInfo.email,
-          dob = accountInfo.dob,
-          gender = accountInfo.gender,
-          zipcode = accountInfo.zipcode,
-        )
-      updateAccount(accountId, partialUpdate)
-      AppLog.d(TAG, "Updated account $accountId with API response data")
-    } catch (e: Exception) {
-      AppLog.e(TAG, "Failed to update account $accountId with API response data", e)
-    }
-  }
+  ) = persistence.updateAccountInfo(accountId, accountInfo)
 
   override suspend fun markAccountExpired(accountId: String) {
     try {
@@ -683,7 +395,7 @@ constructor(
       var apiLogoutAttempted = false
       try {
         // Assume network is available if API call does not throw
-        authAPI.logoutWithToken(LogoutRequest(fcmToken ?: ""), accountId)
+        remote.logout(fcmToken, accountId)
         apiLogoutAttempted = true
       } catch (e: Exception) {
         AppLog.e(TAG, "API logout failed", e)
@@ -721,7 +433,7 @@ constructor(
         val account = accountData.account
         try {
           // Try to logout on API
-          authAPI.logoutWithToken(LogoutRequest(account.fcmToken ?: ""), account.id)
+          remote.logout(account.fcmToken, account.id)
         } catch (e: Exception) {
           AppLog.e(TAG, "API logout failed for account ${account.id}", e)
           // Continue with local logout even if API fails
@@ -746,7 +458,7 @@ constructor(
    * @return The saved Account
    */
   override suspend fun addAccountFromLoginResponse(loginResponse: LoginResponse): Account {
-    val account = addAccountFromResponse(loginResponse)
+    val account = persistence.addAccountFromResponse(loginResponse)
     setActiveAccountAndTokens(
       account.id,
       Token(
@@ -802,7 +514,7 @@ constructor(
     try {
       // Best-effort server-side session logout; continue with local removal regardless.
       try {
-        authAPI.logoutWithToken(LogoutRequest(fcmToken ?: ""), accountId)
+        remote.logout(fcmToken, accountId)
       } catch (e: Exception) {
         AppLog.e(TAG, "API logout during removeAccountFromDevice failed", e)
       }
@@ -825,7 +537,7 @@ constructor(
     // Call API to delete account
     try {
       if (isActiveAccount) {
-        this.deleteAccountFromServer()
+        remote.deleteAccountFromServer()
         accountDao.deleteAccountById(accountID)
         accountDao.deactivateAllAccounts()
       }
@@ -839,60 +551,6 @@ constructor(
       AppLog.e(TAG, "Failed to delete account in local data", e)
       throw e
     }
-  }
-
-  private suspend fun deleteAccountFromServer() {
-    try {
-      userAPI.deleteAccount()
-      AppLog.d(TAG, "Account deleted in server")
-    } catch (e: Exception) {
-      AppLog.e(TAG, "Failed to delete account in server", e)
-    }
-  }
-
-  /**
-   * Private helper to add an account from LoginResponse.account.
-   */
-  private suspend fun addAccountFromResponse(loginResponse: LoginResponse): Account {
-    val account = loginResponse.account
-    val userAccount =
-      Account(
-        id = account.id,
-        firstName = account.firstName,
-        lastName = account.lastName,
-        dob = account.dob,
-        email = account.email,
-        expiresAt = loginResponse.expiresAt,
-        fcmToken = null,
-        gender = account.gender.orEmpty(),
-        isActiveAccount = true,
-        isLoggedIn = true,
-        isExpired = false,
-        isSynced = false,
-        lastActiveTime = System.currentTimeMillis().toString(),
-        zipcode = account.zipcode,
-        weightUnit = WeightUnit.from(account.weightUnit),
-        isWeightlessOn = account.isWeightlessOn,
-        height = account.height,
-        activityLevel = account.activityLevel,
-        weightlessTimestamp = account.weightlessTimestamp,
-        weightlessWeight = account.weightlessWeight,
-        isStreakOn = account.isStreakOn,
-        dashboardType = account.dashboardType,
-        dashboardMetrics = account.dashboardMetrics,
-        progressMetrics = account.progressMetrics,
-        shouldSendEntryNotifications = account.shouldSendEntryNotifications,
-        shouldSendWeightInEntryNotifications = account.shouldSendWeightInEntryNotifications,
-        goalType = account.goalType,
-        goalWeight = account.goalWeight?.toDouble(),
-        initialWeight = account.initialWeight?.toDouble() ?: 0.0,
-        metPreviousGoal = account.metPreviousGoal,
-        goalPercent = account.goalPercent.toDouble(),
-        // Phase 2 (MOB-377): account product list + measurement system (defaults if pre-Phase-2 response).
-        productTypes = account.productTypes ?: listOf(ProductType.MY_WEIGHT.apiValue),
-        measurementUnits = MeasurementUnits.fromValue(account.measurementUnits),
-      )
-    return addAccount(userAccount)
   }
 
   /**
@@ -952,98 +610,11 @@ constructor(
   /**
    * Syncs all account settings with server data.
    * Updates local database with the latest settings from server.
-   * Follows the same pattern as addAccountFromResponse during login.
    * @param accountInfo The account info from server or local account containing latest settings
    * @param isOnline Whether the sync is from online API call (true) or offline local data (false)
    */
-  override suspend fun syncAccountSettingsWithServer(accountInfo: AccountInfo, isOnline: Boolean) {
-    AppLog.d(TAG, "Syncing all settings for account: ${accountInfo.id}, isOnline: $isOnline")
-
-    try {
-      // Update basic account info first
-      updateAccountInfo(accountInfo.id, accountInfo)
-
-      // Update weightless settings
-      val weightlessSetting = WeightlessSettingsEntity(
-        accountId = accountInfo.id,
-        isWeightlessOn = accountInfo.isWeightlessOn,
-        weightlessTimestamp = accountInfo.weightlessTimestamp ?: "0",
-        weightlessWeight = accountInfo.weightlessWeight ?: 0.0f,
-        isSynced = true,
-      )
-      accountDao.updateWeightlessSettings(weightlessSetting)
-
-      // Update weight composition settings
-      val weightCompSettings = WeightCompSettingsEntity(
-        accountId = accountInfo.id,
-        height = accountInfo.height ?: BodyCompUpdateRequest.DEFAULT_HEIGHT,
-        activityLevel = accountInfo.activityLevel ?: BodyCompUpdateRequest.DEFAULT_ACTIVITY_LEVEL,
-        weightUnit = accountInfo.weightUnit,
-        isSynced = true,
-      )
-      accountDao.updateWeightCompSettings(weightCompSettings)
-
-      // Update goal settings
-      val goalSettings = GoalSettingsEntity(
-        accountId = accountInfo.id,
-        goalType = accountInfo.goalType,
-        weight = accountInfo.initialWeight ?: 0.0f,
-        goalWeight = accountInfo.goalWeight?.toString() ?: "0",
-        goalPercent = accountInfo.goalPercent.toFloat(),
-        isSynced = true,
-      )
-      accountDao.updateGoalSettings(goalSettings)
-
-      // Update notification settings
-      val notificationSettings = NotificationSettingsEntity(
-        accountId = accountInfo.id,
-        shouldSendEntryNotifications = accountInfo.shouldSendEntryNotifications,
-        shouldSendWeightInEntryNotifications = accountInfo.shouldSendWeightInEntryNotifications,
-        isSynced = true,
-      )
-      accountDao.updateNotificationSettings(notificationSettings)
-
-      // Update integration settings
-      val integrationsSettings = IntegrationsSettingsEntity(
-        accountId = accountInfo.id,
-        isFitbitOn = accountInfo.isFitbitOn,
-        isFitbitValid = accountInfo.isFitbitValid,
-        isHealthConnectOn = accountInfo.isHealthConnectOn,
-        isHealthKitOn = accountInfo.isHealthKitOn,
-        isMFPOn = accountInfo.isMFPOn,
-        isMFPValid = accountInfo.isMFPValid,
-        isSynced = true,
-      )
-      accountDao.updateIntegrationsSettings(integrationsSettings)
-
-      // Update product settings (Phase 2 / MOB-377).
-      upsertProductSettings(accountInfo)
-
-      // Mark account as synced only when online (from server)
-      if (isOnline) {
-        accountDao.markAccountSynced(accountInfo.id)
-        AppLog.d(TAG, "Marked account as synced: ${accountInfo.id}")
-      }
-      AppLog.d(TAG, "Successfully synced all settings for account: ${accountInfo.id}")
-    } catch (e: Exception) {
-      AppLog.e(TAG, "Failed to sync settings for account: ${accountInfo.id}", e)
-      throw e
-    }
-  }
-
-  /**
-   * Upserts the account's product settings (productTypes + measurementUnits). Insert(REPLACE)
-   * upserts in case the row predates this account's product_settings backfill. MOB-377 / §2.19.
-   */
-  private suspend fun upsertProductSettings(accountInfo: AccountInfo) {
-    val productSettings = ProductSettingsEntity(
-      accountId = accountInfo.id,
-      productTypes = accountInfo.productTypes ?: listOf(ProductType.MY_WEIGHT.apiValue),
-      measurementUnits = MeasurementUnits.fromValue(accountInfo.measurementUnits).value,
-      isSynced = true,
-    )
-    accountDao.insertProductSettings(productSettings)
-  }
+  override suspend fun syncAccountSettingsWithServer(accountInfo: AccountInfo, isOnline: Boolean) =
+    persistence.syncAccountSettingsWithServer(accountInfo, isOnline)
 
   override suspend fun hasShownNotificationAlertForAccount(accountId: String): Boolean =
     userDataStore.hasShownNotificationAlertForAccount(accountId)

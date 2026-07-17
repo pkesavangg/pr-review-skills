@@ -218,7 +218,7 @@ Improved data integrity during account sync operations
 ---
 
 ## File Location
-`iOS/RELEASE_NOTES_GENERATOR.md`
+`iOS/docs/RELEASE_NOTES_GENERATOR.md`
 
 Keep this file updated if the format or process changes.
 

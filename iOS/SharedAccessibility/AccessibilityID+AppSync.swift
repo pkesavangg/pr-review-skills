@@ -12,3 +12,9 @@ extension AccessibilityID {
     // MARK: - AppSync
     static let appSyncScannerRoot = "appsync_scanner_root"
 }
+
+// MARK: - MOB-1489 accessibility-id sweep (declared centrally)
+extension AccessibilityID {
+    static let appSyncEntryEditButton = "appsync_entry_edit_button"
+    static let appSyncEntrySaveButton = "appsync_entry_save_button"
+}

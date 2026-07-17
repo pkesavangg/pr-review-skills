@@ -36,6 +36,7 @@ struct ErrorCodeButtonGrid: View {
                                 : WifiScaleSetupStrings.A11y.errorCodeButtonLabel(code.rawValue)
                         )
                         .accessibilityHint(WifiScaleSetupStrings.A11y.errorCodeButtonHint)
+                        .appAccessibility(id: AccessibilityID.wifiErrorCodeButton(code.rawValue))
                     }
                 }
             }

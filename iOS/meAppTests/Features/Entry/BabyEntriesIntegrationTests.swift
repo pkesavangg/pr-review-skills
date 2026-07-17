@@ -363,6 +363,52 @@ struct BabyEntriesIntegrationTests {
         #expect(remote.lastExportCsvRequest?.babyId == "baby-1")
     }
 
+    // MARK: - remapBabyId (MOB-1527: offline baby entries stay attached after id remap)
+
+    @Test("remapBabyId: rewrites babyId on matching baby entries, leaving others untouched")
+    func remapBabyIdRewritesMatchingEntries() async throws {
+        let repo = MockEntryRepository()
+        let matching = Entry(
+            entryTimestamp: "2026-01-01T00:00:00Z",
+            accountId: "acct-1",
+            operationType: OperationType.create.rawValue,
+            entryType: EntryType.baby.rawValue
+        )
+        matching.babyEntry = BabyEntry(babyId: "client-1", length: 500, weight: 30000)
+        let other = Entry(
+            entryTimestamp: "2026-01-02T00:00:00Z",
+            accountId: "acct-1",
+            operationType: OperationType.create.rawValue,
+            entryType: EntryType.baby.rawValue
+        )
+        other.babyEntry = BabyEntry(babyId: "other-baby", length: 400, weight: 20000)
+        repo.entries = [matching, other]
+
+        let sut = makeEntrySUT(repo: repo)
+        await sut.remapBabyId(from: "client-1", to: "srv-1")
+
+        #expect(matching.babyEntry?.babyId == "srv-1")
+        #expect(other.babyEntry?.babyId == "other-baby") // untouched
+    }
+
+    @Test("remapBabyId: no-op when old and new ids are equal")
+    func remapBabyIdNoOpWhenEqual() async throws {
+        let repo = MockEntryRepository()
+        let entry = Entry(
+            entryTimestamp: "2026-01-01T00:00:00Z",
+            accountId: "acct-1",
+            operationType: OperationType.create.rawValue,
+            entryType: EntryType.baby.rawValue
+        )
+        entry.babyEntry = BabyEntry(babyId: "same", length: 500, weight: 30000)
+        repo.entries = [entry]
+
+        let sut = makeEntrySUT(repo: repo)
+        await sut.remapBabyId(from: "same", to: "same")
+
+        #expect(entry.babyEntry?.babyId == "same")
+    }
+
     // MARK: - EntryService SUT
 
     private func makeEntrySUT(repo: MockEntryRepository? = nil, remote: MockEntryRepositoryAPI? = nil) -> EntryService {

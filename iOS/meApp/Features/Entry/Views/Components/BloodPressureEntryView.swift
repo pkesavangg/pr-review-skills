@@ -77,7 +77,8 @@ struct BloodPressureEntryView: View {
                         focusField: .notes
                     ),
                     value: $entryStore.bpForm.notes.value,
-                    focusedField: $focusedField
+                    focusedField: $focusedField,
+                    accessibilityIdentifier: AccessibilityID.bpNotesField
                 )
                 .padding(.top, .spacingXS)
 
@@ -95,6 +96,7 @@ struct BloodPressureEntryView: View {
                         toggleDatePicker()
                     }
                     .accessibilityHint(bpLang.accDateHint)
+                    .appAccessibility(id: AccessibilityID.manualEntryDateButton)
                     TimeLabelView(
                         time: entryStore.bpForm.time.value,
                         isSelected: entryStore.showTimePicker
@@ -102,6 +104,7 @@ struct BloodPressureEntryView: View {
                         toggleTimePicker()
                     }
                     .accessibilityHint(bpLang.accTimeHint)
+                    .appAccessibility(id: AccessibilityID.manualEntryTimeButton)
                 }
                 .padding(.top, .spacingXS)
 

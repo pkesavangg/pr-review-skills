@@ -9,9 +9,11 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarColors
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
@@ -34,6 +36,8 @@ import com.dmdbrands.gurus.weight.theme.MeTheme.typography
  * @param modifier Modifier for styling.
  * @param navigationIcon Composable for left icon (optional).
  * @param actions Composable for right icon(s) (optional).
+ * @param centerTitle When true, the title is centered across the full bar width
+ *   (CenterAlignedTopAppBar) instead of left-aligned next to the navigation icon.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -44,57 +48,71 @@ fun AppBar(
     borderColor: Color = colorScheme.utility,
     containerColor: Color = colorScheme.primaryBackground,
     enable: Boolean = false,
+    centerTitle: Boolean = false,
     onClick: (() -> Unit)? = null,
     navigationIcon: (@Composable (() -> Unit))? = null,
     actions: (@Composable (() -> Unit))? = null,
 ) {
-    TopAppBar(
-        modifier =
-            Modifier
-                .drawBehind {
-                    val borderSize = 1.dp.toPx()
-                    drawLine(
-                        color = borderColor,
-                        start = Offset(0f, size.height),
-                        end = Offset(size.width, size.height),
-                        strokeWidth = borderSize,
-                    )
-                }
-                .clickable(enabled = enable) {
-                    onClick?.invoke()
-                },
-        colors =
-            TopAppBarDefaults.topAppBarColors(
-                containerColor = containerColor,
-                titleContentColor = colorScheme.textHeading,
-                navigationIconContentColor = colorScheme.primaryAction,
-                actionIconContentColor = colorScheme.primaryAction,
-            ),
-        title = {
-            if (topBarContent != null) {
-                Box(
-                    modifier = Modifier.fillMaxWidth(),
-                    contentAlignment = androidx.compose.ui.Alignment.Center,
-                ) {
-                    topBarContent()
-                }
-            } else {
-                Text(
-                    text = title ?: "",
-                    style = typography.heading5,
-                    color = colorScheme.textHeading,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                    // TalkBack: mark the title as a heading so users can navigate by heading.
-                    // The Text's own text is the spoken name — previously a fixed
-                    // contentDescription overrode it, making TalkBack read "AppBarTitle".
-                    modifier = Modifier.semantics { heading() },
+    val barModifier =
+        Modifier
+            .drawBehind {
+                val borderSize = 1.dp.toPx()
+                drawLine(
+                    color = borderColor,
+                    start = Offset(0f, size.height),
+                    end = Offset(size.width, size.height),
+                    strokeWidth = borderSize,
                 )
             }
-        },
-        navigationIcon = { navigationIcon?.invoke() },
-        actions = { actions?.invoke() },
-    )
+            .clickable(enabled = enable) {
+                onClick?.invoke()
+            }
+    val barColors: TopAppBarColors =
+        TopAppBarDefaults.topAppBarColors(
+            containerColor = containerColor,
+            titleContentColor = colorScheme.textHeading,
+            navigationIconContentColor = colorScheme.primaryAction,
+            actionIconContentColor = colorScheme.primaryAction,
+        )
+    val titleContent: @Composable () -> Unit = {
+        if (topBarContent != null) {
+            Box(
+                modifier = Modifier.fillMaxWidth(),
+                contentAlignment = androidx.compose.ui.Alignment.Center,
+            ) {
+                topBarContent()
+            }
+        } else {
+            Text(
+                text = title ?: "",
+                style = typography.heading5,
+                color = colorScheme.textHeading,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                // TalkBack: mark the title as a heading so users can navigate by heading.
+                // The Text's own text is the spoken name — previously a fixed
+                // contentDescription overrode it, making TalkBack read "AppBarTitle".
+                modifier = Modifier.semantics { heading() },
+            )
+        }
+    }
+    if (centerTitle) {
+        CenterAlignedTopAppBar(
+            modifier = barModifier,
+            colors = barColors,
+            title = titleContent,
+            navigationIcon = { navigationIcon?.invoke() },
+            actions = { actions?.invoke() },
+        )
+    } else {
+        TopAppBar(
+            modifier = barModifier,
+            colors = barColors,
+            title = titleContent,
+            navigationIcon = { navigationIcon?.invoke() },
+            actions = { actions?.invoke() },
+        )
+    }
 }
 
 // --- Preview Section ---

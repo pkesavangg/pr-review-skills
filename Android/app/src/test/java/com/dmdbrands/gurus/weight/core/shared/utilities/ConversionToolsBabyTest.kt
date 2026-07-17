@@ -37,6 +37,26 @@ class ConversionToolsBabyTest {
     }
 
     @Nested
+    inner class ContinuousChartConverters {
+        // Unrounded conversions used by the baby chart series + percentile overlay (MOB-1499),
+        // so a metric account plots kg/cm and the overlay aligns with the data.
+        @Test
+        fun `decigrams to kg exact`() {
+            assertThat(ConversionTools.convertDecigramsToKgExact(40_000.0)).isEqualTo(4.0)
+        }
+
+        @Test
+        fun `mm to cm exact`() {
+            assertThat(ConversionTools.convertMmToCmExact(1_000.0)).isEqualTo(100.0)
+        }
+
+        @Test
+        fun `mm to inches exact`() {
+            assertThat(ConversionTools.convertMmToInchesExact(254.0)).isEqualTo(10.0)
+        }
+    }
+
+    @Nested
     inner class DecigramsToGrams {
         @Test
         fun `converts typical value`() {

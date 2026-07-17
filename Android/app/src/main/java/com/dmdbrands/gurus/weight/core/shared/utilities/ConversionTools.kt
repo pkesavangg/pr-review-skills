@@ -245,6 +245,22 @@ object ConversionTools {
   fun convertMmToCm(millimeters: Int): Double =
       round(millimeters / MM_PER_CM * 10.0) / 10.0
 
+  /**
+   * Continuous (unrounded) decigrams→kg for chart Y-values / percentile curves, mirroring
+   * [convertDecigramsToLbExact] so the baby data series and its percentile overlay share one
+   * conversion when the account uses metric (kg). (MOB-1499)
+   */
+  fun convertDecigramsToKgExact(decigrams: Double): Double =
+      decigrams / DECIGRAMS_PER_KG
+
+  /** Continuous (unrounded) mm→cm for chart Y-values / percentile curves. (MOB-1499) */
+  fun convertMmToCmExact(millimeters: Double): Double =
+      millimeters / MM_PER_CM
+
+  /** Continuous (unrounded) mm→inches for chart Y-values / percentile curves. (MOB-1499) */
+  fun convertMmToInchesExact(millimeters: Double): Double =
+      millimeters / MM_PER_INCH
+
   // ---- Reverse / save conversions ----
 
   /**

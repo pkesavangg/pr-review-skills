@@ -11,7 +11,7 @@ struct BabyScaleSetupStrings {
     // MARK: - Header
     static let setupHeader: (String) -> String = { sku in
         let displaySku = DeviceHelper.mapSkuForDisplay(sku)
-        return "Scale Setup - \(displaySku)"
+        return "Device Setup - \(displaySku)"
     }
     static let monitorSetupHeader: (String) -> String = { sku in
         let displaySku = DeviceHelper.mapSkuForDisplay(sku)

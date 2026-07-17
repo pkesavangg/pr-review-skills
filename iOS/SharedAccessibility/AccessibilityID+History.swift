@@ -44,3 +44,24 @@ extension AccessibilityID {
     static let emptyStatePrimaryButton = "empty_state_primary_button"
     static let emptyStateSecondaryButton = "empty_state_secondary_button"
 }
+
+// MARK: - MOB-1489 accessibility-id sweep (declared centrally)
+// Edit-sheet field/root ids live in the extension above (semantic, unit-agnostic
+// naming from develop). This block only holds the day-list, entry-row, and
+// month-list ids introduced by the sweep.
+extension AccessibilityID {
+    static let babyHistoryDayBackButton = "baby_history_day_back_button"
+    static let babyHistoryDayListScreenRoot = "baby_history_day_list_screen_root"
+    static let babyHistoryDayRow = "baby_history_day_row"
+    static let babyHistoryEntryEditNoteButton = "baby_history_entry_edit_note_button"
+    static let babyHistoryEntryMoreButton = "baby_history_entry_more_button"
+    static let babyHistoryEntryRow = "baby_history_entry_row"
+    static let bpHistoryEntryEditNoteButton = "bp_history_entry_edit_note_button"
+    static let bpHistoryEntryRow = "bp_history_entry_row"
+    static let bpHistoryMonthBackButton = "bp_history_month_back_button"
+    static let bpHistoryMonthListScreenRoot = "bp_history_month_list_screen_root"
+    static let bpHistoryMonthRow = "bp_history_month_row"
+    static let historyMetricRow = "history_metric_row"
+    static let historyMonthBackButton = "history_month_back_button"
+    static let historyMonthListScreenRoot = "history_month_list_screen_root"
+}

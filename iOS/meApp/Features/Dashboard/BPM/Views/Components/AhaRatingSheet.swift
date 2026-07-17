@@ -23,7 +23,8 @@ struct AhaRatingSheet: View {
                 },
                 onLeadingTap: { dismiss() },
                 canShowBorder: true,
-                canShowPresentationIndicator: true
+                canShowPresentationIndicator: true,
+                leadingAccessibilityID: AccessibilityID.ahaRatingCloseButton
             )
 
             ScrollView {
@@ -46,6 +47,7 @@ struct AhaRatingSheet: View {
             }
         }
         .background(theme.backgroundSecondary)
+        .screenAccessibilityRoot(AccessibilityID.ahaRatingSheetRoot)
     }
 
     @ViewBuilder

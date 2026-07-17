@@ -444,7 +444,12 @@ class IntegrationStore: ObservableObject {
             logger.log(level: .success, tag: tag, message: "Request new integration sent (\(text.count) chars)")
         } catch {
             notificationService.dismissLoader()
-            showRequestIntegrationErrorAlert()
+            // On a connectivity failure the HTTP layer already surfaces the "no network"
+            // toast; stacking the generic "Something went wrong" alert on top of it is
+            // redundant and misreads as a server error. Only alert for genuine failures.
+            if !HTTPError.isNetworkError(error) {
+                showRequestIntegrationErrorAlert()
+            }
             logger.log(level: .error, tag: tag, message: "Failed to send integration request", data: error.localizedDescription)
         }
     }

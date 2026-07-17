@@ -115,6 +115,9 @@ fun HistoryDetailScreenContent(
     // ViewModel-driven navigation convention. (MOB-1173)
     AppScaffold(
         title = state.month,
+        // Month title is centered across the bar to match the Figma WG history-detail header
+        // (MOB-1470) — the close icon stays pinned left.
+        centerTitle = true,
         // On the baby's birth-date day-detail, show the birthday balloon beside the title (the
         // title slot is centered by AppBar). Otherwise the plain string title is used.
         topBarContent = if (state.showBirthdayBalloon) {
@@ -179,7 +182,7 @@ fun HistoryDetailScreenContent(
                         ProductType.BABY -> {
                             BabyDayHistoryList(
                                 entries = state.historyItems.filterIsInstance<BabyEntry>(),
-                                isMetric = state.isMetric,
+                                babyWeightUnit = state.babyWeightUnit,
                                 onEditEntry = { handleIntent(HistoryDetailIntent.EditBabyEntry(it)) },
                                 onItemDelete = { handleIntent(HistoryDetailIntent.DeleteEntry(it)) },
                             )

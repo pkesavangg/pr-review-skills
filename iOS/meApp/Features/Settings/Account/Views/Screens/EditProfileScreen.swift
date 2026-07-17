@@ -34,6 +34,7 @@ struct EditProfileScreen: View {
             formScrollView()
         }
         .background(theme.backgroundSecondary.ignoresSafeArea())
+        .screenAccessibilityRoot(AccessibilityID.editProfileScreenRoot)
         .pickerSheet(
             isPresented: $settingsStore.showGenderPicker,
             selectedValues: [settingsStore.editProfileForm.gender.value],
@@ -214,6 +215,7 @@ struct EditProfileScreen: View {
                 withAnimation { showDatePicker.toggle() }
             }
             .padding(.leading, 2)
+            .appAccessibility(id: AccessibilityID.editProfileBirthdayField)
 
             DatePickerView(isPresented: $showDatePicker,
                            date: $settingsStore.editProfileForm.birthday.value,

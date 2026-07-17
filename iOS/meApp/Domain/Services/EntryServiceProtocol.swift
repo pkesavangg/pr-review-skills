@@ -45,6 +45,15 @@ protocol EntryServiceProtocol {
     ///   - babyId: The baby profile ID to assign the entry to.
     func assignBabyEntry(entryId: UUID, babyId: String) async throws
 
+    /// Rewrites the `babyId` foreign key on every baby entry that references `oldId` to `newId`.
+    /// Used when an offline-created baby's client id is replaced by its server id on first sync
+    /// (MOB-1527), so baby entries created against the client id stay attached after the remap.
+    /// Best-effort and non-throwing: a remap failure must not abort the surrounding baby sync.
+    /// - Parameters:
+    ///   - oldId: The client-generated baby id the entries currently point at.
+    ///   - newId: The server-assigned baby id to repoint them to.
+    func remapBabyId(from oldId: String, to newId: String) async
+
     // MARK: - Snapshot Queries
 
     /// Retrieves a single entry snapshot by its UUID.

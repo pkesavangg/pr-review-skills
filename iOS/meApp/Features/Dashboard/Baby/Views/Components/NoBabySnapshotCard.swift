@@ -39,6 +39,7 @@ struct NoBabySnapshotCard: View {
                 isDisabled: false,
                 action: onAddBaby
             )
+            .appAccessibility(id: AccessibilityID.noBabySnapshotAddButton)
         }
         .padding(.horizontal, .spacingMD)
         .padding(.vertical, .spacingXL)

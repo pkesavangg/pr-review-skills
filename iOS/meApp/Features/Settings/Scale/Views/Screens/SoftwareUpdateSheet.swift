@@ -34,7 +34,8 @@ struct SoftwareUpdateSheet: View {
                 onLeadingTap: { dismiss() },
                 onTrailingTap: {},
                 canShowBorder: true,
-                canShowPresentationIndicator: true
+                canShowPresentationIndicator: true,
+                leadingAccessibilityID: AccessibilityID.softwareUpdateCloseButton
             )
             VStack {
                 ScrollView(.vertical, showsIndicators: false) {
@@ -66,6 +67,7 @@ struct SoftwareUpdateSheet: View {
                                         }
                                     }
                                     .frame(maxWidth: .infinity, alignment: .center)
+                                    .appAccessibility(id: AccessibilityID.softwareUpdateUpgradeNowButton)
                                 }
                             } else {
                                 VStack(alignment: .leading, spacing: .spacingSM) {
@@ -79,12 +81,14 @@ struct SoftwareUpdateSheet: View {
                                                 if showTimePicker { showTimePicker = false }
                                             }
                                         }
+                                        .appAccessibility(id: AccessibilityID.softwareUpdateDateButton)
                                         TimeLabelView(time: viewModel.selectedTime) {
                                             withAnimation {
                                                 showTimePicker.toggle()
                                                 if showDatePicker { showDatePicker = false }
                                             }
                                         }
+                                        .appAccessibility(id: AccessibilityID.softwareUpdateTimeButton)
                                     }
                                     Divider()
                                     DatePickerView(
@@ -116,6 +120,7 @@ struct SoftwareUpdateSheet: View {
                                         }
                                     }
                                     .frame(maxWidth: .infinity, alignment: .center)
+                                    .appAccessibility(id: AccessibilityID.softwareUpdateSaveButton)
                                 }
                             }
                         }
@@ -138,8 +143,9 @@ struct SoftwareUpdateSheet: View {
                 }
             }
             .padding(.horizontal, .spacingSM)
-            
+
         }
         .background(theme.backgroundSecondary.ignoresSafeArea())
+        .screenAccessibilityRoot(AccessibilityID.softwareUpdateScreenRoot)
     }
 }

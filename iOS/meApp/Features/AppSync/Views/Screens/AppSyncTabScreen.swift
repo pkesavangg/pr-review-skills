@@ -61,6 +61,7 @@ struct AppSyncTabScreen: View {
             // own transition, so the modal appeared late while the footer stayed hidden.
             tabViewModel.showTabBar = newValue != .appsync
         }
+        .screenAccessibilityRoot(AccessibilityID.appSyncScannerRoot)
     }
 }
 

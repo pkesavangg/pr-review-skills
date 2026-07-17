@@ -32,7 +32,8 @@ struct BpmDeviceSettingsScreen: View {
                 trailingContent: { EmptyView() },
                 onLeadingTap: { router.navigateBack() },
                 onTrailingTap: {},
-                canShowBorder: true
+                canShowBorder: true,
+                leadingAccessibilityID: AccessibilityID.bpmSettingsBackButton
             )
 
             List {
@@ -50,7 +51,8 @@ struct BpmDeviceSettingsScreen: View {
             isPresented: $bpmStore.showProductBrowser
         )
         .background(theme.backgroundSecondary.ignoresSafeArea())
-        .navigationBarBackButtonHidden(true)
+        .navigationBarHidden(true)
+        .screenAccessibilityRoot(AccessibilityID.bpmSettingsScreenRoot)
         .onAppear {
             bpmStore.refreshDeviceData()
         }
@@ -78,6 +80,7 @@ struct BpmDeviceSettingsScreen: View {
                     value: device.nickname ?? device.deviceName
                 ) { router.navigate(to: .deviceNameScreen(scale: device)) }
             )
+            .appAccessibility(id: AccessibilityID.bpmSettingsDeviceNameRow)
 
             if let userNumber = device.userNumber {
                 ActionListItemView(
@@ -102,6 +105,7 @@ struct BpmDeviceSettingsScreen: View {
                     value: bpmStore.isDeviceConnected ? DeviceBluetoothStrings.connected : DeviceBluetoothStrings.notConnected
                 ) { router.navigate(to: .deviceBluetoothScreen(scale: device)) }
             )
+            .appAccessibility(id: AccessibilityID.bpmSettingsBluetoothRow)
         }
         .listRowInsets()
         .listRowBackground(theme.backgroundPrimary)
@@ -139,6 +143,7 @@ struct BpmDeviceSettingsScreen: View {
                     title: lang.productGuide
                 ) { bpmStore.openProductGuide(for: device.sku ?? "") }
             )
+            .appAccessibility(id: AccessibilityID.bpmSettingsProductGuideRow)
         }
         .listRowInsets()
         .listRowBackground(theme.backgroundPrimary)
@@ -158,6 +163,7 @@ struct BpmDeviceSettingsScreen: View {
                     }
                 }
             )
+            .appAccessibility(id: AccessibilityID.bpmSettingsDeleteButton)
         }
         .listRowInsets()
         .listRowBackground(theme.backgroundPrimary)

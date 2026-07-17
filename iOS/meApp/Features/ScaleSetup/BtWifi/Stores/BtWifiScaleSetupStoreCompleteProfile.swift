@@ -48,6 +48,8 @@ extension BtWifiScaleSetupStore {
         return hasGender && hasHeight
     }
 
+    var canAutoSkipCompleteProfile: Bool { false }
+
     // MARK: - Prefill
 
     /// Pre-fills the form from the active account, falling back to sensible defaults
