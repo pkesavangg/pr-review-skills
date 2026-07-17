@@ -156,6 +156,41 @@ final class MyKidsStore: ObservableObject {
         return babyProfileForm.refreshDuplicateNameError(against: otherNames)
     }
 
+    // MARK: - Expanded Detail Rows
+
+    /// The account's baby measurement preference, defaulting to lb-oz when unset.
+    private var measurementUnits: MeasurementUnits {
+        accountService.activeAccount?.measurementUnits.flatMap(MeasurementUnits.init(rawValue:)) ?? .imperialLbOz
+    }
+
+    /// The four profile fields shown when a baby row is expanded (MOB-1605), formatted
+    /// for the account's current measurement units.
+    func detailRows(for baby: Baby) -> [BabyProfileDetail] {
+        let units = measurementUnits
+        return [
+            BabyProfileDetail(
+                label: lang.Details.birthday,
+                value: BabyProfileDisplayFormatter.birthday(baby.birthday)
+            ),
+            BabyProfileDetail(
+                label: lang.Details.biologicalSex,
+                value: BabyProfileDisplayFormatter.biologicalSex(baby.biologicalSex)
+            ),
+            BabyProfileDetail(
+                label: lang.Details.birthLength,
+                value: BabyProfileDisplayFormatter.birthLength(inches: baby.birthLengthInches, units: units)
+            ),
+            BabyProfileDetail(
+                label: lang.Details.birthWeight,
+                value: BabyProfileDisplayFormatter.birthWeight(
+                    lbs: baby.birthWeightLbs,
+                    oz: baby.birthWeightOz,
+                    units: units
+                )
+            )
+        ]
+    }
+
     // MARK: - Delete
 
     func confirmDeleteBaby(_ baby: Baby) {

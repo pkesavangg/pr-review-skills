@@ -148,6 +148,8 @@ extension AccessibilityID {
     static let myAccountsSignupButton = "my_accounts_signup_button"
     static let myKidsAddBabyButton = "my_kids_add_baby_button"
     static let myKidsBabyRow = "my_kids_baby_row"
+    // Chevron that expands/collapses a baby row's profile details (MOB-1605); suffixed with baby id.
+    static let myKidsExpandBabyButton = "my_kids_expand_baby_button"
     static let myKidsEditBabyButton = "my_kids_edit_baby_button"
     static let myKidsSaveBabyButton = "my_kids_save_baby_button"
     static let myKidsScreenRoot = "my_kids_screen_root"

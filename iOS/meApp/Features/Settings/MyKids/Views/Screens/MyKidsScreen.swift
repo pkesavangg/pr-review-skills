@@ -10,6 +10,7 @@ struct MyKidsScreen: View {
     @EnvironmentObject var router: Router<SettingsRoute>
     @StateObject private var store = MyKidsStore()
     @State private var openItemID: UUID?
+    @State private var expandedBabyIDs: Set<String> = []
 
     private let lang = MyKidsStrings.self
     private let swipeButtonWidth: CGFloat = 56
@@ -143,36 +144,19 @@ struct MyKidsScreen: View {
     // MARK: - Baby Row
 
     private func babyRow(_ baby: Baby) -> some View {
-        HStack(spacing: .spacingSM) {
-            let firstInitial = baby.name.firstAlphabeticCharacter().uppercased()
-            InitialIconView(
-                character: firstInitial,
-                textColor: theme.backgroundPrimary,
-                backgroundColor: theme.statusIconPrimary,
-                size: 32,
-                style: .fill
-            )
-
-            Text(baby.name)
-                .fontOpenSans(.body2)
-                .foregroundColor(theme.textBody)
-
-            Spacer()
-
-            Button {
+        BabyProfileRowView(
+            name: baby.name,
+            details: store.detailRows(for: baby),
+            isExpanded: expandedBabyIDs.contains(baby.id),
+            babyId: baby.id,
+            onToggleExpand: { toggleExpanded(baby) },
+            onEdit: {
+                // Ignore an edit tap that lands while this row is swiped open — the tap
+                // should close the swipe, not push the edit sheet.
                 guard openItemID != babyItemID(baby) else { return }
                 store.editBaby(baby)
-            } label: {
-                Image(systemName: "square.and.pencil")
-                    .font(.system(size: 20))
-                    .foregroundColor(theme.statusIconPrimary)
             }
-            .appAccessibility(id: AccessibilityID.myKidsEditBabyButton + "_" + baby.id)
-        }
-        .padding(.spacingSM)
-        .frame(height: 72)
-        .frame(maxWidth: .infinity)
-        .background(theme.backgroundPrimary)
+        )
         .swipeableActions(
             buttonWidth: swipeButtonWidth,
             buttons: [
@@ -195,6 +179,15 @@ struct MyKidsScreen: View {
             closeWithoutAnimationOnAction: true,
             trailingCornerRadius: .radiusSM
         )
+    }
+
+    /// Toggles the expanded profile-details section for a baby row.
+    private func toggleExpanded(_ baby: Baby) {
+        if expandedBabyIDs.contains(baby.id) {
+            expandedBabyIDs.remove(baby.id)
+        } else {
+            expandedBabyIDs.insert(baby.id)
+        }
     }
 
     // MARK: - Add/Edit Baby Sheet

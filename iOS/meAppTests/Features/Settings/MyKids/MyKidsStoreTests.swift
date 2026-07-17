@@ -490,6 +490,69 @@ private struct MyKidsStoreSUT {
 }
 
 @MainActor
+extension MyKidsStoreTests {
+
+    // MARK: - detailRows (expanded row, MOB-1605)
+
+    @Test("detailRows returns the four profile fields in order")
+    func detailRows_returnsFourLabelsInOrder() {
+        let sut = makeSUT()
+        let baby = Baby(accountId: "acct-1", name: "Sally", birthday: Date(), biologicalSex: "male")
+        let rows = sut.store.detailRows(for: baby)
+        #expect(rows.map(\.label) == [
+            MyKidsStrings.Details.birthday,
+            MyKidsStrings.Details.biologicalSex,
+            MyKidsStrings.Details.birthLength,
+            MyKidsStrings.Details.birthWeight
+        ])
+    }
+
+    @Test("detailRows formats metrics using the account's imperial lb-oz units")
+    func detailRows_imperialLbOz_formatsMetrics() {
+        let sut = makeSUT()
+        sut.accountService.activeAccount = AccountTestFixtures.makeAccountSnapshot(
+            email: "test@test.com",
+            isActiveAccount: true,
+            measurementUnits: MeasurementUnits.imperialLbOz.rawValue
+        )
+        let baby = Baby(
+            accountId: "acct-1",
+            name: "Sally",
+            birthday: Date(),
+            biologicalSex: "male",
+            birthLengthInches: 25.8,
+            birthWeightLbs: 16,
+            birthWeightOz: 8
+        )
+        let rows = sut.store.detailRows(for: baby)
+        #expect(rows[1].value == "Male")
+        #expect(rows[2].value == "25.8 in")
+        #expect(rows[3].value == "16 lb 8 oz")
+    }
+
+    @Test("detailRows formats metrics using the account's metric units")
+    func detailRows_metric_formatsMetrics() {
+        let sut = makeSUT()
+        sut.accountService.activeAccount = AccountTestFixtures.makeAccountSnapshot(
+            email: "test@test.com",
+            isActiveAccount: true,
+            measurementUnits: MeasurementUnits.metric.rawValue
+        )
+        let baby = Baby(
+            accountId: "acct-1",
+            name: "Sally",
+            birthday: Date(),
+            biologicalSex: "female",
+            birthLengthInches: 20,
+            birthWeightLbs: 16,
+            birthWeightOz: 8
+        )
+        let rows = sut.store.detailRows(for: baby)
+        #expect(rows[2].value == "50.8 cm")
+        #expect(rows[3].value == "7.48 kg")
+    }
+}
+
 private func makeSUT(
     babyService: MockBabyService? = nil,
     accountService: MockAccountService? = nil,
