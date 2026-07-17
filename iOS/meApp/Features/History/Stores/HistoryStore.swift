@@ -1002,7 +1002,9 @@ final class HistoryStore: ObservableObject {
                     // graduating those would round a hand-typed value (e.g. 5.5 oz → 6.0 oz on the
                     // 25 lb+ 2-oz band). Keep manual values exact.
                     let graduatedDecigrams = ConversionTools.convertToDisplayWeightBase(
-                        decigrams: decigrams, source: source, unit: displayUnit,
+                        decigrams: decigrams,
+                        source: source,
+                        unit: displayUnit,
                         isBabyScaleEntry: !EntrySource.isManualEntry(source)
                     )
                     let lbsOz = ConversionTools.convertBabyDecigramsToLbsOz(graduatedDecigrams)
@@ -1055,7 +1057,9 @@ final class HistoryStore: ObservableObject {
         // Only graduate device-synced readings — manual entries (nil/"manual" source) and the
         // day-summary average (source nil) must display the exact stored value, not a scale LCD step.
         let graduatedDecigrams = ConversionTools.convertToDisplayWeightBase(
-            decigrams: decigrams, source: source, unit: displayUnit,
+            decigrams: decigrams,
+            source: source,
+            unit: displayUnit,
             isBabyScaleEntry: !EntrySource.isManualEntry(source)
         )
         switch units {
@@ -1110,14 +1114,18 @@ final class HistoryStore: ObservableObject {
         let lengthInches = ConversionTools.convertBabyMmToInches(lengthMm)
         let weightPct = weightDecigrams > 0
             ? BabyWeightPercentileCalculator.calculatePercentile(
-                weightDecigrams: weightDecigrams, biologicalSex: profile.biologicalSex,
-                birthday: profile.birthday, entryDate: birthday
+                weightDecigrams: weightDecigrams,
+                biologicalSex: profile.biologicalSex,
+                birthday: profile.birthday,
+                entryDate: birthday
             )
             : -1
         let lengthPct = lengthMm > 0
             ? BabyWeightPercentileCalculator.calculateLengthPercentile(
-                lengthMm: lengthMm, biologicalSex: profile.biologicalSex,
-                birthday: profile.birthday, entryDate: birthday
+                lengthMm: lengthMm,
+                biologicalSex: profile.biologicalSex,
+                birthday: profile.birthday,
+                entryDate: birthday
             )
             : -1
         return BabyHistoryDay(
