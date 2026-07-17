@@ -71,7 +71,7 @@ struct SignupScreen: View {
             }
         }
     }
-    
+
     let accLang = SignupStrings.Accessibility.self
 
     @ViewBuilder
@@ -117,12 +117,12 @@ struct SignupScreen: View {
                 canShowPresentationIndicator: isFromAccountSwitching,
                 shouldShowBackground: false
             )
-            
+
             if signupStore.currentStep != .signupError {
                 ProgressBarView(progress: signupStore.currentStep == .allProfilesReady ? 1.0 : signupStore.progressValue)
                     .padding([.horizontal, .top], .spacingSM)
             }
-            
+
             SwiperView(
                 selectedIndex: $signupStore.currentStepIndex,
                 views: stepViews
@@ -130,7 +130,7 @@ struct SignupScreen: View {
             .padding(.top, .spacingXL)
             // Footer Buttons
             footerButtons
-            
+
         }
         .onAppear {
             signupStore.isFromAccountSwitching = isFromAccountSwitching
@@ -147,6 +147,7 @@ struct SignupScreen: View {
         }
         .navigationBarBackButtonHidden(true)
         .background(theme.backgroundSecondary)
+        .ignoresSafeArea(.keyboard, edges: .bottom)
         .screenAccessibilityRoot(AccessibilityID.signupScreenRoot)
     }
 

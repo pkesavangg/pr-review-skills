@@ -15,7 +15,7 @@ struct MyAccountsScreen: View {
     @EnvironmentObject private var tabViewModel: BottomTabBarViewModel
     @StateObject private var accountsStore = AccountsStore()
     @State private var openItemID: UUID?
-    
+
     private let strings = MyAccountsStrings.self
     var body: some View {
         VStack(spacing: 0) {
@@ -60,10 +60,7 @@ struct MyAccountsScreen: View {
             ) {
                 accountsStore.canShowAccountSignupScreen = false
                 tabViewModel.selectedTab = .dash
-                // Pop the pushed .myAccounts route so the Settings tab returns to its root
-                // for the newly created account — otherwise the Settings tab stays stuck on
-                // the My Accounts sub-screen (MOB-1482). Mirrors the login/switch callbacks.
-                router.navigateBack()
+
             }
                 .interactiveDismissDisabled()
         }
@@ -100,7 +97,7 @@ struct MyAccountsScreen: View {
         .listRowBackground(theme.backgroundPrimary)
         .listRowSeparatorTint(theme.statusUtilityPrimary)
     }
-    
+
     // MARK: Buttons
     private var loginCTA: some View {
         VStack(alignment: .center, spacing: .spacingLG) {
@@ -114,7 +111,7 @@ struct MyAccountsScreen: View {
         .listRowBackground(Color.clear)
         .listRowSeparator(.hidden)
     }
-    
+
     private var signupCTA: some View {
         VStack(alignment: .center, spacing: .spacingLG) {
             ButtonView(text: strings.createNewAccount, type: .inlineTextPrimary, size: .large, isDisabled: false) {
