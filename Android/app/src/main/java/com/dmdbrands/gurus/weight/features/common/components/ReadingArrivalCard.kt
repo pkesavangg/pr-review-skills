@@ -18,6 +18,7 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.dmdbrands.gurus.weight.core.shared.utilities.testing.TestTags
 import com.dmdbrands.gurus.weight.domain.enums.ProductType
 import com.dmdbrands.gurus.weight.features.common.helper.MeasurementType
 import com.dmdbrands.gurus.weight.features.common.helper.rememberMeasurementText
@@ -41,7 +42,7 @@ fun ReadingArrivalCard(
 ) {
     Card(
         modifier = modifier
-            .testTag("reading_toast_card")
+            .testTag(TestTags.Toast.ReadingCard)
             .statusBarsPadding()
             .padding(horizontal = 16.dp, vertical = 16.dp)
             .cssBoxShadow(
