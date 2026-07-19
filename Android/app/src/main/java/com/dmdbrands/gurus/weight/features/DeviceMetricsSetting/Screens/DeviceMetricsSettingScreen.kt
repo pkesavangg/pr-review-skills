@@ -50,24 +50,7 @@ fun DeviceMetricsSettingScreen(
 
   // Separate state for each metric group - initialize once, update via LaunchedEffect only when needed
   var bodyMetricsState by remember {
-    val (bodyMetrics, _) = DeviceMetricsHelper.createOrderedMetrics(currentMetrics)
-    val updatedBodyMetrics = bodyMetrics.map { metric ->
-      if (metric.key == DeviceMetricKeys.HEART_RATE) {
-        metric.copy(isIncluded = includeHeartRate)
-      } else {
-        metric
-      }
-    }
-
-    // If heartRate is excluded, move it to the end
-    val reorderedMetrics = if (!includeHeartRate) {
-      val heartRateMetric = updatedBodyMetrics.find { it.key == DeviceMetricKeys.HEART_RATE }
-      val others = updatedBodyMetrics.filterNot { it.key == DeviceMetricKeys.HEART_RATE }
-      if (heartRateMetric != null) others + heartRateMetric else updatedBodyMetrics
-    } else {
-      updatedBodyMetrics
-    }
-    mutableStateOf(reorderedMetrics)
+    mutableStateOf(buildBodyMetrics(currentMetrics, includeHeartRate))
   }
 
   // Displayed list respects showAllMetrics, but state remains full
@@ -83,92 +66,15 @@ fun DeviceMetricsSettingScreen(
 
   // Sync state when currentMetrics or includeHeartRate changes from outside (only if different from our current state)
   LaunchedEffect(currentMetrics, includeHeartRate) {
-    // Calculate what our current state would emit (only enabled metrics)
-    val currentEnabledMetrics = bodyMetricsState.filter { it.isEnabled }.map { it.key } +
-        otherMetricsState.filter { it.isEnabled }.map { it.key }
-
-    // Check if heart rate metric's isIncluded matches includeHeartRate parameter
-    val heartRateMetric = bodyMetricsState.find { it.key == DeviceMetricKeys.HEART_RATE }
-    val heartRateIncludedMatches = heartRateMetric?.isIncluded == includeHeartRate
-
-    // Only sync if currentMetrics is different from what we would emit OR if heart rate inclusion state doesn't match
-    // This prevents reset loops when onMetricsChanged updates the parent
-    // Use content comparison to check if lists are different (order-independent for safety)
-    val metricsMatch = currentEnabledMetrics.size == currentMetrics.size &&
-        currentEnabledMetrics.all { it in currentMetrics } &&
-        currentMetrics.all { it in currentEnabledMetrics } &&
-        heartRateIncludedMatches
-
-    if (!metricsMatch) {
-      val (bodyMetrics, otherMetrics) = DeviceMetricsHelper.createOrderedMetrics(currentMetrics)
-      val updatedBodyMetrics = bodyMetrics.map { metric ->
-        if (metric.key == DeviceMetricKeys.HEART_RATE) {
-          metric.copy(isIncluded = includeHeartRate)
-        } else {
-          metric
-        }
-      }
-
-      // If heartRate is excluded, move it to the end
-      val reorderedMetrics = if (!includeHeartRate) {
-        val heartRateMetric = updatedBodyMetrics.find { it.key == DeviceMetricKeys.HEART_RATE }
-        val others = updatedBodyMetrics.filterNot { it.key == DeviceMetricKeys.HEART_RATE }
-        if (heartRateMetric != null) others + heartRateMetric else updatedBodyMetrics
-      } else {
-        updatedBodyMetrics
-      }
-
-      bodyMetricsState = reorderedMetrics
-      otherMetricsState = otherMetrics
+    if (!metricsAreInSync(bodyMetricsState, otherMetricsState, currentMetrics, includeHeartRate)) {
+      bodyMetricsState = buildBodyMetrics(currentMetrics, includeHeartRate)
+      otherMetricsState = DeviceMetricsHelper.createOrderedMetrics(currentMetrics).second
     }
   }
 
-  // Helper function to emit combined enabled metrics
-  fun emitCombinedMetrics() {
-    val enabledBodyMetrics = bodyMetricsState.filter { it.isEnabled }.map { it.key }
-    val enabledOtherMetrics = otherMetricsState.filter { it.isEnabled }.map { it.key }
-    val allEnabledKeys = enabledBodyMetrics + enabledOtherMetrics
-    onMetricsChanged(allEnabledKeys)
-  }
-
-  /**
-   * Handles toggle operation for a metric item gracefully.
-   * When toggled off, moves the item to the end of the list.
-   * When toggled on, moves the item to the bottom of the enabled list.
-   *
-   * @param metricsList The mutable list of metrics to update.
-   * @param metricKey The key of the metric to toggle.
-   * @param isEnabled The new enabled state for the metric.
-   * @return The updated list with the metric repositioned appropriately.
-   */
-  fun handleMetricToggle(
-    metricsList: MutableList<DeviceMetric>,
-    metricKey: String,
-    isEnabled: Boolean,
-  ): List<DeviceMetric> {
-    val updatedList = metricsList.toMutableList()
-    val itemIndex = updatedList.indexOfFirst { it.key == metricKey }
-    if (itemIndex == -1) {
-      // Metric not found, return original list
-      return updatedList
-    }
-    val updatedItem = updatedList[itemIndex].copy(isEnabled = isEnabled)
-    updatedList.removeAt(itemIndex)
-    if (!isEnabled) {
-      // Toggled off: move to the end of the list
-      updatedList.add(updatedItem)
-    } else {
-      // Toggled on: move to the bottom of the enabled list
-      val lastEnabledIndex = updatedList.indexOfLast { it.isEnabled }
-      if (lastEnabledIndex != -1) {
-        // Found enabled items: insert after the last enabled one (bottom of enabled list)
-        updatedList.add(lastEnabledIndex + 1, updatedItem)
-      } else {
-        // No enabled items exist: place at the beginning
-        updatedList.add(0, updatedItem)
-      }
-    }
-    return updatedList
+  // Emits the combined list of currently-enabled metrics to the parent.
+  val emitMetrics = {
+    emitCombinedMetrics(bodyMetricsState, otherMetricsState, onMetricsChanged)
   }
 
   Column(
@@ -176,80 +82,220 @@ fun DeviceMetricsSettingScreen(
       .fillMaxSize(),
   ) {
     // Body Composition Metrics Section
-    AppDraggableList(
-      modifier = Modifier
-        .clip(shape = RoundedCornerShape(borderRadius.sm))
-        .heightIn(max = 600.dp),
+    BodyMetricsList(
+      bodyMetricsState = bodyMetricsState,
+      displayedBodyMetrics = displayedBodyMetrics,
       scrollState = scrollState,
-      items = displayedBodyMetrics,
-      onMove = { from, to ->
-        val newList = bodyMetricsState.toMutableList()
-        val itemToMove = displayedBodyMetrics[from]
-        val toIndexInState = bodyMetricsState.indexOf(displayedBodyMetrics[to])
-        newList.remove(itemToMove)
-        newList.add(toIndexInState, itemToMove)
-        bodyMetricsState = newList
-        emitCombinedMetrics()
-      },
-      keySelector = { "body_${it.key}" },
-      itemContent = { metric ->
-        DraggableItem(
-          isDraggable = metric.isEnabled,
-        ) { isDragging, modifier ->
-          DeviceMetricItem(
-            metric = metric,
-            isDragging = isDragging,
-            dragHandleModifier = modifier,
-            onToggle = { isEnabled ->
-              bodyMetricsState = handleMetricToggle(
-                metricsList = bodyMetricsState.toMutableList(),
-                metricKey = metric.key,
-                isEnabled = isEnabled,
-              )
-              emitCombinedMetrics()
-            },
-          )
-        }
-      },
+      onStateChange = { bodyMetricsState = it },
+      onEmit = emitMetrics,
     )
 
     Spacer(Modifier.height(spacing.md))
 
     // Other Metrics Section (Goals and Averages)
-    AppDraggableList(
-      modifier = Modifier
-        .clip(shape = RoundedCornerShape(borderRadius.sm))
-        .heightIn(max = 200.dp),
+    OtherMetricsList(
+      otherMetricsState = otherMetricsState,
       scrollState = scrollState,
-      items = otherMetricsState,
-      onMove = { from, to ->
-        val newList = otherMetricsState.toMutableList()
-        newList.add(to, newList.removeAt(from))
-        otherMetricsState = newList
-        emitCombinedMetrics()
-      },
-      keySelector = { "other_${it.key}" },
-      itemContent = { metric ->
-        DraggableItem(
-          isDraggable = metric.isEnabled,
-        ) { isDragging, modifier ->
-          DeviceMetricItem(
-            metric = metric,
-            isDragging = isDragging,
-            dragHandleModifier = modifier,
-            onToggle = { isEnabled ->
-              otherMetricsState = handleMetricToggle(
+      onStateChange = { otherMetricsState = it },
+      onEmit = emitMetrics,
+    )
+  }
+}
+
+@Composable
+private fun BodyMetricsList(
+  bodyMetricsState: List<DeviceMetric>,
+  displayedBodyMetrics: List<DeviceMetric>,
+  scrollState: ScrollableState?,
+  onStateChange: (List<DeviceMetric>) -> Unit,
+  onEmit: () -> Unit,
+) {
+  AppDraggableList(
+    modifier = Modifier
+      .clip(shape = RoundedCornerShape(borderRadius.sm))
+      .heightIn(max = 600.dp),
+    scrollState = scrollState,
+    items = displayedBodyMetrics,
+    onMove = { from, to ->
+      val newList = bodyMetricsState.toMutableList()
+      val itemToMove = displayedBodyMetrics[from]
+      val toIndexInState = bodyMetricsState.indexOf(displayedBodyMetrics[to])
+      newList.remove(itemToMove)
+      newList.add(toIndexInState, itemToMove)
+      onStateChange(newList)
+      onEmit()
+    },
+    keySelector = { "body_${it.key}" },
+    itemContent = { metric ->
+      DraggableItem(
+        isDraggable = metric.isEnabled,
+      ) { isDragging, modifier ->
+        DeviceMetricItem(
+          metric = metric,
+          isDragging = isDragging,
+          dragHandleModifier = modifier,
+          onToggle = { isEnabled ->
+            onStateChange(
+              handleMetricToggle(
+                metricsList = bodyMetricsState.toMutableList(),
+                metricKey = metric.key,
+                isEnabled = isEnabled,
+              ),
+            )
+            onEmit()
+          },
+        )
+      }
+    },
+  )
+}
+
+@Composable
+private fun OtherMetricsList(
+  otherMetricsState: List<DeviceMetric>,
+  scrollState: ScrollableState?,
+  onStateChange: (List<DeviceMetric>) -> Unit,
+  onEmit: () -> Unit,
+) {
+  AppDraggableList(
+    modifier = Modifier
+      .clip(shape = RoundedCornerShape(borderRadius.sm))
+      .heightIn(max = 200.dp),
+    scrollState = scrollState,
+    items = otherMetricsState,
+    onMove = { from, to ->
+      val newList = otherMetricsState.toMutableList()
+      newList.add(to, newList.removeAt(from))
+      onStateChange(newList)
+      onEmit()
+    },
+    keySelector = { "other_${it.key}" },
+    itemContent = { metric ->
+      DraggableItem(
+        isDraggable = metric.isEnabled,
+      ) { isDragging, modifier ->
+        DeviceMetricItem(
+          metric = metric,
+          isDragging = isDragging,
+          dragHandleModifier = modifier,
+          onToggle = { isEnabled ->
+            onStateChange(
+              handleMetricToggle(
                 metricsList = otherMetricsState.toMutableList(),
                 metricKey = metric.key,
                 isEnabled = isEnabled,
-              )
-              emitCombinedMetrics()
-            },
-          )
-        }
-      },
-    )
+              ),
+            )
+            onEmit()
+          },
+        )
+      }
+    },
+  )
+}
+
+/**
+ * Builds the ordered body-composition metrics for the given source keys, applying the
+ * [includeHeartRate] flag and moving the heart-rate metric to the end when excluded.
+ */
+private fun buildBodyMetrics(
+  currentMetrics: List<String>,
+  includeHeartRate: Boolean,
+): List<DeviceMetric> {
+  val (bodyMetrics, _) = DeviceMetricsHelper.createOrderedMetrics(currentMetrics)
+  val updatedBodyMetrics = bodyMetrics.map { metric ->
+    if (metric.key == DeviceMetricKeys.HEART_RATE) {
+      metric.copy(isIncluded = includeHeartRate)
+    } else {
+      metric
+    }
   }
+
+  // If heartRate is excluded, move it to the end
+  return if (!includeHeartRate) {
+    val heartRateMetric = updatedBodyMetrics.find { it.key == DeviceMetricKeys.HEART_RATE }
+    val others = updatedBodyMetrics.filterNot { it.key == DeviceMetricKeys.HEART_RATE }
+    if (heartRateMetric != null) others + heartRateMetric else updatedBodyMetrics
+  } else {
+    updatedBodyMetrics
+  }
+}
+
+/**
+ * Returns true when the local metric state already matches the external [currentMetrics] and
+ * [includeHeartRate] inputs, so no resync is required (prevents reset loops).
+ */
+private fun metricsAreInSync(
+  bodyMetricsState: List<DeviceMetric>,
+  otherMetricsState: List<DeviceMetric>,
+  currentMetrics: List<String>,
+  includeHeartRate: Boolean,
+): Boolean {
+  // Calculate what our current state would emit (only enabled metrics)
+  val currentEnabledMetrics = bodyMetricsState.filter { it.isEnabled }.map { it.key } +
+      otherMetricsState.filter { it.isEnabled }.map { it.key }
+
+  // Check if heart rate metric's isIncluded matches includeHeartRate parameter
+  val heartRateMetric = bodyMetricsState.find { it.key == DeviceMetricKeys.HEART_RATE }
+  val heartRateIncludedMatches = heartRateMetric?.isIncluded == includeHeartRate
+
+  // Use content comparison to check if lists are different (order-independent for safety)
+  return currentEnabledMetrics.size == currentMetrics.size &&
+      currentEnabledMetrics.all { it in currentMetrics } &&
+      currentMetrics.all { it in currentEnabledMetrics } &&
+      heartRateIncludedMatches
+}
+
+// Helper function to emit combined enabled metrics
+private fun emitCombinedMetrics(
+  bodyMetricsState: List<DeviceMetric>,
+  otherMetricsState: List<DeviceMetric>,
+  onMetricsChanged: (List<String>) -> Unit,
+) {
+  val enabledBodyMetrics = bodyMetricsState.filter { it.isEnabled }.map { it.key }
+  val enabledOtherMetrics = otherMetricsState.filter { it.isEnabled }.map { it.key }
+  val allEnabledKeys = enabledBodyMetrics + enabledOtherMetrics
+  onMetricsChanged(allEnabledKeys)
+}
+
+/**
+ * Handles toggle operation for a metric item gracefully.
+ * When toggled off, moves the item to the end of the list.
+ * When toggled on, moves the item to the bottom of the enabled list.
+ *
+ * @param metricsList The mutable list of metrics to update.
+ * @param metricKey The key of the metric to toggle.
+ * @param isEnabled The new enabled state for the metric.
+ * @return The updated list with the metric repositioned appropriately.
+ */
+private fun handleMetricToggle(
+  metricsList: MutableList<DeviceMetric>,
+  metricKey: String,
+  isEnabled: Boolean,
+): List<DeviceMetric> {
+  val updatedList = metricsList.toMutableList()
+  val itemIndex = updatedList.indexOfFirst { it.key == metricKey }
+  if (itemIndex == -1) {
+    // Metric not found, return original list
+    return updatedList
+  }
+  val updatedItem = updatedList[itemIndex].copy(isEnabled = isEnabled)
+  updatedList.removeAt(itemIndex)
+  if (!isEnabled) {
+    // Toggled off: move to the end of the list
+    updatedList.add(updatedItem)
+  } else {
+    // Toggled on: move to the bottom of the enabled list
+    val lastEnabledIndex = updatedList.indexOfLast { it.isEnabled }
+    if (lastEnabledIndex != -1) {
+      // Found enabled items: insert after the last enabled one (bottom of enabled list)
+      updatedList.add(lastEnabledIndex + 1, updatedItem)
+    } else {
+      // No enabled items exist: place at the beginning
+      updatedList.add(0, updatedItem)
+    }
+  }
+  return updatedList
 }
 
 @PreviewTheme

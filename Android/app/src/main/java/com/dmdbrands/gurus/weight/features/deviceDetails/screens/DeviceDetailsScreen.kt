@@ -90,18 +90,8 @@ fun DeviceDetailsScreenContent(
   val scaleSetupType =
     device?.deviceType?.let { DeviceSetupType.fromString(it) } ?: DeviceSetupType.Bluetooth
   val isWifiSetup = scaleSetupType == DeviceSetupType.Wifi || scaleSetupType == DeviceSetupType.EspTouchWifi
-  val isBpm = DeviceHelper.isBpmDevice(device?.getSKU())
-  val showUserNumber = (isWifiSetup || scaleSetupType == DeviceSetupType.Bluetooth) && state.scale?.userNumber != null
   val isConnected = device?.connectionStatus == BLEStatus.CONNECTED
-  val scaleMode =
-    if (device?.preferences?.shouldMeasureImpedance == true) {
-      DeviceDetailsStrings.AllBodyMetrics
-    } else {
-      DeviceDetailsStrings.WeightOnly
-    }
   val isR4Scale = scaleSetupType == DeviceSetupType.BtWifiR4
-  val canEnableTestingFeatures = state.enableTestingFeatures
-
 
   AppScaffold(
     title = scaleName,
@@ -127,250 +117,339 @@ fun DeviceDetailsScreenContent(
         scaleImageSize = DeviceImageSize.Large,
       )
       Spacer(modifier = Modifier.height(spacing.xl))
-      Column(verticalArrangement = Arrangement.spacedBy(spacing.sm)) {
-        if (state.scale?.isWeighOnlyModeEnabledByOthers == true && state.scale?.connectionStatus == BLEStatus.CONNECTED) {
-          AppNote(
-            message = DeviceMetricsSettingStrings.WeightOnlyNotes.Message,
-            icon = AppIcons.Default.WeightOnlyMode,
-            buttonText = DeviceMetricsSettingStrings.WeightOnlyNotes.EnableBodyMetrics,
-            onButtonClick = {
-              handleIntent(DeviceDetailsIntent.ShowEnableBodyMetricsAlert)
-            },
-          )
-        }
-        // Show SetupIncomplete note if Wi-Fi is not configured AND no SSID is connected
-        val isWifiConfigured = state.scale?.device?.isWifiConfigured == true || !state.connectedSSID.isNullOrEmpty()
-        if (!isWifiConfigured && state.scale?.connectionStatus == BLEStatus.CONNECTED && scaleSetupType == DeviceSetupType.BtWifiR4) {
-          AppNote(
-            message = DeviceDetailsStrings.SetupIncomplete,
-            icon = AppIcons.Default.Exclamation,
-            buttonText = DeviceDetailsStrings.SetupWifi,
-            iconType = AppIconType.Danger,
-            onButtonClick = {
-              handleIntent(DeviceDetailsIntent.OpenWiFiSetup)
-            },
-          )
-        }
-        Spacer(modifier = Modifier.height(spacing.md))
-      }
-
-      // Settings Section - Show different items based on setup type
-      SettingsSection(
-        title = DeviceDetailsStrings.Settings,
-        items =
-          buildList {
-            if (scaleSetupType == DeviceSetupType.BtWifiR4) {
-              add(
-                SettingsItem(
-                  title = DeviceDetailsStrings.Mode,
-                  type = SettingsItemType.Action(scaleMode),
-                  onClick = {
-                    handleIntent(DeviceDetailsIntent.OpenScaleMode)
-                  },
-                ),
-              )
-              add(
-                SettingsItem(
-                  title = DeviceDetailsStrings.DisplayMetrics,
-                  type = SettingsItemType.Action(""),
-                  onClick = {
-                    handleIntent(DeviceDetailsIntent.OpenScaleDisplayMetrics)
-                  },
-                ),
-              )
-              add(
-                SettingsItem(
-                  title = DeviceDetailsStrings.Users,
-                  type = SettingsItemType.Action(device?.preferences?.displayName ?: ""),
-                  enabled = isConnected,
-                  onClick = {
-                    handleIntent(DeviceDetailsIntent.OpenScaleUsers)
-                  },
-                ),
-              )
-            }
-            add(
-              SettingsItem(
-                title = DeviceDetailsStrings.DeviceName,
-                type =
-                  SettingsItemType.TextOnly(
-                    scaleName ?: "", // Display truncated name to match SDK limit
-                  ),
-                onClick = {
-                  handleIntent(DeviceDetailsIntent.ShowScaleNameModal)
-                },
-              ),
-            )
-            if (showUserNumber) {
-              val userLabel = if (isBpm) {
-                val scaleInfo = DeviceDataHelper.findScaleInfoBySku(device.getSKU())
-                DeviceDataHelper.formatUserDisplay(
-                  scaleInfo?.hasNumericUsers ?: true,
-                  device.userNumber,
-                )
-              } else {
-                "U${device.userNumber}"
-              }
-              if (userLabel.isNotEmpty()) {
-                add(
-                  SettingsItem(
-                    title = DeviceDetailsStrings.userNumberLabel(device.getSKU()),
-                    type = SettingsItemType.TextOnly(userLabel),
-                  ),
-                )
-              }
-            }
-          },
-      )
-
-      // Connection Section - Show different items based on setup type
-      if (!isWifiSetup && scaleSetupType != DeviceSetupType.AppSync) {
-        SettingsSection(
-          title = DeviceDetailsStrings.Connection,
-          items =
-            buildList {
-              add(
-                SettingsItem(
-                  title = DeviceDetailsStrings.Bluetooth,
-                  type =
-                    SettingsItemType.Action(
-                      if (isConnected) DeviceDetailsStrings.Connected else AppListStrings.NotConnected,
-                    ),
-                  onClick = {
-                    handleIntent(SetSettingsScreenStep(DeviceSettingSteps.BLUETOOTH_SETTINGS))
-                  },
-                ),
-              )
-              if (scaleSetupType == DeviceSetupType.BtWifiR4) {
-                // Wi-Fi is considered configured if we have isWifiConfigured=true OR if we have a connected SSID
-                val isWifiConfigured = device?.device?.isWifiConfigured == true || !state.connectedSSID.isNullOrEmpty()
-                add(
-                  SettingsItem(
-                    title = DeviceDetailsStrings.WiFi,
-                    type = SettingsItemType.Action(state.connectedSSID),
-                    enabled = isConnected,
-                    onClick = {
-                      handleIntent(
-                        DeviceDetailsIntent.OpenWiFiSetup,
-                      )
-                    },
-                  ),
-                )
-                add(
-                  SettingsItem(
-                    title = DeviceDetailsStrings.WiFiMacAddress,
-                    type = SettingsItemType.Action(),
-                    enabled = isConnected,
-
-                    onClick = {
-                      handleIntent(SetSettingsScreenStep(DeviceSettingSteps.WIFI_MAC_ADDRESS))
-                    },
-                  ),
-                )
-              }
-            },
-        )
-      }
-
-      // Support Section
-      SettingsSection(
-        title = DeviceDetailsStrings.Support,
-        items =
-          listOf(
-            SettingsItem(
-              title = DeviceDetailsStrings.ScaleType,
-              type =
-                SettingsItemType.CustomIcon(
-                  text = DeviceSetupType.toLabel(device?.deviceType),
-                  icon = {
-                    AppIcon(
-                      id = DeviceDataHelper.scaleTypeIcon(scaleSetupType),
-                      contentDescription = DeviceSetupType.toLabel(device?.deviceType),
-                      type = AppIconType.Primary,
-                    )
-                  },
-                ),
-            ),
-            SettingsItem(
-              title = DeviceDetailsStrings.Sku,
-              type = SettingsItemType.TextOnly(DeviceHelper.mapSkuForDisplay(device?.getSKU() ?: "")),
-            ),
-            SettingsItem(
-              title = DeviceDetailsStrings.DatePaired,
-              type = SettingsItemType.TextDate(state.scale?.createdAt ?: ""), // Not available in GGDevice
-            ),
-            SettingsItem(
-              title = DeviceDetailsStrings.ProductGuide,
-              type = SettingsItemType.Action(),
-              onClick = { handleIntent(DeviceDetailsIntent.OpenProductGuide) },
-            ),
-          ),
-      )
-      // Delete Scale Button (danger action, outside cards)
-      SettingsSection(
-        items =
-          listOf(
-            SettingsItem(
-              title = DeviceDetailsStrings.DeleteLabel,
-              type = SettingsItemType.None,
-              color = SettingColorType.Danger,
-              onClick = { handleIntent(DeviceDetailsIntent.DeleteScale) },
-            ),
-          ),
-      )
+      DeviceDetailsNotes(state, scaleSetupType, handleIntent)
+      DeviceDetailsSettingsSection(state, scaleSetupType, isConnected, handleIntent)
+      DeviceDetailsConnectionSection(state, scaleSetupType, isWifiSetup, isConnected, handleIntent)
+      DeviceDetailsSupportSection(state, scaleSetupType, handleIntent)
+      DeviceDetailsDeleteSection(handleIntent)
       // Testing Features Section (similar to Angular implementation)
-      if (isR4Scale && canEnableTestingFeatures) {
-        SettingsSection(
-          title = DeviceDetailsStrings.Others,
-          items = listOf(
-            SettingsItem(
-              title = DeviceDetailsStrings.DeviceMac,
-              type = SettingsItemType.TextOnly(device?.device?.macAddress ?: "Unknown"),
-            ),
-            SettingsItem(
-              title = DeviceDetailsStrings.SoftwareUpdate,
-              type = SettingsItemType.Action(),
-              enabled = isConnected,
-              color = if (isConnected) SettingColorType.Default else SettingColorType.Tertiary,
-              onClick = {
-                if (!isConnected) {
-                  return@SettingsItem
-                }
-                handleIntent(SetSettingsScreenStep(DeviceSettingSteps.SOFTWARE_UPDATE))
-              },
-            ),
-            SettingsItem(
-              title = DeviceDetailsStrings.OtherSettings,
-              type = SettingsItemType.Action(),
-              enabled = isConnected,
-              color = if (isConnected) SettingColorType.Default else SettingColorType.Tertiary,
-              onClick = {
-                if (!isConnected) {
-                  return@SettingsItem
-                }
-                handleIntent(SetSettingsScreenStep(DeviceSettingSteps.ADDITIONAL_SETTINGS))
-              },
-            ),
-            SettingsItem(
-              title = DeviceDetailsStrings.SessionImpedance,
-              type = SettingsItemType.Toggle(
-                checked = state.isSessionImpedanceEnabled,
-                onCheckedChange = { enabled ->
-                  if (!isConnected) {
-                    return@Toggle
-                  }
-                  handleIntent(DeviceDetailsIntent.ToggleSessionImpedance(enabled))
-                },
-              ),
-              color = if (isConnected) SettingColorType.Default else SettingColorType.Tertiary,
-              enabled = isConnected,
-            ),
-          ),
-        )
+      if (isR4Scale && state.enableTestingFeatures) {
+        DeviceDetailsTestingSection(state, isConnected, handleIntent)
       }
     }
   }
 
+  DeviceSettingsStepContent(state, handleIntent)
+}
+
+@Composable
+private fun DeviceDetailsNotes(
+  state: DeviceDetailsState,
+  scaleSetupType: DeviceSetupType,
+  handleIntent: (DeviceDetailsIntent) -> Unit,
+) {
+  Column(verticalArrangement = Arrangement.spacedBy(spacing.sm)) {
+    if (state.scale?.isWeighOnlyModeEnabledByOthers == true && state.scale?.connectionStatus == BLEStatus.CONNECTED) {
+      AppNote(
+        message = DeviceMetricsSettingStrings.WeightOnlyNotes.Message,
+        icon = AppIcons.Default.WeightOnlyMode,
+        buttonText = DeviceMetricsSettingStrings.WeightOnlyNotes.EnableBodyMetrics,
+        onButtonClick = {
+          handleIntent(DeviceDetailsIntent.ShowEnableBodyMetricsAlert)
+        },
+      )
+    }
+    // Show SetupIncomplete note if Wi-Fi is not configured AND no SSID is connected
+    val isWifiConfigured = state.scale?.device?.isWifiConfigured == true || !state.connectedSSID.isNullOrEmpty()
+    if (!isWifiConfigured && state.scale?.connectionStatus == BLEStatus.CONNECTED && scaleSetupType == DeviceSetupType.BtWifiR4) {
+      AppNote(
+        message = DeviceDetailsStrings.SetupIncomplete,
+        icon = AppIcons.Default.Exclamation,
+        buttonText = DeviceDetailsStrings.SetupWifi,
+        iconType = AppIconType.Danger,
+        onButtonClick = {
+          handleIntent(DeviceDetailsIntent.OpenWiFiSetup)
+        },
+      )
+    }
+    Spacer(modifier = Modifier.height(spacing.md))
+  }
+}
+
+@Composable
+private fun DeviceDetailsSettingsSection(
+  state: DeviceDetailsState,
+  scaleSetupType: DeviceSetupType,
+  isConnected: Boolean,
+  handleIntent: (DeviceDetailsIntent) -> Unit,
+) {
+  val device = state.scale
+  val scaleName = device?.nickname
+  val isWifiSetup = scaleSetupType == DeviceSetupType.Wifi || scaleSetupType == DeviceSetupType.EspTouchWifi
+  val scaleMode =
+    if (device?.preferences?.shouldMeasureImpedance == true) {
+      DeviceDetailsStrings.AllBodyMetrics
+    } else {
+      DeviceDetailsStrings.WeightOnly
+    }
+  val isBpm = DeviceHelper.isBpmDevice(device?.getSKU())
+  val showUserNumber = (isWifiSetup || scaleSetupType == DeviceSetupType.Bluetooth) && state.scale?.userNumber != null
+  // Settings Section - Show different items based on setup type
+  SettingsSection(
+    title = DeviceDetailsStrings.Settings,
+    items =
+      buildList {
+        if (scaleSetupType == DeviceSetupType.BtWifiR4) {
+          addAll(scaleModeItems(device, scaleMode, isConnected, handleIntent))
+        }
+        addAll(deviceNameAndUserItems(device, scaleName, isBpm, showUserNumber, handleIntent))
+      },
+  )
+}
+
+private fun scaleModeItems(
+  device: Device?,
+  scaleMode: String,
+  isConnected: Boolean,
+  handleIntent: (DeviceDetailsIntent) -> Unit,
+): List<SettingsItem> =
+  listOf(
+    SettingsItem(
+      title = DeviceDetailsStrings.Mode,
+      type = SettingsItemType.Action(scaleMode),
+      onClick = {
+        handleIntent(DeviceDetailsIntent.OpenScaleMode)
+      },
+    ),
+    SettingsItem(
+      title = DeviceDetailsStrings.DisplayMetrics,
+      type = SettingsItemType.Action(""),
+      onClick = {
+        handleIntent(DeviceDetailsIntent.OpenScaleDisplayMetrics)
+      },
+    ),
+    SettingsItem(
+      title = DeviceDetailsStrings.Users,
+      type = SettingsItemType.Action(device?.preferences?.displayName ?: ""),
+      enabled = isConnected,
+      onClick = {
+        handleIntent(DeviceDetailsIntent.OpenScaleUsers)
+      },
+    ),
+  )
+
+private fun deviceNameAndUserItems(
+  device: Device?,
+  scaleName: String?,
+  isBpm: Boolean,
+  showUserNumber: Boolean,
+  handleIntent: (DeviceDetailsIntent) -> Unit,
+): List<SettingsItem> =
+  buildList {
+    add(
+      SettingsItem(
+        title = DeviceDetailsStrings.DeviceName,
+        type =
+          SettingsItemType.TextOnly(
+            scaleName ?: "", // Display truncated name to match SDK limit
+          ),
+        onClick = {
+          handleIntent(DeviceDetailsIntent.ShowScaleNameModal)
+        },
+      ),
+    )
+    if (showUserNumber && device != null) {
+      userNumberItem(device, isBpm)?.let { add(it) }
+    }
+  }
+
+private fun userNumberItem(device: Device, isBpm: Boolean): SettingsItem? {
+  val userLabel = if (isBpm) {
+    val scaleInfo = DeviceDataHelper.findScaleInfoBySku(device.getSKU())
+    DeviceDataHelper.formatUserDisplay(
+      scaleInfo?.hasNumericUsers ?: true,
+      device.userNumber,
+    )
+  } else {
+    "U${device.userNumber}"
+  }
+  if (userLabel.isEmpty()) return null
+  return SettingsItem(
+    title = DeviceDetailsStrings.userNumberLabel(device.getSKU()),
+    type = SettingsItemType.TextOnly(userLabel),
+  )
+}
+
+@Composable
+private fun DeviceDetailsConnectionSection(
+  state: DeviceDetailsState,
+  scaleSetupType: DeviceSetupType,
+  isWifiSetup: Boolean,
+  isConnected: Boolean,
+  handleIntent: (DeviceDetailsIntent) -> Unit,
+) {
+  // Connection Section - Show different items based on setup type
+  if (isWifiSetup || scaleSetupType == DeviceSetupType.AppSync) return
+  val device = state.scale
+  SettingsSection(
+    title = DeviceDetailsStrings.Connection,
+    items =
+      buildList {
+        add(
+          SettingsItem(
+            title = DeviceDetailsStrings.Bluetooth,
+            type =
+              SettingsItemType.Action(
+                if (isConnected) DeviceDetailsStrings.Connected else AppListStrings.NotConnected,
+              ),
+            onClick = {
+              handleIntent(SetSettingsScreenStep(DeviceSettingSteps.BLUETOOTH_SETTINGS))
+            },
+          ),
+        )
+        if (scaleSetupType == DeviceSetupType.BtWifiR4) {
+          // Wi-Fi is considered configured if we have isWifiConfigured=true OR if we have a connected SSID
+          val isWifiConfigured = device?.device?.isWifiConfigured == true || !state.connectedSSID.isNullOrEmpty()
+          add(
+            SettingsItem(
+              title = DeviceDetailsStrings.WiFi,
+              type = SettingsItemType.Action(state.connectedSSID),
+              enabled = isConnected,
+              onClick = {
+                handleIntent(
+                  DeviceDetailsIntent.OpenWiFiSetup,
+                )
+              },
+            ),
+          )
+          add(
+            SettingsItem(
+              title = DeviceDetailsStrings.WiFiMacAddress,
+              type = SettingsItemType.Action(),
+              enabled = isConnected,
+
+              onClick = {
+                handleIntent(SetSettingsScreenStep(DeviceSettingSteps.WIFI_MAC_ADDRESS))
+              },
+            ),
+          )
+        }
+      },
+  )
+}
+
+@Composable
+private fun DeviceDetailsSupportSection(
+  state: DeviceDetailsState,
+  scaleSetupType: DeviceSetupType,
+  handleIntent: (DeviceDetailsIntent) -> Unit,
+) {
+  val device = state.scale
+  // Support Section
+  SettingsSection(
+    title = DeviceDetailsStrings.Support,
+    items =
+      listOf(
+        SettingsItem(
+          title = DeviceDetailsStrings.ScaleType,
+          type =
+            SettingsItemType.CustomIcon(
+              text = DeviceSetupType.toLabel(device?.deviceType),
+              icon = {
+                AppIcon(
+                  id = DeviceDataHelper.scaleTypeIcon(scaleSetupType),
+                  contentDescription = DeviceSetupType.toLabel(device?.deviceType),
+                  type = AppIconType.Primary,
+                )
+              },
+            ),
+        ),
+        SettingsItem(
+          title = DeviceDetailsStrings.Sku,
+          type = SettingsItemType.TextOnly(DeviceHelper.mapSkuForDisplay(device?.getSKU() ?: "")),
+        ),
+        SettingsItem(
+          title = DeviceDetailsStrings.DatePaired,
+          type = SettingsItemType.TextDate(state.scale?.createdAt ?: ""), // Not available in GGDevice
+        ),
+        SettingsItem(
+          title = DeviceDetailsStrings.ProductGuide,
+          type = SettingsItemType.Action(),
+          onClick = { handleIntent(DeviceDetailsIntent.OpenProductGuide) },
+        ),
+      ),
+  )
+}
+
+@Composable
+private fun DeviceDetailsDeleteSection(
+  handleIntent: (DeviceDetailsIntent) -> Unit,
+) {
+  // Delete Scale Button (danger action, outside cards)
+  SettingsSection(
+    items =
+      listOf(
+        SettingsItem(
+          title = DeviceDetailsStrings.DeleteLabel,
+          type = SettingsItemType.None,
+          color = SettingColorType.Danger,
+          onClick = { handleIntent(DeviceDetailsIntent.DeleteScale) },
+        ),
+      ),
+  )
+}
+
+@Composable
+private fun DeviceDetailsTestingSection(
+  state: DeviceDetailsState,
+  isConnected: Boolean,
+  handleIntent: (DeviceDetailsIntent) -> Unit,
+) {
+  val device = state.scale
+  SettingsSection(
+    title = DeviceDetailsStrings.Others,
+    items = listOf(
+      SettingsItem(
+        title = DeviceDetailsStrings.DeviceMac,
+        type = SettingsItemType.TextOnly(device?.device?.macAddress ?: "Unknown"),
+      ),
+      SettingsItem(
+        title = DeviceDetailsStrings.SoftwareUpdate,
+        type = SettingsItemType.Action(),
+        enabled = isConnected,
+        color = if (isConnected) SettingColorType.Default else SettingColorType.Tertiary,
+        onClick = {
+          if (!isConnected) {
+            return@SettingsItem
+          }
+          handleIntent(SetSettingsScreenStep(DeviceSettingSteps.SOFTWARE_UPDATE))
+        },
+      ),
+      SettingsItem(
+        title = DeviceDetailsStrings.OtherSettings,
+        type = SettingsItemType.Action(),
+        enabled = isConnected,
+        color = if (isConnected) SettingColorType.Default else SettingColorType.Tertiary,
+        onClick = {
+          if (!isConnected) {
+            return@SettingsItem
+          }
+          handleIntent(SetSettingsScreenStep(DeviceSettingSteps.ADDITIONAL_SETTINGS))
+        },
+      ),
+      SettingsItem(
+        title = DeviceDetailsStrings.SessionImpedance,
+        type = SettingsItemType.Toggle(
+          checked = state.isSessionImpedanceEnabled,
+          onCheckedChange = { enabled ->
+            if (!isConnected) {
+              return@Toggle
+            }
+            handleIntent(DeviceDetailsIntent.ToggleSessionImpedance(enabled))
+          },
+        ),
+        color = if (isConnected) SettingColorType.Default else SettingColorType.Tertiary,
+        enabled = isConnected,
+      ),
+    ),
+  )
+}
+
+@Composable
+private fun DeviceSettingsStepContent(
+  state: DeviceDetailsState,
+  handleIntent: (DeviceDetailsIntent) -> Unit,
+) {
   AnimatedContent(
     targetState = state.settingsScreenStep,
     label = "SettingsStepTransition",

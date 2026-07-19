@@ -47,68 +47,92 @@ fun DeviceCatalogSection(
 
   Column(modifier = Modifier.fillMaxWidth()) {
     HorizontalDivider(thickness = 0.5.dp, color = MeTheme.colorScheme.utility)
-    Row(
-      modifier = Modifier
-        .fillMaxWidth()
-        .clickable { expanded = !expanded }
-        .padding(horizontal = MeTheme.spacing.sm, vertical = MeTheme.spacing.md),
-      verticalAlignment = Alignment.CenterVertically,
-      horizontalArrangement = Arrangement.SpaceBetween,
-    ) {
-      Row(
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(MeTheme.spacing.xs),
-      ) {
-        AppIcon(
-          id = iconId,
-          contentDescription = title,
-          tintColor = iconTint,
-          modifier = Modifier.size(24.dp),
-          onClick = null,
-        )
-        AppText(
-          text = title,
-          textType = TextType.ListTitle1,
-        )
-      }
-      AppIcon(
-        id = AppIcons.Default.ChevronDown,
-        contentDescription = if (expanded) "Collapse" else "Expand",
-        modifier = Modifier.graphicsLayer { rotationZ = if (expanded) 180f else 0f },
-        onClick = null,
-      )
-    }
-
+    DeviceCatalogHeader(
+      title = title,
+      iconId = iconId,
+      iconTint = iconTint,
+      expanded = expanded,
+      onToggle = { expanded = !expanded },
+    )
     AnimatedVisibility(
       visible = expanded,
       enter = expandVertically(),
       exit = shrinkVertically(),
     ) {
-      Card(
-        modifier = Modifier
-          .fillMaxWidth()
-          .padding(horizontal = MeTheme.spacing.sm),
-        shape = RoundedCornerShape(MeTheme.borderRadius.lg),
-        colors = CardDefaults.cardColors(
+      DeviceCatalogCard(devices = devices, onDeviceSelected = onDeviceSelected)
+    }
+  }
+}
+
+@Composable
+private fun DeviceCatalogHeader(
+  title: String,
+  iconId: Int,
+  iconTint: Color,
+  expanded: Boolean,
+  onToggle: () -> Unit,
+) {
+  Row(
+    modifier = Modifier
+      .fillMaxWidth()
+      .clickable { onToggle() }
+      .padding(horizontal = MeTheme.spacing.sm, vertical = MeTheme.spacing.md),
+    verticalAlignment = Alignment.CenterVertically,
+    horizontalArrangement = Arrangement.SpaceBetween,
+  ) {
+    Row(
+      verticalAlignment = Alignment.CenterVertically,
+      horizontalArrangement = Arrangement.spacedBy(MeTheme.spacing.xs),
+    ) {
+      AppIcon(
+        id = iconId,
+        contentDescription = title,
+        tintColor = iconTint,
+        modifier = Modifier.size(24.dp),
+        onClick = null,
+      )
+      AppText(
+        text = title,
+        textType = TextType.ListTitle1,
+      )
+    }
+    AppIcon(
+      id = AppIcons.Default.ChevronDown,
+      contentDescription = if (expanded) "Collapse" else "Expand",
+      modifier = Modifier.graphicsLayer { rotationZ = if (expanded) 180f else 0f },
+      onClick = null,
+    )
+  }
+}
+
+@Composable
+private fun DeviceCatalogCard(
+  devices: List<DeviceModelInfo>,
+  onDeviceSelected: (DeviceModelInfo) -> Unit,
+) {
+  Card(
+    modifier = Modifier
+      .fillMaxWidth()
+      .padding(horizontal = MeTheme.spacing.sm),
+    shape = RoundedCornerShape(MeTheme.borderRadius.lg),
+    colors = CardDefaults.cardColors(
+      containerColor = MeTheme.colorScheme.primaryBackground,
+    ),
+  ) {
+    Column {
+      devices.forEach { device ->
+        AppDeviceCard(
+          scale = device,
+          isSavedScale = false,
+          // Baby Scale & BPM rows show the caret only (no connectivity-type icon) — the
+          // connectivity icon/filter is Weight-Scale-only per the approved design (MOB-728).
+          showConnectionIcon = false,
+          // Full product name wraps across lines (matches the Figma card structure).
+          wrapSubtitle = true,
+          // White card rows on the #F6F4F1 (secondary) screen background, per the design.
           containerColor = MeTheme.colorScheme.primaryBackground,
-        ),
-      ) {
-        Column {
-          devices.forEach { device ->
-            AppDeviceCard(
-              scale = device,
-              isSavedScale = false,
-              // Baby Scale & BPM rows show the caret only (no connectivity-type icon) — the
-              // connectivity icon/filter is Weight-Scale-only per the approved design (MOB-728).
-              showConnectionIcon = false,
-              // Full product name wraps across lines (matches the Figma card structure).
-              wrapSubtitle = true,
-              // White card rows on the #F6F4F1 (secondary) screen background, per the design.
-              containerColor = MeTheme.colorScheme.primaryBackground,
-              onClick = onDeviceSelected,
-            )
-          }
-        }
+          onClick = onDeviceSelected,
+        )
       }
     }
   }

@@ -67,21 +67,7 @@ fun DeviceModeSettingsScreen(
     verticalArrangement = Arrangement.spacedBy(spacing.lg),
   ) {
     // Description with link
-    Column(verticalArrangement = Arrangement.Center) {
-      AppText(
-        text = DeviceModeStrings.BioimpedanceDescription.format(DeviceModeStrings.BioimpedanceTitle),
-        annotatedText = DeviceModeStrings.BioimpedanceTitle,
-        annotationPosition = AnnotationPosition.Middle,
-        spanStyle =
-          SpanStyle(
-            color = colorScheme.primaryAction,
-            fontWeight = FontWeight.Bold,
-            textDecoration = TextDecoration.Underline,
-          ),
-        textType = TextType.Body,
-        onAnnotationClick = { onBioimpedanceClick() },
-      )
-    }
+    BioimpedanceDescription(onBioimpedanceClick = onBioimpedanceClick)
     // Mode selector
     SegmentButtonGroup(
       data = modeOptions,
@@ -94,84 +80,119 @@ fun DeviceModeSettingsScreen(
       type = SegmentButtonType.Single,
     )
     if (isAllBodyMetrics) {
-      // Heart Rate toggle
-      Row(
-        modifier = Modifier.fillMaxWidth(),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(spacing.xs),
-      ) {
-        AppIcon(
-          id = AppIcons.Metrics.Pulse,
-          contentDescription = DeviceModeStrings.HeartRate(isHeartRateOn),
-          type = if(isHeartRateOn) AppIconType.Default else AppIconType.Tertiary,
-        )
-        AppText(
-          text = DeviceModeStrings.HeartRate(isHeartRateOn),
-          textType = TextType.Body,
-        )
-        Spacer(modifier = Modifier.weight(1f))
-        AppToggle(
-          checked = isHeartRateOn,
-          onCheckedChange = { onHeartRateToggle(it) },
-        )
-      }
-      AppText(
-        text = DeviceModeStrings.HeartRateDescription,
-        textType = TextType.Body,
+      HeartRateSection(
+        isHeartRateOn = isHeartRateOn,
+        onHeartRateToggle = onHeartRateToggle,
       )
-      Surface(
-        color = colorScheme.inverseAction,
-        shape = RoundedCornerShape(borderRadius.sm),
-        modifier = Modifier.fillMaxWidth(),
-        shadowElevation = 0.dp,
-      ) {
-        AppText(
-          text = DeviceModeStrings.NoteMedical,
-          annotatedText = DeviceModeStrings.Note,
-          annotationPosition = AnnotationPosition.Start,
-          spanStyle = SpanStyle(fontWeight = FontWeight.Bold),
-          textType = TextType.Body,
-          modifier = Modifier.padding(spacing.md),
-        )
-      }
     } else {
-      // Weight Only Mode UI
-      Column(
-      ) {
-        Row(
-          modifier = Modifier.align(Alignment.CenterHorizontally),
-          verticalAlignment = Alignment.CenterVertically,
-          horizontalArrangement = Arrangement.spacedBy(spacing.xs),
-        ) {
-          AppIcon(
-            id = AppIcons.Default.WeightOnlyMode,
-            contentDescription = "Weight Only Mode",
-            type = AppIconType.Default,
-          )
-          AppText(
-            text = DeviceModeStrings.WeightOnlyIndicator,
-            textType = TextType.Body,
+      WeightOnlySection()
+    }
+  }
+}
 
-          )
-        }
-        Column(
-          modifier = Modifier.align(Alignment.CenterHorizontally),
-        ) {
-          Image(
-            painter =
-              painterResource(
-                id = AppIcons.Default.WeightOnlyModeScale,
-              ),
-            contentDescription = null,
-            modifier = Modifier.height(240.dp).align(Alignment.CenterHorizontally).padding(bottom = spacing.lg),
-          )
+@Composable
+private fun BioimpedanceDescription(onBioimpedanceClick: () -> Unit) {
+  Column(verticalArrangement = Arrangement.Center) {
+    AppText(
+      text = DeviceModeStrings.BioimpedanceDescription.format(DeviceModeStrings.BioimpedanceTitle),
+      annotatedText = DeviceModeStrings.BioimpedanceTitle,
+      annotationPosition = AnnotationPosition.Middle,
+      spanStyle =
+        SpanStyle(
+          color = colorScheme.primaryAction,
+          fontWeight = FontWeight.Bold,
+          textDecoration = TextDecoration.Underline,
+        ),
+      textType = TextType.Body,
+      onAnnotationClick = { onBioimpedanceClick() },
+    )
+  }
+}
 
-          AppNote(
-            message = DeviceModeStrings.NoteOtherUsers,
-            showNote = true,
-          )
-        }
-      }
+@Composable
+private fun HeartRateSection(
+  isHeartRateOn: Boolean,
+  onHeartRateToggle: (Boolean) -> Unit,
+) {
+  // Heart Rate toggle
+  Row(
+    modifier = Modifier.fillMaxWidth(),
+    verticalAlignment = Alignment.CenterVertically,
+    horizontalArrangement = Arrangement.spacedBy(spacing.xs),
+  ) {
+    AppIcon(
+      id = AppIcons.Metrics.Pulse,
+      contentDescription = DeviceModeStrings.HeartRate(isHeartRateOn),
+      type = if(isHeartRateOn) AppIconType.Default else AppIconType.Tertiary,
+    )
+    AppText(
+      text = DeviceModeStrings.HeartRate(isHeartRateOn),
+      textType = TextType.Body,
+    )
+    Spacer(modifier = Modifier.weight(1f))
+    AppToggle(
+      checked = isHeartRateOn,
+      onCheckedChange = { onHeartRateToggle(it) },
+    )
+  }
+  AppText(
+    text = DeviceModeStrings.HeartRateDescription,
+    textType = TextType.Body,
+  )
+  Surface(
+    color = colorScheme.inverseAction,
+    shape = RoundedCornerShape(borderRadius.sm),
+    modifier = Modifier.fillMaxWidth(),
+    shadowElevation = 0.dp,
+  ) {
+    AppText(
+      text = DeviceModeStrings.NoteMedical,
+      annotatedText = DeviceModeStrings.Note,
+      annotationPosition = AnnotationPosition.Start,
+      spanStyle = SpanStyle(fontWeight = FontWeight.Bold),
+      textType = TextType.Body,
+      modifier = Modifier.padding(spacing.md),
+    )
+  }
+}
+
+@Composable
+private fun WeightOnlySection() {
+  // Weight Only Mode UI
+  Column(
+  ) {
+    Row(
+      modifier = Modifier.align(Alignment.CenterHorizontally),
+      verticalAlignment = Alignment.CenterVertically,
+      horizontalArrangement = Arrangement.spacedBy(spacing.xs),
+    ) {
+      AppIcon(
+        id = AppIcons.Default.WeightOnlyMode,
+        contentDescription = "Weight Only Mode",
+        type = AppIconType.Default,
+      )
+      AppText(
+        text = DeviceModeStrings.WeightOnlyIndicator,
+        textType = TextType.Body,
+
+      )
+    }
+    Column(
+      modifier = Modifier.align(Alignment.CenterHorizontally),
+    ) {
+      Image(
+        painter =
+          painterResource(
+            id = AppIcons.Default.WeightOnlyModeScale,
+          ),
+        contentDescription = null,
+        modifier = Modifier.height(240.dp).align(Alignment.CenterHorizontally).padding(bottom = spacing.lg),
+      )
+
+      AppNote(
+        message = DeviceModeStrings.NoteOtherUsers,
+        showNote = true,
+      )
     }
   }
 }

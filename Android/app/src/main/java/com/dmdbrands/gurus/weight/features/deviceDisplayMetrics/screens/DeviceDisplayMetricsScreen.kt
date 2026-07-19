@@ -5,6 +5,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.runtime.Composable
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -65,19 +66,7 @@ fun DeviceDisplayMetricsScreenContent(
       }
     },
     actions = {
-      if (state.hasUpdated) {
-        AppText(
-          text = DeviceDisplayMetricsStrings.Save,
-          textType = TextType.ListTitle1,
-          color = colorScheme.primaryAction,
-          modifier =
-            Modifier
-              .padding(end = spacing.md)
-              // TalkBack: this clickable text acts as a button, so expose the Button role.
-              .semantics { role = Role.Button }
-              .clickable { handleIntent(DeviceDisplayMetricsIntent.Save) },
-        )
-      }
+      DeviceDisplayMetricsSaveAction(state.hasUpdated, handleIntent)
     },
   ) {
     LazyColumn(
@@ -88,39 +77,75 @@ fun DeviceDisplayMetricsScreenContent(
       state = lazyListState,
     ) {
       item {
-        // Notes
-        state.scale?.let { scale ->
-          DeviceMetricsNotes(
-            scale = scale,
-            onUpdateScaleMode = {
-              handleIntent(DeviceDisplayMetricsIntent.UpdateScaleMode)
-            },
-          )
-        }
-
-        // Description
-        AppText(
-          text = DeviceDisplayMetricsStrings.Description,
-          textType = TextType.Body,
-          modifier = Modifier.padding(bottom = spacing.md),
-        )
+        DeviceDisplayMetricsHeader(state, handleIntent)
       }
-
       item {
-        // Display Metrics Component
-        state.scale?.let { scale ->
-          DeviceMetricsSettingScreen(
-            currentMetrics = scale.preferences?.displayMetrics ?: emptyList(),
-            scrollState = lazyListState,
-            onMetricsChanged = { enabledMetrics ->
-              handleIntent(DeviceDisplayMetricsIntent.UpdateMetrics(enabledMetrics))
-            },
-            includeHeartRate = scale.preferences?.shouldMeasurePulse == true,
-            showAllMetrics = scale.preferences?.shouldMeasureImpedance == true,
-          )
-        }
+        DeviceDisplayMetricsList(state, lazyListState, handleIntent)
       }
     }
+  }
+}
+
+@Composable
+private fun DeviceDisplayMetricsSaveAction(
+  hasUpdated: Boolean,
+  handleIntent: (DeviceDisplayMetricsIntent) -> Unit,
+) {
+  if (hasUpdated) {
+    AppText(
+      text = DeviceDisplayMetricsStrings.Save,
+      textType = TextType.ListTitle1,
+      color = colorScheme.primaryAction,
+      modifier =
+        Modifier
+          .padding(end = spacing.md)
+          // TalkBack: this clickable text acts as a button, so expose the Button role.
+          .semantics { role = Role.Button }
+          .clickable { handleIntent(DeviceDisplayMetricsIntent.Save) },
+    )
+  }
+}
+
+@Composable
+private fun DeviceDisplayMetricsHeader(
+  state: DeviceDisplayMetricsState,
+  handleIntent: (DeviceDisplayMetricsIntent) -> Unit,
+) {
+  // Notes
+  state.scale?.let { scale ->
+    DeviceMetricsNotes(
+      scale = scale,
+      onUpdateScaleMode = {
+        handleIntent(DeviceDisplayMetricsIntent.UpdateScaleMode)
+      },
+    )
+  }
+
+  // Description
+  AppText(
+    text = DeviceDisplayMetricsStrings.Description,
+    textType = TextType.Body,
+    modifier = Modifier.padding(bottom = spacing.md),
+  )
+}
+
+@Composable
+private fun DeviceDisplayMetricsList(
+  state: DeviceDisplayMetricsState,
+  lazyListState: LazyListState,
+  handleIntent: (DeviceDisplayMetricsIntent) -> Unit,
+) {
+  // Display Metrics Component
+  state.scale?.let { scale ->
+    DeviceMetricsSettingScreen(
+      currentMetrics = scale.preferences?.displayMetrics ?: emptyList(),
+      scrollState = lazyListState,
+      onMetricsChanged = { enabledMetrics ->
+        handleIntent(DeviceDisplayMetricsIntent.UpdateMetrics(enabledMetrics))
+      },
+      includeHeartRate = scale.preferences?.shouldMeasurePulse == true,
+      showAllMetrics = scale.preferences?.shouldMeasureImpedance == true,
+    )
   }
 }
 

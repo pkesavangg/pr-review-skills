@@ -2,8 +2,10 @@ package com.dmdbrands.gurus.weight.features.deviceMode.viewmodel
 
 import androidx.lifecycle.viewModelScope
 import com.dmdbrands.gurus.weight.core.shared.utilities.logging.AppLog
+import com.dmdbrands.gurus.weight.domain.model.api.device.R4ScalePreferenceApiModel
 import com.dmdbrands.gurus.weight.domain.model.api.device.toR4ScalePreferenceApiModel
 import com.dmdbrands.gurus.weight.domain.model.storage.BLEStatus
+import com.dmdbrands.gurus.weight.domain.model.storage.Device
 import com.dmdbrands.gurus.weight.domain.model.storage.toGGBTDevice
 import com.dmdbrands.gurus.weight.domain.model.storage.toGGDevicePreference
 import com.dmdbrands.gurus.weight.domain.repository.IDeviceService
@@ -188,78 +190,107 @@ constructor(
       return
     }
 
-    AppLog.d(TAG, "Saving mode settings for scale: ${scale.id}")
-    AppLog.d(
-      TAG,
-      "Current settings - All body metrics: ${currentState.isAllBodyMetrics}, Heart rate: ${currentState.isHeartRateOn}",
-    )
+    logSaveStart(scale.id, currentState)
 
     viewModelScope.launch {
       try {
-        // Build updated displayMetrics based on heart rate setting
-        val updatedDisplayMetrics =
-          updateDisplayMetricsForHeartRate(
-            currentMetrics = scale.preferences?.displayMetrics ?: emptyList(),
-            shouldIncludeHeartRate = currentState.isHeartRateOn && currentState.isAllBodyMetrics,
-          )
-
-        AppLog.d(TAG, "Updated display metrics count: ${updatedDisplayMetrics.size}")
-
-        // Create R4ScalePreferenceApiModel with updated values
-        val preferences = requireNotNull(
-          scale.preferences?.toR4ScalePreferenceApiModel()?.copy(
-            shouldMeasureImpedance = currentState.isAllBodyMetrics,
-            shouldMeasurePulse = currentState.isHeartRateOn && currentState.isAllBodyMetrics,
-            displayMetrics = updatedDisplayMetrics,
-          )
-        ) { "Scale preferences are null; cannot update scale mode" }
-        val updatedScalePreference = scale.preferences.copy(
-          shouldMeasureImpedance = currentState.isAllBodyMetrics,
-          shouldMeasurePulse = currentState.isHeartRateOn && currentState.isAllBodyMetrics,
-          displayMetrics = updatedDisplayMetrics,
-        ).toGGDevicePreference()
-        val updatedScale = scale.toGGBTDevice().copy(preference = updatedScalePreference)
-        AppLog.d(
-          TAG,
-          "Created preferences - Impedance: ${preferences.shouldMeasureImpedance}, Pulse: ${preferences.shouldMeasurePulse}",
-        )
+        val (preferences, updatedScale) = buildScaleUpdate(scale, currentState)
 
         // Update scale via BLE service if connected, otherwise skip
         if (scale.connectionStatus == BLEStatus.CONNECTED) {
           updateAccountAsync(updatedScale)
         }
 
-        // Update scale preferences via API
-        val success = deviceService.updateScalePreferences(scaleId, preferences)
-        if (success) {
-          retryCount = 0
-          AppLog.i(TAG, "Successfully saved mode settings for scale: $scaleId")
-          // Refresh scale data to get updated preferences
-          dialogQueueService.dismissLoader()
-          navigateBack()
-          showToast(DeviceModeStrings.Toast.Success)
-        } else {
-          AppLog.w(TAG, "Failed to save mode settings for scale: $scaleId")
-          showToast(DeviceModeStrings.Toast.Error)
-          dialogQueueService.dismissLoader()
-        }
+        applyScalePreferences(preferences)
       } catch (err: DeviceBusyException) {
-        AppLog.w(TAG, "Scale is busy (user selection in progress); cannot save mode settings now")
-        retryCount = 0
-        dialogQueueService.dismissLoader()
-        scaleBusyAlert()
+        handleDeviceBusy()
       } catch (err: Exception) {
-        AppLog.e(TAG, "Error saving mode settings", err)
-        if (retryCount < MAX_RETRY_COUNT) {
-          delay(RETRY_DELAY_MS)
-          retryCount++
-          saveModeSettings()
-        } else {
-          retryCount = 0
-          dialogQueueService.dismissLoader()
-          updateAccountFailedAlert { saveModeSettings() }
-        }
+        handleSaveError(err)
       }
+    }
+  }
+
+  private fun logSaveStart(scaleId: String, currentState: DeviceModeState) {
+    AppLog.d(TAG, "Saving mode settings for scale: $scaleId")
+    AppLog.d(
+      TAG,
+      "Current settings - All body metrics: ${currentState.isAllBodyMetrics}, Heart rate: ${currentState.isHeartRateOn}",
+    )
+  }
+
+  /**
+   * Builds the API preference model and the BLE device payload for the current mode selection.
+   *
+   * @return a pair of the API [R4ScalePreferenceApiModel] and the BLE [GGBTDevice] to send.
+   */
+  private fun buildScaleUpdate(
+    scale: Device,
+    currentState: DeviceModeState,
+  ): Pair<R4ScalePreferenceApiModel, GGBTDevice> {
+    // Build updated displayMetrics based on heart rate setting
+    val updatedDisplayMetrics =
+      updateDisplayMetricsForHeartRate(
+        currentMetrics = scale.preferences?.displayMetrics ?: emptyList(),
+        shouldIncludeHeartRate = currentState.isHeartRateOn && currentState.isAllBodyMetrics,
+      )
+
+    AppLog.d(TAG, "Updated display metrics count: ${updatedDisplayMetrics.size}")
+
+    // Create R4ScalePreferenceApiModel with updated values
+    val preferences = requireNotNull(
+      scale.preferences?.toR4ScalePreferenceApiModel()?.copy(
+        shouldMeasureImpedance = currentState.isAllBodyMetrics,
+        shouldMeasurePulse = currentState.isHeartRateOn && currentState.isAllBodyMetrics,
+        displayMetrics = updatedDisplayMetrics,
+      )
+    ) { "Scale preferences are null; cannot update scale mode" }
+    val updatedScalePreference = scale.preferences.copy(
+      shouldMeasureImpedance = currentState.isAllBodyMetrics,
+      shouldMeasurePulse = currentState.isHeartRateOn && currentState.isAllBodyMetrics,
+      displayMetrics = updatedDisplayMetrics,
+    ).toGGDevicePreference()
+    val updatedScale = scale.toGGBTDevice().copy(preference = updatedScalePreference)
+    AppLog.d(
+      TAG,
+      "Created preferences - Impedance: ${preferences.shouldMeasureImpedance}, Pulse: ${preferences.shouldMeasurePulse}",
+    )
+    return preferences to updatedScale
+  }
+
+  private suspend fun applyScalePreferences(preferences: R4ScalePreferenceApiModel) {
+    // Update scale preferences via API
+    val success = deviceService.updateScalePreferences(scaleId, preferences)
+    if (success) {
+      retryCount = 0
+      AppLog.i(TAG, "Successfully saved mode settings for scale: $scaleId")
+      // Refresh scale data to get updated preferences
+      dialogQueueService.dismissLoader()
+      navigateBack()
+      showToast(DeviceModeStrings.Toast.Success)
+    } else {
+      AppLog.w(TAG, "Failed to save mode settings for scale: $scaleId")
+      showToast(DeviceModeStrings.Toast.Error)
+      dialogQueueService.dismissLoader()
+    }
+  }
+
+  private fun handleDeviceBusy() {
+    AppLog.w(TAG, "Scale is busy (user selection in progress); cannot save mode settings now")
+    retryCount = 0
+    dialogQueueService.dismissLoader()
+    scaleBusyAlert()
+  }
+
+  private suspend fun handleSaveError(err: Exception) {
+    AppLog.e(TAG, "Error saving mode settings", err)
+    if (retryCount < MAX_RETRY_COUNT) {
+      delay(RETRY_DELAY_MS)
+      retryCount++
+      saveModeSettings()
+    } else {
+      retryCount = 0
+      dialogQueueService.dismissLoader()
+      updateAccountFailedAlert { saveModeSettings() }
     }
   }
 
