@@ -76,6 +76,7 @@ fun BpHistoryDetailItem(
   Column(
     modifier = Modifier
       .fillMaxWidth()
+      .testTag(TestTags.History.EntryRow)
       .testTag(TestTags.History.BpEntryRow)
       .background(
         if (isExpanded) MeTheme.colorScheme.secondaryBackground else MeTheme.colorScheme.primaryBackground,
@@ -145,7 +146,7 @@ fun BpHistoryDetailItem(
       AppIcon(
         id = AppIcons.Default.ChevronDown,
         contentDescription = "notes",
-        modifier = Modifier.rotate(rotation),
+        modifier = Modifier.rotate(rotation).testTag(TestTags.History.BpRowExpand),
         onClick = { onToggle() },
       )
     }
@@ -181,7 +182,9 @@ fun BpHistoryDetailItem(
               HistoryItemStrings.AddNoteContentDescription
             },
             onClick = { onEditEntry() },
-            modifier = Modifier.padding(start = MeTheme.spacing.sm),
+            modifier = Modifier
+              .padding(start = MeTheme.spacing.sm)
+              .testTag(TestTags.History.EditNoteButton),
           )
         }
       }

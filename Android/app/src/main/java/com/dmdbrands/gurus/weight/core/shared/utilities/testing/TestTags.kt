@@ -196,23 +196,6 @@ object TestTags {
   }
 
   /**
-   * History feature — per-entry detail rows. Mirrors the iOS `AccessibilityID+History` set:
-   * weight uses the unprefixed id, blood-pressure and baby are prefixed. (MOB-1502)
-   */
-  object History {
-    const val EntryRow = "history_entry_row"
-    const val BpEntryRow = "bp_history_entry_row"
-    const val BabyEntryRow = "baby_history_entry_row"
-  }
-
-  /** Dashboard feature — product snapshot cards. Mirrors the iOS `AccessibilityID+Dashboard`. */
-  object Dashboard {
-    const val WeightCard = "weight_card"
-    const val BpCard = "bp_card"
-    const val BabyCard = "baby_card"
-  }
-
-  /**
    * Generic chrome for shared dialog/alert windows routed through `BaseModal` (alerts, confirms,
    * radio pickers, time picker, etc.). Applied by default so every such window is selectable even
    * before it gets bespoke ids; a caller-supplied `ActionButton.testTag` / `titleTestTag` overrides.
@@ -229,6 +212,46 @@ object TestTags {
   object BottomSheet {
     const val Title = "bottom_sheet_title"
     const val CloseButton = "bottom_sheet_close_button"
+  }
+
+  /** Dashboard snapshot product cards + bottom tab bar. Mirrors the iOS `AccessibilityID+Dashboard` group. */
+  object Dashboard {
+    const val WeightCard = "weight_card"
+    const val BpCard = "bp_card"
+    const val BabyCard = "baby_card"
+    const val TabBarItem = "tab_bar_item" // suffix with the route, e.g. "tab_bar_item_history"
+  }
+
+  /** History (month list) + History Detail (entry rows). Mirrors the iOS `AccessibilityID+History` group. */
+  object History {
+    const val MonthRow = "history_month_row" // suffix with the month key
+    const val EntryRow = "history_entry_row" // suffix with the entry id
+    const val BpEntryRow = "bp_history_entry_row"
+    const val BabyEntryRow = "baby_history_entry_row"
+    const val BpRowExpand = "history_bp_row_expand"
+    const val DeleteButton = "history_delete_button"
+    const val DownloadButton = "history_download_button"
+    const val EditNoteButton = "history_edit_note_button"
+    const val EmptyStatePrimaryButton = "empty_state_primary_button"
+    const val EmptyStateSecondaryButton = "empty_state_secondary_button"
+  }
+
+  /** Manual entry (weight / body-comp / blood-pressure / baby). Mirrors the iOS `AccessibilityID+Entry` group. */
+  object ManualEntry {
+    const val DateButton = "manual_entry_date_button"
+    const val TimeButton = "manual_entry_time_button"
+    const val SaveButton = "manual_entry_save_button"
+
+    // Blood pressure
+    const val BpSystolicField = "bp_systolic_field"
+    const val BpDiastolicField = "bp_diastolic_field"
+    const val BpPulseField = "bp_pulse_field"
+    const val BpSaveButton = "bp_save_button"
+
+    // Baby
+    const val BabyWeightField = "baby_weight_field"
+    const val BabyLengthField = "baby_length_field"
+    const val BabySaveButton = "baby_save_button"
   }
 
   /**

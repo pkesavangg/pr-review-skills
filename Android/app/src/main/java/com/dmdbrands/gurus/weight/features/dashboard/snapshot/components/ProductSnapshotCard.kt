@@ -16,13 +16,13 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
+import com.dmdbrands.gurus.weight.core.shared.utilities.testing.TestTags
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
-import com.dmdbrands.gurus.weight.core.shared.utilities.testing.TestTags
 import com.dmdbrands.gurus.weight.domain.model.common.ProductSelection
 import com.dmdbrands.gurus.weight.features.common.components.PreviewTheme
 import com.dmdbrands.gurus.weight.features.dashboard.components.EmptyDashboardGraph
@@ -245,7 +245,7 @@ fun BabySnapshotCard(
     val state by viewModel.state.collectAsStateWithLifecycle()
     val chart = state.baby[product.profile.id] ?: SnapshotChartData()
 
-    SnapshotCardContainer(modifier = modifier, onClickLabel = DashboardSnapshotStrings.OpenBabyDashboard, onTap = onTap) {
+    SnapshotCardContainer(modifier = modifier.testTag(TestTags.Dashboard.BabyCard), onClickLabel = DashboardSnapshotStrings.OpenBabyDashboard, onTap = onTap) {
         Text(
             text = if (chart.isEmpty) {
                 DashboardSnapshotStrings.NoEntries

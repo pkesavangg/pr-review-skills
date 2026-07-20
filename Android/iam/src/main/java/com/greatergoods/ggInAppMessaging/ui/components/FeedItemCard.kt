@@ -13,6 +13,7 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
@@ -44,7 +45,9 @@ fun FeedItemCard(
   showBottomDivider: Boolean = true
 ) {
   Column(
-    modifier = modifier.fillMaxWidth(),
+    modifier = modifier
+      .fillMaxWidth()
+      .testTag("feed_item_${feedItem.elementId}"),
   ) {
     // Top divider
       HorizontalDivider(
@@ -133,7 +136,7 @@ private fun FeedItemCardContent(
           expiresAt = feedItem.expiresAt,
         )
       }
-      IamButton(label = feedItem.linkText, size = ButtonSize.Small, type = ButtonType.InlineTextPrimary, onClick = { onItemClick.invoke(feedItem) }, modifier = Modifier.padding(0.dp))
+      IamButton(label = feedItem.linkText, size = ButtonSize.Small, type = ButtonType.InlineTextPrimary, onClick = { onItemClick.invoke(feedItem) }, modifier = Modifier.padding(0.dp).testTag("feed_item_action_${feedItem.elementId}"))
     }
   }
 }
