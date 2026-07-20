@@ -139,10 +139,10 @@ final class BpmDeviceSettingsStore: ObservableObject {
     // MARK: - Delete Device
     func handleDeviceDelete(deviceId: String, onSuccess: @escaping () -> Void) {
         let alert = AlertModel(
-            title: alertLang.DeleteScaleAlert.title,
-            message: alertLang.DeleteScaleAlert.message,
+            title: alertLang.RemoveDeviceAlert.title,
+            message: alertLang.RemoveDeviceAlert.message,
             buttons: [
-                AlertButtonModel(title: alertLang.DeleteScaleAlert.deleteButton, type: .danger) { _ in
+                AlertButtonModel(title: alertLang.RemoveDeviceAlert.removeButton, type: .danger) { _ in
                     Task { [weak self] in
                         guard let self = self else { return }
                         let success = await self.deleteDevice(deviceId: deviceId)
@@ -151,7 +151,7 @@ final class BpmDeviceSettingsStore: ObservableObject {
                         }
                     }
                 },
-                AlertButtonModel(title: alertLang.DeleteScaleAlert.cancelButton, type: .secondary) { _ in }
+                AlertButtonModel(title: alertLang.RemoveDeviceAlert.cancelButton, type: .secondary) { _ in }
             ]
         )
         notificationService.showAlert(alert)

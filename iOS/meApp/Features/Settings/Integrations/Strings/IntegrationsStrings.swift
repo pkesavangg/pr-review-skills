@@ -15,6 +15,11 @@ struct IntegrationsStrings {
     static let fitbit = "Fitbit"
     static let myFitnessPal = "My Fitness Pal"
 
+    /// Informational, non-interactive notice shown beneath the Fitbit row.
+    /// Fitbit's legacy Web API is deprecated in Sept 2026; syncing moves to
+    /// Google Health (coming soon). Display-only — see MOB-1608.
+    static let fitbitDeprecationNotice = "Moving to Google Health in Sept 2026"
+
     /// Section headers grouping providers by the device types they support.
     static let weightScalesSectionTitle = "Integrations for weight scales"
     static let weightScalesAndBpmSectionTitle = "Integrations for Weight Devices & BPM"

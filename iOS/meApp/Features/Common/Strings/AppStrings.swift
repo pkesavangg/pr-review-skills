@@ -417,6 +417,13 @@ struct AlertStrings {
         static let cancelButton = "Cancel"
     }
 
+    struct RemoveDeviceAlert {
+        static let title = "Remove Device"
+        static let message = "Are you sure you want to remove this device?"
+        static let removeButton = "Remove"
+        static let cancelButton = "Cancel"
+    }
+
     struct ConnectWifiNetwork {
         static let title = "Are you sure you want to exit?"
         static let message = "Wi-Fi settings will not be updated."

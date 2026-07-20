@@ -55,9 +55,18 @@ struct IntegrationListItemView: View {
                 .frame(width: 42, height: 44)
                 .padding(.top, .spacingXS)
 
-                Text(item.type.displayName)
-                    .fontOpenSans(.itemTitle)
-                    .foregroundColor(theme.textBody)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(item.type.displayName)
+                        .fontOpenSans(.itemTitle)
+                        .foregroundColor(theme.textBody)
+
+                    // Optional, non-interactive provider notice (e.g. Fitbit
+                    // deprecation). Display-only — does not affect row tap
+                    // or connect/sync behaviour (MOB-1608).
+                    if let notice = item.type.deprecationNotice {
+                        deprecationNotice(notice)
+                    }
+                }
 
                 Spacer()
 
@@ -69,9 +78,31 @@ struct IntegrationListItemView: View {
             }
             Spacer()
         }
-        .frame(height: rowHeight)
+        // minHeight (not a fixed height) so the row can grow to fit the
+        // deprecation notice and larger Dynamic Type sizes without clipping.
+        .frame(minHeight: rowHeight)
         .contentShape(Rectangle())
         .onTapGesture { onTap() }
+    }
+
+    // MARK: - Deprecation notice
+    /// Subtle inline info pill shown beneath a provider title. Non-interactive.
+    private func deprecationNotice(_ text: String) -> some View {
+        // Render the info icon INLINE with the text (a single Text) so it sits on the same
+        // line as "Moving …", baseline-aligned, and stays with the first word when the
+        // notice wraps. Design spec: 12px / regular with an 18px line-height — body4 is
+        // 12px OpenSans-Regular (~16.3px natural line height), so ~2pt of extra line
+        // spacing lands the line box at the 18px design value.
+        (Text(Image(systemName: "info.circle")) + Text(" ") + Text(text))
+            .font(.custom("OpenSans-Regular", size: CustomTextStyle.body4.size))
+            .lineSpacing(2)
+            .foregroundColor(theme.textError)
+            .fixedSize(horizontal: false, vertical: true)
+            .padding(.horizontal, 6)
+            .padding(.vertical, 2)
+            .background(theme.backgroundSecondary)
+            .clipShape(Capsule())
+            .accessibilityLabel(text)
     }
 }
 

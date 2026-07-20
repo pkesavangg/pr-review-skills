@@ -123,6 +123,10 @@ struct BpmDeviceSettingsStoreTests {
         #expect(notification.showAlertCalls == 1)
         #expect(notification.alertData != nil)
         #expect(notification.alertData?.buttons.count == 2)
+        // MOB-1602: BPM removal uses generalised "device" copy, not scale copy.
+        #expect(notification.alertData?.title == AlertStrings.RemoveDeviceAlert.title)
+        #expect(notification.alertData?.message == "Are you sure you want to remove this device?")
+        #expect(notification.alertData?.buttons.first?.title == AlertStrings.RemoveDeviceAlert.removeButton)
     }
 
     @Test("delete confirmation calls deleteSingleDeviceEntry and syncs")

@@ -21,25 +21,67 @@ struct BabyProfileRowView: View {
     let details: [BabyProfileDetail]
     let isExpanded: Bool
     let babyId: String
+    /// Stable swipe identity + shared "one open row" binding, owned by the parent.
+    let swipeItemID: UUID
+    @Binding var openSwipeItemID: UUID?
     let onToggleExpand: () -> Void
     let onEdit: () -> Void
+    let onDelete: () -> Void
 
     private let avatarSize: CGFloat = 32
     private let headerHeight: CGFloat = 72
+    private let swipeButtonWidth: CGFloat = 56
 
     var body: some View {
         VStack(spacing: 0) {
+            // Swipe-to-delete wraps ONLY the header (the profile item), so revealing the
+            // trash never spans the expanded detail section — it stays aligned to the
+            // profile row like before the detail section existed (MOB-1605). The trailing
+            // corners round only when collapsed (the header is then the whole card).
             header
+                .swipeableActions(
+                    buttonWidth: swipeButtonWidth,
+                    buttons: [deleteSwipeButton],
+                    itemID: swipeItemID,
+                    openItemID: $openSwipeItemID,
+                    openThresholdFraction: 0.1,
+                    closeWithoutAnimationOnAction: true,
+                    trailingCornerRadius: isExpanded ? 0 : .radiusSM
+                )
 
+            // Expanded details fade in/out with the same style as the History entry detail:
+            // `.transition(.opacity)` on the section + a single `.animation(value:)` on the
+            // outer VStack. The header stays fixed and never overlaps because the swipe wraps
+            // ONLY the header, so the height animation isn't nested inside the swipe's own
+            // animation (that nesting is what jerked earlier) (MOB-1605).
             if isExpanded {
-                Divider()
-                    .overlay(theme.statusUtilityPrimary)
-                    .padding(.horizontal, .spacingSM)
-                detailSection
+                VStack(spacing: 0) {
+                    Divider()
+                        .overlay(theme.statusUtilityPrimary)
+                        .padding(.horizontal, .spacingSM)
+                    detailSection
+                }
+                .transition(.opacity)
             }
         }
         .background(theme.backgroundPrimary)
-        .animation(.easeInOut(duration: 0.2), value: isExpanded)
+        .animation(.easeInOut(duration: 0.25), value: isExpanded)
+    }
+
+    /// Trash action revealed by the header swipe.
+    private var deleteSwipeButton: SwipeButton {
+        SwipeButton(
+            tint: theme.textError,
+            action: { onDelete() },
+            label: {
+                AnyView(
+                    AppIconView(icon: AppAssets.trash, size: IconSize(width: 24, height: 24))
+                        .foregroundColor(theme.backgroundPrimary)
+                        // Icon-only: names the VoiceOver custom action too
+                        .accessibilityLabel(CommonStrings.delete)
+                )
+            }
+        )
     }
 
     // MARK: - Header
@@ -82,6 +124,8 @@ struct BabyProfileRowView: View {
         .padding(.spacingSM)
         .frame(height: headerHeight)
         .frame(maxWidth: .infinity)
+        // Opaque so the header occludes the red delete panel behind it while swiping.
+        .background(theme.backgroundPrimary)
         .contentShape(Rectangle())
         .onTapGesture(perform: onToggleExpand)
     }
@@ -136,8 +180,11 @@ struct BabyProfileRowView: View {
             details: details,
             isExpanded: false,
             babyId: "preview-1",
+            swipeItemID: UUID(),
+            openSwipeItemID: .constant(nil),
             onToggleExpand: {},
-            onEdit: {}
+            onEdit: {},
+            onDelete: {}
         )
         .cornerRadius(.radiusSM)
 
@@ -146,8 +193,11 @@ struct BabyProfileRowView: View {
             details: details,
             isExpanded: true,
             babyId: "preview-2",
+            swipeItemID: UUID(),
+            openSwipeItemID: .constant(nil),
             onToggleExpand: {},
-            onEdit: {}
+            onEdit: {},
+            onDelete: {}
         )
         .cornerRadius(.radiusSM)
     }

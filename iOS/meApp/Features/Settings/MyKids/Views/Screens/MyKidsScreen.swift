@@ -13,7 +13,6 @@ struct MyKidsScreen: View {
     @State private var expandedBabyIDs: Set<String> = []
 
     private let lang = MyKidsStrings.self
-    private let swipeButtonWidth: CGFloat = 56
 
     /// Returns a deterministic UUID for the given baby.
     /// Baby IDs are server-assigned strings that are not in UUID format,
@@ -149,39 +148,24 @@ struct MyKidsScreen: View {
             details: store.detailRows(for: baby),
             isExpanded: expandedBabyIDs.contains(baby.id),
             babyId: baby.id,
+            swipeItemID: babyItemID(baby),
+            openSwipeItemID: $openItemID,
             onToggleExpand: { toggleExpanded(baby) },
             onEdit: {
                 // Ignore an edit tap that lands while this row is swiped open — the tap
                 // should close the swipe, not push the edit sheet.
                 guard openItemID != babyItemID(baby) else { return }
                 store.editBaby(baby)
-            }
-        )
-        .swipeableActions(
-            buttonWidth: swipeButtonWidth,
-            buttons: [
-                SwipeButton(
-                    tint: theme.textError,
-                    action: { store.confirmDeleteBaby(baby) },
-                    label: {
-                        AnyView(
-                            AppIconView(icon: AppAssets.trash, size: IconSize(width: 24, height: 24))
-                                .foregroundColor(theme.backgroundPrimary)
-                                // Icon-only: names the VoiceOver custom action too
-                                .accessibilityLabel(CommonStrings.delete)
-                        )
-                    }
-                )
-            ],
-            itemID: babyItemID(baby),
-            openItemID: $openItemID,
-            openThresholdFraction: 0.1,
-            closeWithoutAnimationOnAction: true,
-            trailingCornerRadius: .radiusSM
+            },
+            onDelete: { store.confirmDeleteBaby(baby) }
         )
     }
 
     /// Toggles the expanded profile-details section for a baby row.
+    ///
+    /// The reveal is animated by the row's own `.animation(.easeInOut, value: isExpanded)`
+    /// modifier (the same style as the History entry detail), so the mutation here is a plain
+    /// state flip — no `withAnimation` wrapper (MOB-1605).
     private func toggleExpanded(_ baby: Baby) {
         if expandedBabyIDs.contains(baby.id) {
             expandedBabyIDs.remove(baby.id)
