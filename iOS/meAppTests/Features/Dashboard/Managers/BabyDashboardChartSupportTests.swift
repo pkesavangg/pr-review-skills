@@ -211,12 +211,18 @@ struct BabyDashboardChartSupportTests {
 
     // MARK: - heightPercentileSeries
 
-    @Test("heightPercentileSeries returns count = operations * allCases")
-    func heightPercentileSeriesCountMatchesOperationsTimesLines() {
+    @Test("heightPercentileSeries returns points for every percentile line across the reference grid")
+    func heightPercentileSeriesHasAllPercentileLines() {
         let baby = makeBabyProfile()
         let ops = makeDailySummaries(count: 4, from: cal.date(byAdding: .day, value: -4, to: Date()) ?? Date())
         let result = BabyDashboardChartSupport.heightPercentileSeries(for: baby, operations: ops)
-        #expect(result.count == ops.count * BabyPercentileLine.allCases.count)
+        // The height curves are WHO length-for-age reference lines sampled on the day-aligned
+        // reference grid (padded ±8 days for continuity) — not one point per operation. Every
+        // percentile line is represented with the same number of points per line.
+        #expect(!result.isEmpty)
+        let seriesNames = Set(result.map(\.series))
+        #expect(seriesNames.count == BabyPercentileLine.allCases.count)
+        #expect(result.count % BabyPercentileLine.allCases.count == 0)
     }
 
     @Test("heightPercentileSeries values are positive")
@@ -239,9 +245,17 @@ struct BabyDashboardChartSupportTests {
             operations: operations
         )
 
+        // Like the weight percentile grid, the WHO length reference grid is day-aligned and
+        // intentionally padded (±8 days) beyond the operation range for smooth line continuity,
+        // so it spans at least the full operation range rather than matching the exact timestamps.
         let dates = result.map(\.date)
-        #expect(dates.min() == operations.first?.date)
-        #expect(dates.max() == operations.last?.date)
+        #expect(dates.min() != nil)
+        #expect(dates.max() != nil)
+        if let opMin = operations.first?.date, let opMax = operations.last?.date,
+           let seriesMin = dates.min(), let seriesMax = dates.max() {
+            #expect(seriesMin <= opMin)
+            #expect(seriesMax >= opMax)
+        }
     }
 
     // MARK: - yAxisScale

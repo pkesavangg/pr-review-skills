@@ -77,7 +77,8 @@ struct HistoryEntryFormattingTests {
     @Test("BabyHistoryEntry percentileText appends th suffix")
     func babyEntry_percentileText_formatsCorrectly() {
         let entry = makeBabyEntry(percentile: 75)
-        #expect(entry.percentileText == "75 th")
+        // MOB-1591: the ordinal joins the number with no space ("75th"), matching Smart Baby.
+        #expect(entry.percentileText == "75th")
     }
 
     // MARK: - BPHistoryMonth.pressureText
