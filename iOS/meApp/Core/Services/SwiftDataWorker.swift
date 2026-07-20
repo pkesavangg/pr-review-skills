@@ -206,12 +206,17 @@ actor SwiftDataWorker {
         // Fetch once ordered DESC (newest first), then derive the week/month slices
         // in memory. This avoids repeating nearly identical SQLite work three times
         // during a single dashboard progress refresh.
-        let allDescriptor = FetchDescriptor<Entry>(
+        var allDescriptor = FetchDescriptor<Entry>(
             predicate: #Predicate<Entry> { entry in
                 entry.accountId == accountId && entry.operationType == operationType
             },
             sortBy: [SortDescriptor(\Entry.entryTimestamp, order: .reverse)]
         )
+        // Batch-fault the scale relationships `EntryData` reads so a 10k progress/streak
+        // refresh doesn't trigger ~20k per-row faults (`BathScaleMetric.bmr.getter` etc.).
+        // The dashboard/history reads already do this; this path was missing it and showed
+        // up as 21% of the cold-login hang (MOB-516 cold-login fix).
+        allDescriptor.relationshipKeyPathsForPrefetching = [\Entry.scaleEntry, \Entry.scaleEntryMetric]
         let allEntries = try modelContext.fetch(allDescriptor)
         let allEntryData = allEntries.map { extractEntryData($0) }
 
@@ -304,6 +309,20 @@ actor SwiftDataWorker {
         }
 
         return extractEntryData(entry)
+    }
+
+    /// Counts all entries for an account (any operation type), off the main actor.
+    /// Mirrors `EntryRepository.fetchEntryCount`'s predicate exactly, but runs on the
+    /// `@ModelActor` so the COUNT no longer takes the SQLite store lock on the MAIN
+    /// thread. Awaited on `@MainActor` (directly, or via the `@MainActor` `EntryRepository`),
+    /// the count stalled behind the concurrent cold-login merge/read on the same store —
+    /// a blocked-on-lock main-thread stall that showed as a severe hang with almost no CPU
+    /// (MOB-516 cold-login follow-up).
+    func fetchEntryCount(accountId: String) async throws -> Int {
+        let descriptor = FetchDescriptor<Entry>(
+            predicate: #Predicate<Entry> { $0.accountId == accountId }
+        )
+        return try modelContext.fetchCount(descriptor)
     }
 
     // MARK: - Device Fetching

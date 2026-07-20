@@ -508,6 +508,25 @@ struct IntegrationStoreTests {
         #expect(notification.alertData?.buttons.count == 1)
     }
 
+    @Test("submitIntegrationRequest no-internet: dismisses loader without stacking error alert")
+    func submitIntegrationRequestNoInternet() async {
+        let integration = MockIntegrationStoreService()
+        integration.requestNewIntegrationError = HTTPError.noInternet
+        let notification = MockNotificationHelperService()
+        let (store, _, _, _, _) = makeSUT(
+            integrationService: integration,
+            notificationService: notification
+        )
+
+        await store.submitIntegrationRequest(text: "Garmin sync")
+
+        #expect(integration.requestNewIntegrationCalls == ["Garmin sync"])
+        #expect(notification.showLoaderCalls == 1)
+        #expect(notification.dismissLoaderCalls == 1)
+        // The HTTP layer already surfaces the "no network" toast; no redundant alert.
+        #expect(notification.showAlertCalls == 0)
+    }
+
     @Test("showRequestIntegrationModal presents a backdrop-dismissible modal")
     func showRequestIntegrationModalPresentsModal() {
         let notification = MockNotificationHelperService()

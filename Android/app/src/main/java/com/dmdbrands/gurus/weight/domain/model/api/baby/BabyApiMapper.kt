@@ -19,7 +19,8 @@ fun BabyProfile.toRequest(): BabyRequest = BabyRequest(
 
 /**
  * Maps a server [BabyResponse] into a domain [BabyProfile] for the given
- * [accountId]. Profiles sourced from the server are marked [BabyProfile.isSynced].
+ * [accountId]. Profiles sourced from the server are marked [BabyProfile.isSynced]
+ * and [BabyProfile.existsOnServer] (the id is the server-assigned id).
  */
 fun BabyResponse.toDomain(accountId: String): BabyProfile = BabyProfile(
     id = id,
@@ -30,6 +31,7 @@ fun BabyResponse.toDomain(accountId: String): BabyProfile = BabyProfile(
     birthWeightDecigrams = birthWeightDecigrams,
     birthLengthMillimeters = birthLengthMillimeters,
     isSynced = true,
+    existsOnServer = true,
 )
 
 /** Maps a list of server [BabyResponse]s into domain [BabyProfile]s. */

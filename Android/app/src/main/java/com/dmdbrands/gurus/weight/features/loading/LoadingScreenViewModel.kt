@@ -6,6 +6,8 @@ import androidx.lifecycle.asFlow
 import androidx.lifecycle.viewModelScope
 import androidx.work.WorkManager
 import com.dmdbrands.gurus.weight.core.navigation.AppRoute
+import com.dmdbrands.gurus.weight.core.network.ITokenManager
+import com.dmdbrands.gurus.weight.core.network.TokenMigrationHelper
 import com.dmdbrands.gurus.weight.core.service.IAppNavigationService
 import com.dmdbrands.gurus.weight.core.shared.utilities.logging.AppLog
 import com.dmdbrands.gurus.weight.domain.model.storage.Account.Account
@@ -39,6 +41,8 @@ class LoadingScreenViewModel
 @Inject
 constructor(
   private val workManager: WorkManager,
+  private val tokenMigrationHelper: TokenMigrationHelper,
+  private val tokenManager: ITokenManager,
   private val accountService: IAccountService,
   private val appNavigationService: IAppNavigationService,
   private val entryService: IEntryService,
@@ -101,10 +105,25 @@ constructor(
     }
   }
 
+  /**
+   * Blocks the startup flow until all migrations that affect the login decision are done:
+   *
+   * 1. The Ionic (Capacitor 4.x → native) WorkManager job, if scheduled.
+   * 2. The DataStore → EncryptedSharedPreferences token migration + loading tokens into
+   *    [TokenManager]'s in-memory map.
+   *
+   * Step 2 is critical for the 5.0.3 → 5.1.0 upgrade (MOB-1537 / MOB-1526): the legacy app
+   * kept tokens only in the DataStore proto, and 5.1.0 reads them exclusively from the secure
+   * store. Previously this ran in a fire-and-forget coroutine in AppViewModel, so the login
+   * check below could race ahead of it, send a `Bearer null` request, get a 401, expire the
+   * account, and drop the user to Landing (then loop). Awaiting it here removes that race.
+   */
   private suspend fun waitForMigration() {
     workManager.getWorkInfosByTagLiveData("ionic_migration").asFlow().first { workInfos ->
       workInfos.isEmpty() || workInfos.all { it.state.isFinished }
     }
+    tokenMigrationHelper.migrateIfNeeded()
+    tokenManager.loadAllTokens()
   }
 
   private suspend fun checkLoginStatus(): Boolean =

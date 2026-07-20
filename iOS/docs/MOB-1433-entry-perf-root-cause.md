@@ -3,6 +3,7 @@
 **Ticket:** [MOB-1433](https://greatergoods.atlassian.net/browse/MOB-1433) · Epic: MOB-516 (5.1.0 Performance Hardening)
 **Scope:** iOS only. Symptoms: (1) app freezes at the loading screen for minutes on first login with 5k–10k entries; (2) UI stutters/hangs when re-opening entry screens (History, Dashboard).
 **Status:** Phase 1 — investigation only. No product code changed. **Awaiting approach sign-off (see Decisions at the bottom) before Phase 2.**
+> **Update:** all Phase-1 decisions were signed off (2026-07-06) and **Phase 2 has since shipped and merged** (PR #2218). This doc is retained as the historical root-cause record; the implementation + status are in [`MOB-1433-implementation-plan.md`](MOB-1433-implementation-plan.md).
 
 ---
 

@@ -9,7 +9,7 @@
 
 > ⚠️ **Reconciliation note (2026-07-08).** This analysis was captured *before* [MOB-1433](https://greatergoods.atlassian.net/browse/MOB-1433) (the entry fetch/sync off-main pipeline) shipped. What that changed for this doc:
 > - **H2 (the proven #1 hang) is no longer a main-thread hang.** `Entry.toOperationDTO()` now runs on a `@ModelActor` worker off the main actor, `Entry` has `#Index`, relationships are prefetched, and a signature cache short-circuits the *aggregation*. The **loading-screen freeze is fixed.** The 2.2 s cost did **not** disappear — it moved off-main and now shows up as worker↔main-context store contention on 10k accounts (MOB-1433 §5c). See H2 for the corrected framing.
-> - **H1 and H3 (chart engine) are untouched and still valid** — current line refs shifted: H1 `BaseGraphChartContent.swift:60-64,71,100-101`; H3 `BaseSectionViewModel.swift:211,222`. **This is the remaining priority.**
+> - **H1 (percentile chart path) is now FIXED — shipped in MOB-518 (PR #2237), after this reconciliation was written.** The percentile branch routes through `PercentileChartWindowing.boundaryExtendedPoints(...)` using binary search (`SortedArrayIndex`, commit `813f0f98a`), replacing the O(n) `.filter` + `last/first(where:)` scans; a v2 weight-graph engine also landed. **H3 (visible-window cache keyed on raw `scrollPosition`) is still valid and untouched** — MOB-518 did not re-key `visibleChartSeriesData` (`BaseSectionViewModel.swift`), so that remains the one open chart-engine item. Current line refs: H1 `BaseGraphChartContent.swift:60-64,71,100-101` (now superseded by `PercentileChartWindowing`); H3 `BaseSectionViewModel.swift:209,219`.
 > - **H4 merge-batching, HealthKit settings/marker: done in MOB-1433.** H4 logging, H5 HealthKit fetch-bound, H6 account switch: still open. See each section for the ✅/🔴 marker.
 > - Numbers in §1 are the 5.0.x Organizer capture; they have **not** been re-measured post-MOB-1433 (§9 still applies).
 
@@ -105,8 +105,8 @@ Reading the actual code, the team has shipped real perf work. **These are NOT pr
 
 ## 5. Verified remaining hotspots (the real targets)
 
-### H1 🔴 Baby/percentile chart path is NOT windowed — O(n) filter + linear scans per series per frame
-**File:** `Features/Dashboard/Views/Components/BaseGraphChartContent.swift:60-64, 71, 100-101` · **Status: 🔴 still valid, untouched by MOB-1433 — the priority target.** *(Struct is now `ChartSeriesContent`; it computes `pointsToRender` in `visiblePoints` then discards it for percentile series at `:60-64` and returns `percentileBoundaryExtendedPoints` instead.)*
+### H1 ✅ Baby/percentile chart path — FIXED in MOB-518
+**File:** `Features/Dashboard/Views/Components/BaseGraphChartContent.swift` · **Status: ✅ shipped in MOB-518 (PR #2237, commit `813f0f98a`).** The percentile branch now delegates to `PercentileChartWindowing.boundaryExtendedPoints(...)`, which uses binary search over the sorted points via the generic `SortedArrayIndex.first/last(in:where:)` helper — replacing the old O(n) `.filter` slice + `last(where:)`/`first(where:)` neighbour scans described below. (Per the MOB-518 execution log, percentile curves are already downsampled to ~150 points at generation, so no additional `pointsToRender` cap was added; output is parity-pinned by `PercentileChartWindowingTests`.) The description below is the original pre-fix analysis, kept for the trail.
 The percentile branch bypasses `pointsToRender` and instead:
 ```swift
 let pointsInGridRange = points.filter { $0.xDate >= ... && $0.xDate <= ... }   // :71  O(n)
@@ -144,7 +144,7 @@ Runs **once per percentile series** (5–10 for baby) **per render**, and render
 > *(The full allocation call tree could not be extracted: the 3:44 recording produced a 5.9 GB un-indexed event stream that Instruments never finalized — see [§9](#9-what-we-still-need) for the recording-methodology lesson. The summary numbers above are sufficient; the call tree would only re-confirm `toOperationDTO`.)*
 
 ### H3 🟠 `visibleChartSeriesData` cache is keyed on exact `scrollPosition` (dead during scroll)
-**Status: 🟠 still valid, untouched by MOB-1433 — part of the chart-engine (Task 2) work.**
+**Status: 🟠 still valid — untouched by MOB-1433 AND by MOB-518. This is the one remaining chart-engine (Task 2) item.** MOB-518 shipped H1 + the v2 weight-graph engine but did **not** re-key `visibleChartSeriesData`; note the MOB-518 log also flags this property as effectively dead for rendering (only unit tests read it), so re-keying vs. removing is an open call — see `MOB-516-implementation-plan.md` §2.1 Step 2b.
 **File:** `BaseSectionViewModel.swift:199-231` (key check `:211`, per-frame `.filter` `:222`)
 ```swift
 // "Result is cached by (scrollPosition, dataHash)"   ← comment claims an optimization the code doesn't deliver

@@ -49,10 +49,12 @@ struct A6ScaleSetupScreen: View {
                         AppIconView(icon: AppAssets.helpCircle)
                             .foregroundColor(theme.statusIconPrimary)
                     }
+                    .appAccessibility(id: AccessibilityID.scaleSetupHelpButton)
                 },
                 onLeadingTap: { setupStore.handleExit() },
                 onTrailingTap: {},
-                canShowPresentationIndicator: true
+                canShowPresentationIndicator: true,
+                leadingAccessibilityID: AccessibilityID.scaleSetupCloseButton
             )
             
             // Currently only the intro step is implemented; other steps will render placeholders.
@@ -87,8 +89,9 @@ struct A6ScaleSetupScreen: View {
         }
         .navigationBarBackButtonHidden(true)
         .background(theme.backgroundSecondary)
+        .screenAccessibilityRoot(AccessibilityID.a6ScaleSetupScreenRoot)
     }
-    
+
     private var footerButtons: some View {
         HStack {
             if setupStore.currentStep == .completeProfile {
@@ -103,6 +106,7 @@ struct A6ScaleSetupScreen: View {
                     }
                     setupStore.moveToPreviousStep()
                 }
+                .appAccessibility(id: AccessibilityID.scaleSetupBackButton)
 
                 Spacer()
 
@@ -115,6 +119,7 @@ struct A6ScaleSetupScreen: View {
                     }
                     setupStore.moveToNextStep()
                 }
+                .appAccessibility(id: AccessibilityID.scaleSetupNextButton)
             }
         }
     }
@@ -131,6 +136,7 @@ struct A6ScaleSetupScreen: View {
             }
             setupStore.moveToPreviousStep()
         }
+        .appAccessibility(id: AccessibilityID.scaleSetupBackButton)
         Spacer()
         ButtonView(text: commonLang.skip, type: .inlineTextTertiary, size: .small, isDisabled: false) {
             withAnimation {

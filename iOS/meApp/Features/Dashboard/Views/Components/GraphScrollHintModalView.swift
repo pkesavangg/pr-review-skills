@@ -67,11 +67,13 @@ struct GraphScrollHintModalView: View {
                     isDisabled: false,
                     action: onClose
                 )
+                .appAccessibility(id: AccessibilityID.graphScrollHintConfirmButton)
             }
         }
         .padding(.spacingMD)
         .background(theme.backgroundPrimary)
         .cornerRadius(.radiusXL)
+        .screenAccessibilityRoot(AccessibilityID.graphScrollHintModalRoot)
         .shadow(color: Color.black.opacity(0.12), radius: 10, x: 0, y: 5)
         .task {
             guard !reduceMotion else { return }
@@ -87,6 +89,7 @@ struct GraphScrollHintModalView: View {
                 AppIconView(icon: AppAssets.xmarkSmall, size: IconSize(width: 20, height: 20))
                     .foregroundColor(theme.actionPrimary)
             }
+            .appAccessibility(id: AccessibilityID.graphScrollHintCloseButton)
             .frame(maxWidth: .infinity, alignment: .trailing)
         }
         .padding(.bottom, .spacingXS)

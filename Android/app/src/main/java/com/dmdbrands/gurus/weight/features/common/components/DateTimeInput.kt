@@ -30,7 +30,6 @@ import java.text.SimpleDateFormat
 import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneId
-import java.time.ZoneOffset
 import java.time.format.DateTimeFormatter
 import java.util.Calendar
 import java.util.Locale
@@ -205,9 +204,15 @@ sealed class DateTimeValue() {
     /**
      * Converts a stored date string to epoch milliseconds at local midnight for the calendar
      * date in the string. Accepts either a bare `"yyyy-MM-dd"` date (e.g. the offline-save payload
-     * persisted on network failure) or a UTC-midnight ISO instant (e.g. the server response for
-     * `dob`). In both cases the returned millis represents local midnight of the same calendar
-     * date, so the round-trip with [getDateFormatFromMilliseconds] is stable across timezones.
+     * persisted on network failure) or an ISO instant (e.g. the server response for `dob`).
+     *
+     * For an ISO instant the calendar date is resolved in the **system-default** zone, not UTC.
+     * The server persists a date-only field (`dob`) as local-midnight expressed in UTC — e.g. a
+     * picked `1999-12-27` in IST comes back as `1999-12-26T18:30:00.000Z`. Reading the UTC date of
+     * that instant yields the previous day (Dec 26) for any zone east of UTC; reading it in the
+     * device zone recovers the intended wall-clock date (Dec 27). This keeps the round-trip with
+     * the local-based [getDateFormatFromMilliseconds] / [getEpochMillisFromDateString] and the
+     * date picker stable. (MOB-1499)
      *
      * @param isoString `"yyyy-MM-dd"` or `"YYYY-MM-DDTHH:mm:ss.SSSZ"`.
      * @return The epoch milliseconds, or current time if parsing fails.
@@ -216,7 +221,7 @@ sealed class DateTimeValue() {
       try {
         val localDate = runCatching { LocalDate.parse(isoString) }
           .getOrElse {
-            Instant.parse(isoString).atZone(ZoneOffset.UTC).toLocalDate()
+            Instant.parse(isoString).atZone(ZoneId.systemDefault()).toLocalDate()
           }
         localDate
           .atStartOfDay(ZoneId.systemDefault())

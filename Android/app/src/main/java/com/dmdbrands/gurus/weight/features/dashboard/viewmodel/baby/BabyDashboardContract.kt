@@ -3,6 +3,7 @@ package com.dmdbrands.gurus.weight.features.dashboard.viewmodel.baby
 import androidx.compose.runtime.Stable
 import com.dmdbrands.gurus.weight.domain.interfaces.IReducer
 import com.dmdbrands.gurus.weight.domain.model.common.BabyProfile
+import com.dmdbrands.gurus.weight.domain.model.common.WeightUnit
 import com.dmdbrands.gurus.weight.features.common.enums.GraphSegment
 import com.dmdbrands.gurus.weight.features.common.helper.BabyPercentileHelper
 import com.dmdbrands.gurus.weight.features.dashboard.viewmodel.base.BaseGraphIntent
@@ -31,7 +32,14 @@ data class BabyDashboardState(
   val heightPercentile: BabyPercentileHelper.PercentileSeries? = null,
   val babyProfile: BabyProfile? = null,
   val isEmpty: Boolean = false,
+  // The account's baby weight unit (My Kids setting). Drives whether the graph, header and
+  // percentile overlay render in kg/cm (metric) or lb-oz/in (imperial). (MOB-1499)
+  val weightUnit: WeightUnit = WeightUnit.LB_OZ,
 ) : BaseDashboardState {
+  /** Baby graph is metric (kg / cm) only for the KG unit; LB and LB_OZ both plot imperial. */
+  val isMetric: Boolean
+    get() = weightUnit == WeightUnit.KG
+
   val activePercentile: BabyPercentileHelper.PercentileSeries?
     get() = when (selectedMetric) {
       BabyMetric.WEIGHT -> weightPercentile
@@ -47,6 +55,7 @@ sealed interface BabyDashboardIntent : BaseGraphIntent {
   data class SetWeightPercentile(val series: BabyPercentileHelper.PercentileSeries?) : BabyDashboardIntent
   data class SetHeightPercentile(val series: BabyPercentileHelper.PercentileSeries?) : BabyDashboardIntent
   data class SetIsEmpty(val isEmpty: Boolean) : BabyDashboardIntent
+  data class SetBabyWeightUnit(val unit: WeightUnit) : BabyDashboardIntent
   data object Refresh : BabyDashboardIntent
   data object OnConnectDevice : BabyDashboardIntent
 }
@@ -77,6 +86,7 @@ class BabyDashboardReducer : BaseGraphReducer<BabyDashboardState>(), IReducer<Ba
       is BabyDashboardIntent.SetWeightPercentile -> state.copy(weightPercentile = intent.series)
       is BabyDashboardIntent.SetHeightPercentile -> state.copy(heightPercentile = intent.series)
       is BabyDashboardIntent.SetIsEmpty -> state.copy(isEmpty = intent.isEmpty)
+      is BabyDashboardIntent.SetBabyWeightUnit -> state.copy(weightUnit = intent.unit)
       is BabyDashboardIntent.Refresh -> state
       is BabyDashboardIntent.OnConnectDevice -> state
     }

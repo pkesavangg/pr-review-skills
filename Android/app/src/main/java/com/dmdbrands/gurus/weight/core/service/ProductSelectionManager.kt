@@ -12,8 +12,11 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import javax.inject.Inject
@@ -148,9 +151,24 @@ class ProductSelectionManager @Inject constructor(
   private fun observeAccountProducts() {
     appScope.launch {
       accountService.get().activeAccountFlow
-        .map { account -> account?.id to (account?.productTypes ?: emptyList()) }
+        .map { it?.id }
         .distinctUntilChanged()
-        .collect { (accountId, _) ->
+        .flatMapLatest { accountId ->
+          if (accountId == null) {
+            flowOf(null)
+          } else {
+            // Rebuild on EITHER productTypes OR the baby list changing. A baby's id being remapped
+            // (offline temp id → server id on sync) leaves productTypes unchanged, so watching only
+            // the account flow left the switcher pinned to the deleted temp baby — its detail
+            // dashboard then showed an empty entry list even though the entries moved to the server
+            // id. Observing baby profiles too makes the selection follow the remap live (MOB-1476).
+            combine(
+              accountService.get().activeAccountFlow.map { it?.productTypes ?: emptyList() }.distinctUntilChanged(),
+              productSelectionRepository.observeBabyProfiles(accountId),
+            ) { _, _ -> accountId }
+          }
+        }
+        .collect { accountId ->
           if (USE_SAMPLE_PRODUCTS) return@collect
           val id = accountId ?: return@collect
           val products = buildProducts(id)

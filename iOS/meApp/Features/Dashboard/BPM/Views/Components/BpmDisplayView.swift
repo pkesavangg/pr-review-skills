@@ -87,6 +87,7 @@ struct BpmDisplayView: View {
                                             .padding(.trailing, -6)
                                     }
                                     .buttonStyle(.plain)
+                                    .appAccessibility(id: AccessibilityID.bpmAhaHelpButton)
                                     .opacity(isGraphLoading ? 0 : 1)
                                 }
                             }
@@ -153,6 +154,7 @@ struct BpmDisplayView: View {
                                         .padding(.trailing, -6)
                                 }
                                 .buttonStyle(.plain)
+                                .appAccessibility(id: AccessibilityID.bpmAhaHelpButton)
                             }
                         }
                         .frame(maxWidth: .infinity, alignment: .leading)

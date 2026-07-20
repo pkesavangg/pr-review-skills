@@ -12,25 +12,25 @@ struct GraphView: View {
     @EnvironmentObject private var accountService: AccountService
     @Environment(\.appTheme) private var theme
 
-    // Section view models
-    @StateObject private var totalSectionViewModel = TotalSectionViewModel()
-    @StateObject private var yearSectionViewModel = YearSectionViewModel()
-    @StateObject private var monthSectionViewModel = MonthSectionViewModel()
-    @StateObject private var weekSectionViewModel = WeekSectionViewModel()
-
-    // PERFORMANCE: Cancellable task for deferred period change configuration
-    @State private var periodChangeTask: Task<Void, Never>?
+    // MOB-1516 Phase D: the four legacy `*SectionViewModel` @StateObjects + the deferred period-change task
+    // are gone — every product renders through `TrendChartHost`, which owns its own scroll/selection/rebuild.
 
     // MA-3837: tracks whether the first-appear auto-selection has run, so navigating away and
     // back doesn't override a user's intentional manual clear.
     @State private var didInitialSelect = false
 
-    /// MOB-518 V6: the v2 weight-chart engine (`WeightChartHost`) is now the weight renderer. Baby/BPM
-    /// keep the legacy `BaseGraphView` engine below (the two share it), so this is gated on the product
-    /// type, not a toggle. When true, the host owns period/scroll/model and the legacy section-VM machinery
-    /// must NOT run for weight (see the `selectedPeriod` handler / `chartView`).
-    private var usesNewWeightEngine: Bool {
-        dashboardStore.productType == .scale
+    /// MOB-518 V6 / MOB-1516 Phase B: the v2 engine (`TrendChartHost`) renders weight AND BPM. Baby still
+    /// uses the legacy `BaseGraphView` engine below (they share it) until Phase Y, so this is gated on the
+    /// product type, not a toggle. When true, the host owns period/scroll/model and the legacy section-VM
+    /// machinery must NOT run (see the `selectedPeriod` handler / `chartView`).
+    private var usesNewEngine: Bool {
+        // MOB-1516: weight (V6) + BPM (Phase B) + baby (Phase Y) all render through the v2 `TrendChartHost`.
+        // Baby with NO entries is handled earlier in `chartView` by `BabyEmptyGraphView`; a baby WITH entries
+        // reaches the host. The legacy `else` branch in `chartView` is now unreachable — removed in Phase D.
+        switch dashboardStore.productType {
+        case .scale, .bpm, .baby: return true
+        default: return false
+        }
     }
 
     /// Latest entry date in the active period — used to drive first-appear / initial-load auto-select.
@@ -47,27 +47,23 @@ struct GraphView: View {
     // (floating above the line for the new engine; the legacy floating callout otherwise), so it must not
     // ALSO appear under the weight.
     private var isShowingSelectionCallout: Bool {
-        // MOB-518: the new weight engine drives selection through the STORE, not the section VMs (which stay
-        // unselected for weight). Read the store's crosshair so the redundant selected-date label under the
-        // weight hides on selection, matching the legacy behaviour.
-        if usesNewWeightEngine {
-            return dashboardStore.state.graph.showCrosshair
-        }
-        switch dashboardStore.state.graph.selectedPeriod {
-        case .week:
-            return weekSectionViewModel.showCrosshair
-        case .month:
-            return monthSectionViewModel.showCrosshair
-        case .year:
-            return yearSectionViewModel.showCrosshair
-        case .total:
-            return totalSectionViewModel.showCrosshair
-        }
+        // MOB-1516: all products drive selection through the STORE, so the redundant selected-date label under
+        // the weight hides on the store's crosshair flag (the floating callout shows the date instead).
+        dashboardStore.state.graph.showCrosshair
     }
 
     // Show skeleton until graph is ready (set after settling delay)
     private var shouldShowSkeleton: Bool {
-        !dashboardStore.state.graph.isGraphReady
+        if !dashboardStore.state.graph.isGraphReady { return true }
+        // MOB-516: on FIRST login local SwiftData is still empty while the initial full-history
+        // sync populates it — the fixed 300 ms `isGraphReady` timer would otherwise hide the
+        // skeleton into an empty graph for a few seconds. Keep the skeleton until data lands.
+        // Once the sync finishes (isSyncing=false), a genuinely empty account falls through to
+        // the empty state (no infinite skeleton). Weight engine only; baby/BPM unaffected.
+        if usesNewEngine, dashboardStore.continuousOperations.isEmpty, dashboardStore.isSyncing {
+            return true
+        }
+        return false
     }
 
     // Match skeleton frame to the actual chart container height (baby charts are taller)
@@ -101,80 +97,9 @@ struct GraphView: View {
             .opacity(shouldShowSkeleton ? 0 : 1)
         }
         .animation(.easeInOut(duration: 0.3), value: dashboardStore.state.graph.isGraphReady)
-        .onChange(of: dashboardStore.state.graph.selectedPeriod) { _, newValue in
-            // PERFORMANCE: Cancel any pending period change configuration
-            periodChangeTask?.cancel()
-
-            // MOB-518 V-A4: the new weight engine's host (`WeightChartHost`) reacts to the period change
-            // itself (adopts the new anchor + rebuilds its model), so skip the entire legacy section-VM
-            // machinery (clear ×4 / tearDown / configure / forceScrollPositionUpdate / updateYAxisCache).
-            // Running it here for the new engine was pure wasted work on every switch — the #2 heaviness.
-            guard !usesNewWeightEngine else { return }
-
-            // Note: The anchor-based scroll position is already calculated and set by
-            // WeightTrendView.onChange(of: localSelectedPeriod) before this handler runs.
-            // We only need to handle view model configuration and UI updates here.
-
-            // MA-3837: do NOT clear the store selection here. updateSelectedPeriod auto-selects
-            // the latest entry for the new period, and the freshly-mounted BaseGraphView syncs it
-            // from the store; clearing the store would wipe that auto-selection. The per-section
-            // VMs are still reset (inactive ones are torn down below; the active one is re-synced
-            // from the store on mount).
-            totalSectionViewModel.clearSelection()
-            yearSectionViewModel.clearSelection()
-            monthSectionViewModel.clearSelection()
-            weekSectionViewModel.clearSelection()
-
-            // Release caches for inactive period ViewModels immediately.
-            let allViewModels: [BaseSectionViewModel] = [
-                totalSectionViewModel, yearSectionViewModel,
-                monthSectionViewModel, weekSectionViewModel
-            ]
-            for vm in allViewModels where vm.timePeriod != newValue {
-                vm.tearDown()
-            }
-
-            // Configure the active view model synchronously so the graph
-            // switches in the same frame as the segmented control indicator.
-            switch newValue {
-            case .week:
-                weekSectionViewModel.configure(with: dashboardStore)
-            case .month:
-                monthSectionViewModel.configure(with: dashboardStore)
-            case .year:
-                yearSectionViewModel.configure(with: dashboardStore)
-            case .total:
-                totalSectionViewModel.configure(with: dashboardStore)
-            }
-
-            // Sync scroll position and recalculate Y-axis in the next run loop
-            // to avoid blocking the current layout pass.
-            periodChangeTask = Task { @MainActor in
-                guard !Task.isCancelled else { return }
-
-                let finalPosition = dashboardStore.state.graph.xScrollPosition
-                switch newValue {
-                case .week:
-                    weekSectionViewModel.forceScrollPositionUpdate(to: finalPosition)
-                case .month:
-                    monthSectionViewModel.forceScrollPositionUpdate(to: finalPosition)
-                case .year:
-                    yearSectionViewModel.forceScrollPositionUpdate(to: finalPosition)
-                case .total:
-                    break // Total view is not scrollable
-                }
-
-                dashboardStore.chartManager.updateYAxisCache()
-            }
-        }
-        // Tear down all section VM caches when product type or baby profile changes
-        // to prevent stale data from the previous product appearing in the chart.
-        .onChange(of: dashboardStore.productType) { _, _ in
-            tearDownAllViewModels()
-        }
-        .onChange(of: dashboardStore.selectedProductItem) { _, _ in
-            tearDownAllViewModels()
-        }
+        // MOB-1516 Phase D: the legacy `.onChange(selectedPeriod)` section-VM machinery + the section-VM
+        // tear-down handlers are gone. `TrendChartHost` reacts to period / product / metric changes itself
+        // (via its `rebuildSignal` + `.onChange(selectedPeriod)`), so there is nothing to configure here.
         // Immediately react to active account goal updates like GoalProgressView.
         // Skip during dashboard reset to prevent handleActiveAccountChanged from
         // re-triggering skeleton (refreshAccount publishes activeAccount mid-init).
@@ -221,15 +146,6 @@ struct GraphView: View {
         }
     }
 
-    // MARK: - Cache Management
-
-    private func tearDownAllViewModels() {
-        totalSectionViewModel.tearDown()
-        yearSectionViewModel.tearDown()
-        monthSectionViewModel.tearDown()
-        weekSectionViewModel.tearDown()
-    }
-
     // MARK: - Chart View
 
     @ViewBuilder
@@ -238,35 +154,9 @@ struct GraphView: View {
             // No real baby readings yet — show the empty grid instead of plotting the
             // dummy summaries that `continuousOperations` falls back to (matches design mock).
             BabyEmptyGraphView()
-        } else if usesNewWeightEngine {
-            // MOB-518 v2 engine — the weight renderer (V6). Baby/BPM never reach here (they use the
-            // legacy BaseGraphView engine in the else branch below).
-            WeightChartHost(dashboardStore: dashboardStore)
         } else {
-            HStack(spacing: 0) {
-                switch dashboardStore.state.graph.selectedPeriod {
-                case .week:
-                    WeekGraphView(
-                        viewModel: weekSectionViewModel,
-                        dashboardStore: dashboardStore
-                    )
-                case .month:
-                    MonthGraphView(
-                        viewModel: monthSectionViewModel,
-                        dashboardStore: dashboardStore
-                    )
-                case .year:
-                    YearGraphView(
-                        viewModel: yearSectionViewModel,
-                        dashboardStore: dashboardStore
-                    )
-                case .total:
-                    TotalGraphView(
-                        viewModel: totalSectionViewModel,
-                        dashboardStore: dashboardStore
-                    )
-                }
-            }
+            // MOB-1516: the v2 engine renders every product (weight / BPM / baby-with-entries).
+            TrendChartHost(dashboardStore: dashboardStore)
         }
     }
 

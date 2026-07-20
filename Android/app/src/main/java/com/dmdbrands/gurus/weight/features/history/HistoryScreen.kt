@@ -232,6 +232,7 @@ fun HistoryScreenContent(
           } else {
             BabyHistoryList(
               groups = babyGroups,
+              babyWeightUnit = state.babyWeightUnit,
               birthdate = (currentProduct as? ProductSelection.Baby)?.profile?.birthdate,
               onItemClick = {  item ->
                 coroutineScope.launch {

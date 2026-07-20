@@ -38,8 +38,11 @@ struct BabyHistoryDay: Identifiable, Equatable, Hashable {
     let lengthInches: Double
     /// Average length in centimeters — used for metric display
     let lengthCm: Double
-    /// Average growth percentile
+    /// Average weight-for-age percentile. `-1` renders as a "--" placeholder.
     let percentile: Int
+    /// Average length-for-age percentile (MOB-1567). `-1` renders as a "--" placeholder.
+    /// Shown alongside the weight percentile in the week-history row per the design.
+    var lengthPercentile: Int = -1
     /// Pre-formatted weight string based on account unit preference
     let weightDisplay: String
     /// Pre-formatted length string based on account unit preference
@@ -48,4 +51,8 @@ struct BabyHistoryDay: Identifiable, Equatable, Hashable {
     /// birthday balloon shown before the date in the list row and detail header.
     /// Defaults to `false` when no birthday is set on the profile.
     var isBirthday: Bool = false
+    /// `true` for a synthetic birthday row that has no real logged measurement (the DOB shows
+    /// the profile's birth weight/length, later birthdays show dashes). Drives the purple row
+    /// highlight. 1:1 with the Baby app's birthday rows (MOB-1450).
+    var isBirthdayPlaceholder: Bool = false
 }

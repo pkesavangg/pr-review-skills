@@ -116,6 +116,7 @@ struct WifiConnectionView: View {
                                 action: onTryAgain
                             )
                             .accessibilityHint(ScaleSetupStrings.A11y.tryAgainHint)
+                            .appAccessibility(id: AccessibilityID.wifiConnectionTryAgainButton)
 
                             ButtonView(
                                 text: (state == .noNetworks && !isFromSettingsFlow) ? scaleSetupStrings.setupWifiLater : commonStrings.support,
@@ -124,6 +125,7 @@ struct WifiConnectionView: View {
                                 isDisabled: false,
                                 action: onSupport
                             )
+                            .appAccessibility(id: AccessibilityID.wifiConnectionSupportButton)
                             .accessibilityHint(
                                 (state == .noNetworks && !isFromSettingsFlow)
                                     ? ScaleSetupStrings.A11y.setupWifiLaterHint

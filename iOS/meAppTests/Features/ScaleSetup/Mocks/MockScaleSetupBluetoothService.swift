@@ -57,6 +57,7 @@ final class MockScaleSetupBluetoothService: BluetoothServiceProtocol {
 
     // MARK: - Device Synchronisation
     func resyncAndScan() async -> Result<Void, BluetoothServiceError> { .success(()) }
+    func refreshScanProfileForNonR4Scales() async {}
     func syncDevices(_ devices: [Device]) {}
 
     // MARK: - Device CRUD
@@ -91,6 +92,7 @@ final class MockScaleSetupBluetoothService: BluetoothServiceProtocol {
     func stopLiveMeasurement(for device: Device) async -> Result<Void, BluetoothServiceError> { .success(()) }
     func getMeasurementLiveData(broadcastId: String) async -> Result<MeasurementLiveData, BluetoothServiceError> { .failure(.notImplemented) }
     func getScaleUserList(for device: Device, skipConnectionCheck: Bool) async -> Result<[DeviceUser], BluetoothServiceError> { .success([]) }
+    func getScaleUserList(broadcastId: String, skipConnectionCheck: Bool, sku: String?) async -> Result<[DeviceUser], BluetoothServiceError> { .success([]) }
     func getDeviceLogs(for device: Device) async -> Result<DeviceLogs, BluetoothServiceError> { .failure(.notImplemented) }
 
     // MARK: - Alerts & Utility

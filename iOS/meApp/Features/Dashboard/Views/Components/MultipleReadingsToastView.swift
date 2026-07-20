@@ -35,6 +35,7 @@ struct MultipleReadingsToastView: View {
                     .foregroundStyle(theme.actionPrimary)
             }
             .buttonStyle(.plain)
+            .appAccessibility(id: AccessibilityID.readingToastMoreViewButton)
         }
         .padding(.horizontal, .spacingXS)
         .padding(.vertical, .spacingXS)

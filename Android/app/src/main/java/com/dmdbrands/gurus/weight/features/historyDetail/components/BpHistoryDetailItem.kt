@@ -20,6 +20,7 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.ui.draw.rotate
+import com.dmdbrands.gurus.weight.core.shared.utilities.testing.TestTags
 import com.dmdbrands.gurus.weight.domain.enums.BpSeverity
 import com.dmdbrands.gurus.weight.domain.model.storage.entry.BpmEntry
 import com.dmdbrands.gurus.weight.core.shared.utilities.testing.TestTags
@@ -77,6 +78,7 @@ fun BpHistoryDetailItem(
     modifier = Modifier
       .fillMaxWidth()
       .testTag(TestTags.History.EntryRow)
+      .testTag(TestTags.History.BpEntryRow)
       .background(
         if (isExpanded) MeTheme.colorScheme.secondaryBackground else MeTheme.colorScheme.primaryBackground,
       ),

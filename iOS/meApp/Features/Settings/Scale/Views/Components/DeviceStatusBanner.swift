@@ -9,26 +9,29 @@ import SwiftUI
 
 struct DeviceStatusBanner: View {
     let type: DeviceStatusBannerType
+    /// Optional automation id applied to the banner's action button leaf.
+    var actionAccessibilityID: String?
     @Environment(\.appTheme) private var theme
-    
+
     var body: some View {
         HStack {
             AppIconView(icon: type.iconName, size: IconSize(width: 24, height: 24))
                 .foregroundColor(iconColor)
                 .accessibilityHidden(true)
-            
+
             Text(type.message)
                 .fontOpenSans(.body3)
                 .foregroundColor(theme.textBody)
-            
+
             Spacer()
-            
+
             Button(action: type.onTap) {
                 Text(type.actionTitle.uppercased())
                     .fontWeight(.bold)
                     .fontOpenSans(DevicePlatform.isMiniPhone ? .button2 : .button1)
                     .foregroundColor(theme.statusIconPrimary)
             }
+            .accessibilityIdentifierIfPresent(actionAccessibilityID)
         }
         .background(theme.backgroundPrimary)
         .cornerRadius(10)

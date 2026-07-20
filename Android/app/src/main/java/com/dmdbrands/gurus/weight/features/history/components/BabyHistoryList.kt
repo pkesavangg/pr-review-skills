@@ -11,6 +11,7 @@ import androidx.compose.ui.Modifier
 import com.dmdbrands.gurus.weight.core.shared.utilities.DateTimeConverter
 import com.dmdbrands.gurus.weight.domain.model.common.BabyWeekGroup
 import com.dmdbrands.gurus.weight.domain.model.common.BabyWeekHistory
+import com.dmdbrands.gurus.weight.domain.model.common.WeightUnit
 import com.dmdbrands.gurus.weight.features.common.components.AppIcon
 import com.dmdbrands.gurus.weight.features.common.components.AppIconType
 import com.dmdbrands.gurus.weight.features.history.strings.HistoryItemStrings
@@ -26,6 +27,7 @@ import com.dmdbrands.gurus.weight.theme.MeTheme
 fun BabyHistoryList(
     groups: List<BabyWeekGroup>,
     onItemClick: (BabyWeekHistory) -> Unit,
+    babyWeightUnit: WeightUnit = WeightUnit.LB_OZ,
     birthdate: String? = null,
     modifier: Modifier = Modifier,
 ) {
@@ -64,6 +66,7 @@ fun BabyHistoryList(
                 BabyHistoryItem(
                     item = entry,
                     onClick = { onItemClick(entry) },
+                    babyWeightUnit = babyWeightUnit,
                     showBalloon = DateTimeConverter.isBirthDate(entry.dateKey, birthdate),
                 )
             }

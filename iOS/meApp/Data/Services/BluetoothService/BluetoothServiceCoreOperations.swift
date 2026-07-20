@@ -44,6 +44,26 @@ extension BluetoothService {
     }
 
     /**
+     MOB-193: Re-broadcasts the current account profile to non-R4 (A3/A6) scales after a
+     profile change (activity level, gender, height, dob, unit, goal).
+
+     Unlike R4 scales — which accept a live `updateProfile` push (see
+     `updateUserProfileForR4Scales`) — A3/A6 scales receive the user profile (age/sex/height/
+     athlete/unit/goal) ONLY through the scan advertisement handed to
+     `ggBleSDK.scan(.ME_HEALTH, profile)` at scan-start. The SDK computes body composition from
+     that captured profile, so a change made while a scan is already running is not seen by the
+     scale until the next scan restart (e.g. app relaunch). Restarting the scan here re-hands the
+     fresh profile to the SDK so the change takes effect immediately. No-op when no scan is running.
+     */
+    func refreshScanProfileForNonR4Scales() async {
+        guard isSmartScanStarted else { return }
+        logger.log(level: .debug, tag: tag, message: "Restarting smart scan to re-broadcast updated profile to A3/A6 scales")
+        stopScan()
+        await scan()
+        syncDevices(bluetoothScales)
+    }
+
+    /**
      Pauses the current smart scan without tearing down the session.
      */
     func pauseSmartScan() {
@@ -373,7 +393,16 @@ extension BluetoothService {
             // MA-3882: fast-fail when there is no active account at all, but do NOT bind it
             // yet — the value can be replaced during the up-to-5s wait below (e.g. a rapid
             // second settings change), so the authoritative read happens after the wait.
-            guard activeAccount != nil else {
+            //
+            // MOB-193: read from `accountService.activeAccount` (the source of truth), NOT the
+            // locally cached `self.activeAccount`. The cached copy is fed by an
+            // `.receive(on: DispatchQueue.main)` subscription, so a settings change that calls
+            // updateBodyComp/updateProfile and then this method synchronously would push the
+            // PRE-change profile: the cache hasn't been refreshed yet, and waitForR4ScaleReady
+            // returns immediately (no yield) when the scale is already connected. That is why an
+            // activity-level / gender / height change persisted to the account but the scale kept
+            // its old profile and returned stale (e.g. athlete) body-composition metrics.
+            guard accountService.activeAccount != nil else {
                 throw BluetoothServiceError.noActiveAccount
             }
 
@@ -390,10 +419,10 @@ extension BluetoothService {
             // which makes updateProfile silently return "false" for every scale.
             let scalesSnapshot = bluetoothScales
 
-            // MA-3882: re-read the account *after* the wait — a rapid second settings change
-            // may have replaced it during the poll, and pushing the pre-wait value would
-            // silently revert that newer change.
-            guard let account = activeAccount else {
+            // MA-3882 / MOB-193: re-read the account *after* the wait, again from the source of
+            // truth. A rapid second settings change may have replaced it during the poll, and the
+            // source of truth reflects the just-saved profile immediately (the cached copy does not).
+            guard let account = accountService.activeAccount else {
                 throw BluetoothServiceError.noActiveAccount
             }
             guard let userProfile = await getProfileInfo(from: account) else {
@@ -468,26 +497,29 @@ extension BluetoothService {
     /// BPM (A6) monitor crashes inside the vendored SDK (EXC_BAD_ACCESS in
     /// `GGBPMonitorA6.description.getter`), so callers must skip it for BPM devices.
     ///
-    /// Fails **closed**: if the broadcastId isn't yet tracked in `bluetoothScales` (e.g. a race
-    /// during discovery), we cannot verify the device is a weight scale, so we treat it as a BPM
-    /// monitor and skip the crash-prone call. A skipped user-list fetch is recoverable; the
-    /// EXC_BAD_ACCESS is not.
-    private func isBpmDevice(broadcastId: String) -> Bool {
-        guard let sku = bluetoothScales.first(where: { $0.broadcastIdString == broadcastId })?.sku else {
+    /// Fails **closed**: if the broadcastId isn't tracked in `bluetoothScales` AND no SKU is supplied
+    /// by the caller, we cannot verify the device is a weight scale, so we treat it as a BPM monitor
+    /// and skip the crash-prone call. A skipped user-list fetch is recoverable; the EXC_BAD_ACCESS is
+    /// not. When the caller knows the SKU (e.g. a freshly paired scale not yet in `bluetoothScales`),
+    /// that SKU is used to classify the device so a real weight scale isn't wrongly skipped.
+    private func isBpmDevice(broadcastId: String, sku: String? = nil) -> Bool {
+        // Prefer the tracked scale's SKU; fall back to the caller-supplied SKU before failing closed.
+        let resolvedSku = bluetoothScales.first { $0.broadcastIdString == broadcastId }?.sku ?? sku
+        guard let resolvedSku else {
             logger.log(
                 level: .info,
                 tag: tag,
-                message: "isBpmDevice: \(broadcastId) not yet tracked in bluetoothScales — "
+                message: "isBpmDevice: \(broadcastId) not tracked in bluetoothScales and no SKU supplied — "
                     + "failing closed (treating as BPM) to avoid getScaleUserList crash"
             )
             return true
         }
-        return DeviceInfoUtils.shared.getDeviceInfo(bySku: sku)?.setupType == .bpm
+        return DeviceInfoUtils.shared.getDeviceInfo(bySku: resolvedSku)?.setupType == .bpm
     }
 
-    func getScaleUserList(broadcastId: String, skipConnectionCheck: Bool = false) async -> Result<[DeviceUser], BluetoothServiceError> {
+    func getScaleUserList(broadcastId: String, skipConnectionCheck: Bool, sku: String?) async -> Result<[DeviceUser], BluetoothServiceError> {
         // BPM monitors have no scale-style user list; asking the SDK for one crashes it.
-        guard !isBpmDevice(broadcastId: broadcastId) else {
+        guard !isBpmDevice(broadcastId: broadcastId, sku: sku) else {
             logger.log(
                 level: .info,
                 tag: tag,
@@ -496,14 +528,21 @@ extension BluetoothService {
             return .failure(.notImplemented)
         }
 
-        let isConnected = bluetoothScales.first { $0.broadcastIdString == broadcastId }?.isConnected ?? false
+        let matchedScale = bluetoothScales.first { $0.broadcastIdString == broadcastId }
+        let isConnected = matchedScale?.isConnected ?? false
         guard skipConnectionCheck || isConnected else {
             logger.log(level: .error, tag: tag, message: "Cannot get user list - device is not connected: \(broadcastId)")
             return .failure(.deviceNotConnected)
         }
 
         do {
-            let ggDevice = mapToGGBTDevice(broadcastId)
+            // Build the SDK device from the full discovered scale (protocolType, password, token,
+            // mac, preference) rather than a broadcastId-only stub. The stub leaves protocolType/mac
+            // empty, which the SDK can't use to connect and read the user list when there is no live
+            // session — this is why the reconnect "User Limit Exceeded" screen came back empty on iOS
+            // while Android (which passes the full device) populated it. Fall back to the stub only
+            // when the scale isn't in the discovered list.
+            let ggDevice = matchedScale.flatMap { mapToGGBTDevice($0) } ?? mapToGGBTDevice(broadcastId)
 
             let users = try await sdkOperationSerializer.execute(
                 operationKey: "\(broadcastId):getUsers"

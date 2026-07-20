@@ -22,7 +22,8 @@ struct IAMScreen: View {
                 viewModel.refreshFeed()
             })
         }
-        .navigationBarBackButtonHidden(true)
+        .navigationBarHidden(true)
+        .screenAccessibilityRoot(AccessibilityID.iamScreenRoot)
     }
 }
 

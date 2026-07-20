@@ -212,7 +212,8 @@ object RepositoryModule {
     fun provideBabyProfileRepository(
         babyProfileDao: BabyProfileDao,
         babyApi: IBabyAPI,
-    ): IBabyProfileRepository = BabyProfileRepository(babyProfileDao, babyApi)
+        productSelectionRepository: IProductSelectionRepository,
+    ): IBabyProfileRepository = BabyProfileRepository(babyProfileDao, babyApi, productSelectionRepository)
 
     @Provides
     @Singleton

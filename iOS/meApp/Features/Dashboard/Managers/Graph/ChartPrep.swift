@@ -92,7 +92,7 @@ enum ChartPrep {
         //    Computed inline (rather than via `weightYAxis`) so the domain AND the window ops can also
         //    normalize the co-plotted metric series consistently. (`weightYAxis` stays for the in-place
         //    weight-only settle in `settleWeightChart`.)
-        let yAxisOps = weightYAxisOperations(
+        let yAxisOps = yAxisWindowOperations(
             operations: operations,
             period: period,
             scrollPosition: scrollPosition,
@@ -140,6 +140,13 @@ enum ChartPrep {
         // 5. One full-domain decimation per series (no-op for the usual few-hundred-point series).
         let decimated = full.mapValues { ChartDecimator.decimate($0) }
 
+        // MOB-1516: weight series (+ any co-plotted metric) are all `.data`; the period line width matches the
+        // legacy renderer (3 pt scrollable, 2 pt total). No horizontal reference lines for weight.
+        let dataLineWidth: CGFloat = period == .total ? 2 : 3
+        let styles = Dictionary(uniqueKeysWithValues: orderedNames.map {
+            ($0, ChartSeriesStyle(role: .data, lineWidth: dataLineWidth, showsPoints: true))
+        })
+
         return ChartModel(
             period: period,
             productType: .scale,
@@ -155,7 +162,221 @@ enum ChartPrep {
                 for: period, from: operations, around: scrollPosition, windows: tickWindowRadius
             ),
             goalWeight: goalWeight,
+            seriesStyle: styles,
+            referenceLines: [],
             yAxis: yAxis,
+            dataFingerprint: fingerprint(orderedSeriesNames: orderedNames, points: full)
+        )
+    }
+
+    // MARK: - MOB-1516: BPM (systolic / diastolic / pulse)
+
+    /// Build the BPM `ChartModel` — three `.data` series (systolic/diastolic/pulse) + two fixed AHA
+    /// reference lines (120/80). Reuses `GraphDataPreparer.buildBpmChartSeries` (daily wk/mo, monthly yr/total)
+    /// and the adaptive `bpmScale` over the visible window (re-settles on scroll like weight, in place).
+    /// No goal / weightless / metric co-plot. Same x-geometry (full-domain, windowed ticks) as weight.
+    static func buildBpm( // swiftlint:disable:this function_body_length
+        operations: [BathScaleWeightSummary],
+        period: TimePeriod,
+        scrollPosition: Date,
+        calendar: Calendar = .current,
+        config: GraphRenderingConfiguration = GraphRenderingConfiguration()
+    ) -> ChartModel {
+        let preparer = GraphDataPreparer()
+        let plotCalendar = localGregorian(from: calendar)
+
+        // 3 series, already aggregated by the reused builder. Draw order PINNED: systolic → diastolic → pulse
+        // (the legacy render order was unspecified — bucket 2 in `seriesRenderPriority`).
+        let grouped = Dictionary(
+            grouping: preparer.buildBpmChartSeries(from: operations, period: period), by: \.series
+        )
+        var orderedNames: [String] = []
+        var full: [String: [PlottedGraphSeries]] = [:]
+        for name in ["systolic", "diastolic", "pulse"] {
+            let points = (grouped[name] ?? [])
+                .map { PlottedGraphSeries(original: $0, xDate: plotXDate($0.date, period: period, calendar: plotCalendar)) }
+                .sorted { $0.xDate < $1.xDate }
+            if !points.isEmpty {
+                orderedNames.append(name)
+                full[name] = points
+            }
+        }
+
+        // x-geometry — full-domain, scroll-INDEPENDENT (identical to weight; the scroll hang is avoided by
+        // windowing the ticks, not the domain).
+        let visibleLength = config.visibleDomainLength(for: period)
+        let xDomain = config.fullXDomain(for: period, from: operations)
+            ?? xDomainRange(
+                plotted: full[orderedNames.first ?? ""] ?? [],
+                scrollPosition: scrollPosition,
+                visibleLength: visibleLength
+            )
+
+        // Adaptive clinical y-axis over the visible window (mmHg/bpm).
+        let yAxis = bpmYAxis(
+            operations: operations,
+            period: period,
+            scrollPosition: scrollPosition,
+            visibleDomainLength: visibleLength,
+            preparer: preparer
+        )
+
+        let decimated = full.mapValues { ChartDecimator.decimate($0) }
+        let lineWidth: CGFloat = period == .total ? 2 : 3
+        let styles = Dictionary(uniqueKeysWithValues: orderedNames.map {
+            ($0, ChartSeriesStyle(role: .data, lineWidth: lineWidth, showsPoints: true))
+        })
+        let referenceLines = [
+            ChartReferenceLine(value: Double(BpmConstants.normalSystolic), dashed: true, color: .bpmReference),
+            ChartReferenceLine(value: Double(BpmConstants.normalDiastolic), dashed: true, color: .bpmReference)
+        ]
+
+        return ChartModel(
+            period: period,
+            productType: .bpm,
+            orderedSeriesNames: orderedNames,
+            seriesPoints: decimated,
+            fullResolution: full,
+            xDomain: xDomain,
+            visibleDomainLength: visibleLength,
+            xAxisTicks: config.boundedXAxisValues(
+                for: period, from: operations, around: scrollPosition, windows: tickWindowRadius
+            ),
+            goalWeight: nil,
+            seriesStyle: styles,
+            referenceLines: referenceLines,
+            yAxis: yAxis,
+            dataFingerprint: fingerprint(orderedSeriesNames: orderedNames, points: full)
+        )
+    }
+
+    /// The adaptive BPM y-axis for one visible window — `bpmScale` over the windowed ops (visible ∪ bracket),
+    /// so it re-settles as you scroll to windows with different value ranges. Used by `buildBpm` and by the
+    /// in-place scroll-end settle (`DashboardStore.settleChart` for `.bpm`).
+    static func bpmYAxis(
+        operations: [BathScaleWeightSummary],
+        period: TimePeriod,
+        scrollPosition: Date,
+        visibleDomainLength: TimeInterval,
+        preparer: GraphDataPreparer = GraphDataPreparer()
+    ) -> YAxisModel {
+        let windowOps = yAxisWindowOperations(
+            operations: operations,
+            period: period,
+            scrollPosition: scrollPosition,
+            visibleDomainLength: visibleDomainLength,
+            preparer: preparer
+        )
+        let scale = DashboardChartScaleProvider.bpmScale(from: windowOps)
+        return YAxisModel(domain: scale.domain, ticks: scale.ticks, average: scale.average)
+    }
+
+    // MARK: - MOB-1516: Baby growth (real series + WHO/CDC percentile reference curves)
+
+    /// Build the baby `ChartModel` — one `.data` series (weight OR height) + up to seven `.reference`
+    /// percentile curves (WHO/CDC), drawn line-only BEHIND the data. The curves are sampled across the FULL
+    /// domain (scroll-independent → they slide with the poster, replacing the legacy per-scroll windowing).
+    /// The reference-driven y-axis (widened to contain the curve band) is window-adaptive, recomputed on a
+    /// scroll-end via a full rebuild (baby has no metric co-plot, and the curves are cheap analytic values).
+    /// `isSexWithheld` → no curves (parity). Reuses `BabyDashboardChartSupport` verbatim.
+    ///
+    /// ⚠️ Curve density: `percentileSeries` caps to ~150 points per curve across the dateRange. Over a full
+    /// multi-month domain a WEEK window then sees few curve points, but the curves are smooth (`.monotone`)
+    /// so a near-linear week segment reads correctly. VERIFY week-zoom smoothness on device; if too coarse,
+    /// raise the sampling cadence in `BabyPercentileGrowthReference.percentileChartPoints`.
+    static func buildBaby( // swiftlint:disable:this function_parameter_count function_body_length
+        operations: [BathScaleWeightSummary],
+        period: TimePeriod,
+        scrollPosition: Date,
+        babyProfile: BabyProfile,
+        metric: BabyMetric,
+        convertWeight: @escaping (Double) -> Double,
+        convertDecigramsToDisplay: @escaping (Int) -> Double,
+        calendar: Calendar = .current,
+        config: GraphRenderingConfiguration = GraphRenderingConfiguration()
+    ) -> ChartModel {
+        let preparer = GraphDataPreparer()
+        let plotCalendar = localGregorian(from: calendar)
+        let visibleLength = config.visibleDomainLength(for: period)
+        let xDomain = config.fullXDomain(for: period, from: operations)
+            ?? xDomainRange(plotted: [], scrollPosition: scrollPosition, visibleLength: visibleLength)
+        // Curves span the full (scroll-independent) domain; the y-axis adapts to the visible window (parity
+        // with the legacy `babyChartVisibleDateRange`) — total isn't scrollable, so it uses the whole domain.
+        let yWindow = period == .total
+            ? xDomain
+            : scrollPosition...scrollPosition.addingTimeInterval(visibleLength)
+
+        let dataName: String
+        let rawData: [GraphSeries]
+        let rawCurves: [GraphSeries]
+        let scale: YAxisScale
+        switch metric {
+        case .weight:
+            dataName = DashboardStrings.weight
+            rawData = preparer.buildWeightSeries(
+                from: operations, isWeightlessMode: false, anchorWeight: nil, convertWeight: convertWeight
+            )
+            rawCurves = BabyDashboardChartSupport.percentileSeries(
+                for: babyProfile, dateRange: xDomain, convertDecigramsToDisplay: convertDecigramsToDisplay
+            )
+            scale = BabyDashboardChartSupport.yAxisScale(
+                for: operations,
+                babyProfile: babyProfile,
+                dateRange: yWindow,
+                convertStoredWeightToDisplay: { convertWeight(Double($0)) },
+                convertDecigramsToDisplay: convertDecigramsToDisplay
+            )
+        case .height:
+            dataName = BabyDashboardChartSupport.heightSeriesName
+            rawData = BabyDashboardChartSupport.heightSeries(from: operations)
+            rawCurves = BabyDashboardChartSupport.heightPercentileSeries(for: babyProfile, dateRange: xDomain)
+            scale = BabyDashboardChartSupport.heightYAxisScale(
+                for: operations, babyProfile: babyProfile, dateRange: yWindow
+            )
+        }
+
+        func plot(_ series: [GraphSeries]) -> [PlottedGraphSeries] {
+            series
+                .map { PlottedGraphSeries(original: $0, xDate: plotXDate($0.date, period: period, calendar: plotCalendar)) }
+                .sorted { $0.xDate < $1.xDate }
+        }
+
+        // Reference curves FIRST (drawn behind), then the data series (on top).
+        let curvesByName = Dictionary(grouping: rawCurves, by: \.series)
+        var orderedNames: [String] = []
+        var full: [String: [PlottedGraphSeries]] = [:]
+        var styles: [String: ChartSeriesStyle] = [:]
+        for line in BabyPercentileLine.allCases {
+            let name = "baby_percentile_\(line.rawValue)"
+            let points = plot(curvesByName[name] ?? [])
+            guard !points.isEmpty else { continue }
+            orderedNames.append(name)
+            full[name] = points
+            styles[name] = ChartSeriesStyle(role: .reference, lineWidth: 1, showsPoints: false)
+        }
+        let dataPoints = plot(rawData)
+        if !dataPoints.isEmpty {
+            orderedNames.append(dataName)
+            full[dataName] = dataPoints
+            styles[dataName] = ChartSeriesStyle(role: .data, lineWidth: period == .total ? 2 : 3, showsPoints: true)
+        }
+
+        let decimated = full.mapValues { ChartDecimator.decimate($0) }
+        return ChartModel(
+            period: period,
+            productType: .baby,
+            orderedSeriesNames: orderedNames,
+            seriesPoints: decimated,
+            fullResolution: full,
+            xDomain: xDomain,
+            visibleDomainLength: visibleLength,
+            xAxisTicks: config.boundedXAxisValues(
+                for: period, from: operations, around: scrollPosition, windows: tickWindowRadius
+            ),
+            goalWeight: nil,
+            seriesStyle: styles,
+            referenceLines: [],
+            yAxis: YAxisModel(domain: scale.domain, ticks: scale.ticks, average: scale.average),
             dataFingerprint: fingerprint(orderedSeriesNames: orderedNames, points: full)
         )
     }
@@ -178,7 +399,7 @@ enum ChartPrep {
         lastYAxis: YAxisScale? = nil,
         preparer: GraphDataPreparer = GraphDataPreparer()
     ) -> YAxisModel {
-        let yAxisOperations = weightYAxisOperations(
+        let yAxisOperations = yAxisWindowOperations(
             operations: operations,
             period: period,
             scrollPosition: scrollPosition,
@@ -201,7 +422,7 @@ enum ChartPrep {
 
     /// Mirrors `DashboardChartManager.updateYAxisCache`: visible-window ops (with edge buffer) combined
     /// with the bracketing ops, deduped by `entryTimestamp`; falls back to bracket, then all ops.
-    private static func weightYAxisOperations(
+    private static func yAxisWindowOperations(
         operations: [BathScaleWeightSummary],
         period: TimePeriod,
         scrollPosition: Date,

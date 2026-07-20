@@ -160,6 +160,7 @@ struct HistoryListScreen: View {
                 LazyVStack(spacing: 0) {
                     ForEach(store.bpMonths) { month in
                         BPMonthSummaryItem(month: month)
+                            .appAccessibility(id: "\(AccessibilityID.bpHistoryMonthRow)_\(month.id)")
                             .contentShape(Rectangle())
                             .onTapGesture {
                                 guard !isNavigating else { return }
@@ -199,8 +200,11 @@ struct HistoryListScreen: View {
 
                         ForEach(week.days) { day in
                             BabyDaySummaryItem(day: day)
+                                .appAccessibility(id: "\(AccessibilityID.babyHistoryDayRow)_\(day.id)")
                                 .contentShape(Rectangle())
                                 .onTapGesture {
+                                    // A synthetic birthday row (no real entries) has no day detail.
+                                    guard !day.isBirthdayPlaceholder else { return }
                                     guard !isNavigating else { return }
                                     isNavigating = true
                                     router.navigate(to: .babyHistoryDayList(day: day))

@@ -18,6 +18,7 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.dmdbrands.gurus.weight.core.shared.utilities.testing.TestTags
 import com.dmdbrands.gurus.weight.domain.enums.ProductType
 import com.dmdbrands.gurus.weight.features.common.helper.MeasurementType
 import com.dmdbrands.gurus.weight.features.common.helper.rememberMeasurementText
@@ -41,7 +42,7 @@ fun ReadingArrivalCard(
 ) {
     Card(
         modifier = modifier
-            .testTag("reading_toast_card")
+            .testTag(TestTags.Toast.ReadingCard)
             .statusBarsPadding()
             .padding(horizontal = 16.dp, vertical = 16.dp)
             .cssBoxShadow(
@@ -112,9 +113,11 @@ private fun ReadingContent(
         style = MeTheme.typography.heading5,
         color = colorScheme.textBody,
     )
+    // Bluetooth "New Reading Received" card shows just the value — no timestamp (Figma 30295-24838).
+    // The timestamp only appears on the "saved to your log" variant (Figma 30456-24170).
     Text(
         text = rememberMeasurementText(
-            text = "${readingToast.reading} · ${readingToast.timestamp}",
+            text = readingToast.reading,
             type = measurementType,
             valueStyle = MeTheme.typography.heading4,
         ),
@@ -415,7 +418,7 @@ private fun ReadingArrivalCardBpmPreview() {
     MeAppTheme {
         ReadingArrivalCard(
             readingToast = ReadingToast(
-                reading = "120/80 mmhg pulse 65",
+                reading = "120/80 mmhg 65 pulse",
                 type = ProductType.BLOOD_PRESSURE,
                 timestamp = "Just now",
             ),

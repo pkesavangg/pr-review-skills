@@ -1,0 +1,5 @@
+blank_issues_enabled: false
+contact_links:
+  - name: 🐛 Report a bug or request a feature
+    url: https://greatergoods.atlassian.net/jira/software/c/projects/MOB/boards/1088
+    about: All meApp work is tracked in Jira (MOB board), not GitHub Issues. Please file bugs and feature requests there.

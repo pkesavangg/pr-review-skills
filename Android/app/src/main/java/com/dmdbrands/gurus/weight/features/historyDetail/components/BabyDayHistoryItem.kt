@@ -13,10 +13,15 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import com.dmdbrands.gurus.weight.core.shared.utilities.testing.TestTags
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
@@ -27,7 +32,10 @@ import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.withStyle
 import com.dmdbrands.gurus.weight.core.shared.utilities.ConversionTools
+import com.dmdbrands.gurus.weight.core.shared.utilities.testing.TestTags
+import com.dmdbrands.gurus.weight.domain.model.common.WeightUnit
 import com.dmdbrands.gurus.weight.domain.model.storage.entry.BabyEntry
+import com.dmdbrands.gurus.weight.features.common.helper.BabyPercentileHelper
 import com.dmdbrands.gurus.weight.features.common.components.AppIcon
 import com.dmdbrands.gurus.weight.features.history.strings.HistoryItemStrings
 import com.dmdbrands.gurus.weight.features.historyDetail.strings.HistoryDetailScreenStrings
@@ -41,10 +49,11 @@ import java.util.Locale
  * Shows time, weight (lb/oz), length (in), percentile — values in baby purple
  * with inline unit labels in gray, matching Figma.
  */
+@Suppress("LongMethod")
 @Composable
 fun BabyDayHistoryItem(
     item: BabyEntry,
-    isMetric: Boolean = false,
+    babyWeightUnit: WeightUnit = WeightUnit.LB_OZ,
     isExpanded: Boolean = false,
     onToggleExpand: () -> Unit = {},
     onEditEntry: () -> Unit = {},
@@ -59,33 +68,42 @@ fun BabyDayHistoryItem(
     val boldStyle = SpanStyle(color = babyColor, fontWeight = FontWeight.Bold)
     val unitStyle = SpanStyle(color = unitColor, fontWeight = FontWeight.Normal)
 
-    // Build weight text: "8 lbs 14.9 oz" or "4.05 kg"
+    // Build weight text per unit: "8 lbs 14.9 oz" (LB_OZ), "8.9 lbs" (LB), or "4.05 kg" (KG).
     // Source-aware graduation is applied inside ConversionTools.
     val weightText = buildAnnotatedString {
         val dg = item.babyWeightDecigrams
         val source = item.babyEntry.source
         if (dg != null) {
-            if (isMetric) {
-                val kg = ConversionTools.convertBabyWeightToKg(dg, source)
-                withStyle(boldStyle) { append(String.format(Locale.US, "%.2f", kg)) }
-                withStyle(unitStyle) { append(" kg") }
-            } else {
-                val (lbs, oz) = ConversionTools.convertBabyWeightToLbOz(dg, source)
-                withStyle(boldStyle) { append("$lbs ") }
-                withStyle(unitStyle) { append("lbs ") }
-                withStyle(boldStyle) { append(String.format(Locale.US, "%.1f", oz)) }
-                withStyle(unitStyle) { append(" oz") }
+            when (babyWeightUnit) {
+                WeightUnit.KG -> {
+                    val kg = ConversionTools.convertBabyWeightToKg(dg, source)
+                    withStyle(boldStyle) { append(String.format(Locale.US, "%.2f", kg)) }
+                    withStyle(unitStyle) { append(" kg") }
+                }
+                WeightUnit.LB -> {
+                    // Decimal pounds, derived from the graduated lb+oz so it matches the lb-oz view.
+                    val (lbs, oz) = ConversionTools.convertBabyWeightToLbOz(dg, source)
+                    withStyle(boldStyle) { append(String.format(Locale.US, "%.1f", lbs + oz / 16.0)) }
+                    withStyle(unitStyle) { append(" lb") }
+                }
+                else -> {
+                    val (lbs, oz) = ConversionTools.convertBabyWeightToLbOz(dg, source)
+                    withStyle(boldStyle) { append("$lbs ") }
+                    withStyle(unitStyle) { append("lb ") }
+                    withStyle(boldStyle) { append(String.format(Locale.US, "%.1f", oz)) }
+                    withStyle(unitStyle) { append(" oz") }
+                }
             }
         } else {
             withStyle(boldStyle) { append("--") }
         }
     }
 
-    // Build length text: "12 in" or "30.5 cm"
+    // Build length text: "12 in" or "30.5 cm" (cm only for the metric/KG unit).
     val lengthText = buildAnnotatedString {
         val mm = item.babyLengthMillimeters
         if (mm != null) {
-            if (isMetric) {
+            if (babyWeightUnit == WeightUnit.KG) {
                 withStyle(boldStyle) { append(String.format(Locale.US, "%.1f", ConversionTools.convertMmToCm(mm))) }
                 withStyle(unitStyle) { append(" cm") }
             } else {
@@ -97,12 +115,14 @@ fun BabyDayHistoryItem(
         }
     }
 
-    // Build percentile text: "6 th". Computed at read time from the baby's CDC growth
-    // tables (null for "private" sex or age outside the tables → shows "--").
+    // Build percentile text: "6 th", capped to "> 99" / "< 1" at the extremes (matches the CDC
+    // sheet + the babyApp reference, which never shows "100th"/"0th"). "--" for null. (MOB-1499)
     val percentText = buildAnnotatedString {
-        if (item.percentile != null) {
-            withStyle(boldStyle) { append("${item.percentile}") }
-            withStyle(unitStyle) { append(" th") }
+        val label = BabyPercentileHelper.formatPercentileNumber(item.percentile)
+        if (label != null) {
+            withStyle(boldStyle) { append(label) }
+            // Ordinal suffix only for a plain numeric percentile; "> 99" / "< 1" stand alone.
+            if (label.all { it.isDigit() }) withStyle(unitStyle) { append(" th") }
         } else {
             withStyle(boldStyle) { append("--") }
         }
@@ -127,6 +147,7 @@ fun BabyDayHistoryItem(
     Column(
         modifier = Modifier
             .testTag(TestTags.History.EntryRow)
+            .testTag(TestTags.History.BabyEntryRow)
             .background(
                 if (isExpanded) MeTheme.colorScheme.secondaryBackground else MeTheme.colorScheme.primaryBackground,
             ),
@@ -216,12 +237,18 @@ fun BabyDayHistoryItem(
                     // left-aligned with the pencil pinned to the end (MOB-1163).
                     horizontalArrangement = if (hasNote) Arrangement.Start else Arrangement.Center,
                 ) {
-                    Text(
-                        text = if (hasNote) item.entryNote.orEmpty() else HistoryItemStrings.NoNoteYet,
-                        style = MeTheme.typography.subHeading2,
-                        color = if (hasNote) MeTheme.colorScheme.textBody else MeTheme.colorScheme.textSubheading,
-                        modifier = if (hasNote) Modifier.weight(1f) else Modifier,
-                    )
+                    if (hasNote) {
+                        ExpandableNoteText(
+                            note = item.entryNote.orEmpty(),
+                            modifier = Modifier.weight(1f),
+                        )
+                    } else {
+                        Text(
+                            text = HistoryItemStrings.NoNoteYet,
+                            style = MeTheme.typography.subHeading2,
+                            color = MeTheme.colorScheme.textSubheading,
+                        )
+                    }
                     AppIcon(
                         id = if (hasNote) AppIcons.Default.EditPencil else AppIcons.Default.Plus,
                         contentDescription = if (hasNote) {
@@ -241,6 +268,65 @@ fun BabyDayHistoryItem(
         HorizontalDivider(
             thickness = MeTheme.spacing.x6s,
             color = MeTheme.colorScheme.utility,
+        )
+    }
+}
+
+private const val MAX_NOTE_LINES = 2
+// Chars reserved at the end of line 2 so ".. more" fits after the truncated note.
+private const val MORE_SUFFIX_RESERVE = 7
+
+/**
+ * Note text clamped to [MAX_NOTE_LINES] lines. When the note overflows, the tail is replaced with
+ * ".. more" (a tappable link); tapping it expands to the full note and drops the link. Matches
+ * Figma node 32794-207552 (MOB-1499).
+ */
+@Composable
+private fun ExpandableNoteText(
+    note: String,
+    modifier: Modifier = Modifier,
+) {
+    var expanded by remember(note) { mutableStateOf(false) }
+    var truncated by remember(note) { mutableStateOf<String?>(null) }
+    val bodyStyle = MeTheme.typography.subHeading2
+    val bodyColor = MeTheme.colorScheme.textBody
+    val linkStyle = SpanStyle(color = MeTheme.colorScheme.primaryAction, fontWeight = FontWeight.SemiBold)
+
+    if (expanded || truncated == null) {
+        // Full note when expanded; otherwise a 2-line pass to detect overflow and compute the cut.
+        Text(
+            text = note,
+            style = bodyStyle,
+            color = bodyColor,
+            maxLines = if (expanded) Int.MAX_VALUE else MAX_NOTE_LINES,
+            overflow = TextOverflow.Ellipsis,
+            modifier = modifier,
+            onTextLayout = { result ->
+                if (!expanded && truncated == null && result.hasVisualOverflow) {
+                    val lastVisible = result.getLineEnd(MAX_NOTE_LINES - 1, visibleEnd = true)
+                    val cut = (lastVisible - MORE_SUFFIX_RESERVE).coerceIn(0, note.length)
+                    truncated = note.substring(0, cut).trimEnd()
+                }
+            },
+        )
+    } else {
+        // Collapsed + overflowing: clamped note followed by an inline ".. more" link.
+        val annotated = buildAnnotatedString {
+            append(truncated)
+            append(".. ")
+            withStyle(linkStyle) { append(HistoryItemStrings.More) }
+        }
+        Text(
+            text = annotated,
+            style = bodyStyle,
+            color = bodyColor,
+            maxLines = MAX_NOTE_LINES,
+            overflow = TextOverflow.Ellipsis,
+            // Expose the expander to TalkBack as a button with a clear action label. (MOB-1499)
+            modifier = modifier.clickable(
+                onClickLabel = HistoryItemStrings.ShowFullNote,
+                role = Role.Button,
+            ) { expanded = true },
         )
     }
 }

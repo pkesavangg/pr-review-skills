@@ -98,7 +98,7 @@ struct ScaleNicknameFormTests {
 // MARK: - Test String Constants
 
 private enum NicknameFormTestText {
-    static let required = "This field is required"
-    static let noWhiteSpace = "This field is required"
+    static let required = "this field is required"
+    static let noWhiteSpace = "this field is required"
     static let maxLength30 = "maximum value should be 30"
 }

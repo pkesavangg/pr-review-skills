@@ -39,6 +39,7 @@ struct WifiNetworksListView: View {
                                 onNetworkSelected(network)
                             }
                         })
+                        .appAccessibility(id: AccessibilityID.wifiNetworkRow(network.ssid ?? ""))
                     } else {
                         networkListItem(network: network, showChevron: showChevron) {
                             // Non-interactive row – no action

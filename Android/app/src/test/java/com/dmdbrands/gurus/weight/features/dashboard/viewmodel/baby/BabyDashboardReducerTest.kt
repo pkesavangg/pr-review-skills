@@ -1,6 +1,7 @@
 package com.dmdbrands.gurus.weight.features.dashboard.viewmodel.baby
 
 import com.dmdbrands.gurus.weight.domain.model.common.BabyProfile
+import com.dmdbrands.gurus.weight.domain.model.common.WeightUnit
 import com.dmdbrands.gurus.weight.features.common.enums.GraphSegment
 import com.dmdbrands.gurus.weight.features.common.helper.BabyPercentileHelper
 import com.dmdbrands.gurus.weight.features.dashboard.viewmodel.base.BaseGraphIntent
@@ -78,6 +79,37 @@ class BabyDashboardReducerTest {
     val result = reducer.reduce(BabyDashboardState(isEmpty = true), BabyDashboardIntent.SetIsEmpty(false))
 
     assertThat(result?.isEmpty).isFalse()
+  }
+
+  // ---------------------------------------------------------------------------
+  // SetBabyWeightUnit / isMetric
+  // ---------------------------------------------------------------------------
+
+  @Test
+  fun `default state is lb-oz and not metric`() {
+    val state = BabyDashboardState()
+
+    assertThat(state.weightUnit).isEqualTo(WeightUnit.LB_OZ)
+    assertThat(state.isMetric).isFalse()
+  }
+
+  @Test
+  fun `SetBabyWeightUnit KG makes the state metric`() {
+    val result = reducer.reduce(BabyDashboardState(), BabyDashboardIntent.SetBabyWeightUnit(WeightUnit.KG))
+
+    assertThat(result?.weightUnit).isEqualTo(WeightUnit.KG)
+    assertThat(result?.isMetric).isTrue()
+  }
+
+  @Test
+  fun `SetBabyWeightUnit LB stays imperial`() {
+    val result = reducer.reduce(
+      BabyDashboardState(weightUnit = WeightUnit.KG),
+      BabyDashboardIntent.SetBabyWeightUnit(WeightUnit.LB),
+    )
+
+    assertThat(result?.weightUnit).isEqualTo(WeightUnit.LB)
+    assertThat(result?.isMetric).isFalse()
   }
 
   // -------------------------------------------------------------------------

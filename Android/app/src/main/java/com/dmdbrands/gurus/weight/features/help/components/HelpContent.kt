@@ -27,8 +27,6 @@ import com.dmdbrands.gurus.weight.theme.MeTheme
 
 @Composable
 fun ContactUsContent(handleIntent: (HelpIntent) -> Unit) {
-  val context = LocalContext.current
-
   Column(
     horizontalAlignment = Alignment.Start,
     modifier = Modifier
@@ -47,54 +45,65 @@ fun ContactUsContent(handleIntent: (HelpIntent) -> Unit) {
       modifier = Modifier.fillMaxWidth(),
     )
     Spacer(modifier = Modifier.padding(bottom = MeTheme.spacing.md))
-    val phoneNumber = HelpScreenStrings.Phone
-    AppText(
-      text = phoneNumber,
-      textType = TextType.Link,
-      textAlign = TextAlign.Start,
-      modifier = Modifier.clickable(
-        true,
-        onClick = {
-          val intent = Intent(Intent.ACTION_DIAL).apply {
-            data = "tel:$phoneNumber".toUri()
-          }
-          context.startActivity(intent)
-        },
-      ),
-    )
-    Spacer(modifier = Modifier.padding(bottom = MeTheme.spacing.sm))
-    AppText(
-      text = HelpScreenStrings.Email.uppercase(LocalConfiguration.current.locales[0]),
-      textType = TextType.Link,
-      textAlign = TextAlign.Start,
-      modifier = Modifier.clickable(true) {
-        val intent = Intent(Intent.ACTION_SENDTO).apply {
-          data = "mailto:${HelpScreenStrings.Email}".toUri()
-        }
-        context.startActivity(intent)
-      },
-    )
+    ContactLinks()
     Spacer(modifier = Modifier.padding(bottom = MeTheme.spacing.md))
-    Row(
-      horizontalArrangement = Arrangement.SpaceBetween,
-      verticalAlignment = Alignment.CenterVertically,
-      modifier = Modifier.fillMaxWidth(),
-    ) {
-      AppText(
-        text = HelpScreenStrings.UserManualSectionTitle,
-        textType = TextType.Title,
-      )
-      AppIconButton(
-        AppIcons.Outlined.Help,
-        iconSize = 20.dp,
-      ) {
-        handleIntent(HelpIntent.ShowModelNumberHelpPopup)
-      }
-    }
+    UserManualHeader(handleIntent)
     AppText(
       text = HelpScreenStrings.UserManualSectionSubtitle,
       textType = TextType.Subtitle,
     )
+  }
+}
+
+@Composable
+private fun ContactLinks() {
+  val context = LocalContext.current
+  val phoneNumber = HelpScreenStrings.Phone
+  AppText(
+    text = phoneNumber,
+    textType = TextType.Link,
+    textAlign = TextAlign.Start,
+    modifier = Modifier.clickable(
+      true,
+      onClick = {
+        val intent = Intent(Intent.ACTION_DIAL).apply {
+          data = "tel:$phoneNumber".toUri()
+        }
+        context.startActivity(intent)
+      },
+    ),
+  )
+  Spacer(modifier = Modifier.padding(bottom = MeTheme.spacing.sm))
+  AppText(
+    text = HelpScreenStrings.Email.uppercase(LocalConfiguration.current.locales[0]),
+    textType = TextType.Link,
+    textAlign = TextAlign.Start,
+    modifier = Modifier.clickable(true) {
+      val intent = Intent(Intent.ACTION_SENDTO).apply {
+        data = "mailto:${HelpScreenStrings.Email}".toUri()
+      }
+      context.startActivity(intent)
+    },
+  )
+}
+
+@Composable
+private fun UserManualHeader(handleIntent: (HelpIntent) -> Unit) {
+  Row(
+    horizontalArrangement = Arrangement.SpaceBetween,
+    verticalAlignment = Alignment.CenterVertically,
+    modifier = Modifier.fillMaxWidth(),
+  ) {
+    AppText(
+      text = HelpScreenStrings.UserManualSectionTitle,
+      textType = TextType.Title,
+    )
+    AppIconButton(
+      AppIcons.Outlined.Help,
+      iconSize = 20.dp,
+    ) {
+      handleIntent(HelpIntent.ShowModelNumberHelpPopup)
+    }
   }
 }
 

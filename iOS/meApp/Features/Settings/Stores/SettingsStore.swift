@@ -120,9 +120,19 @@ class SettingsStore: ObservableObject {
         hasWeightScale || hasBpmDevice
     }
 
-    /// True when the Unit Type row should be visible (hidden for BP-only accounts).
+    /// True when Blood Pressure is the currently-selected/active product. BPM has no
+    /// configurable units, so the Unit Type modal is hidden while it is active.
+    var isBloodPressureSelected: Bool {
+        productTypeStore.selectedItem == .myBloodPressure
+    }
+
+    /// True when the Unit Type row should be visible.
+    /// Hidden when Blood Pressure is the active product, and when the account has no
+    /// unit-bearing product (BP-only or nothing). Otherwise the row is shown and the
+    /// modal locks whichever section's product is absent (see `presentUnitPicker`).
     var shouldShowUnitType: Bool {
-        hasBabyScale || hasWeightScale
+        if isBloodPressureSelected { return false }
+        return hasBabyScale || hasWeightScale
     }
 
     var shouldShowNotifications: Bool {
@@ -216,6 +226,15 @@ class SettingsStore: ObservableObject {
 
         // Listen to product type changes to update conditional settings visibility
         ProductTypeStore.shared.$availableItems
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] _ in
+                self?.objectWillChange.send()
+            }
+            .store(in: &cancellables)
+
+        // The active product gates the Unit Type row (hidden while Blood Pressure is selected),
+        // so refresh when the selection changes too.
+        ProductTypeStore.shared.$selectedItem
             .receive(on: DispatchQueue.main)
             .sink { [weak self] _ in
                 self?.objectWillChange.send()
@@ -586,13 +605,20 @@ class SettingsStore: ObservableObject {
         let firstNameValue = removeWhiteSpace(editProfileForm.firstName.value)
         let dobValue = DateTimeTools.formatDateToYMD_Local(editProfileForm.birthday.value)
 
-        // Check if firstName or dob changed (only these affect R4 scale profile)
-        let firstNameChanged = firstNameValue != (activeAccount?.firstName ?? "")
-        let dobChanged = dobValue != (activeAccount?.dob ?? "")
-        let shouldUpdateR4Profile = firstNameChanged || dobChanged
-
         // Convert form height to Double for the profile
         let formHeightDouble = Double(editProfileForm.height.value) ?? (Double(activeAccount?.weightHeight ?? "0") ?? 0.0)
+
+        // MOB-193: Every profile field the scale uses to compute body-composition metrics
+        // (name, dob/age, gender, height) must trigger a re-push to R4 scales. Previously only
+        // firstName/dob were checked, so gender- or height-only edits persisted to the account
+        // but were never sent to the scale — the scale kept its old profile and returned stale,
+        // identical metrics (e.g. Male vs Female showing the same body fat / muscle values).
+        let firstNameChanged = firstNameValue != (activeAccount?.firstName ?? "")
+        let dobChanged = dobValue != (activeAccount?.dob ?? "")
+        let genderChanged = editProfileForm.gender.value != activeAccount?.gender
+        let storedHeight = Double(activeAccount?.weightHeight ?? "0") ?? 0.0
+        let heightChanged = formHeightDouble != storedHeight
+        let shouldUpdateR4Profile = firstNameChanged || dobChanged || genderChanged || heightChanged
 
         let profile = Profile(
             firstName: firstNameValue,
@@ -621,7 +647,8 @@ class SettingsStore: ObservableObject {
                     activityLevel: activeAccount?.activityLevel ?? .normal
                 )
                 _ = try await accountService.updateBodyComp(bodyComp)
-                // Only update R4 scales profile if firstName or dob changed
+                // Only update R4 scales profile if a metric-affecting field changed
+                // (firstName, dob, gender, or height) — see shouldUpdateR4Profile above.
                 if shouldUpdateR4Profile {
                     // Update R4 scales profile and check for USER_SELECTION_IN_PROGRESS status
                     let profileUpdateResult = await bluetoothService.updateUserProfileForR4Scales()
@@ -644,6 +671,16 @@ class SettingsStore: ObservableObject {
                 } else {
                     // No R4 profile update needed, just show success toast
                     notificationService.showToast(ToastModel(title: toastLang.success, message: toastLang.profileSaved))
+                }
+
+                // A3/A6 scales don't accept a live profile push — they learn the profile only from
+                // the scan advertisement, so a scale-relevant change (name/dob/gender/height) must
+                // be re-broadcast to reach a non-R4 scale. Gate on the same fields as the R4 push so
+                // an email-/last-name-/zip-only edit doesn't needlessly tear down and restart the
+                // smart scan (which risks an unnecessary reconnect prompt — see MOB-193). No-op when
+                // no scan is running.
+                if shouldUpdateR4Profile {
+                    await bluetoothService.refreshScanProfileForNonR4Scales()
                 }
 
                 resetEditProfileForm()
@@ -896,6 +933,7 @@ class SettingsStore: ObservableObject {
                 // Update R4 scales profile and check for USER_SELECTION_IN_PROGRESS status
                 let profileUpdateResult = await bluetoothService.updateUserProfileForR4Scales()
                 logger.log(level: .info, tag: tag, message: "updateUserProfileForR4Scales result updateWeightUnit: \(profileUpdateResult)")
+                await bluetoothService.refreshScanProfileForNonR4Scales()
 
                 switch profileUpdateResult {
                 case let .success(statusArray):
@@ -943,6 +981,7 @@ class SettingsStore: ObservableObject {
                 // Update R4 scales profile and check for USER_SELECTION_IN_PROGRESS status
                 let profileUpdateResult = await bluetoothService.updateUserProfileForR4Scales()
                 logger.log(level: .info, tag: tag, message: "updateUserProfileForR4Scales result updateActivityLevel: \(profileUpdateResult)")
+                await bluetoothService.refreshScanProfileForNonR4Scales()
                 switch profileUpdateResult {
                 case let .success(statusArray):
                     // Suppress success toast during user selection to prevent misleading feedback,
@@ -1413,6 +1452,7 @@ class SettingsStore: ObservableObject {
                 // Update R4 scales profile and check for USER_SELECTION_IN_PROGRESS status
                 let profileUpdateResult = await bluetoothService.updateUserProfileForR4Scales()
                 logger.log(level: .info, tag: tag, message: "updateUserProfileForR4Scales result createGoal: \(profileUpdateResult)")
+                await bluetoothService.refreshScanProfileForNonR4Scales()
 
                 switch profileUpdateResult {
                 case let .success(statusArray):
@@ -1602,10 +1642,18 @@ class SettingsStore: ObservableObject {
     // MARK: - Entry Check
 
     private func checkEntries() async {
+        // MOB-516: `hasEntries` is a boolean, so use a cheap store-level `fetchCount` instead of the
+        // full grouped `getMonthsAll()` 10k-row read + month build. SettingsStore is an UNGUARDED
+        // subscriber to entrySaved/entryDeleted (fires on every mutation, app-wide), so the old full
+        // read stacked repeatedly on the serial worker during the login/sync/add flurry — contending
+        // with History's read and dragging one out to 6–8 s. A count never materializes rows.
         do {
-            let months = try await entryService.getMonthsAll()
-            hasEntries = !months.isEmpty
+            hasEntries = try await entryService.getEntryCount() > 0
         } catch {
+            // MOB-516: a count failure is "unknown", not "empty". Log it so a false `hasEntries`
+            // (and any future view that binds to it) is debuggable rather than silently masquerading
+            // as no-data. The conservative `false` fallback is kept, but now explicit and traced.
+            logger.log(level: .error, tag: tag, message: "checkEntries: count failed, hasEntries=false: \(error.localizedDescription)")
             hasEntries = false
         }
     }
@@ -1665,7 +1713,8 @@ class SettingsStore: ObservableObject {
             let displayValue: (Sex) -> String = { $0.rawValue.capitalized }
             let picker = PickerView(
                 selectedValues: [activeAccount?.gender ?? .male],
-                options: [Sex.allCases],
+                // "private" is not offered when editing the user profile.
+                options: [Sex.allCases.filter { $0 != .private }],
                 displayValue: displayValue,
                 title: SettingsStrings.biologicalSex,
                 showCancel: false
@@ -1679,21 +1728,17 @@ class SettingsStore: ObservableObject {
         }
     }
 
-    /// Presents the Unit Type dialog.
-    /// - Both scales paired → `.both`: "My Weight" applies to weight scale, "My Kids" to baby scale.
-    /// - Baby scale only   → `.myKids`.
-    /// - Weight scale only → `.myWeight`.
+    /// Presents the Unit Type dialog. Both sections are always shown; each is editable only
+    /// when its backing product is present, otherwise it renders locked and pinned to the
+    /// system default (per the Me App 2.0 "Unit Type" design):
+    /// - "My Weight" editable when a weight scale is paired.
+    /// - "My Kids" editable when a real baby profile exists (not the paired-but-no-profile placeholder).
+    /// No-op when the row is hidden (BPM active / BP-only) as a defensive guard.
     func presentUnitPicker() {
-        let mode: UnitTypePickerModalView.UnitDisplayMode
-        if hasWeightScale && hasBabyScale {
-            mode = .both
-        } else if hasBabyScale {
-            mode = .myKids
-        } else {
-            mode = .myWeight
-        }
+        guard shouldShowUnitType else { return }
         let picker = UnitTypePickerModalView(
-            mode: mode,
+            isMyWeightEnabled: hasWeightScale,
+            isMyKidsEnabled: hasBabyProfile,
             selectedWeightUnit: activeAccount?.weightUnit ?? .lb,
             selectedMeasurementUnits: selectedMeasurementUnits,
             onCancel: { [weak self] in
@@ -1712,8 +1757,10 @@ class SettingsStore: ObservableObject {
     /// single loader/toast cycle; only weight-unit changes trigger an R4 scale profile update.
     func saveUnitSelections(weightUnit: WeightUnit, measurementUnits: MeasurementUnits) {
         guard let account = activeAccount else { return }
-        let weightUnitChanged = account.weightUnit != weightUnit
-        let measurementUnitsChanged = selectedMeasurementUnits != measurementUnits
+        // Only persist a section that is actually editable; a locked section is pinned to the
+        // system default in the UI and must not overwrite the account's stored value.
+        let weightUnitChanged = hasWeightScale && account.weightUnit != weightUnit
+        let measurementUnitsChanged = hasBabyProfile && selectedMeasurementUnits != measurementUnits
         guard weightUnitChanged || measurementUnitsChanged else { return }
 
         Task {
@@ -1736,6 +1783,8 @@ class SettingsStore: ObservableObject {
                 if weightUnitChanged {
                     let profileUpdateResult = await bluetoothService.updateUserProfileForR4Scales()
                     logger.log(level: .info, tag: tag, message: "updateUserProfileForR4Scales result saveUnitSelections: \(profileUpdateResult)")
+                    // MOB-193: re-broadcast the updated profile to A3/A6 scales (see above).
+                    await bluetoothService.refreshScanProfileForNonR4Scales()
                     // Suppress success toast during user selection to prevent misleading feedback,
                     // since the scale profile isn't updated at that time.
                     if case let .success(statusArray) = profileUpdateResult,

@@ -43,65 +43,80 @@ fun AddHealthConnect(
   onPrimaryAction: () -> Unit,
   onSecondaryAction: (() -> Unit)? = null
 ) {
-        BaseModal {
-          Box {
-            AppIcon(
-              id = AppIcons.Filled.Close,
-              contentDescription = "Close",
-              modifier = Modifier
-                .align(Alignment.TopEnd).padding(bottom = spacing.md),
-              type = com.dmdbrands.gurus.weight.features.common.components.AppIconType.Default,
-              onClick = onClose
-            )
-            Column(
-              modifier = modifier
-                .fillMaxWidth(),
-              horizontalAlignment = Alignment.CenterHorizontally,
-            ) {
-              Image(
-                painter = painterResource(id = AppIcons.Integrations.Health_Connect_Logo),
-                contentDescription = null,
-                modifier = Modifier
-                  .width(190.dp)
-                  .height(100.dp)
-                  .padding(top = MeTheme.spacing.lg),
-              )
-              Spacer(Modifier.padding(top = MeTheme.spacing.lg))
-              AppText(
-                text = HealthConnectStrings.AddHealthConnectStrings.Title,
-                textType = TextType.Title,
-                textAlign = TextAlign.Center,
-              )
-              Spacer(Modifier.padding(top = MeTheme.spacing.sm))
-              AppText(
-                text = HealthConnectStrings.AddHealthConnectStrings.Description,
-                textType = TextType.Subtitle,
-                textAlign = TextAlign.Center,
-              )
-              Spacer(
-                Modifier.padding(
-                  bottom = MeTheme.spacing.lg,
-                ),
-              )
-              AppButton(
-                type = ButtonType.PrimaryFilled,
-                label = HealthConnectStrings.ActionButtons.connect,
-                size = ButtonSize.Large,
-                onClick = onPrimaryAction,
-              )
-              if (onSecondaryAction !== null && secondaryActionLabel !== null) {
-                AppButton(
-                  type = ButtonType.TextPrimary,
-                  label = secondaryActionLabel,
-                  size = ButtonSize.Large,
-                  onClick = { onSecondaryAction.invoke() },
-                  modifier = Modifier.padding(top = MeTheme.spacing.sm),
-                )
-              }
-            }
-          }
-        }
-      }
+  BaseModal {
+    Box {
+      AppIcon(
+        id = AppIcons.Filled.Close,
+        contentDescription = "Close",
+        modifier = Modifier
+          .align(Alignment.TopEnd).padding(bottom = spacing.md),
+        type = com.dmdbrands.gurus.weight.features.common.components.AppIconType.Default,
+        onClick = onClose
+      )
+      AddHealthConnectContent(
+        modifier = modifier,
+        secondaryActionLabel = secondaryActionLabel,
+        onPrimaryAction = onPrimaryAction,
+        onSecondaryAction = onSecondaryAction,
+      )
+    }
+  }
+}
+
+@Composable
+private fun AddHealthConnectContent(
+  modifier: Modifier = Modifier,
+  secondaryActionLabel: String? = null,
+  onPrimaryAction: () -> Unit,
+  onSecondaryAction: (() -> Unit)? = null
+) {
+  Column(
+    modifier = modifier
+      .fillMaxWidth(),
+    horizontalAlignment = Alignment.CenterHorizontally,
+  ) {
+    Image(
+      painter = painterResource(id = AppIcons.Integrations.Health_Connect_Logo),
+      contentDescription = null,
+      modifier = Modifier
+        .width(190.dp)
+        .height(100.dp)
+        .padding(top = MeTheme.spacing.lg),
+    )
+    Spacer(Modifier.padding(top = MeTheme.spacing.lg))
+    AppText(
+      text = HealthConnectStrings.AddHealthConnectStrings.Title,
+      textType = TextType.Title,
+      textAlign = TextAlign.Center,
+    )
+    Spacer(Modifier.padding(top = MeTheme.spacing.sm))
+    AppText(
+      text = HealthConnectStrings.AddHealthConnectStrings.Description,
+      textType = TextType.Subtitle,
+      textAlign = TextAlign.Center,
+    )
+    Spacer(
+      Modifier.padding(
+        bottom = MeTheme.spacing.lg,
+      ),
+    )
+    AppButton(
+      type = ButtonType.PrimaryFilled,
+      label = HealthConnectStrings.ActionButtons.connect,
+      size = ButtonSize.Large,
+      onClick = onPrimaryAction,
+    )
+    if (onSecondaryAction !== null && secondaryActionLabel !== null) {
+      AppButton(
+        type = ButtonType.TextPrimary,
+        label = secondaryActionLabel,
+        size = ButtonSize.Large,
+        onClick = { onSecondaryAction.invoke() },
+        modifier = Modifier.padding(top = MeTheme.spacing.sm),
+      )
+    }
+  }
+}
 
 @PreviewTheme
 @Composable

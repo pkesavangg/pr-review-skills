@@ -4,6 +4,7 @@ import com.dmdbrands.gurus.weight.domain.interfaces.IReducer
 import com.dmdbrands.gurus.weight.domain.model.common.BabyWeekGroup
 import com.dmdbrands.gurus.weight.domain.model.common.BpHistoryMonth
 import com.dmdbrands.gurus.weight.domain.model.common.HistoryMonth
+import com.dmdbrands.gurus.weight.domain.model.common.WeightUnit
 import androidx.compose.runtime.Stable
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.ImmutableMap
@@ -29,6 +30,8 @@ data class HistoryState(
     val hasWeightDevice: Boolean = false,
     val hasBpmDevice: Boolean = false,
     val hasBabyDevice: Boolean = false,
+    // My Kids weight unit — drives the baby week rows' lb-oz / lb / kg + in / cm display. (MOB-1499)
+    val babyWeightUnit: WeightUnit = WeightUnit.LB_OZ,
 ) : IReducer.State
 
 /**
@@ -65,6 +68,8 @@ sealed interface HistoryIntent : IReducer.Intent {
     ) : HistoryIntent
 
     object OnLogManually : HistoryIntent
+
+    data class SetBabyWeightUnit(val unit: WeightUnit) : HistoryIntent
 }
 
 /**
@@ -109,6 +114,7 @@ class HistoryReducer : IReducer<HistoryState, HistoryIntent> {
                     hasBabyDevice = intent.hasBabyDevice,
                 )
 
+            is HistoryIntent.SetBabyWeightUnit -> state.copy(babyWeightUnit = intent.unit)
             HistoryIntent.Retry -> state.copy(isLoading = true)
             else -> state
         }

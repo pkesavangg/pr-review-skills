@@ -45,67 +45,82 @@ fun MultipleDeviceConnectionScreen(
   onPrimaryAction: () -> Unit,
   onSecondaryAction: (() -> Unit)? = null
 ) {
-        BaseModal {
-          Box {
-            AppIcon(
-              id = AppIcons.Filled.Close,
-              contentDescription = HealthConnectStrings.Accessibility.closeButton,
-              modifier = Modifier
-                .align(Alignment.TopEnd).padding(bottom = spacing.md),
-              type = com.dmdbrands.gurus.weight.features.common.components.AppIconType.Default,
-              onClick = onClose
-            )
-            Column(
-              modifier = modifier
-                .fillMaxWidth(),
-              horizontalAlignment = Alignment.CenterHorizontally,
-            ) {
-              Image(
-                painter = painterResource(id = AppIcons.Integrations.Health_Connect_Logo),
-                contentDescription = null,
-                modifier = Modifier
-                  .width(190.dp)
-                  .height(100.dp)
-                  .padding(top = spacing.lg),
-              )
-              Spacer(Modifier.padding(top = spacing.lg))
-              // TalkBack: status title is the heading, announced politely on appearance.
-              AppText(
-                text = HealthConnectStrings.AddHealthConnectStrings.Title,
-                textType = TextType.Title,
-                textAlign = TextAlign.Center,
-                modifier = Modifier.semantics { heading() },
-              )
-              Spacer(Modifier.padding(top = MeTheme.spacing.sm))
-              AppText(
-                text = HealthConnectStrings.AddHealthConnectStrings.Description,
-                textType = TextType.Subtitle,
-                textAlign = TextAlign.Center,
-              )
-              Spacer(
-                Modifier.padding(
-                  bottom = MeTheme.spacing.lg,
-                ),
-              )
-              AppButton(
-                type = ButtonType.PrimaryFilled,
-                label = HealthConnectStrings.ActionButtons.connect,
-                size = ButtonSize.Large,
-                onClick = onPrimaryAction,
-              )
-              if (onSecondaryAction !== null && secondaryActionLabel !== null) {
-                AppButton(
-                  type = ButtonType.TextPrimary,
-                  label = secondaryActionLabel,
-                  size = ButtonSize.Large,
-                  onClick = { onSecondaryAction.invoke() },
-                  modifier = Modifier.padding(top = MeTheme.spacing.sm),
-                )
-              }
-            }
-          }
-        }
-      }
+  BaseModal {
+    Box {
+      AppIcon(
+        id = AppIcons.Filled.Close,
+        contentDescription = HealthConnectStrings.Accessibility.closeButton,
+        modifier = Modifier
+          .align(Alignment.TopEnd).padding(bottom = spacing.md),
+        type = com.dmdbrands.gurus.weight.features.common.components.AppIconType.Default,
+        onClick = onClose
+      )
+      MultipleDeviceConnectionContent(
+        modifier = modifier,
+        secondaryActionLabel = secondaryActionLabel,
+        onPrimaryAction = onPrimaryAction,
+        onSecondaryAction = onSecondaryAction,
+      )
+    }
+  }
+}
+
+@Composable
+private fun MultipleDeviceConnectionContent(
+  modifier: Modifier = Modifier,
+  secondaryActionLabel: String? = null,
+  onPrimaryAction: () -> Unit,
+  onSecondaryAction: (() -> Unit)? = null
+) {
+  Column(
+    modifier = modifier
+      .fillMaxWidth(),
+    horizontalAlignment = Alignment.CenterHorizontally,
+  ) {
+    Image(
+      painter = painterResource(id = AppIcons.Integrations.Health_Connect_Logo),
+      contentDescription = null,
+      modifier = Modifier
+        .width(190.dp)
+        .height(100.dp)
+        .padding(top = spacing.lg),
+    )
+    Spacer(Modifier.padding(top = spacing.lg))
+    // TalkBack: status title is the heading, announced politely on appearance.
+    AppText(
+      text = HealthConnectStrings.AddHealthConnectStrings.Title,
+      textType = TextType.Title,
+      textAlign = TextAlign.Center,
+      modifier = Modifier.semantics { heading() },
+    )
+    Spacer(Modifier.padding(top = MeTheme.spacing.sm))
+    AppText(
+      text = HealthConnectStrings.AddHealthConnectStrings.Description,
+      textType = TextType.Subtitle,
+      textAlign = TextAlign.Center,
+    )
+    Spacer(
+      Modifier.padding(
+        bottom = MeTheme.spacing.lg,
+      ),
+    )
+    AppButton(
+      type = ButtonType.PrimaryFilled,
+      label = HealthConnectStrings.ActionButtons.connect,
+      size = ButtonSize.Large,
+      onClick = onPrimaryAction,
+    )
+    if (onSecondaryAction !== null && secondaryActionLabel !== null) {
+      AppButton(
+        type = ButtonType.TextPrimary,
+        label = secondaryActionLabel,
+        size = ButtonSize.Large,
+        onClick = { onSecondaryAction.invoke() },
+        modifier = Modifier.padding(top = MeTheme.spacing.sm),
+      )
+    }
+  }
+}
 
 @Preview(showBackground = true)
 @Composable

@@ -55,6 +55,13 @@ struct SettingsScreen: View {
                     isPresented: settingsStore.isBrowserPresented
                 )
             }
+            // MOB-190: Hide the system navigation bar on the tab root. The custom
+            // NavbarHeaderView is the only header. Without this, the NavigationStack's
+            // system bar can reserve its height on the root after popping back from the
+            // scale/Wi-Fi flow, pushing the "Settings" header down (leaked top inset).
+            // Matches the pattern used by the other Settings screens (Integrations,
+            // EditProfile, …); SwipeBackEnabler in RoutingView restores the swipe-back gesture.
+            .navigationBarHidden(true)
             .onAppear {
                 tabViewModel.showTabBar = true
                 if tabViewModel.selectedTab == .settings {
@@ -83,6 +90,11 @@ struct SettingsScreen: View {
                 if tabViewModel.selectedTab == .settings {
                     handlePendingSettingsNavigation()
                 }
+            }
+
+            .onChange(of: settingsStore.activeAccount?.accountId) { oldAccountId, newAccountId in
+                guard oldAccountId != nil, newAccountId != oldAccountId else { return }
+                router.navigateToRoot()
             }
         }
         .environmentObject(router)
@@ -137,14 +149,37 @@ struct SettingsScreen: View {
         }
     }
 
+    // MOB-190: The profile header used to be a *loose* row in the List while every other
+    // item is a `Section`. A loose row before Sections in an `.insetGrouped` List has no
+    // stable section identity, so during scroll cell-recycling SwiftUI recomputed its
+    // height/insets inconsistently (default separator bled in, centered content shifted or
+    // overlapped) — the "header layout breaks on scroll" report. Wrapping it in its own
+    // Section with a cleared background, hidden separator, and explicit insets makes it
+    // lay out consistently like the rest of the List.
     private func profileHeader() -> some View {
+        Section {
+            profileHeaderContent()
+                .accessibilityElement(children: .combine)
+                .appAccessibility(id: AccessibilityID.settingsProfileHeader)
+                .frame(maxWidth: .infinity)
+                .listRowBackground(Color.clear)
+                .listRowInsets(top: .spacingSM, bottom: .spacingSM)
+                .listRowSeparator(.hidden)
+        }
+    }
+
+    private func profileHeaderContent() -> some View {
         VStack(spacing: .spacingXS) {
             InitialIconView(
                 character: settingsStore.profileInitial,
                 size: 36,
                 style: .fill
             )
-            .onLongPressGesture {
+            // MOB-223: A bare `.onLongPressGesture` (maximumDistance 10, non-simultaneous)
+            // is unreliable inside a List — the scroll recognizer steals it and small
+            // finger drift cancels it. Use the shared `.longPressGesture` (simultaneous,
+            // maximumDistance 50) so the press coexists with scrolling and tolerates drift.
+            .longPressGesture(isEditMode: false) {
                 router.navigate(to: .myAccounts)
             }
             .accessibilityAction(named: SettingsStrings.A11y.profileSwitchAccountsAction) {
@@ -159,9 +194,6 @@ struct SettingsScreen: View {
                 .fontOpenSans(.body2)
                 .foregroundColor(theme.textBody)
         }
-        .accessibilityElement(children: .combine)
-        .frame(maxWidth: .infinity)
-        .listRowBackground(Color.clear)
     }
 
     private func accountSettingsSection() -> some View {
@@ -293,6 +325,7 @@ struct SettingsScreen: View {
                     settingsStore.openPrivacy()
                 })
             .listRowInsets()
+            .appAccessibility(id: AccessibilityID.settingsRowPrivacyPolicy)
 
             ActionListItemView(config: ActionListItemConfig(
                 title: settingsLang.termsOfService
@@ -300,6 +333,7 @@ struct SettingsScreen: View {
                     settingsStore.openTerms()
                 })
             .listRowInsets()
+            .appAccessibility(id: AccessibilityID.settingsRowTermsOfService)
 
             ActionListItemView(config: ActionListItemConfig(
                 title: settingsLang.greaterGoodsWebsite
@@ -307,6 +341,7 @@ struct SettingsScreen: View {
                     settingsStore.openGreaterGoods()
                 })
             .listRowInsets()
+            .appAccessibility(id: AccessibilityID.settingsRowGreaterGoods)
         }
         .listRowBackground(theme.backgroundPrimary)
         .listRowSeparatorTint(theme.statusUtilityPrimary)
@@ -339,6 +374,7 @@ struct SettingsScreen: View {
                         settingsStore.handleLogoutForAllAccounts()
                     })
                 .listRowInsets()
+                .appAccessibility(id: AccessibilityID.settingsRowLogoutAll)
             }
 
             ActionListItemView(config: ActionListItemConfig(
