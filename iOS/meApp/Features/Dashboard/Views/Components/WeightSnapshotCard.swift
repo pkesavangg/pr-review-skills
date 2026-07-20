@@ -82,6 +82,7 @@ struct WeightSnapshotCard: View {
         var hasher = Hasher()
         hasher.combine(summaries.count)
         hasher.combine(selectedPeriod.rawValue)
+        hasher.combine(viewModel.activeAccount?.weightUnit.rawValue)
         if let first = summaries.first { hasher.combine(first.entryTimestamp) }
         if let last = summaries.last { hasher.combine(last.entryTimestamp) }
         return hasher.finalize()

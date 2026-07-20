@@ -15,7 +15,7 @@ struct MyAccountsScreen: View {
     @EnvironmentObject private var tabViewModel: BottomTabBarViewModel
     @StateObject private var accountsStore = AccountsStore()
     @State private var openItemID: UUID?
-    
+
     private let strings = MyAccountsStrings.self
     var body: some View {
         VStack(spacing: 0) {
@@ -39,8 +39,11 @@ struct MyAccountsScreen: View {
         }
         .onAppear {
             accountsStore.onAccountSwitchSuccess = {
+                // All three account-entry paths (switch/login/signup) change the active
+                // account, so SettingsScreen's `activeAccount` onChange pops the Settings
+                // stack to root — that's the single source of truth for the reset. No
+                // explicit navigateBack() here, otherwise it would double-pop.
                 tabViewModel.selectedTab = .dash
-                router.navigateBack()
             }
         }
         .sheet(isPresented: $accountsStore.canShowLoginScreen) {
@@ -48,9 +51,9 @@ struct MyAccountsScreen: View {
                 prefilledEmail: accountsStore.emailForLogin,
                 isFromAccountSwitching: true
             ) {
+                // Reset handled by SettingsScreen's activeAccount onChange (see above).
                 accountsStore.canShowLoginScreen = false
                 tabViewModel.selectedTab = .dash
-                router.navigateBack()
             }
                 .interactiveDismissDisabled()
         }
@@ -58,12 +61,9 @@ struct MyAccountsScreen: View {
             SignupScreen(
                 isFromAccountSwitching: true
             ) {
+                // Reset handled by SettingsScreen's activeAccount onChange (see above).
                 accountsStore.canShowAccountSignupScreen = false
                 tabViewModel.selectedTab = .dash
-                // Pop the pushed .myAccounts route so the Settings tab returns to its root
-                // for the newly created account — otherwise the Settings tab stays stuck on
-                // the My Accounts sub-screen (MOB-1482). Mirrors the login/switch callbacks.
-                router.navigateBack()
             }
                 .interactiveDismissDisabled()
         }
@@ -100,7 +100,7 @@ struct MyAccountsScreen: View {
         .listRowBackground(theme.backgroundPrimary)
         .listRowSeparatorTint(theme.statusUtilityPrimary)
     }
-    
+
     // MARK: Buttons
     private var loginCTA: some View {
         VStack(alignment: .center, spacing: .spacingLG) {
@@ -114,7 +114,7 @@ struct MyAccountsScreen: View {
         .listRowBackground(Color.clear)
         .listRowSeparator(.hidden)
     }
-    
+
     private var signupCTA: some View {
         VStack(alignment: .center, spacing: .spacingLG) {
             ButtonView(text: strings.createNewAccount, type: .inlineTextPrimary, size: .large, isDisabled: false) {

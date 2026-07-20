@@ -91,6 +91,11 @@ struct SettingsScreen: View {
                     handlePendingSettingsNavigation()
                 }
             }
+
+            .onChange(of: settingsStore.activeAccount?.accountId) { oldAccountId, newAccountId in
+                guard oldAccountId != nil, newAccountId != oldAccountId else { return }
+                router.navigateToRoot()
+            }
         }
         .environmentObject(router)
         .environmentObject(settingsStore)
