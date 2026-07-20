@@ -387,6 +387,15 @@ final class BluetoothService: ObservableObject, BluetoothServiceProtocol {
 
     private func handleAccountUpdate(_ account: AccountSnapshot?) {
         if let account = account {
+            // MOB-184: the in-memory dismissal cache mirrors only the *current* account's
+            // persisted skip set and is checked before the (account-scoped) persisted store.
+            // On a live account switch it must be cleared, otherwise Account A's CANCEL would
+            // keep suppressing the reconnect / duplicate-user alert for Account B on a shared
+            // scale for the rest of the session. The persisted set stays per-account, so each
+            // account's real choice is reloaded on demand.
+            if activeAccount?.accountId != account.accountId {
+                reconnectAlertSkippedDevices.removeAll()
+            }
             activeAccount = account
             logger.log(level: .info, tag: tag, message: "Bluetooth active account updated. accountId=\(account.accountId)")
             // Don't start scanning immediately - wait for dashboard to be ready

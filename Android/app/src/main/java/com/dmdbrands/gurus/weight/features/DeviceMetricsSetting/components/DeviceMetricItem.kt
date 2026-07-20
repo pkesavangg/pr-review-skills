@@ -3,6 +3,7 @@ package com.dmdbrands.gurus.weight.features.DeviceMetricsSetting.components
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -61,59 +62,76 @@ fun DeviceMetricItem(
       horizontalArrangement = Arrangement.SpaceBetween,
       verticalAlignment = Alignment.CenterVertically,
     ) {
-      Row(
-        modifier = Modifier.weight(1f),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(spacing.sm),
-      ) {
-        // Metric icon (only for metrics that have icons)
-        metric.metricIcon?.let { iconRes ->
-          AppIcon(
-            id = iconRes,
-            contentDescription = metric.label,
-            modifier = Modifier.size(24.dp),
-            type = if (metric.isIncluded && metric.isEnabled) AppIconType.Primary else AppIconType.Tertiary,
-            enabled = metric.isIncluded
-          )
-        }
-
-        // Metric label
-        AppText(
-          text = metric.label,
-          textType = TextType.Body,
-          enabled = metric.isIncluded,
-        )
-      }
-
-      Row(
-        modifier = Modifier
-          .then(if (!metric.isIncluded) Modifier.padding(vertical =  spacing.md) else Modifier),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(spacing.sm),
-      ) {
-        // Drag handle
-        if(metric.isEnabled && metric.isIncluded) {
-          AppIcon(
-            id = AppIcons.Default.DragHandler,
-            contentDescription = "Drag handle",
-            modifier = dragHandleModifier.size(24.dp),
-            type = AppIconType.Tertiary,
-          )
-        }
-
-        // Toggle switch
-        if(metric.isIncluded) {
-          AppToggle(
-            checked = metric.isEnabled,
-            onCheckedChange = onToggle
-          )
-        }
-      }
+      MetricLabel(metric = metric)
+      MetricControls(
+        metric = metric,
+        dragHandleModifier = dragHandleModifier,
+        onToggle = onToggle,
+      )
     }
     HorizontalDivider(
       color = MeTheme.colorScheme.utility,
       thickness = .5.dp,
     )
+  }
+}
+
+@Composable
+private fun RowScope.MetricLabel(metric: DeviceMetric) {
+  Row(
+    modifier = Modifier.weight(1f),
+    verticalAlignment = Alignment.CenterVertically,
+    horizontalArrangement = Arrangement.spacedBy(spacing.sm),
+  ) {
+    // Metric icon (only for metrics that have icons)
+    metric.metricIcon?.let { iconRes ->
+      AppIcon(
+        id = iconRes,
+        contentDescription = metric.label,
+        modifier = Modifier.size(24.dp),
+        type = if (metric.isIncluded && metric.isEnabled) AppIconType.Primary else AppIconType.Tertiary,
+        enabled = metric.isIncluded
+      )
+    }
+
+    // Metric label
+    AppText(
+      text = metric.label,
+      textType = TextType.Body,
+      enabled = metric.isIncluded,
+    )
+  }
+}
+
+@Composable
+private fun MetricControls(
+  metric: DeviceMetric,
+  dragHandleModifier: Modifier,
+  onToggle: (Boolean) -> Unit,
+) {
+  Row(
+    modifier = Modifier
+      .then(if (!metric.isIncluded) Modifier.padding(vertical =  spacing.md) else Modifier),
+    verticalAlignment = Alignment.CenterVertically,
+    horizontalArrangement = Arrangement.spacedBy(spacing.sm),
+  ) {
+    // Drag handle
+    if(metric.isEnabled && metric.isIncluded) {
+      AppIcon(
+        id = AppIcons.Default.DragHandler,
+        contentDescription = "Drag handle",
+        modifier = dragHandleModifier.size(24.dp),
+        type = AppIconType.Tertiary,
+      )
+    }
+
+    // Toggle switch
+    if(metric.isIncluded) {
+      AppToggle(
+        checked = metric.isEnabled,
+        onCheckedChange = onToggle
+      )
+    }
   }
 }
 

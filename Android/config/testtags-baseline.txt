@@ -1,0 +1,29 @@
+# testTag inline-literal baseline (MOB-1509). Pre-existing literals awaiting migration
+# to TestTags constants under MOB-1502. Format: <path>\t<tag>. Remove a line once the
+# literal is replaced by a constant. Regenerate: scripts/check-testtags.sh --update-baseline
+Android/app/src/main/java/com/dmdbrands/gurus/weight/features/common/components/AppDialog.kt	dialog_card
+Android/app/src/main/java/com/dmdbrands/gurus/weight/features/common/components/ModalDialog.kt	modal_container
+Android/app/src/main/java/com/dmdbrands/gurus/weight/features/common/components/ReadingArrivalCard.kt	reading_toast_card
+Android/app/src/main/java/com/dmdbrands/gurus/weight/features/common/components/ToastCard.kt	toast_action
+Android/app/src/main/java/com/dmdbrands/gurus/weight/features/common/components/ToastCard.kt	toast_card
+Android/app/src/main/java/com/dmdbrands/gurus/weight/features/common/components/ToastCard.kt	toast_icon
+Android/app/src/main/java/com/dmdbrands/gurus/weight/features/common/components/ToastCard.kt	toast_message
+Android/app/src/main/java/com/dmdbrands/gurus/weight/features/common/components/ToastCard.kt	toast_title
+Android/app/src/main/java/com/dmdbrands/gurus/weight/features/dashboard/snapshot/components/ProductSnapshotCard.kt	bp_card
+Android/app/src/main/java/com/dmdbrands/gurus/weight/features/dashboard/snapshot/components/ProductSnapshotCard.kt	weight_card
+Android/app/src/main/java/com/dmdbrands/gurus/weight/features/historyDetail/components/BabyDayHistoryItem.kt	entry_row
+Android/app/src/main/java/com/dmdbrands/gurus/weight/features/historyDetail/components/BpHistoryDetailItem.kt	entry_row
+Android/app/src/main/java/com/dmdbrands/gurus/weight/features/historyDetail/components/WeightHistoryDetailItem.kt	entry_row
+Android/app/src/main/java/com/dmdbrands/gurus/weight/features/manualEntry/components/GeneralMetricsSection.kt	bmi_field
+Android/app/src/main/java/com/dmdbrands/gurus/weight/features/manualEntry/components/GeneralMetricsSection.kt	body_fat_field
+Android/app/src/main/java/com/dmdbrands/gurus/weight/features/manualEntry/components/GeneralMetricsSection.kt	body_water_field
+Android/app/src/main/java/com/dmdbrands/gurus/weight/features/manualEntry/components/GeneralMetricsSection.kt	muscle_mass_field
+Android/app/src/main/java/com/dmdbrands/gurus/weight/features/manualEntry/components/R4ScaleMetricsSection.kt	basal_metabolic_field
+Android/app/src/main/java/com/dmdbrands/gurus/weight/features/manualEntry/components/R4ScaleMetricsSection.kt	bone_mass_field
+Android/app/src/main/java/com/dmdbrands/gurus/weight/features/manualEntry/components/R4ScaleMetricsSection.kt	heart_rate_field
+Android/app/src/main/java/com/dmdbrands/gurus/weight/features/manualEntry/components/R4ScaleMetricsSection.kt	metabolic_age_field
+Android/app/src/main/java/com/dmdbrands/gurus/weight/features/manualEntry/components/R4ScaleMetricsSection.kt	protein_field
+Android/app/src/main/java/com/dmdbrands/gurus/weight/features/manualEntry/components/R4ScaleMetricsSection.kt	skeletal_muscles_field
+Android/app/src/main/java/com/dmdbrands/gurus/weight/features/manualEntry/components/R4ScaleMetricsSection.kt	subcutaneous_fat_field
+Android/app/src/main/java/com/dmdbrands/gurus/weight/features/manualEntry/components/R4ScaleMetricsSection.kt	visceral_fat_field
+Android/app/src/main/java/com/dmdbrands/gurus/weight/features/manualEntry/components/WeightEntrySection.kt	weight_field

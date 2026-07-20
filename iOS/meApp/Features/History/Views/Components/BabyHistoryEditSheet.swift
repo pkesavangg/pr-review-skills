@@ -127,10 +127,13 @@ struct BabyHistoryEditSheet: View {
                             inputType: .metric,
                             isDisabled: valuesLocked,
                             focusField: .ounces,
-                            maxLength: 4,
+                            // Cents-style auto-decimal entry, matching the create screen
+                            // (BabyEntryView): typing "4" renders "0.4" and "159" renders "15.9".
+                            // maxLength 3 caps input at "99.9"; the ounces validator rejects > 15.9.
+                            maxLength: 3,
                             allowWholeNumbers: false,
-                            decimalPlaces: 1,
-                            directDecimalEntry: true
+                            clearZeroValue: true,
+                            decimalPlaces: 1
                         ),
                         value: $form.ounces.value,
                         focusedField: $focusedField,
@@ -223,7 +226,9 @@ struct BabyHistoryEditSheet: View {
             DatePickerView(
                 isPresented: $showDatePicker,
                 date: $form.date.value,
-                startDate: Date(timeIntervalSince1970: 946684800),
+                // Dates before the baby's birthday are disabled so an entry can't
+                // be dated before the baby was born (MOB-1567).
+                startDate: historyStore.babyEntryMinimumDate,
                 endDate: Date()
             )
             .onChange(of: showDatePicker) { _, isPresented in

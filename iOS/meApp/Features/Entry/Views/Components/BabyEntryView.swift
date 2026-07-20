@@ -24,12 +24,14 @@ struct BabyEntryView: View {
                     case .kg:
                         MetricInputField(
                             config: TextInputConfig(
-                                label: babyLang.kg,
+                                label: labels.weight,
                                 inputType: .metric,
+                                errorMessage: entryStore.babyWeightError,
                                 focusField: .babyKg,
                                 maxLength: 6,
                                 clearZeroValue: true,
-                                decimalPlaces: 3
+                                decimalPlaces: 3,
+                                trailingLabel: babyLang.unitKg
                             ),
                             value: $entryStore.babyForm.kg.value,
                             focusedField: $focusedField,
@@ -40,12 +42,14 @@ struct BabyEntryView: View {
                     case .lb:
                         MetricInputField(
                             config: TextInputConfig(
-                                label: babyLang.lb,
+                                label: labels.weight,
                                 inputType: .metric,
+                                errorMessage: entryStore.babyWeightError,
                                 focusField: .babyLb,
                                 maxLength: 6,
                                 clearZeroValue: true,
-                                decimalPlaces: 3
+                                decimalPlaces: 3,
+                                trailingLabel: babyLang.unitLb
                             ),
                             value: $entryStore.babyForm.lb.value,
                             focusedField: $focusedField,
@@ -57,11 +61,16 @@ struct BabyEntryView: View {
                         HStack(spacing: .spacingSM) {
                             MetricInputField(
                                 config: TextInputConfig(
-                                    label: babyLang.pounds,
+                                    label: labels.weight,
                                     inputType: .metric,
+                                    // The combined pounds+ounces weight error renders in this field's
+                                    // built-in error slot (like the length field), so it scales with
+                                    // Dynamic Type instead of relying on a fixed negative offset.
+                                    errorMessage: entryStore.babyWeightError,
                                     focusField: .pounds,
                                     maxLength: 3,
-                                    allowWholeNumbers: true
+                                    allowWholeNumbers: true,
+                                    trailingLabel: babyLang.unitLb
                                 ),
                                 value: $entryStore.babyForm.pounds.value,
                                 focusedField: $focusedField,
@@ -72,32 +81,25 @@ struct BabyEntryView: View {
 
                             MetricInputField(
                                 config: TextInputConfig(
-                                    label: babyLang.ounces,
+                                    label: labels.weight,
                                     inputType: .metric,
                                     focusField: .ounces,
-                                    // Literal (as-typed) decimal entry so "6" stays "6" and
-                                    // "6.5" stays "6.5", matching BabyHistoryEditSheet. maxLength
-                                    // is 4 so the max "15.9" (4 chars incl. ".") fits in literal mode.
-                                    maxLength: 4,
+                                    // Cents-style auto-decimal entry (same as the length field) so
+                                    // typing "4" renders "0.4" and "159" renders "15.9". maxLength is
+                                    // 3 digits → caps input at "99.9"; the ounces validator (≤ 15.9)
+                                    // rejects anything above 15.9.
+                                    maxLength: 3,
                                     clearZeroValue: true,
                                     decimalPlaces: 1,
-                                    directDecimalEntry: true
+                                    directDecimalEntry: true,
+                                    trailingLabel: babyLang.unitOz
                                 ),
                                 value: $entryStore.babyForm.ounces.value,
-                                focusedField: $focusedField,
-                                accessibilityIdentifier: AccessibilityID.babyOuncesField
+                                focusedField: $focusedField
                             ) {
                                 focusedField = .inches
                             }
                         }
-                    }
-
-                    if let weightError = entryStore.babyWeightError {
-                        Text(weightError)
-                            .fontOpenSans(.body4)
-                            .foregroundColor(theme.textError)
-                            .padding(.leading, .spacingSM)
-                            .padding(.top, -20)
                     }
                 }
 
@@ -106,12 +108,13 @@ struct BabyEntryView: View {
                 case .inches:
                     MetricInputField(
                         config: TextInputConfig(
-                            label: babyLang.inches,
+                            label: babyLang.lengthLabel,
                             inputType: .metric,
                             errorMessage: entryStore.babyLengthError,
                             focusField: .inches,
                             maxLength: 3,
-                            clearZeroValue: true
+                            clearZeroValue: true,
+                            trailingLabel: babyLang.unitIn
                         ),
                         value: $entryStore.babyForm.inches.value,
                         focusedField: $focusedField,
@@ -122,12 +125,13 @@ struct BabyEntryView: View {
                 case .cm:
                     MetricInputField(
                         config: TextInputConfig(
-                            label: babyLang.cm,
+                            label: babyLang.lengthLabel,
                             inputType: .metric,
                             errorMessage: entryStore.babyLengthError,
                             focusField: .babyCm,
                             maxLength: 5,
-                            clearZeroValue: true
+                            clearZeroValue: true,
+                            trailingLabel: babyLang.unitCm
                         ),
                         value: $entryStore.babyForm.cm.value,
                         focusedField: $focusedField,
@@ -179,7 +183,9 @@ struct BabyEntryView: View {
                 DatePickerView(
                     isPresented: $entryStore.showDatePicker,
                     date: $entryStore.babyForm.date.value,
-                    startDate: Date(timeIntervalSince1970: 946684800),
+                    // Dates before the baby's birthday are disabled so an entry can't
+                    // be dated before the baby was born (MOB-1567).
+                    startDate: entryStore.babyEntryMinimumDate,
                     endDate: Date()
                 )
                 .onChange(of: entryStore.showDatePicker) { _, isPresented in

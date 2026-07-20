@@ -29,6 +29,8 @@ enum BabyPercentileGrowthReference {
     enum JSONFile {
         static let boyWeightMeasurements = "BoyWeightDecigrams"
         static let girlWeightMeasurements = "GirlWeightDecigrams"
+        static let boyLengthMeasurements = "BoyLengthMM"
+        static let girlLengthMeasurements = "GirlLengthMM"
         static let boyWeightPercentileLines = "BoyWeightDecigramsLine"
         static let girlWeightPercentileLines = "GirlWeightDecigramsLine"
         // MOB-1516: WHO length-for-age tables (mm), converted from Smart Baby's `*LengthMM(.Line).csv`.

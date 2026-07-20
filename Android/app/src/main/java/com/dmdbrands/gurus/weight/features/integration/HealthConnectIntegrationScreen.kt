@@ -130,90 +130,126 @@ fun HealthConnectIntegrationContent(
                     .verticalScroll(scrollState)
                     .padding(vertical = MeTheme.spacing.md)
             ) {
-                when (state.healthConnectSetupState) {
-                    HealthConnectSetup.START_CONNECT -> {
-                        StartConnect(
-                            onPrimaryAction = {
-                                handleIntent(HealthConnectIntent.PrimaryAction(HealthConnectAction.CONNECT))
-                            },
-                        )
-                    }
-                    HealthConnectSetup.FINISH_CONNECT -> {
-                        FinishConnect(
-                            onPrimaryAction = {
-                                handleIntent(HealthConnectIntent.PrimaryAction(HealthConnectAction.FINISH))
-                                onDismiss()
-                            }
-                        )
-                    }
-
-                    HealthConnectSetup.CANCEL_CONNECT -> {
-                        PermissionLimitScreen(
-                            onPrimaryAction = {
-                                handleIntent(HealthConnectIntent.SecondaryAction(HealthConnectAction.OPEN_HEALTH_CONNECT))
-                                onDismiss()
-                            },
-                            onSecondaryAction = {
-                                handleIntent(HealthConnectIntent.SecondaryAction(HealthConnectAction.FINISH))
-                            }
-                        )
-                    }
-                    HealthConnectSetup.PERMISSION_LIMIT -> {
-                        PermissionLimitScreen(
-                            onPrimaryAction = {
-                                handleIntent(HealthConnectIntent.PrimaryAction(HealthConnectAction.OPEN_HEALTH_CONNECT))
-                            },
-                            onSecondaryAction = {
-                                handleIntent(HealthConnectIntent.SecondaryAction(HealthConnectAction.EXIT))
-                            }
-                        )
-                    }
-                    HealthConnectSetup.USER_CONFLICT -> {
-                        UserConflictScreen(
-                            onPrimaryAction = {
-                                handleIntent(HealthConnectIntent.PrimaryAction(HealthConnectAction.EXIT))
-                            },
-                        )
-                    }
-
-                    HealthConnectSetup.COMPLETE_RECONNECTION -> {
-                        CompleteReconnectionScreen(
-                            onPrimaryAction = {
-                                handleIntent(HealthConnectIntent.PrimaryAction(HealthConnectAction.FINISH))
-                            },
-                        )
-                    }
-
-                    HealthConnectSetup.INCOMPLETE_RECONNECTION -> {
-                        IncompleteReconnectionScreen(
-                            onPrimaryAction = {
-                                handleIntent(HealthConnectIntent.PrimaryAction(HealthConnectAction.UPDATE_PERMISSIONS))
-                            },
-                            onSecondaryAction = {
-                                handleIntent(HealthConnectIntent.SecondaryAction(HealthConnectAction.SKIP))
-                            }
-                        )
-                    }
-
-                    HealthConnectSetup.FINISH_INCOMPLETE_RECONNECTION -> {
-                        FinishConnect (
-                          title = HealthConnectStrings.FinishPartialReconnectStrings.Title,
-                          image = AppIcons.Integrations.HC_Homepage,
-                          onPrimaryAction = {
-                                handleIntent(HealthConnectIntent.PrimaryAction(HealthConnectAction.FINISH))
-                            },
-                        )
-                    }
-                    else -> {
-                        // Default to start connect for any other state
-                        StartConnect(
-                            onPrimaryAction = {
-                                handleIntent(HealthConnectIntent.PrimaryAction(HealthConnectAction.CONNECT))
-                            },
-                        )
-                    }
-                }
+                HealthConnectConnectContent(
+                    setupState = state.healthConnectSetupState,
+                    handleIntent = handleIntent,
+                    onDismiss = onDismiss
+                )
             }
+        }
+    }
+}
+
+/**
+ * Renders the connect-flow screens for the Health Connect setup state.
+ * Delegates non-connect states to [HealthConnectStatusContent].
+ */
+@Composable
+private fun HealthConnectConnectContent(
+    setupState: HealthConnectSetup,
+    handleIntent: (HealthConnectIntent) -> Unit,
+    onDismiss: () -> Unit
+) {
+    when (setupState) {
+        HealthConnectSetup.START_CONNECT -> {
+            StartConnect(
+                onPrimaryAction = {
+                    handleIntent(HealthConnectIntent.PrimaryAction(HealthConnectAction.CONNECT))
+                },
+            )
+        }
+        HealthConnectSetup.FINISH_CONNECT -> {
+            FinishConnect(
+                onPrimaryAction = {
+                    handleIntent(HealthConnectIntent.PrimaryAction(HealthConnectAction.FINISH))
+                    onDismiss()
+                }
+            )
+        }
+
+        HealthConnectSetup.CANCEL_CONNECT -> {
+            PermissionLimitScreen(
+                onPrimaryAction = {
+                    handleIntent(HealthConnectIntent.SecondaryAction(HealthConnectAction.OPEN_HEALTH_CONNECT))
+                    onDismiss()
+                },
+                onSecondaryAction = {
+                    handleIntent(HealthConnectIntent.SecondaryAction(HealthConnectAction.FINISH))
+                }
+            )
+        }
+        HealthConnectSetup.PERMISSION_LIMIT -> {
+            PermissionLimitScreen(
+                onPrimaryAction = {
+                    handleIntent(HealthConnectIntent.PrimaryAction(HealthConnectAction.OPEN_HEALTH_CONNECT))
+                },
+                onSecondaryAction = {
+                    handleIntent(HealthConnectIntent.SecondaryAction(HealthConnectAction.EXIT))
+                }
+            )
+        }
+        else -> {
+            HealthConnectStatusContent(
+                setupState = setupState,
+                handleIntent = handleIntent
+            )
+        }
+    }
+}
+
+/**
+ * Renders the status / reconnection screens for the Health Connect setup state.
+ * Falls back to [StartConnect] for any other state.
+ */
+@Composable
+private fun HealthConnectStatusContent(
+    setupState: HealthConnectSetup,
+    handleIntent: (HealthConnectIntent) -> Unit
+) {
+    when (setupState) {
+        HealthConnectSetup.USER_CONFLICT -> {
+            UserConflictScreen(
+                onPrimaryAction = {
+                    handleIntent(HealthConnectIntent.PrimaryAction(HealthConnectAction.EXIT))
+                },
+            )
+        }
+
+        HealthConnectSetup.COMPLETE_RECONNECTION -> {
+            CompleteReconnectionScreen(
+                onPrimaryAction = {
+                    handleIntent(HealthConnectIntent.PrimaryAction(HealthConnectAction.FINISH))
+                },
+            )
+        }
+
+        HealthConnectSetup.INCOMPLETE_RECONNECTION -> {
+            IncompleteReconnectionScreen(
+                onPrimaryAction = {
+                    handleIntent(HealthConnectIntent.PrimaryAction(HealthConnectAction.UPDATE_PERMISSIONS))
+                },
+                onSecondaryAction = {
+                    handleIntent(HealthConnectIntent.SecondaryAction(HealthConnectAction.SKIP))
+                }
+            )
+        }
+
+        HealthConnectSetup.FINISH_INCOMPLETE_RECONNECTION -> {
+            FinishConnect (
+              title = HealthConnectStrings.FinishPartialReconnectStrings.Title,
+              image = AppIcons.Integrations.HC_Homepage,
+              onPrimaryAction = {
+                    handleIntent(HealthConnectIntent.PrimaryAction(HealthConnectAction.FINISH))
+                },
+            )
+        }
+        else -> {
+            // Default to start connect for any other state
+            StartConnect(
+                onPrimaryAction = {
+                    handleIntent(HealthConnectIntent.PrimaryAction(HealthConnectAction.CONNECT))
+                },
+            )
         }
     }
 }

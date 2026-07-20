@@ -204,12 +204,67 @@ object TestTags {
     const val Title = "dialog_title"
     const val PrimaryButton = "dialog_primary_button"
     const val SecondaryButton = "dialog_secondary_button"
+    // Root of a shared modal window (ModalDialog). Android-defined; iOS to mirror.
+    const val Container = "modal_container"
   }
 
   /** Generic chrome for shared bottom sheets routed through `AppBottomSheet`. */
   object BottomSheet {
     const val Title = "bottom_sheet_title"
     const val CloseButton = "bottom_sheet_close_button"
+  }
+
+  /** Dashboard snapshot product cards + bottom tab bar. Mirrors the iOS `AccessibilityID+Dashboard` group. */
+  object Dashboard {
+    const val WeightCard = "weight_card"
+    const val BpCard = "bp_card"
+    const val BabyCard = "baby_card"
+    const val TabBarItem = "tab_bar_item" // suffix with the route, e.g. "tab_bar_item_history"
+  }
+
+  /** History (month list) + History Detail (entry rows). Mirrors the iOS `AccessibilityID+History` group. */
+  object History {
+    const val MonthRow = "history_month_row" // suffix with the month key
+    const val EntryRow = "history_entry_row" // suffix with the entry id
+    const val BpEntryRow = "bp_history_entry_row"
+    const val BabyEntryRow = "baby_history_entry_row"
+    const val BpRowExpand = "history_bp_row_expand"
+    const val DeleteButton = "history_delete_button"
+    const val DownloadButton = "history_download_button"
+    const val EditNoteButton = "history_edit_note_button"
+    const val EmptyStatePrimaryButton = "empty_state_primary_button"
+    const val EmptyStateSecondaryButton = "empty_state_secondary_button"
+  }
+
+  /** Manual entry (weight / body-comp / blood-pressure / baby). Mirrors the iOS `AccessibilityID+Entry` group. */
+  object ManualEntry {
+    const val DateButton = "manual_entry_date_button"
+    const val TimeButton = "manual_entry_time_button"
+    const val SaveButton = "manual_entry_save_button"
+
+    // Blood pressure
+    const val BpSystolicField = "bp_systolic_field"
+    const val BpDiastolicField = "bp_diastolic_field"
+    const val BpPulseField = "bp_pulse_field"
+    const val BpSaveButton = "bp_save_button"
+
+    // Baby
+    const val BabyWeightField = "baby_weight_field"
+    const val BabyLengthField = "baby_length_field"
+    const val BabySaveButton = "baby_save_button"
+  }
+
+  /**
+   * Shared toast / in-app banner chrome ([ToastCard]) and the reading-arrival card
+   * ([ReadingArrivalCard]). Android-defined; iOS to mirror.
+   */
+  object Toast {
+    const val Card = "toast_card"
+    const val Icon = "toast_icon"
+    const val Title = "toast_title"
+    const val Message = "toast_message"
+    const val Action = "toast_action"
+    const val ReadingCard = "reading_toast_card"
   }
 
   /**

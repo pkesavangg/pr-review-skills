@@ -13,6 +13,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
+import com.dmdbrands.gurus.weight.core.shared.utilities.testing.TestTags
 import com.dmdbrands.gurus.weight.core.shared.utilities.testing.exposeTestTagsAsResourceId
 import com.dmdbrands.gurus.weight.theme.MeTheme
 
@@ -68,7 +69,7 @@ fun ModalDialog(
             // Adjusts position when keyboard appears using imePadding
           Box(
             modifier = Modifier
-              .testTag("modal_container")
+              .testTag(TestTags.Dialog.Container)
               .align(Alignment.Center)
               .imePadding() // Adjust padding when keyboard appears
               .clickable(

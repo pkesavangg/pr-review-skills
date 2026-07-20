@@ -51,20 +51,7 @@ fun DeviceUserList(
       .verticalScroll(rememberScrollState())
       .dismissKeyboardOnTap(),
   ) {
-    title?.let {
-      AppText(
-        text = title,
-        textType = TextType.ListTitle2,
-        modifier = Modifier.padding(bottom = spacing.xs),
-      )
-    }
-    subtitle?.let {
-      AppText(
-        text = subtitle,
-        textType = TextType.Body,
-        modifier = Modifier.padding(bottom = spacing.lg),
-      )
-    }
+    DeviceUserListHeader(title = title, subtitle = subtitle)
 
     if (userFormControl != null) {
       AppInput(
@@ -80,53 +67,90 @@ fun DeviceUserList(
     }
 
     if (userList.isEmpty()) {
-      Column(
-        Modifier.fillMaxSize(),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center,
-      ) {
+      EmptyDeviceUserList()
+    } else {
+      PopulatedDeviceUserList(
+        userList = userList,
+        showHeader = userFormControl != null,
+        onDeleteUser = onDeleteUser,
+      )
+    }
+  }
+}
+
+@Composable
+private fun DeviceUserListHeader(
+  title: String?,
+  subtitle: String?,
+) {
+  title?.let {
+    AppText(
+      text = it,
+      textType = TextType.ListTitle2,
+      modifier = Modifier.padding(bottom = spacing.xs),
+    )
+  }
+  subtitle?.let {
+    AppText(
+      text = it,
+      textType = TextType.Body,
+      modifier = Modifier.padding(bottom = spacing.lg),
+    )
+  }
+}
+
+@Composable
+private fun EmptyDeviceUserList() {
+  Column(
+    Modifier.fillMaxSize(),
+    horizontalAlignment = Alignment.CenterHorizontally,
+    verticalArrangement = Arrangement.Center,
+  ) {
+    AppText(
+      text = DeviceUsersStrings.NoUsers,
+      textType = TextType.Body,
+      modifier = Modifier.padding(vertical = spacing.x3l),
+    )
+  }
+}
+
+@Composable
+private fun PopulatedDeviceUserList(
+  userList: List<GGBTUser>,
+  showHeader: Boolean,
+  onDeleteUser: (GGBTUser) -> Unit,
+) {
+  Column {
+    if (showHeader) {
+      Row {
         AppText(
-          text = DeviceUsersStrings.NoUsers,
-          textType = TextType.Body,
-          modifier = Modifier.padding(vertical = spacing.x3l),
+          text = DeviceUsersStrings.OtherUsers,
+          textType = TextType.ListTitle1,
+          modifier = Modifier.padding(bottom = spacing.md),
+        )
+        Spacer(modifier = Modifier.weight(1f))
+        AppText(
+          text = DeviceUsersStrings.MaxUsers,
+          textType = TextType.ListSubtitle,
+          modifier = Modifier.padding(bottom = spacing.md),
         )
       }
-    } else {
-      Column {
-        if (userFormControl != null) {
-          Row {
-            AppText(
-              text = DeviceUsersStrings.OtherUsers,
-              textType = TextType.ListTitle1,
-              modifier = Modifier.padding(bottom = spacing.md),
-            )
-            Spacer(modifier = Modifier.weight(1f))
-            AppText(
-              text = DeviceUsersStrings.MaxUsers,
-              textType = TextType.ListSubtitle,
-              modifier = Modifier.padding(bottom = spacing.md),
-            )
-          }
-        }
-        Column(
-          modifier = Modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(borderRadius.sm)),
-        ) {
-
-          userList.forEach { user ->
-            DeviceUserItem(
-              user = user,
-              onDeleteUser = onDeleteUser,
-            )
-            if (userList.size > 1 && userList.indexOf(user) < userList.size - 1) {
-              HorizontalDivider(
-                color = colorScheme.utility,
-                thickness = .5.dp,
-              )
-            }
-          }
-
+    }
+    Column(
+      modifier = Modifier
+        .fillMaxWidth()
+        .clip(RoundedCornerShape(borderRadius.sm)),
+    ) {
+      userList.forEach { user ->
+        DeviceUserItem(
+          user = user,
+          onDeleteUser = onDeleteUser,
+        )
+        if (userList.size > 1 && userList.indexOf(user) < userList.size - 1) {
+          HorizontalDivider(
+            color = colorScheme.utility,
+            thickness = .5.dp,
+          )
         }
       }
     }

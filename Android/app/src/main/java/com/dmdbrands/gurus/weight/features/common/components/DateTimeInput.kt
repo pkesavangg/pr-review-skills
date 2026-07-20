@@ -19,6 +19,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.testTag
 import com.dmdbrands.gurus.weight.features.common.helper.form.FormControl
 import com.dmdbrands.gurus.weight.theme.MeAppTheme
 import com.dmdbrands.gurus.weight.theme.MeTheme
@@ -358,6 +359,8 @@ object DateTimeInputDefaults {
 @Composable
 fun DateTimeInput(
   modifier: Modifier = Modifier,
+  dateTestTag: String? = null,
+  timeTestTag: String? = null,
   formControl: FormControl<DateTimeValue>? = null,
   value: DateTimeValue? = null,
   onValueChange: ((DateTimeValue) -> Unit)? = null,
@@ -404,7 +407,7 @@ fun DateTimeInput(
           label = localState.getDateString(),
           selected = isDateDialogOpen,
           enabled = enabled && !readOnly,
-          modifier = modifier,
+          modifier = if (dateTestTag != null) modifier.testTag(dateTestTag) else modifier,
         ) {
           if (enabled && !readOnly) {
             isDateDialogOpen = true
@@ -423,7 +426,7 @@ fun DateTimeInput(
           label = localState.getTimeString(),
           selected = isTimeDialogOpen,
           enabled = enabled && !readOnly,
-          modifier = modifier,
+          modifier = if (timeTestTag != null) modifier.testTag(timeTestTag) else modifier,
         ) {
           if (enabled && !readOnly) {
             isTimeDialogOpen = true

@@ -96,13 +96,9 @@ data class Account(
         enabled = dashboardMetrics?.contains(MetricKeyConstants.ENUM_TO_CAMEL_CASE[it] ?: it.name.lowercase()) ?: false,
       )
     }
-    val heightCm: Double? =
-      height?.let {  val cmPrecise = ConversionTools.convertStoredHeightToCm(it)
-        // BT SDK truncates Double cm with toInt() before BLE write. Pre-round here so
-        // 182.88cm (6'0") becomes 183 instead of being truncated to 182 on the wire.
-        val cmRounded = kotlin.math.round(cmPrecise)
-        cmRounded
-      }
+    // Send the scale a cm value whose ft/in (scale rounds) matches what the app displays
+    // (app truncates). Prevents the +1 inch mismatch on imperial accounts (MOB-715).
+    val heightCm: Double? = height?.let { ConversionTools.convertStoredHeightToScaleCm(it, isMetric) }
     return GGBTUserProfile(
       name = firstName,
       age = dob?.let { calculateAge(it) },

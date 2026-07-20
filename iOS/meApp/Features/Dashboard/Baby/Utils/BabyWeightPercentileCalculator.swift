@@ -33,39 +33,47 @@ struct BabyGrowthMeasurementRow: Codable {
 
 enum BabyWeightPercentileCalculator {
 
+    /// Which WHO reference dataset a measurement is scored against.
+    enum MeasurementKind { case weight, length }
+
     /// Interval between measurement rows in the WHO data (~7 days).
     private static let dataResolution = 7
 
     // MARK: - Cached Data
 
-    private static var boyMeasurements: [BabyGrowthMeasurementRow]?
-    private static var girlMeasurements: [BabyGrowthMeasurementRow]?
+    /// Loaded measurement rows keyed by JSON filename (one per sex × dataset).
+    private static var measurementCache: [String: [BabyGrowthMeasurementRow]] = [:]
 
-    private static func loadMeasurements(for sex: String) -> [BabyGrowthMeasurementRow] {
+    /// The bundled measurement JSON filename for a sex + dataset.
+    private static func measurementFileName(sex: String, kind: MeasurementKind) -> String {
         let isMale = sex.lowercased() != "female"
+        switch (kind, isMale) {
+        case (.weight, true): return BabyPercentileGrowthReference.JSONFile.boyWeightMeasurements
+        case (.weight, false): return BabyPercentileGrowthReference.JSONFile.girlWeightMeasurements
+        case (.length, true): return BabyPercentileGrowthReference.JSONFile.boyLengthMeasurements
+        case (.length, false): return BabyPercentileGrowthReference.JSONFile.girlLengthMeasurements
+        }
+    }
 
-        if isMale, let cached = boyMeasurements { return cached }
-        if !isMale, let cached = girlMeasurements { return cached }
-
-        let jsonName = isMale
-            ? BabyPercentileGrowthReference.JSONFile.boyWeightMeasurements
-            : BabyPercentileGrowthReference.JSONFile.girlWeightMeasurements
+    private static func loadMeasurements(for sex: String, kind: MeasurementKind) -> [BabyGrowthMeasurementRow] {
+        let name = measurementFileName(sex: sex, kind: kind)
+        if let cached = measurementCache[name] { return cached }
 
         guard let url = BabyPercentileGrowthReference.bundledJSONURL(
-            name: jsonName,
+            name: name,
             subdirectory: BabyPercentileGrowthReference.JSONFile.measurementsSubfolder
         ),
               let data = try? Data(contentsOf: url),
               let rows = try? JSONDecoder().decode([BabyGrowthMeasurementRow].self, from: data)
         else { return [] }
 
-        if isMale { boyMeasurements = rows } else { girlMeasurements = rows }
+        measurementCache[name] = rows
         return rows
     }
 
     // MARK: - Public API
 
-    /// Returns the weight percentile (0–100), or `-1` when it cannot be calculated.
+    /// Returns the weight-for-age percentile (0–100), or `-1` when it cannot be calculated.
     static func calculatePercentile(
         weightDecigrams: Int,
         biologicalSex: String?,
@@ -73,15 +81,36 @@ enum BabyWeightPercentileCalculator {
         entryDate: Date,
         calendar: Calendar = .current
     ) -> Int {
-        guard let sex = biologicalSex,
-              !sex.isEmpty,
-              sex.lowercased() != "private",
-              let birthday else {
-            return -1
-        }
+        guard let sex = biologicalSex, let birthday else { return -1 }
+        let days = max(0, calendar.dateComponents([.day], from: birthday, to: entryDate).day ?? 0)
+        return percentile(observed: Double(weightDecigrams), daysSinceBirth: days, sex: sex, kind: .weight)
+    }
 
-        let daysSinceBirth = max(0, calendar.dateComponents([.day], from: birthday, to: entryDate).day ?? 0)
-        let measurements = loadMeasurements(for: sex)
+    /// Returns the length-for-age percentile (0–100), or `-1` when it cannot be calculated.
+    /// Uses the WHO length reference data (mm) with the same LMS/Z-score method as weight —
+    /// 1:1 with the Baby app's `calcMeasurementPercentile` for `measureLength` (MOB-1567).
+    static func calculateLengthPercentile(
+        lengthMm: Int,
+        biologicalSex: String?,
+        birthday: Date?,
+        entryDate: Date,
+        calendar: Calendar = .current
+    ) -> Int {
+        guard let sex = biologicalSex, let birthday else { return -1 }
+        let days = max(0, calendar.dateComponents([.day], from: birthday, to: entryDate).day ?? 0)
+        return percentile(observed: Double(lengthMm), daysSinceBirth: days, sex: sex, kind: .length)
+    }
+
+    /// Shared LMS/Z-score percentile for either dataset.
+    private static func percentile(
+        observed: Double,
+        daysSinceBirth: Int,
+        sex: String,
+        kind: MeasurementKind
+    ) -> Int {
+        guard !sex.isEmpty, sex.lowercased() != "private" else { return -1 }
+
+        let measurements = loadMeasurements(for: sex, kind: kind)
         guard !measurements.isEmpty else { return -1 }
 
         // Find rows bracketing the baby's age (within ± dataResolution).
@@ -110,7 +139,7 @@ enum BabyWeightPercentileCalculator {
 
         guard sd > 0 else { return -1 }
 
-        let zScore = (Double(weightDecigrams) - mean) / sd
+        let zScore = (observed - mean) / sd
         return zScoreToPercentile(zScore)
     }
 

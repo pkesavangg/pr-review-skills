@@ -256,8 +256,8 @@ struct HKIntegrationModalStrings {
 
 /// Constants for form validation error messages
 struct FormErrorMessages {
-    static let required = "This field is required"
-    static let leaveBlank = "This field is required"
+    static let required = "this field is required"
+    static let leaveBlank = "this field is required"
     static let email = "must use a valid email"
     static let emailMaxLength = "email should not exceed 100 characters"
     static let passwordMaxLength = "password should not exceed 50 characters"
@@ -267,7 +267,7 @@ struct FormErrorMessages {
     static let maxLength = { (length: Int) in "maximum value should be \(length)" }
     static let min = { (value: Int) in "value must be at least \(value)" }
     static let max = { (value: Int) in "value must not exceed \(value)" }
-    static let noWhiteSpace = "This field is required"
+    static let noWhiteSpace = "this field is required"
     static let futureDate = "future dates not accepted"
     static let passwordMatch = "both passwords must match"
     static let valueShouldNotBeEqual = "value should not be equal to starting weight"
@@ -278,8 +278,8 @@ struct FormErrorMessages {
     static let minValue = "value should be greater than 0"
     static let maxValue99 = "value should be less than 99"
     static let maxValue = { (value: Int) in "value should be less than \(value)" }
-    static let passwordResetFailed = "Failed to send password reset email."
-    static let newPasswordDifferent = "New password must be different from old password"
+    static let passwordResetFailed = "failed to send password reset email."
+    static let newPasswordDifferent = "new password must be different from old password"
     static let modelNumberInvalid = "model number invalid"
     static let duplicate = "the scale can't have duplicate user names"
     static let namePattern = "please enter a valid name"

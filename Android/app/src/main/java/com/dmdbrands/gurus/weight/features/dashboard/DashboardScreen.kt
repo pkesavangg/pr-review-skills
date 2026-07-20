@@ -199,7 +199,10 @@ fun DashboardScreen() {
         DashboardPage(
           vm = vm,
           product = product,
-          hasPercentile = true,
+          // Only show the WHO growth-percentile bands when a series is actually available.
+          // A "Private" gender baby has no percentile series (BabyPercentileHelper returns null),
+          // so the bands — and their layer — must be suppressed entirely (MOB-1537).
+          hasPercentile = state.activePercentile != null,
           // Fill height only when there's data; the empty state needs a fixed-height
           // grid so the CONNECT DEVICE CTA stays visible below the chart (MOB-432).
           chartFillsHeight = !state.isEmpty,

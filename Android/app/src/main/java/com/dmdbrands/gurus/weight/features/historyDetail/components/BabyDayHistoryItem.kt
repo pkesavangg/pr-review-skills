@@ -20,6 +20,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
+import com.dmdbrands.gurus.weight.core.shared.utilities.testing.TestTags
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
@@ -144,7 +145,8 @@ fun BabyDayHistoryItem(
     // behind the row can't bleed through the content — the row had no background. (MOB-1259)
     Column(
         modifier = Modifier
-            .testTag("entry_row")
+            .testTag(TestTags.History.EntryRow)
+            .testTag(TestTags.History.BabyEntryRow)
             .background(
                 if (isExpanded) MeTheme.colorScheme.secondaryBackground else MeTheme.colorScheme.primaryBackground,
             ),
@@ -254,7 +256,9 @@ fun BabyDayHistoryItem(
                             HistoryItemStrings.AddNoteContentDescription
                         },
                         onClick = { onEditEntry() },
-                        modifier = Modifier.padding(start = MeTheme.spacing.sm),
+                        modifier = Modifier
+                            .padding(start = MeTheme.spacing.sm)
+                            .testTag(TestTags.History.EditNoteButton),
                     )
                 }
             }
