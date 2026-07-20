@@ -196,23 +196,6 @@ object TestTags {
   }
 
   /**
-   * History feature — per-entry detail rows. Mirrors the iOS `AccessibilityID+History` set:
-   * weight uses the unprefixed id, blood-pressure and baby are prefixed. (MOB-1502)
-   */
-  object History {
-    const val EntryRow = "history_entry_row"
-    const val BpEntryRow = "bp_history_entry_row"
-    const val BabyEntryRow = "baby_history_entry_row"
-  }
-
-  /** Dashboard feature — product snapshot cards. Mirrors the iOS `AccessibilityID+Dashboard`. */
-  object Dashboard {
-    const val WeightCard = "weight_card"
-    const val BpCard = "bp_card"
-    const val BabyCard = "baby_card"
-  }
-
-  /**
    * Generic chrome for shared dialog/alert windows routed through `BaseModal` (alerts, confirms,
    * radio pickers, time picker, etc.). Applied by default so every such window is selectable even
    * before it gets bespoke ids; a caller-supplied `ActionButton.testTag` / `titleTestTag` overrides.
@@ -243,6 +226,8 @@ object TestTags {
   object History {
     const val MonthRow = "history_month_row" // suffix with the month key
     const val EntryRow = "history_entry_row" // suffix with the entry id
+    const val BpEntryRow = "bp_history_entry_row"
+    const val BabyEntryRow = "baby_history_entry_row"
     const val BpRowExpand = "history_bp_row_expand"
     const val DeleteButton = "history_delete_button"
     const val DownloadButton = "history_download_button"
