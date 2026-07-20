@@ -32,6 +32,11 @@ struct BabyHistoryEntryItem: View {
         "\(timeText), \(HistoryListStrings.weight) \(entry.weightDisplay), \(HistoryListStrings.length) \(entry.lengthDisplay)"
     }
 
+    /// Per-row automation id, suffixed with the entry's stable id so each row resolves to one node.
+    private var rowAccessibilityID: String {
+        "\(AccessibilityID.babyHistoryEntryRow)_\(entry.id.uuidString)"
+    }
+
     var body: some View {
         VStack(spacing: 0) {
             // Main entry row
@@ -54,24 +59,13 @@ struct BabyHistoryEntryItem: View {
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
 
-                // Length — "--" when no length recorded (handled in weightDisplay/lengthDisplay)
+                // Length — "--" when no length recorded (handled in weightDisplay/lengthDisplay).
+                // Per the design, individual entry rows show weight + length only — the growth
+                // percentile lives on the week-history summary row, not here (MOB-1567).
                 VStack(alignment: .leading, spacing: 2) {
                     BabyValueText(value: entry.lengthDisplay, onDarkBackground: isExpanded)
 
                     Text(HistoryListStrings.length)
-                        .fontOpenSans(.body3)
-                        .foregroundStyle(isExpanded ? theme.actionInverseSecondary : theme.textSubheading)
-                }
-                .frame(maxWidth: .infinity, alignment: .leading)
-
-                // Percentile
-                VStack(alignment: .leading, spacing: 2) {
-                    BabyValueText(
-                        value: BabyWeightPercentileCalculator.percentileDisplayText(entry.percentile),
-                        onDarkBackground: isExpanded
-                    )
-
-                    Text(HistoryListStrings.percentile)
                         .fontOpenSans(.body3)
                         .foregroundStyle(isExpanded ? theme.actionInverseSecondary : theme.textSubheading)
                 }
@@ -89,6 +83,7 @@ struct BabyHistoryEntryItem: View {
             // background must be the dark actionPrimary. actionSecondary is the same light
             // token as textInverse, which made the values invisible.
             .background(isExpanded ? theme.actionPrimary : Color.clear)
+            .accessibilityIdentifier(rowAccessibilityID)
             .accessibilityElement(children: .ignore)
             .accessibilityLabel(combinedAccessibilityLabel)
             .accessibilityAddTraits(.isButton)
@@ -139,6 +134,7 @@ struct BabyHistoryEntryItem: View {
                                         .foregroundColor(theme.actionPrimary)
                                 }
                                 .buttonStyle(.plain)
+                                .appAccessibility(id: AccessibilityID.babyHistoryEntryMoreButton)
                             }
                         }
                     } else {
@@ -162,6 +158,7 @@ struct BabyHistoryEntryItem: View {
                     }
                     .buttonStyle(.plain)
                     .accessibilityLabel(hasNotes ? HistoryListStrings.accEditNoteLabel : HistoryListStrings.accAddNoteLabel)
+                    .appAccessibility(id: AccessibilityID.babyHistoryEntryEditNoteButton)
                 }
                 .padding(.spacingSM)
                 .frame(maxWidth: .infinity, alignment: .leading)

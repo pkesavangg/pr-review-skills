@@ -196,7 +196,7 @@ Two correctness/robustness fixes plus a dead-path removal landed on the branch a
 
 The private push-then-pull "sync after local changes" path (the one §5 A2 planned to "mirror the rewiring" into) is deleted outright — it had no remaining callers, and its role is now covered by eager push (immediate push, 5b.2) plus the full `syncEntries` (pull).
 
-## 5c. Interactive-flow jerk on a real 10k account (2026-07-08) — IN PROGRESS
+## 5c. Interactive-flow jerk on a real 10k account (2026-07-08) — ✅ SHIPPED (commit `c3d790de4`, PR #2218)
 
 Re-tested on a physical device with a real **10,003-entry** account (`barath@icloud.com`) after an uninstall/reinstall (fresh local store → full history pulled by the background sync).
 
@@ -211,7 +211,7 @@ Re-tested on a physical device with a real **10,003-entry** account (`barath@icl
 
 Key interpretation: **a loader cannot render while the main thread is blocked.** So "no loader" is either (a) the work is now off the critical path and the save is instant (loader flashes — success), or (b) main is still blocked and the loader never gets a frame. The timing logs below disambiguate.
 
-**Changes already landed this session (uncommitted working-tree edits, not yet committed):**
+**Changes (landed and merged — commit `c3d790de4` "Optimize entry data fetching and UI responsiveness for large accounts", part of PR #2218; symbols verified in the merged tree: `scheduleProgressAndStreakRefresh`, `fetchAllEntryData`, `isHistoryScreenActive`):**
 1. **`getMonthsAll` moved off-main** — new `SwiftDataWorker.fetchAllEntryData(...)` (`[EntryData]`, mirrors `fetchEntriesAsDTO`) + a shared `EntryData(from: Entry)` init + a `nonisolated static buildMonthsAll(...)` run in a detached task. History no longer materializes 10k `@Model` rows on the main actor (it was the only hot read the initial D1 commit left on main). Added to `EntryWorkerProtocol` + `MockEntryWorker` (projects from `backingRepo`); `getMonthsAll` tests still pass.
 2. **Manual save no longer awaits the full-dataset recompute** — `handleEntryAdded` now emits `entrySaved` + updates the affected day/month summaries **first**, then fires `updateProgressAndStreakInternal()` **behind the UI** via `scheduleProgressAndStreakRefresh()` (coalesced through a new `progressRefreshTask`, so a bulk save = one trailing recompute). The 8 s save-loader was this recompute (`getStreak()` re-reads all 10k) being awaited inline. `performSync` still awaits it directly (already off the UI's critical path).
 3. **Removed redundant launch reload** — `ContentViewModel.startBackgroundDataSync` no longer re-runs `loadDashboardData` + `fetchAllEntrySnapshots` after the sync (both already ran in `loadData`; `performSync` reloads the dashboard itself only when data changes; `ContentViewModel.entries` is consumed by no view). Eliminates one full 10k worker read + one 10k snapshot build per launch. `ContentViewModelTests` updated (`loadDashboardDataCalls`/`fetchAllEntrySnapshotsCalls` 2 → 1).
@@ -291,6 +291,9 @@ Verification evidence to produce (Phase 3):
 - Lightweight migration check: app upgrade path with existing on-disk store + new `#Index` opens cleanly and keeps data.
 
 ## 8. Acceptance criteria (from MOB-1433 + task brief — final checklist)
+
+> ✅ **All criteria met — shipped in PR #2218** (see §5a for the commit map; the boxes below are left unticked
+> as the original brief text). The 10k-device Instruments gate + the §5c interactive-flow follow-ups also landed.
 
 - [ ] Merge diffs against one up-front in-memory map (serverEntryId / normalized timestamp), no per-row fetches, applied in a background `ModelContext` (`SwiftDataWorker`) with chunked saves
 - [ ] Loading screen not gated on remote sync; `.dashboard` after local load; sync behind `isSyncing`

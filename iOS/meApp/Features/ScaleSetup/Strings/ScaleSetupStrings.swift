@@ -13,7 +13,7 @@ struct ScaleSetupStrings {
     static let setupHeader: (String) -> String = { sku in
         // Map SKU for display (e.g., 0022 -> 0383) for UI
         let displaySku = DeviceHelper.mapSkuForDisplay(sku)
-        return "Scale Setup - \(displaySku)"
+        return "Device Setup - \(displaySku)"
     }
     static let modelTitle: (String) -> String = { sku in
         // Map SKU for display (e.g., 0022 -> 0383) for UI

@@ -60,6 +60,9 @@ import com.dmdbrands.gurus.weight.features.common.components.BiologicalSexOption
 import com.dmdbrands.gurus.weight.features.common.components.TextType
 import com.dmdbrands.gurus.weight.features.common.helper.form.FormControl
 import com.dmdbrands.gurus.weight.features.common.helper.form.FormValidations
+import com.dmdbrands.gurus.weight.features.common.helper.form.ValidationError
+import com.dmdbrands.gurus.weight.features.common.helper.form.ValidationType
+import com.dmdbrands.gurus.weight.features.myKids.isDuplicateBabyName
 import com.dmdbrands.gurus.weight.features.myKids.strings.AddBabyStrings
 import com.dmdbrands.gurus.weight.features.myKids.viewmodel.MyKidsIntent
 import com.dmdbrands.gurus.weight.features.myKids.viewmodel.MyKidsViewModel
@@ -100,6 +103,8 @@ fun AddBabyScreen(babyId: String? = null, viewModel: MyKidsViewModel = hiltViewM
         seedBabyControls(controls, baby, isMetric, isLbOz)
     }
 
+    AttachDuplicateNameValidation(controls.name, state.babies, babyId)
+
     var showSexModal by remember { mutableStateOf(false) }
     if (showSexModal) {
         BabySexModal(sexControl = controls.sex, onDismiss = { showSexModal = false })
@@ -122,8 +127,13 @@ fun AddBabyScreen(babyId: String? = null, viewModel: MyKidsViewModel = hiltViewM
                 modifier = Modifier.testTag(TestTags.MyKids.AddBabySaveButton),
                 type = ButtonType.InlineTextPrimary,
                 size = ButtonSize.Small,
+                // Disable Save while the name is in error (e.g. duplicate) so it can't be submitted.
+                enabled = !controls.name.isError,
                 onClick = {
-                    viewModel.handleIntent(controls.toSaveBabyIntent(babyId, isMetric, isLbOz))
+                    // Guard as well, so a still-unvalidated invalid name surfaces the inline error.
+                    if (controls.name.validate()) {
+                        viewModel.handleIntent(controls.toSaveBabyIntent(babyId, isMetric, isLbOz))
+                    }
                 },
             )
         },
@@ -135,6 +145,33 @@ fun AddBabyScreen(babyId: String? = null, viewModel: MyKidsViewModel = hiltViewM
             isLbOz = isLbOz,
             onOpenSexModal = { showSexModal = true },
         )
+    }
+}
+
+/**
+ * Attaches a duplicate-name validator to the baby [nameControl]: rejects a name (case-insensitive,
+ * trimmed) that matches another baby on the account. The sibling list is kept live and excludes the
+ * baby being edited ([editingBabyId]) so re-saving its own unchanged name never self-flags. The
+ * validator is attached once and reads the latest sibling list via state.
+ */
+@Composable
+private fun AttachDuplicateNameValidation(
+    nameControl: FormControl<String>,
+    babies: List<BabyProfile>,
+    editingBabyId: String?,
+) {
+    val siblingNames = remember { mutableStateOf<List<String>>(emptyList()) }
+    LaunchedEffect(babies, editingBabyId) {
+        siblingNames.value = babies.filter { it.id != editingBabyId }.map { it.name }
+    }
+    LaunchedEffect(Unit) {
+        nameControl.addValidator { value ->
+            if (isDuplicateBabyName(value, siblingNames.value)) {
+                ValidationError(ValidationType.DUPLICATE, AddBabyStrings.DuplicateNameError)
+            } else {
+                null
+            }
+        }
     }
 }
 

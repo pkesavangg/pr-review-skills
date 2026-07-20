@@ -50,6 +50,9 @@ final class EntryStore: ObservableObject {
     let tag = "EntryStore"
 
     var isBabyFormValid: Bool {
+        // Weight is the required field and SAVE gates on it alone; ounces and length
+        // are optional. In lb/oz mode the pounds field is the required one — a value
+        // in ounces only (e.g. "0 lb 0.4 oz") must NOT enable SAVE (MOB-1548).
         let weightPresent: Bool
         let weightValid: Bool
         switch babyWeightUnit {
@@ -60,22 +63,26 @@ final class EntryStore: ObservableObject {
             weightPresent = !babyForm.lb.value.isEmpty
             weightValid = babyForm.lb.isValid
         case .lbsOz:
-            weightPresent = !babyForm.pounds.value.isEmpty || !babyForm.ounces.value.isEmpty
+            weightPresent = !babyForm.pounds.value.isEmpty
             weightValid = babyForm.pounds.isValid && babyForm.ounces.isValid
         }
 
-        let lengthPresent: Bool
+        // Length is optional; only its validity gates SAVE (an empty length is valid).
         let lengthValid: Bool
         switch babyLengthUnit {
         case .inches:
-            lengthPresent = !babyForm.inches.value.isEmpty
             lengthValid = babyForm.inches.isValid
         case .cm:
-            lengthPresent = !babyForm.cm.value.isEmpty
             lengthValid = babyForm.cm.isValid
         }
 
-        return (weightPresent || lengthPresent) && weightValid && lengthValid && babyForm.date.isValid
+        return weightPresent && weightValid && lengthValid && babyForm.date.isValid
+    }
+
+    /// Lower bound for the baby entry date picker — see `ProductSelection.babyEntryMinimumDate`
+    /// (birthday-anchored, Jan 1, 2000 fallback, ignores future birthdays; MOB-1567).
+    var babyEntryMinimumDate: Date {
+        productTypeStore.selectedItem.babyEntryMinimumDate
     }
 
     var maxSelectableTime: Date {

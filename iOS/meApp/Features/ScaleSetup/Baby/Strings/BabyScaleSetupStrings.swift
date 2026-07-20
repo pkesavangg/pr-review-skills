@@ -11,7 +11,7 @@ struct BabyScaleSetupStrings {
     // MARK: - Header
     static let setupHeader: (String) -> String = { sku in
         let displaySku = DeviceHelper.mapSkuForDisplay(sku)
-        return "Scale Setup - \(displaySku)"
+        return "Device Setup - \(displaySku)"
     }
     static let monitorSetupHeader: (String) -> String = { sku in
         let displaySku = DeviceHelper.mapSkuForDisplay(sku)
@@ -82,9 +82,9 @@ struct BabyScaleSetupStrings {
         static let ozUnit = "oz"
         static let male = "Male"
         static let female = "Female"
-        static let required = "Required."
-        static let invalidWeight = "Please enter a valid weight."
-        static let invalidLength = "Please enter a valid length."
+        static let required = "required."
+        static let invalidWeight = "please enter a valid weight."
+        static let invalidLength = "please enter a valid length."
         static let duplicateNameError = "baby name already exists"
         static let kgUnit = "kg"
         static let cmUnit = "cm"

@@ -82,35 +82,40 @@ private fun HelpContent(
     ) {
       ContactUsContent(handleIntent)
       Spacer(Modifier.height(MeTheme.spacing.xl))
-      DeviceCatalogSection(
-        title = HelpScreenStrings.BabyScale,
-        iconId = AppIcons.Setup.BabyScale,
-        iconTint = MeTheme.colorScheme.baby,
-        devices = BABY_SCALES,
-        onDeviceSelected = { device ->
-          val url = "${AppConfig.PRODUCT_URL}/${device.sku}"
-          handleIntent(HelpIntent.OpenUrl(url))
-        },
-      )
-      DeviceCatalogSection(
-        title = HelpScreenStrings.BloodPressureMonitor,
-        iconId = AppIcons.Setup.BpmScale,
-        iconTint = MeTheme.colorScheme.secondarySuccess,
-        devices = BPM_DEVICES,
-        onDeviceSelected = { device ->
-          val url = "${AppConfig.PRODUCT_URL}/${device.sku}"
-          handleIntent(HelpIntent.OpenUrl(url))
-        },
-      )
-      WeightScaleCatalogSection(
-        onScaleSelected = { scale ->
-          val url = "${AppConfig.PRODUCT_URL}/${scale.sku}"
-          handleIntent(HelpIntent.OpenUrl(url))
-        },
-      )
+      HelpDeviceCatalog(handleIntent)
       AppVersionContent()
     }
   }
+}
+
+@Composable
+private fun HelpDeviceCatalog(handleIntent: (HelpIntent) -> Unit) {
+  DeviceCatalogSection(
+    title = HelpScreenStrings.BabyScale,
+    iconId = AppIcons.Setup.BabyScale,
+    iconTint = MeTheme.colorScheme.baby,
+    devices = BABY_SCALES,
+    onDeviceSelected = { device ->
+      val url = "${AppConfig.PRODUCT_URL}/${device.sku}"
+      handleIntent(HelpIntent.OpenUrl(url))
+    },
+  )
+  DeviceCatalogSection(
+    title = HelpScreenStrings.BloodPressureMonitor,
+    iconId = AppIcons.Setup.BpmScale,
+    iconTint = MeTheme.colorScheme.secondarySuccess,
+    devices = BPM_DEVICES,
+    onDeviceSelected = { device ->
+      val url = "${AppConfig.PRODUCT_URL}/${device.sku}"
+      handleIntent(HelpIntent.OpenUrl(url))
+    },
+  )
+  WeightScaleCatalogSection(
+    onScaleSelected = { scale ->
+      val url = "${AppConfig.PRODUCT_URL}/${scale.sku}"
+      handleIntent(HelpIntent.OpenUrl(url))
+    },
+  )
 }
 
 @PreviewTheme

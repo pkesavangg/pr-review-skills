@@ -33,6 +33,11 @@ struct BPHistoryEntryItem: View {
         return "\(day), \(time), \(entry.systolic) over \(entry.diastolic) \(HistoryListStrings.mmhg), \(HistoryListStrings.pulse) \(entry.pulse)"
     }
 
+    /// Per-row automation id, suffixed with the entry's stable id so each row resolves to one node.
+    private var rowAccessibilityID: String {
+        "\(AccessibilityID.bpHistoryEntryRow)_\(entry.id.uuidString)"
+    }
+
     var body: some View {
         VStack(spacing: 0) {
             // Main entry row
@@ -84,7 +89,7 @@ struct BPHistoryEntryItem: View {
             // background must be the dark actionPrimary. actionSecondary is the same light
             // token as textInverse, which made the values invisible.
             .background(isExpanded ? theme.actionPrimary : Color.clear)
-            .appAccessibility(id: AccessibilityID.historyBPRowExpand)
+            .accessibilityIdentifier(rowAccessibilityID)
             .accessibilityElement(children: .ignore)
             .accessibilityLabel(combinedAccessibilityLabel)
             .accessibilityAddTraits(.isButton)
@@ -138,6 +143,7 @@ struct BPHistoryEntryItem: View {
                     }
                     .buttonStyle(.plain)
                     .accessibilityLabel(hasNotes ? HistoryListStrings.accEditNoteLabel : HistoryListStrings.accAddNoteLabel)
+                    .appAccessibility(id: AccessibilityID.bpHistoryEntryEditNoteButton)
                 }
                 .padding(.spacingSM)
                 .frame(maxWidth: .infinity, alignment: .leading)

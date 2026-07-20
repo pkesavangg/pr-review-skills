@@ -26,6 +26,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -93,7 +94,7 @@ fun FeedMessagesScreen(
                 // Feed Items List
                 LazyColumn(
                   state = listState,
-                    modifier = Modifier.fillMaxSize(),
+                    modifier = Modifier.fillMaxSize().testTag("feed_list"),
                 ) {
                     items(state.feedItems, key = { feedItem -> feedItem.elementId }) { feedItem ->
                         FeedItemCard(

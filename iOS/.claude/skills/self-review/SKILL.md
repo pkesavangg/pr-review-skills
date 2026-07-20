@@ -82,3 +82,27 @@ Key findings:
 - **FAIL** or regression risk **High** or accessibility **FAIL** → fix before committing; re-run the affected check after fixing
 - **WARNING only** → fix if straightforward; otherwise note and proceed
 - **All PASS / Low / Complete** → confirm ready to commit and call `/commit`
+
+---
+
+### 5 — Record the commit-gate marker + report
+
+`git commit` through Claude Code is **hard-blocked** by `scripts/commit-review-gate.sh` (wired in `iOS/.claude/settings.json`) until self-review has passed on the current working tree. This step is mandatory, and it does two things: **always** write the verdict report (so a blocked commit can tell the user exactly what failed), and write the pass-marker **only** when clean.
+
+1. **Always** write the report — the Step 3 summary table + Key findings, including the literal `Overall verdict:` line (the gate greps it for `NEEDS FIXES`):
+   ```bash
+   cat > "$(git rev-parse --absolute-git-dir)/self-review-report" <<'EOF'
+   <paste the Step 3 Self-Review Summary table, Overall verdict line, and Key findings here>
+   EOF
+   ```
+2. Then, by verdict:
+   - **PASS** → record the pass-marker to unlock the commit:
+     ```bash
+     scripts/review-fingerprint.sh > "$(git rev-parse --absolute-git-dir)/self-review-pass"
+     ```
+   - **NEEDS FIXES** → remove any stale pass-marker so the commit stays blocked; the report written in step 1 is what the gate shows the user:
+     ```bash
+     rm -f "$(git rev-parse --absolute-git-dir)/self-review-pass"
+     ```
+
+The marker is a fingerprint of the working tree, so **any further edit invalidates it** and requires re-running self-review — but `git add` alone does not, so the `self-review → stage → commit` flow works. Both files live in `.git/` (never committed, per-clone). To commit intentionally without self-review, add `--no-verify` to the `git commit`.

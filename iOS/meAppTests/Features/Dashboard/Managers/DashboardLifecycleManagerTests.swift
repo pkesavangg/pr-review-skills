@@ -325,6 +325,33 @@ struct DashboardLifecycleManagerTests {
         #expect(cleared == true)
     }
 
+    @Test("onEntryAdded: advances selection to the latest entry when added on a new day (MOB-1582)")
+    func onEntryAddedAdvancesSelectionToLatestOnNewDay() async {
+        let sut = makeSUT(); let store = sut.store; let accountService = sut.accountService; let entryService = sut.entryService
+        accountService.activeAccount = DashboardStoreTestSupport.makeActiveAccount()
+
+        // Sorted daily summaries span 2026-03-01 … 2026-03-05; daily[4] is the latest.
+        let daily = DashboardTestFixtures.makeSortedDailySummaries()
+        await DashboardManagerTestSupport.loadData(into: store, entryService: entryService, daily: daily)
+
+        // User is parked on an earlier (non-latest) day when a newer entry is added.
+        store.graphManager.state.selectedPeriod = .week
+        store.graphManager.state.selectedPoint = daily[2] // 2026-03-03
+        DashboardManagerTestSupport.syncStoreGraphState(store)
+
+        store.lifecycleManager.onEntryAdded(makeEntryNotification())
+
+        // Debounced (~250ms) → the selection should advance to the latest entry and show the crosshair,
+        // rather than staying re-pinned to the previous day (the MOB-1582 regression).
+        let advanced = await waitUntil {
+            store.state.graph.selectedPoint?.period == daily[4].period
+        }
+
+        #expect(advanced == true)
+        #expect(store.state.graph.selectedPoint?.period == "2026-03-05")
+        #expect(store.state.graph.showCrosshair == true)
+    }
+
     // MARK: - Settings Change Tests
 
     @Test("handleSettingsChange: syncs removal state")

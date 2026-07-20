@@ -70,6 +70,9 @@ class HistoryDetailViewModelTest {
     @MockK(relaxed = true)
     lateinit var entryReadService: IEntryReadService
 
+    @MockK(relaxed = true)
+    lateinit var userDataStore: com.dmdbrands.gurus.weight.data.storage.datastore.UserDataStore
+
     private lateinit var navigationService: IAppNavigationService
     private lateinit var dialogQueueService: IDialogQueueService
     private lateinit var productSelectionManager: IProductSelectionManager
@@ -85,6 +88,8 @@ class HistoryDetailViewModelTest {
         productSelectionManager = mockk(relaxed = true)
         every { productSelectionManager.selectedProduct } returns MutableStateFlow(ProductSelection.MyWeight)
         every { accountService.activeAccount } returns activeAccountFlow
+        every { userDataStore.babyWeightUnitForCurrentAccountFlow } returns
+            flowOf(com.dmdbrands.gurus.weight.domain.model.common.WeightUnit.LB_OZ)
     }
 
     private fun createViewModel(
@@ -97,6 +102,7 @@ class HistoryDetailViewModelTest {
             entryService = entryService,
             healthConnectService = healthConnectService,
             entryReadService = entryReadService,
+            userDataStore = userDataStore,
             appScope = TestScope(mainDispatcherRule.dispatcher),
             month = month,
             productType = com.dmdbrands.gurus.weight.domain.enums.ProductType.MY_WEIGHT,
@@ -339,6 +345,7 @@ class HistoryDetailViewModelTest {
             entryService = entryService,
             healthConnectService = healthConnectService,
             entryReadService = entryReadService,
+            userDataStore = userDataStore,
             appScope = TestScope(mainDispatcherRule.dispatcher),
             month = TEST_MONTH,
             productType = com.dmdbrands.gurus.weight.domain.enums.ProductType.MY_WEIGHT,
@@ -964,6 +971,7 @@ class HistoryDetailViewModelTest {
             entryService = entryService,
             healthConnectService = healthConnectService,
             entryReadService = entryReadService,
+            userDataStore = userDataStore,
             appScope = TestScope(mainDispatcherRule.dispatcher),
             month = month,
             productType = com.dmdbrands.gurus.weight.domain.enums.ProductType.MY_WEIGHT,

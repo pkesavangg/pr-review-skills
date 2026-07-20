@@ -45,6 +45,7 @@ struct BabyScaleConnectionFailureView: View {
                             isDisabled: false,
                             action: onPairAgain
                         )
+                        .appAccessibility(id: AccessibilityID.babyConnectionFailurePairAgainButton)
 
                         ButtonView(
                             text: lang.support,
@@ -53,6 +54,7 @@ struct BabyScaleConnectionFailureView: View {
                             isDisabled: false,
                             action: onSupport
                         )
+                        .appAccessibility(id: AccessibilityID.babyConnectionFailureSupportButton)
                     }
                     .padding(.bottom, .spacingLG)
                 }

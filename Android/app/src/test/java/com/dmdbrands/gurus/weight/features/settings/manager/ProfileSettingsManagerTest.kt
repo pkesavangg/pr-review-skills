@@ -79,8 +79,8 @@ class ProfileSettingsManagerTest {
 
   @Test
   fun `observeUserProfile dispatches UpdateAccount with hasMultipleAccounts true for two accounts`() = runTest {
+    every { accountService.activeAccountFlow } returns flowOf(account)
     every { accountService.loggedInAccountsFlow } returns flowOf(listOf(account, account))
-    coEvery { accountService.getCurrentAccount() } returns account
     val dispatch = mockk<(SettingsIntent) -> Unit>(relaxed = true)
 
     manager.observeUserProfile(scope = this, dispatch = dispatch)
@@ -91,8 +91,8 @@ class ProfileSettingsManagerTest {
 
   @Test
   fun `observeUserProfile dispatches UpdateAccount with hasMultipleAccounts false for single account`() = runTest {
+    every { accountService.activeAccountFlow } returns flowOf(account)
     every { accountService.loggedInAccountsFlow } returns flowOf(listOf(account))
-    coEvery { accountService.getCurrentAccount() } returns account
     val dispatch = mockk<(SettingsIntent) -> Unit>(relaxed = true)
 
     manager.observeUserProfile(scope = this, dispatch = dispatch)

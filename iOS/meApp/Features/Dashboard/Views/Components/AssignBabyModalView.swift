@@ -66,6 +66,7 @@ struct AssignBabyModalView: View {
                     AppIconView(icon: AppAssets.xmarkSmall, size: IconSize(width: 20, height: 20))
                         .foregroundColor(theme.statusIconPrimary)
                 }
+                .appAccessibility(id: AccessibilityID.assignBabyCloseButton)
             }
             .padding(.bottom, .spacingXS)
 
@@ -129,6 +130,7 @@ struct AssignBabyModalView: View {
                         onAssign(selectedBabyId)
                     }
                 }
+                .appAccessibility(id: AccessibilityID.assignBabyAssignButton)
                 ButtonView(
                     text: lang.assignMeasurementDontAssign,
                     type: .textPrimary,
@@ -136,11 +138,13 @@ struct AssignBabyModalView: View {
                     isDisabled: false,
                     action: onDontAssign
                 )
+                .appAccessibility(id: AccessibilityID.assignBabyDontAssignButton)
             }
         }
         .padding(.spacingMD)
         .background(theme.backgroundSecondary)
         .cornerRadius(.radiusXL)
+        .screenAccessibilityRoot(AccessibilityID.assignBabyModalRoot)
     }
 }
 
@@ -193,6 +197,7 @@ private struct AssignToNewBabyRow: View {
             )
         }
         .buttonStyle(.plain)
+        .appAccessibility(id: AccessibilityID.assignBabyNewBabyRow)
     }
 }
 
@@ -253,6 +258,7 @@ private struct BabySelectionRow: View {
             )
         }
         .buttonStyle(.plain)
+        .appAccessibility(id: "\(AccessibilityID.assignBabyRow)_\(baby.id)")
     }
 
     private func ageLabel(for birthday: Date?) -> String {

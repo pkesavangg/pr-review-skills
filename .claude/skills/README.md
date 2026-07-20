@@ -10,12 +10,13 @@ How Claude Code skills are organized in this monorepo, what each one does, and h
   - **Generic skills → repo-root `.claude/skills/`** — trigger anywhere in the monorepo.
   - **iOS skills → `iOS/.claude/skills/`** — scoped to work under `iOS/`.
   - **Android skills → `Android/.claude/skills/`** — scoped to work under `Android/`.
-- **Symlink fallback:** if an iOS/Android-scoped skill must be reachable from the monorepo root regardless of working directory, symlink it into root with a **relative** link, e.g.:
+- **Root mirror (how iOS skills reach the bare root):** iOS skills live under `iOS/.claude/skills/`, so by default Claude Code only discovers them when it is rooted under `iOS/` (or when `iOS` is passed via `--add-dir`). To make them trigger from the **monorepo root** too — e.g. when you launch Claude at the repo root to work across both platforms — every iOS skill is mirrored into `.claude/skills/` as a **relative symlink** (`.claude/skills/<name>` → `../../iOS/.claude/skills/<name>`). The skill stays single-sourced under `iOS/`; the symlink only widens its scope. Keep the mirror in sync with one command:
   ```bash
-  cd "$(git rev-parse --show-toplevel)/.claude/skills" && ln -s ../../iOS/.claude/skills/graph graph
+  scripts/sync-root-skill-links.sh          # create missing links, prune stale ones
+  scripts/sync-root-skill-links.sh --check  # verify in sync (exit 1 if not) — CI-safe
   ```
-  The source stays single-sourced under the platform folder; the symlink just widens its scope. Note the trade-off: a root-symlinked iOS skill is then also offered while working on Android.
-- **Tracking:** shared skills are committed (see `.gitignore` — `.claude/*` is ignored but skills/agents/commands/orchestra/settings.json are re-included). Local `settings.local.json` stays ignored.
+  Trade-offs to know: a mirrored iOS skill is also offered while working on Android; a name that already exists at root (e.g. `prepare-simulator-build`) is left as the real root skill and never overwritten; the links are relative so they resolve on any clone (Windows checkouts need symlink support enabled).
+- **Tracking:** shared skills — and the root mirror symlinks — are committed (see `.gitignore` — `.claude/*` is ignored but skills/agents/commands/orchestra/settings.json are re-included). Local `settings.local.json` stays ignored.
 
 ---
 
@@ -39,10 +40,11 @@ Plus the two cross-platform "expert" reference skills: `compose-expert-skill` (A
 
 ---
 
-## iOS (`iOS/.claude/skills/`) — 48 skills
+## iOS (`iOS/.claude/skills/`) — 50 skills (all mirrored into root — see **Root mirror** above)
 
 **Scaffolding & wiring:** `feature-slice`, `add-endpoint`, `wire-service`, `wire-navigation`, `add-strings`, `add-preview`, `add-accessibility`, `gen-mock-single`, `update-mock`
 **Testing & coverage:** `build`, `run-tests`, `verify-tests`, `gen-test-file`, `gen-ui-test-file`, `analyze-coverage`, `visual-regression`
+**Build tooling:** **`prepare-simulator-build`** (flip `ggWifiScalePackage`/`ggBluetoothNativeLibrary` to their `simulator-support` branch so the app builds on the Simulator, and back again — via `scripts/sim-packages.sh`)
 **Review & quality:** `self-review`, `post-change-guard`, `swiftlint`, `review-lint`, `review-security`, `review-regression`, `review-issue-fix`, `review-accessibility`, `review-code-standards`, `review-ui-standards`, `refactor`
 **Debugging:** `debug-issue`, `fix-bug`, `fix-pr-comments`
 **Reference guides:** `api-guide`, `form-guide`, `logging-guide`, `notification-guide`, `theme-guide`, `keychain-pattern`, `analytics`
@@ -91,5 +93,6 @@ Identified parity gaps (follow-ups): iOS SPM `upgrade-deps`, iOS asset-catalog i
 ## Maintenance
 
 - **Add/edit a skill:** use `/skill-creator`; keep `SKILL.md` lean (move bulk into a `reference/` subdir as `unit-tests/` and `upgrade-deps/` do).
+- **Add/rename/remove an iOS skill → re-sync the root mirror:** run `scripts/sync-root-skill-links.sh` so the new skill triggers from the monorepo root and any renamed/removed one is pruned. CI or pre-commit can gate this with `--check`. (Android skills are not mirrored today — if that changes, extend the same script.)
 - **Validate links:** run `scripts/check-skill-links.sh` (flags broken file/`.md` references in skills, CLAUDE.md, orchestra.md).
 - **Jira/branch conventions:** examples use `MOB-XXXX`; new branches base off `develop`.

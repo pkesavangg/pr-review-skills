@@ -97,6 +97,7 @@ struct BabyProfileFormView: View {
                         ),
                         value: $form.name.value,
                         focusedField: focusBinding,
+                        accessibilityIdentifier: AccessibilityID.babyNameField,
                         onCommit: {
                             form.name.markAsTouched()
                             form.name.validate()
@@ -123,6 +124,7 @@ struct BabyProfileFormView: View {
                             dismissKeyboardAndUnfocus()
                             withAnimation { showDatePicker.toggle() }
                         }
+                        .appAccessibility(id: AccessibilityID.babyBirthdayRow)
 
                         DatePickerView(
                             isPresented: $showDatePicker,
@@ -144,6 +146,7 @@ struct BabyProfileFormView: View {
                         .padding(.vertical, .spacingXS / 2)
                         .background(theme.backgroundPrimary)
                         .cornerRadius(.spacingXS)
+                        .appAccessibility(id: AccessibilityID.babyBiologicalSexRow)
 
                     // Birth Length + Birth Weight — tightly grouped (weight unit drives length unit)
                     VStack(alignment: .leading, spacing: .spacingXS) {
@@ -166,14 +169,6 @@ struct BabyProfileFormView: View {
         .scrollDismissesKeyboard(.interactively)
         .onChange(of: focusedField) { _, _ in
             showDatePicker = false
-        }
-        // Clear a stale "baby name already exists" 409 error as the user edits the
-        // name. This view is shared by Signup, Scale Setup and My Kids; only Signup
-        // re-homes this clear into its store, so the local clear is what keeps the
-        // BabyScaleSetupStore-driven flows correct (the Signup store re-clears on the
-        // same tick, so it stays correct there too).
-        .onChange(of: form.name.value) { _, _ in
-            form.duplicateNameError = nil
         }
     }
 
@@ -221,7 +216,8 @@ struct BabyProfileFormView: View {
                     trailingLabel: lengthTrailingLabel
                 ),
                 value: $form.birthLengthInches.value,
-                focusedField: focusBinding
+                focusedField: focusBinding,
+                accessibilityIdentifier: AccessibilityID.babyBirthLengthField
             ) {
                 form.birthLengthInches.markAsTouched()
                 form.birthLengthInches.validate()
@@ -239,7 +235,8 @@ struct BabyProfileFormView: View {
                     trailingLabel: lengthTrailingLabel
                 ),
                 value: $form.birthLengthCm.value,
-                focusedField: focusBinding
+                focusedField: focusBinding,
+                accessibilityIdentifier: AccessibilityID.babyBirthLengthField
             ) {
                 form.birthLengthCm.markAsTouched()
                 form.birthLengthCm.validate()
@@ -265,7 +262,8 @@ struct BabyProfileFormView: View {
                     trailingLabel: weightTrailingLabel
                 ),
                 value: $form.birthWeightKg.value,
-                focusedField: focusBinding
+                focusedField: focusBinding,
+                accessibilityIdentifier: AccessibilityID.babyBirthWeightField
             ) {
                 form.birthWeightKg.markAsTouched()
                 form.birthWeightKg.validate()
@@ -283,7 +281,8 @@ struct BabyProfileFormView: View {
                     trailingLabel: weightTrailingLabel
                 ),
                 value: $form.birthWeightLbs.value,
-                focusedField: focusBinding
+                focusedField: focusBinding,
+                accessibilityIdentifier: AccessibilityID.babyBirthWeightField
             ) {
                 form.birthWeightLbs.markAsTouched()
                 form.birthWeightLbs.validate()
@@ -306,7 +305,8 @@ struct BabyProfileFormView: View {
                         trailingLabel: "(\(lang.lbsUnit))"
                     ),
                     value: $form.birthWeightLbs.value,
-                    focusedField: focusBinding
+                    focusedField: focusBinding,
+                    accessibilityIdentifier: AccessibilityID.babyBirthWeightField
                 ) {
                     form.birthWeightLbs.markAsTouched()
                     form.birthWeightLbs.validate()
@@ -324,7 +324,8 @@ struct BabyProfileFormView: View {
                         trailingLabel: "(\(lang.ozUnit))"
                     ),
                     value: $form.birthWeightOz.value,
-                    focusedField: focusBinding
+                    focusedField: focusBinding,
+                    accessibilityIdentifier: AccessibilityID.babyBirthWeightOzField
                 ) {
                     form.birthWeightOz.markAsTouched()
                     form.birthWeightOz.validate()
@@ -408,6 +409,7 @@ struct BiologicalSexPickerModalView: View {
                         title: displayValue(option),
                         isSelected: selection == option
                     ) { selection = option }
+                    .appAccessibility(id: AccessibilityID.babySexPickerOption(option.rawValue))
                 }
             }
 
@@ -459,6 +461,7 @@ struct BiologicalSexPickerModalView: View {
                 isDisabled: false,
                 action: onCancel
             )
+            .appAccessibility(id: AccessibilityID.babySexPickerCancelButton)
             ButtonView(
                 text: commonLang.save,
                 type: .inlineTextPrimary,
@@ -467,6 +470,7 @@ struct BiologicalSexPickerModalView: View {
             ) {
                 onSave(selection)
             }
+            .appAccessibility(id: AccessibilityID.babySexPickerSaveButton)
         }
     }
 }

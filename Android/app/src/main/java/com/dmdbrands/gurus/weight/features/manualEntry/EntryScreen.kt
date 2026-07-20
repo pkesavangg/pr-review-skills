@@ -17,6 +17,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.testTag
+import com.dmdbrands.gurus.weight.core.shared.utilities.testing.TestTags
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -166,6 +168,14 @@ private fun EntryScreenContent(
           label = EntryScreenStrings.SaveButton,
           size = ButtonSize.Large,
           type = ButtonType.PrimaryFilled,
+          // One shared button; id mirrors iOS's per-product save ids by product.
+          modifier = Modifier.testTag(
+            when (selectedProduct) {
+              is ProductSelection.BloodPressure -> TestTags.ManualEntry.BpSaveButton
+              is ProductSelection.Baby, is ProductSelection.BabyScale -> TestTags.ManualEntry.BabySaveButton
+              else -> TestTags.ManualEntry.SaveButton
+            },
+          ),
           onClick = {
             keyboardController?.hide()
             handleIntent(EntryIntent.Save)

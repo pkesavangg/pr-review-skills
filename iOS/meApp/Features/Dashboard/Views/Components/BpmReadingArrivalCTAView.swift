@@ -38,6 +38,7 @@ struct BpmReadingArrivalCTAView: View {
                     isDisabled: false,
                     action: onDiscard
                 )
+                .appAccessibility(id: AccessibilityID.bpmReadingDiscardButton)
                 Spacer()
                 ButtonView(
                     text: DashboardStrings.bpmReadingArrivalSave,
@@ -46,6 +47,7 @@ struct BpmReadingArrivalCTAView: View {
                     isDisabled: false,
                     action: onSave
                 )
+                .appAccessibility(id: AccessibilityID.bpmReadingSaveButton)
             }
         }
     }

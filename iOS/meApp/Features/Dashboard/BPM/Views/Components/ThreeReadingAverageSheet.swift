@@ -25,7 +25,8 @@ struct ThreeReadingAverageSheet: View {
                 },
                 onLeadingTap: { dismiss() },
                 canShowBorder: true,
-                canShowPresentationIndicator: true
+                canShowPresentationIndicator: true,
+                leadingAccessibilityID: AccessibilityID.threeReadingAverageCloseButton
             )
 
             ScrollView {
@@ -80,5 +81,6 @@ struct ThreeReadingAverageSheet: View {
             }
         }
         .background(theme.backgroundSecondary)
+        .screenAccessibilityRoot(AccessibilityID.threeReadingAverageSheetRoot)
     }
 }

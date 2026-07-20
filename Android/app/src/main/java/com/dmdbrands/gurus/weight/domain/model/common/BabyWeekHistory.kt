@@ -8,9 +8,10 @@ data class BabyWeekHistory(
     // Machine date key (YYYY-MM-DD) passed to the day-detail screen; `date` is display-only.
     val dateKey: String,
     val entryCount: Int,
-    val weightLb: Int?,
-    val weightOz: Double?,
-    val lengthInches: Double?,
+    // Raw canonical values; the row formats them into the account's My Kids unit (lb-oz / lb / kg,
+    // in / cm) at render time so a unit change reflects without rebuilding the model. (MOB-1499)
+    val weightDecigrams: Int?,
+    val lengthMillimeters: Int?,
     val percentile: Int?,
 )
 

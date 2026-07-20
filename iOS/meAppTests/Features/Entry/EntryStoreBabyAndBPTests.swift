@@ -48,8 +48,8 @@ struct EntryStoreBabyAndBPTests {
         return (store, entryService, notificationService, accountService, productTypeStore)
     }
 
-    private func makeBabyProfile(id: String = "baby-1") -> BabyProfile {
-        BabyProfile(id: id, name: "Aria")
+    private func makeBabyProfile(id: String = "baby-1", birthday: Date? = nil) -> BabyProfile {
+        BabyProfile(id: id, name: "Aria", birthday: birthday)
     }
 
     private func fillBabyLbsOz(_ store: EntryStore) {
@@ -60,6 +60,42 @@ struct EntryStoreBabyAndBPTests {
         store.babyForm.inches.value = "20"
         store.babyForm.date.value = Date()
         store.babyForm.time.value = Date()
+    }
+
+    // MARK: - babyEntryMinimumDate (MOB-1567)
+
+    @Test("babyEntryMinimumDate: returns the selected baby's birthday when set")
+    func babyEntryMinimumDateUsesBirthday() {
+        let (store, _, _, _, productTypeStore) = makeSUT()
+        let birthday = Calendar.current.date(byAdding: .month, value: -3, to: Date()) ?? Date()
+        productTypeStore.select(.baby(profile: makeBabyProfile(birthday: birthday)))
+
+        #expect(store.babyEntryMinimumDate == birthday)
+    }
+
+    @Test("babyEntryMinimumDate: falls back to the default when no birthday is set")
+    func babyEntryMinimumDateFallsBackWhenNoBirthday() {
+        let (store, _, _, _, productTypeStore) = makeSUT()
+        productTypeStore.select(.baby(profile: makeBabyProfile(birthday: nil)))
+
+        #expect(store.babyEntryMinimumDate == AppConstants.Entry.babyDatePickerMinimum)
+    }
+
+    @Test("babyEntryMinimumDate: ignores a future birthday so the picker range stays valid")
+    func babyEntryMinimumDateIgnoresFutureBirthday() {
+        let (store, _, _, _, productTypeStore) = makeSUT()
+        let future = Calendar.current.date(byAdding: .day, value: 7, to: Date()) ?? Date()
+        productTypeStore.select(.baby(profile: makeBabyProfile(birthday: future)))
+
+        #expect(store.babyEntryMinimumDate == AppConstants.Entry.babyDatePickerMinimum)
+    }
+
+    @Test("babyEntryMinimumDate: falls back to the default for a non-baby selection")
+    func babyEntryMinimumDateNonBabySelection() {
+        let (store, _, _, _, productTypeStore) = makeSUT()
+        productTypeStore.select(.myWeight)
+
+        #expect(store.babyEntryMinimumDate == AppConstants.Entry.babyDatePickerMinimum)
     }
 
     // MARK: - saveBabyEntry
@@ -230,10 +266,12 @@ struct EntryStoreBabyAndBPTests {
         #expect(store.isBabyFormValid == true)
     }
 
-    // Relaxed baby-CREATE validation (MOB-1172): a manual baby entry is valid with weight
-    // OR length present — either alone is enough; only a fully-empty form is invalid.
-    @Test("isBabyFormValid: weight-only is valid, length-only is valid, both-empty is invalid")
-    func isBabyFormValidWeightOrLength() {
+    // Baby-CREATE gating (MOB-1548): SAVE gates on weight only. In lb/oz mode the pounds
+    // field is the required one — ounces and length are optional, so pounds-empty must be
+    // invalid even when ounces and/or length are filled. This supersedes the earlier
+    // MOB-1172 "weight OR length" relaxation.
+    @Test("isBabyFormValid: pounds required; ounces-only, length-only, and both-empty are invalid")
+    func isBabyFormValidGatesOnPounds() {
         let (store, _, _, _, _) = makeSUT()
         store.babyWeightUnit = .lbsOz
         store.babyLengthUnit = .inches
@@ -243,15 +281,26 @@ struct EntryStoreBabyAndBPTests {
         // Both empty -> invalid.
         #expect(store.isBabyFormValid == false)
 
-        // Weight only -> valid.
-        store.babyForm.pounds.value = "8"
-        store.babyForm.ounces.value = "4"
-        #expect(store.isBabyFormValid == true)
+        // Ounces only (pounds empty), e.g. "0 lb 0.4 oz" -> invalid.
+        store.babyForm.ounces.value = "0.4"
+        #expect(store.isBabyFormValid == false)
 
-        // Length only -> valid.
-        store.babyForm.pounds.value = ""
+        // Length only (pounds empty) -> invalid.
         store.babyForm.ounces.value = ""
         store.babyForm.inches.value = "20"
+        #expect(store.isBabyFormValid == false)
+
+        // Ounces + length, pounds empty -> still invalid.
+        store.babyForm.ounces.value = "0.4"
+        #expect(store.isBabyFormValid == false)
+
+        // Pounds present -> valid (ounces/length optional and are allowed alongside).
+        store.babyForm.pounds.value = "8"
+        #expect(store.isBabyFormValid == true)
+
+        // Pounds only, no ounces/length -> valid.
+        store.babyForm.ounces.value = ""
+        store.babyForm.inches.value = ""
         #expect(store.isBabyFormValid == true)
     }
 

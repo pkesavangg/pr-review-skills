@@ -367,11 +367,14 @@ struct HistoryStoreBPBabyTests {
 
     // MARK: - Baby: loadMonths error + selectBabyDay
 
+    /// Birthday is fixed just before the fixed 2026-03-10 entry timestamps used across these
+    /// tests, so real entry days sort ahead of the injected birthday placeholder (the newest
+    /// day stays a real day for `.first`-based assertions).
     func babyProfile(id: String = "baby-1") -> BabyProfile {
         BabyProfile(
             id: id,
             name: "Mia",
-            birthday: Calendar.current.date(byAdding: .day, value: -30, to: Date()),
+            birthday: DateTimeTools.parse("2026-03-01T12:00:00Z"),
             biologicalSex: "female",
             birthLengthInches: 19.5,
             birthWeightLbs: 7.5,

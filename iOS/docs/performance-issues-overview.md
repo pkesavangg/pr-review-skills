@@ -10,7 +10,7 @@
 > **The worst problem — the app freezing on the loading screen after login — is now fixed** (work item MOB-1433). The heavy history-processing was moved off the part of the app that has to stay responsive, so the home screen no longer waits on it, and the login → home wait is gone.
 >
 > **What's still to do:**
-> 1. **The graph still stutters when you scroll it**, and this hasn't been touched yet. It's now the **top priority** — *and it must be fixed before the new blood-pressure and baby-growth graphs ship*, because those draw more lines on the exact same slow part.
+> 1. **The graph-scroll work is now largely done** (work item MOB-518, since merged): the weight-chart engine was rebuilt and the slow multi-line "baby/percentile" path was sped up (it now finds points the fast way instead of scanning them all), so the new blood-pressure and baby-growth graphs land on the fixed engine. One small internal caching cleanup remains, but the scroll stutter this item described has been addressed.
 > 2. **On very large accounts (10,000+ entries), some screens are still slow to open** (e.g. History) because the app still re-processes the whole history in the background instead of remembering the result. This "remember the result" fix is a bigger, separate piece that's planned but not yet done.
 > 3. Smaller cleanups (log-writing, health-sync, account switching) are partly done; the rest are low-priority.
 >

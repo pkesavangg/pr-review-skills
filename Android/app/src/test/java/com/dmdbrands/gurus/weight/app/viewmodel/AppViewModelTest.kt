@@ -2,7 +2,6 @@ package com.dmdbrands.gurus.weight.app.viewmodel
 
 import androidx.lifecycle.viewModelScope
 import com.dmdbrands.gurus.weight.core.navigation.AppRoute
-import com.dmdbrands.gurus.weight.core.network.ITokenManager
 import com.dmdbrands.gurus.weight.core.rules.MainDispatcherRule
 import com.dmdbrands.gurus.weight.features.DeviceSetup.enums.BabyScaleSetupStep
 import com.dmdbrands.gurus.weight.features.DeviceSetup.enums.LcbtScaleSetupStep
@@ -73,7 +72,6 @@ class AppViewModelTest {
     @MockK(relaxed = true) lateinit var entryService: IEntryService
     @MockK(relaxed = true) lateinit var entryReadService: IEntryReadService
     @MockK(relaxed = true) lateinit var logManager: LogManager
-    @MockK(relaxed = true) lateinit var tokenManager: ITokenManager
     @MockK(relaxed = true) lateinit var dashboardService: IDashboardService
     @MockK(relaxed = true) lateinit var accountService: IAccountService
     @MockK(relaxed = true) lateinit var dialogUtility: IDialogUtility
@@ -139,7 +137,6 @@ class AppViewModelTest {
             entryReadService = entryReadService,
             logManager = logManager,
             appNavigationService = navigationService,
-            tokenManager = tokenManager,
             dashboardService = dashboardService,
             accountService = accountService,
             dialogUtility = dialogUtility,
@@ -151,7 +148,6 @@ class AppViewModelTest {
             feedService = feedService,
             ggInAppMessagingService = ggInAppMessagingService,
             accountFlagService = accountFlagService,
-            tokenMigrationHelper = mockk(relaxed = true),
             analyticsService = mockk(relaxed = true),
             powerSaveModeObserver = mockk(relaxed = true) {
                 every { observe() } returns flowOf(false)
@@ -617,19 +613,6 @@ class AppViewModelTest {
         verify { ggPermissionService.startScan(eq(GGAppType.ME_HEALTH), capture(profileSlot)) }
         assertThat(profileSlot.captured.name).isEqualTo(TestFixtures.activeAccount.firstName)
         assertThat(profileSlot.captured.unit).isEqualTo(TestFixtures.activeAccount.weightUnit.value)
-    }
-
-    // -------------------------------------------------------------------------
-    // Init — token loading
-    // -------------------------------------------------------------------------
-
-    @Test
-    fun `init loads all tokens into TokenManager`() = runTest(mainDispatcherRule.scheduler) {
-        viewModel = createViewModel()
-        advanceUntilIdle()
-
-        coVerify { tokenManager.loadAllTokens() }
-        coVerify { tokenManager.getCurrentAccountID() }
     }
 
     @Test
@@ -1227,7 +1210,7 @@ class AppViewModelTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `NOTIFICATION_RECEIVED event syncs operations and shows a success toast`() = runTest {
+    fun `NOTIFICATION_RECEIVED event syncs operations`() = runTest {
         viewModel = createViewModel()
         advanceUntilIdle()
 
@@ -1236,7 +1219,26 @@ class AppViewModelTest {
         )
         advanceUntilIdle()
 
+        // The "saved to your log" card is shown from the receivedEvents path (below), which carries
+        // the reading value/product; the bare NOTIFICATION_RECEIVED just pulls the new entry in.
         coVerify { entryService.syncOperations() }
+    }
+
+    @Test
+    fun `receivedEvents with a measurement shows the saved-to-log reading toast`() = runTest {
+        viewModel = createViewModel()
+        advanceUntilIdle()
+
+        AppNotificationEventService.emitReceived(
+            com.dmdbrands.gurus.weight.core.service.NotificationReceivedPayload(
+                accountId = "acct-1",
+                destination = "weight_scale",
+                measurement = "28.6 lb",
+                monthKey = null,
+            ),
+        )
+        advanceUntilIdle()
+
         verify { dialogQueueService.showToast(any()) }
     }
 

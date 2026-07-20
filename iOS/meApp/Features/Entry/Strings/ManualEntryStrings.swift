@@ -16,24 +16,27 @@ struct ManualEntryStrings {
     static let pulse = "pulse"
     static let notes = "notes"
 
-    static let pounds = "weight (lb)"
-    static let ounces = "weight (oz)"
-    static let inches = "length (in)"
-    static let kg = "weight (kg)"
-    static let lb = "weight (lb)"
-    static let cm = "length (cm)"
+    // Baby weight/length fields show a plain label on the left with the unit as a
+    // fixed trailing suffix on the right edge (matches the weight-entry field and the
+    // Figma mock; MOB-1170 pattern). `InputFieldLabels.weight` supplies the weight label.
+    static let lengthLabel = "length"
+    static let unitLb = "(lb)"
+    static let unitOz = "(oz)"
+    static let unitKg = "(kg)"
+    static let unitIn = "(in)"
+    static let unitCm = "(cm)"
 
     // Baby validation error messages
-    static let required = "Required."
-    static let invalidWeight = "Please enter a valid weight."
-    static let invalidLength = "Please enter a valid length."
+    static let required = "required."
+    static let invalidWeight = "please enter a valid weight."
+    static let invalidLength = "please enter a valid length."
 
     // BP validation error messages
-    static let maxLimit = "This value cannot be over 500."
-    static let systolicReversed = "Systolic should be higher than diastolic"
-    static let diastolicReversed = "Diastolic should be lower than systolic"
+    static let maxLimit = "this value cannot be over 500."
+    static let systolicReversed = "systolic should be higher than diastolic"
+    static let diastolicReversed = "diastolic should be lower than systolic"
     static func typicalRange(_ min: Int, _ max: Int) -> String {
-        "This value is outside the typical range of \(min) to \(max)."
+        "this value is outside the typical range of \(min) to \(max)."
     }
 
     // MARK: - Accessibility (VoiceOver) — spoken text only, not shown on screen

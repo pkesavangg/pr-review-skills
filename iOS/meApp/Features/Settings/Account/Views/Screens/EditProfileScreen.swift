@@ -34,10 +34,12 @@ struct EditProfileScreen: View {
             formScrollView()
         }
         .background(theme.backgroundSecondary.ignoresSafeArea())
+        .screenAccessibilityRoot(AccessibilityID.editProfileScreenRoot)
         .pickerSheet(
             isPresented: $settingsStore.showGenderPicker,
             selectedValues: [settingsStore.editProfileForm.gender.value],
-            options: [Sex.allCases],
+            // "private" is not offered when editing the user profile.
+            options: [Sex.allCases.filter { $0 != .private }],
             displayValue: capitalizedSexDisplay,
             title: SettingsStrings.biologicalSex
         ) { vals in
@@ -213,6 +215,7 @@ struct EditProfileScreen: View {
                 withAnimation { showDatePicker.toggle() }
             }
             .padding(.leading, 2)
+            .appAccessibility(id: AccessibilityID.editProfileBirthdayField)
 
             DatePickerView(isPresented: $showDatePicker,
                            date: $settingsStore.editProfileForm.birthday.value,

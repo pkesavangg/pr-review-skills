@@ -16,6 +16,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
+import com.dmdbrands.gurus.weight.core.shared.utilities.testing.TestTags
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.graphics.Color
@@ -85,7 +86,7 @@ fun WeightSnapshotCard(
     val viewModel = hiltViewModel<DashboardSnapshotViewModel>()
     val state by viewModel.state.collectAsStateWithLifecycle()
 
-    SnapshotCardContainer(modifier = modifier.testTag("weight_card"), onClickLabel = DashboardSnapshotStrings.OpenWeightDashboard, onTap = onTap) {
+    SnapshotCardContainer(modifier = modifier.testTag(TestTags.Dashboard.WeightCard), onClickLabel = DashboardSnapshotStrings.OpenWeightDashboard, onTap = onTap) {
         val chart = state.weight
 
         Text(
@@ -146,7 +147,7 @@ fun BpSnapshotCard(
     val state by viewModel.state.collectAsStateWithLifecycle()
     val chart = state.bp
 
-    SnapshotCardContainer(modifier = modifier.testTag("bp_card"), onClickLabel = DashboardSnapshotStrings.OpenBpDashboard, onTap = onTap) {
+    SnapshotCardContainer(modifier = modifier.testTag(TestTags.Dashboard.BpCard), onClickLabel = DashboardSnapshotStrings.OpenBpDashboard, onTap = onTap) {
         Row(modifier = Modifier.padding(horizontal = MeTheme.spacing.sm)) {
             Text(
                 text = DashboardSnapshotStrings.Mmhg,
@@ -244,7 +245,7 @@ fun BabySnapshotCard(
     val state by viewModel.state.collectAsStateWithLifecycle()
     val chart = state.baby[product.profile.id] ?: SnapshotChartData()
 
-    SnapshotCardContainer(modifier = modifier, onClickLabel = DashboardSnapshotStrings.OpenBabyDashboard, onTap = onTap) {
+    SnapshotCardContainer(modifier = modifier.testTag(TestTags.Dashboard.BabyCard), onClickLabel = DashboardSnapshotStrings.OpenBabyDashboard, onTap = onTap) {
         Text(
             text = if (chart.isEmpty) {
                 DashboardSnapshotStrings.NoEntries

@@ -21,6 +21,7 @@ struct ReadingArrivalViewCTAView: View {
                 isDisabled: false,
                 action: onView
             )
+            .appAccessibility(id: AccessibilityID.readingArrivalViewButton)
         }
     }
 }

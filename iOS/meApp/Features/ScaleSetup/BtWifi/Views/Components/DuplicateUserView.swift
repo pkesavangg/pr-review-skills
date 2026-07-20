@@ -41,7 +41,8 @@ struct DuplicateUserView: View {
                                 focusField: .userName
                             ),
                             value: $store.userNameForm.displayName.value,
-                            focusedField: $focusedField
+                            focusedField: $focusedField,
+                            accessibilityIdentifier: AccessibilityID.duplicateUserNameField
                         ) {
                                 focusedField = .userName
                             }
@@ -58,6 +59,7 @@ struct DuplicateUserView: View {
                                     hideKeyboard()
                                     store.handleRestoreAccount()
                                 }
+                                .appAccessibility(id: AccessibilityID.duplicateUserRestoreAccountButton)
                                 if let lastActive = store.duplicateUserLastActiveAt {
                                     Text("\(lang.lastActive) \(DateTimeTools.getFormattedDateFromTimestamp(lastActive).toLowerCase())")
                                         .fontOpenSans(.subHeading2)

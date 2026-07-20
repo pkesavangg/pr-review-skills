@@ -47,103 +47,133 @@ fun WeightScaleCatalogSection(
 ) {
   var expanded by remember { mutableStateOf(false) }
   var selectedType by remember { mutableStateOf(DeviceSegmentType.All) }
-
-  val filteredScales = remember(selectedType) {
-    when (selectedType) {
-      DeviceSegmentType.All -> WEIGHT_SCALES
-      DeviceSegmentType.AppSync -> WEIGHT_SCALES.filter { it.setupType == DeviceSetupType.AppSync }
-      DeviceSegmentType.Bluetooth -> WEIGHT_SCALES.filter {
-        it.setupType == DeviceSetupType.Bluetooth ||
-          it.setupType == DeviceSetupType.Lcbt ||
-          it.setupType == DeviceSetupType.BtWifiR4
-      }
-      DeviceSegmentType.Wifi -> WEIGHT_SCALES.filter {
-        it.setupType == DeviceSetupType.Wifi ||
-          it.setupType == DeviceSetupType.EspTouchWifi ||
-          it.setupType == DeviceSetupType.BtWifiR4
-      }
-    }
-  }
+  val filteredScales = remember(selectedType) { filterWeightScales(selectedType) }
 
   Column(modifier = Modifier.fillMaxWidth()) {
     HorizontalDivider(thickness = 0.5.dp, color = MeTheme.colorScheme.utility)
-    Row(
-      modifier = Modifier
-        .fillMaxWidth()
-        .clickable { expanded = !expanded }
-        .padding(horizontal = MeTheme.spacing.sm, vertical = MeTheme.spacing.md),
-      verticalAlignment = Alignment.CenterVertically,
-      horizontalArrangement = Arrangement.SpaceBetween,
-    ) {
-      Row(
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(MeTheme.spacing.xs),
-      ) {
-        AppIcon(
-          id = AppIcons.Setup.WeightScale,
-          contentDescription = HelpScreenStrings.WeightScale,
-          tintColor = MeTheme.colorScheme.wgPrimary,
-          modifier = Modifier.size(24.dp),
-          onClick = null,
-        )
-        AppText(
-          text = HelpScreenStrings.WeightScale,
-          textType = TextType.ListTitle1,
-        )
-      }
-      AppIcon(
-        id = AppIcons.Default.ChevronDown,
-        contentDescription = if (expanded) "Collapse" else "Expand",
-        modifier = Modifier.graphicsLayer { rotationZ = if (expanded) 180f else 0f },
-        onClick = null,
-      )
-    }
-
+    WeightScaleHeader(expanded = expanded, onToggle = { expanded = !expanded })
     AnimatedVisibility(
       visible = expanded,
       enter = expandVertically(),
       exit = shrinkVertically(),
     ) {
-      Column(modifier = Modifier.fillMaxWidth()) {
-        SegmentButtonGroup(
-          data = listOf(
-            DeviceSegmentType.All,
-            DeviceSegmentType.Bluetooth,
-            DeviceSegmentType.Wifi,
-            DeviceSegmentType.AppSync,
-          ),
-          key = DeviceSegmentType::name,
-          selectedData = selectedType,
-          onSelected = { selectedType = it },
-          size = SegmentButtonSize.Small,
-          type = SegmentButtonType.Scrollable,
-          modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = MeTheme.spacing.sm, vertical = MeTheme.spacing.sm),
+      WeightScaleExpandedContent(
+        selectedType = selectedType,
+        onTypeSelected = { selectedType = it },
+        filteredScales = filteredScales,
+        onScaleSelected = onScaleSelected,
+      )
+    }
+  }
+}
+
+private fun filterWeightScales(selectedType: DeviceSegmentType): List<DeviceModelInfo> =
+  when (selectedType) {
+    DeviceSegmentType.All -> WEIGHT_SCALES
+    DeviceSegmentType.AppSync -> WEIGHT_SCALES.filter { it.setupType == DeviceSetupType.AppSync }
+    DeviceSegmentType.Bluetooth -> WEIGHT_SCALES.filter {
+      it.setupType == DeviceSetupType.Bluetooth ||
+        it.setupType == DeviceSetupType.Lcbt ||
+        it.setupType == DeviceSetupType.BtWifiR4
+    }
+    DeviceSegmentType.Wifi -> WEIGHT_SCALES.filter {
+      it.setupType == DeviceSetupType.Wifi ||
+        it.setupType == DeviceSetupType.EspTouchWifi ||
+        it.setupType == DeviceSetupType.BtWifiR4
+    }
+  }
+
+@Composable
+private fun WeightScaleHeader(
+  expanded: Boolean,
+  onToggle: () -> Unit,
+) {
+  Row(
+    modifier = Modifier
+      .fillMaxWidth()
+      .clickable { onToggle() }
+      .padding(horizontal = MeTheme.spacing.sm, vertical = MeTheme.spacing.md),
+    verticalAlignment = Alignment.CenterVertically,
+    horizontalArrangement = Arrangement.SpaceBetween,
+  ) {
+    Row(
+      verticalAlignment = Alignment.CenterVertically,
+      horizontalArrangement = Arrangement.spacedBy(MeTheme.spacing.xs),
+    ) {
+      AppIcon(
+        id = AppIcons.Setup.WeightScale,
+        contentDescription = HelpScreenStrings.WeightScale,
+        tintColor = MeTheme.colorScheme.wgPrimary,
+        modifier = Modifier.size(24.dp),
+        onClick = null,
+      )
+      AppText(
+        text = HelpScreenStrings.WeightScale,
+        textType = TextType.ListTitle1,
+      )
+    }
+    AppIcon(
+      id = AppIcons.Default.ChevronDown,
+      contentDescription = if (expanded) "Collapse" else "Expand",
+      modifier = Modifier.graphicsLayer { rotationZ = if (expanded) 180f else 0f },
+      onClick = null,
+    )
+  }
+}
+
+@Composable
+private fun WeightScaleExpandedContent(
+  selectedType: DeviceSegmentType,
+  onTypeSelected: (DeviceSegmentType) -> Unit,
+  filteredScales: List<DeviceModelInfo>,
+  onScaleSelected: (DeviceModelInfo) -> Unit,
+) {
+  Column(modifier = Modifier.fillMaxWidth()) {
+    SegmentButtonGroup(
+      data = listOf(
+        DeviceSegmentType.All,
+        DeviceSegmentType.Bluetooth,
+        DeviceSegmentType.Wifi,
+        DeviceSegmentType.AppSync,
+      ),
+      key = DeviceSegmentType::name,
+      selectedData = selectedType,
+      onSelected = onTypeSelected,
+      size = SegmentButtonSize.Small,
+      type = SegmentButtonType.Scrollable,
+      modifier = Modifier
+        .fillMaxWidth()
+        .padding(horizontal = MeTheme.spacing.sm, vertical = MeTheme.spacing.sm),
+    )
+    WeightScaleCard(filteredScales = filteredScales, onScaleSelected = onScaleSelected)
+  }
+}
+
+@Composable
+private fun WeightScaleCard(
+  filteredScales: List<DeviceModelInfo>,
+  onScaleSelected: (DeviceModelInfo) -> Unit,
+) {
+  Card(
+    modifier = Modifier
+      .fillMaxWidth()
+      .padding(horizontal = MeTheme.spacing.sm),
+    shape = RoundedCornerShape(MeTheme.borderRadius.lg),
+    colors = CardDefaults.cardColors(
+      containerColor = MeTheme.colorScheme.primaryBackground,
+    ),
+  ) {
+    Column {
+      filteredScales.forEach { scale ->
+        AppDeviceCard(
+          scale = scale,
+          isSavedScale = false,
+          // Full product name wraps across lines (matches the Figma card structure).
+          wrapSubtitle = true,
+          // White card rows on the #F6F4F1 (secondary) screen background, per the design.
+          containerColor = MeTheme.colorScheme.primaryBackground,
+          onClick = onScaleSelected,
         )
-        Card(
-          modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = MeTheme.spacing.sm),
-          shape = RoundedCornerShape(MeTheme.borderRadius.lg),
-          colors = CardDefaults.cardColors(
-            containerColor = MeTheme.colorScheme.primaryBackground,
-          ),
-        ) {
-          Column {
-            filteredScales.forEach { scale ->
-              AppDeviceCard(
-                scale = scale,
-                isSavedScale = false,
-                // Full product name wraps across lines (matches the Figma card structure).
-                wrapSubtitle = true,
-                // White card rows on the #F6F4F1 (secondary) screen background, per the design.
-                containerColor = MeTheme.colorScheme.primaryBackground,
-                onClick = onScaleSelected,
-              )
-            }
-          }
-        }
       }
     }
   }

@@ -5,7 +5,10 @@ import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import com.dmdbrands.gurus.weight.domain.model.common.WeightUnit
 import com.dmdbrands.gurus.weight.domain.model.storage.entry.BabyEntry
+import androidx.compose.ui.platform.testTag
+import com.dmdbrands.gurus.weight.core.shared.utilities.testing.TestTags
 import com.dmdbrands.gurus.weight.features.common.components.AppSwipeableActionItem
 import com.dmdbrands.gurus.weight.features.common.components.AppSwipeableList
 import com.dmdbrands.gurus.weight.features.common.components.AppSwipeableListActions
@@ -19,7 +22,7 @@ import com.dmdbrands.gurus.weight.theme.MeTheme
 @Composable
 fun BabyDayHistoryList(
     entries: List<BabyEntry>,
-    isMetric: Boolean = false,
+    babyWeightUnit: WeightUnit = WeightUnit.LB_OZ,
     onEditEntry: (BabyEntry) -> Unit = {},
     onItemDelete: (BabyEntry) -> Unit = {},
     modifier: Modifier = Modifier,
@@ -41,6 +44,7 @@ fun BabyDayHistoryList(
                     // Destructive swipe fill uses the Status/danger background token, not the
                     // text/error token (same red, correct role) — matches other lists. (MOB-1259)
                     backgroundColor = MeTheme.colorScheme.danger,
+                    modifier = Modifier.testTag(TestTags.History.DeleteButton),
                 ) {
                     onItemDelete(item)
                 }
@@ -54,7 +58,7 @@ fun BabyDayHistoryList(
         Swipeable {
             BabyDayHistoryItem(
                 item = item,
-                isMetric = isMetric,
+                babyWeightUnit = babyWeightUnit,
                 isExpanded = expandedIds.contains(id),
                 onToggleExpand = {
                     if (expandedIds.contains(id)) expandedIds.remove(id) else expandedIds.add(id)

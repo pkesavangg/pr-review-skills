@@ -118,16 +118,20 @@ hand-write them.
 
 ## List rows (repeated views)
 
-A list renders many rows, so a single shared tag would match many nodes. Suffix the row tag with
-the item's stable id (never an inline literal):
+A list renders many rows, so a single shared tag would match many nodes. Derive a per-row tag by
+suffixing the row's base tag with the item's stable id — use the shared helper, never a
+hand-written `_` join or an inline literal:
 
 ```kotlin
-Modifier.testTag("${TestTags.Landing.AccountCardRow}_${account.id}")   // account_card_row_<id>
+Modifier.rowTestTag(TestTags.Landing.AccountCardRow, account.id)   // account_card_row_<id>
 ```
 
-Do this for each per-row control (row, delete, per-row action) so every row resolves to a unique
-node. Per-provider/per-entity rows follow the same pattern (e.g.
-`integration_row_<provider>`).
+`Modifier.rowTestTag(base, stableId)` (in `TestTagModifiers.kt`) wraps `TestTags.rowTag(base,
+stableId)`; use the plain `TestTags.rowTag(...)` string form where the tag is passed as a param or
+model field (e.g. `SettingsItem.testTag`, `ActionButton(testTag = …)`) rather than via a
+`Modifier`. Apply it to each per-row control (row, delete, per-row action) so every row resolves to
+a unique node. Per-provider/per-entity rows follow the same pattern (e.g.
+`TestTags.rowTag(Integrations.Row, provider)` → `integration_row_<provider>`).
 
 ## The APIs
 
@@ -154,6 +158,26 @@ grep -i 'login_submit_button' ui.xml     # → resource-id present
 
 Appium then selects it with `~login_submit_button` (accessibility-id) or by `resource-id`.
 
+## Enforcement (MOB-1509)
+
+Two automated gates keep coverage from regressing — the Android mirror of the iOS SwiftLint rule +
+`AccessibilityIDContractUITests`:
+
+1. **No inline-literal tags** — `scripts/check-testtags.sh` bans `.testTag("…")` / `testTag = "…"`
+   string literals (tag from a `TestTags` constant instead). It runs in the `android-lint` CI job
+   and as a `.lefthook.yml` pre-commit hook. Pre-existing literals awaiting migration (MOB-1502)
+   are baselined in `Android/config/testtags-baseline.txt`, so only **new** literals fail; drop a
+   baseline line as each is migrated. (Regenerate: `scripts/check-testtags.sh --update-baseline`.)
+   This mirrors iOS `accessibility_identifier_string_literal`; like iOS, "interactive control with
+   no tag at all" is not machine-checked here — that stays a review concern.
+
+2. **Resource-id contract test** — `TestTagModifiersTest` (androidTest) asserts each applied tag
+   resolves to exactly one node and that the per-window exposure rule holds. It runs in CI on a
+   headless Gradle Managed Device via the `android-instrumented` job, scoped to this class:
+   `./gradlew :app:pixel6Api30AtdDebugAndroidTest -Pandroid.testInstrumentationRunnerArguments.class=…TestTagModifiersTest`.
+   The rest of the `androidTest` suite compiles and can be run locally / phased into this job
+   class-by-class as each is verified device-green.
+
 ## Adding a new screen — checklist (Definition of Done)
 
 - [ ] Screen root tagged with `Modifier.testTag(TestTags.<Group>.ScreenRoot)`.
@@ -162,7 +186,8 @@ Appium then selects it with `~login_submit_button` (accessibility-id) or by `res
       iOS `AccessibilityID`** where the control exists on both (else commented
       `// Android-defined; iOS to mirror`).
 - [ ] Derived input ids left to `AppInput` (don't hand-write `_clear_button` /
-      `_visibility_toggle`); repeated rows suffixed with the item id.
+      `_visibility_toggle`); repeated rows suffixed with the item id via `Modifier.rowTestTag(…)`
+      / `TestTags.rowTag(…)` (don't hand-write the `_` join).
 - [ ] Any **new** `Dialog`/`Popup`/bottom-sheet window applies
       `Modifier.exposeTestTagsAsResourceId()` at its root.
 - [ ] Decorative icons pass `contentDescription = null`.

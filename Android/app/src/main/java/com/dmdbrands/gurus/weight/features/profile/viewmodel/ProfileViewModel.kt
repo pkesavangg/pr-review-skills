@@ -228,7 +228,12 @@ class ProfileViewModel @Inject constructor(
             var updated = profile
             if (genderChanged) updated = updated.copy(sex = newGender)
             if (heightChanged) updated = updated.copy(
-              height = ConversionTools.convertStoredHeightToCm(newHeight ?: BodyCompUpdateRequest.DEFAULT_HEIGHT).toDouble(),
+              // Match toGGBTUserProfile: send cm whose scale-rounded ft/in equals the app's
+              // displayed value (MOB-715). See ConversionTools.convertStoredHeightToScaleCm.
+              height = ConversionTools.convertStoredHeightToScaleCm(
+                newHeight ?: BodyCompUpdateRequest.DEFAULT_HEIGHT,
+                currentAccount.isMetric,
+              ),
             )
             updated
           }

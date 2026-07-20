@@ -37,10 +37,12 @@ struct WifiScaleSetupScreen: View {
                         AppIconView(icon: AppAssets.helpCircle)
                             .foregroundColor(theme.statusIconPrimary)
                     }
+                    .appAccessibility(id: AccessibilityID.scaleSetupHelpButton)
                 },
                 onLeadingTap: { setupStore.handleExit() },
                 onTrailingTap: {},
-                canShowPresentationIndicator: true
+                canShowPresentationIndicator: true,
+                leadingAccessibilityID: AccessibilityID.scaleSetupCloseButton
             )
             
             // Step views with swiper
@@ -76,8 +78,9 @@ struct WifiScaleSetupScreen: View {
         }
         .navigationBarBackButtonHidden(true)
         .background(theme.backgroundSecondary)
+        .screenAccessibilityRoot(AccessibilityID.wifiScaleSetupScreenRoot)
     }
-    
+
     private var footerButtons: some View {
         HStack {
             ButtonView(text: commonLang.back,
@@ -90,6 +93,7 @@ struct WifiScaleSetupScreen: View {
                 }
                 setupStore.handleBackButtonClick()
             }
+            .appAccessibility(id: AccessibilityID.scaleSetupBackButton)
             Spacer()
             ButtonView(text: setupStore.nextButtonText,
                        type: .filledPrimary,
@@ -102,6 +106,7 @@ struct WifiScaleSetupScreen: View {
                 }
                 setupStore.handleNextButtonClick()
             }
+            .appAccessibility(id: AccessibilityID.scaleSetupNextButton)
         }
         .overlay {
             HStack {
@@ -117,6 +122,7 @@ struct WifiScaleSetupScreen: View {
                         }
                         setupStore.handleSkipWifiStep()
                     }
+                    .appAccessibility(id: AccessibilityID.scaleSetupSkipButton)
                 }
             }
             .frame(maxWidth: .infinity, alignment: .center)

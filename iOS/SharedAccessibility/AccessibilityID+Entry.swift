@@ -36,3 +36,11 @@ extension AccessibilityID {
     static let babyLengthField = "baby_length_field"
     static let babySaveButton = "baby_save_button"
 }
+
+// MARK: - MOB-1489 accessibility-id sweep (declared centrally)
+extension AccessibilityID {
+    static let babyNotesField = "baby_notes_field"
+    static let babyOuncesField = "baby_ounces_field"
+    static let bpNotesField = "bp_notes_field"
+    static let manualEntryBodyMetricsButton = "manual_entry_body_metrics_button"
+}

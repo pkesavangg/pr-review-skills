@@ -1,5 +1,17 @@
 # Graph View – Architecture & Usage Guide
 
+> **⚠️ SUPERSEDED (MOB-1516, 2026-07-15).** This document describes the **legacy `BaseGraphView` engine**
+> (`BaseGraphView` + four `*SectionViewModel`s + `BaseGraphChartContent` + the cache managers +
+> `PagedChartScrollBehavior`), which has been **deleted**. All three products (weight, BPM, baby) now render
+> through the **v2 engine**: `ChartModel` + `ChartPrep` + `TrendChartView` + `TrendChartHost`, with
+> `DashboardStore` owning the published model and scroll/selection lifecycle.
+>
+> **For the live architecture, read instead:**
+> - [`../../../docs/MOB-518-weight-graph/MOB-518-weight-graph-how-it-works.md`](../../../docs/MOB-518-weight-graph/MOB-518-weight-graph-how-it-works.md) — the v2 engine, end to end.
+> - [`../../../docs/MOB-1516-baby-bpm-graph-migration/MOB-1516-implementation-guide.md`](../../../docs/MOB-1516-baby-bpm-graph-migration/MOB-1516-implementation-guide.md) — how BPM + baby joined it and the legacy delete.
+>
+> The content below is retained for historical reference only; the types it names no longer exist.
+
 ## Overview
 
 The Dashboard graph module now supports both weight and BPM presentation across four time periods (week, month, year, total). It is built with **SwiftUI + Swift Charts** and follows a layered architecture:

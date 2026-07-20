@@ -39,12 +39,14 @@ struct AppSyncSetupScreen: View {
                         AppIconView(icon: AppAssets.helpCircle)
                             .foregroundColor(theme.statusIconPrimary)
                     }
+                    .appAccessibility(id: AccessibilityID.scaleSetupHelpButton)
                 },
                 onLeadingTap: {
                     setupStore.handleExit()
                 },
                 onTrailingTap: {},
-                canShowPresentationIndicator: true
+                canShowPresentationIndicator: true,
+                leadingAccessibilityID: AccessibilityID.scaleSetupCloseButton
             )
             
             SwiperView(
@@ -78,8 +80,9 @@ struct AppSyncSetupScreen: View {
         }
         .navigationBarBackButtonHidden(true)
         .background(theme.backgroundSecondary)
+        .screenAccessibilityRoot(AccessibilityID.appSyncScaleSetupScreenRoot)
     }
-    
+
     private var footerButtons: some View {
         HStack {
             ButtonView(text: commonLang.back,
@@ -92,9 +95,10 @@ struct AppSyncSetupScreen: View {
                 }
                 setupStore.moveToPreviousStep()
             }
-            
+            .appAccessibility(id: AccessibilityID.scaleSetupBackButton)
+
             Spacer()
-            
+
             ButtonView(text: setupStore.currentStepIndex == setupStore.steps.count - 1 ? commonLang.finish : commonLang.next,
                        type: .filledPrimary,
                        size: .small,
@@ -106,6 +110,7 @@ struct AppSyncSetupScreen: View {
                 }
                 setupStore.moveToNextStep()
             }
+            .appAccessibility(id: AccessibilityID.scaleSetupNextButton)
         }
     }
 }

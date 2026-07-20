@@ -25,7 +25,12 @@ struct GoalStepView: View {
                 SegmentedButtonView(
                     segments: GoalTypeSegment.allCases,
                     selectedSegment: $selectedSegment
-                )
+                ) { segment in
+                    switch segment {
+                    case .loseGain: return AccessibilityID.signupGoalTypeLoseGainTab
+                    case .maintain: return AccessibilityID.signupGoalTypeMaintainTab
+                    }
+                }
                 .onChange(of: selectedSegment) { _, newValue in
                     signupStore.signupForm.goalType.value = newValue.goalTypeValue
                     // Mark as dirty and touched when goal type changes
@@ -52,6 +57,7 @@ struct GoalStepView: View {
                             ),
                             value: $signupStore.signupForm.currentWeight.value,
                             focusedField: $focusedField,
+                            accessibilityIdentifier: AccessibilityID.startingWeightInput,
                             onCommit: {
                                 signupStore.touchAndValidate(field: .currentWeight)
                                 focusedField = .goalWeight
@@ -82,6 +88,7 @@ struct GoalStepView: View {
                         ),
                         value: $signupStore.signupForm.goalWeight.value,
                         focusedField: $focusedField,
+                        accessibilityIdentifier: AccessibilityID.goalWeightInput,
                         onCommit: {
                             signupStore.touchAndValidate(field: .goalWeight)
                             focusedField = nil

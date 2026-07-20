@@ -37,6 +37,7 @@ struct BtWiFiFinishStepView: View {
                     onWhatThisTapped()
                 }
                 .accessibilityHint(BtWifiScaleSetupStrings.A11y.whatThisHint)
+                .appAccessibility(id: AccessibilityID.btWifiWhatThisButton)
             }
         }
         .padding(.bottom, .spacingLG)
