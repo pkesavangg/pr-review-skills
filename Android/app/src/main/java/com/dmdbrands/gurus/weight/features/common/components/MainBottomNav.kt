@@ -95,7 +95,7 @@ fun MainBottomNav(
             topBackStack = topBackStack,
             dashRoute = dashRoute,
             navItems = navItems,
-            selectedItem = selectedItem,
+            selectedItem = { selectedItem },
             setSelectedItem = { selectedItem = it },
             onOpenAppSync = onOpenAppSync,
           )
@@ -189,7 +189,7 @@ private suspend fun handleNavItemClick(
   topBackStack: TopLevelBackStack<NavKey>,
   dashRoute: AppRoute,
   navItems: List<BottomNavItem>,
-  selectedItem: BottomNavItem,
+  selectedItem: () -> BottomNavItem,
   setSelectedItem: (BottomNavItem) -> Unit,
   onOpenAppSync: () -> Unit,
 ) {
@@ -201,7 +201,9 @@ private suspend fun handleNavItemClick(
       navItems.find {
         it.route == topBackStack.getStackForTopLevel(AppRoute.Home).lastOrNull()
       }
-    if (requiredItem != null && requiredItem != selectedItem) {
+    // Read selectedItem live (after the suspending addRoute) so rapid successive
+    // taps compare against the current value, not a snapshot captured at call time.
+    if (requiredItem != null && requiredItem != selectedItem()) {
       setSelectedItem(requiredItem)
     }
   }
