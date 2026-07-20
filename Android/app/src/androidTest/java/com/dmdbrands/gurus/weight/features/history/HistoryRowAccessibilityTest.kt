@@ -93,9 +93,8 @@ class HistoryRowAccessibilityTest {
                         date = "Week 3",
                         dateKey = "2026-06-15",
                         entryCount = 2,
-                        weightLb = 8,
-                        weightOz = 14.0,
-                        lengthInches = 12.0,
+                        weightDecigrams = 40256, // 8 lb 14.0 oz in LB_OZ display
+                        lengthMillimeters = 305, // 12 in
                         percentile = 6,
                     ),
                     onClick = {},
@@ -106,7 +105,7 @@ class HistoryRowAccessibilityTest {
         composeTestRule
             .onNodeWithContentDescription(
                 "Week 3, 2 ${HistoryItemStrings.accEntriesSuffix}, " +
-                    "${HistoryItemStrings.accWeightLabel} 8 lbs 14.0 oz, " +
+                    "${HistoryItemStrings.accWeightLabel} 8 lb 14.0 oz, " +
                     "${HistoryItemStrings.accLengthLabel} 12 in, " +
                     "${HistoryItemStrings.accPercentileLabel} 6 th",
             )

@@ -134,7 +134,7 @@ object ConversionTools {
    */
   fun convertStoredHeightToScaleCm(stored: Int, isMetric: Boolean): Double {
     return if (isMetric) {
-      round(stored * CM_TO_INCH_FACTOR)
+      round(convertStoredHeightToCm(stored))
     } else {
       val displayedInches = stored / STORED_HEIGHT_TO_INCHES_FACTOR.toInt() // truncation — matches app display
       round(displayedInches * CM_PER_INCH)
