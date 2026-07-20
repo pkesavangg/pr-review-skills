@@ -9,6 +9,8 @@ import Testing
 private final class MockLoggerRepo: LoggerRepositoryProtocol {
     var logs: [LogEntry] = []
     var saveLogEntryCalls = 0
+    var saveLogEntriesCalls = 0
+    var savedBatches: [[LogEntrySnapshot]] = []
     var deleteLogsForAccountCalls = 0
     var deleteAllLogsCalls = 0
     var deleteOlderThanCalls = 0
@@ -22,6 +24,24 @@ private final class MockLoggerRepo: LoggerRepositoryProtocol {
     func saveLogEntry(_ entry: LogEntry) async {
         saveLogEntryCalls += 1
         logs.append(entry)
+    }
+
+    func saveLogEntries(_ entries: [LogEntrySnapshot]) async {
+        saveLogEntriesCalls += 1
+        savedBatches.append(entries)
+        for entry in entries {
+            logs.append(LogEntry(
+                id: entry.id,
+                accountId: entry.accountId,
+                sessionId: entry.sessionId,
+                tag: entry.tag,
+                tagId: entry.tagId,
+                type: entry.type,
+                message: entry.message,
+                timestamp: entry.timestamp,
+                data: entry.data
+            ))
+        }
     }
 
     func fetchAllLogs() async throws -> [LogEntry] {
@@ -95,7 +115,9 @@ private func makeSUT(
     repo: MockLoggerRepo? = nil,
     apiRepo: MockLoggerApiRepo? = nil,
     accountOverride: MockAccountService? = nil,
-    sessionId: String = "test-session"
+    sessionId: String = "test-session",
+    persistenceMinimumLogLevel: LogLevel = .info,
+    flushThreshold: Int = 50
 ) -> (LoggerService, MockLoggerRepo, MockLoggerApiRepo, MockAccountService) { // swiftlint:disable:this large_tuple
     TestDependencyContainer.reset()
 
@@ -117,6 +139,8 @@ private func makeSUT(
         loggerApiRepository: apiRepo,
         sessionId: sessionId,
         kv: KvStorageService.shared,
+        persistenceMinimumLogLevel: persistenceMinimumLogLevel,
+        flushThreshold: flushThreshold,
         skipCleanup: true
     )
     sut.accountService = account
@@ -158,25 +182,89 @@ struct LoggerServiceTests {
         #expect(sut.getCurrentSessionId() == "my-session-42")
     }
 
-    // MARK: - log level filtering
+    // MARK: - persistence floor + batching (MOB-519)
 
-    @Test("log debug level: does not persist to repository")
+    @Test("log debug level: below the default floor, never persisted")
     func logDebugDoesNotPersist() async {
         let (sut, repo, _, _) = makeSUT()
 
         sut.log(level: .debug, tag: "T", message: "debug msg")
-        try? await Task.sleep(nanoseconds: 50_000_000)
+        sut.flushPendingLogs()
+        try? await Task.sleep(nanoseconds: 100_000_000)
 
-        #expect(repo.saveLogEntryCalls == 0)
+        #expect(repo.saveLogEntriesCalls == 0)
+        #expect(repo.logs.isEmpty)
     }
 
-    @Test("log info level: resolves account ID from active account")
-    func logInfoResolvesAccountId() async {
-        let (sut, _, _, account) = makeSUT()
+    @Test("log info level: persisted via the batch path and resolves account ID")
+    func logInfoPersistsViaBatch() async {
+        let (sut, repo, _, account) = makeSUT()
         account.activeAccount = AccountTestFixtures.makeAccountSnapshot(id: "acct-7", email: "x@e.com", isActiveAccount: true)
 
         sut.log(level: .info, tag: "Tag", message: "info msg")
-        try? await Task.sleep(nanoseconds: 200_000_000)
+        sut.flushPendingLogs()
+        try? await Task.sleep(nanoseconds: 100_000_000)
+
+        #expect(repo.saveLogEntriesCalls == 1)
+        #expect(repo.savedBatches.first?.count == 1)
+        #expect(repo.savedBatches.first?.first?.accountId == "acct-7")
+        #expect(repo.savedBatches.first?.first?.message == "info msg")
+    }
+
+    @Test("many logs below threshold flush in ONE batch (one save, not one per line)")
+    func multipleLogsFlushInOneBatch() async {
+        let (sut, repo, _, _) = makeSUT()
+
+        sut.log(level: .info, tag: "T", message: "a")
+        sut.log(level: .info, tag: "T", message: "b")
+        sut.log(level: .success, tag: "T", message: "c")
+        sut.flushPendingLogs()
+        try? await Task.sleep(nanoseconds: 100_000_000)
+
+        #expect(repo.saveLogEntriesCalls == 1)          // one transaction…
+        #expect(repo.savedBatches.first?.count == 3)     // …for all three lines
+    }
+
+    @Test("buffer auto-flushes once it reaches the threshold")
+    func thresholdTriggersAutomaticFlush() async {
+        let (sut, repo, _, _) = makeSUT(flushThreshold: 3)
+
+        sut.log(level: .info, tag: "T", message: "a")
+        sut.log(level: .info, tag: "T", message: "b")
+        #expect(repo.saveLogEntriesCalls == 0)           // not yet
+        sut.log(level: .info, tag: "T", message: "c")    // hits threshold
+        try? await Task.sleep(nanoseconds: 100_000_000)
+
+        #expect(repo.saveLogEntriesCalls == 1)
+        #expect(repo.savedBatches.first?.count == 3)
+    }
+
+    @Test("error flushes the whole buffer immediately (support-critical)")
+    func errorFlushesImmediately() async {
+        let (sut, repo, _, _) = makeSUT()
+
+        sut.log(level: .info, tag: "T", message: "buffered")   // stays buffered
+        sut.log(level: .error, tag: "T", message: "boom")       // forces immediate flush
+        try? await Task.sleep(nanoseconds: 100_000_000)
+
+        #expect(repo.saveLogEntriesCalls == 1)
+        #expect(repo.savedBatches.first?.count == 2)             // buffered info + the error
+    }
+
+    @Test("raised floor (.error) drops info/success from disk; errors still persist")
+    func raisedFloorDropsInfoAndSuccess() async {
+        let (sut, repo, _, _) = makeSUT(persistenceMinimumLogLevel: .error)
+
+        sut.log(level: .info, tag: "T", message: "info")
+        sut.log(level: .success, tag: "T", message: "success")
+        sut.flushPendingLogs()
+        try? await Task.sleep(nanoseconds: 100_000_000)
+        #expect(repo.saveLogEntriesCalls == 0)                   // both dropped below floor
+
+        sut.log(level: .error, tag: "T", message: "err")         // at/above floor → flushes now
+        try? await Task.sleep(nanoseconds: 100_000_000)
+        #expect(repo.saveLogEntriesCalls == 1)
+        #expect(repo.savedBatches.first?.first?.message == "err")
     }
 
     // MARK: - getAllLogs

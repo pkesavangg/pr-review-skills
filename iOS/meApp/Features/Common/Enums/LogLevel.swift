@@ -21,4 +21,20 @@ public enum LogLevel: Int, Sendable {
         case .success: return .success
         }
     }
+
+    /// Severity ordering used for console / persistence log-level floors.
+    ///
+    /// ⚠️ The `rawValue`s are NOT severity-ordered (`success = 5` > `error = 3`),
+    /// so any "minimum level" comparison MUST use `severityRank`, never `rawValue`,
+    /// or a floor of `.error` would wrongly keep `.success`. Order (low → high):
+    /// debug < info < success < error < critical.
+    var severityRank: Int {
+        switch self {
+        case .debug: return 0
+        case .info: return 1
+        case .success: return 2
+        case .error: return 3
+        case .critical: return 4
+        }
+    }
 }

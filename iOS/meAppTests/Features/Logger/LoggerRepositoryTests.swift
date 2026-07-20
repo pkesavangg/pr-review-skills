@@ -54,6 +54,49 @@ struct LoggerRepositoryTests {
         #expect(logs.first?.sessionId == "s1")
     }
 
+    // MARK: - saveLogEntries (batched — MOB-519)
+
+    private func makeData(
+        id: String = UUID().uuidString,
+        sessionId: String = "session-1",
+        message: String = "test message"
+    ) -> LogEntrySnapshot {
+        LogEntrySnapshot(
+            id: id,
+            accountId: nil,
+            sessionId: sessionId,
+            tag: "TestTag",
+            tagId: "testMethod",
+            type: .info,
+            message: message
+        )
+    }
+
+    @Test("saveLogEntries: persists every row in the batch, readable via fetchAllLogs")
+    func saveLogEntriesPersistsBatch() async throws {
+        let sut = try makeSUT()
+
+        await sut.saveLogEntries([
+            makeData(id: "b1", message: "one"),
+            makeData(id: "b2", message: "two"),
+            makeData(id: "b3", message: "three")
+        ])
+
+        let logs = try await sut.fetchAllLogs()
+        #expect(logs.count == 3)
+        #expect(Set(logs.map(\.id)) == ["b1", "b2", "b3"])
+    }
+
+    @Test("saveLogEntries: empty batch is a no-op")
+    func saveLogEntriesEmptyIsNoOp() async throws {
+        let sut = try makeSUT()
+
+        await sut.saveLogEntries([])
+
+        let logs = try await sut.fetchAllLogs()
+        #expect(logs.isEmpty)
+    }
+
     // MARK: - fetchAllLogs
 
     @Test("fetchAllLogs success: returns empty when none")

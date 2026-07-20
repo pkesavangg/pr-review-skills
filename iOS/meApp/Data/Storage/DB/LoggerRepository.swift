@@ -62,6 +62,32 @@ final class LoggerRepository: LoggerRepositoryProtocol {
         }
     }
 
+    func saveLogEntries(_ entries: [LogEntrySnapshot]) async {
+        guard !entries.isEmpty else { return }
+        do {
+            try await performBackgroundTask { ctx in
+                for entry in entries {
+                    let newEntry = LogEntry(
+                        id: entry.id,
+                        accountId: entry.accountId,
+                        sessionId: entry.sessionId,
+                        tag: entry.tag,
+                        tagId: entry.tagId,
+                        type: entry.type,
+                        message: entry.message,
+                        timestamp: entry.timestamp,
+                        data: entry.data
+                    )
+                    ctx.insert(newEntry)
+                }
+                // One transaction for the whole batch (MOB-519) — not one save per row.
+                try ctx.save()
+            }
+        } catch {
+            appLogger.log(level: .error, tag: "LoggerRepository", message: "Batch save failed", data: error.localizedDescription)
+        }
+    }
+
     func fetchAllLogs() async throws -> [LogEntry] {
         return try await performBackgroundTask { ctx in
             let descriptor = FetchDescriptor<LogEntry>()

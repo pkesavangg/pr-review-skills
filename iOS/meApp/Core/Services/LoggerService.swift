@@ -7,6 +7,9 @@
 
 import Foundation
 import SwiftData
+#if canImport(UIKit)
+import UIKit
+#endif
 
 @MainActor
 final class LoggerService: LoggerServiceProtocol {
@@ -18,24 +21,48 @@ final class LoggerService: LoggerServiceProtocol {
     let loggerApiRepository: LoggerApiRepositoryProtocol
     private let sessionId: String
     private let systemLogger = AppLogger(tag: "GGMeAppLogger")
-    private let logQueue = DispatchQueue(label: "com.greatergoods.loggerServiceQueue", attributes: .concurrent)
     private var consoleMinimumLogLevel: LogLevel = .info
     private let kv: KvStorageService
     private static let lastCleanupKey = "logger_last_cleanup_ts"
+
+    // MARK: - Batched persistence (MOB-519)
+
+    /// Minimum severity that gets PERSISTED to disk (console printing is gated
+    /// separately by `consoleMinimumLogLevel`). Default `.info` keeps the full
+    /// support-log narrative (`send logs to server`) while the batching below
+    /// removes the per-line disk-write storm. Raise it (e.g. `.error`) to also
+    /// drop `.info`/`.success` from disk — comparison uses `LogLevel.severityRank`.
+    var persistenceMinimumLogLevel: LogLevel
+    /// Flush the buffer once it holds this many rows.
+    private let flushThreshold: Int
+    /// Trailing-window flush interval for a partially-filled buffer.
+    private let flushIntervalNs: UInt64
+    /// Rows awaiting a batched write. Main-actor isolated (the class is `@MainActor`).
+    private var pendingLogs: [LogEntrySnapshot] = []
+    private var flushTimerTask: Task<Void, Never>?
     
     init(
         loggerRepository: LoggerRepositoryProtocol? = nil,
         loggerApiRepository: LoggerApiRepositoryProtocol? = nil,
         sessionId: String? = nil,
         kv: KvStorageService? = nil,
+        persistenceMinimumLogLevel: LogLevel = .info,
+        flushThreshold: Int = 50,
+        flushInterval: TimeInterval = 3.0,
         skipCleanup: Bool = false
     ) {
         self.loggerRepository = loggerRepository ?? LoggerRepository()
         self.loggerApiRepository = loggerApiRepository ?? LoggerApiRepository()
         self.sessionId = sessionId ?? UUID().uuidString
         self.kv = kv ?? KvStorageService.shared
+        self.persistenceMinimumLogLevel = persistenceMinimumLogLevel
+        self.flushThreshold = max(1, flushThreshold)
+        self.flushIntervalNs = UInt64(max(0, flushInterval) * 1_000_000_000)
         if !skipCleanup {
             Self.scheduleDeleteOldLogsBackground(service: self)
+            #if canImport(UIKit)
+            setupLifecycleFlush()
+            #endif
         }
     }
     
@@ -47,8 +74,9 @@ final class LoggerService: LoggerServiceProtocol {
                     line: UInt = #line,
                     accountId: String? = nil) {
         
-        // Only print to console if level is greater than or equal to consoleMinimumLogLevel if want to see the debug logs remove the if statement
-        if level.rawValue >= consoleMinimumLogLevel.rawValue {
+        // Console: print only at/above the console floor. Uses severityRank, not
+        // rawValue, because LogLevel raw values are not severity-ordered.
+        if level.severityRank >= consoleMinimumLogLevel.severityRank {
             systemLogger.log(level: level,
                              tag: tag,
                              message: message,
@@ -56,38 +84,86 @@ final class LoggerService: LoggerServiceProtocol {
                              function: function,
                              line: line)
         }
-        
-        // Do not persist debug logs; only print to system logger
-        if level == .debug { return }
-        
-        // // Capture values on MainActor, then offload formatting and save scheduling to a background queue.
-        let resolvedAccountId = accountId ?? self.accountService.activeAccount?.accountId
-        let currentSessionId = self.sessionId
-        
-        logQueue.async(qos: .background, flags: .barrier) {
-            let stringifiedData = data.map {
-                ($0 as? Data).flatMap { String(data: $0, encoding: .utf8) } ?? String(describing: $0)
-            }
-            let tagIdString = String(describing: function)
-            let logType = level.toLogType
 
-            // Bounce to the main actor to create and save the SwiftData model
-            // without capturing main-actor properties from a @Sendable closure.
-            Task { @MainActor in
-                let repo: LoggerRepositoryProtocol = LoggerRepository()
-                let entryToSave = LogEntry(
-                    accountId: resolvedAccountId,
-                    sessionId: currentSessionId,
-                    tag: tag,
-                    tagId: tagIdString,
-                    type: logType,
-                    message: message,
-                    data: stringifiedData
-                )
-                await repo.saveLogEntry(entryToSave)
+        // Persistence floor (MOB-519): drop anything below the floor so low-value
+        // lines never touch disk. Default floor `.info` still drops only `.debug`.
+        guard level.severityRank >= persistenceMinimumLogLevel.severityRank else { return }
+
+        // Build the Sendable payload here (the `data` argument was created on the
+        // caller's actor anyway) and buffer it. The actual SwiftData write is
+        // batched off-main in `flushPendingLogs()` — one transaction per flush,
+        // not one per line (MOB-519).
+        let stringifiedData = data.map {
+            ($0 as? Data).flatMap { String(data: $0, encoding: .utf8) } ?? String(describing: $0)
+        }
+        let payload = LogEntrySnapshot(
+            accountId: accountId ?? self.accountService.activeAccount?.accountId,
+            sessionId: sessionId,
+            tag: tag,
+            tagId: String(describing: function),
+            type: level.toLogType,
+            message: message,
+            data: stringifiedData
+        )
+        enqueueForPersistence(payload, level: level)
+    }
+
+    // MARK: - Batched persistence (MOB-519)
+
+    private func enqueueForPersistence(_ payload: LogEntrySnapshot, level: LogLevel) {
+        pendingLogs.append(payload)
+
+        // Errors/criticals are support-critical — flush immediately so a crash
+        // can't lose them. Everything else batches: flush when the buffer fills,
+        // otherwise on a trailing timer window.
+        if level.severityRank >= LogLevel.error.severityRank || pendingLogs.count >= flushThreshold {
+            flushPendingLogs()
+        } else {
+            scheduleFlush()
+        }
+    }
+
+    private func scheduleFlush() {
+        guard flushTimerTask == nil else { return }   // a flush is already pending in this window
+        let intervalNs = flushIntervalNs
+        flushTimerTask = Task { [weak self] in
+            try? await Task.sleep(nanoseconds: intervalNs)
+            await self?.flushPendingLogs()
+        }
+    }
+
+    /// Drains the buffer and persists it in one batched transaction. Safe to call
+    /// repeatedly (no-op when the buffer is empty).
+    func flushPendingLogs() {
+        flushTimerTask?.cancel()
+        flushTimerTask = nil
+        guard !pendingLogs.isEmpty else { return }
+        let batch = pendingLogs
+        pendingLogs.removeAll(keepingCapacity: true)
+        Task { @MainActor [weak self] in
+            guard let self else { return }
+            await self.loggerRepository.saveLogEntries(batch)
+        }
+    }
+
+    #if canImport(UIKit)
+    /// Flush buffered logs when the app backgrounds so a later kill doesn't lose
+    /// them. Errors already flush immediately; this covers the batched
+    /// `.info`/`.success` rows. The observer captures no `self` (it references the
+    /// shared instance) so the `@Sendable` block stays clean; only registered for
+    /// the shared instance (tests pass `skipCleanup: true` and skip it).
+    private func setupLifecycleFlush() {
+        NotificationCenter.default.addObserver(
+            forName: UIApplication.didEnterBackgroundNotification,
+            object: nil,
+            queue: .main
+        ) { _ in
+            MainActor.assumeIsolated {
+                LoggerService.shared.flushPendingLogs()
             }
         }
     }
+    #endif
     
     public func getAllLogs() async throws -> [LogEntry] {
         try await loggerRepository.fetchAllLogs()

@@ -12,7 +12,13 @@ protocol LoggerRepositoryProtocol {
     /// Saves a log entry to the database.
     /// - Parameter entry: The log entry to be saved.
     func saveLogEntry(_ entry: LogEntry) async
-    
+
+    /// Saves multiple log rows in a single transaction — one `ctx.save()` for
+    /// the whole batch (MOB-519). Takes `Sendable` payloads so the caller never
+    /// holds a `LogEntry` (`@Model`) across the actor boundary.
+    /// - Parameter entries: The log rows to persist.
+    func saveLogEntries(_ entries: [LogEntrySnapshot]) async
+
     /// Fetches all log entries from the database.
     /// - Returns: An array of all log entries.
     func fetchAllLogs() async throws -> [LogEntry]

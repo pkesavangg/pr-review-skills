@@ -39,7 +39,7 @@ final class LogEntry {
     var data: String?
     
     /// Log type enumeration
-    enum LogType: String, Codable {
+    enum LogType: String, Codable, Sendable {
         case info = "i"
         case error = "e"
         case debug = "d"
@@ -55,6 +55,47 @@ final class LogEntry {
          message: String,
          timestamp: Int64 = DateTimeTools.getCurrentTimestampMillis(),
          data: String? = nil) {
+        self.id = id
+        self.accountId = accountId
+        self.sessionId = sessionId
+        self.tag = tag
+        self.tagId = tagId
+        self.type = type
+        self.message = message
+        self.timestamp = timestamp
+        self.data = data
+    }
+}
+
+/// Sendable transfer payload for a single log row (MOB-519).
+///
+/// Lets `LoggerService` buffer log rows and flush them in one batched
+/// transaction without ever holding a `LogEntry` (`@Model`) across an actor
+/// boundary — the worker/repo reconstructs the `LogEntry` inside its own
+/// background `ModelContext`. Keeps the snapshot-boundary rule intact
+/// (`no_published_swiftdata_model` / `check-snapshot-boundary.sh`).
+struct LogEntrySnapshot: Sendable {
+    let id: String
+    let accountId: String?
+    let sessionId: String
+    let tag: String
+    let tagId: String
+    let type: LogEntry.LogType
+    let message: String
+    let timestamp: Int64
+    let data: String?
+
+    init(
+        id: String = UUID().uuidString,
+        accountId: String?,
+        sessionId: String,
+        tag: String,
+        tagId: String,
+        type: LogEntry.LogType,
+        message: String,
+        timestamp: Int64 = DateTimeTools.getCurrentTimestampMillis(),
+        data: String? = nil
+    ) {
         self.id = id
         self.accountId = accountId
         self.sessionId = sessionId
