@@ -20,8 +20,10 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.testTag
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.dmdbrands.gurus.weight.core.navigation.LocalNavBackStack
+import com.dmdbrands.gurus.weight.core.shared.utilities.testing.TestTags
 import com.dmdbrands.gurus.weight.domain.model.storage.BLEStatus
 import com.dmdbrands.gurus.weight.domain.model.storage.Device
 import com.dmdbrands.gurus.weight.features.DeviceMetricsSetting.strings.DeviceMetricsSettingStrings
@@ -96,7 +98,11 @@ fun DeviceDetailsScreenContent(
   AppScaffold(
     title = scaleName,
     navigationIcon = {
-      AppIconButton(AppIcons.Default.Close, contentDescription = DeviceDetailsStrings.accCloseLabel) {
+      AppIconButton(
+        AppIcons.Default.Close,
+        contentDescription = DeviceDetailsStrings.accCloseLabel,
+        modifier = Modifier.testTag(TestTags.DeviceDetails.CloseButton),
+      ) {
         coroutineScope.launch {
           backStack.removeLast()
         }
@@ -108,7 +114,8 @@ fun DeviceDetailsScreenContent(
         Modifier
           .fillMaxSize()
           .verticalScroll(rememberScrollState())
-          .padding(vertical = spacing.md, horizontal = spacing.sm),
+          .padding(vertical = spacing.md, horizontal = spacing.sm)
+          .testTag(TestTags.DeviceDetails.ScreenRoot),
     ) {
       // Scale Image - map SKU for display (e.g., 0022 -> 0383)
       AppDeviceImage(
@@ -206,6 +213,7 @@ private fun scaleModeItems(
   listOf(
     SettingsItem(
       title = DeviceDetailsStrings.Mode,
+      testTag = TestTags.DeviceDetails.ModeRow,
       type = SettingsItemType.Action(scaleMode),
       onClick = {
         handleIntent(DeviceDetailsIntent.OpenScaleMode)
@@ -213,6 +221,7 @@ private fun scaleModeItems(
     ),
     SettingsItem(
       title = DeviceDetailsStrings.DisplayMetrics,
+      testTag = TestTags.DeviceDetails.DisplayMetricsRow,
       type = SettingsItemType.Action(""),
       onClick = {
         handleIntent(DeviceDetailsIntent.OpenScaleDisplayMetrics)
@@ -220,6 +229,7 @@ private fun scaleModeItems(
     ),
     SettingsItem(
       title = DeviceDetailsStrings.Users,
+      testTag = TestTags.DeviceDetails.UsersRow,
       type = SettingsItemType.Action(device?.preferences?.displayName ?: ""),
       enabled = isConnected,
       onClick = {
@@ -239,6 +249,7 @@ private fun deviceNameAndUserItems(
     add(
       SettingsItem(
         title = DeviceDetailsStrings.DeviceName,
+        testTag = TestTags.DeviceDetails.DeviceNameRow,
         type =
           SettingsItemType.TextOnly(
             scaleName ?: "", // Display truncated name to match SDK limit
@@ -288,6 +299,7 @@ private fun DeviceDetailsConnectionSection(
         add(
           SettingsItem(
             title = DeviceDetailsStrings.Bluetooth,
+            testTag = TestTags.DeviceDetails.BluetoothRow,
             type =
               SettingsItemType.Action(
                 if (isConnected) DeviceDetailsStrings.Connected else AppListStrings.NotConnected,
@@ -303,6 +315,7 @@ private fun DeviceDetailsConnectionSection(
           add(
             SettingsItem(
               title = DeviceDetailsStrings.WiFi,
+              testTag = TestTags.DeviceDetails.WifiRow,
               type = SettingsItemType.Action(state.connectedSSID),
               enabled = isConnected,
               onClick = {
@@ -315,6 +328,7 @@ private fun DeviceDetailsConnectionSection(
           add(
             SettingsItem(
               title = DeviceDetailsStrings.WiFiMacAddress,
+              testTag = TestTags.DeviceDetails.WifiMacRow,
               type = SettingsItemType.Action(),
               enabled = isConnected,
 
@@ -364,6 +378,7 @@ private fun DeviceDetailsSupportSection(
         ),
         SettingsItem(
           title = DeviceDetailsStrings.ProductGuide,
+          testTag = TestTags.DeviceDetails.ProductGuideRow,
           type = SettingsItemType.Action(),
           onClick = { handleIntent(DeviceDetailsIntent.OpenProductGuide) },
         ),
@@ -381,6 +396,7 @@ private fun DeviceDetailsDeleteSection(
       listOf(
         SettingsItem(
           title = DeviceDetailsStrings.DeleteLabel,
+          testTag = TestTags.DeviceDetails.DeleteRow,
           type = SettingsItemType.None,
           color = SettingColorType.Danger,
           onClick = { handleIntent(DeviceDetailsIntent.DeleteScale) },
@@ -405,6 +421,7 @@ private fun DeviceDetailsTestingSection(
       ),
       SettingsItem(
         title = DeviceDetailsStrings.SoftwareUpdate,
+        testTag = TestTags.DeviceDetails.SoftwareUpdateRow,
         type = SettingsItemType.Action(),
         enabled = isConnected,
         color = if (isConnected) SettingColorType.Default else SettingColorType.Tertiary,
@@ -417,6 +434,7 @@ private fun DeviceDetailsTestingSection(
       ),
       SettingsItem(
         title = DeviceDetailsStrings.OtherSettings,
+        testTag = TestTags.DeviceDetails.OtherSettingsRow,
         type = SettingsItemType.Action(),
         enabled = isConnected,
         color = if (isConnected) SettingColorType.Default else SettingColorType.Tertiary,
@@ -429,6 +447,7 @@ private fun DeviceDetailsTestingSection(
       ),
       SettingsItem(
         title = DeviceDetailsStrings.SessionImpedance,
+        testTag = TestTags.DeviceDetails.SessionImpedanceRow,
         type = SettingsItemType.Toggle(
           checked = state.isSessionImpedanceEnabled,
           onCheckedChange = { enabled ->

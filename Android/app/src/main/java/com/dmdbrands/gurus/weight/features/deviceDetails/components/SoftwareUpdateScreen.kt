@@ -19,8 +19,10 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import com.dmdbrands.gurus.weight.core.shared.utilities.testing.TestTags
 import com.dmdbrands.gurus.weight.features.common.components.AppButton
 import com.dmdbrands.gurus.weight.features.common.components.AppIconButton
 import com.dmdbrands.gurus.weight.features.common.components.AppScaffold
@@ -74,7 +76,10 @@ fun SoftwareUpdateScreen(
   AppScaffold(
     title = DeviceDetailsStrings.SoftwareUpdate,
     navigationIcon = {
-      AppIconButton(AppIcons.Default.Close) {
+      AppIconButton(
+        AppIcons.Default.Close,
+        modifier = Modifier.testTag(TestTags.DeviceDetails.SoftwareUpdateCloseButton),
+      ) {
         onClose()
       }
     },
@@ -83,7 +88,8 @@ fun SoftwareUpdateScreen(
       modifier = Modifier
         .fillMaxSize()
         .verticalScroll(rememberScrollState())
-        .padding(spacing.lg),
+        .padding(spacing.lg)
+        .testTag(TestTags.DeviceDetails.SoftwareUpdateScreenRoot),
       horizontalAlignment = Alignment.CenterHorizontally,
     ) {
 
@@ -221,7 +227,9 @@ private fun NowUpdateContent(onUpdateNow: () -> Unit) {
       onClick = onUpdateNow,
       type = ButtonType.PrimaryFilled,
       size = ButtonSize.Large,
-      modifier = Modifier.fillMaxWidth(),
+      modifier = Modifier
+        .fillMaxWidth()
+        .testTag(TestTags.DeviceDetails.SoftwareUpgradeButton),
     )
   }
 }
@@ -267,7 +275,9 @@ private fun ScheduledUpdateContent(
       onClick = onUpdateScheduled,
       type = ButtonType.PrimaryFilled,
       size = ButtonSize.Large,
-      modifier = Modifier.fillMaxWidth(),
+      modifier = Modifier
+        .fillMaxWidth()
+        .testTag(TestTags.DeviceDetails.SoftwareUpdateSaveButton),
     )
   }
 }

@@ -12,10 +12,12 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.dmdbrands.gurus.weight.core.shared.utilities.testing.TestTags
 import com.dmdbrands.gurus.weight.domain.model.storage.Device
 import com.dmdbrands.gurus.weight.features.DeviceMetricsSetting.Screens.DeviceMetricsSettingScreen
 import com.dmdbrands.gurus.weight.features.common.components.AppIconButton
@@ -61,7 +63,11 @@ fun DeviceDisplayMetricsScreenContent(
   AppScaffold(
     title = DeviceDisplayMetricsStrings.Title,
     navigationIcon = {
-      AppIconButton(AppIcons.Default.Close, contentDescription = DeviceDisplayMetricsStrings.accCloseLabel) {
+      AppIconButton(
+        AppIcons.Default.Close,
+        modifier = Modifier.testTag(TestTags.DeviceMetrics.DisplayCloseButton),
+        contentDescription = DeviceDisplayMetricsStrings.accCloseLabel,
+      ) {
         handleIntent(DeviceDisplayMetricsIntent.Back)
       }
     },
@@ -73,7 +79,8 @@ fun DeviceDisplayMetricsScreenContent(
       modifier =
         Modifier
           .fillMaxSize()
-          .padding(vertical = spacing.md, horizontal = spacing.sm),
+          .padding(vertical = spacing.md, horizontal = spacing.sm)
+          .testTag(TestTags.DeviceMetrics.DisplayScreenRoot),
       state = lazyListState,
     ) {
       item {
@@ -101,7 +108,8 @@ private fun DeviceDisplayMetricsSaveAction(
           .padding(end = spacing.md)
           // TalkBack: this clickable text acts as a button, so expose the Button role.
           .semantics { role = Role.Button }
-          .clickable { handleIntent(DeviceDisplayMetricsIntent.Save) },
+          .clickable { handleIntent(DeviceDisplayMetricsIntent.Save) }
+          .testTag(TestTags.DeviceMetrics.DisplaySaveButton),
     )
   }
 }

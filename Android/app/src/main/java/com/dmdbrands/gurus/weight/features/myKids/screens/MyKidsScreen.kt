@@ -23,6 +23,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.heading
@@ -33,6 +34,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.dmdbrands.gurus.weight.core.navigation.AppRoute
 import com.dmdbrands.gurus.weight.core.navigation.LocalNavBackStack
+import com.dmdbrands.gurus.weight.core.shared.utilities.testing.TestTags
 import com.dmdbrands.gurus.weight.domain.model.common.BabyProfile
 import kotlinx.collections.immutable.ImmutableList
 import com.dmdbrands.gurus.weight.features.common.components.AppButton
@@ -66,7 +68,11 @@ fun MyKidsScreen(viewModel: MyKidsViewModel = hiltViewModel()) {
     AppScaffold(
         title = MyKidsStrings.Title,
         navigationIcon = {
-            AppIconButton(AppIcons.Default.Close, contentDescription = MyKidsStrings.accCloseLabel) {
+            AppIconButton(
+                AppIcons.Default.Close,
+                contentDescription = MyKidsStrings.accCloseLabel,
+                modifier = Modifier.testTag(TestTags.MyKids.CloseButton),
+            ) {
                 coroutineScope.launch { backStack.removeLast() }
             }
         },
@@ -99,7 +105,8 @@ private fun MyKidsList(
     Column(
         modifier = modifier
             .fillMaxSize()
-            .padding(horizontal = MeTheme.spacing.sm, vertical = MeTheme.spacing.md),
+            .padding(horizontal = MeTheme.spacing.sm, vertical = MeTheme.spacing.md)
+            .testTag(TestTags.MyKids.ScreenRoot),
     ) {
         AppText(
             text = MyKidsStrings.BabyAddedTitle,
@@ -125,6 +132,7 @@ private fun MyKidsList(
         Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
             AppButton(
                 label = MyKidsStrings.AddABaby,
+                modifier = Modifier.testTag(TestTags.MyKids.AddBabyButton),
                 type = ButtonType.PrimaryFilled,
                 size = ButtonSize.Small,
                 onClick = onAddBaby,
@@ -141,7 +149,8 @@ private fun MyKidsEmptyState(
     Column(
         modifier = modifier
             .fillMaxSize()
-            .padding(horizontal = MeTheme.spacing.sm, vertical = MeTheme.spacing.md),
+            .padding(horizontal = MeTheme.spacing.sm, vertical = MeTheme.spacing.md)
+            .testTag(TestTags.MyKids.ScreenRoot),
     ) {
         Box(
             modifier = Modifier
@@ -161,6 +170,7 @@ private fun MyKidsEmptyState(
                 ) {
                     AppButton(
                         label = MyKidsStrings.AddABaby,
+                        modifier = Modifier.testTag(TestTags.MyKids.AddBabyButton),
                         type = ButtonType.PrimaryFilled,
                         onClick = onAddBaby,
                     )

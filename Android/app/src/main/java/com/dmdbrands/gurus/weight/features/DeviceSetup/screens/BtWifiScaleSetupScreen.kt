@@ -9,7 +9,9 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.platform.testTag
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.dmdbrands.gurus.weight.core.shared.utilities.testing.TestTags
 import com.dmdbrands.gurus.weight.features.DeviceCustomization.screens.CustomizeDeviceSettings
 import com.dmdbrands.gurus.weight.features.DeviceSetup.components.DeviceInfoContent
 import com.dmdbrands.gurus.weight.features.DeviceSetup.components.DevicePermissions
@@ -148,6 +150,7 @@ fun BtWifiScaleSetupScreenContent(
           {
             AppButton(
               type = ButtonType.TextPrimary,
+              modifier = Modifier.testTag(TestTags.DeviceSetup.BackButton),
               label = DeviceSetupStrings.backButton,
               size = ButtonSize.Small,
               enabled = !state.isFirstStep && state.currentStep != BtWifiSetupStep.DUPLICATES_FOUND && state.currentStep != BtWifiSetupStep.AVAILABLE_WIFI_LIST,
@@ -163,6 +166,7 @@ fun BtWifiScaleSetupScreenContent(
           {
             AppButton(
               type = ButtonType.PrimaryFilled,
+              modifier = Modifier.testTag(TestTags.DeviceSetup.FinishButton),
               label = DeviceSetupStrings.FinishButton,
               size = ButtonSize.Small,
               onClick = {
@@ -178,6 +182,7 @@ fun BtWifiScaleSetupScreenContent(
           {
             AppButton(
               type = ButtonType.TextTertiary,
+              modifier = Modifier.testTag(TestTags.DeviceSetup.SkipButton),
               label = DeviceSetupStrings.SetupButtons.Skip,
               size = ButtonSize.Small,
               onClick = {
@@ -198,6 +203,7 @@ fun BtWifiScaleSetupScreenContent(
           {
             AppButton(
               type = ButtonType.PrimaryFilled,
+              modifier = Modifier.testTag(TestTags.DeviceSetup.NextButton),
               label = when (state.currentStep) {
                 BtWifiSetupStep.WIFI_PASSWORD -> DeviceSetupStrings.SetupButtons.Connect
                 else -> state.nextButtonText

@@ -13,8 +13,10 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
+import androidx.compose.ui.platform.testTag
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.dmdbrands.gurus.weight.core.shared.utilities.testing.TestTags
 import com.dmdbrands.gurus.weight.features.DeviceSetup.components.BabyListContent
 import com.dmdbrands.gurus.weight.features.DeviceSetup.components.BabyProfileFormContent
 import com.dmdbrands.gurus.weight.features.DeviceSetup.components.BabyScaleConnectionFailed
@@ -92,7 +94,7 @@ internal fun BabyScaleSetupScreenContent(
     onBack = { onIntent(DeviceSetupIntent.ExitSetup(state.isLastStep)) },
     onHelp = { onIntent(DeviceSetupIntent.OpenHelp) },
   ) {
-    Column(modifier = Modifier.fillMaxSize()) {
+    Column(modifier = Modifier.fillMaxSize().testTag(TestTags.DeviceSetup.ScreenRoot)) {
       Box(modifier = Modifier.weight(1f)) {
         when (currentStep) {
           BabyScaleSetupStep.SCALE_INFO ->
@@ -169,6 +171,7 @@ internal fun BabyScaleSetupScreenContent(
         ) {
           AppButton(
             type = ButtonType.TextPrimary,
+            modifier = Modifier.testTag(TestTags.DeviceSetup.BackButton),
             label = DeviceSetupStrings.backButton,
             size = ButtonSize.Small,
             enabled = !state.isFirstStep,
@@ -179,6 +182,7 @@ internal fun BabyScaleSetupScreenContent(
           if (currentStep == BabyScaleSetupStep.BABY_PROFILE_FORM) {
             AppButton(
               type = ButtonType.TextPrimary,
+              modifier = Modifier.testTag(TestTags.DeviceSetup.SkipButton),
               label = DeviceSetupStrings.skipButton,
               size = ButtonSize.Small,
               onClick = {
@@ -193,6 +197,7 @@ internal fun BabyScaleSetupScreenContent(
             BabyScaleSetupStep.PERMISSIONS ->
               AppButton(
                 type = ButtonType.PrimaryFilled,
+                modifier = Modifier.testTag(TestTags.DeviceSetup.NextButton),
                 label = DeviceSetupStrings.nextButton,
                 size = ButtonSize.Small,
                 enabled = state.isFirstStep || state.nextEnabled,
@@ -205,6 +210,7 @@ internal fun BabyScaleSetupScreenContent(
             BabyScaleSetupStep.SCALE_NAME ->
               AppButton(
                 type = ButtonType.PrimaryFilled,
+                modifier = Modifier.testTag(TestTags.DeviceSetup.NextButton),
                 label = DeviceSetupStrings.nextButton,
                 size = ButtonSize.Small,
                 enabled = state.nickname.isNotBlank(),
@@ -218,6 +224,7 @@ internal fun BabyScaleSetupScreenContent(
             BabyScaleSetupStep.PAIRED_SUCCESS ->
               AppButton(
                 type = ButtonType.PrimaryFilled,
+                modifier = Modifier.testTag(TestTags.DeviceSetup.ContinueButton),
                 label = BabyScaleSetupStrings.SetupButtons.Continue,
                 size = ButtonSize.Small,
                 onClick = { onIntent(DeviceSetupIntent.Next) },
@@ -226,6 +233,7 @@ internal fun BabyScaleSetupScreenContent(
             BabyScaleSetupStep.BABY_PROFILE_FORM ->
               AppButton(
                 type = ButtonType.PrimaryFilled,
+                modifier = Modifier.testTag(TestTags.DeviceSetup.NextButton),
                 label = DeviceSetupStrings.nextButton,
                 size = ButtonSize.Small,
                 enabled = state.editingProfile.name.isNotBlank(),
@@ -242,6 +250,7 @@ internal fun BabyScaleSetupScreenContent(
             BabyScaleSetupStep.BABY_LIST ->
               AppButton(
                 type = ButtonType.PrimaryFilled,
+                modifier = Modifier.testTag(TestTags.DeviceSetup.FinishButton),
                 label = BabyScaleSetupStrings.SetupButtons.Finish,
                 size = ButtonSize.Small,
                 onClick = {
@@ -253,6 +262,7 @@ internal fun BabyScaleSetupScreenContent(
             BabyScaleSetupStep.SETUP_FINISHED ->
               AppButton(
                 type = ButtonType.PrimaryFilled,
+                modifier = Modifier.testTag(TestTags.DeviceSetup.FinishButton),
                 label = BabyScaleSetupStrings.SetupButtons.Finish,
                 size = ButtonSize.Small,
                 onClick = { onIntent(DeviceSetupIntent.ExitSetup(true)) },

@@ -10,10 +10,12 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.dmdbrands.gurus.weight.core.shared.utilities.testing.TestTags
 import com.dmdbrands.gurus.weight.domain.model.storage.Device
 import com.dmdbrands.gurus.weight.features.DeviceModeSettings.screens.DeviceModeSettingsScreen
 import com.dmdbrands.gurus.weight.features.common.components.AppIconButton
@@ -55,7 +57,11 @@ fun DeviceModeScreenContent(
   AppScaffold(
     title = DeviceModeStrings.Title,
     navigationIcon = {
-      AppIconButton(AppIcons.Default.Close, contentDescription = DeviceModeStrings.accCloseLabel) {
+      AppIconButton(
+        AppIcons.Default.Close,
+        modifier = Modifier.testTag(TestTags.DeviceMode.CloseButton),
+        contentDescription = DeviceModeStrings.accCloseLabel,
+      ) {
         handleIntent(DeviceModeIntent.Back)
       }
     },
@@ -70,7 +76,8 @@ fun DeviceModeScreenContent(
               .padding(end = spacing.md)
               // TalkBack: this clickable text acts as a button, so expose the Button role.
               .semantics { role = Role.Button }
-              .clickable { handleIntent(DeviceModeIntent.Save) },
+              .clickable { handleIntent(DeviceModeIntent.Save) }
+              .testTag(TestTags.DeviceMode.SaveButton),
         )
       }
     },
@@ -79,7 +86,8 @@ fun DeviceModeScreenContent(
       modifier =
         Modifier
           .fillMaxSize()
-          .padding(vertical = spacing.md, horizontal = spacing.sm),
+          .padding(vertical = spacing.md, horizontal = spacing.sm)
+          .testTag(TestTags.DeviceMode.ScreenRoot),
     ) {
       if (state.scale?.isWeighOnlyModeEnabledByOthers == true && isAllBodyMetrics) {
         AppNote(

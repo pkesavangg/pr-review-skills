@@ -21,8 +21,10 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusManager
 import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.platform.SoftwareKeyboardController
+import com.dmdbrands.gurus.weight.core.shared.utilities.testing.TestTags
 import com.dmdbrands.gurus.weight.domain.model.storage.Device
 import com.dmdbrands.gurus.weight.domain.model.storage.Preferences
 import com.dmdbrands.gurus.weight.features.DeviceCustomization.components.CustomizationLayout
@@ -268,7 +270,8 @@ private fun CustomizeSettingsPager(
     modifier = Modifier
       .fillMaxSize()
       .verticalScroll(state = scrollState)
-      .padding(vertical = spacing.md),
+      .padding(vertical = spacing.md)
+      .testTag(TestTags.DeviceCustomization.ScreenRoot),
     steps = CustomizeSettings.entries,
     containerColor = MeTheme.colorScheme.secondaryBackground,
     pagerState = pagerState,
@@ -328,6 +331,7 @@ private fun CustomizeBackButton(
 ) {
   AppButton(
     type = ButtonType.TextPrimary,
+    modifier = Modifier.testTag(TestTags.DeviceCustomization.BackButton),
     label = DeviceSetupStrings.backButton,
     size = ButtonSize.Small,
     // Disable back button when on main settings screen (NONE)
@@ -355,6 +359,7 @@ private fun CustomizeTrailingButton(
         currentPage == CustomizeSettings.DEVICE_USERNAME.ordinal &&
           !localUsernameFormControl.isValueValid()
         ),
+      testTag = TestTags.DeviceCustomization.NextButton,
       onClick = { handleCustomizeNextClick(state, states, onIntent) },
     )
   } else {
@@ -362,6 +367,7 @@ private fun CustomizeTrailingButton(
       label = DeviceSetupStrings.saveButton,
       enabled = !state.isSaving && hasUnsavedChanges &&
         (currentPage != CustomizeSettings.DEVICE_USERNAME.ordinal || localUsernameFormControl.isValueValid()),
+      testTag = TestTags.DeviceCustomization.SaveButton,
       onClick = {
         handleCustomizeSaveClick(currentPage, state, states, localUsernameFormControl.value, onIntent) {
           focusManager.clearFocus()
@@ -376,10 +382,12 @@ private fun CustomizeTrailingButton(
 private fun CustomizePrimaryButton(
   label: String,
   enabled: Boolean,
+  testTag: String,
   onClick: () -> Unit,
 ) {
   AppButton(
     type = ButtonType.PrimaryFilled,
+    modifier = Modifier.testTag(testTag),
     label = label,
     size = ButtonSize.Small,
     enabled = enabled,

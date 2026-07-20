@@ -1,7 +1,11 @@
 package com.dmdbrands.gurus.weight.features.deviceDetails.components
 
 import androidx.activity.compose.BackHandler
+import androidx.compose.foundation.layout.Box
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.testTag
+import com.dmdbrands.gurus.weight.core.shared.utilities.testing.TestTags
 import com.dmdbrands.gurus.weight.features.common.components.AppIconButton
 import com.dmdbrands.gurus.weight.features.common.components.AppScaffold
 import com.dmdbrands.gurus.weight.features.common.components.PreviewTheme
@@ -24,16 +28,22 @@ fun WifiMacAddressScreen(
   AppScaffold(
     title = WifiMacAddressStrings.Header,
     navigationIcon = {
-      AppIconButton(AppIcons.Default.Close, onClick = onClose)
+      AppIconButton(
+        AppIcons.Default.Close,
+        onClick = onClose,
+        modifier = Modifier.testTag(TestTags.DeviceDetails.WifiMacCloseButton),
+      )
     },
   ) {
-    WifiMacAddress(
-      title = WifiMacAddressStrings.Title,
-      macAddress = state.wifiMacAddress ?: "",
-      onCopyMacAddress = {
-        handleIntent(DeviceDetailsIntent.OnCopyMacAddress(it))
-      }
-    )
+    Box(modifier = Modifier.testTag(TestTags.DeviceDetails.WifiMacScreenRoot)) {
+      WifiMacAddress(
+        title = WifiMacAddressStrings.Title,
+        macAddress = state.wifiMacAddress ?: "",
+        onCopyMacAddress = {
+          handleIntent(DeviceDetailsIntent.OnCopyMacAddress(it))
+        }
+      )
+    }
   }
 }
 

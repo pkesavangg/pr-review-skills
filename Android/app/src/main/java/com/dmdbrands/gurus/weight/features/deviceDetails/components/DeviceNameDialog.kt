@@ -11,6 +11,7 @@ import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.text.input.ImeAction
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.dmdbrands.gurus.weight.core.shared.utilities.testing.TestTags
 import com.dmdbrands.gurus.weight.features.common.components.dismissKeyboardOnTap
 import com.dmdbrands.gurus.weight.features.common.components.AppInput
 import com.dmdbrands.gurus.weight.features.common.components.AppInputType
@@ -66,12 +67,14 @@ fun DeviceNameModal(
       action = { viewModel.handleIntent(DeviceDetailsIntent.UpdateScaleName) },
       enabled = state.scaleNameForm.controls.name.error == null &&
         state.scaleNameForm.controls.name.value.isNotBlank(),
+      testTag = TestTags.DeviceDetails.NameDialogSaveButton,
     ),
     secondaryAction = ActionButton(
       text = DeviceNameDialogStrings.CancelButton,
       action = {
         onDismiss()
       },
+      testTag = TestTags.DeviceDetails.NameDialogCancelButton,
     ),
     onDismiss = {
       onDismiss()
@@ -82,6 +85,7 @@ fun DeviceNameModal(
       formControl = state.scaleNameForm.controls.name,
       label = DeviceNameDialogStrings.DevicenameLabel,
       type = AppInputType.TEXT,
+      testTag = TestTags.DeviceDetails.NameDialogField,
       imeAction = ImeAction.Done,
       showOutline = true,
       onImeAction = {
