@@ -12,11 +12,16 @@ struct BabyGraphSelectionPresentation {
 /// rendering can stay focused on marks and annotations.
 struct GraphSelectionPresentationResolver {
 
+    /// Interpolation over the plotted points is delegated to the shared graph spline (the same Fritsch–Carlson
+    /// Hermite the weight/BPM graphs use), so a gap crosshair value matches the header. (MOB-1516)
+    private let dataPreparer = GraphDataPreparer()
+
     // swiftlint:disable:next function_parameter_count
     func babySelectionPresentation(
         babyProfile: BabyProfile?,
         metric: BabyMetric,
         selectedCrosshairDate: Date?,
+        percentileDate: Date?,
         plottedPoints: [PlottedGraphSeries],
         plotXDate: (Date) -> Date,
         currentUnit: WeightUnit,
@@ -42,11 +47,16 @@ struct GraphSelectionPresentationResolver {
         return BabyGraphSelectionPresentation(
             crosshairDate: crosshairDate,
             crosshairValue: crosshairValue,
+            // MOB-1591: percentiles are AGE-driven, so they must use the reading's REAL date, not the plotted
+            // x-date. In year/total the plotted point is the monthly aggregate collapsed to the 1st (e.g. Jun 1),
+            // which is a younger age and yields a different (wrong) percentile than week/month for the same
+            // reading. `percentileDate` carries the real entry date (the summary's `entryTimestamp`); fall back
+            // to the crosshair date for gap/in-between selections (no real reading → nothing more precise).
             percentile: percentile(
                 for: babyProfile,
                 metric: metric,
                 value: crosshairValue,
-                on: crosshairDate,
+                on: percentileDate ?? crosshairDate,
                 currentUnit: currentUnit
             )
         )
@@ -83,8 +93,10 @@ struct GraphSelectionPresentationResolver {
             return exactValue
         }
 
-        if let interpolatedValue = interpolatedPrimaryValue(at: plottedDate, primaryPoints: primaryPoints) {
-            return interpolatedValue
+        // MOB-1516: gap selection → Hermite-interpolate over the plotted points (parity with the weight/BPM
+        // graphs), replacing the previous linear 2-point lerp so the crosshair value matches the header.
+        if let interpolated = dataPreparer.interpolatedPlottedValue(at: plottedDate, points: primaryPoints) {
+            return interpolated
         }
 
         return fallbackValue(
@@ -93,29 +105,6 @@ struct GraphSelectionPresentationResolver {
             metric: metric,
             displayWeight: displayWeight
         )
-    }
-
-    private func interpolatedPrimaryValue(
-        at plottedDate: Date,
-        primaryPoints: [PlottedGraphSeries]
-    ) -> Double? {
-        guard let previousPoint = primaryPoints.last(where: { $0.xDate < plottedDate }),
-              let nextPoint = primaryPoints.first(where: { $0.xDate > plottedDate }) else {
-            return nil
-        }
-
-        let lowerTime = previousPoint.xDate.timeIntervalSinceReferenceDate
-        let upperTime = nextPoint.xDate.timeIntervalSinceReferenceDate
-        let selectedTime = plottedDate.timeIntervalSinceReferenceDate
-        let interval = upperTime - lowerTime
-
-        guard interval > AppConstants.Precision.doubleEqualityEpsilon else {
-            return previousPoint.original.value
-        }
-
-        let progress = (selectedTime - lowerTime) / interval
-        return previousPoint.original.value
-            + ((nextPoint.original.value - previousPoint.original.value) * progress)
     }
 
     private func fallbackValue(
@@ -144,6 +133,9 @@ struct GraphSelectionPresentationResolver {
         on date: Date,
         currentUnit: WeightUnit
     ) -> Int? {
+        // MOB-1516 audit: percentiles are age-driven, so without a known birthday there is no valid answer
+        // (parity with Smart Baby, which shows none). The crosshair VALUE still renders; only the % is hidden.
+        guard BabyDashboardChartSupport.canResolveGrowthPercentiles(for: babyProfile) else { return nil }
         switch metric {
         case .height:
             return BabyDashboardChartSupport.heightPercentile(

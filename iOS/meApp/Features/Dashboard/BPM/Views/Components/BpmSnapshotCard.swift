@@ -14,6 +14,8 @@ struct BpmSnapshotCard: View {
         static let valueSpacing: CGFloat = 12
         static let pulseColumnWidth: CGFloat = 120
         static let labelBottomTightening: CGFloat = -6
+        /// Gap between the headline values and the date-range label (tightened from spacingXS).
+        static let rangeLabelTopSpacing: CGFloat = 2
     }
 
     let summaries: [BathScaleWeightSummary]
@@ -69,13 +71,14 @@ struct BpmSnapshotCard: View {
                     .padding(.horizontal, .spacingSM)
                     .padding(.top, .spacingSM)
 
-                // No readings yet → show "no entries" in place of the week range (the "mmhg"/"pulse"
-                // unit labels stay), matching the weight/baby snapshot cards and the empty-state mock.
-                Text(latestReading == nil ? BpmDashboardStrings.noEntries : cachedDateRangeLabel)
+                // Always show the week range (matching the weight/baby cards). The empty state is
+                // already signalled by the 00/00 sys/dia + pulse headline, so the range slot keeps
+                // showing the current week rather than swapping in "no entries".
+                Text(cachedDateRangeLabel)
                     .fontOpenSans(.subHeading2)
                     .foregroundColor(theme.textSubheading)
                     .padding(.horizontal, .spacingSM)
-                    .padding(.top, .spacingXS)
+                    .padding(.top, Layout.rangeLabelTopSpacing)
 
                 snapshotChart
                     .frame(height: 240)
@@ -152,13 +155,13 @@ struct BpmSnapshotCard: View {
         let calendar = Calendar.current
         if let bounds = result.0?.bounds {
             let displayEnd = calendar.date(byAdding: .day, value: -1, to: bounds.end) ?? bounds.end
-            cachedDateRangeLabel = Self.weekDateRangeLabel(start: bounds.start, displayEnd: displayEnd)
+            cachedDateRangeLabel = DashboardSnapshotLabel.weekRange(start: bounds.start, displayEnd: displayEnd)
         } else {
             let today = Date()
             let daysToSunday = calendar.component(.weekday, from: today) - 1
             let start = calendar.startOfDay(for: calendar.date(byAdding: .day, value: -daysToSunday, to: today) ?? today)
             let displayEnd = calendar.date(byAdding: .day, value: 6, to: start) ?? today
-            cachedDateRangeLabel = Self.weekDateRangeLabel(start: start, displayEnd: displayEnd)
+            cachedDateRangeLabel = DashboardSnapshotLabel.weekRange(start: start, displayEnd: displayEnd)
         }
         hasCacheLoaded = true
     }
@@ -176,17 +179,9 @@ struct BpmSnapshotCard: View {
                             .padding(.bottom, Layout.labelBottomTightening)
 
                         HStack(alignment: .lastTextBaseline, spacing: Layout.valueSpacing) {
-                            Text("\(reading.systolic)")
-                                .fontOpenSans(.heading1)
-                                .fontWeight(.heavy)
-                                .foregroundColor(classification.color(theme: theme))
-
+                            headlineValue("\(reading.systolic)", color: classification.color(theme: theme))
                             slashDivider
-
-                            Text("\(reading.diastolic)")
-                                .fontOpenSans(.heading1)
-                                .fontWeight(.heavy)
-                                .foregroundColor(classification.color(theme: theme))
+                            headlineValue("\(reading.diastolic)", color: classification.color(theme: theme))
                         }
                     }
 
@@ -198,11 +193,7 @@ struct BpmSnapshotCard: View {
                             .foregroundColor(theme.textSubheading)
                             .padding(.bottom, Layout.labelBottomTightening)
 
-                        Text("\(reading.pulse)")
-                            .fontOpenSans(.heading1)
-                            .fontWeight(.heavy)
-                            .foregroundColor(theme.textSubheading)
-                            .fixedSize(horizontal: true, vertical: false)
+                        headlineValue("\(reading.pulse)", color: theme.textSubheading)
                     }
                     .frame(width: Layout.pulseColumnWidth, alignment: .leading)
                 }
@@ -215,13 +206,9 @@ struct BpmSnapshotCard: View {
                             .padding(.bottom, Layout.labelBottomTightening)
 
                         HStack(alignment: .lastTextBaseline, spacing: Layout.valueSpacing) {
-                            Text(BpmDashboardStrings.bpSystolicZeroPlaceholder)
-                                .fontOpenSans(.heading1).fontWeight(.heavy)
-                                .foregroundColor(AhaPressureClass.classify(systolic: 0, diastolic: 0).color(theme: theme))
+                            headlineValue(BpmDashboardStrings.bpSystolicZeroPlaceholder, color: zeroPlaceholderColor)
                             slashDivider
-                            Text(BpmDashboardStrings.bpDiastolicZeroPlaceholder)
-                                .fontOpenSans(.heading1).fontWeight(.heavy)
-                                .foregroundColor(AhaPressureClass.classify(systolic: 0, diastolic: 0).color(theme: theme))
+                            headlineValue(BpmDashboardStrings.bpDiastolicZeroPlaceholder, color: zeroPlaceholderColor)
                         }
                     }
                     Spacer()
@@ -230,10 +217,7 @@ struct BpmSnapshotCard: View {
                             .fontOpenSans(.subHeading2)
                             .foregroundColor(theme.textSubheading)
                             .padding(.bottom, Layout.labelBottomTightening)
-                        Text(BpmDashboardStrings.bpPulseZeroPlaceholder)
-                            .fontOpenSans(.heading1).fontWeight(.heavy)
-                            .foregroundColor(theme.textSubheading)
-                            .fixedSize(horizontal: true, vertical: false)
+                        headlineValue(BpmDashboardStrings.bpPulseZeroPlaceholder, color: theme.textSubheading)
                     }
                     .frame(width: Layout.pulseColumnWidth, alignment: .leading)
                 }
@@ -245,6 +229,24 @@ struct BpmSnapshotCard: View {
         SlashDividerView(color: theme.textSubheading.opacity(0.45))
     }
 
+    /// Single source of truth for a headline sys/dia/pulse value, so the populated and empty
+    /// branches can never drift apart (a font change to one used to miss the other). Shrinks to
+    /// fit on one line (down to 60%) instead of wrapping/collapsing when a reading is wide
+    /// (e.g. "180 / 120") or the device is narrow. MOB-1591.
+    private func headlineValue(_ text: String, color: Color) -> some View {
+        Text(text)
+            .fontOpenSans(.heading2)
+            .fontWeight(.heavy)
+            .foregroundColor(color)
+            .lineLimit(1)
+            .minimumScaleFactor(0.6)
+    }
+
+    /// Colour for the "000 / 00" zero-reading placeholder (AHA class for a 0/0 reading).
+    private var zeroPlaceholderColor: Color {
+        AhaPressureClass.classify(systolic: 0, diastolic: 0).color(theme: theme)
+    }
+
     // MARK: - Chart
 
     private var snapshotChart: some View {
@@ -252,6 +254,10 @@ struct BpmSnapshotCard: View {
         let xDomain = weekXDomain()
         let yRange = yScale.domain
         let yTickValues = yScale.ticks
+        // No readings → hide the y-axis NUMBERS but keep the reserved column via a fixed-width
+        // placeholder, so all three empty snapshot cards show the same trailing gap. The real numbers
+        // return with the first reading. MOB-1591.
+        let hideYAxisNumbers = cachedChartPoints.isEmpty
 
         return Chart(cachedChartPoints, id: \.id) { point in
             LineMark(
@@ -287,11 +293,18 @@ struct BpmSnapshotCard: View {
         }
         .chartYAxis {
             AxisMarks(position: .trailing, values: yTickValues) { value in
-                AxisValueLabel {
+                // `horizontalSpacing: 0` makes the fixed-width label column start flush at the plot edge,
+                // so the reserved trailing column is exactly `yAxisLabelWidth` — identical to the weight
+                // and baby cards. MOB-1591.
+                AxisValueLabel(horizontalSpacing: 0) {
                     if let val = value.as(Double.self) {
-                        Text(yAxisFormatter.formatYAxisTickLabel(val))
+                        // Empty → transparent fixed-width placeholder; keeps the reserved column so the
+                        // gap matches the other cards, with the arbitrary fallback numbers hidden.
+                        Text(hideYAxisNumbers ? DashboardSnapshotStyle.emptyYAxisPlaceholder : yAxisFormatter.formatYAxisTickLabel(val))
                             .font(.caption)
                             .foregroundColor(theme.textSubheading)
+                            .frame(width: DashboardSnapshotStyle.yAxisLabelWidth, alignment: .center)
+                            .opacity(hideYAxisNumbers ? 0 : 1)
                     }
                 }
             }
@@ -325,26 +338,6 @@ struct BpmSnapshotCard: View {
 
     private func calculateYAxisScale() -> YAxisScale {
         DashboardChartScaleProvider.bpmScale(from: cachedChartSummaries)
-    }
-
-    private static func weekDateRangeLabel(start: Date, displayEnd: Date) -> String {
-        let calendar = Calendar.current
-        let sy = calendar.component(.year, from: start)
-        let ey = calendar.component(.year, from: displayEnd)
-        let sm = calendar.component(.month, from: start)
-        let em = calendar.component(.month, from: displayEnd)
-        let startFmt = DateFormatter()
-        startFmt.dateFormat = "MMM d"
-        let endFmt = DateFormatter()
-        endFmt.dateFormat = "MMM d, yyyy"
-        if sy != ey {
-            return "\(endFmt.string(from: start)) - \(endFmt.string(from: displayEnd))".lowercased()
-        }
-        if sm != em {
-            return "\(startFmt.string(from: start)) - \(endFmt.string(from: displayEnd))".lowercased()
-        }
-        let endDay = calendar.component(.day, from: displayEnd)
-        return "\(startFmt.string(from: start)) - \(endDay), \(sy)".lowercased()
     }
 
     private var accessibilityLabel: String {

@@ -462,4 +462,84 @@ struct GraphDataPreparerTests {
         #expect(before == 180.0)
         #expect(after == 200.0)
     }
+
+    // MARK: - interpolatedValue (generic Hermite — BPM/baby, MOB-1516)
+
+    @Test("interpolatedValue: two-point midpoint returns the mean of the extracted metric")
+    func interpolatedValueTwoPointMidpoint() {
+        let ops = [
+            makeSummary(day: 1, pulse: 60),
+            makeSummary(day: 3, pulse: 80)
+        ]
+
+        let result = makeSUT().interpolatedValue(
+            at: makeDate(2026, 3, 2),
+            from: ops,
+            period: .year
+        ) { $0.pulse }
+
+        expectApprox(result, 70.0)
+    }
+
+    @Test("interpolatedValue: skips points where the extractor is nil (per-series gaps)")
+    func interpolatedValueSkipsNilExtractedPoints() {
+        // day 2 has no pulse → it must NOT anchor the spline; the value at day 2 interpolates between
+        // day 1 (60) and day 3 (80) → 70. Each BPM series has its own gaps, which is why the generic
+        // interpolation compacts per-series rather than requiring every point to be non-nil.
+        let ops = [
+            makeSummary(day: 1, pulse: 60),
+            makeSummary(day: 2, pulse: nil),
+            makeSummary(day: 3, pulse: 80)
+        ]
+
+        let result = makeSUT().interpolatedValue(
+            at: makeDate(2026, 3, 2),
+            from: ops,
+            period: .year
+        ) { $0.pulse }
+
+        expectApprox(result, 70.0)
+    }
+
+    @Test("interpolatedValue: returns nil when no point has a value for the extracted metric")
+    func interpolatedValueAllNilReturnsNil() {
+        let ops = [makeSummary(day: 1, pulse: nil), makeSummary(day: 2, pulse: nil)]
+
+        let result = makeSUT().interpolatedValue(
+            at: makeDate(2026, 3, 2),
+            from: ops,
+            period: .year
+        ) { $0.pulse }
+
+        #expect(result == nil)
+    }
+
+    @Test("interpolatedValue: single point returns that point's value")
+    func interpolatedValueSinglePoint() {
+        let result = makeSUT().interpolatedValue(
+            at: makeDate(2026, 3, 5),
+            from: [makeSummary(day: 1, pulse: 72)],
+            period: .year
+        ) { $0.pulse }
+
+        expectApprox(result, 72.0)
+    }
+
+    @Test("interpolatedPlottedValue: midpoint over two plotted points returns their mean (baby crosshair)")
+    func interpolatedPlottedValueTwoPointMidpoint() {
+        let points = [
+            PlottedGraphSeries(
+                original: GraphSeries(date: makeDate(2026, 3, 1), value: 10, series: "s"),
+                xDate: makeDate(2026, 3, 1)
+            ),
+            PlottedGraphSeries(
+                original: GraphSeries(date: makeDate(2026, 3, 3), value: 20, series: "s"),
+                xDate: makeDate(2026, 3, 3)
+            )
+        ]
+
+        let result = makeSUT().interpolatedPlottedValue(at: makeDate(2026, 3, 2), points: points)
+
+        expectApprox(result, 15.0)
+    }
 }

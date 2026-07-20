@@ -7,6 +7,17 @@ Fix a bug or make an enhancement in the Dashboard graph layer.
 
 The task is: $ARGUMENTS
 
+> **⚠️ Architecture + layout are current as of MOB-518 / MOB-1516 — this skill body is partly stale.**
+> All three products (weight · BPM · baby) now render through **one unified v2 engine**, and the whole graph
+> layer was reorganized into **`Features/Dashboard/Chart/`** (`Model/`, `Engine/`, `Views/`, `Managers/`),
+> with per-product code under `Weight/` · `BPM/` · `Baby/` and cross-product hosts under `Shared/`.
+> **The legacy `BaseGraphView` + four `*SectionViewModel`s + `PagedChartScrollBehavior` were DELETED** — the
+> "Layer Map" and troubleshooting sections below still describe that old stack and need a fuller refresh.
+> **Authoritative "where everything lives" map:** [`../../../docs/MOB-1516-baby-bpm-graph-migration/MOB-1516-unified-graph-how-it-works.md`](../../../docs/MOB-1516-baby-bpm-graph-migration/MOB-1516-unified-graph-how-it-works.md) §11.
+> Current engine files: `Chart/Engine/ChartPrep.swift` (per-product `buildWeight`/`buildBpm`/`buildBaby`),
+> `Chart/Model/ChartModel.swift`, `Chart/Views/{TrendChartHost,TrendChartView,GraphView}.swift`,
+> `Chart/Model/DashboardChartRules.swift`.
+
 ## Layer Map
 
 Orient yourself before touching anything:
@@ -37,7 +48,7 @@ The table above is the **weight** chart layer (the shared `BaseGraphView` / four
 | File | Responsibility |
 |------|---------------|
 | `meApp/Features/Dashboard/Baby/Views/Screens/BabyTrendView.swift` | Baby growth chart screen |
-| `meApp/Features/Dashboard/ViewModels/BabyTrendViewModel.swift` | Baby trend VM |
+| `meApp/Features/Dashboard/Baby/ViewModels/BabyTrendViewModel.swift` | Baby trend VM |
 | `meApp/Features/Dashboard/Baby/Utils/BabyDashboardChartStyle.swift`, `BabyDashboardChartSupport.swift` | Chart styling/support |
 | `meApp/Features/Dashboard/Baby/Models/BabyPercentileChartPoint.swift`, `BabyPercentileLineEntry.swift` | Percentile data points |
 | `meApp/Features/Dashboard/Baby/Utils/BabyWeightPercentileCalculator.swift`, `BabyPercentileGrowthReference.swift`, `BabyGrowthPercentileZTable.swift` | WHO/CDC percentile math |

@@ -22,7 +22,7 @@ This skill keeps two things in sync with the code:
 | `iOS/meApp/Domain/Models/DB/*`, Android `data/storage/*`, `proto/*` | [`docs/database-schema.md`](../../../../docs/database-schema.md) |
 | `*ProductType*` / `*ProductSelection*` (Phase 2 product model) | [`docs/product-types-current-state.md`](../../../../docs/product-types-current-state.md) |
 | Account-switching flow (`*AccountSwitch*`) | [`docs/account-switching-flow.md`](../../../../docs/account-switching-flow.md) |
-| Dashboard graph (`BaseGraphView`, `BaseSectionViewModel`, `Managers/Graph/*`) | [`docs/dashboard-hybrid-latest-vs-average.md`](../../../../docs/dashboard-hybrid-latest-vs-average.md) |
+| Dashboard chart engine (unified v2, `Dashboard/Chart/*`) | [`docs/dashboard-hybrid-latest-vs-average.md`](../../../../docs/dashboard-hybrid-latest-vs-average.md) |
 | `.circleci/*` | [`docs/circleci.md`](../../../../docs/circleci.md) |
 | `.lefthook.yml`, `scripts/*`, `.claude/*`, `iOS/.claude/*`, `Android/.claude/*` | [`docs/automation.md`](../../../../docs/automation.md) |
 | New feature / service / model / DI registration (structural) | `iOS/architecture.md` |

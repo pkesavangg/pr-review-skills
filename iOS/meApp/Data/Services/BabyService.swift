@@ -23,8 +23,9 @@ import SwiftData
 /// - server-side delete → `DELETE /v3/baby/{id}` then purge; created-then-deleted-offline purges
 ///   locally with no server call.
 ///
-/// ProductTypes are kept in sync — `"baby"` is appended on first create and stripped once the last
-/// (non-tombstoned) baby profile is deleted.
+/// ProductTypes are **additive-only** (MOB-686 revised Rule A): `"baby"` is appended on first
+/// create and is **never removed** — deleting the last baby profile leaves `"baby"` in place so
+/// "My Kids" stays enabled and the header keeps its "Baby Scale" placeholder (recovery path).
 @MainActor
 final class BabyService: ObservableObject, BabyServiceProtocol {
     static let shared = BabyService()
@@ -174,8 +175,8 @@ final class BabyService: ObservableObject, BabyServiceProtocol {
         }
         try context.save()
         try reloadLocalBabies(for: accountId)
-        // Best-effort (see saveBaby): an offline PATCH failure must not fail the delete.
-        try? await removeBabyProductTypeIfLast()
+        // Product types are additive-only (MOB-686 revised Rule A): deleting a baby never removes
+        // "baby" from the account, so there is nothing to reconcile here beyond the local list.
         triggerEagerSync(for: accountId)
     }
 
@@ -515,12 +516,12 @@ final class BabyService: ObservableObject, BabyServiceProtocol {
     // MARK: - ProductTypes Sync
 
     /// Reconciles the account's baby product type against the final local state after a sync.
+    /// Product types are additive-only (MOB-686 revised Rule A): "baby" is appended once a profile
+    /// exists and is **never removed**, so deleting every baby leaves "My Kids" enabled and keeps
+    /// the header's "Baby Scale" placeholder. Nothing to do when no babies remain.
     private func reconcileBabyProductType() async {
-        if babies.isEmpty {
-            try? await removeBabyProductTypeIfLast()
-        } else {
-            try? await appendBabyProductTypeIfNeeded()
-        }
+        guard !babies.isEmpty else { return }
+        try? await appendBabyProductTypeIfNeeded()
     }
 
     /// Appends "baby" to the active account's productTypes if not already present.
@@ -529,18 +530,6 @@ final class BabyService: ObservableObject, BabyServiceProtocol {
               !snapshot.productTypes.contains("baby") else { return }
         try await accountService.updateProductTypes(snapshot.productTypes + ["baby"])
         logger(.info, "Appended baby to productTypes for accountId=\(snapshot.accountId)")
-    }
-
-    /// Removes "baby" from the active account's productTypes once no baby profiles remain.
-    private func removeBabyProductTypeIfLast() async throws {
-        guard babies.isEmpty,
-              let snapshot = accountService.activeAccount,
-              snapshot.productTypes.contains("baby") else { return }
-        // Use the dedicated reducing path: updateProductTypes(_:) never reduces (it unions
-        // with the existing local value), so filtering "baby" out and sending it there would
-        // be a no-op that re-adds "baby". removeProductType authoritatively drops it.
-        try await accountService.removeProductType("baby")
-        logger(.info, "Removed baby from productTypes for accountId=\(snapshot.accountId)")
     }
 
     // MARK: - Logging

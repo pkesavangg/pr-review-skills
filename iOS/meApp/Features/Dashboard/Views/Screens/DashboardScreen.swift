@@ -44,7 +44,6 @@ struct DashboardScreen: View {
                         MultiDeviceSnapshotView(
                             availableItems: store.availableProductItems,
                             selectedItem: store.selectedProductItem,
-                            selectedPeriod: store.state.graph.selectedPeriod,
                             onSelectItem: { selectedItem in
                                 store.selectProductItem(selectedItem)
                                 isInProductDashboard = true
@@ -66,6 +65,10 @@ struct DashboardScreen: View {
                 }
             }
             .screenAccessibilityRoot(AccessibilityID.dashboardScreenRoot)
+            // MOB-1591: publish the viewport height so the baby graph can size itself adaptively (keep the
+            // Figma design height where it fits, shrink on shorter screens so the period segment control
+            // stays visible without scrolling). See DashboardChartLayout.babyHeight(forAvailableHeight:).
+            .environment(\.dashboardViewportHeight, proxy.size.height)
         }
         .refreshable {
             await store.lifecycleManager.refreshAll()

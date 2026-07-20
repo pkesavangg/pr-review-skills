@@ -396,17 +396,7 @@ final class ProductTypeStore: ObservableObject, ProductTypeStoreProtocol {
                 items.append(.baby(profile: Self.placeholderBabyProfile))
             } else {
                 for baby in babies {
-                    let profile = BabyProfile(
-                        id: baby.id,
-                        name: baby.name,
-                        deviceId: baby.deviceId,
-                        birthday: baby.birthday,
-                        biologicalSex: baby.biologicalSex,
-                        birthLengthInches: baby.birthLengthInches,
-                        birthWeightLbs: baby.birthWeightLbs,
-                        birthWeightOz: baby.birthWeightOz
-                    )
-                    items.append(.baby(profile: profile))
+                    items.append(.baby(profile: baby.toBabyProfile()))
                 }
             }
         }

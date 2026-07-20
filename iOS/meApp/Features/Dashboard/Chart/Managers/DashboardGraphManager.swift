@@ -501,6 +501,37 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
         )
     }
 
+    // swiftlint:disable large_tuple
+    /// MOB-1516 (BPM): Hermite-interpolated systolic/diastolic/pulse at `date` — the BPM sibling of
+    /// `interpolatedDisplayWeight`, for a crosshair/selection on a NON-ENTRY point (gap). Interpolates over the
+    /// SAME per-period aggregated points the BPM line plots (`aggregatedBpmOperationsForPeriod`), each series
+    /// over its own non-nil readings, so the value lands on the drawn curve.
+    func interpolatedBpm(
+        at date: Date,
+        from operations: [BathScaleWeightSummary]
+    ) -> (systolic: Double?, diastolic: Double?, pulse: Double?) {
+        let period = state.selectedPeriod
+        let aggregated = dataPreparer.aggregatedBpmOperationsForPeriod(from: operations, period: period)
+        return (
+            systolic: dataPreparer.interpolatedValue(at: date, from: aggregated, period: period) { $0.systolic },
+            diastolic: dataPreparer.interpolatedValue(at: date, from: aggregated, period: period) { $0.diastolic },
+            pulse: dataPreparer.interpolatedValue(at: date, from: aggregated, period: period) { $0.pulse }
+        )
+    }
+    // swiftlint:enable large_tuple
+
+    /// MOB-1516 (baby): Hermite-interpolated value of a single per-summary metric (e.g. baby length) at
+    /// `date`, over the current period — for a gap selection. The value's units match the extractor's field.
+    func interpolatedSummaryValue(
+        at date: Date,
+        from operations: [BathScaleWeightSummary],
+        valueExtractor: (BathScaleWeightSummary) -> Double?
+    ) -> Double? {
+        dataPreparer.interpolatedValue(
+            at: date, from: operations, period: state.selectedPeriod, valueExtractor: valueExtractor
+        )
+    }
+
     func calculateInterpolatedAverageForVisibleRange(
         from allOperations: [BathScaleWeightSummary],
         period: TimePeriod,
@@ -553,6 +584,7 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
         babyProfile: BabyProfile?,
         metric: BabyMetric,
         selectedCrosshairDate: Date?,
+        percentileDate: Date?,
         plottedPoints: [PlottedGraphSeries],
         plotXDate: (Date) -> Date,
         currentUnit: WeightUnit,
@@ -562,6 +594,7 @@ class DashboardGraphManager: ObservableObject, DashboardGraphManaging {
             babyProfile: babyProfile,
             metric: metric,
             selectedCrosshairDate: selectedCrosshairDate,
+            percentileDate: percentileDate,
             plottedPoints: plottedPoints,
             plotXDate: plotXDate,
             currentUnit: currentUnit,

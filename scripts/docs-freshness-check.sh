@@ -84,8 +84,8 @@ doc_for() {
     *ProductType*|*ProductSelection*)                            printf 'docs/product-types-current-state.md' ;;
     # --- multi-account switching flow ---
     *AccountSwitch*)                                             printf 'docs/account-switching-flow.md' ;;
-    # --- dashboard latest-vs-average graph behaviour ---
-    *BaseGraphView*|*BaseSectionViewModel*|*/Managers/Graph/*)   printf 'docs/dashboard-hybrid-latest-vs-average.md' ;;
+    # --- dashboard chart engine (weight/BPM/baby, unified v2 under Dashboard/Chart/) ---
+    *iOS/meApp/Features/Dashboard/Chart/*)                      printf 'docs/dashboard-hybrid-latest-vs-average.md' ;;
     # --- repo automation surfaces ---
     .circleci/*)                                                 printf 'docs/circleci.md' ;;
     .lefthook.yml|scripts/*|.claude/*|iOS/.claude/*|Android/.claude/*) printf 'docs/automation.md' ;;

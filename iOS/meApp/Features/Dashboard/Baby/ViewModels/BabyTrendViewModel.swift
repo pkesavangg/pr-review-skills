@@ -135,10 +135,19 @@ final class BabyTrendViewModel {
         babyProfile _: BabyProfile
     ) -> Double {
         if let selectedDate = selectedDate(in: dashboardStore) {
-            return BabyDashboardChartSupport.heightValue(
+            if let recorded = BabyDashboardChartSupport.heightValue(
                 on: selectedDate,
                 in: dashboardStore.continuousOperations
-            ) ?? 0
+            ) {
+                return recorded
+            }
+            // Gap selection (no recorded length that day): Hermite-interpolate the recorded lengths — parity
+            // with baby weight (via displayWeight) and the weight/BPM graphs. 0 when there's nothing to
+            // interpolate from.
+            return dashboardStore.graphManager.interpolatedSummaryValue(
+                at: selectedDate,
+                from: dashboardStore.continuousOperations
+            ) { $0.babyLengthInches } ?? 0
         }
         return BabyDashboardChartSupport.averageHeight(
             from: operationsForCurrentAverage(dashboardStore: dashboardStore)
@@ -217,12 +226,35 @@ final class BabyTrendViewModel {
     }
 
     private func percentileText(_ percentile: Int?) -> String {
+        // MOB-1591: Smart Baby's ordinal + capped form ("95th", "> 99th", "< 1st"), so the percentiles sheet
+        // agrees with the graph crosshair callout and both match babyApp (its history list uses the same
+        // ordinal). The sheet appends the "%" glyph itself, so this returns the ordinal only. `nil` → "--".
         guard let percentile else { return "--" }
-        return "\(percentile)"
+        return BabyWeightPercentileCalculator.percentileDisplayText(percentile)
     }
 
     private func selectedDate(in dashboardStore: DashboardStore) -> Date? {
         dashboardStore.state.graph.selectedXValue ?? dashboardStore.state.graph.selectedPoint?.date
+    }
+
+    /// MOB-1591: the AGE-driving date for the selected point's percentile — the reading's REAL entry date
+    /// (`selectedPoint.entryTimestamp`), NOT the plotted x. In year/total the plotted x / summary `.date` is
+    /// the monthly aggregate collapsed to the 1st (a younger age → a different, wrong percentile than
+    /// week/month for the same reading); `entryTimestamp` is the real entry date. This is percentile-only —
+    /// value lookup (`selectedDate`) still uses the plotted date so the day-matched summary is found. Falls
+    /// back to the plotted selected x for a gap/in-between selection (no `selectedPoint`).
+    private func selectedPercentileDate(in dashboardStore: DashboardStore) -> Date? {
+        if let point = dashboardStore.state.graph.selectedPoint {
+            return DateTimeTools.parse(point.entryTimestamp) ?? point.date
+        }
+        return dashboardStore.state.graph.selectedXValue
+    }
+
+    /// MOB-1591: a summary's age-driving percentile date — its real `entryTimestamp` (falling back to the
+    /// plotted `.date`). Used when averaging per-summary percentiles across the visible range so year/total
+    /// (monthly aggregates dated the 1st) use each reading's true age.
+    private func percentileDate(for summary: BathScaleWeightSummary) -> Date {
+        DateTimeTools.parse(summary.entryTimestamp) ?? summary.date
     }
 
     private func weightPercentile(
@@ -230,10 +262,10 @@ final class BabyTrendViewModel {
         babyProfile: BabyProfile,
         displayWeight: Double
     ) -> Int? {
-        if let selectedDate = selectedDate(in: dashboardStore) {
+        if let selectedPercentileDate = selectedPercentileDate(in: dashboardStore) {
             return weightPercentile(
                 for: displayWeight,
-                on: selectedDate,
+                on: selectedPercentileDate,
                 dashboardStore: dashboardStore,
                 babyProfile: babyProfile
             )
@@ -245,7 +277,7 @@ final class BabyTrendViewModel {
             let weight = dashboardStore.goalManager.convertWeightToDisplay(Int(summary.weight.rounded()))
             return weightPercentile(
                 for: weight,
-                on: summary.date,
+                on: percentileDate(for: summary),
                 dashboardStore: dashboardStore,
                 babyProfile: babyProfile
             )
@@ -276,12 +308,12 @@ final class BabyTrendViewModel {
         babyProfile: BabyProfile,
         displayHeight: Double
     ) -> Int? {
-        if let selectedDate = selectedDate(in: dashboardStore) {
+        if let selectedPercentileDate = selectedPercentileDate(in: dashboardStore) {
             guard displayHeight > 0 else { return nil }
             return BabyDashboardChartSupport.heightPercentile(
                 for: babyProfile,
                 heightInches: displayHeight,
-                on: selectedDate
+                on: selectedPercentileDate
             )
         }
 
@@ -292,7 +324,7 @@ final class BabyTrendViewModel {
             return BabyDashboardChartSupport.heightPercentile(
                 for: babyProfile,
                 heightInches: lengthInches,
-                on: summary.date
+                on: percentileDate(for: summary)
             )
         }
 

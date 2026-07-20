@@ -18,6 +18,9 @@ struct BpmDisplayView: View {
         static let unitSpacing: CGFloat = 4
         static let slashSpacing: CGFloat = 12
         static let pulseColumnWidth: CGFloat = 108
+        /// Shrink-to-fit floor for BP/pulse values so a 3-digit worst case
+        /// (e.g. 155/100 + pulse 100) scales down instead of clipping off-screen.
+        static let valueMinScale: CGFloat = 0.5
     }
     
     @ObservedObject var dashboardStore: DashboardStore
@@ -58,23 +61,21 @@ struct BpmDisplayView: View {
                                 }
 
                                 HStack(alignment: .lastTextBaseline, spacing: Layout.slashSpacing) {
-                                    Text("\(values.systolic)")
-                                        .fontWeight(.heavy)
-                                        .fontOpenSans(.heading1)
-                                        .foregroundColor(values.classification.color(theme: theme))
-                                        .lineLimit(1)
-                                        .fixedSize()
+                                    bpNumber(
+                                        "\(values.systolic)",
+                                        color: values.classification.color(theme: theme),
+                                        alignment: .trailing
+                                    )
 
                                     SlashDividerView(
                                         color: theme.textSubheading.opacity(0.45)
                                     )
 
-                                    Text("\(values.diastolic)")
-                                        .fontWeight(.heavy)
-                                        .fontOpenSans(.heading1)
-                                        .foregroundColor(values.classification.color(theme: theme))
-                                        .lineLimit(1)
-                                        .fixedSize()
+                                    bpNumber(
+                                        "\(values.diastolic)",
+                                        color: values.classification.color(theme: theme),
+                                        alignment: .leading
+                                    )
                                 }
                                 .opacity(isGraphLoading ? 0 : 1)
                                 .overlay(alignment: .topTrailing) {
@@ -105,12 +106,17 @@ struct BpmDisplayView: View {
                                     pulseValueSkeleton
                                 }
 
+                                // MOB-1591: heading2 (50pt), not heading1 (60pt). The BP header is the only
+                                // dashboard header that shows THREE big numbers on one row (sys/dia + pulse);
+                                // at 60pt the 3-digit worst case (155/100 + pulse 100) overflows off-screen
+                                // on large phones. Step every value down to heading2 so the whole row fits.
+                                // (Baby does the same in BabyTrendView when it has two values.)
                                 Text("\(values.pulse)")
                                     .fontWeight(.heavy)
-                                    .fontOpenSans(.heading1)
+                                    .fontOpenSans(.heading2)
                                     .foregroundColor(theme.textSubheading)
                                     .lineLimit(1)
-                                    .fixedSize(horizontal: true, vertical: false)
+                                    .minimumScaleFactor(Layout.valueMinScale)
                                     .opacity(isGraphLoading ? 0 : 1)
                             }
                             .animation(.easeInOut(duration: 0.3), value: dashboardStore.state.graph.isGraphReady)
@@ -128,21 +134,24 @@ struct BpmDisplayView: View {
                                 .foregroundColor(theme.textSubheading)
 
                             HStack(alignment: .lastTextBaseline, spacing: Layout.slashSpacing) {
+                                // MOB-1591: heading2 step-down — keep the empty placeholder in sync with the
+                                // populated header (see the note in bpNumber).
                                 Text(BpmDashboardStrings.bpSystolicZeroPlaceholder)
                                     .fontWeight(.heavy)
-                                    .fontOpenSans(.heading1)
+                                    .fontOpenSans(.heading2)
                                     .foregroundColor(theme.textSubheading)
                                     .lineLimit(1)
-                                    .fixedSize()
+                                    .minimumScaleFactor(Layout.valueMinScale)
 
                                 SlashDividerView(color: theme.textSubheading.opacity(0.45))
 
+                                // MOB-1591: heading2 step-down (see bpNumber note).
                                 Text(BpmDashboardStrings.bpDiastolicZeroPlaceholder)
                                     .fontWeight(.heavy)
-                                    .fontOpenSans(.heading1)
+                                    .fontOpenSans(.heading2)
                                     .foregroundColor(theme.textSubheading)
                                     .lineLimit(1)
-                                    .fixedSize()
+                                    .minimumScaleFactor(Layout.valueMinScale)
                             }
                             .overlay(alignment: .topTrailing) {
                                 Button {
@@ -164,12 +173,13 @@ struct BpmDisplayView: View {
                                 .fontOpenSans(.subHeading2)
                                 .foregroundColor(theme.textSubheading)
 
+                            // MOB-1591: heading2 step-down (see bpNumber note).
                             Text(BpmDashboardStrings.bpPulseZeroPlaceholder)
                                 .fontWeight(.heavy)
-                                .fontOpenSans(.heading1)
+                                .fontOpenSans(.heading2)
                                 .foregroundColor(theme.textSubheading)
                                 .lineLimit(1)
-                                .fixedSize(horizontal: true, vertical: false)
+                                .minimumScaleFactor(Layout.valueMinScale)
                         }
                         .frame(width: Layout.pulseColumnWidth, alignment: .leading)
                     }
@@ -191,6 +201,34 @@ struct BpmDisplayView: View {
         .sheet(isPresented: $showAhaRatingSheet) {
             AhaRatingSheet()
         }
+    }
+
+    // MARK: - Fixed-width BP number
+
+    /// A blood-pressure value rendered in a FIXED 3-digit-wide slot, so selecting different readings
+    /// (e.g. 150/100 vs 140/93) never reflows the header — the slash, the AHA help button, and the pulse
+    /// column all stay put. A hidden "000" ghost (same heavy heading font, monospaced digits) reserves the
+    /// widest BP width; the real value floats inside it, hugging the slash (systolic trailing, diastolic
+    /// leading). The slot equals today's widest case (3 digits), so nothing gets wider — smaller values just
+    /// stop shrinking the block.
+    /// MOB-1591: rendered at heading2 (50pt), not heading1 (60pt). Three big numbers share this row
+    /// (sys/dia + pulse); at 60pt the 3-digit worst case overflows off-screen on large phones. The ghost
+    /// "000" MUST use the same style as the real value so the reserved 3-digit width matches what's drawn.
+    private func bpNumber(_ text: String, color: Color, alignment: Alignment) -> some View {
+        Text(verbatim: "000")
+            .fontWeight(.heavy)
+            .fontOpenSans(.heading2)
+            .monospacedDigit()
+            .hidden()
+            .overlay(alignment: alignment) {
+                Text(text)
+                    .fontWeight(.heavy)
+                    .fontOpenSans(.heading2)
+                    .monospacedDigit()
+                    .foregroundColor(color)
+                    .lineLimit(1)
+                    .minimumScaleFactor(Layout.valueMinScale)
+            }
     }
 
     // MARK: - Skeletons

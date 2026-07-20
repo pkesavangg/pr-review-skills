@@ -1,6 +1,6 @@
 # Product Types — Current iOS Implementation
 
-**Last updated:** 2026-07-15  
+**Last updated:** 2026-07-20  
 **Scope:** iOS app (`meApp/iOS/meApp`)  
 **Audience:** Engineers working on auth, account switching, dashboard selection, signup, baby flows, and device pairing
 
@@ -18,6 +18,45 @@ It replaces the old "infer from currently loaded devices" behavior as the primar
 - account-aware product availability
 
 `productTypes` is stored on the local SwiftData `Account` model **and** is now server-backed: it is part of the account payload (`AccountDTO.productTypes`, "auto-managed by the server"), decoded on account init, hydrated from the server on refresh when the local value is empty, and pushed back to the server via `PATCH` when it changes. Reconstruction from synced devices/babies remains only as a fallback for an empty payload.
+
+---
+
+## Core Rules (confirmed — MOB-686)
+
+Two rules govern the whole `productTypes` surface. Both are **confirmed by UX/Product on MOB-686** and are enforced in code today.
+
+### Rule 1 — `productTypes` is additive-only
+
+Once a product type is earned (`"myWeight"`, `"myBloodPressure"`, or `"baby"`), it is **never removed** from the account. Every write path only ever *adds* a type; nothing subtracts.
+
+- `AccountService.updateProductTypes(_:)` **unions** with the existing value — it can only grow the set.
+- `ProductTypeStore.resolveProductTypes()` unions `account.productTypes` with device-/baby-derived types — it never drops a type earned elsewhere.
+- **Baby is not an exception:** deleting the last baby profile (and even removing the baby scale device) does **not** remove `"baby"`. This preserves the recovery path and keeps "My Kids" available.
+
+> **Consequence for "My Kids" (revised Rule A, MOB-686, 2026-06-30):** "My Kids" is **always enabled for all users** and **never toggles to disabled under any condition** — regardless of signup path, Add-Devices engagement, or deletion state. The Settings "My Kids" row is shown unconditionally (MOB-1226); the no-profile case is handled by the "No babies added yet" empty state (MOB-662), not by hiding/disabling the section.
+
+### Rule 2 — Header/switcher label for the baby product
+
+When `productTypes` contains `"baby"`, the header dropdown and Manual-Entry switcher show:
+
+- **the baby's name** — one row per baby profile — when at least one baby profile exists; **"Baby Scale" is never shown once ≥1 baby exists**.
+- **"Baby Scale"** (a single placeholder item) — when `"baby"` is present but **no** baby profile exists yet (e.g. signed up with a baby scale but skipped adding a baby, or deleted the last baby while `"baby"` stays additive).
+
+The placeholder is built in `ProductTypeStore.rebuild()` using `BabyProfile.pendingSelectionId` + display name `ProductTypeStrings.babyScale`.
+
+### Rule 3 — Adding a product makes it the active selection
+
+Whenever the user adds a new product, the header/selector **switches to it** immediately (e.g. a BPM-only user who adds a baby lands on that baby as the selected product). This is done via `ProductTypeStore.selectLastAdded(_:)` at each add site:
+
+| Added | Selected after add | Call site |
+|---|---|---|
+| Weight scale (Wi-Fi / BT-Wi-Fi / AppSync / A6) | `.myWeight` | each scale setup store |
+| BPM device | `.myBloodPressure` | `BpmSetupStore` |
+| Baby scale device (no profile yet) | `.baby` — "Baby Scale" placeholder | `BabyScaleSetupStore.saveScaleLocally()` |
+| Baby profile (baby-scale setup flow) | `.baby(profile:)` — the new baby | `BabyScaleSetupStoreBabyProfileFlow.saveBabyProfile()` |
+| Baby profile (Settings → My Kids) | `.baby(profile:)` — the new baby | `MyKidsStore.saveBabyProfile()` |
+
+`selectLastAdded(_:)` sets `selectedItem` directly (it does **not** require the item to already be in `availableItems`); the next `rebuild()` reconciles it by `id` once the device/baby publisher fires, so the switch is robust to the async rebuild hop. Baby selections are built from the new `Baby` via `Baby.toBabyProfile()`.
 
 ---
 
@@ -106,13 +145,17 @@ File:
 
 ### 4. Baby deletion
 
-When the last baby is deleted, `BabyService` removes `"baby"`.
+**`"baby"` is never removed on deletion** (additive-only — see Core Rule 1). Deleting a baby only
+updates the local baby list; `BabyService` does **not** call `removeProductType("baby")` for the
+last baby. The `"baby"` flag persists so "My Kids" stays enabled and the header falls back to the
+"Baby Scale" placeholder (Core Rule 2).
 
 File:
 
 - `meApp/iOS/meApp/Data/Services/BabyService.swift`
 
-If other babies remain, the flag stays.
+`reconcileBabyProductType()` therefore only ever *appends* `"baby"` when profiles exist; the prior
+`removeBabyProductTypeIfLast()` path was deleted per MOB-686 revised Rule A.
 
 ### 5. BPM pairing
 
@@ -186,12 +229,15 @@ Once product types are resolved:
 - `"myBloodPressure"` -> append `.myBloodPressure`
 - `"baby"` -> append one `.baby(profile:)` per baby
 
-If `"baby"` is present but no babies exist yet, the store shows a placeholder baby selection using:
+If `"baby"` is present but no babies exist yet, the store shows a single placeholder baby selection
+(the **"Baby Scale"** header item — Core Rule 2) using:
 
 - `BabyProfile.pendingSelectionId`
 - display name `ProductTypeStrings.babyScale`
 
-This supports the "signed up with Baby Scale but skipped adding a baby" flow.
+This covers both the "signed up with a Baby Scale but skipped adding a baby" flow **and** the
+"deleted the last baby while `"baby"` stays additive" flow. As soon as ≥1 baby profile exists, the
+placeholder is replaced by one row per baby (by name) and "Baby Scale" is no longer shown.
 
 ### Selection persistence
 
@@ -228,8 +274,9 @@ This matters because `productTypes` can change while the same account remains ac
 
 - signup sets initial product types
 - adding the first baby appends `"baby"`
-- deleting the last baby removes `"baby"`
 - pairing a BPM appends `"myBloodPressure"`
+
+(Deletion never mutates `productTypes` — it is additive-only, Core Rule 1.)
 
 Without this observer, the selector would not refresh reliably for same-account mutations.
 
@@ -246,7 +293,7 @@ This is the current state of the seven gaps described in the earlier design docs
 | 3 | Signup does not write initial `productTypes` | Implemented | `SignupStore.writeAccumulatedProductTypes()` (union of added devices) |
 | 4 | No migration default for existing users | Implemented | `migrateProductTypesIfNeeded(for:devices:)` defaults to `["myWeight"]` |
 | 5 | BPM pairing does not append `"myBloodPressure"` | Implemented | `BluetoothService.connectBpm(...)` updates account state |
-| 6 | Last baby deletion does not remove `"baby"` | Implemented | `BabyService.deleteBaby(...)` removes it when no babies remain |
+| 6 | ~~Last baby deletion does not remove `"baby"`~~ | **Superseded** | Reversed by MOB-686 revised Rule A: `productTypes` is additive-only, so `"baby"` is **never** removed on deletion. The old removal path (`removeBabyProductTypeIfLast()`) was deleted. |
 | 7 | Adding a baby post-signup does not append `"baby"` | Implemented | `BabyService.saveBaby(...)` appends it if needed |
 
 So the older "implementation gaps" document is now outdated for iOS.
@@ -261,7 +308,7 @@ That means:
 
 - it is stored in SwiftData on the local `Account`
 - it is part of the server account payload (`AccountDTO.productTypes: [String]?`, "auto-managed by the server"), decoded on account init and hydrated on refresh when the local value is empty
-- writes are pushed to the server: `AccountService.updateProductTypes` / `removeProductType` `PATCH` the value, and signup sends it in `createAccount`
+- writes are pushed to the server: `AccountService.updateProductTypes` `PATCH`es the value (additive-only — see Core Rule 1), and signup sends it in `createAccount`. A `removeProductType` `PATCH` path exists on `AccountService` but is **no longer invoked in production** (the baby-removal caller was deleted per MOB-686 revised Rule A)
 - reconstruction from synced devices and babies remains only as a **fallback** for an empty payload
 
 ### Practical impact
@@ -271,7 +318,7 @@ That means:
 
 ### Remaining nuance
 
-Reconstruction logic is kept for resilience (empty payload / partial sync), so the client is robust even if the server value is missing. Deleted-device edge cases are handled server-side via the auto-managed field plus the client `removeProductType` path.
+Reconstruction logic is kept for resilience (empty payload / partial sync), so the client is robust even if the server value is missing. Because `productTypes` is additive-only (Core Rule 1), deleted-device / deleted-baby cases intentionally **keep** the earned type rather than dropping it — there is no client-side removal path in production.
 
 ---
 

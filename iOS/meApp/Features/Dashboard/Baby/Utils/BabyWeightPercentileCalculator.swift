@@ -197,8 +197,11 @@ enum BabyWeightPercentileCalculator {
 
     // MARK: - Display Formatting
 
-    /// Formats a percentile integer for display with proper ordinal suffix.
-    /// Returns `"--"` for the no-data sentinel (`-1`).
+    /// Formats a percentile integer as Smart Baby's ordinal label with capped extremes — e.g. "95th",
+    /// "> 99th" (pct > 99), "< 1st" (pct < 1) — parity with babyApp's `getPercentileSuffix`. Returns `"--"`
+    /// for the no-data sentinel (`-1`). The caller appends the " %" unit (matching babyApp's focus label /
+    /// history list). MOB-1591: the ordinal and number are joined with NO space ("95th", not "95 th") so it
+    /// reads exactly like Smart Baby.
     static func percentileDisplayText(_ percentile: Int) -> String {
         if percentile < 0 { return "--" }
         if percentile < 1 { return "< 1st" }
@@ -216,6 +219,6 @@ enum BabyWeightPercentileCalculator {
             default: suffix = "th"
             }
         }
-        return "\(percentile) \(suffix)"
+        return "\(percentile)\(suffix)"
     }
 }

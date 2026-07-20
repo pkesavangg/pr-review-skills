@@ -75,6 +75,28 @@ final class DashboardDisplayManager: DashboardDisplayManaging {
             return BpmDisplayData(systolic: Int(sys), diastolic: Int(dia), pulse: pulse, classification: classification, label: dateLabel)
         }
 
+        // 1b. MOB-1516: a crosshair on a NON-ENTRY point (gap) — the user selected a day/month gridline with no
+        // real reading. Show the Hermite-interpolated systolic/diastolic/pulse at that date (parity with the
+        // weight graph's gap selection); each series interpolates over its own readings.
+        if let selectedDate = stateProvider?.state.graph.selectedXValue,
+           stateProvider?.state.graph.selectedPoint == nil,
+           stateProvider?.state.graph.showCrosshair == true {
+            let interpolated = graphManager.interpolatedBpm(at: selectedDate, from: getContinuousOperations())
+            if let sys = interpolated.systolic, let dia = interpolated.diastolic {
+                let sysInt = Int(sys.rounded())
+                let diaInt = Int(dia.rounded())
+                let pulseInt = Int((interpolated.pulse ?? 0).rounded())
+                let classification = AhaPressureClass.classify(systolic: sysInt, diastolic: diaInt)
+                return BpmDisplayData(
+                    systolic: sysInt,
+                    diastolic: diaInt,
+                    pulse: pulseInt,
+                    classification: classification,
+                    label: formatChartDate(selectedDate)
+                )
+            }
+        }
+
         // 2. Fallback to visible window average
         let visible = getVisibleOperations()
         let validOps = visible.filter { $0.systolic != nil }

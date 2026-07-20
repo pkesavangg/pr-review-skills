@@ -24,6 +24,22 @@ extension Baby {
         )
     }
 
+    /// Read-only `BabyProfile` projection used by `ProductSelection` and header/selector display.
+    /// Main-actor only (reads the `Baby` @Model directly), matching how `ProductTypeStore.rebuild()`
+    /// and the auto-select-on-add call sites consume babies.
+    func toBabyProfile() -> BabyProfile {
+        BabyProfile(
+            id: id,
+            name: name,
+            deviceId: deviceId,
+            birthday: birthday,
+            biologicalSex: biologicalSex,
+            birthLengthInches: birthLengthInches,
+            birthWeightLbs: birthWeightLbs,
+            birthWeightOz: birthWeightOz
+        )
+    }
+
     /// Builds the wire `BabyRequest` for create/update, converting local units to the API's
     /// decigrams / millimeters / `YYYY-MM-DD`.
     func toRequest() -> BabyRequest {
