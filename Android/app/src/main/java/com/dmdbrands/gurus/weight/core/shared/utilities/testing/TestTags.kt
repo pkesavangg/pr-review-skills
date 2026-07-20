@@ -232,6 +232,9 @@ object TestTags {
     const val WeightLbField = "add_baby_weight_lb_field"
     const val WeightOzField = "add_baby_weight_oz_field"
     const val WeightField = "add_baby_weight_field"
+  }
+
+  /**
    * Settings feature — Settings home. Mirrors the iOS `AccessibilityID+Settings` Settings-row group.
    *
    * NOTE: Android renders on ONE screen what iOS splits into a "Settings" screen and an "Account
