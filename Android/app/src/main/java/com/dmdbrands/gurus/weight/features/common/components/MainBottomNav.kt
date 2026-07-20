@@ -94,7 +94,7 @@ fun MainBottomNav(
         if (!showAppsync && item.label === DashboardString.BottomNav.appsync) return@Row
         NavigationBarItem(
           modifier = Modifier.testTag(
-            "${TestTags.Dashboard.TabBarItem}_${item.route.toString().lowercase()}",
+            "${TestTags.Dashboard.TabBarItem}_${item.tabId}",
           ),
           icon = {
             BadgedBox(

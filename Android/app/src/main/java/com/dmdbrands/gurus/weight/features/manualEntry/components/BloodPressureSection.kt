@@ -22,6 +22,7 @@ import com.dmdbrands.gurus.weight.theme.MeTheme
 /**
  * Blood pressure entry section — systolic, diastolic, pulse, notes, and date/time.
  */
+@Suppress("LongMethod")
 @Composable
 fun BloodPressureSection(
     controls: BloodPressureFormControls,
