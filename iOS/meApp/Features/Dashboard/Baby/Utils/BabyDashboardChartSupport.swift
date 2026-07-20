@@ -8,8 +8,6 @@
 
 import Foundation
 
-// swiftlint:disable file_length
-
 /// Multi-unit baby weight display value. Primary is always populated; secondary (oz) is non-nil only for the lbs+oz format.
 struct BabyWeightDisplay {
     let primary: String        // "7" / "7.7" / "3.520"
@@ -18,23 +16,12 @@ struct BabyWeightDisplay {
     let secondaryUnit: String? // "oz" for lbs+oz, nil otherwise
 }
 
-// swiftlint:disable:next type_body_length
 enum BabyDashboardChartSupport {
     private static let percentileSeriesPrefix = "baby_percentile_"
     static let heightSeriesName = "baby_height"   // MOB-1516: internal so ChartPrep/TrendChartHost can name it
     private static let defaultBabyAgeDays = 84
-    private static let defaultBirthLengthInches = 19.5
     private static let heightTickStep = 5.0
     private static let minimumHeightAxisMax = 25.0
-    private static let heightPercentileOffsets: [BabyPercentileLine: Double] = [
-        .fifth: -1.3,
-        .tenth: -0.95,
-        .twentyFifth: -0.5,
-        .fiftieth: 0.0,
-        .seventyFifth: 0.5,
-        .ninetieth: 0.95,
-        .ninetyFifth: 1.3
-    ]
 
     static func resolvedBirthday(
         for babyProfile: BabyProfile,
@@ -45,6 +32,19 @@ enum BabyDashboardChartSupport {
         let fallbackBirthday = calendar.date(byAdding: .day, value: -defaultBabyAgeDays, to: normalizedToday)
             ?? normalizedToday
         return calendar.startOfDay(for: min(babyProfile.birthday ?? fallbackBirthday, normalizedToday))
+    }
+
+    /// MOB-1516 audit: whether valid WHO percentile output can be produced for this profile. Requires BOTH a
+    /// known `birthday` (age drives every table lookup) AND a non-withheld sex. Smart Baby (babyApp) yields no
+    /// curves / no % when the birthdate is missing (its day-of-life math NaNs out); we make that explicit here
+    /// rather than let `resolvedBirthday`'s fallback fabricate an age and show a plausible-but-wrong percentile.
+    static func canResolveGrowthPercentiles(for babyProfile: BabyProfile) -> Bool {
+        babyProfile.birthday != nil && !BabyPercentileGrowthReference.isSexWithheld(babyProfile.biologicalSex)
+    }
+
+    /// mm → display inches for the length reference curves (the dashboard plots height in inches).
+    private static func millimetersToInches(_ millimeters: Int) -> Double {
+        Double(millimeters) / BabyPercentileGrowthReference.millimetersPerInch
     }
 
     static func percentileSeries(
@@ -74,6 +74,7 @@ enum BabyDashboardChartSupport {
         convertDecigramsToDisplay: (Int) -> Double,
         calendar: Calendar = .current
     ) -> [GraphSeries] {
+        guard canResolveGrowthPercentiles(for: babyProfile) else { return [] }
         let birthday = resolvedBirthday(for: babyProfile, calendar: calendar)
 
         return BabyPercentileGrowthReference.percentileChartPoints(
@@ -112,57 +113,39 @@ enum BabyDashboardChartSupport {
         operations: [BathScaleWeightSummary],
         calendar: Calendar = .current
     ) -> [GraphSeries] {
-        guard !BabyPercentileGrowthReference.isSexWithheld(babyProfile.biologicalSex) else { return [] }
-        let birthday = resolvedBirthday(for: babyProfile, calendar: calendar)
-        let birthLengthInches = resolvedBirthLengthInches(for: babyProfile)
-
-        return operations.flatMap { summary in
-            let dayOfLife = max(0, calendar.dateComponents([.day], from: birthday, to: summary.date).day ?? 0)
-            return BabyPercentileLine.allCases.map { line in
-                GraphSeries(
-                    date: summary.date,
-                    value: percentileHeightInches(
-                        forDayOfLife: dayOfLife,
-                        birthLengthInches: birthLengthInches,
-                        line: line
-                    ),
-                    series: percentileSeriesName(for: line)
-                )
-            }
-        }
+        guard let lowerBound = operations.map(\.date).min(),
+              let upperBound = operations.map(\.date).max()
+        else { return [] }
+        return heightPercentileSeries(
+            for: babyProfile,
+            dateRange: lowerBound...upperBound,
+            calendar: calendar
+        )
     }
 
-    /// Height percentile reference curves spanning an explicit date range (the visible chart
-    /// window), sampled per day and downsampled to ~150 points. Mirrors the weight percentile
-    /// curves so the lines fill the chart even when only one real entry exists.
+    /// MOB-1516: WHO length-for-age percentile reference curves over an explicit date range. Now driven by
+    /// the real WHO length tables (mm, converted to display inches) — parity with Smart Baby's
+    /// `*LengthMMLine` curves — replacing the earlier modeled-from-birth-length approximation.
     static func heightPercentileSeries(
         for babyProfile: BabyProfile,
         dateRange: ClosedRange<Date>,
         calendar: Calendar = .current
     ) -> [GraphSeries] {
-        guard !BabyPercentileGrowthReference.isSexWithheld(babyProfile.biologicalSex) else { return [] }
+        guard canResolveGrowthPercentiles(for: babyProfile) else { return [] }
         let birthday = resolvedBirthday(for: babyProfile, calendar: calendar)
-        let birthLengthInches = resolvedBirthLengthInches(for: babyProfile)
 
-        let totalDays = max(0, calendar.dateComponents([.day], from: dateRange.lowerBound, to: dateRange.upperBound).day ?? 0)
-        let step = max(1, totalDays / 150)
-        var offsets = Array(Swift.stride(from: 0, through: totalDays, by: step))
-        if offsets.last != totalDays { offsets.append(totalDays) }
-
-        return offsets.flatMap { offset -> [GraphSeries] in
-            guard let date = calendar.date(byAdding: .day, value: offset, to: dateRange.lowerBound) else { return [] }
-            let dayOfLife = max(0, calendar.dateComponents([.day], from: birthday, to: date).day ?? 0)
-            return BabyPercentileLine.allCases.map { line in
-                GraphSeries(
-                    date: date,
-                    value: percentileHeightInches(
-                        forDayOfLife: dayOfLife,
-                        birthLengthInches: birthLengthInches,
-                        line: line
-                    ),
-                    series: percentileSeriesName(for: line)
-                )
-            }
+        return BabyPercentileGrowthReference.lengthPercentileChartPoints(
+            biologicalSex: babyProfile.biologicalSex,
+            birthday: birthday,
+            dateRange: dateRange,
+            convertMillimetersToDisplay: millimetersToInches,
+            calendar: calendar
+        ).map { point in
+            GraphSeries(
+                date: point.date,
+                value: point.value,
+                series: percentileSeriesName(for: point.line)
+            )
         }
     }
 
@@ -349,23 +332,16 @@ enum BabyDashboardChartSupport {
         on date: Date,
         calendar: Calendar = .current
     ) -> Int? {
-        guard !BabyPercentileGrowthReference.isSexWithheld(babyProfile.biologicalSex) else { return nil }
-        let birthday = resolvedBirthday(for: babyProfile, calendar: calendar, today: date)
-        let dayOfLife = max(0, calendar.dateComponents([.day], from: birthday, to: date).day ?? 0)
-        let birthLengthInches = resolvedBirthLengthInches(for: babyProfile)
-
-        let percentileHeights = BabyPercentileLine.allCases.map { line in
-            (
-                percentile: percentileValue(for: line),
-                value: percentileHeightInches(
-                    forDayOfLife: dayOfLife,
-                    birthLengthInches: birthLengthInches,
-                    line: line
-                )
-            )
-        }
-
-        return interpolatedPercentile(for: heightInches, percentileHeights: percentileHeights)
+        guard canResolveGrowthPercentiles(for: babyProfile) else { return nil }
+        // MOB-1516: real WHO length-for-age z-score (inches → mm), mirroring the weight percentile — replaces
+        // the earlier interpolate-against-modeled-curves approximation.
+        return BabyPercentileGrowthReference.lengthPercentile(
+            biologicalSex: babyProfile.biologicalSex,
+            birthday: resolvedBirthday(for: babyProfile, calendar: calendar),
+            date: date,
+            lengthMillimeters: heightInches * BabyPercentileGrowthReference.millimetersPerInch,
+            calendar: calendar
+        )
     }
 
     static func percentileLine(for seriesName: String) -> BabyPercentileLine? {
@@ -376,77 +352,6 @@ enum BabyDashboardChartSupport {
 
     private static func percentileSeriesName(for line: BabyPercentileLine) -> String {
         percentileSeriesPrefix + line.rawValue
-    }
-
-    private static func percentileValue(for line: BabyPercentileLine) -> Int {
-        switch line {
-        case .fifth: return 5
-        case .tenth: return 10
-        case .twentyFifth: return 25
-        case .fiftieth: return 50
-        case .seventyFifth: return 75
-        case .ninetieth: return 90
-        case .ninetyFifth: return 95
-        }
-    }
-
-    private static func interpolatedPercentile(
-        for measurement: Double,
-        percentileHeights: [(percentile: Int, value: Double)]
-    ) -> Int {
-        guard let first = percentileHeights.first else { return 0 }
-        guard let last = percentileHeights.last else { return 0 }
-
-        if measurement <= first.value {
-            return first.percentile
-        }
-
-        if measurement >= last.value {
-            return last.percentile
-        }
-
-        for index in 1..<percentileHeights.count {
-            let lower = percentileHeights[index - 1]
-            let upper = percentileHeights[index]
-            guard measurement <= upper.value else { continue }
-            let range = upper.value - lower.value
-            guard range > AppConstants.Precision.doubleEqualityEpsilon else {
-                return lower.percentile
-            }
-
-            let progress = (measurement - lower.value) / range
-            let percentile = Double(lower.percentile) + (Double(upper.percentile - lower.percentile) * progress)
-            return Int(percentile.rounded())
-        }
-
-        return last.percentile
-    }
-
-    private static func resolvedBirthLengthInches(for babyProfile: BabyProfile) -> Double {
-        max(12.0, babyProfile.birthLengthInches ?? defaultBirthLengthInches)
-    }
-
-    /// P50 backbone for the height *reference* band. Unlike baby weight — which has a real WHO/CDC
-    /// dataset (`BabyPercentileGrowthReference`) — no length reference dataset ships in the app, so
-    /// the height reference curves are modeled from the baby's birth length. This backs only the
-    /// reference band; the baby's own plotted length comes from real entries via `heightSeries`.
-    private static func referenceHeightInchesP50(
-        forDayOfLife day: Int,
-        birthLengthInches: Double
-    ) -> Double {
-        let earlyGrowth = min(Double(day), 90) * 0.026
-        let laterGrowth = max(Double(day - 90), 0) * 0.010
-        return max(12.0, birthLengthInches + earlyGrowth + laterGrowth)
-    }
-
-    private static func percentileHeightInches(
-        forDayOfLife day: Int,
-        birthLengthInches: Double,
-        line: BabyPercentileLine
-    ) -> Double {
-        let spreadMultiplier = 1.0 + (min(Double(day), 365) / 365.0) * 0.2
-        let offset = (heightPercentileOffsets[line] ?? 0) * spreadMultiplier
-        return referenceHeightInchesP50(forDayOfLife: day, birthLengthInches: birthLengthInches) + offset
     }
 
     // MARK: - Weight Conversion Helpers
@@ -625,4 +530,3 @@ enum BabyDashboardChartSupport {
         return [first, last]
     }
 }
-// swiftlint:enable file_length

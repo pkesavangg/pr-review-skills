@@ -11,6 +11,8 @@ struct GraphView: View {
     @ObservedObject var dashboardStore: DashboardStore
     @EnvironmentObject private var accountService: AccountService
     @Environment(\.appTheme) private var theme
+    // MOB-1591: viewport height (from DashboardScreen) so the loading skeleton matches the adaptive baby height.
+    @Environment(\.dashboardViewportHeight) private var viewportHeight
 
     // MOB-1516 Phase D: the four legacy `*SectionViewModel` @StateObjects + the deferred period-change task
     // are gone — every product renders through `TrendChartHost`, which owns its own scroll/selection/rebuild.
@@ -19,14 +21,13 @@ struct GraphView: View {
     // back doesn't override a user's intentional manual clear.
     @State private var didInitialSelect = false
 
-    /// MOB-518 V6 / MOB-1516 Phase B: the v2 engine (`TrendChartHost`) renders weight AND BPM. Baby still
-    /// uses the legacy `BaseGraphView` engine below (they share it) until Phase Y, so this is gated on the
-    /// product type, not a toggle. When true, the host owns period/scroll/model and the legacy section-VM
-    /// machinery must NOT run (see the `selectedPeriod` handler / `chartView`).
+    /// MOB-1516 Phase D: every product (weight / BPM / baby) renders through the v2 `TrendChartHost`; the
+    /// legacy `BaseGraphView` engine is gone. This stays product-gated (not a toggle) as the vestige of the
+    /// A/B era — it's `true` for all supported products and only feeds `shouldShowSkeleton`'s first-sync guard.
     private var usesNewEngine: Bool {
-        // MOB-1516: weight (V6) + BPM (Phase B) + baby (Phase Y) all render through the v2 `TrendChartHost`.
-        // Baby with NO entries is handled earlier in `chartView` by `BabyEmptyGraphView`; a baby WITH entries
-        // reaches the host. The legacy `else` branch in `chartView` is now unreachable — removed in Phase D.
+        // MOB-1516 / MOB-1591: weight, BPM, AND baby all render through the v2 `TrendChartHost` — including a
+        // baby with NO entries, which the host draws as an empty baby `ChartModel` (`ChartPrep.buildEmpty`),
+        // so the empty state shares the engine's per-period axes / reserved y-column / closed box.
         switch dashboardStore.productType {
         case .scale, .bpm, .baby: return true
         default: return false
@@ -49,7 +50,10 @@ struct GraphView: View {
     private var isShowingSelectionCallout: Bool {
         // MOB-1516: all products drive selection through the STORE, so the redundant selected-date label under
         // the weight hides on the store's crosshair flag (the floating callout shows the date instead).
-        dashboardStore.state.graph.showCrosshair
+        // MOB-1591: gate on the model actually having readings — an empty chart (a baby with no entries) can
+        // carry a phantom store selection (`updateSelectedPeriod` auto-selects a dummy summary) but draws no
+        // crosshair/callout, so the under-graph label must stay visible (parity with empty weight/BPM).
+        dashboardStore.state.graph.showCrosshair && (dashboardStore.chartModel?.hasReadings ?? false)
     }
 
     // Show skeleton until graph is ready (set after settling delay)
@@ -66,9 +70,17 @@ struct GraphView: View {
         return false
     }
 
-    // Match skeleton frame to the actual chart container height (baby charts are taller)
+    // Match skeleton frame to the actual chart container height (baby charts are taller).
+    // MOB-1591: baby uses the adaptive height so the skeleton and the live chart agree on shorter screens.
+    // The taller height applies ONLY to a POPULATED baby graph (percentile band + dual axis); an empty baby
+    // (no reading for the selected metric) or no baby profile matches the standard weight/BPM height, so the
+    // skeleton doesn't tower over the empty chart that follows it. Mirrors `TrendChartHost.chartHeight` and
+    // the `hasBabyReadings(for:)` gate `rebuildChartModel` uses to pick the empty skeleton vs the real chart.
     private var skeletonHeight: CGFloat {
-        dashboardStore.selectedBabyProfile != nil ? 498 : 265
+        dashboardStore.selectedBabyProfile != nil
+            && dashboardStore.hasBabyReadings(for: dashboardStore.selectedBabyMetric)
+            ? DashboardChartLayout.babyHeight(forAvailableHeight: viewportHeight)
+            : DashboardChartLayout.standardHeight
     }
 
     var body: some View {
@@ -148,16 +160,13 @@ struct GraphView: View {
 
     // MARK: - Chart View
 
-    @ViewBuilder
     private var chartView: some View {
-        if dashboardStore.isBabySelection && !dashboardStore.hasBabyEntries {
-            // No real baby readings yet — show the empty grid instead of plotting the
-            // dummy summaries that `continuousOperations` falls back to (matches design mock).
-            BabyEmptyGraphView()
-        } else {
-            // MOB-1516: the v2 engine renders every product (weight / BPM / baby-with-entries).
-            TrendChartHost(dashboardStore: dashboardStore)
-        }
+        // MOB-1516 / MOB-1591: the v2 engine renders EVERY product AND every empty state — including a baby
+        // with no readings. That empty case is an empty baby `ChartModel` (`ChartPrep.buildEmpty`, dispatched
+        // in `DashboardStore.rebuildChartModel`), so it gets the same per-period axes, reserved y-axis column,
+        // closed box, and leading inset as an empty weight/BPM chart — instead of a period-blind hand-rolled
+        // grid. (`BabyEmptyGraphView` remains for the snapshot card, which has no period sections.)
+        TrendChartHost(dashboardStore: dashboardStore)
     }
 
 }

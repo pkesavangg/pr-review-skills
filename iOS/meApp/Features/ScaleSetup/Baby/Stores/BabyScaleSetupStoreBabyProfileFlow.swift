@@ -55,6 +55,9 @@ extension BabyScaleSetupStore {
                     birthWeightOz: weightOz
                 )
                 savedBabies.append(baby)
+                // Switch the active product from the "Baby Scale" placeholder to the real baby
+                // just created (MOB-686): adding a product makes it the selected one.
+                productTypeStore.selectLastAdded(.baby(profile: baby.toBabyProfile()))
                 LoggerService.shared.log(level: .info, tag: tag, message: "Baby profile saved: \(baby.name)")
             }
             navigateToStep(.babyAdded)

@@ -226,10 +226,15 @@ enum ChartPrep {
         let styles = Dictionary(uniqueKeysWithValues: orderedNames.map {
             ($0, ChartSeriesStyle(role: .data, lineWidth: lineWidth, showsPoints: true))
         })
-        let referenceLines = [
-            ChartReferenceLine(value: Double(BpmConstants.normalSystolic), dashed: true, color: .bpmReference),
-            ChartReferenceLine(value: Double(BpmConstants.normalDiastolic), dashed: true, color: .bpmReference)
-        ]
+        // MOB-1591: the fixed AHA 120/80 reference rules only make sense alongside real readings. With no BPM
+        // entries the chart is an empty skeleton (hidden y-axis, like empty weight), so drawing two lone
+        // horizontal lines at 120/80 read as phantom data — suppress them until there's at least one series.
+        let referenceLines: [ChartReferenceLine] = orderedNames.isEmpty
+            ? []
+            : [
+                ChartReferenceLine(value: Double(BpmConstants.normalSystolic), dashed: true, color: .bpmReference),
+                ChartReferenceLine(value: Double(BpmConstants.normalDiastolic), dashed: true, color: .bpmReference)
+            ]
 
         return ChartModel(
             period: period,
@@ -297,7 +302,15 @@ enum ChartPrep {
     ) -> ChartModel {
         let preparer = GraphDataPreparer()
         let plotCalendar = localGregorian(from: calendar)
-        let visibleLength = config.visibleDomainLength(for: period)
+        // MOB-1591: baby uses the SAME exact 7-day WEEK viewport as weight (`weightWeekWindow`), not the shared
+        // `week` (7.15). The flat 7 makes page == period == the value-alignment unit, so the value-aligned
+        // scroll rests exactly on a Sunday boundary; the 0.15-day surplus in the shared constant let a partial
+        // 8th day / second Sunday bleed in, so week windows drifted onto Saturday starts (e.g. Jun 27–Jul 3
+        // instead of Jun 28–Jul 4) and the section-switch landing looked off. Non-week periods keep the shared
+        // value.
+        let visibleLength = period == .week
+            ? DashboardConstants.TimeInterval.weightWeekWindow
+            : config.visibleDomainLength(for: period)
         let xDomain = config.fullXDomain(for: period, from: operations)
             ?? xDomainRange(plotted: [], scrollPosition: scrollPosition, visibleLength: visibleLength)
         // Curves span the full (scroll-independent) domain; the y-axis adapts to the visible window (parity
@@ -378,6 +391,51 @@ enum ChartPrep {
             referenceLines: [],
             yAxis: YAxisModel(domain: scale.domain, ticks: scale.ticks, average: scale.average),
             dataFingerprint: fingerprint(orderedSeriesNames: orderedNames, points: full)
+        )
+    }
+
+    // MARK: - MOB-1591: empty skeleton (no readings)
+
+    /// Build an EMPTY chart skeleton for `productType` — no data series, no reference curves: just the
+    /// period-correct x-geometry (`xDomain` / `xAxisTicks` / `visibleDomainLength`) and a placeholder
+    /// (hidden) y-axis. Used for the baby dashboard when the baby has no real readings yet, so the empty
+    /// baby graph renders through the SAME engine as an empty weight/BPM chart — per-period x labels +
+    /// gridlines, reserved y-axis column, closed box, leading inset — instead of a separate hand-rolled
+    /// view that had to re-implement (and got wrong) the per-period axes.
+    ///
+    /// `TrendChartView.hidesYAxis` hides the `.placeholder` numbers + horizontal gridlines (no `.data`
+    /// series, no goal), but the reserved 40 pt column keeps the plot width / trailing edge identical to a
+    /// populated chart. The x-geometry is byte-identical to an empty weight chart (`buildWeight` with no
+    /// operations), so every empty state looks and measures the same across products.
+    static func buildEmpty(
+        productType: EntryType,
+        period: TimePeriod,
+        scrollPosition: Date,
+        config: GraphRenderingConfiguration = GraphRenderingConfiguration()
+    ) -> ChartModel {
+        // MOB-1591: match the populated engines' exact 7-day WEEK viewport (`weightWeekWindow`) so an empty
+        // week reads identically to a populated one and rests on a clean Sunday boundary (see `buildBaby`).
+        let visibleLength = period == .week
+            ? DashboardConstants.TimeInterval.weightWeekWindow
+            : config.visibleDomainLength(for: period)
+        let xDomain = config.fullXDomain(for: period, from: [])
+            ?? xDomainRange(plotted: [], scrollPosition: scrollPosition, visibleLength: visibleLength)
+        return ChartModel(
+            period: period,
+            productType: productType,
+            orderedSeriesNames: [],
+            seriesPoints: [:],
+            fullResolution: [:],
+            xDomain: xDomain,
+            visibleDomainLength: visibleLength,
+            xAxisTicks: config.boundedXAxisValues(
+                for: period, from: [], around: scrollPosition, windows: tickWindowRadius
+            ),
+            goalWeight: nil,
+            seriesStyle: [:],
+            referenceLines: [],
+            yAxis: .placeholder,
+            dataFingerprint: fingerprint(orderedSeriesNames: [], points: [:])
         )
     }
 

@@ -106,6 +106,12 @@ struct ChartModel: Equatable, Sendable {
     /// `true` when there is nothing to plot (empty account / no readings in range).
     var isEmpty: Bool { seriesPoints.values.allSatisfy { $0.isEmpty } }
 
+    /// MOB-1591: `true` when the model carries at least one real-reading (`.data`) series — i.e. it is NOT an
+    /// empty skeleton (`ChartPrep.buildEmpty`). Baby's percentile `.reference` curves don't count. Drives
+    /// whether a crosshair/selection is drawn (an empty chart must show none even if the store still holds a
+    /// phantom selection) and whether the under-graph label hides for a selection.
+    var hasReadings: Bool { orderedSeriesNames.contains { style(for: $0).role == .data } }
+
     /// Convenience accessor for the primary (weight) series' display points.
     var weightPoints: [PlottedGraphSeries] { seriesPoints[DashboardStrings.weight] ?? [] }
 

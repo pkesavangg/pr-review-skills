@@ -42,6 +42,20 @@ private struct GoalChipYKey: PreferenceKey {
     }
 }
 
+/// MOB-1591 (baby): carries the top-left anchor (in the chart's coordinate space) where the "NN%" growth-
+/// percentile label floats — the LEADING edge of the plot at the selected reading's y-level. Previously the
+/// label was an `.annotation(alignment: .trailing)` on the horizontal crosshair `RuleMark(y:)`, which spans
+/// the ENTIRE scroll domain — so the annotation pinned to the far-right of all history, landing in a future
+/// window that the user had to scroll to before the "%" became visible. Floating it at the visible plot's
+/// leading edge (parity with the Figma design, where the "6%" sits at the left, on the crosshair line) keeps
+/// it in view in the current window at any scroll position.
+private struct PercentileCalloutPointKey: PreferenceKey {
+    static let defaultValue: CGPoint? = nil
+    static func reduce(value: inout CGPoint?, nextValue: () -> CGPoint?) {
+        if let next = nextValue() { value = next }
+    }
+}
+
 /// MOB-1516 — clips the LEFT/RIGHT edges to the view's bounds while leaving TOP/BOTTOM effectively unbounded.
 /// Used on the chart so Swift Charts' horizontal y-gridlines can't bleed past the leading rule into the left
 /// padding gap during a scroll, WITHOUT cropping the top/bottom y-axis tick labels (or the floating date
@@ -83,8 +97,8 @@ struct TrendChartView: View {
     var horizontalCrosshairValue: Double?
     /// MOB-1516 (baby): "NN%" growth percentile for the selected reading, floated on the crosshair. `nil` else.
     var percentileCalloutText: String?
-    /// MOB-1516: chart container height — baby growth charts are taller (498) than weight/BPM (265).
-    var chartHeight: CGFloat = 265
+    /// MOB-1516: chart container height — baby growth charts are taller than weight/BPM (see `DashboardChartLayout`).
+    var chartHeight: CGFloat = DashboardChartLayout.standardHeight
 
     /// Scrollable only when the data domain is actually WIDER than one visible window. When the domain is
     /// exactly one window (empty account, a single reading, or data confined to one week/month/year) there is
@@ -303,6 +317,23 @@ struct TrendChartView: View {
         return geo[anchor].minY + yInPlot
     }
 
+    /// MOB-1591 (baby) — anchor for the "NN%" percentile label: the LEFT edge of the VISIBLE plot, just above
+    /// the horizontal crosshair line (parity with the Figma "6%", which sits at the left on the selection line).
+    /// `plot.minX` is the visible plot's leading edge ON SCREEN — the same base the date callout's clamped x is
+    /// built from — so this stays in the current window at any scroll position. It's consumed via `.position`
+    /// (like the date callout / goal chip), NOT the earlier frame+offset, which mis-mapped the coordinate space
+    /// and drifted the label off-screen to the left when scrolled. `nil` when no baby crosshair value is set;
+    /// y is clamped off the plot's top/bottom edges.
+    private func percentileCalloutPoint(_ proxy: ChartProxy, _ geo: GeometryProxy) -> CGPoint? {
+        guard let value = horizontalCrosshairValue,
+              let anchor = proxy.plotFrame,
+              let yInPlot = proxy.position(forY: value) else { return nil }
+        let plot = geo[anchor]
+        let x = plot.minX + 30
+        let y = min(max(plot.minY + yInPlot - 12, plot.minY + 12), plot.maxY - 12)
+        return CGPoint(x: x, y: y)
+    }
+
     /// MOB-1516: map a reference-line colour role to a theme token (keeps `ChartModel` free of theme types).
     private func referenceLineColor(_ role: ChartReferenceLineColor) -> Color {
         switch role {
@@ -315,9 +346,15 @@ struct TrendChartView: View {
             // MOB-1516 (BPM): fixed horizontal reference rules (systolic 120 / diastolic 80), drawn FIRST so
             // the data series render on top. Empty for weight/baby → nothing drawn.
             ForEach(Array(model.referenceLines.enumerated()), id: \.offset) { _, line in
-                RuleMark(y: .value("Reference", line.value))
-                    .lineStyle(StrokeStyle(lineWidth: 1, dash: line.dashed ? [4, 4] : []))
-                    .foregroundStyle(referenceLineColor(line.color))
+                // MOB-1591: only draw a reference rule that sits inside the visible y-domain. The BPM
+                // domain is data-driven (bpmScale ignores these thresholds), so when readings sit well
+                // below a threshold — e.g. 100/80 — the 120 systolic rule would otherwise render ABOVE
+                // the plot area. Restrict it to the visible range so it appears only when relevant.
+                if yDomain.contains(line.value) {
+                    RuleMark(y: .value("Reference", line.value))
+                        .lineStyle(StrokeStyle(lineWidth: 1, dash: line.dashed ? [4, 4] : []))
+                        .foregroundStyle(referenceLineColor(line.color))
+                }
             }
 
             ForEach(model.orderedSeriesNames, id: \.self) { name in
@@ -373,20 +410,15 @@ struct TrendChartView: View {
                     .lineStyle(StrokeStyle(lineWidth: 1))
             }
 
-            // MOB-1516 (baby) — horizontal crosshair at the selected reading's value, carrying the "NN%"
-            // growth percentile as an annotation (parity with the legacy baby horizontal rule + callout).
+            // MOB-1516 (baby) — horizontal crosshair at the selected reading's value. The "NN%" growth-
+            // percentile label is NOT annotated on this rule: the rule spans the full scroll domain, so a
+            // trailing annotation landed in a future window (issue 4). It's floated at the visible plot's
+            // leading edge instead — see `percentileCalloutPoint` + the `PercentileCalloutPointKey` overlay.
             if let horizontalCrosshairValue {
                 RuleMark(y: .value("SelectedValue", horizontalCrosshairValue))
                     .zIndex(-100)
                     .foregroundStyle(theme.actionPrimary)
                     .lineStyle(StrokeStyle(lineWidth: 1))
-                    .annotation(position: .top, alignment: .trailing, spacing: 2) {
-                        if let percentileCalloutText {
-                            Text(percentileCalloutText)
-                                .fontOpenSans(.subHeading2)
-                                .foregroundStyle(theme.textSubheading)
-                        }
-                    }
             }
 
             // V4 (6c) — the goal chip is NOT drawn inside the plot (an `.annotation(position: .trailing)` pins
@@ -470,6 +502,13 @@ struct TrendChartView: View {
         // vertical gridlines, with no top/bottom border.
         .chartPlotStyle { plot in
             plot
+                // MOB-1591 — clip the plot's CONTENT to its own left/right edges (top/bottom stay unbounded
+                // so point dots at the y-domain edges aren't cropped). Baby's percentile curves are sampled
+                // across the FULL x-domain (+ an out-of-range boundary point for smooth continuity), so
+                // without this they render past the trailing rule into the y-axis label column. Clipping at
+                // the PLOT level (not the whole chart) leaves the y-axis number labels — which live outside
+                // the plot area — fully visible, unlike the chart-level `HorizontalEdgeClip`.
+                .clipShape(HorizontalEdgeClip())
                 .overlay(alignment: .leading) {
                     Rectangle().fill(theme.statusIconSecondaryDisabled).frame(width: 1)
                 }
@@ -491,6 +530,7 @@ struct TrendChartView: View {
                 Color.clear
                     .preference(key: SelectionCalloutXKey.self, value: calloutX(proxy, geo))
                     .preference(key: GoalChipYKey.self, value: goalChipY(proxy, geo))
+                    .preference(key: PercentileCalloutPointKey.self, value: percentileCalloutPoint(proxy, geo))
             }
         }
         .chartLegend(.hidden)
@@ -538,6 +578,18 @@ struct TrendChartView: View {
                     GoalWeightChipView(label: goalLabel, theme: theme)
                         .position(x: geo.size.width - yAxisLabelWidth / 2, y: goalY)
                 }
+            }
+        }
+        // MOB-1591 (baby) — float the "NN%" growth-percentile label at the LEFT edge of the visible plot, on
+        // the horizontal crosshair line (parity with the Figma "6%"). `percentileCalloutPoint` uses the plot's
+        // visible leading edge via `.position`, so it stays in the current window at any scroll position.
+        .overlayPreferenceValue(PercentileCalloutPointKey.self) { point in
+            if let point, let percentileCalloutText {
+                Text(percentileCalloutText)
+                    .fontOpenSans(.subHeading2)
+                    .foregroundStyle(theme.textSubheading)
+                    .fixedSize()
+                    .position(x: point.x, y: point.y)
             }
         }
         // Inset the plot from the left screen edge so the leading "starting" rule (and the data line) aren't

@@ -58,6 +58,8 @@ struct BabySnapshotCard: View {
     private enum Layout {
         static let headlineSpacing: CGFloat = 2
         static let unitSpacing: CGFloat = 4
+        /// Gap between the headline value and the date-range label (tightened from spacingXS).
+        static let rangeLabelTopSpacing: CGFloat = 2
     }
 
     private let babyColor = BabyDashboardChartStyle.weightColor
@@ -110,17 +112,20 @@ struct BabySnapshotCard: View {
                     .fontOpenSans(.subHeading2)
                     .foregroundColor(theme.textSubheading)
                     .padding(.horizontal, .spacingSM)
-                    .padding(.top, .spacingXS)
+                    .padding(.top, Layout.rangeLabelTopSpacing)
 
                 Group {
                     if hasEntries {
                         snapshotChart
                             .frame(height: 240)
                     } else {
-                        // No real readings — show the clean empty grid instead of
-                        // plotting the synthetic percentile curves (matches the full
-                        // dashboard's BabyEmptyGraphView empty state).
-                        BabyEmptyGraphView(plotHeight: 210)
+                        // No real readings — render an empty Chart (no percentile curves, no data
+                        // points) rather than plotting the synthetic WHO curves. Built from the same
+                        // Chart machinery as the weight/BPM empty snapshots so the plot insets (leading
+                        // margin + reserved trailing y-axis column) and weekday axis line up across all
+                        // three cards. MOB-1591.
+                        emptySnapshotChart
+                            .frame(height: 240)
                     }
                 }
                 .padding(.top, .spacingXS)
@@ -184,18 +189,23 @@ struct BabySnapshotCard: View {
                 weightUnit: weightUnit
             )
 
-            let groupedPercentiles = await BabySnapshotPercentileCache.shared.groupedPoints(for: cacheKey) {
-                let allPoints = BabyPercentileGrowthReference.percentileChartPoints(
-                    biologicalSex: profile.biologicalSex,
-                    birthday: birthday,
-                    dateRange: effectiveBounds.start...effectiveBounds.end
-                ) { BabyDashboardChartSupport.convertDecigramsToDisplay($0, unit: weightUnit) }
-                let byLine = Dictionary(grouping: allPoints, by: \.line)
-                var thinnedByLine: [BabyPercentileLine: [BabyPercentileChartPoint]] = [:]
-                for (line, points) in byLine {
-                    thinnedByLine[line] = BabyDashboardChartSupport.thinnedPercentilePoints(points, stride: 3)
+            // MOB-1516 audit: only build the WHO percentile band when a valid birthday + sex are present —
+            // otherwise no curves (parity with the dashboard graph / Smart Baby), never a fabricated age.
+            var groupedPercentiles: [BabyPercentileLine: [BabyPercentileChartPoint]] = [:]
+            if BabyDashboardChartSupport.canResolveGrowthPercentiles(for: profile) {
+                groupedPercentiles = await BabySnapshotPercentileCache.shared.groupedPoints(for: cacheKey) {
+                    let allPoints = BabyPercentileGrowthReference.percentileChartPoints(
+                        biologicalSex: profile.biologicalSex,
+                        birthday: birthday,
+                        dateRange: effectiveBounds.start...effectiveBounds.end
+                    ) { BabyDashboardChartSupport.convertDecigramsToDisplay($0, unit: weightUnit) }
+                    let byLine = Dictionary(grouping: allPoints, by: \.line)
+                    var thinnedByLine: [BabyPercentileLine: [BabyPercentileChartPoint]] = [:]
+                    for (line, points) in byLine {
+                        thinnedByLine[line] = BabyDashboardChartSupport.thinnedPercentilePoints(points, stride: 3)
+                    }
+                    return thinnedByLine
                 }
-                return thinnedByLine
             }
             return (window, chart, recent, avg, weightUnit, groupedPercentiles, effectiveBounds)
         }.value
@@ -211,7 +221,7 @@ struct BabySnapshotCard: View {
         let eb = result.6
         let calendar = Calendar.current
         let displayEnd = calendar.date(byAdding: .day, value: -1, to: eb.end) ?? eb.end
-        cachedDateRangeLabel = Self.weekDateRangeLabel(start: eb.start, displayEnd: displayEnd)
+        cachedDateRangeLabel = DashboardSnapshotLabel.weekRange(start: eb.start, displayEnd: displayEnd)
         hasCacheLoaded = true
     }
 
@@ -300,11 +310,15 @@ struct BabySnapshotCard: View {
         }
         .chartYAxis {
             AxisMarks(position: .trailing, values: yTickValues) { value in
-                AxisValueLabel {
+                // `horizontalSpacing: 0` makes the fixed-width label column start flush at the plot edge,
+                // so the reserved trailing column is exactly `yAxisLabelWidth` — identical to the weight
+                // and BPM cards. MOB-1591.
+                AxisValueLabel(horizontalSpacing: 0) {
                     if let val = value.as(Double.self) {
                         Text(yAxisFormatter.formatYAxisTickLabel(val))
                             .font(.caption)
                             .foregroundColor(theme.textSubheading)
+                            .frame(width: DashboardSnapshotStyle.yAxisLabelWidth, alignment: .center)
                     }
                 }
             }
@@ -321,6 +335,73 @@ struct BabySnapshotCard: View {
                         visibleHorizontalTicks: BabyDashboardChartSupport.boundaryYTicks(from: yTickValues)
                     )
                 }
+        }
+        .padding(.horizontal, .spacingXS)
+    }
+
+    /// Empty-state chart: same axes / plot border as `snapshotChart` but with no marks, so the
+    /// baby empty snapshot shares the exact plot geometry of the weight/BPM empty cards (leading
+    /// margin + reserved trailing y-axis column). The y-axis numbers are hidden (drawn transparent)
+    /// because the fallback ticks are arbitrary and would read as real weight data. MOB-1591.
+    private var emptySnapshotChart: some View {
+        let yScale = calculateYAxisScale()
+        let yRange = yScale.domain
+        let yTickValues = yScale.ticks
+        // Use the raw week bounds (no ±30min edge padding) so the weekday marks match the
+        // weight/BPM empty charts exactly — the padding would surface an extra 8th weekday label.
+        let xDomain: ClosedRange<Date> = cachedEffectiveBounds.map { $0.start...$0.end } ?? Date()...Date()
+
+        return Chart {
+            // Invisible anchor so the plot + axes render with no data.
+            PointMark(
+                x: .value("Date", xDomain.lowerBound),
+                y: .value("Weight", yRange.lowerBound)
+            )
+            .foregroundStyle(.clear)
+            .symbolSize(0)
+        }
+        .chartYScale(domain: yRange)
+        .chartXScale(domain: xDomain)
+        .chartXAxis {
+            AxisMarks(values: .stride(by: .day)) { value in
+                AxisGridLine(stroke: StrokeStyle(lineWidth: 0.5, dash: [4, 4]))
+                    .foregroundStyle(theme.textSubheading.opacity(0.3))
+                AxisValueLabel {
+                    if let date = value.as(Date.self) {
+                        Text(date.formatted(.dateTime.weekday(.abbreviated)).lowercased())
+                            .font(.caption)
+                            .foregroundColor(theme.textSubheading)
+                    }
+                }
+            }
+        }
+        // Empty state hides the y-axis NUMBERS but keeps the reserved column via a fixed-width
+        // placeholder, so this plot's trailing gap matches the weight/BPM empty cards exactly (their
+        // real ticks differ in digit-count "100"/"200"/"30", which sized the columns differently).
+        .chartYAxis {
+            AxisMarks(position: .trailing, values: yTickValues) { value in
+                // `horizontalSpacing: 0` keeps the empty-state label column flush + exactly
+                // `yAxisLabelWidth` wide, matching the populated baby chart and the weight/BPM cards. MOB-1591.
+                AxisValueLabel(horizontalSpacing: 0) {
+                    if value.as(Double.self) != nil {
+                        Text(DashboardSnapshotStyle.emptyYAxisPlaceholder)
+                            .font(.caption)
+                            .foregroundColor(theme.textSubheading)
+                            .frame(width: DashboardSnapshotStyle.yAxisLabelWidth, alignment: .center)
+                            .opacity(0)
+                    }
+                }
+            }
+        }
+        .chartLegend(.hidden)
+        .chartPlotStyle { plot in
+            plot.overlay {
+                SnapshotChartPlotBorderView(
+                    color: theme.textSubheading.opacity(0.3),
+                    yDomain: yRange,
+                    yTicks: yTickValues
+                )
+            }
         }
         .padding(.horizontal, .spacingXS)
     }
@@ -366,31 +447,11 @@ struct BabySnapshotCard: View {
         })
     }
 
-    private static func weekDateRangeLabel(start: Date, displayEnd: Date) -> String {
-        let calendar = Calendar.current
-        let sy = calendar.component(.year, from: start)
-        let ey = calendar.component(.year, from: displayEnd)
-        let sm = calendar.component(.month, from: start)
-        let em = calendar.component(.month, from: displayEnd)
-        let startFmt = DateFormatter()
-        startFmt.dateFormat = "MMM d"
-        let endFmt = DateFormatter()
-        endFmt.dateFormat = "MMM d, yyyy"
-        if sy != ey {
-            return "\(endFmt.string(from: start)) - \(endFmt.string(from: displayEnd))".lowercased()
-        }
-        if sm != em {
-            return "\(startFmt.string(from: start)) - \(endFmt.string(from: displayEnd))".lowercased()
-        }
-        let endDay = calendar.component(.day, from: displayEnd)
-        return "\(startFmt.string(from: start)) - \(endDay), \(sy)".lowercased()
-    }
-
     @ViewBuilder
     private func babyWeightRow(display: BabyWeightDisplay) -> some View {
         HStack(alignment: .lastTextBaseline, spacing: .zero) {
             Text(display.primary)
-                .fontOpenSans(.heading1)
+                .fontOpenSans(.heading2)
                 .fontWeight(.heavy)
                 .foregroundColor(babyColor)
 
@@ -401,7 +462,7 @@ struct BabySnapshotCard: View {
 
             if let secondary = display.secondary, let secondaryUnit = display.secondaryUnit {
                 Text(secondary)
-                    .fontOpenSans(.heading1)
+                    .fontOpenSans(.heading2)
                     .fontWeight(.heavy)
                     .foregroundColor(babyColor)
                     .padding(.leading, .spacingMD)

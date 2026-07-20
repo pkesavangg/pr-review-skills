@@ -93,8 +93,11 @@ protocol AccountServiceProtocol {
     /// Removes a single product type from the active account via PATCH /account/products, then
     /// persists locally. Unlike `updateProductTypes(_:)`, this is a *reducing* path: it sends the
     /// remaining types and adopts the server's authoritative response, deliberately not unioning
-    /// with the prior local value (which would re-add the removed type). Used when the last baby
-    /// profile is deleted and "baby" must be stripped.
+    /// with the prior local value (which would re-add the removed type).
+    ///
+    /// **Not invoked in production:** `productTypes` is additive-only (MOB-686 revised Rule A), so
+    /// no flow drops a type — the former baby-deletion caller was removed. Kept as the reducing
+    /// primitive for tests and any future non-additive requirement.
     /// - Parameter productType: The product type to remove (e.g. "baby").
     func removeProductType(_ productType: String) async throws
 

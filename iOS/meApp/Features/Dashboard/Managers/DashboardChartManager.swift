@@ -27,6 +27,11 @@ final class DashboardChartManager: DashboardChartManaging {
 
     /// Closures for store-level computed properties
     let getContinuousOperations: () -> [BathScaleWeightSummary]
+    /// MOB-1591: baby-aware operations for an ARBITRARY period. The period-switch scroll math below needs the
+    /// NEW period's ops before `state.graph.selectedPeriod` flips, and for baby those come from the baby
+    /// summaries — NOT `dataManager` (the weight cache, empty for a baby-only account, which made a section
+    /// switch land on `Date()` → the wrong week). Weight/BPM resolve to the same `dataManager` source as before.
+    let getContinuousOperationsForPeriod: (TimePeriod) -> [BathScaleWeightSummary]
     let getIsWeightlessModeEnabled: () -> Bool
     let getWeightlessAnchorWeight: () -> Double?
     let getGoalWeightForDisplay: () -> Double?
@@ -55,6 +60,7 @@ final class DashboardChartManager: DashboardChartManaging {
         dataManager: DashboardDataManager,
         cacheManager: DashboardCacheManagerProtocol,
         getContinuousOperations: @escaping () -> [BathScaleWeightSummary],
+        getContinuousOperationsForPeriod: @escaping (TimePeriod) -> [BathScaleWeightSummary],
         getIsWeightlessModeEnabled: @escaping () -> Bool,
         getWeightlessAnchorWeight: @escaping () -> Double?,
         getGoalWeightForDisplay: @escaping () -> Double?
@@ -66,6 +72,7 @@ final class DashboardChartManager: DashboardChartManaging {
         self.dataManager = dataManager
         self.cacheManager = cacheManager
         self.getContinuousOperations = getContinuousOperations
+        self.getContinuousOperationsForPeriod = getContinuousOperationsForPeriod
         self.getIsWeightlessModeEnabled = getIsWeightlessModeEnabled
         self.getWeightlessAnchorWeight = getWeightlessAnchorWeight
         self.getGoalWeightForDisplay = getGoalWeightForDisplay
@@ -345,7 +352,9 @@ final class DashboardChartManager: DashboardChartManaging {
         guard let stateProvider else { return }
         guard stateProvider.state.graph.validatedSelection == nil else { return }
         let period = stateProvider.state.graph.selectedPeriod
-        let operations = dataManager.getContinuousOperations(for: period)
+        // MOB-1591: baby-aware source (see `getContinuousOperationsForPeriod`) — `dataManager` is empty for a
+        // baby-only account, so the auto-select would find no latest entry (or the wrong one).
+        let operations = getContinuousOperationsForPeriod(period)
         guard let latestDate = operations.max(by: { $0.date < $1.date })?.date else { return }
         graphManager.applyChartSelectionSync(at: latestDate, operations: operations)
         stateProvider.state.ui.hasLandedInitialSelection = true
@@ -362,7 +371,13 @@ final class DashboardChartManager: DashboardChartManaging {
 
         graphManager.endScrollingImmediately()
 
-        let operationsForNewPeriod = dataManager.getContinuousOperations(for: period)
+        // MOB-1591: baby-aware ops for the NEW period (see `getContinuousOperationsForPeriod`). For baby the
+        // `dataManager` weight cache is empty, so the previous `dataManager.getContinuousOperations` made
+        // `calculateOptimalScrollPosition` fall back to `Date()` (today) → the section switch landed on the
+        // wrong week instead of the week containing the latest entry (weight/BPM were unaffected). Passing the
+        // real baby summaries + `nil` bounds lets `optimalScrollPosition` derive bounds from them, exactly as
+        // weight does. `getDateBounds` is already `nil` for baby, so weight/BPM keep their cached bounds.
+        let operationsForNewPeriod = getContinuousOperationsForPeriod(period)
 
         let optimalScrollPosition = graphManager.calculateOptimalScrollPosition(
             for: period,

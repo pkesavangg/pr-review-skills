@@ -21,6 +21,7 @@ struct GraphSelectionPresentationResolver {
         babyProfile: BabyProfile?,
         metric: BabyMetric,
         selectedCrosshairDate: Date?,
+        percentileDate: Date?,
         plottedPoints: [PlottedGraphSeries],
         plotXDate: (Date) -> Date,
         currentUnit: WeightUnit,
@@ -46,11 +47,16 @@ struct GraphSelectionPresentationResolver {
         return BabyGraphSelectionPresentation(
             crosshairDate: crosshairDate,
             crosshairValue: crosshairValue,
+            // MOB-1591: percentiles are AGE-driven, so they must use the reading's REAL date, not the plotted
+            // x-date. In year/total the plotted point is the monthly aggregate collapsed to the 1st (e.g. Jun 1),
+            // which is a younger age and yields a different (wrong) percentile than week/month for the same
+            // reading. `percentileDate` carries the real entry date (the summary's `entryTimestamp`); fall back
+            // to the crosshair date for gap/in-between selections (no real reading → nothing more precise).
             percentile: percentile(
                 for: babyProfile,
                 metric: metric,
                 value: crosshairValue,
-                on: crosshairDate,
+                on: percentileDate ?? crosshairDate,
                 currentUnit: currentUnit
             )
         )
@@ -127,6 +133,9 @@ struct GraphSelectionPresentationResolver {
         on date: Date,
         currentUnit: WeightUnit
     ) -> Int? {
+        // MOB-1516 audit: percentiles are age-driven, so without a known birthday there is no valid answer
+        // (parity with Smart Baby, which shows none). The crosshair VALUE still renders; only the % is hidden.
+        guard BabyDashboardChartSupport.canResolveGrowthPercentiles(for: babyProfile) else { return nil }
         switch metric {
         case .height:
             return BabyDashboardChartSupport.heightPercentile(

@@ -11,8 +11,8 @@
 > assumes that and focuses on **how the three products plug into it.** For the migration itself see
 > [MOB-1516-implementation-guide.md](MOB-1516-implementation-guide.md).
 >
-> Grounded in the working tree as of **2026-07-15** (post Phase D). If a symbol drifts, re-grep — the
-> invariants in §12 are the stable part.
+> Grounded in the working tree as of **2026-07-18** (post Phase D + the MOB-1591 empty-baby unification —
+> see §5.1). If a symbol drifts, re-grep — the invariants in §12 are the stable part.
 
 ---
 
@@ -75,15 +75,17 @@ DashboardScreen
                                      ▼
                           DashboardTrendView → GraphView.chartView
                                      │
-      ┌──────────────────────────────┴───────────────────────────────┐
-      │ if isBabySelection && !hasBabyEntries → BabyEmptyGraphView()  │  (baby with no readings)
-      │ else → TrendChartHost(dashboardStore:)                        │  (weight / BPM / baby-with-entries)
-      └───────────────────────────────────────────────────────────────┘
+                                     ▼
+                          TrendChartHost(dashboardStore:)     ← EVERY product AND every empty state
 ```
 
 - `GraphView` ([GraphView.swift](../../meApp/Features/Dashboard/Views/Components/GraphView.swift)) is now
-  tiny: a skeleton, the under-graph label, and the two-way `chartView` above. The old four `@StateObject`
-  section VMs + the per-period `switch` + the legacy `else` branch are **gone** (Phase D).
+  tiny: a skeleton, the under-graph label, and `chartView` (which is just `TrendChartHost`). The old four
+  `@StateObject` section VMs + the per-period `switch` + the legacy `else` branch are **gone** (Phase D).
+- **MOB-1591:** `chartView` no longer forks to a separate `BabyEmptyGraphView` for a baby with no readings.
+  That empty case is now an *empty engine model* (`ChartPrep.buildEmpty`, see §5.1), so `GraphView.chartView`
+  is unconditionally `TrendChartHost`. (`BabyEmptyGraphView` still exists, but only for `BabySnapshotCard`,
+  which has no period sections.)
 - `usesNewEngine` is `true` for `.scale`/`.bpm`/`.baby` — i.e. always (it's the vestige of the A/B era; every
   product now uses the engine).
 - The **product wrappers** (`WeightTrendView` / `BpmTrendView` / `BabyTrendView`) are unchanged by the
@@ -181,6 +183,40 @@ Everything in that table is decided in the product's `ChartPrep.build*` (data/cu
 
 ---
 
+## 5.1 The empty state — one engine draws "no data too" (MOB-1591)
+
+Before MOB-1591, a baby with no readings short-circuited to a hand-rolled `BabyEmptyGraphView` — a static
+weekday grid that was **period-blind** (it drew `sun…sat` in week AND month AND year AND total) and skipped
+the engine's framing (no reserved y-axis column, no closed box, no per-period ticks). Weight/BPM never had
+this problem because an empty account already flows through the engine.
+
+Now **all three products render their empty state through the same engine**, so an empty baby chart is
+identical in behaviour to an empty weight/BPM chart (only taller — 498). The mechanics:
+
+- **`ChartPrep.buildEmpty(productType:period:scrollPosition:)`** builds an *empty skeleton* `ChartModel`:
+  `orderedSeriesNames = []`, no series points, **no reference curves**, period-correct x-geometry
+  (`xDomain` / `xAxisTicks` / `visibleDomainLength`, byte-identical to `buildWeight` with no operations), and
+  `yAxis = .placeholder` (0…100, ticks 0/25/50/75/100). The x-geometry is what makes each *period* draw its
+  own axis — week → weekday labels, month → day numbers + month divider, year → month initials, total → none.
+- **`DashboardStore.rebuildChartModel`** dispatches to it: `.baby` + `!hasBabyEntries` → `buildEmpty(.baby)`;
+  otherwise `buildBaby`. (It does **not** plot the dummy summaries `continuousOperations` falls back to, nor
+  the WHO/CDC percentile curves.)
+- The renderer's existing empty-state logic then gives the baby everything for free: `hidesYAxis` (no `.data`
+  series, no goal) draws the placeholder numbers + horizontal gridlines **transparent** but keeps the 40 pt
+  column reserved (constant plot width); the 4-edge closed box; the leading inset (non-scrollable);
+  and `reservesXAxisLabelSpace` reserving the label row for total.
+- **No crosshair on empty.** A period-tab switch runs `DashboardChartManager.updateSelectedPeriod`, which
+  auto-selects the latest op — and for an empty baby the ops are dummies, so the store ends up with a
+  *phantom* `showCrosshair`/selection. The view suppresses it: `ChartModel.hasReadings` (a real `.data`
+  series exists) gates the crosshair (`TrendChartHost.crosshairDate` / `babyPresentation`) **and** the
+  under-graph label hide (`GraphView.isShowingSelectionCallout`). Empty model → `hasReadings == false` → no
+  crosshair, label stays visible. Populated → unchanged.
+
+**Files:** `ChartPrep.buildEmpty` · `DashboardStore.rebuildChartModel` · `ChartModel.hasReadings` ·
+`TrendChartHost` (`modelHasReadings`) · `GraphView.chartView` / `isShowingSelectionCallout`.
+
+---
+
 ## 6. Rendering — one loop, styles baked in
 
 `TrendChartView.body` builds one `Chart {}` ([TrendChartView.swift](../../meApp/Features/Dashboard/Views/Components/TrendChartView.swift)):
@@ -198,9 +234,19 @@ Chart {
   4. horizontal crosshair RuleMark(y:) + "NN%" annotation (baby only)
 }
 .chartYScale / .chartXScale / .chartXAxis (windowed ticks) / .chartScrollableAxes / .chartScrollPosition
+.chartPlotStyle: 4-edge closed box + a PLOT-level HorizontalEdgeClip (clip marks to the plot's L/R edges)
 .overlay: floating date callout (above plot) · goal chip (on the y-axis column, weight only)
 .frame(height: chartHeight)                              // 498 for baby, else 265
 ```
+
+> **MOB-1591 — why the plot-level clip.** Baby's percentile `.reference` curves are sampled across the FULL
+> x-domain (plus an out-of-range boundary point for smooth continuity), so they extend *past* the plot's
+> trailing rule. The chart-level `HorizontalEdgeClip` clips to the *view* bounds, which include the y-axis
+> label column — so without a second clip the curves bled into that column. Applying `HorizontalEdgeClip` a
+> second time **inside `.chartPlotStyle`** clips the marks to the *plot* area's left/right edges (top/bottom
+> stay unbounded, so edge dots and the top y-label aren't cropped), while the y-axis number labels — which
+> live outside the plot area — stay fully visible. It's a no-op for weight/BPM (their data ends within the
+> window).
 
 **The colour brain is [DashboardChartRules.swift](../../meApp/Features/Dashboard/Models/DashboardChartRules.swift)** —
 `DashboardChartStyleProvider.seriesColors(for:productType:…)` is the single place product colours live:
@@ -311,17 +357,17 @@ only on **real input changes** — never per frame, never per scroll:
 
 | Concern | File | Key symbols |
 |---|---|---|
-| Poster type | `Models/ChartModel.swift` | `ChartModel`, `ChartSeriesStyle`, `ChartReferenceLine`, `YAxisModel` |
-| Poster printers (per product) | `Managers/Graph/ChartPrep.swift` | `buildWeight`, `buildBpm`, `buildBaby`, `weightYAxis`, `bpmYAxis` |
+| Poster type | `Models/ChartModel.swift` | `ChartModel`, `ChartSeriesStyle`, `ChartReferenceLine`, `YAxisModel`, `hasReadings` |
+| Poster printers (per product) | `Managers/Graph/ChartPrep.swift` | `buildWeight`, `buildBpm`, `buildBaby`, `buildEmpty` (empty state), `weightYAxis`, `bpmYAxis` |
 | Rebuild tokens | `Managers/Graph/ChartRebuildSignature.swift` | `dataChangeSignature`, `settingsChangeSignature` |
 | Colours + scales (per product) | `Models/DashboardChartRules.swift` | `DashboardChartStyleProvider.seriesColors`, `DashboardChartScaleProvider.{weight,baby,bpm}Scale` |
 | Domain math (reused) | `Managers/Graph/GraphRenderingConfiguration.swift`, `GraphDataPreparer.swift` | ticks, `visibleDomainLength`, `buildWeightSeries`/`buildBpmChartSeries`, baby via `BabyDashboardChartSupport` |
 | Baby percentile math | `Baby/Utils/BabyPercentileGrowthReference.swift`, `BabyDashboardChartSupport.swift` | WHO/CDC z-score curves, `percentileSeries`, `yAxisScale` |
 | Baby selection presentation | `Managers/Graph/GraphSelectionPresentationResolver.swift` | `babySelectionPresentation` (value + percentile) |
 | Brain / source of truth | `Stores/DashboardStore.swift` | `chartModel`, `rebuildChartModel`, `settleChart`, `settleBpm`, `commitScroll`, `selectPoint` |
-| Stagehand | `Views/Components/TrendChartHost.swift` | `primarySeriesName`, `snappedSelectionDate`, `crosshairDate`, `babyPresentation`, `bpmClassification`, `chartHeight` |
-| Renderer | `Views/Components/TrendChartView.swift` | series loop, `referenceLines`, crosshairs, overlays |
-| Seam | `Views/Components/GraphView.swift` | `chartView` (BabyEmpty / `TrendChartHost`) |
+| Stagehand | `Views/Components/TrendChartHost.swift` | `primarySeriesName`, `snappedSelectionDate`, `crosshairDate`, `babyPresentation`, `modelHasReadings`, `bpmClassification`, `chartHeight` |
+| Renderer | `Views/Components/TrendChartView.swift` | series loop, `referenceLines`, crosshairs, overlays, `.chartPlotStyle` box + plot-level clip |
+| Seam | `Views/Components/GraphView.swift` | `chartView` (always `TrendChartHost` — MOB-1591), `isShowingSelectionCallout` |
 | Product scaffolds | `WeightTrendView` · `BPM/Views/Screens/BpmTrendView` · `Baby/Views/Screens/BabyTrendView` | headers / toggles / cards |
 
 *(The legacy `BaseGraphView` + four `*SectionViewModel`s + `BaseGraphChartContent` + cache managers are

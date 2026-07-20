@@ -22,6 +22,8 @@ struct TrendChartHost: View {
 
     @ObservedObject var dashboardStore: DashboardStore
     @Environment(\.appTheme) private var theme
+    // MOB-1591: viewport height (from DashboardScreen) drives the adaptive baby graph height.
+    @Environment(\.dashboardViewportHeight) private var viewportHeight
 
     // Scroll offset is local @State (Apple's canonical `.chartScrollPosition` pattern). The store owns the
     // published model + the scroll lifecycle; this view reports gestures and observes the model.
@@ -124,8 +126,17 @@ struct TrendChartHost: View {
         }
     }
 
-    /// MOB-1516: baby growth charts are taller (498) than weight/BPM (265).
-    private var chartHeight: CGFloat { dashboardStore.productType == .baby ? 498 : 265 }
+    /// MOB-1516: baby growth charts are taller than weight/BPM (see `DashboardChartLayout`).
+    /// MOB-1591: the baby height is adaptive — the Figma design height (498) is the max, shrunk to fit
+    /// shorter viewports so the period segment control stays on-screen (see `babyHeight(forAvailableHeight:)`).
+    /// The extra height is ONLY for a POPULATED baby graph — it exists to fit the percentile band + dual
+    /// axis. An empty baby graph (no reading for the selected metric, or no baby profile yet → nil model)
+    /// carries neither, so it uses the same standard height as an empty weight/BPM chart.
+    private var chartHeight: CGFloat {
+        dashboardStore.productType == .baby && modelHasReadings
+            ? DashboardChartLayout.babyHeight(forAvailableHeight: viewportHeight)
+            : DashboardChartLayout.standardHeight
+    }
 
     // MARK: - Model rebuild / scroll adoption
 
@@ -166,18 +177,34 @@ struct TrendChartHost: View {
         return dashboardStore.displayManager.getBpmDisplayValues()?.classification
     }
 
+    /// MOB-1591: `true` when the model carries a real-reading series. The empty baby state
+    /// (`ChartPrep.buildEmpty`) has none, so we draw NO crosshair/selection there even though the store may
+    /// still hold a phantom selection — `updateSelectedPeriod` auto-selects the latest of the dummy baby
+    /// summaries on a period-tab switch (`DashboardChartManager`). Weight/BPM empty states have no phantom
+    /// selection, so this is a no-op for them; it only suppresses the stale baby crosshair + "NN%" callout.
+    private var modelHasReadings: Bool { dashboardStore.chartModel?.hasReadings ?? false }
+
     /// MOB-1516 (baby): resolved selection presentation (interpolated value at the crosshair + WHO/CDC growth
     /// percentile) for the current store selection. Drives the horizontal crosshair + "NN%" callout. `nil`
     /// off-baby or when nothing is selected.
     private var babyPresentation: BabyGraphSelectionPresentation? {
-        guard dashboardStore.productType == .baby,
+        guard modelHasReadings,
+              dashboardStore.productType == .baby,
               dashboardStore.state.graph.showCrosshair,
               let model = dashboardStore.chartModel,
               let selectedDate = dashboardStore.state.graph.selectedXValue else { return nil }
+        // MOB-1591: the growth percentile is AGE-driven, so it must use the reading's REAL date — the selected
+        // summary's `entryTimestamp` — not the plotted x. In year/total the plotted x is the monthly aggregate
+        // collapsed to the month's 1st (e.g. Jun 1 for a Jun 24 reading → a younger age → a different, wrong
+        // percentile than week/month). Using the real entry date makes year/total agree with week/month. `nil`
+        // for a gap/in-between selection (no `selectedPoint`) → the resolver falls back to the crosshair date.
+        let percentileDate = dashboardStore.state.graph.selectedPoint
+            .flatMap { DateTimeTools.parse($0.entryTimestamp) }
         return dashboardStore.graphManager.resolveBabySelectionPresentation(
             babyProfile: dashboardStore.selectedBabyProfile,
             metric: dashboardStore.selectedBabyMetric,
             selectedCrosshairDate: selectedDate,
+            percentileDate: percentileDate,
             plottedPoints: model.fullResolution[primarySeriesName] ?? [],
             plotXDate: { ChartPrep.plotXDate($0, period: model.period, calendar: .current) },
             currentUnit: dashboardStore.currentUnit,
@@ -188,8 +215,12 @@ struct TrendChartHost: View {
     /// MOB-1516 (baby): the selected reading's value → the view's horizontal crosshair. `nil` otherwise.
     private var horizontalCrosshairValue: Double? { babyPresentation?.crosshairValue }
 
-    /// MOB-1516 (baby): "NN%" growth percentile for the crosshair callout. `nil` otherwise.
-    private var percentileCalloutText: String? { babyPresentation?.percentile.map { "\($0)%" } }
+    /// MOB-1516 (baby): growth-percentile label for the crosshair callout. `nil` otherwise.
+    /// MOB-1591: Smart Baby's ordinal + capped format ("95th %", "> 99th %", "< 1st %") — a raw
+    /// value above the 95th (e.g. a 20 lb 3-month-old) now reads "> 99th %" instead of a bare "100%".
+    private var percentileCalloutText: String? {
+        babyPresentation?.percentile.map { "\(BabyWeightPercentileCalculator.percentileDisplayText($0)) %" }
+    }
 
     /// Plotted x-date of the store's current selection — drives the crosshair rule + (for a real point) the
     /// enlarged point. Derived from the store's validated selection so it reflects both taps and programmatic
@@ -197,7 +228,11 @@ struct TrendChartHost: View {
     /// to a real point's plot-x when the selected day/month has a reading, else to that day/month's gridline
     /// (an interpolated in-between selection). `nil` when unselected.
     private var crosshairDate: Date? {
-        guard dashboardStore.state.graph.showCrosshair,
+        // MOB-1591: no crosshair on an empty chart (e.g. a baby with no readings) even if the store holds a
+        // phantom selection from the dummy summaries — otherwise the fallback below would draw a rule on a
+        // gridline with nothing plotted.
+        guard modelHasReadings,
+              dashboardStore.state.graph.showCrosshair,
               let selectedDate = dashboardStore.state.graph.selectedXValue,
               let model = dashboardStore.chartModel else { return nil }
         let calendar = Calendar.current

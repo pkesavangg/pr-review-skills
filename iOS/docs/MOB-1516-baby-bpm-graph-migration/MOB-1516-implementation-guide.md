@@ -73,6 +73,39 @@ cd iOS && xcodebuild build -project meApp.xcodeproj -scheme meApp \
   CODE_SIGN_IDENTITY="" CODE_SIGNING_REQUIRED=NO CODE_SIGNING_ALLOWED=NO
 ```
 
+### MOB-1591 follow-up — empty-baby state unified onto the engine (2026-07-18)
+
+Device verification of the baby chart surfaced that a baby with **no readings** still forked to the
+hand-rolled `BabyEmptyGraphView`, which was period-blind (drew `sun…sat` in every section) and skipped the
+engine's framing. Fixed by routing the empty state through the engine too (details in the how-it-works doc
+§5.1). Three code changes + one follow-on pair of render bugs:
+
+1. **`ChartPrep.buildEmpty(productType:period:scrollPosition:)`** — an empty-skeleton `ChartModel` (no data
+   series, no percentile curves, period-correct x-geometry, `yAxis = .placeholder`). x-geometry is
+   byte-identical to `buildWeight` with no operations.
+2. **`DashboardStore.rebuildChartModel`** — `.baby` + `!hasBabyEntries` dispatches to `buildEmpty(.baby)`
+   (does NOT plot the dummy `continuousOperations` summaries or the WHO/CDC curves).
+3. **`GraphView.chartView`** — dropped the `BabyEmptyGraphView` fork; it is now unconditionally
+   `TrendChartHost`. (`BabyEmptyGraphView` stays for `BabySnapshotCard`, which has no period sections.)
+   The empty baby then inherits `hidesYAxis` (reserved y-column, transparent placeholder numbers, hidden
+   horizontal gridlines), the 4-edge closed box, the leading inset, and the total label-row reservation —
+   i.e. identical framing to an empty weight/BPM chart (only taller, 498).
+
+Two render bugs found in the same pass and fixed:
+- **Phantom crosshair on empty baby.** A period-tab switch runs `DashboardChartManager.updateSelectedPeriod`,
+  which auto-selects the latest op — and the empty baby's ops are dummies, so the store held a phantom
+  `showCrosshair`/selection that the engine drew. Added **`ChartModel.hasReadings`** (a real `.data` series
+  exists) and gated the crosshair (`TrendChartHost.crosshairDate`/`babyPresentation` via `modelHasReadings`)
+  **and** the under-graph label hide (`GraphView.isShowingSelectionCallout`) on it.
+- **Percentile curves bleeding past the trailing rule** into the y-axis label column (the curves are
+  full-domain + an out-of-range boundary point; the chart-level `HorizontalEdgeClip` clips to *view* bounds).
+  Fixed by applying `HorizontalEdgeClip` a second time **inside `.chartPlotStyle`** so marks clip to the
+  *plot* area's L/R edges while the y-axis labels (outside the plot) stay visible.
+
+Build (Dev) + `swiftlint --strict` clean. ⚠️ Device re-verify: empty baby shows no crosshair in any section
+with correct per-period axes; populated baby curves stop at the trailing rule with y-labels intact; populated
+baby crosshair + "NN%" still work on tap.
+
 ---
 
 ## 0. Prerequisite — weight sign-off

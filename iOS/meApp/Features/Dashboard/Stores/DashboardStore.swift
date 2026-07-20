@@ -265,6 +265,7 @@ class DashboardStore: ObservableObject, DashboardStateProviding {
             dataManager: dataManager,
             cacheManager: cacheManager,
             getContinuousOperations: { [weak self] in self?.continuousOperations ?? [] },
+            getContinuousOperationsForPeriod: { [weak self] period in self?.continuousOperations(for: period) ?? [] },
             getIsWeightlessModeEnabled: { [weak self] in self?.isWeightlessModeEnabled ?? false },
             getWeightlessAnchorWeight: { [weak self] in self?.weightlessAnchorWeight },
             getGoalWeightForDisplay: { [weak self] in self?.goalWeightForDisplay }
@@ -413,6 +414,26 @@ class DashboardStore: ObservableObject, DashboardStateProviding {
             .receive(on: DispatchQueue.main)
             .sink { [weak self] syncing in
                 self?.isSyncing = syncing
+            }
+            .store(in: &cancellables)
+
+        // MOB-1591: baby graph reactivity on add/delete. Baby summaries live in
+        // `entryService.babyDailySummariesByProfile` / `babyMonthlySummariesByProfile` — a source the
+        // `DashboardDataManager` never subscribes to (it binds only the weight/BPM daily/monthly summaries).
+        // So a baby entry add/delete never ticked `dataChangeRevision`, `TrendChartHost.rebuildSignal` stayed
+        // constant, and the v2 chart only caught up on a period switch (which rebuilds via a different
+        // onChange). Mirror the weight path here: when baby summaries change, invalidate the ops cache and
+        // tick `dataChangeRevision` (+ republish, since it isn't `@Published`) so `rebuildSignal` moves and
+        // `TrendChartHost` rebuilds the model immediately. Guarded to the baby product so it's inert otherwise.
+        entryService.$babyDailySummariesByProfile
+            .combineLatest(entryService.$babyMonthlySummariesByProfile)
+            .receive(on: DispatchQueue.main)
+            .dropFirst()
+            .sink { [weak self] _, _ in
+                guard let self, self.productType == .baby else { return }
+                self.invalidateContinuousOperationsCache()
+                self.dataChangeRevision &+= 1
+                self.objectWillChange.send()
             }
             .store(in: &cancellables)
     }
@@ -775,6 +796,20 @@ class DashboardStore: ObservableObject, DashboardStateProviding {
         cacheManager.invalidateContinuousOperationsCache()
     }
 
+    /// MOB-1591: baby-aware continuous operations for an ARBITRARY period. The period-switch scroll-position
+    /// math (`DashboardChartManager.updateSelectedPeriod`) needs the NEW period's ops BEFORE
+    /// `state.graph.selectedPeriod` flips, and for baby those come from the baby summaries — not the
+    /// `dataManager` weight cache (empty for a baby-only account, which made a section switch land on `Date()`
+    /// → the wrong week). Weight/BPM keep the `dataManager` source, exactly as the manager used before. Reads
+    /// the summaries directly (no `cacheManager`) so requesting a non-current period can't pollute the
+    /// current-period cache.
+    func continuousOperations(for period: TimePeriod) -> [BathScaleWeightSummary] {
+        if let babyProfile = selectedBabyProfile {
+            return babySummaries(for: babyProfile, period: period)
+        }
+        return dataManager.getContinuousOperations(for: period)
+    }
+
     var visibleOperations: [BathScaleWeightSummary] {
         let operations = continuousOperations
         return cacheManager.getVisibleOperations(isScrolling: state.graph.isScrolling) {
@@ -909,6 +944,22 @@ class DashboardStore: ObservableObject, DashboardStateProviding {
         }
         if productType == .baby {
             guard let profile = selectedBabyProfile else { chartModel = nil; return }
+            // MOB-1591: a baby with no real readings FOR THE SELECTED METRIC renders an EMPTY skeleton through
+            // the SAME engine as an empty weight/BPM chart (per-period axes, reserved y-column, closed box,
+            // leading inset) — NOT the dummy summaries in `continuousOperations` or the WHO/CDC percentile
+            // curves. This replaces the separate `BabyEmptyGraphView` on the dashboard graph and fixes the
+            // "every section shows weekdays" bug (the empty view was period-blind; the engine derives labels
+            // per period). Metric-scoped (not `hasBabyEntries`): a baby with only weight readings has NO
+            // height data, so the Height tab must show the empty skeleton — never the length percentile
+            // reference curves floating over a chart with no real points (parity with Smart Baby).
+            guard hasBabyReadings(for: selectedBabyMetric) else {
+                chartModel = ChartPrep.buildEmpty(
+                    productType: .baby,
+                    period: state.graph.selectedPeriod,
+                    scrollPosition: scrollPosition
+                )
+                return
+            }
             chartModel = ChartPrep.buildBaby(
                 operations: continuousOperations,
                 period: state.graph.selectedPeriod,
@@ -1067,6 +1118,23 @@ class DashboardStore: ObservableObject, DashboardStateProviding {
         let daily = entryService.babyDailySummariesByProfile[babyProfile.id] ?? []
         let monthly = entryService.babyMonthlySummariesByProfile[babyProfile.id] ?? []
         return !daily.isEmpty || !monthly.isEmpty
+    }
+
+    /// MOB-1591: whether the selected baby profile has a real reading FOR A SPECIFIC METRIC — weight
+    /// summaries with `weight > 0`, or length summaries with `babyLengthInches > 0`. Unlike `hasBabyEntries`
+    /// (metric-agnostic), this drives the per-metric empty state: a baby with only weight readings has no
+    /// height data, so the Height tab must render the empty skeleton rather than length percentile curves
+    /// floating over a chart with no plotted points (parity with Smart Baby, which hides the curves when the
+    /// length dataset is empty).
+    func hasBabyReadings(for metric: BabyMetric) -> Bool {
+        guard let babyProfile = selectedBabyProfile else { return false }
+        let daily = entryService.babyDailySummariesByProfile[babyProfile.id] ?? []
+        let monthly = entryService.babyMonthlySummariesByProfile[babyProfile.id] ?? []
+        let all = daily + monthly
+        switch metric {
+        case .weight: return all.contains { $0.weight > 0 }
+        case .height: return all.contains { ($0.babyLengthInches ?? 0) > 0 }
+        }
     }
 
     // MARK: - Account & Weight Properties

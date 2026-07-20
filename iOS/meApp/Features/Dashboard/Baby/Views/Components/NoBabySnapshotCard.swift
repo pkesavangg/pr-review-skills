@@ -14,10 +14,16 @@ struct NoBabySnapshotCard: View {
 
     var body: some View {
         VStack(spacing: .spacingMD) {
-            Image(AppAssets.babyAppIcon)
+            // Baby-face glyph (matches the other "No babies added yet" empty states:
+            // ManualEntry / DashboardTrend / History). Rendered as a theme-tinted template
+            // so it adapts to light/dark; was previously the baby-scale icon (babyAppIcon).
+            Image(AppAssets.babyHeadIcon)
                 .resizable()
+                .renderingMode(.template)
                 .scaledToFit()
-                .frame(width: 56, height: 56)
+                .frame(width: 54, height: 50)
+                .foregroundStyle(theme.babyScaleColor)
+                .accessibilityHidden(true)
 
             VStack(spacing: .spacingXS) {
                 Text(BabyDashboardStrings.noBabiesTitle)

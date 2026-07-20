@@ -13,11 +13,12 @@ struct WeightSnapshotCard: View {
     private enum Layout {
         static let headlineSpacing: CGFloat = 2
         static let unitSpacing: CGFloat = 4
+        /// Gap between the headline value and the date-range label (tightened from spacingXS).
+        static let rangeLabelTopSpacing: CGFloat = 2
     }
 
     @StateObject private var viewModel = WeightSnapshotCardViewModel()
     let summaries: [BathScaleWeightSummary]
-    let selectedPeriod: TimePeriod
     let onTap: () -> Void
     @Environment(\.appTheme) private var theme
     private let yAxisFormatter = DashboardFormatter()
@@ -61,7 +62,7 @@ struct WeightSnapshotCard: View {
                     .fontOpenSans(.subHeading2)
                     .foregroundColor(theme.textSubheading)
                     .padding(.horizontal, .spacingSM)
-                    .padding(.top, .spacingXS)
+                    .padding(.top, Layout.rangeLabelTopSpacing)
 
                 snapshotChart
                     .frame(height: 240)
@@ -81,14 +82,17 @@ struct WeightSnapshotCard: View {
     private var summariesTaskID: Int {
         var hasher = Hasher()
         hasher.combine(summaries.count)
-        hasher.combine(selectedPeriod.rawValue)
         if let first = summaries.first { hasher.combine(first.entryTimestamp) }
         if let last = summaries.last { hasher.combine(last.entryTimestamp) }
+        // recomputeCache() also derives the goal chip + y-axis and the unit-converted average from
+        // the account, so a goal add/change or a lb↔kg unit switch must re-run the task even when the
+        // entries themselves are unchanged — otherwise cachedGoalWeightDisplay stays stale. MOB-1591.
+        hasher.combine(viewModel.activeAccount?.goalWeight)
+        hasher.combine(viewModel.activeAccount?.weightUnit)
         return hasher.finalize()
     }
 
     @MainActor
-    // swiftlint:disable:next function_body_length
     private func recomputeCache() async {
         // Capture inputs on the main actor, then compute off-thread.
         let inputSummaries = summaries
@@ -123,27 +127,18 @@ struct WeightSnapshotCard: View {
         cachedWeightUnit = result.4
         cachedGoalWeightDisplay = result.5
 
+        // The snapshot is always a week view (week graph + "week average" headline), so the range
+        // label always shows the week — never the dashboard's month/year period. Matches BPM/baby.
         let calendar = Calendar.current
-        let today = Date()
-        switch selectedPeriod {
-        case .week:
-            if let bounds = result.0?.bounds {
-                let displayEnd = calendar.date(byAdding: .day, value: -1, to: bounds.end) ?? bounds.end
-                cachedDateRangeLabel = Self.weekDateRangeLabel(start: bounds.start, displayEnd: displayEnd)
-            } else {
-                let daysToSunday = calendar.component(.weekday, from: today) - 1
-                let start = calendar.startOfDay(for: calendar.date(byAdding: .day, value: -daysToSunday, to: today) ?? today)
-                let displayEnd = calendar.date(byAdding: .day, value: 6, to: start) ?? today
-                cachedDateRangeLabel = Self.weekDateRangeLabel(start: start, displayEnd: displayEnd)
-            }
-        case .month:
-            let fmt = DateFormatter()
-            fmt.dateFormat = "MMM yyyy"
-            cachedDateRangeLabel = fmt.string(from: today).lowercased()
-        case .year, .total:
-            let fmt = DateFormatter()
-            fmt.dateFormat = "yyyy"
-            cachedDateRangeLabel = fmt.string(from: today)
+        if let bounds = result.0?.bounds {
+            let displayEnd = calendar.date(byAdding: .day, value: -1, to: bounds.end) ?? bounds.end
+            cachedDateRangeLabel = DashboardSnapshotLabel.weekRange(start: bounds.start, displayEnd: displayEnd)
+        } else {
+            let today = Date()
+            let daysToSunday = calendar.component(.weekday, from: today) - 1
+            let start = calendar.startOfDay(for: calendar.date(byAdding: .day, value: -daysToSunday, to: today) ?? today)
+            let displayEnd = calendar.date(byAdding: .day, value: 6, to: start) ?? today
+            cachedDateRangeLabel = DashboardSnapshotLabel.weekRange(start: start, displayEnd: displayEnd)
         }
         hasCacheLoaded = true
     }
@@ -158,7 +153,7 @@ struct WeightSnapshotCard: View {
 
             HStack(alignment: .lastTextBaseline, spacing: Layout.unitSpacing) {
                 Text(cachedWeekAverage == "--" ? "000.0" : cachedWeekAverage)
-                    .fontOpenSans(.heading1)
+                    .fontOpenSans(.heading2)
                     .fontWeight(.heavy)
                     .foregroundColor(theme.brandWgPrimary)
 
@@ -177,6 +172,10 @@ struct WeightSnapshotCard: View {
         let xDomain = weekXDomain()
         let yRange = yScale.domain
         let yTickValues = yScale.ticks
+        // Empty + no goal → hide the y-axis NUMBERS but keep the reserved column via a fixed-width
+        // placeholder, so all three empty snapshot cards show the same trailing gap. A set goal keeps
+        // the real axis so the goal chip has context, mirroring the main graph's `hidesYAxis`. MOB-1591.
+        let hideYAxisNumbers = cachedWeekAverage == "--" && cachedGoalWeightDisplay == nil
 
         return Chart(displayWeights, id: \.0) { date, weight in
             LineMark(
@@ -211,11 +210,21 @@ struct WeightSnapshotCard: View {
         }
         .chartYAxis {
             AxisMarks(position: .trailing, values: yTickValues) { value in
-                AxisValueLabel {
+                // `horizontalSpacing: 0` removes the default gap Swift Charts inserts between the plot
+                // and the label box, so the fixed-width label column starts flush at the plot edge. That
+                // makes the reserved column exactly `yAxisLabelWidth` (identical across all three cards)
+                // AND lets the goal chip's `plotWidth + yAxisLabelWidth/2` land dead-centre on the number
+                // column — parity with the main graph, which anchors its chip from the chart's trailing
+                // edge instead. MOB-1591.
+                AxisValueLabel(horizontalSpacing: 0) {
                     if let val = value.as(Double.self) {
-                        Text(yAxisFormatter.formatYAxisTickLabel(val))
+                        // Empty → transparent fixed-width placeholder; keeps the reserved column so the
+                        // gap matches the other cards, with the arbitrary fallback numbers hidden.
+                        Text(hideYAxisNumbers ? DashboardSnapshotStyle.emptyYAxisPlaceholder : yAxisFormatter.formatYAxisTickLabel(val))
                             .font(.caption)
                             .foregroundColor(theme.textSubheading)
+                            .frame(width: DashboardSnapshotStyle.yAxisLabelWidth, alignment: .center)
+                            .opacity(hideYAxisNumbers ? 0 : 1)
                     }
                 }
             }
@@ -246,8 +255,13 @@ struct WeightSnapshotCard: View {
                     label: yAxisFormatter.formatYAxisTickLabel(goal),
                     theme: theme
                 )
+                // Center the chip ON the trailing y-axis number column. With `horizontalSpacing: 0`
+                // on the axis label (above), the fixed-width label box starts flush at the plot's right
+                // edge, so `plotWidth + yAxisLabelWidth/2` is the box centre — the chip sits exactly on
+                // the number, reading as an on-axis goal marker rather than straddling the plot border.
+                // Parity with the main graph's `width - yAxisLabelWidth/2` placement. MOB-1591.
                 .position(
-                    x: geo.size.width,
+                    x: geo.size.width + DashboardSnapshotStyle.yAxisLabelWidth / 2,
                     y: goalChipY(goal: goal, yRange: yRange, plotHeight: geo.size.height)
                 )
             }
@@ -305,26 +319,6 @@ struct WeightSnapshotCard: View {
 
     private func convertStoredWeightToDisplay(_ storedWeight: Double) -> Double {
         Self.convertStoredWeightToDisplay(storedWeight, unit: cachedWeightUnit)
-    }
-
-    private static func weekDateRangeLabel(start: Date, displayEnd: Date) -> String {
-        let calendar = Calendar.current
-        let sy = calendar.component(.year, from: start)
-        let ey = calendar.component(.year, from: displayEnd)
-        let sm = calendar.component(.month, from: start)
-        let em = calendar.component(.month, from: displayEnd)
-        let startFmt = DateFormatter()
-        startFmt.dateFormat = "MMM d"
-        let endFmt = DateFormatter()
-        endFmt.dateFormat = "MMM d, yyyy"
-        if sy != ey {
-            return "\(endFmt.string(from: start)) - \(endFmt.string(from: displayEnd))".lowercased()
-        }
-        if sm != em {
-            return "\(startFmt.string(from: start)) - \(endFmt.string(from: displayEnd))".lowercased()
-        }
-        let endDay = calendar.component(.day, from: displayEnd)
-        return "\(startFmt.string(from: start)) - \(endDay), \(sy)".lowercased()
     }
 
     private nonisolated static func convertStoredWeightToDisplay(_ storedWeight: Int, unit: WeightUnit) -> Double {

@@ -39,6 +39,45 @@ struct DashboardSnapshotChartWindow {
     }
 }
 
+/// Shared date-range label for the snapshot cards (weight / BPM / baby). Single-sourced here so the
+/// three cards can't drift in format — they previously each carried a private copy.
+enum DashboardSnapshotLabel {
+    /// Formats a week window's date range, e.g. "jul 19 - jul 25, 2026" (same month) or
+    /// "jun 28 - jul 4, 2026" (month crossing). The end date always repeats the month —
+    /// never the collapsed "jul 19 - 25, 2026" form. `displayEnd` is the last *visible* day
+    /// (inclusive), i.e. the exclusive window end minus one day.
+    static func weekRange(start: Date, displayEnd: Date, calendar: Calendar = .current) -> String {
+        let startYear = calendar.component(.year, from: start)
+        let endYear = calendar.component(.year, from: displayEnd)
+        let startFmt = DateFormatter()
+        startFmt.dateFormat = "MMM d"
+        let endFmt = DateFormatter()
+        endFmt.dateFormat = "MMM d, yyyy"
+        // Cross-year → year on both ends. Otherwise → "MMM d - MMM d, yyyy" (month always repeated).
+        if startYear != endYear {
+            return "\(endFmt.string(from: start)) - \(endFmt.string(from: displayEnd))".lowercased()
+        }
+        return "\(startFmt.string(from: start)) - \(endFmt.string(from: displayEnd))".lowercased()
+    }
+}
+
+/// Rendering constants shared by the snapshot cards (weight / BPM / baby).
+enum DashboardSnapshotStyle {
+    /// Transparent y-axis placeholder rendered in the empty state. The three cards' real fallback ticks
+    /// differ in digit count (weight "100" / BPM "200" / baby "30"), which sized their reserved trailing
+    /// y-axis columns differently. Rendering this fixed 3-digit placeholder (hidden via opacity, so the
+    /// column width is still reserved) makes the empty-state gap identical across all three cards.
+    static let emptyYAxisPlaceholder = "000"
+
+    /// Fixed width reserved for the trailing y-axis tick-label column. The label `Text` is boxed to this
+    /// width so the plot area is the EXACT same width whether the numbers are shown or hidden, and
+    /// identical across the weight / BPM / baby cards. Without a fixed box Swift Charts sizes the column
+    /// to its widest label — and the cards' ticks differ in digit count ("104" / "200" / "30") and even
+    /// glyph width (proportional digits) — which drifted each card's plot width and each card's
+    /// empty-vs-populated width. Mirrors the main graph's `yAxisLabelWidth` box. MOB-1591.
+    static let yAxisLabelWidth: CGFloat = 40
+}
+
 enum DashboardChartScaleProvider {
     static func weightScale(
         operations: [BathScaleWeightSummary],

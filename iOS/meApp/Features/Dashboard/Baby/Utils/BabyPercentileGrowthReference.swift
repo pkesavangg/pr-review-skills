@@ -22,11 +22,20 @@ enum BabyPercentileGrowthReference {
     /// Divisor to convert the JSON decigram values to kilograms.
     static let decigramsToKgFactor: Double = 10_000.0
 
+    /// Millimetres per inch — the length reference JSON is stored in mm (Smart Baby's base unit); the
+    /// dashboard plots inches, so curves divide by this and a reading multiplies by it before the z-score.
+    static let millimetersPerInch: Double = 25.4
+
     enum JSONFile {
         static let boyWeightMeasurements = "BoyWeightDecigrams"
         static let girlWeightMeasurements = "GirlWeightDecigrams"
         static let boyWeightPercentileLines = "BoyWeightDecigramsLine"
         static let girlWeightPercentileLines = "GirlWeightDecigramsLine"
+        // MOB-1516: WHO length-for-age tables (mm), converted from Smart Baby's `*LengthMM(.Line).csv`.
+        static let boyLengthMeasurements = "BoyLengthMM"
+        static let girlLengthMeasurements = "GirlLengthMM"
+        static let boyLengthPercentileLines = "BoyLengthMMLine"
+        static let girlLengthPercentileLines = "GirlLengthMMLine"
         static let zTable = "ZTable"
         static let measurementsSubfolder = "measurements"
         static let percentileLinesSubfolder = "percentileLines"
@@ -60,6 +69,18 @@ enum BabyPercentileGrowthReference {
     )
     private static let girlMeasurementEntries = loadMeasurementEntries(
         named: JSONFile.girlWeightMeasurements
+    )
+    private static let boyLengthPercentileEntries = loadPercentileEntries(
+        named: JSONFile.boyLengthPercentileLines
+    )
+    private static let girlLengthPercentileEntries = loadPercentileEntries(
+        named: JSONFile.girlLengthPercentileLines
+    )
+    private static let boyLengthMeasurementEntries = loadMeasurementEntries(
+        named: JSONFile.boyLengthMeasurements
+    )
+    private static let girlLengthMeasurementEntries = loadMeasurementEntries(
+        named: JSONFile.girlLengthMeasurements
     )
 
     // MARK: - Bundle Helpers
@@ -109,6 +130,14 @@ enum BabyPercentileGrowthReference {
         isMaleReference(biologicalSex) ? boyMeasurementEntries : girlMeasurementEntries
     }
 
+    private static func lengthPercentileLineEntries(biologicalSex: String?) -> [BabyPercentileLineEntry] {
+        isMaleReference(biologicalSex) ? boyLengthPercentileEntries : girlLengthPercentileEntries
+    }
+
+    private static func lengthMeasurementEntries(biologicalSex: String?) -> [BabyPercentileMeasurementEntry] {
+        isMaleReference(biologicalSex) ? boyLengthMeasurementEntries : girlLengthMeasurementEntries
+    }
+
     /// `true` when no sex-specific WHO reference applies: sex is `"private"` or unset.
     /// Parity with Smart Baby `percentile.service.ts`, which returns `null` / `[]` for
     /// private — a withheld sex is never silently mapped to the boys' or girls' tables.
@@ -132,7 +161,45 @@ enum BabyPercentileGrowthReference {
         calendar: Calendar = .current
     ) -> [BabyPercentileChartPoint] {
         guard !isSexWithheld(biologicalSex) else { return [] }
-        let entries = loadPercentileEntries(biologicalSex: biologicalSex)
+        return chartPoints(
+            entries: loadPercentileEntries(biologicalSex: biologicalSex),
+            birthday: birthday,
+            dateRange: dateRange,
+            convertToDisplay: convertDecigramsToDisplay,
+            calendar: calendar
+        )
+    }
+
+    /// MOB-1516: WHO length-for-age percentile curves. Identical shape to `percentileChartPoints` but reads
+    /// the length tables (mm) and converts each mm value to the display unit (inches) via
+    /// `convertMillimetersToDisplay`. Parity with Smart Baby's `*LengthMMLine.csv` curves.
+    static func lengthPercentileChartPoints(
+        biologicalSex: String?,
+        birthday: Date,
+        dateRange: ClosedRange<Date>,
+        convertMillimetersToDisplay: (Int) -> Double,
+        calendar: Calendar = .current
+    ) -> [BabyPercentileChartPoint] {
+        guard !isSexWithheld(biologicalSex) else { return [] }
+        return chartPoints(
+            entries: lengthPercentileLineEntries(biologicalSex: biologicalSex),
+            birthday: birthday,
+            dateRange: dateRange,
+            convertToDisplay: convertMillimetersToDisplay,
+            calendar: calendar
+        )
+    }
+
+    /// Shared curve builder for weight + length: filter the reference rows to the visible window (+ an
+    /// 8-day boundary each side for line continuity), downsample to ~150 rows, map each day-of-life offset
+    /// to a calendar date, and emit one display-converted point per percentile line.
+    private static func chartPoints(
+        entries: [BabyPercentileLineEntry],
+        birthday: Date,
+        dateRange: ClosedRange<Date>,
+        convertToDisplay: (Int) -> Double,
+        calendar: Calendar
+    ) -> [BabyPercentileChartPoint] {
         guard !entries.isEmpty else { return [] }
 
         let startDay = max(0, calendar.dateComponents([.day], from: birthday, to: dateRange.lowerBound).day ?? 0)
@@ -162,7 +229,7 @@ enum BabyPercentileGrowthReference {
             for line in lines {
                 points.append(BabyPercentileChartPoint(
                     date: date,
-                    value: convertDecigramsToDisplay(entry.value(for: line)),
+                    value: convertToDisplay(entry.value(for: line)),
                     line: line
                 ))
             }
@@ -189,6 +256,27 @@ enum BabyPercentileGrowthReference {
         return percentile(fromZScore: zScore)
     }
 
+    /// MOB-1516: WHO length-for-age percentile for a single reading. Mirrors `weightPercentile` but reads the
+    /// length M/SD tables (mm) and takes the reading in mm (the dashboard passes inches × `millimetersPerInch`).
+    static func lengthPercentile(
+        biologicalSex: String?,
+        birthday: Date,
+        date: Date,
+        lengthMillimeters: Double,
+        calendar: Calendar = .current
+    ) -> Int? {
+        guard !isSexWithheld(biologicalSex) else { return nil }
+        let dayOfLife = max(0, calendar.dateComponents([.day], from: birthday, to: date).day ?? 0)
+        let entries = lengthMeasurementEntries(biologicalSex: biologicalSex)
+        guard let measurement = interpolatedMeasurement(forDayOfLife: dayOfLife, entries: entries),
+              measurement.standardDeviation > AppConstants.Precision.doubleEqualityEpsilon else {
+            return nil
+        }
+
+        let zScore = (lengthMillimeters - measurement.mean) / measurement.standardDeviation
+        return percentile(fromZScore: zScore)
+    }
+
     // MARK: - Date Formatting
 
     /// Date shown next to the selected point on Smart Baby’s graph (`focusPoint` in `graph.service.ts`):
@@ -211,6 +299,16 @@ enum BabyPercentileGrowthReference {
         entries: [BabyPercentileMeasurementEntry]
     ) -> BabyInterpolatedMeasurement? {
         guard !entries.isEmpty else { return nil }
+        // Parity with Smart Baby: it only yields a percentile when a reference row is within ±window days of
+        // the age (its `dataResolution` filter); past the table it returns −1 (no %). Reject ages outside the
+        // covered range so we never EXTRAPOLATE off the first/last row. (The tables span 0–~20y, so this is a
+        // safety/parity guard, not a range a real baby age reaches.)
+        let days = entries.map(\.day)
+        guard let firstDay = days.min(), let lastDay = days.max(),
+              dayOfLife >= firstDay - measurementInterpolationDayWindow,
+              dayOfLife <= lastDay + measurementInterpolationDayWindow else {
+            return nil
+        }
         if let exact = entries.first(where: { $0.day == dayOfLife }) {
             return BabyInterpolatedMeasurement(
                 mean: Double(exact.meanDecigrams),

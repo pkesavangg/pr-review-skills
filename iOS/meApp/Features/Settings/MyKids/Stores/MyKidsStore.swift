@@ -11,6 +11,7 @@ final class MyKidsStore: ObservableObject {
     @Injector private var babyService: BabyServiceProtocol
     @Injector private var accountService: AccountServiceProtocol
     @Injector private var notificationService: NotificationHelperServiceProtocol
+    @Injector private var productTypeStore: ProductTypeStoreProtocol
 
     @Published var babies: [Baby] = []
     @Published var editingBaby: Baby?
@@ -127,6 +128,10 @@ final class MyKidsStore: ObservableObject {
                     birthWeightOz: weightOz
                 )
                 lastSavedBabyId = newBaby.id
+                // Switch the active product to the newly added baby (MOB-686): adding a product
+                // makes it the selected one. Robust to rebuild timing — select() sets the item
+                // directly and rebuild() reconciles it by id once babiesPublisher fires.
+                productTypeStore.selectLastAdded(.baby(profile: newBaby.toBabyProfile()))
             }
             notificationService.dismissLoader()
             isShowingAddBaby = false
