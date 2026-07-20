@@ -97,6 +97,20 @@ enum ProductSelection: Equatable, Hashable, Identifiable {
         }
     }
 
+    /// Lower bound for the baby entry/edit date picker. Dates before the selected baby's
+    /// birthday are disabled (greyed out, non-tappable) in the graphical picker so an entry
+    /// can't be dated before the baby was born — no validation error is shown (MOB-1567).
+    /// Falls back to the historical default (Jan 1, 2000) for a non-baby selection or when the
+    /// profile has no birthday, and ignores a birthday in the future so the picker range stays
+    /// valid (`start <= end`). Single source of truth for both `EntryStore` and `HistoryStore`.
+    var babyEntryMinimumDate: Date {
+        guard case .baby(let profile) = self,
+              let birthday = profile.birthday,
+              birthday <= Date()
+        else { return AppConstants.Entry.babyDatePickerMinimum }
+        return birthday
+    }
+
     /// The dashboard entry type this selection maps to.
     var entryType: EntryType {
         switch self {

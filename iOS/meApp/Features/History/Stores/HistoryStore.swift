@@ -70,6 +70,13 @@ final class HistoryStore: ObservableObject {
         return nil
     }
 
+    /// Lower bound for the baby history edit date picker — see
+    /// `ProductSelection.babyEntryMinimumDate` (birthday-anchored, Jan 1, 2000 fallback,
+    /// ignores future birthdays; MOB-1567).
+    var babyEntryMinimumDate: Date {
+        productTypeStore.selectedItem.babyEntryMinimumDate
+    }
+
     // MARK: - UI Flags
     @Published var isEmptyState: Bool = false
 
@@ -990,15 +997,16 @@ final class HistoryStore: ObservableObject {
                     let decigrams = baby.weight
                     let source = baby.source
                     let displayUnit: ConversionTools.BabyDisplayUnit = metric ? .kg : .lbOz
-                    // Scale graduation snaps a value to the physical scale's resolution
-                    // (e.g. 0.2 oz in the 18–25 lb band), which rounds a typed 9.9 oz to 10.0.
-                    // Only device/scale readings should be graduated — a manually-typed entry
-                    // (nil/"manual" source) must display exactly what the user entered.
-                    let graduatedDecigrams = EntrySource.isManualEntry(source)
-                        ? decigrams
-                        : ConversionTools.convertToDisplayWeightBase(
-                            decigrams: decigrams, source: source, unit: displayUnit, isBabyScaleEntry: true
-                        )
+                    // Graduation rounding matches a physical scale's LCD and must ONLY apply to
+                    // device-synced readings. Manual entries carry a nil/"manual" source —
+                    // graduating those would round a hand-typed value (e.g. 5.5 oz → 6.0 oz on the
+                    // 25 lb+ 2-oz band). Keep manual values exact.
+                    let graduatedDecigrams = ConversionTools.convertToDisplayWeightBase(
+                        decigrams: decigrams,
+                        source: source,
+                        unit: displayUnit,
+                        isBabyScaleEntry: !EntrySource.isManualEntry(source)
+                    )
                     let lbsOz = ConversionTools.convertBabyDecigramsToLbsOz(graduatedDecigrams)
                     let kg = ConversionTools.convertBabyDecigramsToKg(graduatedDecigrams)
                     let lbDecimal = ConversionTools.convertBabyDecigramsToLb(graduatedDecigrams)
@@ -1046,13 +1054,14 @@ final class HistoryStore: ObservableObject {
     private func formatBabyWeightDisplay(decigrams: Int, source: String? = nil, units: MeasurementUnits) -> String {
         guard decigrams > 0 else { return "--" }
         let displayUnit: ConversionTools.BabyDisplayUnit = units == .metric ? .kg : .lbOz
-        // Manual entries (nil/"manual" source) are shown exactly as typed — only genuine
-        // device/scale readings get snapped to the scale's graduation.
-        let graduatedDecigrams = EntrySource.isManualEntry(source)
-            ? decigrams
-            : ConversionTools.convertToDisplayWeightBase(
-                decigrams: decigrams, source: source, unit: displayUnit, isBabyScaleEntry: true
-            )
+        // Only graduate device-synced readings — manual entries (nil/"manual" source) and the
+        // day-summary average (source nil) must display the exact stored value, not a scale LCD step.
+        let graduatedDecigrams = ConversionTools.convertToDisplayWeightBase(
+            decigrams: decigrams,
+            source: source,
+            unit: displayUnit,
+            isBabyScaleEntry: !EntrySource.isManualEntry(source)
+        )
         switch units {
         case .metric:
             let kg = ConversionTools.convertBabyDecigramsToKg(graduatedDecigrams)
@@ -1064,6 +1073,95 @@ final class HistoryStore: ObservableObject {
             let lbsOz = ConversionTools.convertBabyDecigramsToLbsOz(graduatedDecigrams)
             return "\(lbsOz.lbs) \(HistoryListStrings.lb) \(String(format: "%.1f", lbsOz.oz)) \(HistoryListStrings.oz)"
         }
+    }
+
+    /// Local-day ids ("yyyy-MM-dd") for every birthday anniversary from the baby's date of birth
+    /// up to today, newest first — 1:1 with the Baby app's `getBirthdays` (MOB-1450). Leap-year
+    /// birthdays fall back to the calendar's normal Feb-29 handling.
+    nonisolated static func birthdayDayIds(
+        dob: Date, formatter: DateFormatter, now: Date = Date(), calendar: Calendar = .current
+    ) -> [String] {
+        let dobStart = calendar.startOfDay(for: dob)
+        guard dobStart <= now else { return [] }
+        var ids: [String] = []
+        var year = 0
+        while year <= 200 { // safety bound; a baby's history never spans 200 years
+            guard let anniversary = calendar.date(byAdding: .year, value: year, to: dobStart),
+                  calendar.startOfDay(for: anniversary) <= now else { break }
+            ids.append(formatter.string(from: anniversary))
+            year += 1
+        }
+        return ids.reversed()
+    }
+
+    /// Builds the synthetic birthday row (MOB-1450), highlighted purple. On the date of birth
+    /// (`isDOB`) each metric shows the profile's recorded birth weight/length with its day-0
+    /// percentile; later birthdays (and the DOB when no birth data was recorded) show a
+    /// unit-formatted dash placeholder ("-- lb -- oz", "-- in", "-- %"). No real entry is created.
+    private func birthdayPlaceholderDay(
+        dayId: String, birthday: Date, isDOB: Bool, profile: BabyProfile, units: MeasurementUnits
+    ) -> BabyHistoryDay {
+        let metric = units == .metric
+        // Manual (nil-source) formatting so a hand-entered oz is not rounded to a scale step.
+        let weightDecigrams: Int = {
+            guard isDOB, profile.birthWeightLbs != nil || profile.birthWeightOz != nil else { return 0 }
+            return ConversionTools.convertBabyLbsOzToDecigrams(
+                lbs: Int(profile.birthWeightLbs ?? 0), oz: profile.birthWeightOz ?? 0
+            )
+        }()
+        let lengthMm = isDOB ? (profile.birthLengthInches.map { ConversionTools.convertBabyInchesToMm($0) } ?? 0) : 0
+        let lbsOz = ConversionTools.convertBabyDecigramsToLbsOz(weightDecigrams)
+        let lengthInches = ConversionTools.convertBabyMmToInches(lengthMm)
+        let weightPct = weightDecigrams > 0
+            ? BabyWeightPercentileCalculator.calculatePercentile(
+                weightDecigrams: weightDecigrams,
+                biologicalSex: profile.biologicalSex,
+                birthday: profile.birthday,
+                entryDate: birthday
+            )
+            : -1
+        let lengthPct = lengthMm > 0
+            ? BabyWeightPercentileCalculator.calculateLengthPercentile(
+                lengthMm: lengthMm,
+                biologicalSex: profile.biologicalSex,
+                birthday: profile.birthday,
+                entryDate: birthday
+            )
+            : -1
+        return BabyHistoryDay(
+            id: dayId,
+            entryCount: 0,
+            weightLbs: lbsOz.lbs,
+            weightOz: lbsOz.oz,
+            weightKg: ConversionTools.convertBabyDecigramsToKg(weightDecigrams),
+            weightLb: ConversionTools.convertBabyDecigramsToLb(weightDecigrams),
+            lengthInches: lengthInches,
+            lengthCm: ConversionTools.convertBabyMmToCm(lengthMm),
+            percentile: weightPct,
+            lengthPercentile: lengthPct,
+            weightDisplay: weightDecigrams > 0
+                ? formatBabyWeightDisplay(decigrams: weightDecigrams, units: units)
+                : Self.placeholderWeightDisplay(units: units),
+            lengthDisplay: lengthMm > 0
+                ? formatBabyLengthDisplay(mm: lengthMm, isMetric: metric)
+                : Self.placeholderLengthDisplay(isMetric: metric),
+            isBirthday: true,
+            isBirthdayPlaceholder: true
+        )
+    }
+
+    /// Unit-formatted dash placeholder for a weight with no value (e.g. "-- lb -- oz", "-- kg").
+    private static func placeholderWeightDisplay(units: MeasurementUnits) -> String {
+        switch units {
+        case .metric: return "-- \(HistoryListStrings.kg)"
+        case .imperialLbDecimal: return "-- \(HistoryListStrings.lb)"
+        case .imperialLbOz: return "-- \(HistoryListStrings.lb) -- \(HistoryListStrings.oz)"
+        }
+    }
+
+    /// Unit-formatted dash placeholder for a length with no value (e.g. "-- in", "-- cm").
+    private static func placeholderLengthDisplay(isMetric: Bool) -> String {
+        isMetric ? "-- \(HistoryListStrings.cm)" : "-- \(HistoryListStrings.inUnit)"
     }
 
     /// Formats baby length in millimeters as a display string based on unit preference.
@@ -1150,9 +1248,10 @@ final class HistoryStore: ObservableObject {
 
     // MARK: - Baby Entries
 
-    /// Baby `create` entries for `profile`. Birth weight/length recorded on the baby profile
-    /// are intentionally NOT injected as a synthetic history entry — history reflects only
-    /// real recorded entries.
+    /// Baby `create` entries for `profile`. The baby's date of birth is no longer surfaced as a
+    /// synthetic "birth measurement" row — instead the birthday date is rendered as a
+    /// non-tappable placeholder (dash values, 0 entries) by `mapBabyEntriesToWeeks` until a real
+    /// measurement is recorded on that date (MOB-1567).
     private func babyCreateEntries(from all: [EntrySnapshot], profile: BabyProfile?) -> [EntrySnapshot] {
         all.filter {
             $0.entryType == EntryType.baby.rawValue
@@ -1176,7 +1275,10 @@ final class HistoryStore: ObservableObject {
         let birthdayComponents: DateComponents? = profile?.birthday.map {
             Calendar.current.dateComponents([.month, .day], from: $0)
         }
-        let days: [BabyHistoryDay] = grouped.map { dayId, dayEntries in
+        let dayFmt = DateFormatter()
+        dayFmt.dateFormat = "yyyy-MM-dd"
+        dayFmt.timeZone = TimeZone.current
+        var days: [BabyHistoryDay] = grouped.map { dayId, dayEntries in
             let count = dayEntries.count
             let weights = dayEntries.compactMap { $0.babyEntry?.weight }
             let avgWeight = weights.isEmpty ? 0 : weights.reduce(0, +) / weights.count
@@ -1187,17 +1289,25 @@ final class HistoryStore: ObservableObject {
             let lbDecimal = ConversionTools.convertBabyDecigramsToLb(avgWeight)
             let lengthInches = ConversionTools.convertBabyMmToInches(avgMm)
             let lengthCm = ConversionTools.convertBabyMmToCm(avgMm)
-            let pct: Int = {
-                let fmt = DateFormatter()
-                fmt.dateFormat = "yyyy-MM-dd"
-                let entryDate = fmt.date(from: dayId) ?? Date()
-                return BabyWeightPercentileCalculator.calculatePercentile(
-                    weightDecigrams: avgWeight,
+            let entryDate = dayFmt.date(from: dayId) ?? Date()
+            let pct = BabyWeightPercentileCalculator.calculatePercentile(
+                weightDecigrams: avgWeight,
+                biologicalSex: profile?.biologicalSex,
+                birthday: profile?.birthday,
+                entryDate: entryDate
+            )
+            // Length-for-age percentile shown beside the weight percentile in the week row,
+            // scored against the WHO length reference data with the same LMS method as weight —
+            // 1:1 with the Baby app (MOB-1567). `-1` renders as "--" when no length is recorded
+            // or sex is withheld.
+            let lengthPct: Int = avgMm > 0
+                ? BabyWeightPercentileCalculator.calculateLengthPercentile(
+                    lengthMm: avgMm,
                     biologicalSex: profile?.biologicalSex,
                     birthday: profile?.birthday,
                     entryDate: entryDate
                 )
-            }()
+                : -1
             return BabyHistoryDay(
                 id: dayId,
                 entryCount: count,
@@ -1208,11 +1318,30 @@ final class HistoryStore: ObservableObject {
                 lengthInches: lengthInches,
                 lengthCm: lengthCm,
                 percentile: pct,
+                lengthPercentile: lengthPct,
                 weightDisplay: self.formatBabyWeightDisplay(decigrams: avgWeight, units: units),
                 lengthDisplay: self.formatBabyLengthDisplay(mm: avgMm, isMetric: metric),
                 isBirthday: Self.isBirthday(dayId: dayId, birthdayComponents: birthdayComponents)
             )
-        }.sorted { $0.id > $1.id }
+        }
+
+        // Birthday rows (MOB-1450) — 1:1 with the Baby app's getBirthdays: every birthday
+        // anniversary between the DOB and today gets a row (Week 1, 53, 105, …). A birthday with
+        // real logged entries stays a normal row (already flagged via the anniversary-aware
+        // `isBirthday`). A birthday with no entry becomes a synthetic row: the profile's birth
+        // weight/length on the DOB, or dash placeholders on later birthdays. No real DB entry is
+        // ever created for these — they are display-only (MOB-1450 Q1: no auto-entry on baby add).
+        if let profile, let birthday = profile.birthday {
+            let dobDayId = dayFmt.string(from: birthday)
+            let existingDayIds = Set(days.map { $0.id })
+            for dayId in Self.birthdayDayIds(dob: birthday, formatter: dayFmt) where !existingDayIds.contains(dayId) {
+                days.append(self.birthdayPlaceholderDay(
+                    dayId: dayId, birthday: birthday, isDOB: dayId == dobDayId, profile: profile, units: units
+                ))
+            }
+        }
+
+        days.sort { $0.id > $1.id }
 
         // Group days into weeks anchored to the baby's date of birth — 1:1 with the Baby app:
         //   week = (whole days between birthday and entry day) / 7 + 1

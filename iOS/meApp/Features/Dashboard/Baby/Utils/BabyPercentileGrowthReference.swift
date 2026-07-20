@@ -25,6 +25,8 @@ enum BabyPercentileGrowthReference {
     enum JSONFile {
         static let boyWeightMeasurements = "BoyWeightDecigrams"
         static let girlWeightMeasurements = "GirlWeightDecigrams"
+        static let boyLengthMeasurements = "BoyLengthMM"
+        static let girlLengthMeasurements = "GirlLengthMM"
         static let boyWeightPercentileLines = "BoyWeightDecigramsLine"
         static let girlWeightPercentileLines = "GirlWeightDecigramsLine"
         static let zTable = "ZTable"

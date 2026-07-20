@@ -79,6 +79,12 @@ final class EntryStore: ObservableObject {
         return weightPresent && weightValid && lengthValid && babyForm.date.isValid
     }
 
+    /// Lower bound for the baby entry date picker — see `ProductSelection.babyEntryMinimumDate`
+    /// (birthday-anchored, Jan 1, 2000 fallback, ignores future birthdays; MOB-1567).
+    var babyEntryMinimumDate: Date {
+        productTypeStore.selectedItem.babyEntryMinimumDate
+    }
+
     var maxSelectableTime: Date {
         if Calendar.current.isDateInToday(manualEntryForm.date.value) {
             let now = Date()

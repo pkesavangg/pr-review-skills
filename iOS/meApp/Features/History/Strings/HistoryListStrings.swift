@@ -43,6 +43,16 @@ enum HistoryListStrings {
     static let ounces = "ounces"
     static let inches = "inches"
 
+    /// Week-history row sub-label pairing the metric with its percentile, e.g. "weight (50th %)".
+    static func weightWithPercentile(_ percentileText: String) -> String {
+        "\(weight) (\(percentileText) %)"
+    }
+
+    /// Week-history row sub-label pairing the metric with its percentile, e.g. "length (60th %)".
+    static func lengthWithPercentile(_ percentileText: String) -> String {
+        "\(length) (\(percentileText) %)"
+    }
+
     // Edit sheet
     static let editReading = "Edit Reading"
     static let date = "DATE"
