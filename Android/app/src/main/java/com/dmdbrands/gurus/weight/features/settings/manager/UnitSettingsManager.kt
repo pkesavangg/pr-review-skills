@@ -233,7 +233,7 @@ constructor(
   }
 
   // [label] is supplied per section: My Weight uses [WeightUnit.unit] (adult
-  // height "& ft"), My Kids uses [WeightUnit.babyUnit] (baby length "& in").
+  // height "& feet"), My Kids uses [WeightUnit.babyUnit] (baby length "& in").
   private fun WeightUnit.toRadioOption(label: String): RadioButtonOption<String> =
     RadioButtonOption(id = this.value, label = label)
 }

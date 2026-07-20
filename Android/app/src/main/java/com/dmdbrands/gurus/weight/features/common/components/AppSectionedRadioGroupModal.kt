@@ -240,7 +240,7 @@ private fun AppSectionedRadioGroupModalPreview() {
           key = "myWeight",
           label = "My Weight",
           options = listOf(
-            RadioButtonOption(id = "lb", label = "lb & ft"),
+            RadioButtonOption(id = "lb", label = "lb & feet"),
             RadioButtonOption(id = "kg", label = "kg & cm"),
           ),
           selectedItem = "lb",

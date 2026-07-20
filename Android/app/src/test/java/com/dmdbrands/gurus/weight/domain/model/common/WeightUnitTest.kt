@@ -49,11 +49,12 @@ class WeightUnitTest {
   }
 
   // Unit Type dialog labels — canonical set (MOB-667 / MOB-1250): "&" separates weight
-  // from length, singular "lb", compound weight hyphenated "lb-oz", adult height "ft"
-  // (My Weight / [unit]) vs baby length "in" (My Kids / [babyUnit]).
+  // from length, singular "lb", compound weight hyphenated "lb-oz", adult height "feet"
+  // (My Weight / [unit]) vs baby length "in" (My Kids / [babyUnit]). Adult height reads
+  // "feet" (not "ft") to match iOS and the approved mock (MOB-1597, recurrence of MOB-501).
   @Test
-  fun `LB unit display is lb ampersand ft`() {
-    assertThat(WeightUnit.LB.unit).isEqualTo("lb & ft")
+  fun `LB unit display is lb ampersand feet`() {
+    assertThat(WeightUnit.LB.unit).isEqualTo("lb & feet")
   }
 
   @Test

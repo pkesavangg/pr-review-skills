@@ -40,8 +40,8 @@ object RadioGroupModalStrings {
     // Unit Type Options
     object UnitType {
         // Canonical labels (MOB-667 / MOB-1250): "&" separates weight from length,
-        // singular "lb", compound weight hyphenated "lb-oz", adult height "ft" vs baby "in".
-        const val Imperial = "lb & ft"
+        // singular "lb", compound weight hyphenated "lb-oz", adult height "feet" vs baby "in".
+        const val Imperial = "lb & feet"
         const val Metric = "kg & cm"
         const val ImperialBaby = "lb-oz & in"
 
