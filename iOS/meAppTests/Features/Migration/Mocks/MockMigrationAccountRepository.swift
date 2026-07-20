@@ -18,6 +18,7 @@ final class MockMigrationAccountRepository: AccountRepositoryProtocol {
     }
 
     func updateAccount(_ account: Account) async throws {}
+    func deactivateAccounts(exceptId activeId: String) async throws {}
     func deleteAccount(byId id: String) async throws {}
     func deleteAllAccounts() async throws {}
 }

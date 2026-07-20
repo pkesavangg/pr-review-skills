@@ -99,6 +99,20 @@ final class AccountRepository: AccountRepositoryProtocol {
         try saveClearingTokens()
     }
 
+    /// Clears the active flag on every account except the given one, in a single transaction.
+    ///
+    /// MOB-520: replaces `AccountService.makeOtherAccountsInactive`'s per-account save loop
+    /// (one disk commit per other account) with a single scrub-and-save, mirroring
+    /// `activateAccount`. The target account's flag is left untouched — the caller activates it.
+    /// - Parameter activeId: The account ID to keep active.
+    func deactivateAccounts(exceptId activeId: String) async throws {
+        let allAccounts = try loadAllAccounts()
+        for account in allAccounts where account.accountId != activeId {
+            account.isActiveAccount = false
+        }
+        try saveClearingTokens()
+    }
+
     /// Deletes an account by its unique ID.
     /// - Parameter id: The ID of the account to delete.
     func deleteAccount(byId id: String) async throws {

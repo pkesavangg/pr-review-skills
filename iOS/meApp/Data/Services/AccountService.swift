@@ -55,6 +55,12 @@ final class AccountService: AccountServiceProtocol, ObservableObject { // swiftl
 
         $activeAccount
             .dropFirst()
+            // MOB-520: dedupe on account identity so a redundant re-publish of the SAME active
+            // account (a metadata-only refresh) does not re-register the ~8–12 session services,
+            // re-set the theme, or re-run the productTypes migration. A genuine switch changes
+            // accountId (and logout goes to nil), so those still fire. Scoped to this sink only —
+            // other subscribers to `$activeAccount` are unaffected.
+            .removeDuplicates { $0?.accountId == $1?.accountId }
             .sink { [weak self] snapshot in
                 if snapshot == nil {
                     ServiceRegistry.shared.deregisterSessionServices()
@@ -1520,11 +1526,10 @@ final class AccountService: AccountServiceProtocol, ObservableObject { // swiftl
 
     /// Makes all accounts inactive except the specified account.
     private func makeOtherAccountsInactive(except account: Account) async throws {
-        let allAccounts = try await localRepo.fetchAllAccounts()
-        for acc in allAccounts where acc.accountId != account.accountId {
-            acc.isActiveAccount = false
-            try await updateAccountClearingTokens(acc)
-        }
+        // MOB-520: batch the deactivation into a single transaction instead of one
+        // updateAccountClearingTokens (disk commit) per other account. Token scrubbing is
+        // preserved — the repo's save path clears token fields on every account it holds.
+        try await localRepo.deactivateAccounts(exceptId: account.accountId)
     }
 
     // MARK: - Private Helpers
