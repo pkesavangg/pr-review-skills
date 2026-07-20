@@ -12,7 +12,7 @@ There are **two label surfaces**, both driven by the same graph selection state:
 
 | Surface | Source | Shown where |
 |---------|--------|-------------|
-| **Trend-view header label** | `DashboardStore.weightLabel` | The `Text(...)` above the chart in [GraphView.swift:77](../iOS/meApp/Features/Dashboard/Views/Components/GraphView.swift#L77) |
+| **Trend-view header label** | `DashboardStore.weightLabel` | The `Text(...)` above the chart in [GraphView.swift:77](../iOS/meApp/Features/Dashboard/Chart/Views/GraphView.swift#L77) |
 | **Metric Info sheet label** | `DashboardStore.metricInfoDateLabel(for:)` | Date row in `ScaleMetricsView` |
 
 Both answer the same question — *"what does the number on screen represent?"* — and both react to:
@@ -34,7 +34,7 @@ Text(dashboardStore.weightLabel.lowercased())
 ```
 
 `isShowingSelectionCallout` just forwards each period's `showCrosshair` flag
-([GraphView.swift:46](../iOS/meApp/Features/Dashboard/Views/Components/GraphView.swift#L46)).
+([GraphView.swift:46](../iOS/meApp/Features/Dashboard/Chart/Views/GraphView.swift#L46)).
 
 ### `weightLabel` decision order
 
@@ -209,7 +209,7 @@ case is routed through `composeMetricInfoLabel`, which trims and lowercases.
 
 ## Key files
 
-- [GraphView.swift](../iOS/meApp/Features/Dashboard/Views/Components/GraphView.swift) — renders the header label, fades it for the callout.
+- [GraphView.swift](../iOS/meApp/Features/Dashboard/Chart/Views/GraphView.swift) — renders the header label, fades it for the callout.
 - [DashboardStore.swift](../iOS/meApp/Features/Dashboard/Stores/DashboardStore.swift) — `weightLabel`, `selectionLabel`, `computeDisplayWeight`, `weightDisplayLabel`, `selectionPrefix`, `isLatestDaySelected`, `metricInfoDateLabel`.
 - `DashboardGraphManager.swift` — `formatSelectedDate`, interpolation, scroll snapping.
 - Section VMs (`WeekSectionViewModel`, `MonthSectionViewModel`, `YearSectionViewModel`, `TotalSectionViewModel`) — own `showCrosshair` and the per-period snap rules.

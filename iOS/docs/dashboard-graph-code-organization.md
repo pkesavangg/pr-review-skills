@@ -1,6 +1,6 @@
 # Dashboard Graph & Snapshot Code — Organization Plan
 
-**Status:** proposal (no code moved yet)
+**Status:** ✅ **Executed** 2026-07-20 on `MOB-1591-…` (commit `24a97c063`) — 39 pure `git mv` renames, Dev build green, 0 `.pbxproj` edits. Decisions locked as recommended (A1/B1/C1/D1/E1). Doc path references updated in the same follow-up.
 **Scope:** iOS · `meApp/Features/Dashboard`
 **Base:** `develop` (follow-on to MOB-518 + MOB-1516 — the graph is now *one* engine + *three* product recipes; the folder layout hasn't caught up)
 **Author note:** this is a **pure move/rename refactor** — no behaviour change, no logic edits.

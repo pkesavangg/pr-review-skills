@@ -361,7 +361,7 @@ lb→kg→decigrams before the z-score (a rounding step Smart Baby avoids by usi
 To be simplified once the backend stores weight in decigrams.
 
 **Files:** `Baby/Utils/BabyPercentileGrowthReference.swift` · `Baby/Utils/BabyDashboardChartSupport.swift` ·
-`Managers/Graph/GraphSelectionPresentationResolver.swift` · `Baby/Views/Components/BabySnapshotCard.swift` ·
+`Chart/Engine/GraphSelectionPresentationResolver.swift` · `Baby/Views/Components/BabySnapshotCard.swift` ·
 `Resources/Data/BabyGrowthPercentile/**/*LengthMM*.json`.
 
 ## 14. MOB-1591 baby-graph UI/behaviour fixes (2026-07-19)
@@ -402,9 +402,9 @@ A second pass fixed five behaviour/UI gaps found on-device:
    control stays visible without scrolling. The viewport height is published from `DashboardScreen` via the
    `dashboardViewportHeight` environment value and read by `TrendChartHost` (live chart) + `GraphView` (skeleton).
 
-**Files:** `Stores/DashboardStore.swift` · `Views/Components/{TrendChartHost,TrendChartView,GraphView}.swift` ·
-`Models/DashboardChartLayout.swift` · `Views/Screens/DashboardScreen.swift` ·
-`Baby/Utils/BabyWeightPercentileCalculator.swift` · `ViewModels/BabyTrendViewModel.swift`.
+**Files:** `Stores/DashboardStore.swift` · `Chart/Views/{TrendChartHost,TrendChartView,GraphView}.swift` ·
+`Chart/Model/DashboardChartLayout.swift` · `Views/Screens/DashboardScreen.swift` ·
+`Baby/Utils/BabyWeightPercentileCalculator.swift` · `Baby/ViewModels/BabyTrendViewModel.swift`.
 
 ## 15. MOB-1591 baby-graph follow-up round 2 (2026-07-19)
 
@@ -451,10 +451,10 @@ On-device testing of §14 surfaced four more issues:
    and average-of-per-entry-percentiles; last-entry age was chosen for simplicity (no aggregation/model change).
    The approximation only affects a month with multiple readings; single-entry months (the common case) are exact.
 
-**Files:** `Managers/DashboardChartManager.swift` · `Managers/DashboardGraphManager.swift` ·
-`Managers/Graph/{GraphSelectionPresentationResolver,ChartPrep}.swift` · `Stores/DashboardStore.swift` ·
-`Views/Components/{TrendChartHost,TrendChartView}.swift` · `Models/DashboardChartLayout.swift` ·
-`ViewModels/BabyTrendViewModel.swift`.
+**Files:** `Chart/Managers/DashboardChartManager.swift` · `Chart/Managers/DashboardGraphManager.swift` ·
+`Chart/Engine/{GraphSelectionPresentationResolver,ChartPrep}.swift` · `Stores/DashboardStore.swift` ·
+`Chart/Views/{TrendChartHost,TrendChartView}.swift` · `Chart/Model/DashboardChartLayout.swift` ·
+`Baby/ViewModels/BabyTrendViewModel.swift`.
 
 ## 16. MOB-1591 empty-state consistency: snapshots + BPM reference lines (2026-07-19)
 
@@ -473,8 +473,8 @@ y-axis numbers):
   otherwise-empty skeleton (y-axis already hidden via `hidesYAxis`) read as phantom data. They return with the
   first reading.
 
-**Files:** `Managers/Graph/ChartPrep.swift` · `BPM/Views/Components/BpmSnapshotCard.swift` ·
-`Views/Components/WeightSnapshotCard.swift`.
+**Files:** `Chart/Engine/ChartPrep.swift` · `BPM/Views/Components/BpmSnapshotCard.swift` ·
+`Weight/Views/Components/WeightSnapshotCard.swift`.
 
 ## 17. MOB-1591 snapshot empty-state polish: BPM date range, baby grid insets, shared date label (2026-07-19)
 
@@ -499,8 +499,8 @@ Three follow-ups on the empty (no-reading) snapshot cards, from the stacked weig
   `DashboardSnapshotLabel.weekRange(start:displayEnd:)` in `DashboardChartRules.swift`, so the three cards
   can't drift.
 
-**Files:** `Models/DashboardChartRules.swift` (new `DashboardSnapshotLabel`) ·
-`BPM/Views/Components/BpmSnapshotCard.swift` · `Views/Components/WeightSnapshotCard.swift` ·
+**Files:** `Chart/Model/DashboardChartRules.swift` (new `DashboardSnapshotLabel`) ·
+`BPM/Views/Components/BpmSnapshotCard.swift` · `Weight/Views/Components/WeightSnapshotCard.swift` ·
 `Baby/Views/Components/BabySnapshotCard.swift` (new `emptySnapshotChart`) ·
 `Baby/Views/Components/BabyEmptyGraphView.swift` (**deleted**).
 
@@ -529,9 +529,9 @@ Three more on the stacked empty snapshot cards:
   removed from the whole snapshot chain (`DashboardScreen` → `MultiDeviceSnapshotView` → `WeightSnapshotCard`)
   and the card now always renders the week range, matching BPM/baby.
 
-**Files:** `Models/DashboardChartRules.swift` (new `DashboardSnapshotStyle`) ·
-`Views/Components/WeightSnapshotCard.swift` · `BPM/Views/Components/BpmSnapshotCard.swift` ·
-`Baby/Views/Components/BabySnapshotCard.swift` · `Views/Screens/MultiDeviceSnapshotView.swift` ·
+**Files:** `Chart/Model/DashboardChartRules.swift` (new `DashboardSnapshotStyle`) ·
+`Weight/Views/Components/WeightSnapshotCard.swift` · `BPM/Views/Components/BpmSnapshotCard.swift` ·
+`Baby/Views/Components/BabySnapshotCard.swift` · `Shared/MultiDeviceSnapshotView.swift` ·
 `Views/Screens/DashboardScreen.swift`.
 
 ---

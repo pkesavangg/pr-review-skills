@@ -224,7 +224,7 @@ Result by case (all lowercased by `composeMetricInfoLabel`):
 
 > History entries keep the distinct `Measurement taken …` wording so users can tell at a glance that the sheet was opened from history vs from a dashboard selection. The `measurementTakenLabel(for:)` helper added in the last commit stays in place but is only called from the history branch.
 
-### 4.4 `iOS/meApp/Features/Dashboard/Views/Screens/WeightTrendView.swift`
+### 4.4 `iOS/meApp/Features/Dashboard/Weight/Views/Screens/WeightTrendView.swift`
 
 Revert the opacity / animation modifiers added in #1948. The label is now always shown:
 

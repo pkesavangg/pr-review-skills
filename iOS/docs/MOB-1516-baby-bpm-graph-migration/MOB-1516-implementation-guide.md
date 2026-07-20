@@ -121,21 +121,21 @@ fallback.
 ## 1. Where we are today (the seam)
 
 ```
-GraphView.chartView  (Views/Components/GraphView.swift:244-280)
+GraphView.chartView  (Chart/Views/GraphView.swift:244-280)
 ├─ isBabySelection && !hasBabyEntries → BabyEmptyGraphView()                  (:246-249)
 ├─ usesNewWeightEngine (productType == .scale, :32-34) → WeightChartHost      (:250-253)   ← v2 engine
 └─ else → Week/Month/Year/TotalGraphView → BaseGraphView<SectionVM>           (:254-278)   ← LEGACY (baby + BPM)
 ```
 
-- **Weight** → v2 engine: [ChartModel](../../meApp/Features/Dashboard/Models/ChartModel.swift) +
-  [ChartPrep](../../meApp/Features/Dashboard/Managers/Graph/ChartPrep.swift) +
+- **Weight** → v2 engine: [ChartModel](../../meApp/Features/Dashboard/Chart/Model/ChartModel.swift) +
+  [ChartPrep](../../meApp/Features/Dashboard/Chart/Engine/ChartPrep.swift) +
   [WeightChartView](../../meApp/Features/Dashboard/Views/Components/WeightChartView.swift) +
   [WeightChartHost](../../meApp/Features/Dashboard/Views/Components/WeightChartHost.swift). Store owns
   `@Published private(set) var chartModel` + the scroll/selection lifecycle.
 - **Baby + BPM** → shared legacy `BaseGraphView<ViewModel>` (over the four `*SectionViewModel`s) →
   `BaseGraphChartContent`, branched at runtime on `productType == .bpm` / `selectedBabyProfile != nil`.
 
-**Config layer already exists** — [DashboardChartRules.swift](../../meApp/Features/Dashboard/Models/DashboardChartRules.swift):
+**Config layer already exists** — [DashboardChartRules.swift](../../meApp/Features/Dashboard/Chart/Model/DashboardChartRules.swift):
 `DashboardChartStyleProvider.seriesColors(for:productType:theme:bpmClassification:isOutsideMonthInterval:)` (:117-144)
 already dispatches colours by product+series; `DashboardChartScaleProvider.weightScale`/`babyWeightScale`/`bpmScale`
 (:42-115) already gives the per-product axis. And [WeightChartView:236-264](../../meApp/Features/Dashboard/Views/Components/WeightChartView.swift#L236)
@@ -431,7 +431,7 @@ Re-point `BabyTrendView` / `BpmTrendView` scaffolds (headers/toggles/sheets) at 
 
 ### 4.1 BPM (easy)
 - 3 series `systolic`/`diastolic`/`pulse` via `buildBpmChartSeries`
-  ([GraphDataPreparer.swift:106](../../meApp/Features/Dashboard/Managers/Graph/GraphDataPreparer.swift#L106)),
+  ([GraphDataPreparer.swift:106](../../meApp/Features/Dashboard/Chart/Engine/GraphDataPreparer.swift#L106)),
   daily wk/mo · monthly yr/total. **Pin order** sys→dia→pulse.
 - Colours: sys+dia = selected/window reading's `AhaPressureClass.color`; pulse = neutral. Already in
   `seriesColors` (:125-131).

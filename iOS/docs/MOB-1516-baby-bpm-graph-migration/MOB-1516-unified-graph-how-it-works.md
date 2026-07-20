@@ -79,7 +79,7 @@ DashboardScreen
                           TrendChartHost(dashboardStore:)     ← EVERY product AND every empty state
 ```
 
-- `GraphView` ([GraphView.swift](../../meApp/Features/Dashboard/Views/Components/GraphView.swift)) is now
+- `GraphView` ([GraphView.swift](../../meApp/Features/Dashboard/Chart/Views/GraphView.swift)) is now
   tiny: a skeleton, the under-graph label, and `chartView` (which is just `TrendChartHost`). The old four
   `@StateObject` section VMs + the per-period `switch` + the legacy `else` branch are **gone** (Phase D).
 - **MOB-1591:** `chartView` no longer forks to a separate `BabyEmptyGraphView` for a baby with no readings.
@@ -123,7 +123,7 @@ Every builder reuses the **same pure domain layer** — `GraphDataPreparer` (ser
 per-product scale in `DashboardChartRules` — so the output is byte-identical to what the legacy engine drew;
 only the plumbing is unified.
 
-**Files:** [ChartPrep.swift](../../meApp/Features/Dashboard/Managers/Graph/ChartPrep.swift) ·
+**Files:** [ChartPrep.swift](../../meApp/Features/Dashboard/Chart/Engine/ChartPrep.swift) ·
 [DashboardStore.swift](../../meApp/Features/Dashboard/Stores/DashboardStore.swift) (`rebuildChartModel`).
 
 ---
@@ -159,7 +159,7 @@ The two MOB-1516 additions are what make one type serve three products:
 The MOB-518 fingerprint rule still holds: `dataFingerprint` **excludes the y-axis**, so a scroll-end y-settle
 swaps `yAxis`+`xAxisTicks` in place (`withYAxisAndTicks`) without changing series identity → no teardown.
 
-**File:** [ChartModel.swift](../../meApp/Features/Dashboard/Models/ChartModel.swift).
+**File:** [ChartModel.swift](../../meApp/Features/Dashboard/Chart/Model/ChartModel.swift).
 
 ---
 
@@ -219,7 +219,7 @@ identical in behaviour to an empty weight/BPM chart (only taller — 498). The m
 
 ## 6. Rendering — one loop, styles baked in
 
-`TrendChartView.body` builds one `Chart {}` ([TrendChartView.swift](../../meApp/Features/Dashboard/Views/Components/TrendChartView.swift)):
+`TrendChartView.body` builds one `Chart {}` ([TrendChartView.swift](../../meApp/Features/Dashboard/Chart/Views/TrendChartView.swift)):
 
 ```
 Chart {
@@ -248,7 +248,7 @@ Chart {
 > live outside the plot area — stay fully visible. It's a no-op for weight/BPM (their data ends within the
 > window).
 
-**The colour brain is [DashboardChartRules.swift](../../meApp/Features/Dashboard/Models/DashboardChartRules.swift)** —
+**The colour brain is [DashboardChartRules.swift](../../meApp/Features/Dashboard/Chart/Model/DashboardChartRules.swift)** —
 `DashboardChartStyleProvider.seriesColors(for:productType:…)` is the single place product colours live:
 - `.bpm` → `pulse` neutral; `systolic`/`diastolic` = the selected reading's `AhaPressureClass.color` (passed
   in as `bpmClassification`, so they recolour on selection with **no model rebuild**).
@@ -307,7 +307,7 @@ tap → Swift Charts .chartXSelection writes raw x → TrendChartHost.snappedSel
 - **Selection persists after finger-lift** (Swift Charts' gesture-end `nil` is ignored) and clears on the
   next scroll-start — Apple-Health behaviour, shared.
 
-**File:** [TrendChartHost.swift](../../meApp/Features/Dashboard/Views/Components/TrendChartHost.swift)
+**File:** [TrendChartHost.swift](../../meApp/Features/Dashboard/Chart/Views/TrendChartHost.swift)
 (`snappedSelectionDate`, `crosshairDate`, `babyPresentation`).
 
 ---
@@ -348,7 +348,7 @@ only on **real input changes** — never per frame, never per scroll:
 | **Scroll** | **not** a rebuild — in-place y-axis/tick swap (baby: cheap identical rebuild) |
 | Drag frame / tap / goal chip | nothing / sticker on the glass |
 
-**File:** [ChartRebuildSignature.swift](../../meApp/Features/Dashboard/Managers/Graph/ChartRebuildSignature.swift)
+**File:** [ChartRebuildSignature.swift](../../meApp/Features/Dashboard/Chart/Engine/ChartRebuildSignature.swift)
 (the tokens; relocated here in Phase D so the engine has no legacy dependency).
 
 ---
@@ -357,17 +357,17 @@ only on **real input changes** — never per frame, never per scroll:
 
 | Concern | File | Key symbols |
 |---|---|---|
-| Poster type | `Models/ChartModel.swift` | `ChartModel`, `ChartSeriesStyle`, `ChartReferenceLine`, `YAxisModel`, `hasReadings` |
-| Poster printers (per product) | `Managers/Graph/ChartPrep.swift` | `buildWeight`, `buildBpm`, `buildBaby`, `buildEmpty` (empty state), `weightYAxis`, `bpmYAxis` |
-| Rebuild tokens | `Managers/Graph/ChartRebuildSignature.swift` | `dataChangeSignature`, `settingsChangeSignature` |
-| Colours + scales (per product) | `Models/DashboardChartRules.swift` | `DashboardChartStyleProvider.seriesColors`, `DashboardChartScaleProvider.{weight,baby,bpm}Scale` |
-| Domain math (reused) | `Managers/Graph/GraphRenderingConfiguration.swift`, `GraphDataPreparer.swift` | ticks, `visibleDomainLength`, `buildWeightSeries`/`buildBpmChartSeries`, baby via `BabyDashboardChartSupport` |
+| Poster type | `Chart/Model/ChartModel.swift` | `ChartModel`, `ChartSeriesStyle`, `ChartReferenceLine`, `YAxisModel`, `hasReadings` |
+| Poster printers (per product) | `Chart/Engine/ChartPrep.swift` | `buildWeight`, `buildBpm`, `buildBaby`, `buildEmpty` (empty state), `weightYAxis`, `bpmYAxis` |
+| Rebuild tokens | `Chart/Engine/ChartRebuildSignature.swift` | `dataChangeSignature`, `settingsChangeSignature` |
+| Colours + scales (per product) | `Chart/Model/DashboardChartRules.swift` | `DashboardChartStyleProvider.seriesColors`, `DashboardChartScaleProvider.{weight,baby,bpm}Scale` |
+| Domain math (reused) | `Chart/Engine/GraphRenderingConfiguration.swift`, `GraphDataPreparer.swift` | ticks, `visibleDomainLength`, `buildWeightSeries`/`buildBpmChartSeries`, baby via `BabyDashboardChartSupport` |
 | Baby percentile math | `Baby/Utils/BabyPercentileGrowthReference.swift`, `BabyDashboardChartSupport.swift` | WHO/CDC z-score curves, `percentileSeries`, `yAxisScale` |
-| Baby selection presentation | `Managers/Graph/GraphSelectionPresentationResolver.swift` | `babySelectionPresentation` (value + percentile) |
+| Baby selection presentation | `Chart/Engine/GraphSelectionPresentationResolver.swift` | `babySelectionPresentation` (value + percentile) |
 | Brain / source of truth | `Stores/DashboardStore.swift` | `chartModel`, `rebuildChartModel`, `settleChart`, `settleBpm`, `commitScroll`, `selectPoint` |
-| Stagehand | `Views/Components/TrendChartHost.swift` | `primarySeriesName`, `snappedSelectionDate`, `crosshairDate`, `babyPresentation`, `modelHasReadings`, `bpmClassification`, `chartHeight` |
-| Renderer | `Views/Components/TrendChartView.swift` | series loop, `referenceLines`, crosshairs, overlays, `.chartPlotStyle` box + plot-level clip |
-| Seam | `Views/Components/GraphView.swift` | `chartView` (always `TrendChartHost` — MOB-1591), `isShowingSelectionCallout` |
+| Stagehand | `Chart/Views/TrendChartHost.swift` | `primarySeriesName`, `snappedSelectionDate`, `crosshairDate`, `babyPresentation`, `modelHasReadings`, `bpmClassification`, `chartHeight` |
+| Renderer | `Chart/Views/TrendChartView.swift` | series loop, `referenceLines`, crosshairs, overlays, `.chartPlotStyle` box + plot-level clip |
+| Seam | `Chart/Views/GraphView.swift` | `chartView` (always `TrendChartHost` — MOB-1591), `isShowingSelectionCallout` |
 | Product scaffolds | `WeightTrendView` · `BPM/Views/Screens/BpmTrendView` · `Baby/Views/Screens/BabyTrendView` | headers / toggles / cards |
 
 *(The legacy `BaseGraphView` + four `*SectionViewModel`s + `BaseGraphChartContent` + cache managers are
