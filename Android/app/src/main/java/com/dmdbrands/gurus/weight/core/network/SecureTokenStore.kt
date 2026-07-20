@@ -3,11 +3,12 @@ package com.dmdbrands.gurus.weight.core.network
 import android.content.Context
 import android.content.SharedPreferences
 import androidx.security.crypto.EncryptedSharedPreferences
-import androidx.security.crypto.MasterKeys
+import androidx.security.crypto.MasterKey
 import com.dmdbrands.gurus.weight.core.shared.utilities.logging.AppLog
 import com.dmdbrands.gurus.weight.domain.model.api.user.Token
 import com.google.gson.Gson
 import java.security.GeneralSecurityException
+import java.security.KeyStore
 
 /**
  * Exception thrown when EncryptedSharedPreferences cannot be created or accessed.
@@ -20,7 +21,13 @@ class EncryptionUnavailableException(
     cause: Throwable? = null,
 ) : Exception(message, cause)
 
-class SecureTokenStore(context: Context) : ISecureTokenStore {
+class SecureTokenStore(
+    context: Context,
+    // Injectable so the create/recover orchestration can be unit-tested without the Android
+    // keystore. Production uses [createDefaultEncryptedPrefs]; tests supply a factory that throws
+    // then succeeds to exercise the recovery path.
+    private val encryptedPrefsFactory: (Context) -> SharedPreferences = ::createDefaultEncryptedPrefs,
+) : ISecureTokenStore {
 
     companion object {
         private const val TAG = "SecureTokenStore"
@@ -30,6 +37,21 @@ class SecureTokenStore(context: Context) : ISecureTokenStore {
         private const val MIGRATION_COMPLETED_KEY = "migration_completed"
         private const val MIGRATION_RETRY_COUNT_KEY = "migration_retry_count"
         private const val ENCRYPTION_FAILURE_COUNT_KEY = "encryption_failure_count"
+        private const val ANDROID_KEYSTORE = "AndroidKeyStore"
+
+        /** Default (production) encrypted-prefs creation: a get-or-create master key + the store. */
+        private fun createDefaultEncryptedPrefs(context: Context): SharedPreferences {
+            val masterKey = MasterKey.Builder(context)
+                .setKeyScheme(MasterKey.KeyScheme.AES256_GCM)
+                .build()
+            return EncryptedSharedPreferences.create(
+                context,
+                PREFS_FILE_NAME,
+                masterKey,
+                EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV,
+                EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM,
+            )
+        }
     }
 
     private val gson = Gson()
@@ -52,22 +74,61 @@ class SecureTokenStore(context: Context) : ISecureTokenStore {
     val isAvailable: Boolean get() = sharedPreferences != null
 
     init {
-        sharedPreferences = try {
-            val masterKeyAlias = MasterKeys.getOrCreate(MasterKeys.AES256_GCM_SPEC)
+        sharedPreferences = createOrRecoverPrefs(context)
+    }
 
-            EncryptedSharedPreferences.create(
-                PREFS_FILE_NAME,
-                masterKeyAlias,
-                context,
-                EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV,
-                EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM
-            )
+    /**
+     * Creates the encrypted store, and on failure attempts a one-time recovery before giving up.
+     * The failure that matters in the field is an *invalidated* master key (OS update, backup
+     * restore to different hardware, lock-screen change) — the exact cases in this class's KDoc.
+     * When that happens the old key can no longer decrypt [PREFS_FILE_NAME], so
+     * [EncryptedSharedPreferences.create] throws and, previously, the store stayed null for the
+     * whole session — every token op threw and the user was silently logged out with no way back
+     * short of clearing app storage. (MOB-1598)
+     */
+    private fun createOrRecoverPrefs(context: Context): SharedPreferences? =
+        try {
+            encryptedPrefsFactory(context)
         } catch (e: GeneralSecurityException) {
-            AppLog.e(TAG, "Failed to create EncryptedSharedPreferences", e.toString())
-            null
+            AppLog.e(TAG, "Failed to create EncryptedSharedPreferences — attempting recovery", e.toString())
+            recoverEncryptedPrefs(context)
         } catch (e: Exception) {
-            AppLog.e(TAG, "Unexpected error creating EncryptedSharedPreferences", e.toString())
+            AppLog.e(TAG, "Unexpected error creating EncryptedSharedPreferences — attempting recovery", e.toString())
+            recoverEncryptedPrefs(context)
+        }
+
+    /**
+     * Clears the undecryptable prefs file and the invalidated master-key entry, then recreates the
+     * store once — the in-code equivalent of wiping the app's keystore namespace, which is the only
+     * thing that fixes an invalidated key. Tokens in the old file are unrecoverable anyway (they
+     * can't be decrypted), so dropping them costs at most one re-login and restores persistent auth
+     * instead of logging the user out every session. Runs at most once per construction, so a
+     * genuinely broken keystore can't loop. On success the encryption-failure safeguard counter is
+     * reset. (MOB-1598)
+     */
+    private fun recoverEncryptedPrefs(context: Context): SharedPreferences? =
+        try {
+            deleteCorruptKeystoreState(context)
+            encryptedPrefsFactory(context).also {
+                AppLog.i(TAG, "Recovered EncryptedSharedPreferences after master-key reset")
+                resetEncryptionFailureCount()
+            }
+        } catch (e: Exception) {
+            AppLog.e(TAG, "Recovery of EncryptedSharedPreferences failed", e.toString())
             null
+        }
+
+    private fun deleteCorruptKeystoreState(context: Context) {
+        // Drop the undecryptable prefs file so a fresh one is written under the new key.
+        context.deleteSharedPreferences(PREFS_FILE_NAME)
+        // Remove the invalidated master key so MasterKey.Builder regenerates a usable one.
+        try {
+            val keyStore = KeyStore.getInstance(ANDROID_KEYSTORE).apply { load(null) }
+            if (keyStore.containsAlias(MasterKey.DEFAULT_MASTER_KEY_ALIAS)) {
+                keyStore.deleteEntry(MasterKey.DEFAULT_MASTER_KEY_ALIAS)
+            }
+        } catch (e: Exception) {
+            AppLog.e(TAG, "Failed to delete master key during recovery", e.toString())
         }
     }
 
