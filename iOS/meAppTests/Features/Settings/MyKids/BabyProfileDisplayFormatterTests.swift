@@ -15,12 +15,12 @@ struct BabyProfileDisplayFormatterTests {
     }
 
     @Test("birthday formats as month day, year")
-    func birthday_date_formatsMonthDayYear() {
+    func birthday_date_formatsMonthDayYear() throws {
         var components = DateComponents()
         components.year = 2024
         components.month = 6
         components.day = 10
-        let date = Calendar.current.date(from: components)!
+        let date = try #require(Calendar.current.date(from: components))
         let expected = DateTimeTools.formatter("MMMM d, yyyy").string(from: date)
         #expect(BabyProfileDisplayFormatter.birthday(date) == expected)
         #expect(expected.contains("2024"))

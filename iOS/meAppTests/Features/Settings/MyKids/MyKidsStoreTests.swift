@@ -553,6 +553,7 @@ extension MyKidsStoreTests {
     }
 }
 
+@MainActor
 private func makeSUT(
     babyService: MockBabyService? = nil,
     accountService: MockAccountService? = nil,
