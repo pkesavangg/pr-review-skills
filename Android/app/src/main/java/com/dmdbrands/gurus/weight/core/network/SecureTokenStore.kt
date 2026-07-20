@@ -82,9 +82,21 @@ class SecureTokenStore(
      * The failure that matters in the field is an *invalidated* master key (OS update, backup
      * restore to different hardware, lock-screen change) — the exact cases in this class's KDoc.
      * When that happens the old key can no longer decrypt [PREFS_FILE_NAME], so
-     * [EncryptedSharedPreferences.create] throws and, previously, the store stayed null for the
-     * whole session — every token op threw and the user was silently logged out with no way back
-     * short of clearing app storage. (MOB-1598)
+     * [EncryptedSharedPreferences.create] throws [GeneralSecurityException] (or a keystore
+     * subtype of it, e.g. [java.security.KeyStoreException] /
+     * [javax.crypto.AEADBadTagException]) and, previously, the store stayed null for the whole
+     * session — every token op threw and the user was silently logged out with no way back short
+     * of clearing app storage. (MOB-1598)
+     *
+     * Recovery is deliberately narrow: only [GeneralSecurityException] is treated as a
+     * key-invalidation signal. [EncryptedSharedPreferences.create] is also declared to throw
+     * [java.io.IOException] for transient conditions (disk full, temporary file lock, concurrent
+     * access) that have nothing to do with the key — those are NOT key-invalidation cases, and
+     * recovering from them would wipe otherwise-valid tokens and force an unnecessary re-login,
+     * the opposite of this class's goal. Any such non-security failure just leaves the store
+     * unavailable for this construction, without touching the keystore entry or the prefs file,
+     * so a later construction attempt can still open the existing store once the condition
+     * clears.
      */
     private fun createOrRecoverPrefs(context: Context): SharedPreferences? =
         try {
@@ -93,8 +105,11 @@ class SecureTokenStore(
             AppLog.e(TAG, "Failed to create EncryptedSharedPreferences — attempting recovery", e.toString())
             recoverEncryptedPrefs(context)
         } catch (e: Exception) {
-            AppLog.e(TAG, "Unexpected error creating EncryptedSharedPreferences — attempting recovery", e.toString())
-            recoverEncryptedPrefs(context)
+            // IOException (transient disk error, low storage, temporary file lock, concurrent
+            // access) or any other non-security exception is not a key-invalidation case — do NOT
+            // wipe the keystore entry or the secure_tokens file for it.
+            AppLog.e(TAG, "Non-security error creating EncryptedSharedPreferences — not recovering", e.toString())
+            null
         }
 
     /**
@@ -103,15 +118,24 @@ class SecureTokenStore(
      * thing that fixes an invalidated key. Tokens in the old file are unrecoverable anyway (they
      * can't be decrypted), so dropping them costs at most one re-login and restores persistent auth
      * instead of logging the user out every session. Runs at most once per construction, so a
-     * genuinely broken keystore can't loop. On success the encryption-failure safeguard counter is
-     * reset. (MOB-1598)
+     * genuinely broken keystore can't loop.
+     *
+     * On success the encryption-failure safeguard counter is *incremented*, not reset — a recovery
+     * still means this session paid the wipe/re-login cost, so it stays part of the failure/retry
+     * cycle the counter tracks. If some devices have their key invalidated on every launch (seen on
+     * some Samsung/OS-update cases), each session would otherwise recover successfully, silently
+     * wipe [PREFS_FILE_NAME], force a re-login, and reset the counter to 0 — making the exact
+     * repeating wipe/re-login loop the counter exists to bound invisible to it. The counter is only
+     * reset to 0 by [TokenManager.setTokens] after a token is actually saved successfully
+     * post-login, which is the real proof that encryption works again on this device — preserving
+     * the MOB-1537 / MOB-1526 loop guard. (MOB-1598)
      */
     private fun recoverEncryptedPrefs(context: Context): SharedPreferences? =
         try {
             deleteCorruptKeystoreState(context)
             encryptedPrefsFactory(context).also {
                 AppLog.i(TAG, "Recovered EncryptedSharedPreferences after master-key reset")
-                resetEncryptionFailureCount()
+                incrementEncryptionFailureCount()
             }
         } catch (e: Exception) {
             AppLog.e(TAG, "Recovery of EncryptedSharedPreferences failed", e.toString())
