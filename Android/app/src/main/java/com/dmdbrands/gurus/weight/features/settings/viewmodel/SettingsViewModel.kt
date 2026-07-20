@@ -58,113 +58,85 @@ constructor(
     super.handleIntent(intent)
 
     when (intent) {
-      SettingsIntent.OpenMyDevices -> {
-        navigateTo(AppRoute.AccountSettings.MyDevices)
-      }
+      SettingsIntent.OpenMyDevices -> navigateTo(AppRoute.AccountSettings.MyDevices)
 
-      SettingsIntent.OpenHelp -> {
-        navigateTo(AppRoute.AccountSettings.HelpScreen)
-      }
+      SettingsIntent.OpenHelp -> navigateTo(AppRoute.AccountSettings.HelpScreen)
 
-      SettingsIntent.Logout -> {
-        dataSettingsManager.onLogOutClick(
-          scope = viewModelScope,
-          stateProvider = ::currentState,
-          isLogoutAll = false,
-        )
-      }
+      SettingsIntent.Logout -> handleLogout(isLogoutAll = false)
 
-      SettingsIntent.LogoutAllAccounts -> {
-        dataSettingsManager.onLogOutClick(
-          scope = viewModelScope,
-          stateProvider = ::currentState,
-          isLogoutAll = true,
-        )
-      }
+      SettingsIntent.LogoutAllAccounts -> handleLogout(isLogoutAll = true)
 
-      SettingsIntent.SwitchAccount -> {
-        onSwitchAccountClick()
-      }
+      SettingsIntent.SwitchAccount -> onSwitchAccountClick()
 
-      SettingsIntent.ShowActivityLevelModal -> {
+      SettingsIntent.ShowActivityLevelModal ->
         profileSettingsManager.onActivityLevelClick(viewModelScope, ::currentState)
-      }
 
-      SettingsIntent.ShowUnitTypeModal -> {
+      SettingsIntent.ShowUnitTypeModal ->
         unitSettingsManager.onUnitTypeClick(viewModelScope, ::currentState)
-      }
 
-      SettingsIntent.ShowNotificationsModal -> {
+      SettingsIntent.ShowNotificationsModal ->
         notificationSettingsManager.onNotificationsClick(viewModelScope, ::currentState)
-      }
 
-      SettingsIntent.NavigateToWeightless -> {
-        profileSettingsManager.onWeightlessClick(viewModelScope)
-      }
+      SettingsIntent.NavigateToWeightless -> profileSettingsManager.onWeightlessClick(viewModelScope)
 
-      SettingsIntent.goalSettingModal -> {
-        profileSettingsManager.onGoalSettingClick(viewModelScope)
-      }
+      SettingsIntent.goalSettingModal -> profileSettingsManager.onGoalSettingClick(viewModelScope)
 
-      SettingsIntent.ShowAppearanceModal -> {
+      SettingsIntent.ShowAppearanceModal ->
         dataSettingsManager.onAppearanceClick(viewModelScope, ::currentState, ::dispatchIntent)
-      }
 
-      is SettingsIntent.ToggleStreak -> {
+      is SettingsIntent.ToggleStreak ->
         profileSettingsManager.onStreakUpdate(viewModelScope, ::currentState, intent.checked)
-      }
 
-      SettingsIntent.ConfirmDeleteAccount -> {
-        dataSettingsManager.onConfirmDeleteAccount(::dispatchIntent)
-      }
+      SettingsIntent.ConfirmDeleteAccount -> dataSettingsManager.onConfirmDeleteAccount(::dispatchIntent)
 
-      SettingsIntent.DeleteAccount -> {
-        dataSettingsManager.onDeleteAccount(viewModelScope, ::currentState)
-      }
+      SettingsIntent.DeleteAccount -> dataSettingsManager.onDeleteAccount(viewModelScope, ::currentState)
 
-      SettingsIntent.OpenPrivacyPolicy -> {
-        openInAppBrowser(AppConfig.AppUrls.PrivacyPolicy)
-      }
+      SettingsIntent.OpenPrivacyPolicy -> openInAppBrowser(AppConfig.AppUrls.PrivacyPolicy)
 
-      SettingsIntent.OpenTermsOfService -> {
-        openInAppBrowser(AppConfig.AppUrls.TermsOfService)
-      }
+      SettingsIntent.OpenTermsOfService -> openInAppBrowser(AppConfig.AppUrls.TermsOfService)
 
-      SettingsIntent.OpenGreaterGoodsWebsite -> {
-        openInAppBrowser(AppConfig.AppUrls.GreaterGoodsWebsite)
-      }
+      SettingsIntent.OpenGreaterGoodsWebsite -> openInAppBrowser(AppConfig.AppUrls.GreaterGoodsWebsite)
 
-      SettingsIntent.ShowMacAddressFilterModal -> {
+      SettingsIntent.ShowMacAddressFilterModal ->
         scaleSettingsManager.onMacAddressFilterClick(viewModelScope, ::currentState, ::dispatchIntent)
-      }
 
-      SettingsIntent.TriggerTestCrash -> {
-        if (BuildConfig.DEBUG) {
-          AppLog.w(TAG, "Triggering test crash for Crashlytics verification")
-          throw RuntimeException("Crashlytics test crash")
-        }
-      }
+      SettingsIntent.TriggerTestCrash -> handleTriggerTestCrash()
 
-      SettingsIntent.OpenA3MonitorSetup -> {
-        navigateTo(AppRoute.DeviceSetup.BpmSetup(sku = "0603"))
-      }
+      SettingsIntent.OpenA3MonitorSetup -> navigateTo(AppRoute.DeviceSetup.BpmSetup(sku = "0603"))
 
-      SettingsIntent.TriggerTestNonFatal -> {
-        if (BuildConfig.DEBUG) {
-          val exception = RuntimeException("Crashlytics test non-fatal exception")
-          crashReportingService.recordException(exception, "test_non_fatal")
-          AppLog.d(TAG, "Non-fatal test exception recorded to Crashlytics")
-          dialogQueueService.showToast(
-            com.dmdbrands.gurus.weight.features.common.model.Toast.Simple(
-              title = null,
-              message = "Non-fatal exception recorded",
-              action = null,
-            ),
-          )
-        }
-      }
+      SettingsIntent.TriggerTestNonFatal -> handleTriggerTestNonFatal()
 
       else -> {}
+    }
+  }
+
+  private fun handleLogout(isLogoutAll: Boolean) {
+    dataSettingsManager.onLogOutClick(
+      scope = viewModelScope,
+      stateProvider = ::currentState,
+      isLogoutAll = isLogoutAll,
+    )
+  }
+
+  private fun handleTriggerTestCrash() {
+    if (BuildConfig.DEBUG) {
+      AppLog.w(TAG, "Triggering test crash for Crashlytics verification")
+      throw RuntimeException("Crashlytics test crash")
+    }
+  }
+
+  private fun handleTriggerTestNonFatal() {
+    if (BuildConfig.DEBUG) {
+      val exception = RuntimeException("Crashlytics test non-fatal exception")
+      crashReportingService.recordException(exception, "test_non_fatal")
+      AppLog.d(TAG, "Non-fatal test exception recorded to Crashlytics")
+      dialogQueueService.showToast(
+        com.dmdbrands.gurus.weight.features.common.model.Toast.Simple(
+          title = null,
+          message = "Non-fatal exception recorded",
+          action = null,
+        ),
+      )
     }
   }
 

@@ -120,7 +120,7 @@ struct BtWifiScaleSetupScreen: View {
                                  isDuplicated: isDuplicated, isWifiSetupOnly: isWifiSetupOnly)
             
         }
-        .navigationBarBackButtonHidden(true)
+        .navigationBarHidden(true)
         .background(theme.backgroundSecondary)
         // Clear the deactivation handler when the view disappears to avoid stale closures.
         .onDisappear {

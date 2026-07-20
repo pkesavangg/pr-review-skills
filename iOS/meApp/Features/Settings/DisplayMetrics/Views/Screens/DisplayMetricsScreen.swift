@@ -13,16 +13,16 @@ struct DisplayMetricsScreen: View {
     @Environment(\.registerTabDeactivationHandler) private var registerDeactivation
     @StateObject private var viewModel: DisplayMetricsViewModel
     let lang = DeviceModesStrings.self
-    
+
     let scale: Device
     let isWeighOnlyModeEnabledByOthers: Bool
-    
+
     init(scale: Device, isWeighOnlyModeEnabledByOthers: Bool = false) {
         self.scale = scale
         self.isWeighOnlyModeEnabledByOthers = isWeighOnlyModeEnabledByOthers
         _viewModel = StateObject(wrappedValue: DisplayMetricsViewModel(scale: scale, isWeighOnlyModeEnabledByOthers: isWeighOnlyModeEnabledByOthers))
     }
-    
+
     var body: some View {
         VStack(alignment: .center, spacing: 0) {
             NavbarHeaderView(
@@ -54,11 +54,11 @@ struct DisplayMetricsScreen: View {
                 },
                 canShowBorder: true
             )
-            
+
             List {
                 bannerSection()
                 descriptionSection()
-                
+
                 // Body Metrics Section
                 MetricsSectionView(
                     metrics: Binding(
@@ -81,7 +81,7 @@ struct DisplayMetricsScreen: View {
                         return metric.key == "heartRate" && !metric.isEnabled && viewModel.showHeartRateBanner
                     }
                 )
-                
+
                 // Progress Metrics Section
                 MetricsSectionView(
                     metrics: Binding(
@@ -111,7 +111,7 @@ struct DisplayMetricsScreen: View {
         }
         .frame(maxHeight: .infinity, alignment: .top)
         .background(theme.backgroundSecondary.ignoresSafeArea())
-        .navigationBarBackButtonHidden(true)
+        .navigationBarHidden(true)
         .screenAccessibilityRoot(AccessibilityID.displayMetricsScreenRoot)
         .task {
             await viewModel.loadDisplayMetricsData()
@@ -125,7 +125,7 @@ struct DisplayMetricsScreen: View {
             registerDeactivation { true }
         }
     }
-    
+
     // MARK: - Sections as Functions
     private func bannerSection() -> some View {
         Section {
@@ -140,7 +140,7 @@ struct DisplayMetricsScreen: View {
         .listRowBackground(Color.clear)
         .listRowInsets(EdgeInsets())
     }
-    
+
     private func descriptionSection() -> some View {
         Section {
             Text(lang.displayMetricsDescription)
@@ -151,9 +151,9 @@ struct DisplayMetricsScreen: View {
         .listRowBackground(Color.clear)
         .listRowInsets(EdgeInsets())
     }
-    
+
     // MARK: - Banner Components
-    
+
     private func weightOnlyBanner() -> some View {
         let commonLang = CommonStrings.self
         return NoteBox {
@@ -173,27 +173,27 @@ struct DisplayMetricsScreen: View {
             }
         }
     }
-    
+
     private func weightOnlyInfo() -> some View {
         NoteBox {
             VStack(alignment: .leading, spacing: .spacingXS) {
                 HStack {
                     AppIconView(icon: AppAssets.weightOnlyMode, size: IconSize(width: 20, height: 20))
                         .foregroundColor(theme.statusIconPrimary)
-                    
+
                     Text(lang.weightOnlyBannerTitle)
                         .fontWeight(.bold)
                         .fontOpenSans(.body3)
                         .foregroundColor(theme.textHeading)
                 }
-                
+
                 Text(lang.weightOnlyBannerDescription)
                     .fontOpenSans(.body3)
                     .foregroundColor(theme.textBody)
             }
         }
     }
-    
+
     private func heartRateBanner() -> some View {
         HeartRateBanner(
             isHeartRateOn: viewModel.isHeartRateOn

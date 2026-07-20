@@ -111,6 +111,13 @@ protocol BluetoothServiceProtocol {
     /// Performs a dedicated scan intended for scale pairing.
     func scanForPairing()
 
+    /// MOB-193: Re-broadcasts the current account profile to non-R4 (A3/A6) scales by restarting
+    /// the smart scan. Those scales receive the profile only via the scan advertisement, so a
+    /// profile change (activity level, gender, height, dob, unit, goal) otherwise isn't seen by
+    /// the scale until the next scan restart. R4 scales are handled by
+    /// `updateUserProfileForR4Scales()`. No-op when no scan is running.
+    func refreshScanProfileForNonR4Scales() async
+
     // MARK: - Device Synchronisation
     /// Forces a re-sync of locally stored devices with the Bluetooth plugin and re-starts scanning.
     /// - Returns: Result<Void, BluetoothServiceError>
@@ -194,8 +201,11 @@ protocol BluetoothServiceProtocol {
     /// - Returns: Result<MeasurementLiveData, BluetoothServiceError>
     func getMeasurementLiveData(broadcastId: String) async -> Result<MeasurementLiveData, BluetoothServiceError>
     /// Retrieves the list of users stored on the scale (R4 only).
+    /// - Parameter sku: Optional SKU of the target scale. Used to classify the device (weight vs BPM)
+    ///   when it is not yet tracked in `bluetoothScales` (e.g. a freshly paired scale), so the fetch
+    ///   isn't wrongly skipped as a BPM monitor.
     /// - Returns: Result<[DeviceUser], BluetoothServiceError>
-    func getScaleUserList(broadcastId: String, skipConnectionCheck: Bool) async -> Result<[DeviceUser], BluetoothServiceError>
+    func getScaleUserList(broadcastId: String, skipConnectionCheck: Bool, sku: String?) async -> Result<[DeviceUser], BluetoothServiceError>
     /// Retrieves device logs from the scale.
     /// - Returns: Result<DeviceLogs, BluetoothServiceError>
     func getDeviceLogs(broadcastId: String) async -> Result<DeviceLogs, BluetoothServiceError>
@@ -224,7 +234,11 @@ extension BluetoothServiceProtocol {
     }
 
     func getScaleUserList(broadcastId: String) async -> Result<[DeviceUser], BluetoothServiceError> {
-        await getScaleUserList(broadcastId: broadcastId, skipConnectionCheck: false)
+        await getScaleUserList(broadcastId: broadcastId, skipConnectionCheck: false, sku: nil)
+    }
+
+    func getScaleUserList(broadcastId: String, skipConnectionCheck: Bool) async -> Result<[DeviceUser], BluetoothServiceError> {
+        await getScaleUserList(broadcastId: broadcastId, skipConnectionCheck: skipConnectionCheck, sku: nil)
     }
 
     func disconnectDevice(broadcastId: String) async -> Result<Void, BluetoothServiceError> {

@@ -46,6 +46,11 @@ Based on ticket type:
 - **Bug fix**: root cause area, files containing the faulty code
 - **Test additions**: files needing tests, which mocks exist vs need generation
 
+**Documentation impact:** for each file in *Files to Create/Modify/Delete*, check it against the
+source→doc map in `scripts/docs-freshness-check.sh` (`doc_for()`) and the Confluence map in
+`docs/confluence.md`. List every maintained doc / Confluence page the change will outdate in the
+PRD's **Documentation Impact** table — or tick "No documentation impact" if none match.
+
 ---
 
 ### 4 — Write the PRD File
@@ -70,4 +75,5 @@ Key decisions captured:
 - Files to modify: {count}
 - New mocks needed: {count}
 - Test files needed: {count}
+- Docs / Confluence impacted: {list or "none"}
 ```

@@ -153,10 +153,12 @@ private fun rememberGraphScroll(
   // empty frame-0, so when data arrives the chart stays scrolled to an empty region until a
   // segment switch re-created it. Keying on isEmptyGraph re-applies the initial scroll the moment
   // data lands — fixing the empty-graph-after-reopen and first-entry-no-update cases (MOB-598).
+  // Also key on endTimestamp so a new/deleted entry re-applies the initial scroll (the latest
+  // rolling window) — the viewport re-centres on the change, not just the marker (MOB-1537).
   val scrollState = rememberVicoScrollState(
     scrollEnabled = segment != GraphSegment.TOTAL && !segmentState.isSingleWindow,
     initialScroll = initialScroll,
-    key = segment to segmentState.isEmptyGraph,
+    key = Triple(segment, segmentState.isEmptyGraph, segmentState.endTimestamp),
   )
   val snapConfig = rememberSnapConfig(segment, startPaddingXStep)
   val flingBehavior = rememberChartSnapFlingBehavior(scrollState = scrollState, config = snapConfig)
@@ -283,13 +285,15 @@ private fun GraphScrollEffects(
     }
   }
 
-  // Auto-focus the latest entry when this (active) segment first has data, so the
-  // marker + "latest entry" label appear without a tap. Segment switches are focused
-  // by the SetSelectedSegment reducer; this covers the initial load and data refreshes.
-  // Released on user interaction by the scroll/scrub handlers below.
-  LaunchedEffect(segment, canScrollToAnchor, segmentState.isEmptyGraph, segmentState.data) {
+  // Auto-focus the latest entry so the marker + "latest entry" label appear without a tap.
+  // Re-focus whenever the data SET CHANGES — a new entry added or one deleted (keyed on the latest
+  // timestamp + count) — even if a marker was previously set, so the window re-centres on the new
+  // data (MOB-1537: re-focus after add/delete, no stuck focus, newly-added BPM entry focusable).
+  // Keying on the timestamp/count (not the list instance) means a plain recomposition or an
+  // identical re-emit does NOT re-focus, so a user who scrubbed to an older point isn't yanked;
+  // a user scroll separately clears the marker via the handler below.
+  LaunchedEffect(segment, canScrollToAnchor, segmentState.isEmptyGraph, segmentState.endTimestamp, segmentState.data.size) {
     if (!canScrollToAnchor || segmentState.isEmptyGraph || segmentState.data.isEmpty()) return@LaunchedEffect
-    if (state.markerIndex != null) return@LaunchedEffect
     val latestTs = segmentState.data.maxOfOrNull { it.getTimeStamp() } ?: return@LaunchedEffect
     handleGraphIntent(BaseGraphIntent.UpdateMarkerIndex(latestTs.toDouble()))
   }

@@ -47,6 +47,7 @@ import com.dmdbrands.gurus.weight.features.common.components.PreviewTheme
 import com.dmdbrands.gurus.weight.features.common.components.TextType
 import com.dmdbrands.gurus.weight.features.common.helper.form.FormControl
 import com.dmdbrands.gurus.weight.features.common.helper.form.FormGroup
+import com.dmdbrands.gurus.weight.features.common.model.DeviceModelInfo
 import com.dmdbrands.gurus.weight.resources.AppIcons
 import com.dmdbrands.gurus.weight.theme.MeAppTheme
 import com.dmdbrands.gurus.weight.theme.MeTheme
@@ -102,94 +103,123 @@ fun AddScaleScreenContent(
           .verticalScroll(rememberScrollState())
           .dismissKeyboardOnTap(),
     ) {
-      Column(
-        modifier =
-          Modifier
-            .padding(horizontal = MeTheme.spacing.sm, vertical = MeTheme.spacing.md),
-      ) {
-        AppText(
-          text = AddDeviceScreenStrings.Title,
-          textType = TextType.Title,
-          // TalkBack: screen title is the heading.
-          modifier = Modifier.semantics { heading() },
-        )
-        Spacer(modifier = Modifier.height(MeTheme.spacing.sm))
-        AppText(
-          text = AddDeviceScreenStrings.Subtitle,
-          textType = TextType.Body,
-        )
-        Spacer(modifier = Modifier.height(MeTheme.spacing.lg))
-        AppInput(
-          formControl = modelNumberControl,
-          label = AddDeviceScreenStrings.ModelNumberLabel,
-          type = AppInputType.NUMERIC_STRING,
-          imeAction = ImeAction.Done,
-          onImeAction = {
-            keyboardController?.hide()
-            handleIntent(AddDeviceIntent.Submit)
-            focusManager.clearFocus()
-          },
-          showTrailingIcon = true,
-          showTrailingIconAlways = true,
-          trailingIconId = AppIcons.Outlined.Help,
-          onTrailingAction = { handleIntent(AddDeviceIntent.ShowHelp) },
-          modifier =
-            Modifier
-              .semantics { contentType = ContentType.PhoneNumber }
-              .focusRequester(modelNumberFocusRequester),
-          maxLength = 4,
-        )
-
-        Spacer(modifier = Modifier.height(MeTheme.spacing.lg))
-
-        AppButton(
-          label = AddDeviceScreenStrings.Submit,
-          type = ButtonType.PrimaryFilled,
-          size = ButtonSize.Large,
-          enabled = state.form.isValid && modelNumberControl.value.isNotBlank(),
-          onClick = {
-            keyboardController?.hide()
-            handleIntent(AddDeviceIntent.Submit)
-          },
-          modifier = Modifier.align(Alignment.CenterHorizontally),
-        )
-        Spacer(modifier = Modifier.height(MeTheme.spacing.sm))
-        AppButton(
-          label = AddDeviceScreenStrings.CantFindModelNumber,
-          type = ButtonType.TextPrimary,
-          size = ButtonSize.XSmall,
-          onClick = { handleIntent(AddDeviceIntent.OpenScaleChooser) },
-          modifier = Modifier.align(Alignment.CenterHorizontally),
-        )
-        Spacer(modifier = Modifier.height(MeTheme.spacing.lg))
-        if (state.savedScales.isNotEmpty()) {
-          AppText(
-            text = AddDeviceScreenStrings.MyDevices,
-            textType = TextType.Title,
-            // TalkBack: section header is a heading.
-            modifier = Modifier.semantics { heading() },
-          )
-        }
-      }
+      AddDeviceFormSection(
+        state = state,
+        modelNumberControl = modelNumberControl,
+        modelNumberFocusRequester = modelNumberFocusRequester,
+        onSubmit = {
+          keyboardController?.hide()
+          handleIntent(AddDeviceIntent.Submit)
+        },
+        onImeSubmit = {
+          keyboardController?.hide()
+          handleIntent(AddDeviceIntent.Submit)
+          focusManager.clearFocus()
+        },
+        onShowHelp = { handleIntent(AddDeviceIntent.ShowHelp) },
+        onOpenScaleChooser = { handleIntent(AddDeviceIntent.OpenScaleChooser) },
+      )
       if (state.savedScales.isNotEmpty()) {
-        Column(
-          modifier =
-            Modifier
-              .fillMaxWidth(),
-        ) {
-          state.savedScales.forEach { scaleInfo ->
-            AppDeviceCard(
-              scale = scaleInfo,
-              isSavedScale = true,
-              onClick = { selectedScaleInfo ->
-                selectedScaleInfo.scaleId?.let { id ->
-                  handleIntent(AddDeviceIntent.OpenDeviceSettings(id))
-                }
-              },
-            )
-          }
-        }
+        SavedScalesList(
+          savedScales = state.savedScales,
+          onSelect = { id -> handleIntent(AddDeviceIntent.OpenDeviceSettings(id)) },
+        )
       }
+    }
+  }
+}
+
+@Composable
+private fun AddDeviceFormSection(
+  state: AddScaleState,
+  modelNumberControl: FormControl<String>,
+  modelNumberFocusRequester: FocusRequester,
+  onSubmit: () -> Unit,
+  onImeSubmit: () -> Unit,
+  onShowHelp: () -> Unit,
+  onOpenScaleChooser: () -> Unit,
+) {
+  Column(
+    modifier = Modifier.padding(horizontal = MeTheme.spacing.sm, vertical = MeTheme.spacing.md),
+  ) {
+    AppText(
+      text = AddDeviceScreenStrings.Title,
+      textType = TextType.Title,
+      // TalkBack: screen title is the heading.
+      modifier = Modifier.semantics { heading() },
+    )
+    Spacer(modifier = Modifier.height(MeTheme.spacing.sm))
+    AppText(
+      text = AddDeviceScreenStrings.Subtitle,
+      textType = TextType.Body,
+    )
+    Spacer(modifier = Modifier.height(MeTheme.spacing.lg))
+    AppInput(
+      formControl = modelNumberControl,
+      label = AddDeviceScreenStrings.ModelNumberLabel,
+      type = AppInputType.NUMERIC_STRING,
+      imeAction = ImeAction.Done,
+      onImeAction = onImeSubmit,
+      showTrailingIcon = true,
+      showTrailingIconAlways = true,
+      trailingIconId = AppIcons.Outlined.Help,
+      onTrailingAction = onShowHelp,
+      modifier = Modifier
+        .semantics { contentType = ContentType.PhoneNumber }
+        .focusRequester(modelNumberFocusRequester),
+      maxLength = 4,
+    )
+
+    Spacer(modifier = Modifier.height(MeTheme.spacing.lg))
+
+    AppButton(
+      label = AddDeviceScreenStrings.Submit,
+      type = ButtonType.PrimaryFilled,
+      size = ButtonSize.Large,
+      enabled = state.form.isValid && modelNumberControl.value.isNotBlank(),
+      onClick = onSubmit,
+      modifier = Modifier.align(Alignment.CenterHorizontally),
+    )
+    Spacer(modifier = Modifier.height(MeTheme.spacing.sm))
+    AppButton(
+      label = AddDeviceScreenStrings.CantFindModelNumber,
+      type = ButtonType.TextPrimary,
+      size = ButtonSize.XSmall,
+      onClick = onOpenScaleChooser,
+      modifier = Modifier.align(Alignment.CenterHorizontally),
+    )
+    Spacer(modifier = Modifier.height(MeTheme.spacing.lg))
+    if (state.savedScales.isNotEmpty()) {
+      AppText(
+        text = AddDeviceScreenStrings.MyDevices,
+        textType = TextType.Title,
+        // TalkBack: section header is a heading.
+        modifier = Modifier.semantics { heading() },
+      )
+    }
+  }
+}
+
+@Composable
+private fun SavedScalesList(
+  savedScales: List<DeviceModelInfo>,
+  onSelect: (String) -> Unit,
+) {
+  Column(
+    modifier =
+      Modifier
+        .fillMaxWidth(),
+  ) {
+    savedScales.forEach { scaleInfo ->
+      AppDeviceCard(
+        scale = scaleInfo,
+        isSavedScale = true,
+        onClick = { selectedScaleInfo ->
+          selectedScaleInfo.scaleId?.let { id ->
+            onSelect(id)
+          }
+        },
+      )
     }
   }
 }

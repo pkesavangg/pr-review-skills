@@ -21,6 +21,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.testTag
+import com.dmdbrands.gurus.weight.core.shared.utilities.testing.TestTags
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Offset
@@ -127,6 +129,9 @@ private fun MainNavBarRow(
       val showBadge = item.route in badgeVisible ||
         (item.route == AppRoute.Main.Settings && showUnreadFeedIndicator)
       NavigationBarItem(
+        modifier = Modifier.testTag(
+          "${TestTags.Dashboard.TabBarItem}_${item.tabId}",
+        ),
         icon = { NavBarBadgedIcon(item = item, isSelected = isSelected, showBadge = showBadge) },
         label = { NavBarItemLabel(label = item.label) },
         selected = false,

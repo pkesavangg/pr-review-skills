@@ -15,6 +15,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.testTag
+import com.dmdbrands.gurus.weight.core.shared.utilities.testing.TestTags
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.role
@@ -31,6 +33,7 @@ import com.dmdbrands.gurus.weight.theme.MeTheme
  * - Content slot for product-specific data columns
  * - Right chevron icon
  */
+@Suppress("LongMethod")
 @Composable
 fun HistoryRowLayout(
   month: String,
@@ -59,6 +62,7 @@ fun HistoryRowLayout(
   Row(
     modifier = Modifier
       .fillMaxWidth()
+      .testTag(TestTags.History.MonthRow)
       .then(rowSemantics)
       .combinedClickable(
         onClick = {

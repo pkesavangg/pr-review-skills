@@ -9,4 +9,9 @@ interface ISecureTokenStore {
     fun removeToken(accountId: String)
     fun clearAll()
     fun hasTokens(): Boolean
+
+    /** Number of consecutive runtime encryption failures (persisted in plain prefs). */
+    fun getEncryptionFailureCount(): Int
+    fun incrementEncryptionFailureCount()
+    fun resetEncryptionFailureCount()
 }

@@ -289,7 +289,7 @@ struct MyDevicesScreen: View {
             }
             .scrollDismissesKeyboard(.interactively)
         }
-        .navigationBarBackButtonHidden(true)
+        .navigationBarHidden(true)
         .screenAccessibilityRoot(AccessibilityID.addEditScalesScreenRoot)
         .background(theme.backgroundSecondary.ignoresSafeArea())
         .onTapGesture {

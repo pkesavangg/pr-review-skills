@@ -23,6 +23,8 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.testTag
+import com.dmdbrands.gurus.weight.core.shared.utilities.testing.TestTags
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.unit.dp
 import com.dmdbrands.gurus.weight.core.navigation.AppRoute
@@ -181,7 +183,9 @@ fun WeightHistoryDetailItemDetails(
           HistoryItemStrings.AddNoteContentDescription
         },
         onClick = { onEditEntry() },
-        modifier = Modifier.padding(start = MeTheme.spacing.sm),
+        modifier = Modifier
+          .padding(start = MeTheme.spacing.sm)
+          .testTag(TestTags.History.EditNoteButton),
       )
     }
     HorizontalDivider(

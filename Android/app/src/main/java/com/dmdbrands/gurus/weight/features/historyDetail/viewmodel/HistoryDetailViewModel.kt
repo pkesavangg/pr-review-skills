@@ -3,6 +3,7 @@ package com.dmdbrands.gurus.weight.features.historyDetail.viewmodel
 import androidx.lifecycle.viewModelScope
 import com.dmdbrands.gurus.weight.core.di.ApplicationScope
 import com.dmdbrands.gurus.weight.core.shared.utilities.DateTimeConverter
+import com.dmdbrands.gurus.weight.data.storage.datastore.UserDataStore
 import com.dmdbrands.gurus.weight.domain.model.common.ProductSelection
 import com.dmdbrands.gurus.weight.core.shared.utilities.logging.AppLog
 import com.dmdbrands.gurus.weight.domain.enums.ProductType
@@ -44,6 +45,7 @@ class HistoryDetailViewModel @AssistedInject constructor(
     private val entryService: IEntryService,
     private val healthConnectService: IHealthConnectService,
     private val entryReadService: IEntryReadService,
+    private val userDataStore: UserDataStore,
     @ApplicationScope private val appScope: CoroutineScope,
     @Assisted val month: String,
     @Assisted val productType: ProductType,
@@ -74,6 +76,15 @@ class HistoryDetailViewModel @AssistedInject constructor(
                 .map { it?.isMetricUnit() ?: false }
                 .distinctUntilChanged()
                 .collect { handleIntent(HistoryDetailIntent.SetMetric(it)) }
+        }
+        // Baby entries render in the My Kids unit (LB_OZ / LB / KG) — needed to tell decimal-lb
+        // from lb-oz, which isMetric alone can't. (MOB-1499)
+        if (productType == ProductType.BABY) {
+            viewModelScope.launch {
+                userDataStore.babyWeightUnitForCurrentAccountFlow
+                    .distinctUntilChanged()
+                    .collect { handleIntent(HistoryDetailIntent.SetBabyWeightUnit(it)) }
+            }
         }
         loadDetail()
     }

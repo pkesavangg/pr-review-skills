@@ -10,8 +10,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.key
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.testTag
 import com.dmdbrands.gurus.weight.core.shared.utilities.testing.TestTags
+import com.dmdbrands.gurus.weight.core.shared.utilities.testing.rowTestTag
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.graphics.Shape
@@ -110,7 +110,7 @@ private fun RowScope.AppUserListDeleteAction(
             iconId = AppIcons.Default.Delete,
             contentDescription = AppListStrings.accDeleteItemLabel,
             backgroundColor = MeTheme.colorScheme.danger,
-            modifier = Modifier.testTag("${TestTags.Landing.AccountCardDeleteButton}_${item.id}"),
+            modifier = Modifier.rowTestTag(TestTags.Landing.AccountCardDeleteButton, item.id),
         ) {
             onDeleteRequest(item)
         }
@@ -201,7 +201,7 @@ private fun AppUserListRowContent(
         account = item,
         modifier = Modifier
             .clip(shape)
-            .testTag("${TestTags.Landing.AccountCardRow}_${item.id}")
+            .rowTestTag(TestTags.Landing.AccountCardRow, item.id)
             .then(deleteActionModifier),
         onAccountSelect = { onAccountSelect(item) },
         onLoginRequest = { onLoginRequest(item) },

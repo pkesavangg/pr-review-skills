@@ -13,6 +13,8 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.testTag
+import com.dmdbrands.gurus.weight.core.shared.utilities.testing.TestTags
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.dmdbrands.gurus.weight.core.navigation.AppRoute
 import com.dmdbrands.gurus.weight.core.navigation.LocalNavBackStack
@@ -113,7 +115,9 @@ fun HistoryScreenContent(
         id = AppIcons.Default.Export,
         contentDescription = HistoryScreenStrings.ExportDataDescription,
         type = AppIconType.Primary,
-        modifier = Modifier.padding(end = spacing.sm),
+        modifier = Modifier
+          .padding(end = spacing.sm)
+          .testTag(TestTags.History.DownloadButton),
         enabled = canExport,
       ) {
         handleIntent(HistoryIntent.Export)
@@ -228,6 +232,7 @@ fun HistoryScreenContent(
           } else {
             BabyHistoryList(
               groups = babyGroups,
+              babyWeightUnit = state.babyWeightUnit,
               birthdate = (currentProduct as? ProductSelection.Baby)?.profile?.birthdate,
               onItemClick = {  item ->
                 coroutineScope.launch {

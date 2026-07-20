@@ -47,6 +47,7 @@ import com.greatergoods.libs.appsync.startAppSyncScan
 import com.greatergoods.libs.appsync.utility.AppSyncResultFactory
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.drop
@@ -209,16 +210,7 @@ constructor(
         // wait for the real status before deciding, so we don't prompt off a stale empty map
         // (MOB-710). Timeout-guarded so a slow/absent scan can't hang the tap.
         if (ggPermissionService.permissionCallBackFlow.value.isEmpty()) {
-          dialogQueueService.showLoader(HomeStrings.CheckingCameraPermission)
-          // try/finally so the loader is always dismissed — including if this coroutine is
-          // cancelled mid-await (otherwise the loader could be left up). (PR #2093 review)
-          val loaded = try {
-            withTimeoutOrNull(PERMISSION_LOAD_TIMEOUT_MS) {
-              ggPermissionService.permissionCallBackFlow.first { it.isNotEmpty() }
-            }
-          } finally {
-            dialogQueueService.dismissLoader()
-          }
+          val loaded = awaitInitialPermissionLoad()
           if (loaded != null &&
             AppPermissionsHelper.areRequiredPermissionsEnabled(loaded, setupType = DeviceSetupType.AppSync)
           ) {
@@ -227,74 +219,95 @@ constructor(
           }
         }
 
-        var permissionResultReceived = false
-
-        // Launch a job to wait for the NEXT permission update from flow
-        val permissionJob = launch {
-          // Skip the current value and wait for the next update after permission request
-          ggPermissionService.permissionCallBackFlow
-            .drop(1) // Skip the current value
-            .first() // Wait for the next emission
-            .let { data ->
-              // Safely handle the flow data - it can be String or GGPermissionStatusMap
-              when (data) {
-                is GGPermissionStatusMap -> {
-                  val isEnabled = AppPermissionsHelper.areRequiredPermissionsEnabled(
-                    data, setupType = DeviceSetupType.AppSync,
-                  )
-
-                  if (!permissionResultReceived) {
-                    permissionResultReceived = true
-                    onResult(isEnabled)
-                  }
-                }
-                is String -> {
-                  // Handle error message or denial
-                  AppLog.w(TAG, "Permission flow returned string: $data")
-                  if (!permissionResultReceived) {
-                    permissionResultReceived = true
-                    onResult(false)
-                  }
-                }
-                else -> {
-                  AppLog.w(TAG, "Unexpected permission flow type: ${data?.javaClass?.simpleName}")
-                  if (!permissionResultReceived) {
-                    permissionResultReceived = true
-                    onResult(false)
-                  }
-                }
-              }
-            }
-        }
-
-        dialogUtility.permissionAlert(
-          GGPermissionType.CAMERA,
-          onRequest = {
-            try {
-              // Call requestPermission without callback, just like AppPermissionsViewModel
-              // The library handles navigation to settings internally
-              ggPermissionService.requestPermission(GGPermissionType.CAMERA)
-              // The result will come through permissionCallBackFlow
-            } catch (e: Exception) {
-              AppLog.e(TAG, "Error requesting camera permission", e.toString())
-              permissionJob.cancel()
-              if (!permissionResultReceived) {
-                permissionResultReceived = true
-                onResult(false)
-              }
-            }
-          },
-          onDismiss = {
-            permissionJob.cancel()
-            if (!permissionResultReceived) {
-              permissionResultReceived = true
-              onResult(false)
-            }
-          },
-        )
+        requestCameraPermission(onResult)
       } catch (e: Exception) {
         AppLog.e(TAG, "Error in checkAndRequestCameraPermission", e.toString())
         onResult(false)
+      }
+    }
+  }
+
+  /**
+   * Shows the "checking camera permission" loader and waits (timeout-guarded) for the BLE
+   * permission flow to emit its first non-empty status, always dismissing the loader — including
+   * if this coroutine is cancelled mid-await (otherwise the loader could be left up). Returns the
+   * loaded status, or null if it did not arrive in time (MOB-710, PR #2093 review).
+   */
+  private suspend fun awaitInitialPermissionLoad(): GGPermissionStatusMap? {
+    dialogQueueService.showLoader(HomeStrings.CheckingCameraPermission)
+    return try {
+      withTimeoutOrNull(PERMISSION_LOAD_TIMEOUT_MS) {
+        ggPermissionService.permissionCallBackFlow.first { it.isNotEmpty() }
+      }
+    } finally {
+      dialogQueueService.dismissLoader()
+    }
+  }
+
+  /**
+   * Requests the camera permission and resolves [onResult] exactly once — either from the next
+   * permission-flow emission or from the permission dialog's request/dismiss callbacks.
+   */
+  private fun CoroutineScope.requestCameraPermission(onResult: (Boolean) -> Unit) {
+    var permissionResultReceived = false
+    val resolveOnce: (Boolean) -> Unit = { result ->
+      if (!permissionResultReceived) {
+        permissionResultReceived = true
+        onResult(result)
+      }
+    }
+
+    // Launch a job to wait for the NEXT permission update from flow
+    val permissionJob = launch {
+      // Skip the current value and wait for the next update after permission request
+      val data = ggPermissionService.permissionCallBackFlow
+        .drop(1) // Skip the current value
+        .first() // Wait for the next emission
+      resolvePermissionResult(data, resolveOnce)
+    }
+
+    dialogUtility.permissionAlert(
+      GGPermissionType.CAMERA,
+      onRequest = {
+        try {
+          // Call requestPermission without callback, just like AppPermissionsViewModel
+          // The library handles navigation to settings internally
+          ggPermissionService.requestPermission(GGPermissionType.CAMERA)
+          // The result will come through permissionCallBackFlow
+        } catch (e: Exception) {
+          AppLog.e(TAG, "Error requesting camera permission", e.toString())
+          permissionJob.cancel()
+          resolveOnce(false)
+        }
+      },
+      onDismiss = {
+        permissionJob.cancel()
+        resolveOnce(false)
+      },
+    )
+  }
+
+  /**
+   * Maps a permission-flow emission to a boolean result via [resolveOnce], mirroring the original
+   * when-branch handling for map / string / unexpected payloads.
+   */
+  private fun resolvePermissionResult(data: GGPermissionStatusMap, resolveOnce: (Boolean) -> Unit) {
+    // Safely handle the flow data - it can be String or GGPermissionStatusMap
+    when (data) {
+      is GGPermissionStatusMap -> {
+        val isEnabled = AppPermissionsHelper.areRequiredPermissionsEnabled(
+          data, setupType = DeviceSetupType.AppSync,
+        )
+        resolveOnce(isEnabled)
+      }
+      is String -> {
+        // Handle error message or denial
+        AppLog.w(TAG, "Permission flow returned string: $data")
+        resolveOnce(false)
+      }
+      else -> {
+        AppLog.w(TAG, "Unexpected permission flow type: ${data?.javaClass?.simpleName}")
+        resolveOnce(false)
       }
     }
   }

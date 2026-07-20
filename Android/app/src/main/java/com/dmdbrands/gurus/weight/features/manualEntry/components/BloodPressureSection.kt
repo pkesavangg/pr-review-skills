@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
+import com.dmdbrands.gurus.weight.core.shared.utilities.testing.TestTags
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.text.input.ImeAction
@@ -21,6 +22,7 @@ import com.dmdbrands.gurus.weight.theme.MeTheme
 /**
  * Blood pressure entry section — systolic, diastolic, pulse, notes, and date/time.
  */
+@Suppress("LongMethod")
 @Composable
 fun BloodPressureSection(
     controls: BloodPressureFormControls,
@@ -38,6 +40,7 @@ fun BloodPressureSection(
         imeAction = ImeAction.Next,
         nextFocusRequester = diastolicFocusRequester,
         maxLength = 3,
+        testTag = TestTags.ManualEntry.BpSystolicField,
         enabled = enabled,
         modifier = Modifier
             .fillMaxWidth()
@@ -50,6 +53,7 @@ fun BloodPressureSection(
         imeAction = ImeAction.Next,
         nextFocusRequester = pulseFocusRequester,
         maxLength = 3,
+        testTag = TestTags.ManualEntry.BpDiastolicField,
         enabled = enabled,
         modifier = Modifier
             .fillMaxWidth()
@@ -62,6 +66,7 @@ fun BloodPressureSection(
         imeAction = ImeAction.Done,
         onImeAction = onImeAction,
         maxLength = 3,
+        testTag = TestTags.ManualEntry.BpPulseField,
         enabled = enabled,
         modifier = Modifier
             .fillMaxWidth()
@@ -78,6 +83,8 @@ fun BloodPressureSection(
     Spacer(modifier = Modifier.height(MeTheme.spacing.md))
     DateTimeInput(
         formControl = controls.dateTime,
+        dateTestTag = TestTags.ManualEntry.DateButton,
+        timeTestTag = TestTags.ManualEntry.TimeButton,
         mode = DateTimeInputMode.DateTime,
         label = EntryScreenStrings.DATE_LABEL,
         maxValue = null,

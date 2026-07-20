@@ -37,7 +37,7 @@ struct AppPermissionsScreen: View {
                 .padding(.horizontal, .spacingSM)
             }
         }
-        .navigationBarBackButtonHidden(true)
+        .navigationBarHidden(true)
         .screenAccessibilityRoot(AccessibilityID.appPermissionsScreenRoot)
     }
 }

@@ -48,6 +48,17 @@ class HistoryReducerTest {
     }
 
     @Test
+    fun `SetBabyWeightUnit updates the baby weight unit`() {
+        val result = reducer.reduce(
+            HistoryState(),
+            HistoryIntent.SetBabyWeightUnit(com.dmdbrands.gurus.weight.domain.model.common.WeightUnit.KG),
+        )
+
+        assertThat(result.babyWeightUnit)
+            .isEqualTo(com.dmdbrands.gurus.weight.domain.model.common.WeightUnit.KG)
+    }
+
+    @Test
     fun `Loading false sets isLoading to false`() {
         val state = HistoryState(isLoading = true)
 

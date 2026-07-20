@@ -51,7 +51,7 @@ struct BpmDeviceSettingsScreen: View {
             isPresented: $bpmStore.showProductBrowser
         )
         .background(theme.backgroundSecondary.ignoresSafeArea())
-        .navigationBarBackButtonHidden(true)
+        .navigationBarHidden(true)
         .screenAccessibilityRoot(AccessibilityID.bpmSettingsScreenRoot)
         .onAppear {
             bpmStore.refreshDeviceData()

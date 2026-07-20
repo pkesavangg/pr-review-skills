@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.PagerState
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -146,14 +147,8 @@ fun MetricInfoScreenContent(
   source: MetricInfoSource,
   handleIntent: (MetricInfoIntent) -> Unit,
 ) {
-  val scope = rememberCoroutineScope()
-  val backStack = LocalNavBackStack.current
-
   val dashboardType = metricInfoState.dashboardType ?: DashboardType.DASHBOARD_12_METRICS
-  val filteredMetricKeys = getFilteredMetricKeys(dashboardType)
-
-
-  val metricKeys = filteredMetricKeys.map {
+  val metricKeys = getFilteredMetricKeys(dashboardType).map {
     MetricInfoKey(
       key = it,
       label = it.name.replace("_", " "),
@@ -169,6 +164,39 @@ fun MetricInfoScreenContent(
     it.key == (stat.key as DashboardKey.Metric).key
   } ?: metricKeys.firstOrNull()
 
+  MetricInfoPagerSync(selectedIndex, pagerState, metricKeys, handleIntent)
+
+  AppScaffold(
+    title = MetricInfoStrings.AppBarTitle,
+    containerColor = MeTheme.colorScheme.secondaryBackground,
+    appBarColor = MeTheme.colorScheme.primaryBackground,
+    navigationIcon = { MetricInfoCloseButton() },
+  ) { modifier ->
+    MetricInfoContent(
+      modifier = modifier,
+      metricKeys = metricKeys,
+      selectedMetricInfoKey = selectedMetricInfoKey,
+      selectedIndex = selectedIndex,
+      pagerState = pagerState,
+      info = info,
+      source = source,
+      metricInfoState = metricInfoState,
+      handleIntent = handleIntent,
+    )
+  }
+}
+
+/**
+ * Keeps the pager and the selected-metric index in sync in both directions.
+ */
+@OptIn(ExperimentalFoundationApi::class)
+@Composable
+private fun MetricInfoPagerSync(
+  selectedIndex: Int,
+  pagerState: PagerState,
+  metricKeys: List<MetricInfoKey>,
+  handleIntent: (MetricInfoIntent) -> Unit,
+) {
   // Sync pager state with selected index
   LaunchedEffect(selectedIndex) {
     if (selectedIndex != pagerState.currentPage && selectedIndex in metricKeys.indices) {
@@ -182,120 +210,161 @@ fun MetricInfoScreenContent(
       handleIntent(MetricInfoIntent.SetSelectedIndex(pagerState.currentPage))
     }
   }
+}
 
-  AppScaffold(
-    title = MetricInfoStrings.AppBarTitle,
-    containerColor = MeTheme.colorScheme.secondaryBackground,
-    appBarColor = MeTheme.colorScheme.primaryBackground,
-    navigationIcon = {
-      AppIconButton(
-        AppIcons.Default.Close,
-        modifier = Modifier.testTag(TestTags.MetricInfo.CloseButton),
-        contentDescription = MetricInfoStrings.accCloseButton,
-      ) {
-        scope.launch {
-          backStack.removeLast()
-        }
-      }
-    },
-  ) { modifier ->
-    Column(
-      modifier = modifier
-        .padding(top = spacing.md)
-        .testTag(TestTags.MetricInfo.ScreenRoot),
-    ) {
-      if (metricKeys.isNotEmpty() && selectedMetricInfoKey != null) {
-        SegmentButtonGroup(
-          data = metricKeys,
-          contentPadding = PaddingValues(horizontal = spacing.sm),
-          selectedData = metricKeys.get(selectedIndex),
-          key = MetricInfoKey::label,
-          size = SegmentButtonSize.Small,
-          type = SegmentButtonType.Scrollable,
-          onSelected = {
-            handleIntent(MetricInfoIntent.SelectSegment(it.key))
-          },
-        )
-      }
-
-      HorizontalPager(
-        state = pagerState,
-        modifier = modifier.fillMaxSize(),
-      ) { page ->
-        val currentMetricKey = metricKeys[page].key
-        val currentStat = StatHelper.getMetricValue(info, currentMetricKey)
-        val pageScrollState = rememberScrollState()
-
-        // Per MA-3938: the label must follow graph selection state, NOT the entry DTO's
-        // timestamp. Driving it off `info.entryTimeStamp` for the no-selection case is the
-        // iOS bug we mirrored — it stamped the latest entry's day even though the displayed
-        // value was the period average. The no-selection branch must use `info.rangeText`.
-        val singleEntryDate = getFormattedDate(
-          DateTimeConverter.isoToTimestamp(info.entryTimeStamp?.lastOrNull()),
-          source = source,
-        )
-
-        // Per MA-3965: dashboard openings route through [GraphLabelHelper.selectionLabel]
-        // — the same helper the trend-view header reads from — so the two surfaces stay
-        // in lockstep. Empty-state, history-list, and missing-metric branches fall
-        // outside the dashboard's selection grammar and keep their own phrasings.
-        val segmentForLabel = source.toSegment()
-        val measurementTakenString = when {
-          info.isEmpty -> "no entries ${info.rangeText ?: singleEntryDate}"
-          currentStat.getDisplayValue() == null -> MetricInfoStrings.MeasurementNotTaken
-          // History list → a single concrete reading on a specific day. Phrase the
-          // label that way regardless of segment; "day average" / "latest entry"
-          // wording only makes sense for dashboard graph aggregates.
-          info.isHistoryEntry ->
-            "Measurement taken $singleEntryDate"
-          info.isSingleEntry ->
-            "${GraphLabelHelper.selectionLabel(
-              segment = segmentForLabel,
-              hasSelection = true,
-              isLatestDaySelected = info.isLatestDaySelected,
-            )} $singleEntryDate"
-          else ->
-            "${GraphLabelHelper.selectionLabel(
-              segment = segmentForLabel,
-              hasSelection = false,
-              isLatestDaySelected = false,
-            )} ${info.rangeText ?: ""}".trim()
-        }
-
-        Column(
-          modifier = modifier
-            .fillMaxSize()
-            .verticalScroll(pageScrollState)
-            .padding(horizontal = spacing.sm, vertical = spacing.md),
-          verticalArrangement = Arrangement.Top,
-        ) {
-          MetricInfoValueSection(
-            value = currentStat.getDisplayValue(),
-            valuePrefix = currentStat.valuePrefix,
-            unit = currentStat.unit,
-            subText = measurementTakenString,
-          )
-
-          Spacer(modifier = Modifier.height(spacing.xl))
-
-          if (metricInfoState.isHeartRateOff && currentMetricKey == MetricKey.HEART_RATE) {
-            AppNote(
-              message = DeviceMetricsSettingStrings.HeartRateOffNotes.Title,
-              icon = AppIcons.Metrics.Pulse,
-              iconType = AppIconType.Tertiary,
-              buttonText = DeviceMetricsSettingStrings.HeartRateOffNotes.UpdateButton,
-              onButtonClick = { handleIntent(MetricInfoIntent.UpdateScaleMode) },
-            )
-            Spacer(modifier = Modifier.height(spacing.xl))
-          }
-
-          MetricInfoInfoSection(metricKey = currentMetricKey)
-
-          Spacer(modifier = Modifier.height(spacing.xl))
-
-          MetricInfoResourcesSection(metricKey = currentMetricKey, handleIntent = handleIntent)
-        }
-      }
+@Composable
+private fun MetricInfoCloseButton() {
+  val scope = rememberCoroutineScope()
+  val backStack = LocalNavBackStack.current
+  AppIconButton(
+    AppIcons.Default.Close,
+    modifier = Modifier.testTag(TestTags.MetricInfo.CloseButton),
+    contentDescription = MetricInfoStrings.accCloseButton,
+  ) {
+    scope.launch {
+      backStack.removeLast()
     }
+  }
+}
+
+@OptIn(ExperimentalFoundationApi::class)
+@Composable
+private fun MetricInfoContent(
+  modifier: Modifier,
+  metricKeys: List<MetricInfoKey>,
+  selectedMetricInfoKey: MetricInfoKey?,
+  selectedIndex: Int,
+  pagerState: PagerState,
+  info: DashboardMetric,
+  source: MetricInfoSource,
+  metricInfoState: MetricInfoState,
+  handleIntent: (MetricInfoIntent) -> Unit,
+) {
+  Column(
+    modifier = modifier
+      .padding(top = spacing.md)
+      .testTag(TestTags.MetricInfo.ScreenRoot),
+  ) {
+    if (metricKeys.isNotEmpty() && selectedMetricInfoKey != null) {
+      SegmentButtonGroup(
+        data = metricKeys,
+        contentPadding = PaddingValues(horizontal = spacing.sm),
+        selectedData = metricKeys.get(selectedIndex),
+        key = MetricInfoKey::label,
+        size = SegmentButtonSize.Small,
+        type = SegmentButtonType.Scrollable,
+        onSelected = {
+          handleIntent(MetricInfoIntent.SelectSegment(it.key))
+        },
+      )
+    }
+
+    HorizontalPager(
+      state = pagerState,
+      modifier = modifier.fillMaxSize(),
+    ) { page ->
+      MetricInfoMetricPage(
+        page = page,
+        modifier = modifier,
+        metricKeys = metricKeys,
+        info = info,
+        source = source,
+        metricInfoState = metricInfoState,
+        handleIntent = handleIntent,
+      )
+    }
+  }
+}
+
+@Composable
+private fun MetricInfoMetricPage(
+  page: Int,
+  modifier: Modifier,
+  metricKeys: List<MetricInfoKey>,
+  info: DashboardMetric,
+  source: MetricInfoSource,
+  metricInfoState: MetricInfoState,
+  handleIntent: (MetricInfoIntent) -> Unit,
+) {
+  val currentMetricKey = metricKeys[page].key
+  val currentStat = StatHelper.getMetricValue(info, currentMetricKey)
+  val pageScrollState = rememberScrollState()
+  val singleEntryDate = getFormattedDate(
+    DateTimeConverter.isoToTimestamp(info.entryTimeStamp?.lastOrNull()),
+    source = source,
+  )
+  val measurementTakenString =
+    getMeasurementTakenString(info, currentStat, source, singleEntryDate)
+
+  Column(
+    modifier = modifier
+      .fillMaxSize()
+      .verticalScroll(pageScrollState)
+      .padding(horizontal = spacing.sm, vertical = spacing.md),
+    verticalArrangement = Arrangement.Top,
+  ) {
+    MetricInfoValueSection(
+      value = currentStat.getDisplayValue(),
+      valuePrefix = currentStat.valuePrefix,
+      unit = currentStat.unit,
+      subText = measurementTakenString,
+    )
+
+    Spacer(modifier = Modifier.height(spacing.xl))
+
+    if (metricInfoState.isHeartRateOff && currentMetricKey == MetricKey.HEART_RATE) {
+      AppNote(
+        message = DeviceMetricsSettingStrings.HeartRateOffNotes.Title,
+        icon = AppIcons.Metrics.Pulse,
+        iconType = AppIconType.Tertiary,
+        buttonText = DeviceMetricsSettingStrings.HeartRateOffNotes.UpdateButton,
+        onButtonClick = { handleIntent(MetricInfoIntent.UpdateScaleMode) },
+      )
+      Spacer(modifier = Modifier.height(spacing.xl))
+    }
+
+    MetricInfoInfoSection(metricKey = currentMetricKey)
+
+    Spacer(modifier = Modifier.height(spacing.xl))
+
+    MetricInfoResourcesSection(metricKey = currentMetricKey, handleIntent = handleIntent)
+  }
+}
+
+/**
+ * Builds the "measurement taken" subtext for a metric page.
+ *
+ * Per MA-3938 the label follows graph selection state, NOT the entry DTO's timestamp — the
+ * no-selection branch uses [DashboardMetric.rangeText] (driving it off `entryTimeStamp` was
+ * the mirrored iOS bug that stamped the latest entry's day onto a period average). Per
+ * MA-3965 dashboard openings route through [GraphLabelHelper.selectionLabel] — the same
+ * helper the trend-view header reads from — so the two surfaces stay in lockstep. Empty-state,
+ * history-list, and missing-metric branches fall outside that grammar and keep their own
+ * phrasings (history list = a single concrete reading on a specific day).
+ */
+private fun getMeasurementTakenString(
+  info: DashboardMetric,
+  currentStat: Stat,
+  source: MetricInfoSource,
+  singleEntryDate: String,
+): String {
+  val segmentForLabel = source.toSegment()
+  return when {
+    info.isEmpty -> "no entries ${info.rangeText ?: singleEntryDate}"
+    currentStat.getDisplayValue() == null -> MetricInfoStrings.MeasurementNotTaken
+    info.isHistoryEntry ->
+      "Measurement taken $singleEntryDate"
+    info.isSingleEntry ->
+      "${GraphLabelHelper.selectionLabel(
+        segment = segmentForLabel,
+        hasSelection = true,
+        isLatestDaySelected = info.isLatestDaySelected,
+      )} $singleEntryDate"
+    else ->
+      "${GraphLabelHelper.selectionLabel(
+        segment = segmentForLabel,
+        hasSelection = false,
+        isLatestDaySelected = false,
+      )} ${info.rangeText ?: ""}".trim()
   }
 }

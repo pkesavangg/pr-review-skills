@@ -11,6 +11,9 @@ complexity:
   LargeClass:
     active: true
     threshold: 600
+    # Test classes legitimately grow large (one class = many cases); exempt test source
+    # sets from LargeClass rather than holding them to the 600-line production limit (MOB-1499).
+    excludes: ['**/test/**', '**/androidTest/**']
 
 exceptions:
   SwallowedException:

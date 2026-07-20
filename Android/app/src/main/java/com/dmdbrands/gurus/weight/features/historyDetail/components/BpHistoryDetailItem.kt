@@ -20,6 +20,7 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.ui.draw.rotate
+import com.dmdbrands.gurus.weight.core.shared.utilities.testing.TestTags
 import com.dmdbrands.gurus.weight.domain.enums.BpSeverity
 import com.dmdbrands.gurus.weight.domain.model.storage.entry.BpmEntry
 import com.dmdbrands.gurus.weight.features.common.components.AppIcon
@@ -75,7 +76,8 @@ fun BpHistoryDetailItem(
   Column(
     modifier = Modifier
       .fillMaxWidth()
-      .testTag("entry_row")
+      .testTag(TestTags.History.EntryRow)
+      .testTag(TestTags.History.BpEntryRow)
       .background(
         if (isExpanded) MeTheme.colorScheme.secondaryBackground else MeTheme.colorScheme.primaryBackground,
       ),
@@ -144,7 +146,7 @@ fun BpHistoryDetailItem(
       AppIcon(
         id = AppIcons.Default.ChevronDown,
         contentDescription = "notes",
-        modifier = Modifier.rotate(rotation),
+        modifier = Modifier.rotate(rotation).testTag(TestTags.History.BpRowExpand),
         onClick = { onToggle() },
       )
     }
@@ -180,7 +182,9 @@ fun BpHistoryDetailItem(
               HistoryItemStrings.AddNoteContentDescription
             },
             onClick = { onEditEntry() },
-            modifier = Modifier.padding(start = MeTheme.spacing.sm),
+            modifier = Modifier
+              .padding(start = MeTheme.spacing.sm)
+              .testTag(TestTags.History.EditNoteButton),
           )
         }
       }

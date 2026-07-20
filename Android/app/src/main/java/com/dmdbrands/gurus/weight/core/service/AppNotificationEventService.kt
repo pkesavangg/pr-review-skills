@@ -22,6 +22,19 @@ data class NotificationTapPayload(
     val monthKey: String?,
 )
 
+/**
+ * Context carried from a *received* (foreground) entry-sync push so the app can show the
+ * in-app "New Reading saved to your log" card for a Wi-Fi / remotely-synced reading (MOB-1537).
+ * @property measurement server-formatted reading (e.g. "28.6 lb"); null on the no-measurement push.
+ * @property destination [com.dmdbrands.gurus.weight.domain.enums.ProductType] id.
+ */
+data class NotificationReceivedPayload(
+    val accountId: String?,
+    val destination: String?,
+    val measurement: String?,
+    val monthKey: String?,
+)
+
 object AppNotificationEventService {
     private val _events = MutableSharedFlow<NotificationEventType>() // Or any type of event
     val events = _events
@@ -48,5 +61,15 @@ object AppNotificationEventService {
 
     suspend fun emitTap(payload: NotificationTapPayload) {
         _tapEvents.emit(payload)
+    }
+
+    private val _receivedEvents = MutableSharedFlow<NotificationReceivedPayload>(
+        extraBufferCapacity = 1,
+        onBufferOverflow = BufferOverflow.DROP_OLDEST,
+    )
+    val receivedEvents = _receivedEvents
+
+    suspend fun emitReceived(payload: NotificationReceivedPayload) {
+        _receivedEvents.emit(payload)
     }
 }

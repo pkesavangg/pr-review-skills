@@ -30,6 +30,7 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import com.dmdbrands.gurus.weight.core.shared.utilities.testing.TestTags
 import com.dmdbrands.gurus.weight.features.common.model.ActionButton
 import com.dmdbrands.gurus.weight.features.common.model.Toast
 import com.dmdbrands.gurus.weight.resources.AppIcons
@@ -59,7 +60,7 @@ fun ToastCard(
   Card(
     modifier =
       modifier
-        .testTag("toast_card")
+        .testTag(TestTags.Toast.Card)
         .semantics {
           liveRegion = LiveRegionMode.Polite
           contentDescription = bannerDescription
@@ -102,7 +103,7 @@ private fun ToastCardBody(
         painter = painterResource(id = it),
         contentDescription = null,
         tint = contentColor,
-        modifier = Modifier.testTag("toast_icon").size(24.dp),
+        modifier = Modifier.testTag(TestTags.Toast.Icon).size(24.dp),
       )
     }
     Column(
@@ -113,14 +114,14 @@ private fun ToastCardBody(
       toast.title?.let {
         Text(
           text = it,
-          modifier = Modifier.testTag("toast_title"),
+          modifier = Modifier.testTag(TestTags.Toast.Title),
           style = MeTheme.typography.heading5,
           color = contentColor,
         )
       }
       Text(
         text = toast.message,
-        modifier = Modifier.testTag("toast_message"),
+        modifier = Modifier.testTag(TestTags.Toast.Message),
         style = MeTheme.typography.body2,
         color = contentColor,
       )
@@ -133,7 +134,7 @@ private fun ToastCardBody(
           color = if (toast.isError) colorScheme.textBody else colorScheme.primaryAction,
           modifier =
             Modifier
-              .testTag("toast_action")
+              .testTag(TestTags.Toast.Action)
               .padding(vertical = 6.dp, horizontal = 2.dp)
               .clickable {
                 it.action()

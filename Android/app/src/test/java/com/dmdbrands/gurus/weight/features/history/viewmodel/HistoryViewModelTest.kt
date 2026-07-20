@@ -58,6 +58,9 @@ class HistoryViewModelTest {
     @MockK(relaxed = true)
     lateinit var productSelectionRepository: IProductSelectionRepository
 
+    @MockK(relaxed = true)
+    lateinit var userDataStore: com.dmdbrands.gurus.weight.data.storage.datastore.UserDataStore
+
     private lateinit var navigationService: IAppNavigationService
     private lateinit var dialogQueueService: IDialogQueueService
     private lateinit var productSelectionManager: IProductSelectionManager
@@ -78,6 +81,7 @@ class HistoryViewModelTest {
             entryCursorPager = entryCursorPager,
             deviceService = deviceService,
             productSelectionRepository = productSelectionRepository,
+            userDataStore = userDataStore,
         ).initTestDependencies(
             navigationService = navigationService,
             dialogQueueService = dialogQueueService,
@@ -86,6 +90,8 @@ class HistoryViewModelTest {
     }
 
     private fun stubDefaultFlows() {
+        every { userDataStore.babyWeightUnitForCurrentAccountFlow } returns
+            flowOf(com.dmdbrands.gurus.weight.domain.model.common.WeightUnit.LB_OZ)
         every { entryService.isUpdating } returns MutableStateFlow(false)
         // observeAndLoadHistory() collects availableProducts on init; without a real flow the
         // relaxed mock emits a default value that fails the List<ProductSelection> cast.
@@ -129,6 +135,7 @@ class HistoryViewModelTest {
             entryCursorPager = entryCursorPager,
             deviceService = deviceService,
             productSelectionRepository = productSelectionRepository,
+            userDataStore = userDataStore,
         ).initTestDependencies(
             navigationService = navigationService,
             dialogQueueService = dialogQueueService,
@@ -258,6 +265,7 @@ class HistoryViewModelTest {
             entryCursorPager = entryCursorPager,
             deviceService = deviceService,
             productSelectionRepository = productSelectionRepository,
+            userDataStore = userDataStore,
         ).initTestDependencies(
             navigationService = navigationService,
             dialogQueueService = dialogQueueService,
@@ -284,6 +292,7 @@ class HistoryViewModelTest {
             entryCursorPager = entryCursorPager,
             deviceService = deviceService,
             productSelectionRepository = productSelectionRepository,
+            userDataStore = userDataStore,
         ).initTestDependencies(
             navigationService = navigationService,
             dialogQueueService = dialogQueueService,
@@ -307,6 +316,7 @@ class HistoryViewModelTest {
             entryCursorPager = entryCursorPager,
             deviceService = deviceService,
             productSelectionRepository = productSelectionRepository,
+            userDataStore = userDataStore,
         ).initTestDependencies(
             navigationService = navigationService,
             dialogQueueService = dialogQueueService,
@@ -338,6 +348,7 @@ class HistoryViewModelTest {
             entryCursorPager = entryCursorPager,
             deviceService = deviceService,
             productSelectionRepository = productSelectionRepository,
+            userDataStore = userDataStore,
         ).initTestDependencies(
             navigationService = navigationService,
             dialogQueueService = dialogQueueService,

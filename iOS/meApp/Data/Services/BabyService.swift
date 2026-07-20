@@ -474,9 +474,17 @@ final class BabyService: ObservableObject, BabyServiceProtocol {
 
     /// True when a server baby is the same profile as a pending local create (lost-reply dedupe).
     /// Matches on name (case-insensitive) plus birthdate.
+    ///
+    /// Birthdate is day-granular on the server (`yyyy-MM-dd`), and the POST path itself formats the
+    /// local birthday to that same day string (see `BabyRequest`). So compare on the same day basis:
+    /// exact `Date` equality never matched a day-granular server date whenever the pending local
+    /// birthday carried a time-of-day, silently defeating the dedupe and re-POSTing a duplicate (MOB-1562).
     private func isSameBaby(_ response: BabyResponse, as baby: Baby) -> Bool {
-        let sameName = response.name.caseInsensitiveCompare(baby.name) == .orderedSame
-        return sameName && response.birthdayDate == baby.birthday
+        guard response.name.caseInsensitiveCompare(baby.name) == .orderedSame else { return false }
+        let formatter = DateTimeTools.formatter("yyyy-MM-dd")
+        let localDay = baby.birthday.map { formatter.string(from: $0) }
+        let serverDay = response.birthdayDate.map { formatter.string(from: $0) }
+        return localDay == serverDay
     }
 
     private func makeRequest(from baby: Baby) -> BabyRequest {

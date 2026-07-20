@@ -67,6 +67,23 @@ For each dependency not locked, find the latest stable version:
 
 **Alternative**: Add the `com.github.ben-manes.versions` plugin and run `./gradlew dependencyUpdates` for an automated report.
 
+**Preferred doc source:** for each dependency, pull the **official release notes / migration guide** via the **context7 MCP** (`resolve-library-id` → `query-docs`, version-aware for AndroidX/Compose/Room/Hilt/Kotlin) — fall back to WebSearch/WebFetch against the vendor pages above when context7 has no match. If docs are unavailable (headless/offline), say so and proceed on the vendor version pages only.
+
+### Step 3.5: Per-upgrade report + developer notify (do this before applying)
+
+Build a report row for **every** dependency you intend to bump, sourced from Step 3's docs:
+
+| Dependency | old → new | Breaking changes | Migration steps | Risk |
+|------------|-----------|------------------|-----------------|------|
+| e.g. `coil` | 2.7.0 → 3.0.4 | new `coil3` package, API renames | swap imports, update `ImageLoader` builder | **High** |
+
+Risk rating: **Low** (patch/minor, no API change) · **Medium** (minor with deprecations) · **High** (major, transitive shifts like Retrofit 3/OkHttp 5, alpha APIs like Navigation3, package moves like Coil 3).
+
+**Notify + gate:**
+- Surface this report to the developer (in chat, and persist it in the PR description).
+- For any **High-risk** bump, **pause and get explicit go-ahead** before applying that phase — do not auto-apply high-risk upgrades.
+- Low/Medium may proceed through the normal phased flow.
+
 ### Step 4: Structural cleanup (Phase 0)
 
 Before changing any versions, fix structural issues:
@@ -320,6 +337,9 @@ Full app smoke test on a physical device or emulator.
 
 <success_criteria>
 upgrade-deps is complete when:
+- [ ] Per-upgrade report produced (version delta / breaking changes / migration / risk) and shared with the developer
+- [ ] Docs sourced from context7 (or vendor pages on fallback) for each bumped dependency
+- [ ] High-risk bumps were not applied without explicit developer go-ahead
 - [ ] All phases applied in order (0 through 12)
 - [ ] `./gradlew assembleDebug` passes after each phase
 - [ ] `./gradlew test` passes after each phase

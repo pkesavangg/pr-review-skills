@@ -19,6 +19,7 @@ import com.dmdbrands.gurus.weight.domain.model.api.user.ProfileUpdateRequest
 import com.dmdbrands.gurus.weight.domain.model.common.WeightUnit
 import com.dmdbrands.gurus.weight.domain.model.storage.Account.Account
 import com.dmdbrands.gurus.weight.domain.repository.IAccountRepository
+import com.dmdbrands.gurus.weight.domain.repository.IBabyProfileRepository
 import com.dmdbrands.gurus.weight.domain.repository.IBodyCompositionRepository
 import com.dmdbrands.gurus.weight.domain.repository.IDeviceService
 import com.dmdbrands.gurus.weight.domain.repository.IGoalRepository
@@ -51,6 +52,7 @@ class OfflineHandlerServiceTest {
     private val notificationRepository: INotificationRepository = mockk()
     private val userSettingsRepository: IUserSettingsRepository = mockk()
     private val goalRepository: IGoalRepository = mockk()
+    private val babyProfileRepository: IBabyProfileRepository = mockk(relaxed = true)
     private val connectivityObserver: IConnectivityObserver = mockk()
     private val dialogQueueService: IDialogQueueService = mockk(relaxed = true)
     private val appNavigationService: IAppNavigationService = mockk(relaxed = true)
@@ -140,6 +142,7 @@ class OfflineHandlerServiceTest {
         notificationRepository = notificationRepository,
         userSettingsRepository = userSettingsRepository,
         goalRepository = goalRepository,
+        babyProfileRepository = babyProfileRepository,
         connectivityObserver = connectivityObserver,
         dialogQueueService = dialogQueueService,
         appNavigationService = appNavigationService,

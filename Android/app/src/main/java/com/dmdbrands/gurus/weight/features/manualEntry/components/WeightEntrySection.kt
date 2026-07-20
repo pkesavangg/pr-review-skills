@@ -11,6 +11,7 @@ import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.text.input.ImeAction
+import com.dmdbrands.gurus.weight.core.shared.utilities.testing.TestTags
 import com.dmdbrands.gurus.weight.features.common.components.AppInput
 import com.dmdbrands.gurus.weight.features.common.components.AppInputType
 import com.dmdbrands.gurus.weight.features.common.components.AppTextArea
@@ -56,6 +57,8 @@ fun WeightEntrySection(
     )
     DateTimeInput(
         formControl = entryForm.weightDateTime.controls.dateTime,
+        dateTestTag = TestTags.ManualEntry.DateButton,
+        timeTestTag = TestTags.ManualEntry.TimeButton,
         mode = DateTimeInputMode.DateTime,
         label = EntryScreenStrings.DATE_LABEL,
         maxValue = null,

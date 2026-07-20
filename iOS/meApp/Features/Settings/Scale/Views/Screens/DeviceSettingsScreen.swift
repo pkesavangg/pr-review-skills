@@ -15,21 +15,21 @@ struct DeviceSettingsScreen: View {
     var scaleType: DeviceModelType
     @State private var isOtherSettingsSheetPresented = false
     @State private var isSoftwareUpdatePresented = false
-    
+
     private static let titleTruncationLength = 25
     private var fallbackProductURL: URL { AppConstants.LegalURLs.greaterGoodsWebsite }
     private var truncatedTitle: String {
         let title = scaleSettingsStore.nickname ?? scale.nickname ?? scale.deviceName ?? ""
         return title.count > Self.titleTruncationLength ? "\(title.prefix(Self.titleTruncationLength))…" : title
     }
-    
+
     init(scale: Device, scaleType: DeviceModelType) {
         self.scale = scale
         self.scaleType = scaleType
         _scaleSettingsStore = StateObject(wrappedValue: DeviceSettingsStore(scale: scale))
     }
     let lang = DeviceSettingsStrings.self
-    
+
     var body: some View {
         VStack(alignment: .center, spacing: 0) {
             NavbarHeaderView(
@@ -58,7 +58,7 @@ struct DeviceSettingsScreen: View {
                 }
                 supportSection()
                 deleteScaleSection()
-                
+
                 // Other section should be enable for the R4 scales and if canEnableTestingFeatures flag is true
                 if scaleType == .bluetoothR4 && AppConstants.canEnableTestingFeatures == true {
                     othersSection()
@@ -82,7 +82,7 @@ struct DeviceSettingsScreen: View {
                 latestVersion: scale.metaData?.latestVersion
             )
         }
-        .navigationBarBackButtonHidden(true)
+        .navigationBarHidden(true)
         .screenAccessibilityRoot(AccessibilityID.deviceSettingsScreenRoot)
         .onAppear {
             scaleSettingsStore.refreshScaleData()
@@ -105,7 +105,7 @@ struct DeviceSettingsScreen: View {
             .listRowBackground(Color.clear)
             .themeDropShadow()
     }
-    
+
     private func setupWiFiItem() -> some View {
         scaleStatusSection {
             DeviceStatusBanner(type: .setupIncomplete {
@@ -113,7 +113,7 @@ struct DeviceSettingsScreen: View {
             }, actionAccessibilityID: AccessibilityID.deviceSettingsSetupWifiButton)
         }
     }
-    
+
     private func enableBodyMetricsItem() -> some View {
         scaleStatusSection {
             DeviceStatusBanner(type: .weightOnly {
@@ -121,7 +121,7 @@ struct DeviceSettingsScreen: View {
             }, actionAccessibilityID: AccessibilityID.deviceSettingsEnableBodyMetricsButton)
         }
     }
-    
+
     private func deleteScaleSection() -> some View {
         Section {
             ActionListItemView(
@@ -206,7 +206,7 @@ struct DeviceSettingsScreen: View {
         )
         .appAccessibility(id: AccessibilityID.deviceSettingsUsersRow)
     }
-    
+
     private func connectionSection() -> some View {
         Section(header: SectionHeader(title: lang.connectionSectionHeader)) {
             ActionListItemView(
@@ -250,7 +250,7 @@ struct DeviceSettingsScreen: View {
         .listRowBackground(theme.backgroundPrimary)
         .listRowSeparatorTint(theme.statusUtilityPrimary)
     }
-    
+
     private func supportSection() -> some View {
         Section(header: SectionHeader(title: lang.supportSectionHeader)) {
             ActionListItemView(
@@ -260,7 +260,7 @@ struct DeviceSettingsScreen: View {
                     chevronType: .none
                 ) {}
             )
-            
+
             ActionListItemView(
                 config: ActionListItemConfig(
                     title: lang.sku.uppercased(),
@@ -268,7 +268,7 @@ struct DeviceSettingsScreen: View {
                     chevronType: .none
                 )
             )
-            
+
             ActionListItemView(
                 config: ActionListItemConfig(
                     title: lang.datePaired,
@@ -339,7 +339,7 @@ struct DeviceSettingsScreen: View {
         .listRowBackground(theme.backgroundPrimary)
         .listRowSeparatorTint(theme.statusUtilityPrimary)
     }
-    
+
     @ViewBuilder
     private func scaleStatusSection<Content: View>(_ content: @escaping () -> Content) -> some View {
         Section {
@@ -349,5 +349,5 @@ struct DeviceSettingsScreen: View {
         .listRowBackground(theme.backgroundPrimary)
         .listRowSeparatorTint(theme.statusUtilityPrimary)
     }
-    
+
 }

@@ -19,6 +19,7 @@ import androidx.compose.ui.graphics.Color.Companion.Red
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.activity.compose.LocalActivity
+import android.app.Activity
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.dmdbrands.gurus.weight.core.shared.utilities.testing.exposeTestTagsAsResourceId
 import com.dmdbrands.gurus.weight.app.components.HomeNavHost
@@ -69,33 +70,16 @@ fun HomeScreenContent(
 
   Scaffold(
     bottomBar = {
-      if (!isKeyboardOpen())
-        MainBottomNav(
-          showAppsync = state.showAppsync,
-          showUnreadFeedIndicator = showUnreadFeedIndicator,
-          isSnapshotMode = isSnapshotMode,
-          onOpenAppSync = {
-            handleIntent(
-              HomeIntent.CheckAndRequestPermission { isEnabled ->
-                if (isEnabled) {
-                  // Run the scan on the ViewModel scope so it survives recomposition/disposal
-                  // after the device has been idle (MOB-710).
-                  activity?.let { handleIntent(HomeIntent.StartAppSyncScan(it)) }
-                }
-              },
-            )
-          },
-        )
+      HomeBottomBar(
+        state = state,
+        showUnreadFeedIndicator = showUnreadFeedIndicator,
+        isSnapshotMode = isSnapshotMode,
+        activity = activity,
+        handleIntent = handleIntent,
+      )
     },
     floatingActionButton = {
-      if (state.showWeightOnlyModeBottomSheet && !state.isWeightOnlyModeDismissed) {
-        AppFab(
-          showWeightOnlyModeAlert = true,
-          onClick = {
-            handleIntent(HomeIntent.OpenWeightOnlyModePopup(true))
-          },
-        )
-      }
+      HomeFloatingActionButton(state = state, handleIntent = handleIntent)
     },
   ) {
     Surface(
@@ -112,18 +96,65 @@ fun HomeScreenContent(
 
   // Weight-only mode bottom sheet
   if (state.openWeightOnlyModePopup) {
-    OpenWeightOnlyModePopup(
-      onEnable = {
-        handleIntent(HomeIntent.OnWeightOnlyModeEnable)
+    WeightOnlyModeSheet(handleIntent = handleIntent)
+  }
+}
+
+@Composable
+private fun HomeBottomBar(
+  state: HomeState,
+  showUnreadFeedIndicator: Boolean,
+  isSnapshotMode: Boolean,
+  activity: Activity?,
+  handleIntent: (HomeIntent) -> Unit,
+) {
+  if (!isKeyboardOpen())
+    MainBottomNav(
+      showAppsync = state.showAppsync,
+      showUnreadFeedIndicator = showUnreadFeedIndicator,
+      isSnapshotMode = isSnapshotMode,
+      onOpenAppSync = {
+        handleIntent(
+          HomeIntent.CheckAndRequestPermission { isEnabled ->
+            if (isEnabled) {
+              // Run the scan on the ViewModel scope so it survives recomposition/disposal
+              // after the device has been idle (MOB-710).
+              activity?.let { handleIntent(HomeIntent.StartAppSyncScan(it)) }
+            }
+          },
+        )
       },
-      onClose = {
-        handleIntent(HomeIntent.OpenWeightOnlyModePopup(false))
-      },
-      onDismiss = {
-        handleIntent(HomeIntent.OnWeightOnlyModeAlertDismiss)
+    )
+}
+
+@Composable
+private fun HomeFloatingActionButton(
+  state: HomeState,
+  handleIntent: (HomeIntent) -> Unit,
+) {
+  if (state.showWeightOnlyModeBottomSheet && !state.isWeightOnlyModeDismissed) {
+    AppFab(
+      showWeightOnlyModeAlert = true,
+      onClick = {
+        handleIntent(HomeIntent.OpenWeightOnlyModePopup(true))
       },
     )
   }
+}
+
+@Composable
+private fun WeightOnlyModeSheet(handleIntent: (HomeIntent) -> Unit) {
+  OpenWeightOnlyModePopup(
+    onEnable = {
+      handleIntent(HomeIntent.OnWeightOnlyModeEnable)
+    },
+    onClose = {
+      handleIntent(HomeIntent.OpenWeightOnlyModePopup(false))
+    },
+    onDismiss = {
+      handleIntent(HomeIntent.OnWeightOnlyModeAlertDismiss)
+    },
+  )
 }
 
 @Composable
