@@ -269,7 +269,9 @@ struct AppInputField: View {
                     AppIconView(icon: customIcon, size: IconSize(width: 35, height: 35))
                         .foregroundColor(theme.actionPrimary)
                 })
-            } else {
+            } else if config.trailingLabel == nil {
+                // When a fixed unit suffix (e.g. "(lb)"/"(in)") sits on the right edge,
+                // it takes the trailing slot — the clear (x) icon is not shown (MOB-1170).
                 if config.isDisabled && !value.isEmpty {
                     disabledIcon
                 } else if config.inputType != .password && !value.isEmpty {
