@@ -10,6 +10,30 @@ MeApp (Weight Gurus) is a dual-platform health/weight tracking application with 
 - **Android**: Kotlin + Jetpack Compose + Hilt
 - **iOS**: Swift + SwiftUI + SwiftData
 
+## Working Principles (how to approach any change)
+
+These govern *how* to work; the sections below govern *what* the project is.
+
+1. **Think before coding.** State the assumptions you're making and proceed on a
+   sensible default — don't stop to ask unless the ambiguity is blocking or hard to
+   reverse. If a simpler approach exists, say so before building the complex one.
+2. **Simplicity first.** Write the minimum the request needs. No speculative
+   features, premature abstraction, or unrequested config. Don't add defensive
+   handling for *impossible* cases (real error paths still matter — this is a HIPAA
+   app). If a change balloons, stop and simplify; run `/simplify` when in doubt.
+3. **Surgical changes.** Touch only what the request demands. Don't refactor working
+   or adjacent code, and match the surrounding style — which here means obeying the
+   enforced rules (SwiftLint `--strict`, detekt no-`!!`, theme tokens, the iOS
+   snapshot boundary). **When you patch several sites of the same bug, surface the
+   one architectural fix that would prevent the next one** — as a recommendation,
+   without silently expanding the diff.
+4. **Goal-driven execution.** Turn a vague task into a checkable outcome before
+   coding. Reproduce a bug with a failing test, then fix it; keep tests green across
+   refactors. Before committing, run `/self-review` (and `/post-change-guard` on
+   iOS). Don't declare done until the criterion is verified.
+
+Good session = small diffs, no overengineering rewrites, assumptions stated up front.
+
 ## Project Context
 
 - **Repo / org:** Hosted under the gg-engineering org (`github.com/gg-engineering/meApp`) following the gg-engineering migration.
