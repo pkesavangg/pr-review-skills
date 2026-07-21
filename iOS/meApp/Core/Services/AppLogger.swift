@@ -48,7 +48,10 @@ class AppLogger {
         function: StaticString = #function,
         line: UInt = #line
     ) {
-        guard level.rawValue >= minimumLogLevel.rawValue else { return }
+        // Gate on severityRank, not rawValue: LogLevel raw values are not
+        // severity-ordered (success = 5 > error = 3), so a rawValue floor would
+        // wrongly keep/drop the wrong levels (MOB-519).
+        guard level.severityRank >= minimumLogLevel.severityRank else { return }
         
         let stringifiedData = data.map(stringify)
         let logMessage = "[\(levelString(level))] \(message) Class: \(tag) Function: \(function) Line: \(line) Data: \(stringifiedData ?? "none")"
