@@ -68,15 +68,16 @@ Announce: `Scope: <scope> · N file(s) · M lines of diff`.
 
 ## Step 2 — Detect platform(s)
 
-Inspect file paths in `FILES`:
+Inspect file paths in `FILES`. **Evaluate in this order — first match wins the pipeline: Appium → BLE SDK → iOS/Android UI** (a BLE SDK is Swift + Kotlin, so check it before the iOS/Android UI branches):
 
 - **Appium / E2E (WebdriverIO + TypeScript)** if any path matches: `**/wdio*.conf.*`, `**/*.page.ts`, `**/*.spec.ts` (under a `test/`, `tests/`, or `e2e/` dir), `**/pageobjects/**`, or the scope touches a `package.json` declaring `appium`, `webdriverio`, or any `@wdio/*` dependency. This is mobile test-automation code (TypeScript driving Appium), distinct from native iOS/Android source. When detected, run the **Appium pipeline (§ 4.6) instead of** the SwiftUI (§ 4.1) and Compose (§ 4.2) pipelines — the `.swift`/`.kt` rules don't apply to test code. Security (§ 4.0) and privacy (§ 4.0.5) still run.
+- **BLE SDK / library (Swift and/or Kotlin)** if the change is native `.swift`/`.kt`/`.kts` source **and** the repo is a headless BLE SDK, not an app. Trigger on either signal: **(a)** the repo `CLAUDE.md`/`README` describes a BLE SDK ("BLE SDK", a `GGBluetoothSDK*` module, capability-protocol + public-API-facade language, private SPM / private Maven distribution); or **(b)** the tree carries SDK anchors — `GGIStub`, `GGBLEDevice`, `GGIBluetoothHandler`, an `External/`+`Capabilities/` directory pair, or `CBCentralManager`/`BluetoothGatt`/`android.bluetooth` in non-test source — **and** no `import SwiftUI` / `@Composable` in the changed files. When detected, run the **SDK pipeline (§ 4.7) instead of** the SwiftUI (§ 4.1) and Compose (§ 4.2) pipelines — the vendored `swiftui-pro`/`compose-expert` rules target app UI and misfire on library code. Security (§ 4.0) and privacy (§ 4.0.5) still run.
 - **iOS / SwiftUI** if any path matches: `*.swift`, `**/*.xcodeproj/**`, `Package.swift`, `*.xcconfig`, `*.entitlements`, `**/Info.plist`, `.swiftlint.yml`
 - **Android / Compose** if any path matches: `*.kt`, `*.kts`, `**/build.gradle*`, `**/AndroidManifest.xml`, `**/res/**`, `**/proguard-rules.pro`, `gradle.properties`
 - **Both** if both SwiftUI and Compose sets appear
 - **Other** if none of the above — write a one-line report stating "no SwiftUI/Compose/Appium files in scope; this reviewer didn't run platform checks" and skip to Step 5.
 
-Announce: `Detected: iOS only` / `Android only` / `iOS + Android` / `Appium E2E`.
+Announce: `Detected: iOS only` / `Android only` / `iOS + Android` / `Appium E2E` / `BLE SDK (iOS)` / `BLE SDK (Android)` / `BLE SDK (iOS + Android)`.
 
 ## Step 3 — Detect pass (first vs re-pass)
 
@@ -187,7 +188,29 @@ Each rule states its own severity, a **Sniff** pattern (grep/`rg` over `.ts`), a
 
 For Appium scope, the § 4.3 "non-trivial production code without tests" check does **not** apply (the diff *is* tests). The logging check (§ 4.3) still applies to stray `console.log` left in specs/pages.
 
+### 4.7 — SDK / BLE library (if BLE SDK detected)
+
+When the scope is a **BLE SDK / library** (§ Step 2), skip the SwiftUI (§ 4.1) and Compose (§ 4.2) pipelines — the vendored `swiftui-pro`/`compose-expert` rules target app UI and misfire on headless library code. Security (§ 4.0) and privacy (§ 4.0.5) still run. Review like a **senior SDK / framework engineer**: the public surface is a frozen SemVer contract, the wire protocol must match the firmware spec byte-for-byte, and the docs are a maintained source of truth mirrored to Confluence.
+
+Read these five reference files and apply them to the changed `.swift` / `.kt` / `.kts` files:
+
+- `$REFS_DIR/sdk/public-api-contract.md` — the frozen `External/` surface: breaking changes without a MAJOR bump, bare numeric primitives for domain quantities, transport types leaking through the public API.
+- `$REFS_DIR/sdk/capability-protocols.md` — capability protocols stay semantic + stateless: no `Data`/opcodes/UUIDs on the surface, no state on the contract, no fat base class, right granularity.
+- `$REFS_DIR/sdk/ble-core-and-concurrency.md` — the threading contract: dedicated per-peripheral queue/dispatcher, main-thread marshaling, no BLE off the BLE thread, no reentrancy, teardown on disconnect, the `BluetoothPeripheralProtocol` seam; force-unwrap/`as!`/`try!`/`!!` as P0.
+- `$REFS_DIR/sdk/wire-protocol-and-spec.md` — fidelity to `docs/Sage_Kettle_BLE_protocol_spec_v1.md` (Confluence 1489993739): UUID/opcode/layout constants, `int16`-LE 0.1 °C temperatures, tens-digit error categorization, feature-detected optional chars, the open-access model.
+- `$REFS_DIR/sdk/docs-and-confluence-sync.md` — the source→doc→Confluence map + the check (local-doc `P2`; Confluence stays reminder-only pre-commit — see below).
+
+Each rule states its own severity, a **Sniff** pattern, and a **Fix** — **use the severity each rule prescribes**, do not re-classify. Read whole files from the working tree for context: compare a changed UUID/opcode against the spec doc, confirm a device uses the `BluetoothPeripheralProtocol` seam, and check whether `docs/PUBLIC-API.md` / `CHANGELOG.md` / `docs/api-snapshots/` are in the same change set.
+
+**Also apply the language-level iOS cross-cutting rules to SDK Swift** (not SwiftUI-bound): `$REFS_DIR/ios/concurrency.md`, `$REFS_DIR/ios/logging-hygiene.md`, `$REFS_DIR/ios/test-hygiene.md`. **Skip** `$REFS_DIR/ios/accessibility-identifiers.md` (UI-automation only). The `sdk/*` rules cover Kotlin BLE concerns for both platforms.
+
+**Docs sync is owned here** — `sdk/docs-and-confluence-sync.md` supplies the source→doc map, so the generic § 4.3 docs check no-ops for SDK repos. Pre-commit has no PR context and can't read wiki state, so **Confluence is reminder-only** (add its one-line reminder to the report when the docs check fires); the local-doc `P2` still applies.
+
+**De-duplicate** SDK findings against each other by `file:line` before writing (e.g. a transport leak flagged by both the public-API and capability rules → one finding). The full de-dup against the prior report still happens at § 4.4.
+
 ### 4.3 — Cross-cutting (both platforms)
+
+> **SDK repos (§ 4.7 ran):** the "maintained docs not updated" check below is **superseded** by `sdk/docs-and-confluence-sync.md` (which supplies the source→doc map) — don't run both. All other checks here still apply.
 
 - **P1** — `print` / `NSLog` (Swift) or `Log.d/i/w/e` / `println` (Kotlin) outside an explicit logger wrapper
 - **P1** — non-trivial production code added without any test file added in the same scope

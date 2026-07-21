@@ -34,7 +34,7 @@ flowchart LR
     style Verdict fill:#ddf,stroke:#33a
 ```
 
-**Shared:** rule references (security, privacy, swiftui-pro, compose-expert, ios/, compose/, appium/), platform detection, P0/P1/P2/Nit taxonomy.
+**Shared:** rule references (security, privacy, swiftui-pro, compose-expert, ios/, compose/, appium/, sdk/), platform detection, P0/P1/P2/Nit taxonomy.
 
 **Differ on I/O:**
 
@@ -127,11 +127,13 @@ What it considers:
 flowchart LR
     F[files] --> CheckAppium{any path matches<br/>wdio*.conf.* / *.page.ts /<br/>*.spec.ts under test·e2e /<br/>pageobjects/ / package.json<br/>with appium·webdriverio·@wdio?}
     CheckAppium -- yes --> AppiumOut[Detected: Appium E2E<br/>→ run § 4a.6 rule set,<br/>skip SwiftUI/Compose]
-    CheckAppium -- no --> CheckIOS{any path matches<br/>.swift / .xcodeproj/ /<br/>Package.swift / Info.plist /<br/>.xcconfig / .entitlements /<br/>.swiftlint.yml?}
+    CheckAppium -- no --> CheckSDK{native .swift/.kt AND<br/>repo is a BLE SDK?<br/>CLAUDE/README marker OR<br/>GGIStub·GGBLEDevice·<br/>External+Capabilities·<br/>CBCentralManager/GATT<br/>+ no SwiftUI/@Composable}
+    CheckSDK -- yes --> SDKOut[Detected: BLE SDK<br/>→ run § 4a.7 rule set +<br/>security/privacy + ios cross-cutting,<br/>skip SwiftUI/Compose]
+    CheckSDK -- no --> CheckIOS{any path matches<br/>.swift / .xcodeproj/ /<br/>Package.swift / Info.plist /<br/>.xcconfig / .entitlements /<br/>.swiftlint.yml?}
     CheckIOS -- yes --> iOS[iOS = true]
     CheckIOS -- no --> NoIOS[iOS = false]
 
-    CheckAppium -- no --> CheckAnd{any path matches<br/>.kt / .kts / build.gradle* /<br/>AndroidManifest.xml /<br/>res/ / proguard-rules.pro /<br/>gradle.properties?}
+    CheckSDK -- no --> CheckAnd{any path matches<br/>.kt / .kts / build.gradle* /<br/>AndroidManifest.xml /<br/>res/ / proguard-rules.pro /<br/>gradle.properties?}
     CheckAnd -- yes --> And[Android = true]
     CheckAnd -- no --> NoAnd[Android = false]
 
@@ -146,7 +148,12 @@ flowchart LR
     Combine -- both false --> Out4[Detected: Other<br/>→ leave a top-level<br/>'outside scope' comment<br/>skip to next PR]
 ```
 
-**Appium E2E is checked first and short-circuits.** A PR of WebdriverIO + TypeScript test code (page objects, specs, `wdio.*.conf.ts`, or a `package.json` pulling in `appium`/`webdriverio`/`@wdio/*`) runs the § 4a.6 Appium pipeline **instead of** the SwiftUI (4a.1/4a.1.5) and Compose (4a.2/4a.2.5) pipelines — the native `.swift`/`.kt` rules don't apply to test-automation code. Otherwise the result determines which platform-specific rule branches fire in Step 4a.
+**Precedence: Appium → BLE SDK → iOS/Android UI.** Both Appium and SDK are checked *before* the SwiftUI/Compose branches and short-circuit them.
+
+- **Appium E2E** — a PR of WebdriverIO + TypeScript test code (page objects, specs, `wdio.*.conf.ts`, or a `package.json` pulling in `appium`/`webdriverio`/`@wdio/*`) runs the § 4a.6 pipeline **instead of** SwiftUI/Compose — the native rules don't apply to test-automation code.
+- **BLE SDK** — a PR of native Swift/Kotlin in a *headless BLE library* (repo `CLAUDE.md`/`README` declares a BLE SDK, or the tree carries `GGIStub`/`GGBLEDevice`/`External/`+`Capabilities/`/`CBCentralManager`/`BluetoothGatt` with no `import SwiftUI` / `@Composable`) runs the § 4a.7 SDK pipeline **instead of** SwiftUI (4a.1/4a.1.5) and Compose (4a.2/4a.2.5) — the vendored UI rules misfire on library code. Security, privacy, and the language-level `ios/` concurrency/logging/test rules still run.
+
+Otherwise the iOS/Android flags determine which platform-specific rule branches fire in Step 4a.
 
 ---
 
@@ -216,6 +223,9 @@ flowchart TD
     PlatBranch -- Appium E2E --> S46[4a.6: Appium/E2E<br/>10 rule files · skip SwiftUI/Compose<br/>diff-added + carve-outs]
     S46 --> S43
 
+    PlatBranch -- BLE SDK --> S47[4a.7: SDK/BLE library<br/>5 rule files · skip SwiftUI/Compose<br/>+ security/privacy + ios cross-cutting<br/>owns docs+Confluence sync]
+    S47 --> S43
+
     S43[4a.3: Cross-cutting<br/>tests · PR description ·<br/>Jira ID · description-match ·<br/>docs freshness]
     S43 --> S44[4a.4: De-dup vs prior reviewers<br/>±5 lines + substance match]
     S44 --> S45[4a.5: Post inline comments<br/>or print dry-run table]
@@ -227,6 +237,7 @@ flowchart TD
     style S42 fill:#dfd,stroke:#3a3,color:#000
     style S425 fill:#dfd,stroke:#3a3,color:#000
     style S46 fill:#cff,stroke:#0aa,color:#000
+    style S47 fill:#fec,stroke:#e80,color:#000
     style S43 fill:#fdf,stroke:#a3a,color:#000
     style S44 fill:#ffd,stroke:#a83,color:#000
     style S45 fill:#bdf,stroke:#37a,color:#000
@@ -252,6 +263,7 @@ flowchart TD
 | | [references/compose/accessibility.md](references/compose/accessibility.md) | `contentDescription` on interactive `Icon`/`Image`, semantics, hit targets |
 | | [references/compose/api-guidelines.md](references/compose/api-guidelines.md) | Compose API conventions |
 | **4a.6 Appium / E2E** (fires *instead of* 4a.1/4a.2 when Appium detected) | [references/appium/](references/appium/) — 10 files: `locators`, `waits-and-synchronization`, `gestures-and-scrolling`, `page-objects`, `test-structure-and-assertions`, `reliability-and-flakiness`, `typescript-and-async`, `config-and-secrets`, `helpers-and-reuse`, `mobile-commands-and-context` | Brittle/index/text selectors & `platformLocator` use, pause/bumped-timeout/`.catch(()=>false)` band-aids (diff-added only, with accepted-pattern carve-outs), POM boundaries (assertions/selectors/data in the right layer), test independence & clean state, missing-`await` (P0) & type safety, committed secrets in `test/data`, re-rolling the project's helper toolbox (`tapWhenReady`, `AuthHelper`, `ElementHelper`, `TIMEOUTS`/`WAIT`, `selectors.ts`), and native↔WebView context restore + `appium*`-legacy-command currency. Each rule prescribes its own severity; the reviewer names the real project symbol in the fix. Note: § 4a.3's "code without tests" and "missing screenshot" rules don't apply (the diff *is* tests, and E2E evidence is the Allure/video run, not the PR body) — Jira-link and description-match rules still apply. |
+| **4a.7 SDK / BLE library** (fires *instead of* 4a.1/4a.2 when a BLE SDK is detected) | [references/sdk/](references/sdk/) — 5 files: `public-api-contract`, `capability-protocols`, `ble-core-and-concurrency`, `wire-protocol-and-spec`, `docs-and-confluence-sync` | Frozen `External/` SemVer surface (breaking change w/o MAJOR bump, bare `Double`/`Int` for temp/weight, transport-type leaks) · semantic + stateless capability protocols (no `Data`/opcodes/UUIDs, no state, no fat base class) · BLE concurrency (`CBCentralManager(queue:nil)`, off-thread BLE, unmarshaled callbacks, no disconnect teardown, `BluetoothPeripheralProtocol` seam, force-unwrap/`!!` = P0) · wire-protocol fidelity to `docs/Sage_Kettle_BLE_protocol_spec_v1.md` (UUIDs/opcodes/layouts, int16-LE 0.1°C, tens-digit `KettleErrorReason`, feature-detect, open-access) · **code↔doc↔Confluence sync** (P2 if a mapped doc — `PUBLIC-API.md` / `CAPABILITY-CONTRACTS.md` / the protocol spec / `CHANGELOG.md` / api-snapshots / `protocol-fixtures.json` — isn't updated with the code; Confluence `1489993739` verified via Atlassian MCP when present, else reminder). Also runs security/privacy + `ios/` concurrency+logging+test rules; **owns** the docs-freshness check for SDK repos (§4a.3's generic map finds none); missing-screenshot waived (non-visual). |
 | **4a.3 Cross-cutting** | Inline rules in [review-pr.md](.claude/commands/review-pr.md) | Raw `print`/`Log.d` outside logger wrapper · missing tests for non-trivial code · **P1: PR description missing or doesn't match the diff** · **P1: Jira issue link required** (must be a clickable link in the body — branch-name ID alone fails) · **P2: MOB ticket on an active Dev/Test sprint** (MOB-keys only, when Atlassian MCP available; flags backlog / closed / wrong-track via `customfield_10020`) · **P2: missing screenshot/recording on a user-facing change** (waived for docs-only / version-bump / config-only; recording must depict the actual changed flow) · **P2: unrelated / out-of-scope changes bundled in one PR — scope creep, all platforms** · **P2: maintained docs not updated for a documented change** (repo-convention-driven — reads the repo's source→doc map from `docs/confluence.md` / `CLAUDE.md` / `scripts/docs-freshness-check.sh`; skips repos with no map; **+ reminder-only** to mirror to a Confluence hub, never a finding since wiki state isn't visible from the PR) |
 | **4a.4 De-dup** | Inline logic in [review-pr.md](.claude/commands/review-pr.md) | For each candidate: same file + within ±5 lines + overlapping substance with any existing inline comment from any author → drop |
 | **4a.5 Post** | Inline logic | Post via `gh api .../pulls/<N>/comments` with mandatory `P0 — ` / `P1 — ` / `P2 — ` / `Nit — ` prefix |
@@ -618,7 +630,7 @@ Same rule-application graph as `/review-pr` Step 4a, minus the PR-only cross-cut
 | **4.1.5 iOS cross-cutting** | [references/ios/](references/ios/) | Same as 4a.1.5 in Part 1 |
 | **4.2 Compose** | [references/vendored/compose-expert/](references/vendored/compose-expert/) | Same as 4a.2 in Part 1 |
 | **4.2.5 Compose project-tuned** | [references/compose/](references/compose/) | Same as 4a.2.5 in Part 1 |
-| **4.3 Cross-cutting** | Inline rules in [review.md](.claude/commands/review.md) | Raw `print`/`Log.d` outside logger wrapper · missing tests for non-trivial code · **P2: staged changes spanning unrelated concerns (scope creep, best-effort — infers scope from branch name)** · **P2: maintained docs not updated for a documented change** (repo-convention-driven; reads the source→doc map, runs pre-commit; + reminder-only to mirror to Confluence). **No** PR-title Jira check or description-mismatch check — those don't apply pre-commit. |
+| **4.3 Cross-cutting** | Inline rules in [review.md](.claude/commands/review.md) | Raw `print`/`Log.d` outside logger wrapper · missing tests for non-trivial code · **P2: staged changes spanning unrelated concerns (scope creep, best-effort — infers scope from branch name)** · **P2: maintained docs not updated for a documented change** (repo-convention-driven; reads the source→doc map, runs pre-commit; + reminder-only to mirror to Confluence). For a **BLE SDK** (§ 4.7 ran) this docs check is superseded by [`sdk/docs-and-confluence-sync.md`](references/sdk/docs-and-confluence-sync.md), which supplies the map; Confluence stays reminder-only pre-commit. **No** PR-title Jira check or description-mismatch check — those don't apply pre-commit. |
 | **4.4 De-dup vs prior report** | Inline logic in [review.md](.claude/commands/review.md) | (Re-pass only.) For each candidate: same file + within ±5 lines + same rule category as an existing entry → carry over its `Status:` instead of writing a new one. Mark removed-from-scope entries `stale`, mark entries whose issue no longer matches `resolved`. |
 | **4.5 Write report** | Inline logic | Write the full `.claude-review/report.md` (not append). Ordered P0 → P1 → P2 → Nit, then alphabetically by path. |
 
@@ -775,6 +787,7 @@ Full copy-paste snippet is in [INSTALL.md](INSTALL.md).
 | iOS rules | [`references/ios/*.md`](references/ios/) |
 | Compose rules (project-tuned) | [`references/compose/*.md`](references/compose/) |
 | Appium / E2E rules | [`references/appium/*.md`](references/appium/) (10 files) |
+| BLE SDK / library rules | [`references/sdk/*.md`](references/sdk/) (5 files) |
 | SwiftUI rules (upstream, vendored) | [`references/vendored/swiftui-pro/`](references/vendored/swiftui-pro/) |
 | Compose rules (upstream, vendored) | [`references/vendored/compose-expert/`](references/vendored/compose-expert/) |
 | Vendored skill attribution + sync routine | [`references/vendored/UPSTREAM.md`](references/vendored/UPSTREAM.md) |

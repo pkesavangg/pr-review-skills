@@ -47,15 +47,16 @@ The last call returns inline review comments with `id`, `path`, `line`, `body`, 
 
 ## Step 2 — Detect platform(s)
 
-Inspect `files[].path` from Step 1:
+Inspect `files[].path` from Step 1. **Evaluate in this order — the first track that matches wins the pipeline choice: Appium → BLE SDK → iOS/Android UI.** (A BLE SDK is Swift + Kotlin, so it would otherwise fall into the iOS/Android UI branch; check it first.)
 
 - **Appium / E2E (WebdriverIO + TypeScript)** if any path matches: `**/wdio*.conf.*`, `**/*.page.ts`, `**/*.spec.ts` (under a `test/`, `tests/`, or `e2e/` dir), `**/pageobjects/**`, or the PR touches a `package.json` declaring `appium`, `webdriverio`, or any `@wdio/*` dependency. This is mobile test-automation code (TypeScript driving Appium), distinct from the app's native iOS/Android source. When this is detected, run the Appium pipeline (§ 4a.6) **instead of** the SwiftUI/Compose pipelines — the `.swift`/`.kt` rules don't apply to test code.
+- **BLE SDK / library (Swift and/or Kotlin)** if the change is native `.swift`/`.kt`/`.kts` source **and** the repo is a headless BLE SDK rather than an app. Trigger on either signal: **(a)** the repo `CLAUDE.md`/`README` describes a BLE SDK (mentions "BLE SDK", a `GGBluetoothSDK*` module, capability-protocol + public-API-facade language, or private SPM / private Maven distribution); or **(b)** the tree/diff carries SDK anchors — `GGIStub`, `GGBLEDevice`, `GGIBluetoothHandler`, an `External/`+`Capabilities/` directory pair, or `CBCentralManager`/`BluetoothGatt`/`android.bluetooth` in non-test source — **and** no `import SwiftUI` / `@Composable` appears in the changed files. This is a BLE library, not app UI: when detected, run the SDK pipeline (§ 4a.7) **instead of** the SwiftUI (4a.1/4a.1.5) and Compose (4a.2/4a.2.5) pipelines — the vendored `swiftui-pro`/`compose-expert` rules target app UI (`View`/`@Composable`, recomposition, VoiceOver) and misfire on library code. Security (4a.0) and privacy (4a.0.5) still run. Note whether the SDK change touches iOS, Android, or both, to scope language-level rules in § 4a.7.
 - **iOS / SwiftUI** if any path matches: `*.swift`, `**/*.xcodeproj/**`, `Package.swift`, `*.xcconfig`, `*.entitlements`, `**/Info.plist`, `.swiftlint.yml`
 - **Android / Compose** if any path matches: `*.kt`, `*.kts`, `**/build.gradle*`, `**/AndroidManifest.xml`, `**/res/**`, `**/proguard-rules.pro`, `gradle.properties`
 - **Both** if both sets appear (monorepo)
 - **Other** if neither — post one top-level comment that the PR is outside this reviewer's scope and move on.
 
-Announce in chat: `Detected: iOS only` / `Android only` / `iOS + Android` / `Appium E2E`.
+Announce in chat: `Detected: iOS only` / `Android only` / `iOS + Android` / `Appium E2E` / `BLE SDK (iOS)` / `BLE SDK (Android)` / `BLE SDK (iOS + Android)`.
 
 ## Step 3 — Detect mode
 
@@ -205,9 +206,33 @@ Each rule states its own severity, a **Sniff** pattern (grep/`rg` over `.ts`), a
 
 Note on § 4a.3 below for Appium repos: the "non-trivial production code without tests" rule does **not** apply (the diff *is* tests), and the "missing screenshot/screen recording" rule does **not** apply either — E2E test code is non-visual, and its visual evidence is the Allure/video run report, not the PR body. The Jira/issue-reference and PR-description-match rules still apply normally.
 
+### 4a.7 — SDK / BLE library (if BLE SDK detected)
+
+When the PR is a **BLE SDK / library** (§ Step 2), skip the SwiftUI (4a.1/4a.1.5) and Compose (4a.2/4a.2.5) pipelines — the vendored `swiftui-pro`/`compose-expert` rules target app UI (`View`/`@Composable`, recomposition, VoiceOver) and misfire on headless library code. Security (4a.0) and privacy (4a.0.5) still run. Review like a **senior SDK / framework engineer**: the public surface is a frozen SemVer contract, the wire protocol must match the firmware spec byte-for-byte, and the docs are a maintained source of truth mirrored to Confluence.
+
+Read these five reference files and apply them to the changed `.swift` / `.kt` / `.kts` files:
+
+- `$REFS_DIR/sdk/public-api-contract.md` — the frozen `External/` surface: breaking changes without a MAJOR bump, bare numeric primitives for domain quantities (temperature/weight), transport types leaking through the public API.
+- `$REFS_DIR/sdk/capability-protocols.md` — capability protocols stay semantic + stateless: no `Data`/opcodes/UUIDs on the surface, no state on the contract, no fat base class, right granularity.
+- `$REFS_DIR/sdk/ble-core-and-concurrency.md` — the threading contract: dedicated per-peripheral queue/dispatcher (`CBCentralManager(queue: nil)` forbidden), main-thread marshaling of callbacks, no BLE off the BLE thread, no reentrancy, teardown on disconnect, the `BluetoothPeripheralProtocol` seam; force-unwrap/`as!`/`try!`/`!!` as P0.
+- `$REFS_DIR/sdk/wire-protocol-and-spec.md` — fidelity to `docs/Sage_Kettle_BLE_protocol_spec_v1.md` (Confluence 1489993739): UUID/opcode/layout constants, `int16`-LE 0.1 °C temperatures, tens-digit error categorization into `KettleErrorReason`, feature-detected optional chars, the open-access model.
+- `$REFS_DIR/sdk/docs-and-confluence-sync.md` — the source→doc→Confluence map + the hybrid check (local-doc `P2` + Confluence verified when the Atlassian MCP is present, else reminder-only).
+
+Each rule states its own severity, a **Sniff** pattern, and a **Fix** — **use the severity each rule prescribes**, do not re-classify (unlike the vendored swiftui-pro/compose-expert findings). Pull whole files from the checked-out branch for context: compare a changed UUID/opcode against the spec doc, confirm a device uses the `BluetoothPeripheralProtocol` seam, check whether `docs/PUBLIC-API.md` / `CHANGELOG.md` / `docs/api-snapshots/` moved with the code — judging from the diff alone misses the doc-sync and spec-fidelity checks.
+
+**Also apply the language-level iOS cross-cutting rules to SDK Swift** — they're not SwiftUI-bound and catch real SDK issues: `$REFS_DIR/ios/concurrency.md`, `$REFS_DIR/ios/logging-hygiene.md`, `$REFS_DIR/ios/test-hygiene.md`. **Skip** `$REFS_DIR/ios/accessibility-identifiers.md` — a UI-automation contract, and a headless SDK has no interactive controls. (There is no equivalent non-Compose Kotlin file; the `sdk/*` rules cover Kotlin BLE concerns for both platforms.)
+
+**Docs & Confluence sync is owned here.** The generic docs-freshness check in § 4a.3 needs the *target repo* to declare a source→doc map; the SDK repo doesn't, so that check no-ops — `sdk/docs-and-confluence-sync.md` supplies the map instead and runs as part of this pipeline. When the change touches the protocol spec and the Atlassian MCP is available (`getConfluencePage`), fetch Confluence page `1489993739` and compare per that file's procedure; otherwise emit its reminder-only line in the Step 5 summary.
+
+**§ 4a.3 carve-outs for SDK repos:** the Jira-link, PR-description, scope-creep, and raw-logging checks all run normally. "Non-trivial production code without tests" **applies** — an SDK ships production logic (decode/encode, state machines) the coverage gates depend on. The "missing screenshot / screen recording" check does **not** apply — a headless BLE library is non-visual; its evidence is unit tests + the demo-app harness, not PR media (mirrors the Appium carve-out).
+
+**De-duplicate** SDK findings against each other by `file:line` before posting (e.g. a public-API transport leak flagged by both `public-api-contract.md` and `capability-protocols.md` → one comment; a force-unwrap and a wrong-thread BLE call on the same line → one comment). The full de-dup against prior reviewer comments still happens at Step 4a.4.
+
 ### 4a.3 — Cross-cutting (both platforms)
 
 Security and privacy live in their own sections (4a.0 and 4a.0.5). The remaining cross-cutting checks:
+
+> **SDK repos (§ 4a.7 ran):** the "maintained docs not updated" check below is **superseded** by `sdk/docs-and-confluence-sync.md` (which supplies the source→doc map this check otherwise looks for) — don't run both. The "missing screenshot / screen recording" check is **waived** (a headless library is non-visual). All other checks here — Jira link, sprint placement, PR description, scope creep, logging, missing tests — still apply.
 
 - **P1** — `print` / `NSLog` (Swift) or `Log.d/i/w/e` / `println` (Kotlin) outside an explicit logger wrapper
 - **P1** — non-trivial production code added without any test file added

@@ -1,6 +1,6 @@
 # pr-review-skills
 
-A team-shared Claude Code reviewer for **SwiftUI**, **Jetpack Compose**, and **Appium / WebdriverIO E2E** test code, plus a PR description writer. Two slash commands and one auto-triggering skill sharing one rule set:
+A team-shared Claude Code reviewer for **SwiftUI**, **Jetpack Compose**, **Appium / WebdriverIO E2E** test code, and **BLE SDK / library** code (Swift + Kotlin), plus a PR description writer. Two slash commands and one auto-triggering skill sharing one rule set:
 
 | Trigger          | Type     | Who runs it | When                       | Input                                              | Output                                                                       |
 | ---------------- | -------- | ----------- | -------------------------- | -------------------------------------------------- | ---------------------------------------------------------------------------- |
@@ -10,12 +10,13 @@ A team-shared Claude Code reviewer for **SwiftUI**, **Jetpack Compose**, and **A
 
 Both commands:
 
-- Auto-detect whether the change touches iOS (Swift / SwiftUI), Android (Kotlin / Compose), both, or Appium/WebdriverIO E2E test code (TypeScript).
+- Auto-detect whether the change touches iOS (Swift / SwiftUI), Android (Kotlin / Compose), both, Appium/WebdriverIO E2E test code (TypeScript), or a BLE SDK / library (headless Swift + Kotlin — no `View`/`@Composable`).
 - Run cross-platform **security** ([references/security/](references/security/)) and **privacy compliance** ([references/privacy/](references/privacy/)) checks — secrets, insecure storage, TLS bypass, weak crypto, PII/PHI in logs, exposure surfaces, App Store / Play Store submission gates.
 - Apply Paul Hudson's [`swiftui-pro`](https://github.com/twostraws/SwiftUI-Agent-Skill) rules (vendored under [references/vendored/swiftui-pro/](references/vendored/swiftui-pro/), MIT licensed) for SwiftUI quality, then add iOS cross-cutting checks (concurrency, logging placement, test flake, and the MOB-1131 accessibility-identifier automation contract) from [references/ios/](references/ios/).
 - Apply aldefy's [`compose-expert`](https://github.com/aldefy/compose-skill) rules (vendored under [references/vendored/compose-expert/](references/vendored/compose-expert/), MIT licensed) for Compose quality, then add project-tuned Compose rules from [references/compose/](references/compose/).
 - For Appium/WebdriverIO E2E code, run the mobile test-automation pipeline from [references/appium/](references/appium/) (locators, waits, gestures, Page Object discipline, test structure, flakiness, TypeScript/async, config & secrets) **instead of** the SwiftUI/Compose pipelines.
-- Check that **maintained docs are updated for a documented change** — when the repo declares a source→doc map (`docs/confluence.md`, a "Keeping docs current" note in `CLAUDE.md`, or `scripts/docs-freshness-check.sh`), flag `P2` if the PR changes mapped code but not its doc; plus a reminder-only nudge to mirror the change to a Confluence hub. Skips repos with no such map.
+- For a **BLE SDK / library**, run the SDK pipeline from [references/sdk/](references/sdk/) (frozen public-API contract, semantic + stateless capability protocols, per-peripheral BLE concurrency, wire-protocol fidelity to the firmware spec, and code↔doc↔Confluence sync) **instead of** the SwiftUI/Compose pipelines. Security and privacy still run.
+- Check that **maintained docs are updated for a documented change** — when the repo declares a source→doc map (`docs/confluence.md`, a "Keeping docs current" note in `CLAUDE.md`, or `scripts/docs-freshness-check.sh`), flag `P2` if the PR changes mapped code but not its doc; plus a reminder-only nudge to mirror the change to a Confluence hub. Skips repos with no such map. (For BLE SDK repos this map ships inside [references/sdk/docs-and-confluence-sync.md](references/sdk/docs-and-confluence-sync.md), which also verifies the mirrored Confluence page when the Atlassian MCP is available.)
 - Tag findings `P0` / `P1` / `P2` / `Nit`.
 
 `/review-pr` adds: re-review mode (walks prior priority comments, decides resolved / accepted / partial / still open, replies on the thread; reviews any new code added since the previous pass; posts a top-level summary). Auto-approves (`gh pr review --approve`) only when the PR is genuinely clean — zero findings on a first-review, or all prior findings resolved/accepted with verified tickets and no new findings on a re-review; otherwise posts `--comment`. Never `--request-changes`.
@@ -71,11 +72,17 @@ pr-review-skills/
     │   ├── config-and-secrets.md            ← committed secrets in test/data, lint-gate recommendation
     │   ├── helpers-and-reuse.md             ← reuse AppHelper / AuthHelper / ElementHelper vs re-rolling
     │   └── mobile-commands-and-context.md   ← native↔WebView context restore, appium* legacy commands
-    └── ios/                     ← project-tuned iOS rules on top of swiftui-pro
-        ├── concurrency.md               ← Swift Concurrency footguns
-        ├── logging-hygiene.md           ← log-in-body / log-in-onChange / empty-catch
-        ├── test-hygiene.md              ← sleep / .shared singletons / framework mixing
-        └── accessibility-identifiers.md ← MOB-1131 automation ids: missing / non-unique row / Android-testTag divergence (complements swiftui-pro VoiceOver + .swiftlint.yml gate)
+    ├── ios/                     ← project-tuned iOS rules on top of swiftui-pro
+    │   ├── concurrency.md               ← Swift Concurrency footguns
+    │   ├── logging-hygiene.md           ← log-in-body / log-in-onChange / empty-catch
+    │   ├── test-hygiene.md              ← sleep / .shared singletons / framework mixing
+    │   └── accessibility-identifiers.md ← MOB-1131 automation ids: missing / non-unique row / Android-testTag divergence (complements swiftui-pro VoiceOver + .swiftlint.yml gate)
+    └── sdk/                     ← BLE SDK / library rules (run instead of SwiftUI/Compose; reuses ios/ concurrency+logging+test rules for SDK Swift)
+        ├── public-api-contract.md       ← frozen External/ SemVer surface, domain-typed params, no transport leaks
+        ├── capability-protocols.md      ← semantic + stateless capabilities, no fat base class, right granularity
+        ├── ble-core-and-concurrency.md  ← dedicated queue/dispatcher, main-thread marshaling, seam, force-unwrap = P0
+        ├── wire-protocol-and-spec.md    ← UUID/opcode/layout fidelity to the firmware spec, int16-LE 0.1°C, error categories
+        └── docs-and-confluence-sync.md  ← source→doc→Confluence map; local-doc P2 + Confluence verify (Atlassian MCP)
 ```
 
 The two upstream SwiftUI / Compose rule sets are vendored verbatim under [references/vendored/](references/vendored/) per their MIT licenses. This means teammates need only `git clone` this repo — no separate plugin installs. Vendored versions are pinned and re-synced quarterly; see [references/vendored/UPSTREAM.md](references/vendored/UPSTREAM.md) for the routine.
@@ -124,4 +131,4 @@ That's the only command. All rule sets (vendored upstream + project-tuned) flow 
 
 ## Contributing
 
-Tune the rules under [references/](references/) as the team learns what false-positives to suppress — security, privacy, compose, ios. Open a PR; one approval required.
+Tune the rules under [references/](references/) as the team learns what false-positives to suppress — security, privacy, compose, ios, appium, sdk. Open a PR; one approval required.

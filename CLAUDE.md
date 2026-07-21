@@ -4,7 +4,7 @@ Guidance for Claude Code when working **in this repository** (`pr-review-skills`
 
 ## What this repo is
 
-A team-shared Claude Code reviewer for **SwiftUI**, **Jetpack Compose**, and **Appium/WebdriverIO E2E** code, plus a PR-description writer. It ships three entry points that all share **one rule set** under [references/](references/):
+A team-shared Claude Code reviewer for **SwiftUI**, **Jetpack Compose**, **Appium/WebdriverIO E2E** code, and **BLE SDK / library** code (headless Swift + Kotlin), plus a PR-description writer. It ships three entry points that all share **one rule set** under [references/](references/):
 
 | Entry point | File | Side | Output |
 | --- | --- | --- | --- |
@@ -27,9 +27,10 @@ references/
   vendored/               ← MIT snapshots of swiftui-pro + compose-expert — DO NOT hand-edit
   security/               ← cross-platform (iOS + Android): secrets, transport/crypto, logging/exposure
   privacy/                ← App Store / Play Store store-compliance
-  ios/                    ← project-tuned iOS rules on top of swiftui-pro
+  ios/                    ← project-tuned iOS rules on top of swiftui-pro (also reused for SDK Swift)
   compose/                ← project-tuned Compose rules on top of compose-expert
-  appium/                 ← Appium/WebdriverIO E2E rules
+  appium/                 ← Appium/WebdriverIO E2E rules (run instead of SwiftUI/Compose)
+  sdk/                    ← BLE SDK / library rules (public-API contract, capability protocols, BLE concurrency, wire-protocol fidelity, docs/Confluence sync — run instead of SwiftUI/Compose)
 test-fixtures/            ← sample files to sanity-check rules against
 ```
 
@@ -74,13 +75,14 @@ Each rule in a `references/*.md` file follows this shape (see [references/appium
 
 Conventions:
 
-- **Each reference file prescribes its own severity, and the orchestrator uses it verbatim** — *except* `vendored/swiftui-pro` and `vendored/compose-expert`, whose findings the orchestrator explicitly **re-classifies** into this taxonomy (see § 4a.1 / § 4a.2 in [review-pr.md](.claude/commands/review-pr.md)). Project-tuned `ios/`, `compose/`, `appium/`, `security/`, and `privacy/` rules are *not* re-classified — set the right severity in the rule itself.
+- **Each reference file prescribes its own severity, and the orchestrator uses it verbatim** — *except* `vendored/swiftui-pro` and `vendored/compose-expert`, whose findings the orchestrator explicitly **re-classifies** into this taxonomy (see § 4a.1 / § 4a.2 in [review-pr.md](.claude/commands/review-pr.md)). Project-tuned `ios/`, `compose/`, `appium/`, `sdk/`, `security/`, and `privacy/` rules are *not* re-classified — set the right severity in the rule itself.
 - Include a concrete **Sniff** so the reviewer knows what to grep for, and a **Fix** with before/after.
 - Add a "if a repo `CLAUDE.md`/`README` documents a different convention, prefer it and skip the rule" escape hatch where a rule is opinionated — the orchestrators already defer to repo-local conventions.
 
 ### Where new checks go
 
 - **Platform-specific code smell** (Swift/Kotlin/TS) → add a rule to the matching `references/<platform>/*.md` file.
+- **BLE SDK / library concern** (public-API stability, capability-protocol discipline, BLE concurrency, wire-protocol fidelity, code↔doc↔Confluence sync) → `references/sdk/*.md`. These run *instead of* the SwiftUI/Compose UI pipelines when a BLE SDK is detected (§ 4a.7 / § 4.7), like Appium; SDK Swift also reuses `ios/` concurrency/logging/test rules. The SDK track is Sage-tuned with graceful degradation — cite real anchors (`GGIStub`, the protocol spec, Confluence `1489993739`) as examples but keep the escape hatch so another GG BLE SDK still benefits.
 - **Security or privacy** → `references/security/` or `references/privacy/` (these run on *every* PR regardless of platform).
 - **Cross-cutting PR-hygiene check that needs the live PR** (description quality, traceability, screenshots) → inline in `review-pr.md` § 4a.3, *not* a reference file — that's where the existing Jira-reference, description-mismatch, and screenshot/recording checks live. Add the same check to `review.md`'s skip list if it can't run pre-commit.
 
