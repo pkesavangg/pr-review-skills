@@ -39,23 +39,24 @@ import androidx.compose.ui.zIndex
 import com.dmdbrands.gurus.weight.features.common.components.strings.AppFabStrings
 import com.dmdbrands.gurus.weight.resources.AppIcons
 import com.dmdbrands.gurus.weight.theme.MeTheme
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 
+/**
+ * Draggable bounds and snap corners for [AppFab], derived from the current screen
+ * dimensions and system-bar/IME insets.
+ */
+private data class FabLayout(
+    val corners: List<Offset>,
+    val leftBoundary: Float,
+    val topBoundary: Float,
+    val rightBoundary: Float,
+    val bottomBoundary: Float,
+    val fabSize: Dp,
+)
+
 @Composable
-fun AppFab(
-    offsetX: Dp = 0.dp,
-    offsetY: Dp = 0.dp,
-    showWeightOnlyModeAlert: Boolean = false,
-    onClick: () -> Unit
-) {
-    val scope = rememberCoroutineScope()
-    var isPressed by remember { mutableStateOf(false) }
-    var isDraggingOn by remember { mutableStateOf(false) }
-
-    // Use a single Animatable for the Offset to ensure path is always a straight line.
-    val position =
-        remember { Animatable(Offset(offsetX.value, offsetY.value), Offset.VectorConverter) }
-
+private fun rememberFabLayout(): FabLayout {
     val density = LocalDensity.current
     val configuration = LocalConfiguration.current
 
@@ -93,12 +94,83 @@ fun AppFab(
         Offset(leftBoundary, bottomBoundary), // Bottom-left
         Offset(rightBoundary, bottomBoundary), // Bottom-right
     )
+    return FabLayout(corners, leftBoundary, topBoundary, rightBoundary, bottomBoundary, fabSize)
+}
+
+/**
+ * Drag-and-snap gesture modifier for the FAB. [setDragging] toggles the pressed/drag
+ * elevation state; on release the FAB animates to the nearest corner.
+ */
+private fun Modifier.fabDragGestures(
+    scope: CoroutineScope,
+    position: Animatable<Offset, *>,
+    layout: FabLayout,
+    setDragging: (Boolean) -> Unit,
+): Modifier =
+    this.pointerInput(layout.leftBoundary, layout.topBoundary, layout.rightBoundary, layout.bottomBoundary) {
+        detectDragGestures(
+            onDragStart = { setDragging(true) },
+            onDrag = { change, dragAmount ->
+                setDragging(true)
+                scope.launch {
+                    val newPosition = position.value + dragAmount
+                    val coercedPosition = Offset(
+                        x = newPosition.x.coerceIn(layout.leftBoundary, layout.rightBoundary),
+                        y = newPosition.y.coerceIn(layout.topBoundary, layout.bottomBoundary),
+                    )
+                    position.snapTo(coercedPosition)
+                }
+            },
+            onDragCancel = { setDragging(false) },
+            onDragEnd = {
+                setDragging(false)
+                scope.launch {
+                    val nearestCorner = layout.corners.minByOrNull { corner ->
+                        (corner - position.value).getDistance()
+                    }
+                    if (nearestCorner != null) {
+                        position.animateTo(nearestCorner)
+                    }
+                }
+            },
+        )
+    }
+
+@Composable
+private fun AppFabIcon(showWeightOnlyModeAlert: Boolean) {
+    Icon(
+        painter = painterResource(id = AppIcons.Default.WeightOnlyMode),
+        contentDescription = if (showWeightOnlyModeAlert) AppFabStrings.accEnableBodyMetricsLabel else AppFabStrings.accWeightOnlyModeLabel,
+        modifier = Modifier
+            .size(32.dp)
+            .background(color = Color.Transparent),
+        tint = MeTheme.colorScheme.inverseAction,
+        // Larger icon size to match design
+    )
+}
+
+@Composable
+fun AppFab(
+    offsetX: Dp = 0.dp,
+    offsetY: Dp = 0.dp,
+    showWeightOnlyModeAlert: Boolean = false,
+    onClick: () -> Unit
+) {
+    val scope = rememberCoroutineScope()
+    var isPressed by remember { mutableStateOf(false) }
+    var isDraggingOn by remember { mutableStateOf(false) }
+
+    // Use a single Animatable for the Offset to ensure path is always a straight line.
+    val position =
+        remember { Animatable(Offset(offsetX.value, offsetY.value), Offset.VectorConverter) }
+
+    val layout = rememberFabLayout()
 
     // This effect runs whenever the boundaries change (e.g., keyboard appears).
-    LaunchedEffect(leftBoundary, topBoundary, rightBoundary, bottomBoundary) {
+    LaunchedEffect(layout.leftBoundary, layout.topBoundary, layout.rightBoundary, layout.bottomBoundary) {
         position.updateBounds(
-            lowerBound = Offset(leftBoundary, topBoundary),
-            upperBound = Offset(rightBoundary, bottomBoundary),
+            lowerBound = Offset(layout.leftBoundary, layout.topBoundary),
+            upperBound = Offset(layout.rightBoundary, layout.bottomBoundary),
         )
     }
 
@@ -123,48 +195,13 @@ fun AppFab(
         ),
         elevation = FloatingActionButtonDefaults.elevation(elevation),
         modifier = Modifier
-            .size(fabSize) // Explicit size to match design
+            .size(layout.fabSize) // Explicit size to match design
             .offset { IntOffset(position.value.x.toInt(), position.value.y.toInt()) }
             .clip(CircleShape)
             .zIndex(1f)
-            .pointerInput(leftBoundary, topBoundary, rightBoundary, bottomBoundary) {
-                detectDragGestures(
-                    onDragStart = { isDraggingOn = true },
-                    onDrag = { change, dragAmount ->
-                        isDraggingOn = true
-                        scope.launch {
-                            val newPosition = position.value + dragAmount
-                            val coercedPosition = Offset(
-                                x = newPosition.x.coerceIn(leftBoundary, rightBoundary),
-                                y = newPosition.y.coerceIn(topBoundary, bottomBoundary),
-                            )
-                            position.snapTo(coercedPosition)
-                        }
-                    },
-                    onDragCancel = { isDraggingOn = false },
-                    onDragEnd = {
-                        isDraggingOn = false
-                        scope.launch {
-                            val nearestCorner = corners.minByOrNull { corner ->
-                                (corner - position.value).getDistance()
-                            }
-                            if (nearestCorner != null) {
-                                position.animateTo(nearestCorner)
-                            }
-                        }
-                    },
-                )
-            },
+            .fabDragGestures(scope, position, layout) { isDraggingOn = it },
     ) {
-        Icon(
-            painter = painterResource(id = AppIcons.Default.WeightOnlyMode),
-            contentDescription = if (showWeightOnlyModeAlert) AppFabStrings.accEnableBodyMetricsLabel else AppFabStrings.accWeightOnlyModeLabel,
-            modifier = Modifier
-                .size(32.dp)
-                .background(color = Color.Transparent),
-            tint = MeTheme.colorScheme.inverseAction,
-            // Larger icon size to match design
-        )
+        AppFabIcon(showWeightOnlyModeAlert = showWeightOnlyModeAlert)
     }
 }
 

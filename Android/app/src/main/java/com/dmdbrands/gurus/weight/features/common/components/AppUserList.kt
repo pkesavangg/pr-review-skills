@@ -3,6 +3,7 @@ package com.dmdbrands.gurus.weight.features.common.components
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.runtime.Composable
@@ -13,6 +14,7 @@ import com.dmdbrands.gurus.weight.core.shared.utilities.testing.TestTags
 import com.dmdbrands.gurus.weight.core.shared.utilities.testing.rowTestTag
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.RectangleShape
+import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.semantics.CustomAccessibilityAction
 import androidx.compose.ui.semantics.customActions
 import androidx.compose.ui.semantics.semantics
@@ -56,100 +58,161 @@ fun AppUserList(
         contentPadding = contentPadding,
         keySelector = { it.id },
         trailingActions = { index, item ->
-            val targetCornerRadius = MeTheme.borderRadius.sm
-            val shape =
-                when {
-                    accounts.size == 1 -> RoundedCornerShape(
-                        topEnd = targetCornerRadius + 2.dp,
-                        bottomEnd = targetCornerRadius + 2.dp,
-                    )
-                    index == 0 ->
-                        RoundedCornerShape(
-                            topEnd = targetCornerRadius + 2.dp,
-                        )
-                    index == accounts.size - 1 ->
-                        RoundedCornerShape(
-                            bottomEnd = targetCornerRadius + 2.dp,
-                        )
-                    else -> RectangleShape
-                }
-            AppSwipeableListActions (
-                shape = shape,
-            ) {
-                AppSwipeableActionItem(
-                    iconId = AppIcons.Default.Delete,
-                    contentDescription = AppListStrings.accDeleteItemLabel,
-                    backgroundColor = MeTheme.colorScheme.danger,
-                    modifier = Modifier.rowTestTag(TestTags.Landing.AccountCardDeleteButton, item.id),
-                ) {
-                    onDeleteRequest(item)
-                }
-            }
+            AppUserListDeleteAction(
+                index = index,
+                accountCount = accounts.size,
+                item = item,
+                onDeleteRequest = onDeleteRequest,
+            )
         },
         footerContent = footerContent,
     ) { item ->
-        Swipeable { progress ->
-            val isDragging = progress > 0f
-          key(isDragging) {
+        AppUserListRow(
+            item = item,
+            accounts = accounts,
+            canRemoveAccount = canRemoveAccount,
+            showAccountActivity = showAccountActivity,
+            onDeleteRequest = onDeleteRequest,
+            onAccountSelect = onAccountSelect,
+            onLoginRequest = onLoginRequest,
+        )
+    }
+}
+
+@Composable
+private fun RowScope.AppUserListDeleteAction(
+    index: Int,
+    accountCount: Int,
+    item: Account,
+    onDeleteRequest: (Account) -> Unit,
+) {
+    val targetCornerRadius = MeTheme.borderRadius.sm
+    val shape =
+        when {
+            accountCount == 1 -> RoundedCornerShape(
+                topEnd = targetCornerRadius + 2.dp,
+                bottomEnd = targetCornerRadius + 2.dp,
+            )
+            index == 0 ->
+                RoundedCornerShape(
+                    topEnd = targetCornerRadius + 2.dp,
+                )
+            index == accountCount - 1 ->
+                RoundedCornerShape(
+                    bottomEnd = targetCornerRadius + 2.dp,
+                )
+            else -> RectangleShape
+        }
+    AppSwipeableListActions (
+        shape = shape,
+    ) {
+        AppSwipeableActionItem(
+            iconId = AppIcons.Default.Delete,
+            contentDescription = AppListStrings.accDeleteItemLabel,
+            backgroundColor = MeTheme.colorScheme.danger,
+            modifier = Modifier.rowTestTag(TestTags.Landing.AccountCardDeleteButton, item.id),
+        ) {
+            onDeleteRequest(item)
+        }
+    }
+}
+
+@Composable
+private fun SwipeableListItemScope.AppUserListRow(
+    item: Account,
+    accounts: List<Account>,
+    canRemoveAccount: Boolean,
+    showAccountActivity: Boolean,
+    onDeleteRequest: (Account) -> Unit,
+    onAccountSelect: (Account) -> Unit,
+    onLoginRequest: (Account) -> Unit,
+) {
+    Swipeable { progress ->
+        val isDragging = progress > 0f
+        key(isDragging) {
             val targetCornerRadius = if (isDragging) 0.dp else MeTheme.borderRadius.sm
             val index = accounts.indexOf(item)
             val shape =
-              when {
-                accounts.size == 1 -> RoundedCornerShape(targetCornerRadius)
-                index == 0 ->
-                  RoundedCornerShape(
-                    topStart = targetCornerRadius,
-                    topEnd = targetCornerRadius,
-                  )
+                when {
+                    accounts.size == 1 -> RoundedCornerShape(targetCornerRadius)
+                    index == 0 ->
+                        RoundedCornerShape(
+                            topStart = targetCornerRadius,
+                            topEnd = targetCornerRadius,
+                        )
 
-                index == accounts.size - 1 ->
-                  RoundedCornerShape(
-                    bottomStart = targetCornerRadius,
-                    bottomEnd = targetCornerRadius,
-                  )
+                    index == accounts.size - 1 ->
+                        RoundedCornerShape(
+                            bottomStart = targetCornerRadius,
+                            bottomEnd = targetCornerRadius,
+                        )
 
-                else -> RectangleShape
-              }
-            Column(
-              modifier = Modifier
-                .clip(shape)
-                .background(MeTheme.colorScheme.primaryBackground, shape),
-            ) {
-              // TalkBack: swipe-to-delete is a gesture a screen-reader user can't perform,
-              // so expose the same delete as a custom action. It is attached to AppUser's
-              // own (clickable, merged) row so the action shares the row's focusable node.
-              val deleteActionModifier = if (canRemoveAccount) {
-                Modifier.semantics {
-                  customActions = listOf(
-                    CustomAccessibilityAction(AppListStrings.accDeleteItemLabel) {
-                      onDeleteRequest(item)
-                      true
-                    },
-                  )
+                    else -> RectangleShape
                 }
-              } else {
-                Modifier
-              }
-              AppUser(
-                account = item,
+            Column(
                 modifier = Modifier
-                  .clip(shape)
-                  .rowTestTag(TestTags.Landing.AccountCardRow, item.id)
-                  .then(deleteActionModifier),
-                onAccountSelect = { onAccountSelect(item) },
-                onLoginRequest = { onLoginRequest(item) },
-                avatarAlpha = 1f - progress,
-                showAccountActivity = showAccountActivity,
-              )
-              if (accounts.size > 1 && accounts.indexOf(item) < accounts.size - 1) {
-                HorizontalDivider(
-                  color = MeTheme.colorScheme.utility,
-                  thickness = .5.dp,
+                    .clip(shape)
+                    .background(MeTheme.colorScheme.primaryBackground, shape),
+            ) {
+                AppUserListRowContent(
+                    item = item,
+                    accounts = accounts,
+                    shape = shape,
+                    canRemoveAccount = canRemoveAccount,
+                    showAccountActivity = showAccountActivity,
+                    avatarAlpha = 1f - progress,
+                    onDeleteRequest = onDeleteRequest,
+                    onAccountSelect = onAccountSelect,
+                    onLoginRequest = onLoginRequest,
                 )
-              }
             }
-          }
         }
+    }
+}
+
+@Composable
+private fun AppUserListRowContent(
+    item: Account,
+    accounts: List<Account>,
+    shape: Shape,
+    canRemoveAccount: Boolean,
+    showAccountActivity: Boolean,
+    avatarAlpha: Float,
+    onDeleteRequest: (Account) -> Unit,
+    onAccountSelect: (Account) -> Unit,
+    onLoginRequest: (Account) -> Unit,
+) {
+    // TalkBack: swipe-to-delete is a gesture a screen-reader user can't perform,
+    // so expose the same delete as a custom action. It is attached to AppUser's
+    // own (clickable, merged) row so the action shares the row's focusable node.
+    val deleteActionModifier = if (canRemoveAccount) {
+        Modifier.semantics {
+            customActions = listOf(
+                CustomAccessibilityAction(AppListStrings.accDeleteItemLabel) {
+                    onDeleteRequest(item)
+                    true
+                },
+            )
+        }
+    } else {
+        Modifier
+    }
+    AppUser(
+        account = item,
+        modifier = Modifier
+            .clip(shape)
+            .rowTestTag(TestTags.Landing.AccountCardRow, item.id)
+            .then(deleteActionModifier),
+        onAccountSelect = { onAccountSelect(item) },
+        onLoginRequest = { onLoginRequest(item) },
+        avatarAlpha = avatarAlpha,
+        showAccountActivity = showAccountActivity,
+    )
+    if (accounts.size > 1 && accounts.indexOf(item) < accounts.size - 1) {
+        HorizontalDivider(
+            color = MeTheme.colorScheme.utility,
+            thickness = .5.dp,
+        )
     }
 }
 

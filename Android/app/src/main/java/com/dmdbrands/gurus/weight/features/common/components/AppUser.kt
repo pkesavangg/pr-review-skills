@@ -4,6 +4,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -79,46 +80,65 @@ fun AppUser(
         Spacer(modifier = Modifier.width(spacing.md))
 
         // User Info (Name and Email)
-        Column(modifier = Modifier.weight(1f)) {
-            Text(
-                text = account.firstName,
-                style = typography.body2.copy(
-                    color = colorScheme.textHeading,
-                ),
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
-            Spacer(modifier = Modifier.height(spacing.x3s))
-            Text(
-                text = account.email,
-                style = typography.subHeading2.copy(
-                    color = colorScheme.textSubheading,
-                ),
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
-        }
+        AppUserInfo(account = account)
 
-        if (showAccountActivity && account.isLoggedIn && !account.isExpired) {
-            AppIcon(
-                id = if (account.isActiveAccount) AppIcons.Selection.CircleSelected else AppIcons.Selection.CircleUnselected,
-                contentDescription = AppListStrings.accSelectAccountLabel,
-                type = AppIconType.Primary,
-                modifier = Modifier.size(24.dp),
-                onClick = if (account.isActiveAccount) null else onAccountSelect,
-            )
-        }
-        if (account.isExpired) {
-            AppButton(
-                label = AppListStrings.LogInButton,
-                onClick = onLoginRequest,
-                type = ButtonType.TextPrimary,
-                size = ButtonSize.Small,
-                textTransform = TextTransform.NONE,
-                modifier = Modifier.rowTestTag(TestTags.Landing.AccountCardLogInButton, account.id),
-            )
-        }
+        AppUserTrailing(
+            account = account,
+            showAccountActivity = showAccountActivity,
+            onAccountSelect = onAccountSelect,
+            onLoginRequest = onLoginRequest,
+        )
+    }
+}
 
+@Composable
+private fun RowScope.AppUserInfo(account: Account) {
+    Column(modifier = Modifier.weight(1f)) {
+        Text(
+            text = account.firstName,
+            style = typography.body2.copy(
+                color = colorScheme.textHeading,
+            ),
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+        )
+        Spacer(modifier = Modifier.height(spacing.x3s))
+        Text(
+            text = account.email,
+            style = typography.subHeading2.copy(
+                color = colorScheme.textSubheading,
+            ),
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+        )
+    }
+}
+
+@Composable
+private fun AppUserTrailing(
+    account: Account,
+    showAccountActivity: Boolean,
+    onAccountSelect: () -> Unit,
+    onLoginRequest: () -> Unit,
+) {
+    if (showAccountActivity && account.isLoggedIn && !account.isExpired) {
+        AppIcon(
+            id = if (account.isActiveAccount) AppIcons.Selection.CircleSelected else AppIcons.Selection.CircleUnselected,
+            contentDescription = AppListStrings.accSelectAccountLabel,
+            type = AppIconType.Primary,
+            modifier = Modifier.size(24.dp),
+            onClick = if (account.isActiveAccount) null else onAccountSelect,
+        )
+    }
+    if (account.isExpired) {
+        AppButton(
+            label = AppListStrings.LogInButton,
+            onClick = onLoginRequest,
+            type = ButtonType.TextPrimary,
+            size = ButtonSize.Small,
+            textTransform = TextTransform.NONE,
+            modifier = Modifier.rowTestTag(TestTags.Landing.AccountCardLogInButton, account.id),
+        )
     }
 }
 

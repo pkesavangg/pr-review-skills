@@ -9,11 +9,13 @@ import androidx.compose.foundation.gestures.Orientation
 import androidx.compose.foundation.gestures.anchoredDraggable
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.material3.SnackbarData
 import androidx.compose.material3.SnackbarDuration
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
@@ -76,77 +78,113 @@ fun ToastHandler(
     }
     if (toast != null) {
         SnackbarHost(hostState = hostState, modifier = Modifier.statusBarsPadding()) { snackbarData ->
-            if (!isDismissed.value) {
-                // Auto-dismiss after a delay. Reading arrival cards stay up longer so the user has
-                // time to Save/Assign/Add-a-baby (and multi-baby cards fire their onTimeout
-                // auto-assign before clearing); simple toasts keep the short window. (MOB-598)
-                LaunchedEffect(snackbarData) {
-                    val readingToast = (toast as? Toast.Custom)?.content as? ReadingToast
-                    val timeoutAction = readingToast?.onTimeout
-                    delay(if (readingToast != null) READING_TOAST_MS else AUTO_DISMISS_MS)
-                    if (dragState.currentValue == DragAnchors.Center) {
-                        clearToast()
-                        snackbarData.dismiss()
-                        timeoutAction?.invoke()
-                    }
-                }
-                // Dismiss on swipe
-                LaunchedEffect(dragState.currentValue) {
-                    if (dragState.currentValue != DragAnchors.Center) {
-                        isDismissed.value = true
-                        clearToast()
-                        snackbarData.dismiss()
-                    }
-                }
-                Dialog(
-                    onDismissRequest = {},
-                    properties =
-                        DialogProperties(
-                            dismissOnClickOutside = false,
-                            usePlatformDefaultWidth = false,
-                            decorFitsSystemWindows = false,
-                        ),
-                ) {
-                    // Override Dialog window behavior to allow touch-through
-                    (LocalView.current.parent as DialogWindowProvider).window.apply {
-                        setGravity(Gravity.TOP)
-                        setDimAmount(0f)
-                        addFlags(WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE)
-                        addFlags(WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL)
-                        clearFlags(WindowManager.LayoutParams.FLAG_DIM_BEHIND)
-                        clearFlags(WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE)
-                    }
-                    val cardModifier = Modifier
-                        // Toast renders in its own Dialog window; opt its tree into
-                        // resource-id exposure so Appium can select the toast (MOB-1099).
-                        .exposeTestTagsAsResourceId()
-                        .offset { IntOffset(-dragState.requireOffset().roundToInt(), 0) }
-                        .anchoredDraggable(
-                            state = dragState,
-                            orientation = Orientation.Horizontal,
-                            reverseDirection = true,
-                            enabled = true,
-                        )
-                    val dismiss = {
-                        isDismissed.value = true
-                        clearToast()
-                        snackbarData.dismiss()
-                    }
-                    when (toast) {
-                        is Toast.Simple -> ToastCard(
-                            modifier = cardModifier,
-                            toast = toast,
-                            clearToast = dismiss,
-                        )
-                        is Toast.Custom -> when (toast.content) {
-                            is ReadingToast -> ReadingArrivalCard(
-                                modifier = cardModifier,
-                                readingToast = toast.content,
-                                clearToast = dismiss,
-                            )
-                        }
-                    }
-                }
+            ToastSnackbarContent(
+                toast = toast,
+                dragState = dragState,
+                isDismissed = isDismissed,
+                snackbarData = snackbarData,
+                clearToast = clearToast,
+            )
+        }
+    }
+}
+
+@OptIn(ExperimentalFoundationApi::class)
+@Composable
+private fun ToastSnackbarContent(
+    toast: Toast,
+    dragState: AnchoredDraggableState<DragAnchors>,
+    isDismissed: MutableState<Boolean>,
+    snackbarData: SnackbarData,
+    clearToast: () -> Unit,
+) {
+    if (!isDismissed.value) {
+        // Auto-dismiss after a delay. Reading arrival cards stay up longer so the user has
+        // time to Save/Assign/Add-a-baby (and multi-baby cards fire their onTimeout
+        // auto-assign before clearing); simple toasts keep the short window. (MOB-598)
+        LaunchedEffect(snackbarData) {
+            val readingToast = (toast as? Toast.Custom)?.content as? ReadingToast
+            val timeoutAction = readingToast?.onTimeout
+            delay(if (readingToast != null) READING_TOAST_MS else AUTO_DISMISS_MS)
+            if (dragState.currentValue == DragAnchors.Center) {
+                clearToast()
+                snackbarData.dismiss()
+                timeoutAction?.invoke()
+            }
+        }
+        // Dismiss on swipe
+        LaunchedEffect(dragState.currentValue) {
+            if (dragState.currentValue != DragAnchors.Center) {
+                isDismissed.value = true
+                clearToast()
+                snackbarData.dismiss()
+            }
+        }
+        ToastDialog(
+            toast = toast,
+            dragState = dragState,
+            isDismissed = isDismissed,
+            snackbarData = snackbarData,
+            clearToast = clearToast,
+        )
+    }
+}
+
+@OptIn(ExperimentalFoundationApi::class)
+@Composable
+private fun ToastDialog(
+    toast: Toast,
+    dragState: AnchoredDraggableState<DragAnchors>,
+    isDismissed: MutableState<Boolean>,
+    snackbarData: SnackbarData,
+    clearToast: () -> Unit,
+) {
+    Dialog(
+        onDismissRequest = {},
+        properties =
+            DialogProperties(
+                dismissOnClickOutside = false,
+                usePlatformDefaultWidth = false,
+                decorFitsSystemWindows = false,
+            ),
+    ) {
+        // Override Dialog window behavior to allow touch-through
+        (LocalView.current.parent as DialogWindowProvider).window.apply {
+            setGravity(Gravity.TOP)
+            setDimAmount(0f)
+            addFlags(WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE)
+            addFlags(WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL)
+            clearFlags(WindowManager.LayoutParams.FLAG_DIM_BEHIND)
+            clearFlags(WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE)
+        }
+        val cardModifier = Modifier
+            // Toast renders in its own Dialog window; opt its tree into
+            // resource-id exposure so Appium can select the toast (MOB-1099).
+            .exposeTestTagsAsResourceId()
+            .offset { IntOffset(-dragState.requireOffset().roundToInt(), 0) }
+            .anchoredDraggable(
+                state = dragState,
+                orientation = Orientation.Horizontal,
+                reverseDirection = true,
+                enabled = true,
+            )
+        val dismiss = {
+            isDismissed.value = true
+            clearToast()
+            snackbarData.dismiss()
+        }
+        when (toast) {
+            is Toast.Simple -> ToastCard(
+                modifier = cardModifier,
+                toast = toast,
+                clearToast = dismiss,
+            )
+            is Toast.Custom -> when (toast.content) {
+                is ReadingToast -> ReadingArrivalCard(
+                    modifier = cardModifier,
+                    readingToast = toast.content,
+                    clearToast = dismiss,
+                )
             }
         }
     }

@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyItemScope
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.rememberLazyListState
@@ -21,17 +22,20 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.hapticfeedback.HapticFeedback
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.semantics.CustomAccessibilityAction
 import androidx.compose.ui.semantics.customActions
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
+import com.dmdbrands.gurus.weight.features.common.components.reorderable.ReorderableCollectionItemScope
 import com.dmdbrands.gurus.weight.features.common.components.reorderable.ScrollAmountMultiplier
 import com.dmdbrands.gurus.weight.features.common.strings.AppListStrings
 import com.dmdbrands.gurus.weight.theme.MeAppTheme
 import com.dmdbrands.gurus.weight.theme.MeTheme
 import sh.calvin.reorderable.ReorderableItem
+import sh.calvin.reorderable.ReorderableLazyListState
 import sh.calvin.reorderable.Scroller
 import sh.calvin.reorderable.mainAxisViewportSize
 import sh.calvin.reorderable.rememberReorderableLazyListState
@@ -136,77 +140,129 @@ fun <T> AppDraggableList(
       items = items,
       key = { item -> keySelector(item) },
     ) { item ->
-      val scope = remember(item) { DraggableListItemScopeImpl(item, items.indexOf(item)) }
+      DraggableRow(
+        item = item,
+        items = items,
+        reorderableState = reorderableState,
+        hapticFeedback = hapticFeedback,
+        keySelector = keySelector,
+        onMove = onMove,
+        onDragStarted = onDragStarted,
+        onDragStopped = onDragStopped,
+        itemContent = itemContent,
+      )
+    }
+  }
+}
 
-      // Run composable scope initializer
-      if (!scope.initialized) {
-        scope.itemContent(item)
-        scope.initialized = true
+// Builds the per-item scope, runs its initializer once and emits a
+// ReorderableItem. Extracted to keep AppDraggableList short.
+@Composable
+private fun <T> LazyItemScope.DraggableRow(
+  item: T,
+  items: List<T>,
+  reorderableState: ReorderableLazyListState,
+  hapticFeedback: HapticFeedback,
+  keySelector: (T) -> Any,
+  onMove: (from: Int, to: Int) -> Unit,
+  onDragStarted: () -> Unit,
+  onDragStopped: () -> Unit,
+  itemContent: @Composable DraggableListItemScope.(item: T) -> Unit,
+) {
+  val scope = remember(item) { DraggableListItemScopeImpl(item, items.indexOf(item)) }
 
-        if (!scope.hasContent()) {
-          AppLog.w("AppDraggableList", "⚠️ No DraggableItem or StaticItem scope defined for item")
+  // Run composable scope initializer
+  if (!scope.initialized) {
+    scope.itemContent(item)
+    scope.initialized = true
+
+    if (!scope.hasContent()) {
+      AppLog.w("AppDraggableList", "⚠️ No DraggableItem or StaticItem scope defined for item")
+    }
+  }
+
+  ReorderableItem(
+    state = reorderableState,
+    key = keySelector(item),
+  ) { isDragging ->
+    DraggableRowContent(
+      scope = scope,
+      item = item,
+      items = items,
+      isDragging = isDragging,
+      hapticFeedback = hapticFeedback,
+      onMove = onMove,
+      onDragStarted = onDragStarted,
+      onDragStopped = onDragStopped,
+    )
+  }
+}
+
+// Renders a single reorderable row: TalkBack move actions plus the draggable
+// handle wrapper around the item's draggable and static content.
+@Composable
+private fun <T> ReorderableCollectionItemScope.DraggableRowContent(
+  scope: DraggableListItemScopeImpl<T>,
+  item: T,
+  items: List<T>,
+  isDragging: Boolean,
+  hapticFeedback: HapticFeedback,
+  onMove: (from: Int, to: Int) -> Unit,
+  onDragStarted: () -> Unit,
+  onDragStopped: () -> Unit,
+) {
+  // TalkBack: drag-to-reorder is a gesture a screen-reader user can't perform.
+  // Expose equivalent move-up/move-down custom actions on the row. mergeDescendants
+  // makes the row a single focusable node that carries them.
+  val currentIndex = items.indexOf(item)
+  val reorderSemantics = if (scope.isDraggable()) {
+    Modifier.semantics(mergeDescendants = true) {
+      customActions = buildList {
+        if (currentIndex > 0) {
+          add(
+            CustomAccessibilityAction(AppListStrings.accMoveUpLabel) {
+              onMove(currentIndex, currentIndex - 1)
+              true
+            },
+          )
         }
-      }
-
-      ReorderableItem(
-        state = reorderableState,
-        key = keySelector(item),
-      ) { isDragging ->
-        // TalkBack: drag-to-reorder is a gesture a screen-reader user can't perform.
-        // Expose equivalent move-up/move-down custom actions on the row. mergeDescendants
-        // makes the row a single focusable node that carries them.
-        val currentIndex = items.indexOf(item)
-        val reorderSemantics = if (scope.isDraggable()) {
-          Modifier.semantics(mergeDescendants = true) {
-            customActions = buildList {
-              if (currentIndex > 0) {
-                add(
-                  CustomAccessibilityAction(AppListStrings.accMoveUpLabel) {
-                    onMove(currentIndex, currentIndex - 1)
-                    true
-                  },
-                )
-              }
-              if (currentIndex >= 0 && currentIndex < items.size - 1) {
-                add(
-                  CustomAccessibilityAction(AppListStrings.accMoveDownLabel) {
-                    onMove(currentIndex, currentIndex + 1)
-                    true
-                  },
-                )
-              }
-            }
-          }
-        } else {
-          Modifier
-        }
-        Column(modifier = reorderSemantics) {
-          val draggingModifier = if (scope.isDraggable()) {
-            Modifier.draggableHandle(
-              onDragStarted = {
-                hapticFeedback.performHapticFeedback(HapticFeedbackType.GestureThresholdActivate)
-                onDragStarted()
-              },
-              onDragStopped = {
-                hapticFeedback.performHapticFeedback(HapticFeedbackType.GestureEnd)
-                onDragStopped()
-              },
-            )
-          } else {
-            Modifier
-          }
-          // Draggable content
-          val draggableContent = scope.buildDraggable(isDragging, draggingModifier)
-
-          Box {
-            draggableContent()
-          }
-
-          // Static content (if any)
-          scope.buildStatic()?.invoke()
+        if (currentIndex >= 0 && currentIndex < items.size - 1) {
+          add(
+            CustomAccessibilityAction(AppListStrings.accMoveDownLabel) {
+              onMove(currentIndex, currentIndex + 1)
+              true
+            },
+          )
         }
       }
     }
+  } else {
+    Modifier
+  }
+  Column(modifier = reorderSemantics) {
+    val draggingModifier = if (scope.isDraggable()) {
+      Modifier.draggableHandle(
+        onDragStarted = {
+          hapticFeedback.performHapticFeedback(HapticFeedbackType.GestureThresholdActivate)
+          onDragStarted()
+        },
+        onDragStopped = {
+          hapticFeedback.performHapticFeedback(HapticFeedbackType.GestureEnd)
+          onDragStopped()
+        },
+      )
+    } else {
+      Modifier
+    }
+    // Draggable content
+    val draggableContent = scope.buildDraggable(isDragging, draggingModifier)
+
+    Box {
+      draggableContent()
+    }
+
+    // Static content (if any)
+    scope.buildStatic()?.invoke()
   }
 }
 

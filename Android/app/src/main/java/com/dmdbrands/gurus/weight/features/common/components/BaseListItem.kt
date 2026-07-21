@@ -83,59 +83,91 @@ fun BaseListItem(
     Spacer(modifier = Modifier.width(spacing.md))
 
     // Content section with title and subtitle
-    Column(modifier = Modifier.weight(1f)) {
+    BaseListItemTexts(
+      title = title,
+      subTitle = subTitle,
+      modifier = Modifier.weight(1f),
+    )
+
+    BaseListItemTrailing(
+      enableCheckbox = enableCheckbox,
+      isChecked = isChecked,
+      checkboxDescription = checkboxDescription,
+      trailingAction = trailingAction,
+      onClick = onClick,
+      trailingContent = trailingContent,
+    )
+  }
+}
+
+@Composable
+private fun BaseListItemTexts(
+  title: String,
+  subTitle: String?,
+  modifier: Modifier = Modifier,
+) {
+  Column(modifier = modifier) {
+    Text(
+      text = title,
+      style =
+        typography.body2.copy(
+          color = colorScheme.textBody,
+        ),
+      maxLines = 1,
+      overflow = TextOverflow.Ellipsis,
+    )
+    if (subTitle != null) {
+      Spacer(modifier = Modifier.height(spacing.x3s))
       Text(
-        text = title,
+        text = subTitle,
         style =
-          typography.body2.copy(
-            color = colorScheme.textBody,
+          typography.subHeading2.copy(
+            color = colorScheme.textSubheading,
           ),
         maxLines = 1,
         overflow = TextOverflow.Ellipsis,
       )
-      if (subTitle != null) {
-        Spacer(modifier = Modifier.height(spacing.x3s))
-        Text(
-          text = subTitle,
-          style =
-            typography.subHeading2.copy(
-              color = colorScheme.textSubheading,
-            ),
-          maxLines = 1,
-          overflow = TextOverflow.Ellipsis,
-        )
-      }
     }
-
-    // Checkbox section
-    if (enableCheckbox) {
-      AppIcon(
-        id = if (isChecked) AppIcons.Selection.CircleSelected else AppIcons.Selection.CircleUnselected,
-        contentDescription = checkboxDescription ?: "",
-        type = AppIconType.Primary,
-        onClick = onClick,
-        // TalkBack: the checked/unchecked state is only conveyed by the icon swap
-        // visually; expose it as a selected state so a screen reader announces it.
-        modifier = Modifier
-          .size(24.dp)
-          .semantics { selected = isChecked },
-      )
-    }
-
-    // Trailing action button
-    if (trailingAction != null) {
-      AppButton(
-        label = trailingAction.text,
-        onClick = trailingAction.action,
-        type = ButtonType.TextPrimary,
-        size = ButtonSize.Small,
-        textTransform = TextTransform.NONE,
-      )
-    }
-
-    // Custom trailing content
-    trailingContent?.invoke()
   }
+}
+
+@Composable
+private fun BaseListItemTrailing(
+  enableCheckbox: Boolean,
+  isChecked: Boolean,
+  checkboxDescription: String?,
+  trailingAction: ActionButton?,
+  onClick: (() -> Unit)?,
+  trailingContent: @Composable (() -> Unit)?,
+) {
+  // Checkbox section
+  if (enableCheckbox) {
+    AppIcon(
+      id = if (isChecked) AppIcons.Selection.CircleSelected else AppIcons.Selection.CircleUnselected,
+      contentDescription = checkboxDescription ?: "",
+      type = AppIconType.Primary,
+      onClick = onClick,
+      // TalkBack: the checked/unchecked state is only conveyed by the icon swap
+      // visually; expose it as a selected state so a screen reader announces it.
+      modifier = Modifier
+        .size(24.dp)
+        .semantics { selected = isChecked },
+    )
+  }
+
+  // Trailing action button
+  if (trailingAction != null) {
+    AppButton(
+      label = trailingAction.text,
+      onClick = trailingAction.action,
+      type = ButtonType.TextPrimary,
+      size = ButtonSize.Small,
+      textTransform = TextTransform.NONE,
+    )
+  }
+
+  // Custom trailing content
+  trailingContent?.invoke()
 }
 
 // region: Preview

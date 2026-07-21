@@ -22,6 +22,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.platform.testTag
@@ -123,107 +124,150 @@ private fun SettingsItemRow(
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Row(
-                horizontalArrangement = Arrangement.spacedBy(MeTheme.spacing.xs),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                // Unread indicator dot
-                if (item.showUnreadIndicator) {
-                    Box(
-                      modifier = Modifier
-                        .size(8.dp)
-                        .clip(CircleShape)
-                        .background(MeTheme.colorScheme.danger),
-                    )
-                }
-
-                AppText(
-                    text = item.title,
-                    textType = TextType.Subtitle,
-                    color = color,
-                    enabled = item.enabled,
-                )
-            }
-
-            Row(
-                horizontalArrangement = Arrangement.spacedBy(MeTheme.spacing.sm),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                val value =
-                    when (item.type) {
-                        is SettingsItemType.Action -> item.type.text
-                        is SettingsItemType.CustomIcon -> item.type.text
-                        is SettingsItemType.Dropdown -> item.type.text
-                        is SettingsItemType.TextOnly -> item.type.text
-                        is SettingsItemType.TextDate ->
-                            DateFormatHelper.formatDisplayDate(
-                                item.type.rawDate,
-                            )
-
-                        else -> null
-                    }
-                if (value != null) {
-                    val windowSize = LocalWindowInfo.current.containerSize
-                    val isTablet = with(LocalDensity.current) {
-                        windowSize.width.toDp() > 600.dp
-                    }
-                    val maxWidth = if (isTablet) 350.dp else 160.dp
-
-                    Text(
-                        text = value,
-                        style = MeTheme.typography.body2,
-                        color = if (item.enabled) MeTheme.colorScheme.textSubheading else MeTheme.colorScheme.utility,
-                        textAlign = TextAlign.End,
-                        maxLines = item.maxLines,
-                        overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
-                        modifier = Modifier.widthIn(max = maxWidth),
-                    )
-                }
-                when (item.type) {
-                    is SettingsItemType.Action -> {
-                        AppIcon(
-                            id = AppIcons.Default.RightCaret,
-                            contentDescription = "Action",
-                            enabled = item.enabled,
-                            onClick = {item.onClick.invoke()},
-                        )
-                    }
-
-                    is SettingsItemType.Dropdown -> {
-                        AppIcon(
-                            id = AppIcons.Filled.CaretDown,
-                            contentDescription = "Dropdown",
-                            tintColor = MeTheme.colorScheme.iconSecondary,
-                            enabled = item.enabled,
-                            onClick = {item.onClick.invoke()},
-                        )
-                    }
-
-                    is SettingsItemType.CustomIcon -> {
-                        item.type.icon()
-                    }
-
-                    is SettingsItemType.Custom -> {
-                        item.type.content()
-                    }
-
-                    is SettingsItemType.Toggle -> {
-                        AppToggle(
-                            checked = item.type.checked,
-                            onCheckedChange = item.type.onCheckedChange
-                        )
-                    }
-
-                    is SettingsItemType.None, is SettingsItemType.TextOnly -> {
-                        // No icon
-                    }
-
-                    is SettingsItemType.TextDate -> {
-                    }
-                }
-            }
+            SettingsItemLeading(item = item, color = color)
+            SettingsItemTrailing(item = item)
         }
 
+    }
+}
+
+/**
+ * Leading part of a settings row: an optional unread indicator dot followed by
+ * the item title.
+ */
+@Composable
+private fun SettingsItemLeading(
+    item: SettingsItem,
+    color: Color,
+) {
+    Row(
+        horizontalArrangement = Arrangement.spacedBy(MeTheme.spacing.xs),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        // Unread indicator dot
+        if (item.showUnreadIndicator) {
+            Box(
+              modifier = Modifier
+                .size(8.dp)
+                .clip(CircleShape)
+                .background(MeTheme.colorScheme.danger),
+            )
+        }
+
+        AppText(
+            text = item.title,
+            textType = TextType.Subtitle,
+            color = color,
+            enabled = item.enabled,
+        )
+    }
+}
+
+/**
+ * Trailing part of a settings row: an optional value text followed by the
+ * type-specific icon/content.
+ */
+@Composable
+private fun SettingsItemTrailing(
+    item: SettingsItem,
+) {
+    Row(
+        horizontalArrangement = Arrangement.spacedBy(MeTheme.spacing.sm),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        SettingsItemValueText(item = item)
+        SettingsItemTypeIcon(item = item)
+    }
+}
+
+/**
+ * Renders the right-aligned value text for a settings item, when its type
+ * carries a text/date value.
+ */
+@Composable
+private fun SettingsItemValueText(
+    item: SettingsItem,
+) {
+    val value =
+        when (item.type) {
+            is SettingsItemType.Action -> item.type.text
+            is SettingsItemType.CustomIcon -> item.type.text
+            is SettingsItemType.Dropdown -> item.type.text
+            is SettingsItemType.TextOnly -> item.type.text
+            is SettingsItemType.TextDate ->
+                DateFormatHelper.formatDisplayDate(
+                    item.type.rawDate,
+                )
+
+            else -> null
+        }
+    if (value != null) {
+        val windowSize = LocalWindowInfo.current.containerSize
+        val isTablet = with(LocalDensity.current) {
+            windowSize.width.toDp() > 600.dp
+        }
+        val maxWidth = if (isTablet) 350.dp else 160.dp
+
+        Text(
+            text = value,
+            style = MeTheme.typography.body2,
+            color = if (item.enabled) MeTheme.colorScheme.textSubheading else MeTheme.colorScheme.utility,
+            textAlign = TextAlign.End,
+            maxLines = item.maxLines,
+            overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+            modifier = Modifier.widthIn(max = maxWidth),
+        )
+    }
+}
+
+/**
+ * Renders the type-specific trailing icon or content for a settings item.
+ */
+@Composable
+private fun SettingsItemTypeIcon(
+    item: SettingsItem,
+) {
+    when (item.type) {
+        is SettingsItemType.Action -> {
+            AppIcon(
+                id = AppIcons.Default.RightCaret,
+                contentDescription = "Action",
+                enabled = item.enabled,
+                onClick = {item.onClick.invoke()},
+            )
+        }
+
+        is SettingsItemType.Dropdown -> {
+            AppIcon(
+                id = AppIcons.Filled.CaretDown,
+                contentDescription = "Dropdown",
+                tintColor = MeTheme.colorScheme.iconSecondary,
+                enabled = item.enabled,
+                onClick = {item.onClick.invoke()},
+            )
+        }
+
+        is SettingsItemType.CustomIcon -> {
+            item.type.icon()
+        }
+
+        is SettingsItemType.Custom -> {
+            item.type.content()
+        }
+
+        is SettingsItemType.Toggle -> {
+            AppToggle(
+                checked = item.type.checked,
+                onCheckedChange = item.type.onCheckedChange
+            )
+        }
+
+        is SettingsItemType.None, is SettingsItemType.TextOnly -> {
+            // No icon
+        }
+
+        is SettingsItemType.TextDate -> {
+        }
     }
 }
 

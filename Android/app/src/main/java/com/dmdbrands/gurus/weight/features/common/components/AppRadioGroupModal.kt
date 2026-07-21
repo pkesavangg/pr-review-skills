@@ -192,43 +192,56 @@ fun <T> AppRadioGroupModal(
                         ),
                     modifier = modifier,
                 ) {
-                    // Add spacing before radio group content
-                    Spacer(modifier = Modifier.height(MeTheme.spacing.xs))
-
-                    // Radio Group Section - auto-sized with optional max height and scrolling
-                    if (maxHeight != null) {
-                        val scrollState = rememberScrollState()
-                        Box(modifier = Modifier.fillMaxWidth()) {
-                            AppRadioGroup(
-                                options = options,
-                                selectedItem = currentSelection,
-                                onOptionSelected = { selectedId ->
-                                    currentSelection = selectedId
-                                },
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .height(maxHeight)
-                                    .verticalScroll(scrollState),
-                            )
-                            CustomScrollbar(
-                                scrollState = scrollState,
-                                contentHeight = maxHeight,
-                                modifier = Modifier.align(Alignment.CenterEnd)
-                            )
-                        }
-                    } else {
-                        AppRadioGroup(
-                            options = options,
-                            selectedItem = currentSelection,
-                            onOptionSelected = { selectedId ->
-                                currentSelection = selectedId
-                            },
-                            modifier = Modifier.fillMaxWidth(),
-                        )
-                    }
+                    AppRadioGroupModalContent(
+                        options = options,
+                        selectedItem = currentSelection,
+                        onOptionSelected = { selectedId ->
+                            currentSelection = selectedId
+                        },
+                        maxHeight = maxHeight,
+                    )
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun <T> AppRadioGroupModalContent(
+    options: List<RadioButtonOption<T>>,
+    selectedItem: T?,
+    onOptionSelected: (T?) -> Unit,
+    maxHeight: androidx.compose.ui.unit.Dp?,
+) {
+    // Add spacing before radio group content
+    Spacer(modifier = Modifier.height(MeTheme.spacing.xs))
+
+    // Radio Group Section - auto-sized with optional max height and scrolling
+    if (maxHeight != null) {
+        val scrollState = rememberScrollState()
+        Box(modifier = Modifier.fillMaxWidth()) {
+            AppRadioGroup(
+                options = options,
+                selectedItem = selectedItem,
+                onOptionSelected = onOptionSelected,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(maxHeight)
+                    .verticalScroll(scrollState),
+            )
+            CustomScrollbar(
+                scrollState = scrollState,
+                contentHeight = maxHeight,
+                modifier = Modifier.align(Alignment.CenterEnd)
+            )
+        }
+    } else {
+        AppRadioGroup(
+            options = options,
+            selectedItem = selectedItem,
+            onOptionSelected = onOptionSelected,
+            modifier = Modifier.fillMaxWidth(),
+        )
     }
 }
 

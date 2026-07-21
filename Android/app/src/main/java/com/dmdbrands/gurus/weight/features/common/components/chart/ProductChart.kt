@@ -21,7 +21,9 @@ import com.patrykandpatrick.vico.compose.cartesian.CartesianChart
 import com.patrykandpatrick.vico.compose.cartesian.FadingEdges
 import com.patrykandpatrick.vico.compose.cartesian.axis.Axis
 import com.patrykandpatrick.vico.compose.cartesian.axis.HorizontalAxis
+import com.patrykandpatrick.vico.compose.cartesian.axis.VerticalAxis
 import com.patrykandpatrick.vico.compose.cartesian.data.CartesianLayerRangeProvider
+import com.patrykandpatrick.vico.compose.cartesian.data.ScrollAwareRangeProvider
 import com.patrykandpatrick.vico.compose.cartesian.data.rememberScrollAwareRangeProvider
 import com.patrykandpatrick.vico.compose.common.data.ExtraStore
 import com.patrykandpatrick.vico.compose.cartesian.layer.LineCartesianLayer
@@ -54,48 +56,95 @@ fun rememberProductChart(
   scrubController: ScrubMarkerController? = null,
   onYRangeSettled: (Double, Double) -> Unit = { _, _ -> },
 ): CartesianChart {
-  // ── Separators (shared) ──
-  val separators = GraphUtil.periodStarts(
-    segment = segment,
-    startMillis = segmentState.data.map {
-      com.dmdbrands.gurus.weight.core.shared.utilities.DateTimeConverter.isoToTimestamp(
-        it.entryTimestamp,
-      )
-    }.sorted().firstOrNull(),
-    endMillis = segmentState.data.map {
-      com.dmdbrands.gurus.weight.core.shared.utilities.DateTimeConverter.isoToTimestamp(
-        it.entryTimestamp,
-      )
-    }.sorted().lastOrNull(),
-  ).map { it.toDouble() }
+  val separators = chartSeparators(segment, segmentState)
+  val visibleLabelsCount = rememberChartVisibleLabelsCount(segment, segmentState)
+  val scrollAwareRange = rememberChartRangeProvider(config, segmentState, onYRangeSettled)
+  val layers = rememberChartLayers(config, segment, segmentState, scrollAwareRange)
 
-  // ── Visible labels count (shared) ──
-  val visibleLabelsCount = if (segment != GraphSegment.TOTAL) {
-    remember(segment) { segment.visibleLabelsCount() }
-  } else {
-    remember(segmentState.chartMinX, segmentState.chartMaxX) {
-      GraphUtil.getTotalMonthsBetweenYears(
-        segmentState.chartMinX?.toLong() ?: Calendar.getInstance().timeInMillis,
-        segmentState.chartMaxX?.toLong() ?: Calendar.getInstance().timeInMillis,
-      ).toDouble().coerceAtLeast(1.0)
-    }
+  // ── Unit + weightless for display-time conversion ──
+  val weightUnit = (graphState as? WeightDashboardState)?.weightUnit
+  val weightless = (graphState as? WeightDashboardState)?.weightless
+  val weightlessOffset = if (weightless?.isWeightlessOn == true) weightless.weightlessWeight.toDouble() else 0.0
+
+  // ── Goal marker (config-driven) ──
+  val goalMarker = rememberChartGoalMarker(config, weightUnit, weightlessOffset)
+
+  // ── Build chart ──
+  return rememberCartesianChart(
+    *layers,
+    topAxis = topAxis(),
+    startAxis = startAxis(segment, segmentState.isSingleWindow),
+    endAxis = endAxis(
+      isEmptyGraph = segmentState.isEmptyGraph,
+      markerDecoration = goalMarker,
+      ticksProvider = { scrollAwareRange.currentTicks },
+      weightUnit = weightUnit,
+      weightlessOffset = weightlessOffset,
+    ),
+    bottomAxis = bottomAxis(segment, separators, horizontalItemPlacer),
+    marker = defaultMarker,
+    fadingEdges = fadingEdges,
+    getXStep = { GraphUtil.calculateXStep(segment) },
+    markerController = scrubController ?: CartesianMarkerController.rememberShowOnPress(),
+    visibleLabelsCount = visibleLabelsCount,
+  )
+}
+
+// ── Separators (shared) ──
+private fun chartSeparators(
+  segment: GraphSegment,
+  segmentState: SegmentState,
+): List<Double> = GraphUtil.periodStarts(
+  segment = segment,
+  startMillis = segmentState.data.map {
+    com.dmdbrands.gurus.weight.core.shared.utilities.DateTimeConverter.isoToTimestamp(
+      it.entryTimestamp,
+    )
+  }.sorted().firstOrNull(),
+  endMillis = segmentState.data.map {
+    com.dmdbrands.gurus.weight.core.shared.utilities.DateTimeConverter.isoToTimestamp(
+      it.entryTimestamp,
+    )
+  }.sorted().lastOrNull(),
+).map { it.toDouble() }
+
+// ── Visible labels count (shared) ──
+@Composable
+private fun rememberChartVisibleLabelsCount(
+  segment: GraphSegment,
+  segmentState: SegmentState,
+): Double = if (segment != GraphSegment.TOTAL) {
+  remember(segment) { segment.visibleLabelsCount() }
+} else {
+  remember(segmentState.chartMinX, segmentState.chartMaxX) {
+    GraphUtil.getTotalMonthsBetweenYears(
+      segmentState.chartMinX?.toLong() ?: Calendar.getInstance().timeInMillis,
+      segmentState.chartMaxX?.toLong() ?: Calendar.getInstance().timeInMillis,
+    ).toDouble().coerceAtLeast(1.0)
   }
+}
 
-  // ── Y-range provider (config-driven) ──
-  // seedMinY/seedMaxY are pre-computed in the respective ViewModel (updateSegmentRanges)
-  // so the correct range is available on frame-0 for both first load and segment switches.
-  //
-  // Guard against a null / non-finite / zero-width range reaching Vico. A single data
-  // point (e.g. the first baby entry) — or a frame where the range hasn't been seeded
-  // yet — would otherwise pass NaN here, which Vico maps to a NaN pixel → a point shape
-  // with a NaN corner radius → IllegalArgumentException ("Corner size … can't be NaN").
-  // A finite, strictly-increasing fallback lets the chart render instead of crashing;
-  // the real range arrives on the next frame. Normal (valid) ranges pass through unchanged.
+// ── Y-range provider (config-driven) ──
+// seedMinY/seedMaxY are pre-computed in the respective ViewModel (updateSegmentRanges)
+// so the correct range is available on frame-0 for both first load and segment switches.
+//
+// Guard against a null / non-finite / zero-width range reaching Vico. A single data
+// point (e.g. the first baby entry) — or a frame where the range hasn't been seeded
+// yet — would otherwise pass NaN here, which Vico maps to a NaN pixel → a point shape
+// with a NaN corner radius → IllegalArgumentException ("Corner size … can't be NaN").
+// A finite, strictly-increasing fallback lets the chart render instead of crashing;
+// the real range arrives on the next frame. Normal (valid) ranges pass through unchanged.
+@Composable
+private fun rememberChartRangeProvider(
+  config: ChartConfig,
+  segmentState: SegmentState,
+  onYRangeSettled: (Double, Double) -> Unit,
+): ScrollAwareRangeProvider {
   val safeMinX = segmentState.chartMinX?.takeIf { it.isFinite() } ?: 0.0
   val safeMaxX = segmentState.chartMaxX?.takeIf { it.isFinite() && it > safeMinX } ?: (safeMinX + 1.0)
   val safeSeedMinY = segmentState.seedMinY?.takeIf { it.isFinite() } ?: 0.0
   val safeSeedMaxY = segmentState.seedMaxY?.takeIf { it.isFinite() && it > safeSeedMinY } ?: (safeSeedMinY + 1.0)
-  val scrollAwareRange = rememberScrollAwareRangeProvider(
+  return rememberScrollAwareRangeProvider(
     minX = safeMinX,
     maxX = safeMaxX,
     seedMinY = safeSeedMinY,
@@ -139,10 +188,22 @@ fun rememberProductChart(
     }
     (rangeMinY..rangeMaxY) to ticks
   }
+}
 
-  // ── Line layers (config-driven) ──
-  val lineThickness = if (segment == GraphSegment.TOTAL) 2.dp else 3.dp
-  val pointSize = if (segment == GraphSegment.TOTAL) 5f else 8f
+// ── Line layers (config-driven) ──
+private const val LINE_THICKNESS_TOTAL_DP = 2
+private const val LINE_THICKNESS_DP = 3
+private const val POINT_SIZE_TOTAL = 5f
+private const val POINT_SIZE = 8f
+
+@Composable
+private fun rememberPrimaryLayer(
+  config: ChartConfig,
+  segment: GraphSegment,
+  scrollAwareRange: ScrollAwareRangeProvider,
+): LineCartesianLayer {
+  val lineThickness = if (segment == GraphSegment.TOTAL) LINE_THICKNESS_TOTAL_DP.dp else LINE_THICKNESS_DP.dp
+  val pointSize = if (segment == GraphSegment.TOTAL) POINT_SIZE_TOTAL else POINT_SIZE
 
   val lines = config.lines.map { spec ->
     LineCartesianLayer.rememberLine(
@@ -158,48 +219,64 @@ fun rememberProductChart(
     )
   }
   val lineProvider = remember(lines) { LineCartesianLayer.LineProvider.series(lines) }
-  val primaryLayer = rememberLineCartesianLayer(
+  return rememberLineCartesianLayer(
     lineProvider = lineProvider,
     verticalAxisPosition = Axis.Position.Vertical.End,
     rangeProvider = scrollAwareRange,
   )
+}
 
-  // ── Optional percentile band layer (baby — 7 faded lines behind data) ──
-  val percentileLayer = if (config.hasPercentileLayer && config.percentileBandColor != null) {
-    val bandColor = config.percentileBandColor
-    val bandLines = (1..7).map {
-      LineCartesianLayer.rememberLine(
-        fill = LineCartesianLayer.LineFill.single(Fill(bandColor.copy(alpha = 0.4f))),
-        stroke = LineCartesianLayer.LineStroke.Continuous(thickness = 1.dp),
-        interpolator = LineCartesianLayer.Interpolator.monotone(),
-        pointProvider = null,
-      )
-    }
-    val percentileRangeProvider = remember {
-      object : CartesianLayerRangeProvider {
-        override fun getMinX(minX: Double, maxX: Double, extraStore: ExtraStore) =
-          scrollAwareRange.xRangeMin.takeIf { !it.isNaN() } ?: minX
-        override fun getMaxX(minX: Double, maxX: Double, extraStore: ExtraStore) =
-          scrollAwareRange.xRangeMax.takeIf { !it.isNaN() } ?: maxX
-        override fun getMinY(minY: Double, maxY: Double, extraStore: ExtraStore) =
-          scrollAwareRange.getMinY(minY, maxY, extraStore)
-        override fun getMaxY(minY: Double, maxY: Double, extraStore: ExtraStore) =
-          scrollAwareRange.getMaxY(minY, maxY, extraStore)
-      }
-    }
-    // Percentile bands share the primary Y range via percentileRangeProvider;
-    // alwaysUseLiveRange is intentionally omitted — setting it true would bypass
-    // the range provider and cause a frame-0 Y-axis flash on the baby chart.
-    rememberLineCartesianLayer(
-      lineProvider = remember(bandLines) { LineCartesianLayer.LineProvider.series(bandLines) },
-      verticalAxisPosition = Axis.Position.Vertical.End,
-      rangeProvider = percentileRangeProvider,
-      markerTargetsEnabled = false,
+// ── Optional percentile band layer (baby — 7 faded lines behind data) ──
+@Composable
+private fun rememberPercentileLayer(
+  config: ChartConfig,
+  scrollAwareRange: ScrollAwareRangeProvider,
+): LineCartesianLayer? {
+  if (!config.hasPercentileLayer || config.percentileBandColor == null) return null
+  val bandColor = config.percentileBandColor
+  val bandLines = (1..7).map {
+    LineCartesianLayer.rememberLine(
+      fill = LineCartesianLayer.LineFill.single(Fill(bandColor.copy(alpha = 0.4f))),
+      stroke = LineCartesianLayer.LineStroke.Continuous(thickness = 1.dp),
+      interpolator = LineCartesianLayer.Interpolator.monotone(),
+      pointProvider = null,
     )
-  } else null
+  }
+  val percentileRangeProvider = remember {
+    object : CartesianLayerRangeProvider {
+      override fun getMinX(minX: Double, maxX: Double, extraStore: ExtraStore) =
+        scrollAwareRange.xRangeMin.takeIf { !it.isNaN() } ?: minX
+      override fun getMaxX(minX: Double, maxX: Double, extraStore: ExtraStore) =
+        scrollAwareRange.xRangeMax.takeIf { !it.isNaN() } ?: maxX
+      override fun getMinY(minY: Double, maxY: Double, extraStore: ExtraStore) =
+        scrollAwareRange.getMinY(minY, maxY, extraStore)
+      override fun getMaxY(minY: Double, maxY: Double, extraStore: ExtraStore) =
+        scrollAwareRange.getMaxY(minY, maxY, extraStore)
+    }
+  }
+  // Percentile bands share the primary Y range via percentileRangeProvider;
+  // alwaysUseLiveRange is intentionally omitted — setting it true would bypass
+  // the range provider and cause a frame-0 Y-axis flash on the baby chart.
+  return rememberLineCartesianLayer(
+    lineProvider = remember(bandLines) { LineCartesianLayer.LineProvider.series(bandLines) },
+    verticalAxisPosition = Axis.Position.Vertical.End,
+    rangeProvider = percentileRangeProvider,
+    markerTargetsEnabled = false,
+  )
+}
 
-  // ── Optional secondary layer (weight metric overlay) ──
-  val layers = if (percentileLayer != null) {
+// ── Layer array assembly (primary + optional percentile / secondary overlay) ──
+@Composable
+private fun rememberChartLayers(
+  config: ChartConfig,
+  segment: GraphSegment,
+  segmentState: SegmentState,
+  scrollAwareRange: ScrollAwareRangeProvider,
+): Array<LineCartesianLayer> {
+  val primaryLayer = rememberPrimaryLayer(config, segment, scrollAwareRange)
+  val percentileLayer = rememberPercentileLayer(config, scrollAwareRange)
+
+  return if (percentileLayer != null) {
     arrayOf(percentileLayer, primaryLayer)
   } else if (config.hasSecondaryLayer && config.secondaryLineColor != null) {
     val secondaryRangeProvider = remember(segmentState.chartMinX, segmentState.chartMaxX) {
@@ -225,14 +302,16 @@ fun rememberProductChart(
   } else {
     arrayOf(primaryLayer)
   }
+}
 
-  // ── Unit + weightless for display-time conversion ──
-  val weightUnit = (graphState as? WeightDashboardState)?.weightUnit
-  val weightless = (graphState as? WeightDashboardState)?.weightless
-  val weightlessOffset = if (weightless?.isWeightlessOn == true) weightless.weightlessWeight.toDouble() else 0.0
-
-  // ── Goal marker (config-driven) ──
-  val goalMarker = if (config.goalWeight != null) {
+// ── Goal marker (config-driven) ──
+@Composable
+private fun rememberChartGoalMarker(
+  config: ChartConfig,
+  weightUnit: WeightUnit?,
+  weightlessOffset: Double,
+): VerticalAxis.MarkerDecoration? =
+  if (config.goalWeight != null) {
     rememberGoalMarker(
       goal = config.goal,
       isWeightlessOn = config.isWeightlessMode,
@@ -240,24 +319,3 @@ fun rememberProductChart(
       weightlessOffset = weightlessOffset,
     )
   } else null
-
-  // ── Build chart ──
-  return rememberCartesianChart(
-    *layers,
-    topAxis = topAxis(),
-    startAxis = startAxis(segment, segmentState.isSingleWindow),
-    endAxis = endAxis(
-      isEmptyGraph = segmentState.isEmptyGraph,
-      markerDecoration = goalMarker,
-      ticksProvider = { scrollAwareRange.currentTicks },
-      weightUnit = weightUnit,
-      weightlessOffset = weightlessOffset,
-    ),
-    bottomAxis = bottomAxis(segment, separators, horizontalItemPlacer),
-    marker = defaultMarker,
-    fadingEdges = fadingEdges,
-    getXStep = { GraphUtil.calculateXStep(segment) },
-    markerController = scrubController ?: CartesianMarkerController.rememberShowOnPress(),
-    visibleLabelsCount = visibleLabelsCount,
-  )
-}

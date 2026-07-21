@@ -72,7 +72,7 @@ subprojects {
 
     tasks.withType<io.gitlab.arturbosch.detekt.Detekt>().configureEach {
         jvmTarget = "11"
-        exclude("**/build/**", "**/vico/**", "**/bleWrapper/**")
+        exclude("**/build/**", "**/vico/**", "**/reorderable/**", "**/bleWrapper/**")
         reports {
             html.required.set(true)
             xml.required.set(false)
@@ -82,7 +82,7 @@ subprojects {
 
     tasks.withType<io.gitlab.arturbosch.detekt.DetektCreateBaselineTask>().configureEach {
         jvmTarget = "11"
-        exclude("**/build/**", "**/vico/**", "**/bleWrapper/**")
+        exclude("**/build/**", "**/vico/**", "**/reorderable/**", "**/bleWrapper/**")
     }
 
     tasks.matching { it.name == "preBuild" }.configureEach {

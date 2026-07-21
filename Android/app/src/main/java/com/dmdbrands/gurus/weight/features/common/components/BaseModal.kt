@@ -36,7 +36,6 @@ import com.dmdbrands.gurus.weight.theme.MeTheme.spacing
  * @param onDismiss Called when the dialog is dismissed (optional, for outside click).
  * @param modifier Modifier for styling.
  */
-@Suppress("LongMethod")
 @Composable
 fun BaseModal(
   modifier: Modifier = Modifier,
@@ -65,133 +64,190 @@ fun BaseModal(
     shape = RoundedCornerShape(28.dp), // Figma: radius-xl = 28dp (no token found)
     colors = cardColors,
   ) {
-    Column(
-      modifier = Modifier
-        .padding(MeTheme.spacing.md),
-      horizontalAlignment = Alignment.CenterHorizontally,
-      verticalArrangement = Arrangement.spacedBy(MeTheme.spacing.sm),
-    ) {
-      title?.let {
-        Text(
-          text = it,
-          style = MeTheme.typography.heading4,
-          color = MeTheme.colorScheme.textHeading,
-          modifier = Modifier
-            .fillMaxWidth()
-            .testTag(titleTestTag ?: TestTags.Dialog.Title),
-        )
-      }
-      subtitle?.let {
-        Text(
-          text = subtitle,
-          style = MeTheme.typography.body2,
-          color = MeTheme.colorScheme.textBody,
-          modifier = Modifier.fillMaxWidth(),
-        )
-      }
-      body?.let {
-        Text(
-          text = body,
-          style = MeTheme.typography.body3,
-          color = MeTheme.colorScheme.textBody,
-          modifier = Modifier.fillMaxWidth(),
-        )
-      }
-
-      Column(Modifier.fillMaxWidth()) {
-        content?.let {
-          it()
-        }
-      }
-error?.let { s ->
-Text(
-  text = s.lowercase(),
-  style = MeTheme.typography.subHeading2,
-  color = MeTheme.colorScheme.textError,
-  modifier = Modifier.fillMaxWidth(),
-  textAlign = TextAlign.Center,
-  )
+    BaseModalContent(
+      title = title,
+      subtitle = subtitle,
+      body = body,
+      error = error,
+      titleTestTag = titleTestTag,
+      content = content,
+    )
+    if (secondaryAction != null || primaryAction != null) {
+      BaseModalActions(
+        secondaryAction = secondaryAction,
+        primaryAction = primaryAction,
+        primaryActionType = primaryActionType,
+      )
+    }
+  }
 }
 
+@Composable
+private fun BaseModalContent(
+  title: String?,
+  subtitle: String?,
+  body: String?,
+  error: String?,
+  titleTestTag: String?,
+  content: @Composable (() -> Unit)?,
+) {
+  Column(
+    modifier = Modifier
+      .padding(MeTheme.spacing.md),
+    horizontalAlignment = Alignment.CenterHorizontally,
+    verticalArrangement = Arrangement.spacedBy(MeTheme.spacing.sm),
+  ) {
+    title?.let {
+      Text(
+        text = it,
+        style = MeTheme.typography.heading4,
+        color = MeTheme.colorScheme.textHeading,
+        modifier = Modifier
+          .fillMaxWidth()
+          .testTag(titleTestTag ?: TestTags.Dialog.Title),
+      )
     }
-    if (secondaryAction != null || primaryAction != null) {
-      Column(
-        modifier =
-          Modifier
-            .padding(top = spacing.xs, bottom = spacing.md, end = spacing.md, start = spacing.md),
-        horizontalAlignment = Alignment.CenterHorizontally,
-      ) {
-        BoxWithConstraints {
-          maxWidth
+    subtitle?.let {
+      Text(
+        text = subtitle,
+        style = MeTheme.typography.body2,
+        color = MeTheme.colorScheme.textBody,
+        modifier = Modifier.fillMaxWidth(),
+      )
+    }
+    body?.let {
+      Text(
+        text = body,
+        style = MeTheme.typography.body3,
+        color = MeTheme.colorScheme.textBody,
+        modifier = Modifier.fillMaxWidth(),
+      )
+    }
 
-          // Calculate if we need to stack buttons vertically based on text length
-          val shouldStackVertically = remember {
-            derivedStateOf {
-              val totalTextLength = (secondaryAction?.text?.length ?: 0) + (primaryAction?.text?.length ?: 0)
-              // If total text length is more than ~25 characters, stack vertically
-              // This is a rough estimate - you can adjust this threshold
-              totalTextLength >= 25
-            }
-          }
+    Column(Modifier.fillMaxWidth()) {
+      content?.let {
+        it()
+      }
+    }
+    error?.let { s ->
+      Text(
+        text = s.lowercase(),
+        style = MeTheme.typography.subHeading2,
+        color = MeTheme.colorScheme.textError,
+        modifier = Modifier.fillMaxWidth(),
+        textAlign = TextAlign.Center,
+      )
+    }
+  }
+}
 
-          if (shouldStackVertically.value) {
-            // Stack buttons vertically when text is too long
-            Column(
-              modifier = Modifier.fillMaxWidth(),
-              horizontalAlignment = Alignment.End,
-            ) {
-              if (secondaryAction != null) {
-                AppButton(
-                  label = secondaryAction.text,
-                  onClick = secondaryAction.action,
-                  type = ButtonType.InlineTextTertiary,
-                  size = ButtonSize.Small,
-                  enabled = secondaryAction.enabled,
-                  modifier = Modifier.testTag(secondaryAction.testTag ?: TestTags.Dialog.SecondaryButton),
-                )
-              }
-              if (primaryAction != null) {
-                AppButton(
-                  label = primaryAction.text,
-                  onClick = primaryAction.action,
-                  type = primaryActionType,
-                  size = ButtonSize.Small,
-                  enabled = primaryAction.enabled,
-                  modifier = Modifier.testTag(primaryAction.testTag ?: TestTags.Dialog.PrimaryButton),
-                )
-              }
-            }
-          } else {
-            // Use horizontal layout when text is short enough
-            Row(
-              modifier = Modifier.fillMaxWidth(),
-              horizontalArrangement = Arrangement.End,
-            ) {
-              if (secondaryAction != null) {
-                AppButton(
-                  label = secondaryAction.text,
-                  onClick = secondaryAction.action,
-                  type = ButtonType.InlineTextTertiary,
-                  size = ButtonSize.Small,
-                  enabled = secondaryAction.enabled,
-                  modifier = Modifier.testTag(secondaryAction.testTag ?: TestTags.Dialog.SecondaryButton),
-                )
-                Spacer(modifier = Modifier.width(MeTheme.spacing.xs))
-              }
-              if (primaryAction != null) {
-                AppButton(
-                  label = primaryAction.text,
-                  onClick = primaryAction.action,
-                  type = primaryActionType,
-                  size = ButtonSize.Small,
-                  enabled = primaryAction.enabled,
-                  modifier = Modifier.testTag(primaryAction.testTag ?: TestTags.Dialog.PrimaryButton),
-                )
-              }
-            }
-          }
+@Composable
+private fun BaseModalActions(
+  secondaryAction: ActionButton?,
+  primaryAction: ActionButton?,
+  primaryActionType: ButtonType,
+) {
+  Column(
+    modifier =
+      Modifier
+        .padding(top = spacing.xs, bottom = spacing.md, end = spacing.md, start = spacing.md),
+    horizontalAlignment = Alignment.CenterHorizontally,
+  ) {
+    BoxWithConstraints {
+      maxWidth
+
+      // Calculate if we need to stack buttons vertically based on text length
+      val shouldStackVertically = remember {
+        derivedStateOf {
+          val totalTextLength = (secondaryAction?.text?.length ?: 0) + (primaryAction?.text?.length ?: 0)
+          // If total text length is more than ~25 characters, stack vertically
+          // This is a rough estimate - you can adjust this threshold
+          totalTextLength >= 25
         }
       }
+
+      if (shouldStackVertically.value) {
+        BaseModalActionsVertical(
+          secondaryAction = secondaryAction,
+          primaryAction = primaryAction,
+          primaryActionType = primaryActionType,
+        )
+      } else {
+        BaseModalActionsHorizontal(
+          secondaryAction = secondaryAction,
+          primaryAction = primaryAction,
+          primaryActionType = primaryActionType,
+        )
+      }
+    }
+  }
+}
+
+@Composable
+private fun BaseModalActionsVertical(
+  secondaryAction: ActionButton?,
+  primaryAction: ActionButton?,
+  primaryActionType: ButtonType,
+) {
+  // Stack buttons vertically when text is too long
+  Column(
+    modifier = Modifier.fillMaxWidth(),
+    horizontalAlignment = Alignment.End,
+  ) {
+    if (secondaryAction != null) {
+      AppButton(
+        label = secondaryAction.text,
+        onClick = secondaryAction.action,
+        type = ButtonType.InlineTextTertiary,
+        size = ButtonSize.Small,
+        enabled = secondaryAction.enabled,
+        modifier = Modifier.testTag(secondaryAction.testTag ?: TestTags.Dialog.SecondaryButton),
+      )
+    }
+    if (primaryAction != null) {
+      AppButton(
+        label = primaryAction.text,
+        onClick = primaryAction.action,
+        type = primaryActionType,
+        size = ButtonSize.Small,
+        enabled = primaryAction.enabled,
+        modifier = Modifier.testTag(primaryAction.testTag ?: TestTags.Dialog.PrimaryButton),
+      )
+    }
+  }
+}
+
+@Composable
+private fun BaseModalActionsHorizontal(
+  secondaryAction: ActionButton?,
+  primaryAction: ActionButton?,
+  primaryActionType: ButtonType,
+) {
+  // Use horizontal layout when text is short enough
+  Row(
+    modifier = Modifier.fillMaxWidth(),
+    horizontalArrangement = Arrangement.End,
+  ) {
+    if (secondaryAction != null) {
+      AppButton(
+        label = secondaryAction.text,
+        onClick = secondaryAction.action,
+        type = ButtonType.InlineTextTertiary,
+        size = ButtonSize.Small,
+        enabled = secondaryAction.enabled,
+        modifier = Modifier.testTag(secondaryAction.testTag ?: TestTags.Dialog.SecondaryButton),
+      )
+      Spacer(modifier = Modifier.width(MeTheme.spacing.xs))
+    }
+    if (primaryAction != null) {
+      AppButton(
+        label = primaryAction.text,
+        onClick = primaryAction.action,
+        type = primaryActionType,
+        size = ButtonSize.Small,
+        enabled = primaryAction.enabled,
+        modifier = Modifier.testTag(primaryAction.testTag ?: TestTags.Dialog.PrimaryButton),
+      )
     }
   }
 }
