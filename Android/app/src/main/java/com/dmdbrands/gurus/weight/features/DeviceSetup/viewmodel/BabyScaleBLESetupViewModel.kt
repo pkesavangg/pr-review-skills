@@ -23,6 +23,7 @@ import com.dmdbrands.gurus.weight.features.DeviceSetup.strings.BabyScaleSetupStr
 import com.dmdbrands.gurus.weight.features.appPermissions.helper.AppPermissionsHelper
 import com.dmdbrands.gurus.weight.features.common.enums.DeviceSetupType
 import com.dmdbrands.gurus.weight.features.common.model.DialogModel
+import com.dmdbrands.library.ggbluetooth.model.GGDeviceDetail
 import com.dmdbrands.library.ggbluetooth.model.GGPermissionStatusMap
 import com.greatergoods.ggbluetoothsdk.external.enums.GGDeviceProtocolType
 import dagger.assisted.Assisted
@@ -301,49 +302,53 @@ constructor(
       ggDeviceService.scanForPairing()
       startObservingDevices { data ->
         viewModelScope.launch {
-          try {
-            AppLog.d(TAG, "Baby scale device found: ${data.deviceName}")
-            // Block re-pairing a scale that's already paired to this account (Figma 33013-205573):
-            // show the "Scale Already Connected" alert and exit instead of adding a duplicate.
-            if (deviceService.scaleExistsByMac(data.macAddress)) {
-              AppLog.w(TAG, "Baby scale already paired for this account: ${data.macAddress}")
-              clearBluetoothTimeout()
-              stopObservingDevices()
-              dialogQueueService.showDialog(
-                DialogModel.Alert(
-                  title = BabyScaleSetupStrings.AlreadyPaired.Title,
-                  message = BabyScaleSetupStrings.AlreadyPaired.Message,
-                  dismissText = BabyScaleSetupStrings.AlreadyPaired.Exit,
-                  onDismiss = {
-                    handleIntent(DeviceSetupIntent.ExitSetup(true))
-                    dialogQueueService.dismissCurrent()
-                  },
-                ),
-              )
-              return@launch
-            }
-            discoveredScale = Device(
-              device = data,
-              deviceType = DeviceSetupType.BabyScale.value,
-              sku = sku,
-            )
-            clearBluetoothTimeout()
-            handleIntent(DeviceSetupIntent.AlterConnectionState(ConnectionState.Success))
-            delay(2000)
-            onNext()
-          } catch (e: CancellationException) {
-            throw e
-          } catch (e: Exception) {
-            AppLog.e(TAG, "Error processing discovered device", e)
-            clearBluetoothTimeout()
-            handleIntent(DeviceSetupIntent.AlterConnectionState(ConnectionState.Failed.Error))
-          }
+          handleBabyScaleDiscovered(data)
         }
       }
     } catch (e: CancellationException) {
       throw e
     } catch (e: Exception) {
       AppLog.e(TAG, "Error during BLE scan", e)
+      clearBluetoothTimeout()
+      handleIntent(DeviceSetupIntent.AlterConnectionState(ConnectionState.Failed.Error))
+    }
+  }
+
+  private suspend fun handleBabyScaleDiscovered(data: GGDeviceDetail) {
+    try {
+      AppLog.d(TAG, "Baby scale device found: ${data.deviceName}")
+      // Block re-pairing a scale that's already paired to this account (Figma 33013-205573):
+      // show the "Scale Already Connected" alert and exit instead of adding a duplicate.
+      if (deviceService.scaleExistsByMac(data.macAddress)) {
+        AppLog.w(TAG, "Baby scale already paired for this account: ${data.macAddress}")
+        clearBluetoothTimeout()
+        stopObservingDevices()
+        dialogQueueService.showDialog(
+          DialogModel.Alert(
+            title = BabyScaleSetupStrings.AlreadyPaired.Title,
+            message = BabyScaleSetupStrings.AlreadyPaired.Message,
+            dismissText = BabyScaleSetupStrings.AlreadyPaired.Exit,
+            onDismiss = {
+              handleIntent(DeviceSetupIntent.ExitSetup(true))
+              dialogQueueService.dismissCurrent()
+            },
+          ),
+        )
+        return
+      }
+      discoveredScale = Device(
+        device = data,
+        deviceType = DeviceSetupType.BabyScale.value,
+        sku = sku,
+      )
+      clearBluetoothTimeout()
+      handleIntent(DeviceSetupIntent.AlterConnectionState(ConnectionState.Success))
+      delay(2000)
+      onNext()
+    } catch (e: CancellationException) {
+      throw e
+    } catch (e: Exception) {
+      AppLog.e(TAG, "Error processing discovered device", e)
       clearBluetoothTimeout()
       handleIntent(DeviceSetupIntent.AlterConnectionState(ConnectionState.Failed.Error))
     }

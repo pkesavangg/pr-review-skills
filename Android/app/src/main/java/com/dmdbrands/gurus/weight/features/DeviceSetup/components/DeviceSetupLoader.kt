@@ -121,149 +121,216 @@ fun DeviceSetupLoader(
       verticalArrangement = Arrangement.Center,
     ) {
       // Title and subtitle section
-      Column(
-        horizontalAlignment = Alignment.CenterHorizontally,
-      ) {
-        if(isFailedWithIndicatorOnly) {
-          Spacer(modifier = Modifier.height(spacing.x2l))
-        }
-        // Title
-        title?.let {
-          AppText(
-            text = title,
-            textType = TextType.Title,
-            textAlign = TextAlign.Center,
-            // TalkBack: loader/status title is the heading.
-            modifier = Modifier
-              .fillMaxWidth()
-              .semantics { heading() }
-              .then(
-                if (connectionState is ConnectionState.Failed) {
-                  Modifier.padding(top = spacing.md)
-                } else {
-                  Modifier
-                },
-              ),
-          )
-        }
-
-        Spacer(modifier = Modifier.height(spacing.xs))
-
-        // Subtitle
-        subtitle?.let {
-          AppText(
-            text = subtitle,
-            textType = TextType.Body,
-            textAlign = TextAlign.Center,
-            modifier = Modifier.fillMaxWidth(),
-          )
-        }
-
-        // Error Code (if provided)
-        errorCode?.let {
-          AppText(
-            text = "${SetupLoaderStrings.ErrorCodeLabel}$errorCode",
-            textType = TextType.Body,
-            textAlign = TextAlign.Center,
-            // TalkBack: announce the error code when it appears.
-            modifier = Modifier
-              .fillMaxWidth()
-              .semantics { liveRegion = LiveRegionMode.Polite },
-          )
-        }
-      }
+      DeviceSetupLoaderTexts(
+        title = title,
+        subtitle = subtitle,
+        errorCode = errorCode,
+        connectionState = connectionState,
+        isFailedWithIndicatorOnly = isFailedWithIndicatorOnly,
+      )
 
       Spacer(modifier = Modifier.height(spacing.lg))
 
-      // Scale Image - map SKU for display (e.g., 0022 -> 0383)
-      scaleImageSku?.let { rawSku ->
-        AppDeviceImage(
-          sku = DeviceHelper.mapSkuForDisplay(rawSku) ?: rawSku,
-          scaleImageSize = DeviceImageSize.Large,
-        )
-        Spacer(modifier = Modifier.height(spacing.lg))
-      }
+      DeviceSetupLoaderScaleImage(scaleImageSku = scaleImageSku)
 
       if (setupImage != null) {
-        Column(
-          modifier = Modifier.fillMaxWidth(),
-          horizontalAlignment = Alignment.CenterHorizontally,
-        ) {
-          if (isGifImage) {
-            AppGifImage(
-              id = setupImage,
-              modifier = Modifier.size(SetupGifImageWidth, SetupGifImageHeight),
-            )
-          } else {
-            Image(
-              painter = painterResource(id = setupImage),
-              contentDescription = null,
-            )
-          }
-
-          Spacer(modifier = Modifier.height(spacing.xs))
-          if (contentButtonText != null && contentButtonClick != null) {
-            AppButton(
-              label = contentButtonText,
-              type = ButtonType.InlineTextPrimary,
-              onClick = contentButtonClick,
-              modifier = Modifier.padding(top = spacing.xs)
-            )
-          }
-        }
+        DeviceSetupLoaderSetupImage(
+          setupImage = setupImage,
+          isGifImage = isGifImage,
+          contentButtonText = contentButtonText,
+          contentButtonClick = contentButtonClick,
+        )
       }
 
       // Connection Indicator or Setup Loader
       connectionState?.let {
-        Column(
-          horizontalAlignment = Alignment.CenterHorizontally,
-        ) {
-          if (showIndicationOnly) {
-            ConnectionIndicator(
-              indicatorIcon = getIcon(indicatorIcon),
-              connectionState = getIndicationStatus(connectionState),
-            )
-          } else {
-            SetupLoader(
-              connectionState = connectionState,
-            )
-            Spacer(modifier = Modifier.height(spacing.md))
-            ConnectionIndicator(
-              indicatorIcon = getIcon(indicatorIcon),
-              connectionState = getIndicationStatus(connectionState),
-              showIndicatorAlone = true,
-            )
-          }
-        }
+        DeviceSetupLoaderIndicator(
+          connectionState = it,
+          showIndicationOnly = showIndicationOnly,
+          indicatorIcon = indicatorIcon,
+        )
       }
 
       // Buttons at the bottom (if provided)
       if (primaryButtonClick != null) {
-        Column(
-          modifier = Modifier
-            .padding(top = spacing.x2l),
-        ) {
-          if(isFailedWithIndicatorOnly) {
-            Spacer(modifier = Modifier.height(FailedIndicatorOnlySpacerHeight))
-          }
-          AppButton(
-            label = primaryButtonText,
-            type = ButtonType.PrimaryFilled,
-            onClick = primaryButtonClick,
-          )
-          if (secondaryButtonClick != null) {
-            Spacer(modifier = Modifier.height(spacing.xs))
-            AppButton(
-              label = secondaryButtonText,
-              type = ButtonType.InlineTextPrimary,
-              onClick = secondaryButtonClick,
-            )
-          }
-        }
+        DeviceSetupLoaderButtons(
+          isFailedWithIndicatorOnly = isFailedWithIndicatorOnly,
+          primaryButtonText = primaryButtonText,
+          primaryButtonClick = primaryButtonClick,
+          secondaryButtonText = secondaryButtonText,
+          secondaryButtonClick = secondaryButtonClick,
+        )
       }
 
     }
 
+  }
+}
+
+@Composable
+private fun DeviceSetupLoaderScaleImage(scaleImageSku: String?) {
+  // Scale Image - map SKU for display (e.g., 0022 -> 0383)
+  scaleImageSku?.let { rawSku ->
+    AppDeviceImage(
+      sku = DeviceHelper.mapSkuForDisplay(rawSku) ?: rawSku,
+      scaleImageSize = DeviceImageSize.Large,
+    )
+    Spacer(modifier = Modifier.height(spacing.lg))
+  }
+}
+
+@Composable
+private fun DeviceSetupLoaderTexts(
+  title: String?,
+  subtitle: String?,
+  errorCode: String?,
+  connectionState: ConnectionState?,
+  isFailedWithIndicatorOnly: Boolean,
+) {
+  Column(
+    horizontalAlignment = Alignment.CenterHorizontally,
+  ) {
+    if(isFailedWithIndicatorOnly) {
+      Spacer(modifier = Modifier.height(spacing.x2l))
+    }
+    // Title
+    title?.let {
+      AppText(
+        text = title,
+        textType = TextType.Title,
+        textAlign = TextAlign.Center,
+        // TalkBack: loader/status title is the heading.
+        modifier = Modifier
+          .fillMaxWidth()
+          .semantics { heading() }
+          .then(
+            if (connectionState is ConnectionState.Failed) {
+              Modifier.padding(top = spacing.md)
+            } else {
+              Modifier
+            },
+          ),
+      )
+    }
+
+    Spacer(modifier = Modifier.height(spacing.xs))
+
+    // Subtitle
+    subtitle?.let {
+      AppText(
+        text = subtitle,
+        textType = TextType.Body,
+        textAlign = TextAlign.Center,
+        modifier = Modifier.fillMaxWidth(),
+      )
+    }
+
+    // Error Code (if provided)
+    errorCode?.let {
+      AppText(
+        text = "${SetupLoaderStrings.ErrorCodeLabel}$errorCode",
+        textType = TextType.Body,
+        textAlign = TextAlign.Center,
+        // TalkBack: announce the error code when it appears.
+        modifier = Modifier
+          .fillMaxWidth()
+          .semantics { liveRegion = LiveRegionMode.Polite },
+      )
+    }
+  }
+}
+
+@Composable
+private fun DeviceSetupLoaderSetupImage(
+  setupImage: Int,
+  isGifImage: Boolean,
+  contentButtonText: String?,
+  contentButtonClick: (() -> Unit)?,
+) {
+  Column(
+    modifier = Modifier.fillMaxWidth(),
+    horizontalAlignment = Alignment.CenterHorizontally,
+  ) {
+    if (isGifImage) {
+      AppGifImage(
+        id = setupImage,
+        modifier = Modifier.size(SetupGifImageWidth, SetupGifImageHeight),
+      )
+    } else {
+      Image(
+        painter = painterResource(id = setupImage),
+        contentDescription = null,
+      )
+    }
+
+    Spacer(modifier = Modifier.height(spacing.xs))
+    if (contentButtonText != null && contentButtonClick != null) {
+      AppButton(
+        label = contentButtonText,
+        type = ButtonType.InlineTextPrimary,
+        onClick = contentButtonClick,
+        modifier = Modifier.padding(top = spacing.xs)
+      )
+    }
+  }
+}
+
+@Composable
+private fun DeviceSetupLoaderIndicator(
+  connectionState: ConnectionState,
+  showIndicationOnly: Boolean,
+  indicatorIcon: LoaderIconType,
+) {
+  Column(
+    horizontalAlignment = Alignment.CenterHorizontally,
+  ) {
+    if (showIndicationOnly) {
+      ConnectionIndicator(
+        indicatorIcon = getIcon(indicatorIcon),
+        connectionState = getIndicationStatus(connectionState),
+      )
+    } else {
+      SetupLoader(
+        connectionState = connectionState,
+      )
+      Spacer(modifier = Modifier.height(spacing.md))
+      ConnectionIndicator(
+        indicatorIcon = getIcon(indicatorIcon),
+        connectionState = getIndicationStatus(connectionState),
+        showIndicatorAlone = true,
+      )
+    }
+  }
+}
+
+@Composable
+private fun DeviceSetupLoaderButtons(
+  isFailedWithIndicatorOnly: Boolean,
+  primaryButtonText: String,
+  primaryButtonClick: () -> Unit,
+  secondaryButtonText: String,
+  secondaryButtonClick: (() -> Unit)?,
+) {
+  Column(
+    modifier = Modifier
+      .padding(top = spacing.x2l),
+  ) {
+    if(isFailedWithIndicatorOnly) {
+      Spacer(modifier = Modifier.height(FailedIndicatorOnlySpacerHeight))
+    }
+    AppButton(
+      label = primaryButtonText,
+      type = ButtonType.PrimaryFilled,
+      onClick = primaryButtonClick,
+    )
+    if (secondaryButtonClick != null) {
+      Spacer(modifier = Modifier.height(spacing.xs))
+      AppButton(
+        label = secondaryButtonText,
+        type = ButtonType.InlineTextPrimary,
+        onClick = secondaryButtonClick,
+      )
+    }
   }
 }
 

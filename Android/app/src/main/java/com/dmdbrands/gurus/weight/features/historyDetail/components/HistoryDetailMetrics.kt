@@ -151,43 +151,8 @@ fun WeightHistoryDetailItemDetails(
         .fillMaxWidth()
         .background(MeTheme.colorScheme.primaryBackground),
   ) {
-    // Note (MOB-438 / MOB-1173) — the edit container sits directly under the weight block and
-    // ABOVE the metrics list (per Figma). Always shown when expanded: the saved note or an
-    // add-note prompt. The trailing icon is a "+" when no note exists (add) and the boxed pencil
-    // once a note is present (edit) (MOB-1163).
-    val note = item.scale.scaleEntry.note
-    val hasNote = !note.isNullOrBlank()
-    Row(
-      modifier = Modifier
-        .fillMaxWidth()
-        // Match the expanded weight header's background so the edit/note container reads as part
-        // of the same weight block (per Figma), distinct from the metrics rows below. (MOB-1173)
-        .background(MeTheme.colorScheme.secondaryBackground)
-        .padding(MeTheme.spacing.sm),
-      verticalAlignment = Alignment.CenterVertically,
-      // Empty state centres the placeholder + "+" affordance; an existing note stays
-      // left-aligned with the pencil pinned to the end (MOB-1163).
-      horizontalArrangement = if (hasNote) Arrangement.Start else Arrangement.Center,
-    ) {
-      Text(
-        text = if (hasNote) note.orEmpty() else HistoryItemStrings.NoNoteYet,
-        style = MeTheme.typography.subHeading2,
-        color = if (hasNote) MeTheme.colorScheme.textBody else MeTheme.colorScheme.textSubheading,
-        modifier = if (hasNote) Modifier.weight(1f) else Modifier,
-      )
-      AppIcon(
-        id = if (hasNote) AppIcons.Default.EditPencil else AppIcons.Default.Plus,
-        contentDescription = if (hasNote) {
-          HistoryItemStrings.EditNoteContentDescription
-        } else {
-          HistoryItemStrings.AddNoteContentDescription
-        },
-        onClick = { onEditEntry() },
-        modifier = Modifier
-          .padding(start = MeTheme.spacing.sm)
-          .testTag(TestTags.History.EditNoteButton),
-      )
-    }
+    WeightDetailNoteRow(item = item, onEditEntry = onEditEntry)
+    // Divider under the note, separating it from the metrics list (MOB-1470).
     HorizontalDivider(
       thickness = 0.5.dp,
       color = MeTheme.colorScheme.utility,
@@ -217,5 +182,49 @@ fun WeightHistoryDetailItemDetails(
         color = MeTheme.colorScheme.utility,
       )
     }
+  }
+}
+
+@Composable
+private fun WeightDetailNoteRow(
+  item: ScaleEntry,
+  onEditEntry: () -> Unit,
+) {
+  // Note (MOB-438 / MOB-1173) — the edit container sits directly under the weight block and
+  // ABOVE the metrics list (per Figma). Always shown when expanded: the saved note or an
+  // add-note prompt. The trailing icon is a "+" when no note exists (add) and the boxed pencil
+  // once a note is present (edit) (MOB-1163).
+  val note = item.scale.scaleEntry.note
+  val hasNote = !note.isNullOrBlank()
+  Row(
+    modifier = Modifier
+      .fillMaxWidth()
+      // Match the expanded weight header's background so the edit/note container reads as part
+      // of the same weight block (per Figma), distinct from the metrics rows below. (MOB-1173)
+      .background(MeTheme.colorScheme.secondaryBackground)
+      .padding(MeTheme.spacing.sm),
+    verticalAlignment = Alignment.CenterVertically,
+    // Empty state centres the placeholder + "+" affordance; an existing note stays
+    // left-aligned with the pencil pinned to the end (MOB-1163).
+    horizontalArrangement = if (hasNote) Arrangement.Start else Arrangement.Center,
+  ) {
+    Text(
+      text = if (hasNote) note.orEmpty() else HistoryItemStrings.NoNoteYet,
+      style = MeTheme.typography.subHeading2,
+      color = if (hasNote) MeTheme.colorScheme.textBody else MeTheme.colorScheme.textSubheading,
+      modifier = if (hasNote) Modifier.weight(1f) else Modifier,
+    )
+    AppIcon(
+      id = if (hasNote) AppIcons.Default.EditPencil else AppIcons.Default.Plus,
+      contentDescription = if (hasNote) {
+        HistoryItemStrings.EditNoteContentDescription
+      } else {
+        HistoryItemStrings.AddNoteContentDescription
+      },
+      onClick = { onEditEntry() },
+      modifier = Modifier
+        .padding(start = MeTheme.spacing.sm)
+        .testTag(TestTags.History.EditNoteButton),
+    )
   }
 }

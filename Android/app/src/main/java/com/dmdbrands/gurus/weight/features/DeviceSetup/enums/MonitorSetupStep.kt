@@ -55,6 +55,11 @@ object MonitorSetupStepHelper {
     else -> null
   }
 
+  private val monitorTailSteps = listOf(
+    MonitorSetupStep.MONITOR_PAIRING, MonitorSetupStep.MONITOR_NICKNAME, MonitorSetupStep.SUCCESS_SCREEN,
+    MonitorSetupStep.INSTRUCTION_CUFF, MonitorSetupStep.INSTRUCTION_START, MonitorSetupStep.SETUP_COMPLETED,
+  )
+
   fun stepsForSku(sku: String): List<MonitorSetupStep> = when (DeviceHelper.primaryBpmSku(sku)) {
     // A3: 0636 — uses POWER_SWITCH instead of MONITOR_OFF
     "0636" -> listOf(
@@ -64,13 +69,7 @@ object MonitorSetupStepHelper {
       MonitorSetupStep.POWER_SWITCH,
       MonitorSetupStep.USER_CONFIRMATION,
       MonitorSetupStep.MEMORY_SELECTION,
-      MonitorSetupStep.MONITOR_PAIRING,
-      MonitorSetupStep.MONITOR_NICKNAME,
-      MonitorSetupStep.SUCCESS_SCREEN,
-      MonitorSetupStep.INSTRUCTION_CUFF,
-      MonitorSetupStep.INSTRUCTION_START,
-      MonitorSetupStep.SETUP_COMPLETED,
-    )
+    ) + monitorTailSteps
 
     // A3: 0604 — no power-related step
     "0604" -> listOf(
@@ -79,13 +78,7 @@ object MonitorSetupStepHelper {
       MonitorSetupStep.USER_SELECTION,
       MonitorSetupStep.USER_CONFIRMATION,
       MonitorSetupStep.MEMORY_SELECTION,
-      MonitorSetupStep.MONITOR_PAIRING,
-      MonitorSetupStep.MONITOR_NICKNAME,
-      MonitorSetupStep.SUCCESS_SCREEN,
-      MonitorSetupStep.INSTRUCTION_CUFF,
-      MonitorSetupStep.INSTRUCTION_START,
-      MonitorSetupStep.SETUP_COMPLETED,
-    )
+    ) + monitorTailSteps
 
     // A6: 0661 — no MONITOR_OFF. Companion scale is paired separately via Add Device (not in the
     // wizard), so the flow is the same as every other monitor: pair → success → tutorial. (MOB-596)
@@ -95,13 +88,7 @@ object MonitorSetupStepHelper {
       MonitorSetupStep.USER_SELECTION,
       MonitorSetupStep.USER_CONFIRMATION,
       MonitorSetupStep.MEMORY_SELECTION,
-      MonitorSetupStep.MONITOR_PAIRING,
-      MonitorSetupStep.MONITOR_NICKNAME,
-      MonitorSetupStep.SUCCESS_SCREEN,
-      MonitorSetupStep.INSTRUCTION_CUFF,
-      MonitorSetupStep.INSTRUCTION_START,
-      MonitorSetupStep.SETUP_COMPLETED,
-    )
+    ) + monitorTailSteps
 
     // A6: 0663 — with MONITOR_OFF. Companion scale is paired separately via Add Device (not in the
     // wizard), so the flow matches every other monitor: pair → success → tutorial. (MOB-596)
@@ -112,13 +99,7 @@ object MonitorSetupStepHelper {
       MonitorSetupStep.USER_CONFIRMATION,
       MonitorSetupStep.MONITOR_OFF,
       MonitorSetupStep.MEMORY_SELECTION,
-      MonitorSetupStep.MONITOR_PAIRING,
-      MonitorSetupStep.MONITOR_NICKNAME,
-      MonitorSetupStep.SUCCESS_SCREEN,
-      MonitorSetupStep.INSTRUCTION_CUFF,
-      MonitorSetupStep.INSTRUCTION_START,
-      MonitorSetupStep.SETUP_COMPLETED,
-    )
+    ) + monitorTailSteps
 
     // A3 default (0603, 0634): with MONITOR_OFF, no scale steps
     else -> listOf(
@@ -128,12 +109,6 @@ object MonitorSetupStepHelper {
       MonitorSetupStep.USER_CONFIRMATION,
       MonitorSetupStep.MONITOR_OFF,
       MonitorSetupStep.MEMORY_SELECTION,
-      MonitorSetupStep.MONITOR_PAIRING,
-      MonitorSetupStep.MONITOR_NICKNAME,
-      MonitorSetupStep.SUCCESS_SCREEN,
-      MonitorSetupStep.INSTRUCTION_CUFF,
-      MonitorSetupStep.INSTRUCTION_START,
-      MonitorSetupStep.SETUP_COMPLETED,
-    )
+    ) + monitorTailSteps
   }
 }

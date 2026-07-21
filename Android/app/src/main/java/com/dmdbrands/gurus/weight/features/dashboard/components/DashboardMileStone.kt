@@ -52,6 +52,40 @@ fun DashboardMilestone(
   }
   var localVisibleKeys by remember(visibleKeys) { mutableStateOf(visibleKeys) }
 
+  val (visibleMilestones, hiddenMilestones) = rememberMilestoneStats(
+    progress = progress,
+    localVisibleKeys = localVisibleKeys,
+    spanCount = spanCount,
+  )
+
+  DashboardMilestoneContent(
+    visibleMilestones = visibleMilestones,
+    hiddenMilestones = hiddenMilestones,
+    spanCount = spanCount,
+    inEditMode = inEditMode,
+    isFromSetup = isFromSetup,
+    hasVisibleMetrics = hasVisibleMetrics,
+    isProgressUpdating = isProgressUpdating,
+    onLocalVisibleKeysChange = { localVisibleKeys = it },
+    onMilestonesChanged = onMilestonesChanged,
+    onNavigateToGoal = onNavigateToGoal,
+    onLongClick = onLongClick,
+    progress = progress,
+    latestWeight = latestWeight,
+    modifier = modifier,
+  )
+}
+
+/**
+ * Derives the visible and hidden milestone lists for the given inputs, caching
+ * each intermediate calculation with [remember] to avoid recomputation.
+ */
+@Composable
+private fun rememberMilestoneStats(
+  progress: WeightProgress,
+  localVisibleKeys: List<DashboardKey>,
+  spanCount: Int,
+): Pair<List<Stat>, List<Stat>> {
   val milestoneKeys = remember(localVisibleKeys) {
     localVisibleKeys.mapNotNull { key ->
       when (key) {
@@ -86,6 +120,30 @@ fun DashboardMilestone(
     allMilestones.filter { milestone -> milestone.key !in visibleMilestoneKeys }
   }
 
+  return visibleMilestones to hiddenMilestones
+}
+
+/**
+ * Builds the milestone move/reorder callbacks (writing back through
+ * [onLocalVisibleKeysChange]) and renders the milestone grid section.
+ */
+@Composable
+private fun DashboardMilestoneContent(
+  visibleMilestones: List<Stat>,
+  hiddenMilestones: List<Stat>,
+  spanCount: Int,
+  inEditMode: Boolean,
+  isFromSetup: Boolean,
+  hasVisibleMetrics: Boolean,
+  isProgressUpdating: Boolean,
+  onLocalVisibleKeysChange: (List<DashboardKey>) -> Unit,
+  onMilestonesChanged: (List<DashboardKey>) -> Unit,
+  onNavigateToGoal: () -> Unit,
+  onLongClick: (Stat?, WeightProgress?) -> Unit,
+  progress: WeightProgress,
+  latestWeight: Double?,
+  modifier: Modifier = Modifier,
+) {
   val onMilestoneMoved = { isAdded: Boolean, milestone: Stat ->
     val milestoneKey = milestone.key
     val newStats = if (!isAdded) {
@@ -97,20 +155,56 @@ fun DashboardMilestone(
     }.reorderGrid(
       spanCount = spanCount,
     )
-    localVisibleKeys = newStats.map { stat ->
+    val newKeys = newStats.map { stat ->
       stat.key
     }
-    onMilestonesChanged(localVisibleKeys)
+    onLocalVisibleKeysChange(newKeys)
+    onMilestonesChanged(newKeys)
   }
 
   val onMilestoneReordered = { newOrder: List<Stat> ->
     val newVisibleKeys = newOrder.map { stat ->
       stat.key
     }
-    localVisibleKeys = newVisibleKeys
+    onLocalVisibleKeysChange(newVisibleKeys)
     onMilestonesChanged(newVisibleKeys)
   }
+  DashboardMilestoneSection(
+    visibleMilestones = visibleMilestones,
+    hiddenMilestones = hiddenMilestones,
+    inEditMode = inEditMode,
+    isFromSetup = isFromSetup,
+    hasVisibleMetrics = hasVisibleMetrics,
+    isProgressUpdating = isProgressUpdating,
+    onMilestoneMoved = onMilestoneMoved,
+    onMilestoneReordered = onMilestoneReordered,
+    onNavigateToGoal = onNavigateToGoal,
+    onLongClick = onLongClick,
+    progress = progress,
+    latestWeight = latestWeight,
+    modifier = modifier,
+  )
+}
 
+/**
+ * Column wrapper around [DashboardMilestoneGrid] plus the trailing spacer.
+ */
+@Composable
+private fun DashboardMilestoneSection(
+  visibleMilestones: List<Stat>,
+  hiddenMilestones: List<Stat>,
+  inEditMode: Boolean,
+  isFromSetup: Boolean,
+  hasVisibleMetrics: Boolean,
+  isProgressUpdating: Boolean,
+  onMilestoneMoved: (isAdded: Boolean, milestone: Stat) -> Unit,
+  onMilestoneReordered: (List<Stat>) -> Unit,
+  onNavigateToGoal: () -> Unit,
+  onLongClick: (Stat?, WeightProgress?) -> Unit,
+  progress: WeightProgress,
+  latestWeight: Double?,
+  modifier: Modifier = Modifier,
+) {
   Column(modifier = modifier) {
     DashboardMilestoneGrid(
       visibleMilestones = visibleMilestones,

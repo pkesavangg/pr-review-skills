@@ -41,15 +41,7 @@ fun BpDashboardContent(
 ) {
   // First-run state: no entries yet → show the shared CONNECT DEVICE CTA (MOB-432).
   if (state.isEmpty) {
-    Column(
-      modifier = Modifier
-        .fillMaxWidth()
-        .padding(horizontal = MeTheme.spacing.sm),
-      horizontalAlignment = Alignment.CenterHorizontally,
-    ) {
-      Spacer(modifier = Modifier.height(MeTheme.spacing.sm))
-      EmptyMetric(onConnectScaleClick = onConnectDevice)
-    }
+    BpEmptyState(onConnectDevice = onConnectDevice)
     return
   }
 
@@ -71,65 +63,18 @@ fun BpDashboardContent(
     Spacer(modifier = Modifier.height(MeTheme.spacing.sm))
 
     // BP Summary card — tap to open Three Reading Average sheet
-    Column(
-      modifier = Modifier
-        .fillMaxWidth()
-        .background(MeTheme.colorScheme.primaryBackground, RoundedCornerShape(9.dp))
-        .clickable { showThreeReadingSheet = true }
-        .padding(horizontal = MeTheme.spacing.lg, vertical = MeTheme.spacing.sm),
-      horizontalAlignment = Alignment.CenterHorizontally,
-    ) {
-      Row(
-        horizontalArrangement = Arrangement.spacedBy(48.dp),
-        verticalAlignment = Alignment.Bottom,
-      ) {
-        if (avgSys != null && avgDia != null) {
-          BpSystolicDiastolic(
-            systolic = avgSys,
-            diastolic = avgDia,
-            style = MeTheme.typography.heading2,
-          )
-        } else {
-          Text(
-            text = DashboardSnapshotStrings.PlaceholderDash,
-            style = MeTheme.typography.heading2,
-            color = SnapshotColors.BloodPressure,
-          )
-        }
-        Text(
-          text = avgPulse?.toString() ?: DashboardSnapshotStrings.PlaceholderDash,
-          style = MeTheme.typography.heading2,
-          color = MeTheme.colorScheme.textSubheading,
-        )
-      }
-      Spacer(modifier = Modifier.height(MeTheme.spacing.x3s))
-      Text(
-        text = DashboardString.Bp.entryAverageLabel(entryCount),
-        style = MeTheme.typography.subHeading1,
-        color = MeTheme.colorScheme.textSubheading,
-      )
-    }
+    BpSummaryCard(
+      avgSys = avgSys,
+      avgDia = avgDia,
+      avgPulse = avgPulse,
+      entryCount = entryCount,
+      onClick = { showThreeReadingSheet = true },
+    )
 
     Spacer(modifier = Modifier.height(MeTheme.spacing.sm))
 
     // Streak cards row — current streak (bolt) + longest streak (flame)
-    Row(
-      modifier = Modifier.fillMaxWidth(),
-      horizontalArrangement = Arrangement.spacedBy(MeTheme.spacing.sm),
-    ) {
-      BpStreakCard(
-        icon = AppIcons.Milestone.Bolt,
-        value = state.progress.streak.current,
-        label = MilestoneStrings.MileStone.CurrentStreak,
-        modifier = Modifier.weight(1f),
-      )
-      BpStreakCard(
-        icon = AppIcons.Milestone.Streak,
-        value = state.progress.streak.longest,
-        label = MilestoneStrings.MileStone.LongestStreak,
-        modifier = Modifier.weight(1f),
-      )
-    }
+    BpStreakRow(state = state)
 
     Spacer(modifier = Modifier.height(MeTheme.spacing.sm))
   }
@@ -145,6 +90,88 @@ fun BpDashboardContent(
       entryCount = entryCount,
       readings = readings,
       onDismiss = { showThreeReadingSheet = false },
+    )
+  }
+}
+
+@Composable
+private fun BpEmptyState(onConnectDevice: () -> Unit) {
+  Column(
+    modifier = Modifier
+      .fillMaxWidth()
+      .padding(horizontal = MeTheme.spacing.sm),
+    horizontalAlignment = Alignment.CenterHorizontally,
+  ) {
+    Spacer(modifier = Modifier.height(MeTheme.spacing.sm))
+    EmptyMetric(onConnectScaleClick = onConnectDevice)
+  }
+}
+
+@Composable
+private fun BpSummaryCard(
+  avgSys: Int?,
+  avgDia: Int?,
+  avgPulse: Int?,
+  entryCount: Int,
+  onClick: () -> Unit,
+) {
+  Column(
+    modifier = Modifier
+      .fillMaxWidth()
+      .background(MeTheme.colorScheme.primaryBackground, RoundedCornerShape(9.dp))
+      .clickable { onClick() }
+      .padding(horizontal = MeTheme.spacing.lg, vertical = MeTheme.spacing.sm),
+    horizontalAlignment = Alignment.CenterHorizontally,
+  ) {
+    Row(
+      horizontalArrangement = Arrangement.spacedBy(48.dp),
+      verticalAlignment = Alignment.Bottom,
+    ) {
+      if (avgSys != null && avgDia != null) {
+        BpSystolicDiastolic(
+          systolic = avgSys,
+          diastolic = avgDia,
+          style = MeTheme.typography.heading2,
+        )
+      } else {
+        Text(
+          text = DashboardSnapshotStrings.PlaceholderDash,
+          style = MeTheme.typography.heading2,
+          color = SnapshotColors.BloodPressure,
+        )
+      }
+      Text(
+        text = avgPulse?.toString() ?: DashboardSnapshotStrings.PlaceholderDash,
+        style = MeTheme.typography.heading2,
+        color = MeTheme.colorScheme.textSubheading,
+      )
+    }
+    Spacer(modifier = Modifier.height(MeTheme.spacing.x3s))
+    Text(
+      text = DashboardString.Bp.entryAverageLabel(entryCount),
+      style = MeTheme.typography.subHeading1,
+      color = MeTheme.colorScheme.textSubheading,
+    )
+  }
+}
+
+@Composable
+private fun BpStreakRow(state: BpDashboardState) {
+  Row(
+    modifier = Modifier.fillMaxWidth(),
+    horizontalArrangement = Arrangement.spacedBy(MeTheme.spacing.sm),
+  ) {
+    BpStreakCard(
+      icon = AppIcons.Milestone.Bolt,
+      value = state.progress.streak.current,
+      label = MilestoneStrings.MileStone.CurrentStreak,
+      modifier = Modifier.weight(1f),
+    )
+    BpStreakCard(
+      icon = AppIcons.Milestone.Streak,
+      value = state.progress.streak.longest,
+      label = MilestoneStrings.MileStone.LongestStreak,
+      modifier = Modifier.weight(1f),
     )
   }
 }

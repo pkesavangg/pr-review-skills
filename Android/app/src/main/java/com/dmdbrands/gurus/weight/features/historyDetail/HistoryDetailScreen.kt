@@ -108,8 +108,6 @@ fun HistoryDetailScreenContent(
     onRefresh: (() -> Unit)? = null,
     handleIntent: (HistoryDetailIntent) -> Unit,
 ) {
-    val backStack = LocalNavBackStack.current
-    val scope = rememberCoroutineScope()
     // Pop-back when the last entry in this month/day is deleted is owned by the ViewModel
     // (HistoryDetailViewModel.loadDetail → navigationService.navigateBack), matching the app's
     // ViewModel-driven navigation convention. (MOB-1173)
@@ -121,93 +119,144 @@ fun HistoryDetailScreenContent(
         // On the baby's birth-date day-detail, show the birthday balloon beside the title (the
         // title slot is centered by AppBar). Otherwise the plain string title is used.
         topBarContent = if (state.showBirthdayBalloon) {
-            {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    AppIcon(
-                        id = AppIcons.Default.BirthdayBalloon,
-                        contentDescription = HistoryItemStrings.BirthdayBalloonContentDescription,
-                        type = AppIconType.Default,
-                        onClick = null,
-                        modifier = Modifier.padding(end = MeTheme.spacing.x2s),
-                    )
-                    Text(
-                        text = state.month,
-                        style = MeTheme.typography.heading5,
-                        color = MeTheme.colorScheme.textHeading,
-                    )
-                }
-            }
+            { BirthdayBalloonTitle(month = state.month) }
         } else {
             null
         },
         isRefreshing = state.isLoading,
-        navigationIcon = {
-            AppIconButton(
-                AppIcons.Default.Close,
-                contentDescription = HistoryDetailScreenStrings.BackButtonContentDescription,
-            ) {
-                scope.launch {
-                    backStack.removeLast()
-                }
-            }
-        },
+        navigationIcon = { HistoryDetailNavIcon() },
         onRefresh = onRefresh,
     ) { modifier ->
-        Box(modifier = modifier.fillMaxSize()) {
-            when {
-                state.isLoading && !isRefreshing -> {
-                    CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
-                }
+        HistoryDetailBody(
+            state = state,
+            productType = productType,
+            isRefreshing = isRefreshing,
+            handleIntent = handleIntent,
+            modifier = modifier,
+        )
+    }
 
-                else -> {
-                    when (productType) {
-                        ProductType.BLOOD_PRESSURE -> {
-                            BpHistoryDetailList(
-                                entries = state.historyItems.filterIsInstance<BpmEntry>(),
-                                expandedIds = state.itemsOpened,
-                                onToggleExpand = { id ->
-                                    val newIds = if (state.itemsOpened.contains(id)) {
-                                        state.itemsOpened.filter { it != id }
-                                    } else {
-                                        state.itemsOpened + id
-                                    }
-                                    handleIntent(HistoryDetailIntent.SetItemsOpened(newIds))
-                                },
-                                // MOB-1173: manual = values+note editable, device-synced = note-only
-                                // (values disabled) — same sheet, gated by source.
-                                onEditEntry = { handleIntent(HistoryDetailIntent.EditBpEntry(it)) },
-                                onItemDelete = { handleIntent(HistoryDetailIntent.DeleteEntry(it)) },
-                            )
-                        }
-                        ProductType.BABY -> {
-                            BabyDayHistoryList(
-                                entries = state.historyItems.filterIsInstance<BabyEntry>(),
-                                babyWeightUnit = state.babyWeightUnit,
-                                onEditEntry = { handleIntent(HistoryDetailIntent.EditBabyEntry(it)) },
-                                onItemDelete = { handleIntent(HistoryDetailIntent.DeleteEntry(it)) },
-                            )
-                        }
-                        else -> {
-                            WeightHistoryDetailList(
-                                historyDetails = state.historyItems.filterIsInstance<ScaleEntry>(),
-                                itemsOpened = state.itemsOpened,
-                                onItemsOpen = {
-                                    handleIntent(HistoryDetailIntent.SetItemsOpened(it))
-                                },
-                                onItemDelete = {
-                                    handleIntent(HistoryDetailIntent.DeleteEntry(it))
-                                },
-                                // MOB-1173: branch by source — manual opens the full value+note
-                                // editor, device-synced falls back to note-only (values read-only).
-                                onEditEntry = { handleIntent(HistoryDetailIntent.EditWeightEntry(it)) },
-                            )
-                        }
-                    }
+    HistoryDetailEditModals(state = state, handleIntent = handleIntent)
+}
+
+@Composable
+private fun BirthdayBalloonTitle(month: String) {
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        AppIcon(
+            id = AppIcons.Default.BirthdayBalloon,
+            contentDescription = HistoryItemStrings.BirthdayBalloonContentDescription,
+            type = AppIconType.Default,
+            onClick = null,
+            modifier = Modifier.padding(end = MeTheme.spacing.x2s),
+        )
+        Text(
+            text = month,
+            style = MeTheme.typography.heading5,
+            color = MeTheme.colorScheme.textHeading,
+        )
+    }
+}
+
+@Composable
+private fun HistoryDetailNavIcon() {
+    val backStack = LocalNavBackStack.current
+    val scope = rememberCoroutineScope()
+    AppIconButton(
+        AppIcons.Default.Close,
+        contentDescription = HistoryDetailScreenStrings.BackButtonContentDescription,
+    ) {
+        scope.launch {
+            backStack.removeLast()
+        }
+    }
+}
+
+@Composable
+private fun HistoryDetailBody(
+    state: HistoryDetailState,
+    productType: ProductType,
+    isRefreshing: Boolean,
+    handleIntent: (HistoryDetailIntent) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Box(modifier = modifier.fillMaxSize()) {
+        when {
+            state.isLoading && !isRefreshing -> {
+                CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
+            }
+
+            else -> {
+                when (productType) {
+                    ProductType.BLOOD_PRESSURE -> BpDetailContent(state, handleIntent)
+                    ProductType.BABY -> BabyDetailContent(state, handleIntent)
+                    else -> WeightDetailContent(state, handleIntent)
                 }
             }
         }
     }
+}
 
+@Composable
+private fun BpDetailContent(
+    state: HistoryDetailState,
+    handleIntent: (HistoryDetailIntent) -> Unit,
+) {
+    BpHistoryDetailList(
+        entries = state.historyItems.filterIsInstance<BpmEntry>(),
+        expandedIds = state.itemsOpened,
+        onToggleExpand = { id ->
+            val newIds = if (state.itemsOpened.contains(id)) {
+                state.itemsOpened.filter { it != id }
+            } else {
+                state.itemsOpened + id
+            }
+            handleIntent(HistoryDetailIntent.SetItemsOpened(newIds))
+        },
+        // MOB-1173: manual = values+note editable, device-synced = note-only
+        // (values disabled) — same sheet, gated by source.
+        onEditEntry = { handleIntent(HistoryDetailIntent.EditBpEntry(it)) },
+        onItemDelete = { handleIntent(HistoryDetailIntent.DeleteEntry(it)) },
+    )
+}
+
+@Composable
+private fun BabyDetailContent(
+    state: HistoryDetailState,
+    handleIntent: (HistoryDetailIntent) -> Unit,
+) {
+    BabyDayHistoryList(
+        entries = state.historyItems.filterIsInstance<BabyEntry>(),
+        babyWeightUnit = state.babyWeightUnit,
+        onEditEntry = { handleIntent(HistoryDetailIntent.EditBabyEntry(it)) },
+        onItemDelete = { handleIntent(HistoryDetailIntent.DeleteEntry(it)) },
+    )
+}
+
+@Composable
+private fun WeightDetailContent(
+    state: HistoryDetailState,
+    handleIntent: (HistoryDetailIntent) -> Unit,
+) {
+    WeightHistoryDetailList(
+        historyDetails = state.historyItems.filterIsInstance<ScaleEntry>(),
+        itemsOpened = state.itemsOpened,
+        onItemsOpen = {
+            handleIntent(HistoryDetailIntent.SetItemsOpened(it))
+        },
+        onItemDelete = {
+            handleIntent(HistoryDetailIntent.DeleteEntry(it))
+        },
+        // MOB-1173: branch by source — manual opens the full value+note
+        // editor, device-synced falls back to note-only (values read-only).
+        onEditEntry = { handleIntent(HistoryDetailIntent.EditWeightEntry(it)) },
+    )
+}
+
+@Composable
+private fun HistoryDetailEditModals(
+    state: HistoryDetailState,
+    handleIntent: (HistoryDetailIntent) -> Unit,
+) {
     state.weightEditEntry?.let { entry ->
         WeightEditModal(
             entry = entry,
@@ -574,90 +623,11 @@ private fun seededBpEntryForm(entry: BpmEntry): MultiFormGroup<BloodPressureEntr
 @Composable
 fun HistoryDetailScreenPreview() {
     MeAppTheme {
-        val sampleItems =
-            listOf(
-                ScaleEntry(
-                    entry = EntryEntity(
-                        id = 478,
-                        accountId = "4SWOWDAP9t2gS50MFp9HQS",
-                        entryTimestamp = "2025-06-19T06:30:00.000Z",
-                        serverTimestamp = "2025-06-19T10:29:13.914Z",
-                        opTimestamp = null,
-                        operationType = "create",
-                        deviceType = "scale",
-                        deviceId = "manual",
-                        attempts = 0,
-                        unit = WeightUnit.LB,
-                        isSynced = true,
-                    ),
-                    scale = ScaleEntryWithMetrics(
-                        scaleEntry = BodyScaleEntryEntity(
-                            id = 478,
-                            weight = 50.0,
-                            bodyFat = 0.0,
-                            muscleMass = 0.0,
-                            water = 0.0,
-                            bmi = 0.0,
-                            source = "manual",
-                        ),
-                        scaleEntryMetric = BodyScaleEntryMetricEntity(
-                            id = 478,
-                            bmr = 12.0,
-                            metabolicAge = 0,
-                            proteinPercent = 0.0,
-                            pulse = 0,
-                            skeletalMusclePercent = 0.0,
-                            subcutaneousFatPercent = 0.0,
-                            visceralFatLevel = 12.0,
-                            boneMass = 0.0,
-                            impedance = 0,
-                        ),
-                    ),
-                ),
-                ScaleEntry(
-                    entry = EntryEntity(
-                        id = 479,
-                        accountId = "4SWOWDAP9t2gS50MFp9HQS",
-                        entryTimestamp = "2025-06-20T06:30:00.000Z",
-                        serverTimestamp = "2025-06-20T10:29:13.914Z",
-                        opTimestamp = null,
-                        operationType = "create",
-                        deviceType = "scale",
-                        deviceId = "manual",
-                        attempts = 0,
-                        unit = WeightUnit.KG,
-                        isSynced = true,
-                    ),
-                    scale = ScaleEntryWithMetrics(
-                        scaleEntry = BodyScaleEntryEntity(
-                            id = 479,
-                            weight = 70.0,
-                            bodyFat = 0.0,
-                            muscleMass = 0.0,
-                            water = 0.0,
-                            bmi = 0.0,
-                            source = "manual",
-                        ),
-                        scaleEntryMetric = BodyScaleEntryMetricEntity(
-                            id = 479,
-                            bmr = 12.0,
-                            metabolicAge = 0,
-                            proteinPercent = 0.0,
-                            pulse = 0,
-                            skeletalMusclePercent = 0.0,
-                            subcutaneousFatPercent = 0.0,
-                            visceralFatLevel = 12.0,
-                            boneMass = 0.0,
-                            impedance = 0,
-                        ),
-                    ),
-                ),
-            )
         HistoryDetailScreenContent(
             state =
                 HistoryDetailState(
                     month = "Dec 2022",
-                    historyItems = sampleItems.toImmutableList(),
+                    historyItems = historyDetailPreviewItems().toImmutableList(),
                 ),
             isRefreshing = false,
             onRefresh = {},
@@ -665,3 +635,86 @@ fun HistoryDetailScreenPreview() {
         )
     }
 }
+
+private fun historyDetailPreviewItems(): List<ScaleEntry> =
+    listOf(historyDetailPreviewEntry478(), historyDetailPreviewEntry479())
+
+private fun historyDetailPreviewEntry478(): ScaleEntry =
+    ScaleEntry(
+        entry = EntryEntity(
+            id = 478,
+            accountId = "4SWOWDAP9t2gS50MFp9HQS",
+            entryTimestamp = "2025-06-19T06:30:00.000Z",
+            serverTimestamp = "2025-06-19T10:29:13.914Z",
+            opTimestamp = null,
+            operationType = "create",
+            deviceType = "scale",
+            deviceId = "manual",
+            attempts = 0,
+            unit = WeightUnit.LB,
+            isSynced = true,
+        ),
+        scale = ScaleEntryWithMetrics(
+            scaleEntry = BodyScaleEntryEntity(
+                id = 478,
+                weight = 50.0,
+                bodyFat = 0.0,
+                muscleMass = 0.0,
+                water = 0.0,
+                bmi = 0.0,
+                source = "manual",
+            ),
+            scaleEntryMetric = BodyScaleEntryMetricEntity(
+                id = 478,
+                bmr = 12.0,
+                metabolicAge = 0,
+                proteinPercent = 0.0,
+                pulse = 0,
+                skeletalMusclePercent = 0.0,
+                subcutaneousFatPercent = 0.0,
+                visceralFatLevel = 12.0,
+                boneMass = 0.0,
+                impedance = 0,
+            ),
+        ),
+    )
+
+private fun historyDetailPreviewEntry479(): ScaleEntry =
+    ScaleEntry(
+        entry = EntryEntity(
+            id = 479,
+            accountId = "4SWOWDAP9t2gS50MFp9HQS",
+            entryTimestamp = "2025-06-20T06:30:00.000Z",
+            serverTimestamp = "2025-06-20T10:29:13.914Z",
+            opTimestamp = null,
+            operationType = "create",
+            deviceType = "scale",
+            deviceId = "manual",
+            attempts = 0,
+            unit = WeightUnit.KG,
+            isSynced = true,
+        ),
+        scale = ScaleEntryWithMetrics(
+            scaleEntry = BodyScaleEntryEntity(
+                id = 479,
+                weight = 70.0,
+                bodyFat = 0.0,
+                muscleMass = 0.0,
+                water = 0.0,
+                bmi = 0.0,
+                source = "manual",
+            ),
+            scaleEntryMetric = BodyScaleEntryMetricEntity(
+                id = 479,
+                bmr = 12.0,
+                metabolicAge = 0,
+                proteinPercent = 0.0,
+                pulse = 0,
+                skeletalMusclePercent = 0.0,
+                subcutaneousFatPercent = 0.0,
+                visceralFatLevel = 12.0,
+                boneMass = 0.0,
+                impedance = 0,
+            ),
+        ),
+    )

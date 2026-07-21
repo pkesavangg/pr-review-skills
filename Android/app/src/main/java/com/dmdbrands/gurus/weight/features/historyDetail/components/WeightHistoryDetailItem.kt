@@ -7,6 +7,7 @@ import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -20,6 +21,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
 import com.dmdbrands.gurus.weight.core.shared.utilities.testing.TestTags
 import androidx.compose.ui.semantics.contentDescription
@@ -108,16 +110,7 @@ fun WeightHistoryDetailItemHeader(
   val debounceTime = 500L // Prevent multiple clicks within 300ms
     // TalkBack: read the weight entry as one announcement with an expand/collapse state,
     // e.g. "Jun 19, 6:30 AM, weight 150 lb". The decorative chevron is folded in by merge.
-    val weightValue = buildString {
-        item.scale.scaleEntry.prefix?.let { append(it) }
-        append(formatWeightValue(item.scale.scaleEntry.weight))
-    }
-    val rowDescription = buildString {
-        append("${item.getDate()}, ${item.getTime()}")
-        append(
-            ", ${HistoryDetailScreenStrings.accWeightLabel} $weightValue ${item.entry.unit.label}",
-        )
-    }
+    val rowDescription = weightRowDescription(item)
     val expandState = if (isExpanded) {
         HistoryDetailScreenStrings.accExpandedState
     } else {
@@ -147,67 +140,98 @@ fun WeightHistoryDetailItemHeader(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.SpaceBetween,
     ) {
-        Row(
-            modifier =
-                Modifier
-                    .fillMaxWidth()
-                    .weight(1f)
-                    .padding(vertical = MeTheme.spacing.x3s),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween,
-        ) {
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = item.getDate(),
-                    style = MeTheme.typography.heading5,
-                    color = textColor,
-                    modifier = Modifier.padding(top = MeTheme.spacing.x2s),
-                )
-                Text(
-                    text = item.getTime(),
-                    style = MeTheme.typography.subHeading2,
-                    color = subTextColor,
-                    modifier = Modifier.padding(top = MeTheme.spacing.x2s),
-                )
-            }
+        WeightDetailHeaderInfo(item = item, textColor = textColor, subTextColor = subTextColor)
+        WeightDetailHeaderTrailing(canExpand = canExpand, rotation = rotation, tintColor = tintColor)
+    }
+}
 
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.End,
-                modifier = Modifier.weight(1f),
-            ) {
-                Text(
-                    text = buildString {
-                        item.scale.scaleEntry.prefix?.let { append(it) }  // append prefix if not null
-                        append(formatWeightValue(item.scale.scaleEntry.weight))        // always append value with sign
-                    },
-                    style = MeTheme.typography.heading3,
-                    // Weight value is the WG brand blue (matches BP=green / Baby=purple). (MOB-1259)
-                    color = MeTheme.colorScheme.wgPrimary,
-                    textAlign = TextAlign.End,
-                )
-                Text(
-                    text = item.entry.unit.label,
-                    style = MeTheme.typography.subHeading2,
-                    color = subTextColor,
-                    modifier = Modifier.padding(start = MeTheme.spacing.x2s),
-                )
-            }
-        }
-        if (canExpand) {
-            AppIcon(
-              id = AppIcons.Default.RightCaret,
-              onClick = null,
-              contentDescription = HistoryDetailScreenStrings.EntryDetailContentDescription,
-              tintColor = tintColor,
-              modifier =
-                    Modifier
-                        .padding(start = MeTheme.spacing.lg)
-                        .rotate(rotation),
+private fun weightRowDescription(item: ScaleEntry): String {
+    val weightValue = buildString {
+        item.scale.scaleEntry.prefix?.let { append(it) }
+        append(formatWeightValue(item.scale.scaleEntry.weight))
+    }
+    return buildString {
+        append("${item.getDate()}, ${item.getTime()}")
+        append(
+            ", ${HistoryDetailScreenStrings.accWeightLabel} $weightValue ${item.entry.unit.label}",
+        )
+    }
+}
+
+@Composable
+private fun RowScope.WeightDetailHeaderInfo(
+    item: ScaleEntry,
+    textColor: Color,
+    subTextColor: Color,
+) {
+    Row(
+        modifier =
+            Modifier
+                .fillMaxWidth()
+                .weight(1f)
+                .padding(vertical = MeTheme.spacing.x3s),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.SpaceBetween,
+    ) {
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = item.getDate(),
+                style = MeTheme.typography.heading5,
+                color = textColor,
+                modifier = Modifier.padding(top = MeTheme.spacing.x2s),
             )
-        } else {
-            Spacer(modifier = Modifier.width(MeTheme.spacing.x3l))
+            Text(
+                text = item.getTime(),
+                style = MeTheme.typography.subHeading2,
+                color = subTextColor,
+                modifier = Modifier.padding(top = MeTheme.spacing.x2s),
+            )
         }
+
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.End,
+            modifier = Modifier.weight(1f),
+        ) {
+            Text(
+                text = buildString {
+                    item.scale.scaleEntry.prefix?.let { append(it) }  // append prefix if not null
+                    append(formatWeightValue(item.scale.scaleEntry.weight))        // always append value with sign
+                },
+                style = MeTheme.typography.heading3,
+                // Weight value is the WG brand blue (matches BP=green / Baby=purple). (MOB-1259)
+                color = MeTheme.colorScheme.wgPrimary,
+                textAlign = TextAlign.End,
+            )
+            Text(
+                text = item.entry.unit.label,
+                style = MeTheme.typography.subHeading2,
+                color = subTextColor,
+                modifier = Modifier.padding(start = MeTheme.spacing.x2s),
+            )
+        }
+    }
+}
+
+@Composable
+private fun WeightDetailHeaderTrailing(
+    canExpand: Boolean,
+    rotation: Float,
+    tintColor: Color,
+) {
+    if (canExpand) {
+        AppIcon(
+          id = AppIcons.Default.RightCaret,
+          onClick = null,
+          contentDescription = HistoryDetailScreenStrings.EntryDetailContentDescription,
+          tintColor = tintColor,
+          modifier =
+                Modifier
+                    .padding(start = MeTheme.spacing.lg)
+                    .rotate(rotation),
+        )
+    } else {
+        Spacer(modifier = Modifier.width(MeTheme.spacing.x3l))
     }
 }
 

@@ -12,6 +12,7 @@ import com.dmdbrands.gurus.weight.features.common.helper.StringUtil.cleanCorrupt
 import com.dmdbrands.gurus.weight.features.common.helper.form.FormValidations
 import com.dmdbrands.library.ggbluetooth.enums.GGPermissionType
 import com.dmdbrands.library.ggbluetooth.model.GGBTWifiConfig
+import com.dmdbrands.library.ggbluetooth.model.GGWifiSetupResponse
 import com.greatergoods.blewrapper.GGDeviceService
 import com.greatergoods.ggbluetoothsdk.external.enums.GGWifiState
 import kotlinx.coroutines.CoroutineScope
@@ -146,38 +147,7 @@ class WiFiConfigManager(
                 wifiConnectionTimeoutJob = null
 
                 scope.launch {
-                    if (it.wifiState == GGWifiState.GG_WIFI_STATE_CONNECTED.name) {
-                        AppLog.d(TAG, "Wifi connection successful")
-                        this@WiFiConfigManager.isWifiConfigured = ssid.isNotBlank()
-                        ggDeviceService.getConnectedWifiMacAddress(scale.toGGBTDevice()) { mac ->
-                            this@WiFiConfigManager.wifiMac = mac
-                        }
-                        onIntent(
-                            BtWifiScaleSetupIntent.SetStepConnectionState(
-                                BtWifiSetupStep.CONNECTING_WIFI,
-                                ConnectionState.Success,
-                            ),
-                        )
-                        delay(connectionDelay)
-                        clearWifiPasswordForm()
-                        if (initialStep == BtWifiSetupStep.GATHERING_NETWORK) {
-                            if (!isAlreadyExited) {
-                                isAlreadyExited = true
-                                onExitSetup(true)
-                            }
-                            return@launch
-                        }
-                        onNext()
-                    } else {
-                        AppLog.w(TAG, "Wifi connection failed")
-                        onIntent(
-                            BtWifiScaleSetupIntent.SetStepConnectionState(
-                                BtWifiSetupStep.CONNECTING_WIFI,
-                                ConnectionState.Failed.Error,
-                            ),
-                        )
-                        onIntent(BtWifiScaleSetupIntent.SetErrorCode(it.errorCode))
-                    }
+                    handleWifiSetupResponse(scale, ssid, it)
                 }
             }
         } catch (e: Exception) {
@@ -192,6 +162,41 @@ class WiFiConfigManager(
                     ConnectionState.Failed.Error,
                 ),
             )
+        }
+    }
+
+    private suspend fun handleWifiSetupResponse(scale: Device, ssid: String, response: GGWifiSetupResponse) {
+        if (response.wifiState == GGWifiState.GG_WIFI_STATE_CONNECTED.name) {
+            AppLog.d(TAG, "Wifi connection successful")
+            this@WiFiConfigManager.isWifiConfigured = ssid.isNotBlank()
+            ggDeviceService.getConnectedWifiMacAddress(scale.toGGBTDevice()) { mac ->
+                this@WiFiConfigManager.wifiMac = mac
+            }
+            onIntent(
+                BtWifiScaleSetupIntent.SetStepConnectionState(
+                    BtWifiSetupStep.CONNECTING_WIFI,
+                    ConnectionState.Success,
+                ),
+            )
+            delay(connectionDelay)
+            clearWifiPasswordForm()
+            if (initialStep == BtWifiSetupStep.GATHERING_NETWORK) {
+                if (!isAlreadyExited) {
+                    isAlreadyExited = true
+                    onExitSetup(true)
+                }
+                return
+            }
+            onNext()
+        } else {
+            AppLog.w(TAG, "Wifi connection failed")
+            onIntent(
+                BtWifiScaleSetupIntent.SetStepConnectionState(
+                    BtWifiSetupStep.CONNECTING_WIFI,
+                    ConnectionState.Failed.Error,
+                ),
+            )
+            onIntent(BtWifiScaleSetupIntent.SetErrorCode(response.errorCode))
         }
     }
 

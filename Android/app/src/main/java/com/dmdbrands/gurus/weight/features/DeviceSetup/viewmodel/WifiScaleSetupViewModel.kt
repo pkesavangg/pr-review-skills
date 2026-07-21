@@ -191,112 +191,124 @@ constructor(
           // Clear navigation state after step change
           handleIntent(WifiScaleSetupIntent.ClearNavigationState)
 
-          when (currentStep) {
-            WifiScaleSetupStep.SCALE_INFO -> {
-              updateNetworkStatus()
-            }
-
-            WifiScaleSetupStep.PERMISSIONS -> {
-              val areRequiredPermissionsEnabled = AppPermissionsHelper
-                .areRequiredPermissionsEnabled(state.value.permissions, setupType = DeviceSetupType.Wifi)
-              handleIntent(WifiScaleSetupIntent.SetCanProceedToNext(areRequiredPermissionsEnabled))
-              if (areRequiredPermissionsEnabled) {
-                handleIntent(WifiScaleSetupIntent.SetCurrentStep(WifiScaleSetupStep.WIFI_PASSWORD))
-              }
-              updateNetworkStatus()
-            }
-
-            WifiScaleSetupStep.WIFI_PASSWORD -> {
-              updateNetworkStatus()
-              val canProceed = isWifiPasswordFormValid()
-              handleIntent(WifiScaleSetupIntent.SetCanProceedToNext(canProceed))
-            }
-
-            WifiScaleSetupStep.SELECT_USER -> {
-              val canProceed = isUserSelected()
-              handleIntent(WifiScaleSetupIntent.SetCanProceedToNext(canProceed))
-            }
-
-            WifiScaleSetupStep.ACTIVATE_SCALE -> {
-              handleIntent(WifiScaleSetupIntent.SetCanProceedToNext(true))
-              handleIntent(WifiScaleSetupIntent.SetShowError(false))
-              handleIntent(WifiScaleSetupIntent.HandleErrorCodeSelected(""))
-            }
-
-            WifiScaleSetupStep.WIFI_MODE -> {
-              if (currentState.isGetMACSetup || currentState.permissionsSkipped) {
-                // Only AP mode available for MAC setup and permission skipped flows
-                val canProceed = currentState.selectedWifiMode == WifiModes.AP_MODE.value
-                handleIntent(WifiScaleSetupIntent.SetCanProceedToNext(canProceed))
-              } else {
-                // Normal flow - both modes available
-                val canProceed = isWifiModeSelected()
-                handleIntent(WifiScaleSetupIntent.SetCanProceedToNext(canProceed))
-              }
-            }
-
-            WifiScaleSetupStep.SWITCH_WIFI -> {
-              val canProceed = isConnectedToScaleWifi()
-              if (!state.value.permissionsSkipped || state.value.isGetMACSetup) {
-                handleIntent(WifiScaleSetupIntent.SetCanProceedToNext(canProceed))
-              } else {
-                handleIntent(WifiScaleSetupIntent.SetCanProceedToNext(true))
-              }
-            }
-
-            WifiScaleSetupStep.MAC_ADDRESS -> {
-              if (currentState.isGetMACSetup) {
-                if (currentState.selectedWifiMode == WifiModes.AP_MODE.value) {
-                  viewModelScope.launch {
-                    try {
-                      val macAddress = getMacAddress()
-                      if (macAddress != null) {
-                        handleIntent(WifiScaleSetupIntent.SetMacAddress(macAddress))
-                      }
-                    } catch (e: Exception) {
-                      AppLog.e(TAG, "Error getting MAC address", e)
-                    }
-                  }
-                }
-                handleIntent(WifiScaleSetupIntent.SetNextButtonText("Finish"))
-                handleIntent(WifiScaleSetupIntent.SetCanProceedToNext(true))
-              } else {
-                handleIntent(WifiScaleSetupIntent.SetNextButtonText("Save"))
-                handleIntent(WifiScaleSetupIntent.SetCanProceedToNext(true))
-              }
-            }
-
-            WifiScaleSetupStep.STEP_ON, WifiScaleSetupStep.SCALE_COUNTS -> {
-              handleIntent(WifiScaleSetupIntent.SetCanProceedToNext(true))
-            }
-
-            WifiScaleSetupStep.SETUP_FINISHED -> {
-              handleIntent(WifiScaleSetupIntent.SetCanProceedToNext(true))
-              handleIntent(WifiScaleSetupIntent.SetNextButtonText("Finish"))
-            }
-
-            WifiScaleSetupStep.ERROR_CODE_SELECTED -> {
-              handleIntent(WifiScaleSetupIntent.SetCanProceedToNext(true))
-              handleIntent(WifiScaleSetupIntent.SetNextButtonText("Finish"))
-            }
-
-            WifiScaleSetupStep.TROUBLE_SHOOTING -> {
-              handleIntent(WifiScaleSetupIntent.SetCanProceedToNext(true))
-              handleIntent(WifiScaleSetupIntent.SetNextButtonText("Finish"))
-            }
-
-            WifiScaleSetupStep.ERROR_GUIDE -> {
-              handleIntent(WifiScaleSetupIntent.SetCanProceedToNext(false))
-            }
-
-            else -> {
-              AppLog.d(TAG, "No automatic action for step: $currentStep")
-            }
-          }
+          handleStepChange(currentStep, currentState)
         }
 
         previousStep = currentStep
       }
+    }
+  }
+
+  private fun handleStepChange(currentStep: WifiScaleSetupStep, currentState: WifiScaleSetupState) {
+    when (currentStep) {
+      WifiScaleSetupStep.SCALE_INFO -> {
+        updateNetworkStatus()
+      }
+
+      WifiScaleSetupStep.PERMISSIONS -> handlePermissionsStep()
+
+      WifiScaleSetupStep.WIFI_PASSWORD -> {
+        updateNetworkStatus()
+        val canProceed = isWifiPasswordFormValid()
+        handleIntent(WifiScaleSetupIntent.SetCanProceedToNext(canProceed))
+      }
+
+      WifiScaleSetupStep.SELECT_USER -> {
+        val canProceed = isUserSelected()
+        handleIntent(WifiScaleSetupIntent.SetCanProceedToNext(canProceed))
+      }
+
+      WifiScaleSetupStep.ACTIVATE_SCALE -> {
+        handleIntent(WifiScaleSetupIntent.SetCanProceedToNext(true))
+        handleIntent(WifiScaleSetupIntent.SetShowError(false))
+        handleIntent(WifiScaleSetupIntent.HandleErrorCodeSelected(""))
+      }
+
+      WifiScaleSetupStep.WIFI_MODE -> handleWifiModeStep(currentState)
+
+      WifiScaleSetupStep.SWITCH_WIFI -> handleSwitchWifiStep()
+
+      WifiScaleSetupStep.MAC_ADDRESS -> handleMacAddressStep(currentState)
+
+      WifiScaleSetupStep.STEP_ON, WifiScaleSetupStep.SCALE_COUNTS -> {
+        handleIntent(WifiScaleSetupIntent.SetCanProceedToNext(true))
+      }
+
+      WifiScaleSetupStep.SETUP_FINISHED -> {
+        handleIntent(WifiScaleSetupIntent.SetCanProceedToNext(true))
+        handleIntent(WifiScaleSetupIntent.SetNextButtonText("Finish"))
+      }
+
+      WifiScaleSetupStep.ERROR_CODE_SELECTED -> {
+        handleIntent(WifiScaleSetupIntent.SetCanProceedToNext(true))
+        handleIntent(WifiScaleSetupIntent.SetNextButtonText("Finish"))
+      }
+
+      WifiScaleSetupStep.TROUBLE_SHOOTING -> {
+        handleIntent(WifiScaleSetupIntent.SetCanProceedToNext(true))
+        handleIntent(WifiScaleSetupIntent.SetNextButtonText("Finish"))
+      }
+
+      WifiScaleSetupStep.ERROR_GUIDE -> {
+        handleIntent(WifiScaleSetupIntent.SetCanProceedToNext(false))
+      }
+
+      else -> {
+        AppLog.d(TAG, "No automatic action for step: $currentStep")
+      }
+    }
+  }
+
+  private fun handlePermissionsStep() {
+    val areRequiredPermissionsEnabled = AppPermissionsHelper
+      .areRequiredPermissionsEnabled(state.value.permissions, setupType = DeviceSetupType.Wifi)
+    handleIntent(WifiScaleSetupIntent.SetCanProceedToNext(areRequiredPermissionsEnabled))
+    if (areRequiredPermissionsEnabled) {
+      handleIntent(WifiScaleSetupIntent.SetCurrentStep(WifiScaleSetupStep.WIFI_PASSWORD))
+    }
+    updateNetworkStatus()
+  }
+
+  private fun handleWifiModeStep(currentState: WifiScaleSetupState) {
+    if (currentState.isGetMACSetup || currentState.permissionsSkipped) {
+      // Only AP mode available for MAC setup and permission skipped flows
+      val canProceed = currentState.selectedWifiMode == WifiModes.AP_MODE.value
+      handleIntent(WifiScaleSetupIntent.SetCanProceedToNext(canProceed))
+    } else {
+      // Normal flow - both modes available
+      val canProceed = isWifiModeSelected()
+      handleIntent(WifiScaleSetupIntent.SetCanProceedToNext(canProceed))
+    }
+  }
+
+  private fun handleSwitchWifiStep() {
+    val canProceed = isConnectedToScaleWifi()
+    if (!state.value.permissionsSkipped || state.value.isGetMACSetup) {
+      handleIntent(WifiScaleSetupIntent.SetCanProceedToNext(canProceed))
+    } else {
+      handleIntent(WifiScaleSetupIntent.SetCanProceedToNext(true))
+    }
+  }
+
+  private fun handleMacAddressStep(currentState: WifiScaleSetupState) {
+    if (currentState.isGetMACSetup) {
+      if (currentState.selectedWifiMode == WifiModes.AP_MODE.value) {
+        viewModelScope.launch {
+          try {
+            val macAddress = getMacAddress()
+            if (macAddress != null) {
+              handleIntent(WifiScaleSetupIntent.SetMacAddress(macAddress))
+            }
+          } catch (e: Exception) {
+            AppLog.e(TAG, "Error getting MAC address", e)
+          }
+        }
+      }
+      handleIntent(WifiScaleSetupIntent.SetNextButtonText("Finish"))
+      handleIntent(WifiScaleSetupIntent.SetCanProceedToNext(true))
+    } else {
+      handleIntent(WifiScaleSetupIntent.SetNextButtonText("Save"))
+      handleIntent(WifiScaleSetupIntent.SetCanProceedToNext(true))
     }
   }
 

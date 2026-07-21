@@ -11,8 +11,10 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusManager
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
+import androidx.compose.ui.platform.SoftwareKeyboardController
 import androidx.compose.ui.platform.testTag
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -96,182 +98,268 @@ internal fun BabyScaleSetupScreenContent(
   ) {
     Column(modifier = Modifier.fillMaxSize().testTag(TestTags.DeviceSetup.ScreenRoot)) {
       Box(modifier = Modifier.weight(1f)) {
-        when (currentStep) {
-          BabyScaleSetupStep.SCALE_INFO ->
-            DeviceInfoContent(sku = sku, setupType = DeviceSetupType.BabyScale)
-
-          BabyScaleSetupStep.PERMISSIONS ->
-            DevicePermissions(
-              sku = sku,
-              permissions = state.permissions,
-              onRequestPermission = { onIntent(DeviceSetupIntent.RequestPermission(it)) },
-            )
-
-          BabyScaleSetupStep.WAKEUP -> {
-            if (setupState.connectionState is ConnectionState.Failed) {
-              BabyScaleConnectionFailed(
-                title = BabyScaleSetupStrings.WakeupScale.Title(setupState.connectionState),
-                subtitle = BabyScaleSetupStrings.WakeupScale.Subtitle(setupState.connectionState),
-                onPairAgain = { onIntent(DeviceSetupIntent.TryAgain) },
-                onSupport = { onIntent(DeviceSetupIntent.OpenHelp) },
-              )
-            } else {
-              BabyScaleLoader(
-                title = BabyScaleSetupStrings.WakeupScale.Title(setupState.connectionState),
-                subtitle = BabyScaleSetupStrings.WakeupScale.Subtitle(setupState.connectionState),
-              )
-            }
-          }
-
-          BabyScaleSetupStep.SCALE_NAME ->
-            DeviceNameContent(
-              nickname = state.nickname,
-              onNicknameChanged = { onIntent(BabyScaleSetupIntent.SetNickname(it)) },
-            )
-
-          BabyScaleSetupStep.PAIRED_SUCCESS ->
-            PairedSuccessContent()
-
-          BabyScaleSetupStep.BABY_PROFILE_FORM ->
-            BabyProfileFormContent(
-              profile = state.editingProfile,
-              onProfileChanged = { onIntent(BabyScaleSetupIntent.UpdateEditingProfile(it)) },
-            )
-
-          BabyScaleSetupStep.BABY_LIST ->
-            BabyListContent(
-              babyProfiles = state.babyProfiles,
-              onEditBaby = { index ->
-                onIntent(BabyScaleSetupIntent.EditBabyProfile(index))
-                onIntent(DeviceSetupIntent.SetNewStep(BabyScaleSetupStep.BABY_PROFILE_FORM))
-              },
-              onDeleteBaby = { index ->
-                onIntent(BabyScaleSetupIntent.DeleteBabyProfile(index))
-              },
-              onAddBaby = {
-                onIntent(BabyScaleSetupIntent.AddAnotherBaby)
-                onIntent(DeviceSetupIntent.SetNewStep(BabyScaleSetupStep.BABY_PROFILE_FORM))
-              },
-            )
-
-          BabyScaleSetupStep.SETUP_FINISHED ->
-            SetupFinishedContent()
-        }
+        BabyStepContent(
+          currentStep = currentStep,
+          state = state,
+          sku = sku,
+          connectionState = setupState.connectionState,
+          onIntent = onIntent,
+        )
       }
 
       // Bottom navigation
       val showNav = currentStep in STEPS_WITH_NAV
       if (showNav) {
-        Row(
-          modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = MeTheme.spacing.sm, vertical = MeTheme.spacing.xs),
-          horizontalArrangement = Arrangement.SpaceBetween,
-          verticalAlignment = Alignment.CenterVertically,
-        ) {
-          AppButton(
-            type = ButtonType.TextPrimary,
-            modifier = Modifier.testTag(TestTags.DeviceSetup.BackButton),
-            label = DeviceSetupStrings.backButton,
-            size = ButtonSize.Small,
-            enabled = !state.isFirstStep,
-            onClick = { onIntent(DeviceSetupIntent.Back) },
-          )
-          // SKIP — only on the baby-profile form; triggers the "Skip Baby Profile?"
-          // confirmation dialog (MOB-440). "You're Paired!" intentionally has no SKIP (design).
-          if (currentStep == BabyScaleSetupStep.BABY_PROFILE_FORM) {
-            AppButton(
-              type = ButtonType.TextPrimary,
-              modifier = Modifier.testTag(TestTags.DeviceSetup.SkipButton),
-              label = DeviceSetupStrings.skipButton,
-              size = ButtonSize.Small,
-              onClick = {
-                focusManager.clearFocus()
-                keyboardController?.hide()
-                onIntent(DeviceSetupIntent.Skip)
-              },
-            )
-          }
-          when (currentStep) {
-            BabyScaleSetupStep.SCALE_INFO,
-            BabyScaleSetupStep.PERMISSIONS ->
-              AppButton(
-                type = ButtonType.PrimaryFilled,
-                modifier = Modifier.testTag(TestTags.DeviceSetup.NextButton),
-                label = DeviceSetupStrings.nextButton,
-                size = ButtonSize.Small,
-                enabled = state.isFirstStep || state.nextEnabled,
-                onClick = {
-                  focusManager.clearFocus()
-                  onIntent(DeviceSetupIntent.Next)
-                },
-              )
-
-            BabyScaleSetupStep.SCALE_NAME ->
-              AppButton(
-                type = ButtonType.PrimaryFilled,
-                modifier = Modifier.testTag(TestTags.DeviceSetup.NextButton),
-                label = DeviceSetupStrings.nextButton,
-                size = ButtonSize.Small,
-                enabled = state.nickname.isNotBlank(),
-                onClick = {
-                  focusManager.clearFocus()
-                  keyboardController?.hide()
-                  onIntent(DeviceSetupIntent.Next)
-                },
-              )
-
-            BabyScaleSetupStep.PAIRED_SUCCESS ->
-              AppButton(
-                type = ButtonType.PrimaryFilled,
-                modifier = Modifier.testTag(TestTags.DeviceSetup.ContinueButton),
-                label = BabyScaleSetupStrings.SetupButtons.Continue,
-                size = ButtonSize.Small,
-                onClick = { onIntent(DeviceSetupIntent.Next) },
-              )
-
-            BabyScaleSetupStep.BABY_PROFILE_FORM ->
-              AppButton(
-                type = ButtonType.PrimaryFilled,
-                modifier = Modifier.testTag(TestTags.DeviceSetup.NextButton),
-                label = DeviceSetupStrings.nextButton,
-                size = ButtonSize.Small,
-                enabled = state.editingProfile.name.isNotBlank(),
-                onClick = {
-                  focusManager.clearFocus()
-                  keyboardController?.hide()
-                  onIntent(BabyScaleSetupIntent.SaveBabyProfile)
-                  onIntent(DeviceSetupIntent.SetNewStep(BabyScaleSetupStep.BABY_LIST))
-                },
-              )
-
-            // FINISH on the baby list advances to the "You're Done!" screen rather than
-            // exiting directly, so the completion screen is shown (design screen 9).
-            BabyScaleSetupStep.BABY_LIST ->
-              AppButton(
-                type = ButtonType.PrimaryFilled,
-                modifier = Modifier.testTag(TestTags.DeviceSetup.FinishButton),
-                label = BabyScaleSetupStrings.SetupButtons.Finish,
-                size = ButtonSize.Small,
-                onClick = {
-                  onIntent(DeviceSetupIntent.SetNewStep(BabyScaleSetupStep.SETUP_FINISHED))
-                },
-              )
-
-            // "You're Done!" — FINISH exits setup (saves scale + uploads baby profiles).
-            BabyScaleSetupStep.SETUP_FINISHED ->
-              AppButton(
-                type = ButtonType.PrimaryFilled,
-                modifier = Modifier.testTag(TestTags.DeviceSetup.FinishButton),
-                label = BabyScaleSetupStrings.SetupButtons.Finish,
-                size = ButtonSize.Small,
-                onClick = { onIntent(DeviceSetupIntent.ExitSetup(true)) },
-              )
-
-            else -> {}
-          }
-        }
+        BabySetupBottomNav(
+          currentStep = currentStep,
+          state = state,
+          focusManager = focusManager,
+          keyboardController = keyboardController,
+          onIntent = onIntent,
+        )
       }
     }
+  }
+}
+
+@Composable
+private fun BabyStepContent(
+  currentStep: BabyScaleSetupStep,
+  state: BabyScaleSetupState,
+  sku: String,
+  connectionState: ConnectionState,
+  onIntent: (DeviceSetupIntent) -> Unit,
+) {
+  when (currentStep) {
+    BabyScaleSetupStep.SCALE_INFO ->
+      DeviceInfoContent(sku = sku, setupType = DeviceSetupType.BabyScale)
+
+    BabyScaleSetupStep.PERMISSIONS ->
+      DevicePermissions(
+        sku = sku,
+        permissions = state.permissions,
+        onRequestPermission = { onIntent(DeviceSetupIntent.RequestPermission(it)) },
+      )
+
+    BabyScaleSetupStep.WAKEUP ->
+      BabyWakeupStep(connectionState = connectionState, onIntent = onIntent)
+
+    BabyScaleSetupStep.SCALE_NAME ->
+      DeviceNameContent(
+        nickname = state.nickname,
+        onNicknameChanged = { onIntent(BabyScaleSetupIntent.SetNickname(it)) },
+      )
+
+    BabyScaleSetupStep.PAIRED_SUCCESS ->
+      PairedSuccessContent()
+
+    BabyScaleSetupStep.BABY_PROFILE_FORM ->
+      BabyProfileFormContent(
+        profile = state.editingProfile,
+        onProfileChanged = { onIntent(BabyScaleSetupIntent.UpdateEditingProfile(it)) },
+      )
+
+    BabyScaleSetupStep.BABY_LIST ->
+      BabyListStep(state = state, onIntent = onIntent)
+
+    BabyScaleSetupStep.SETUP_FINISHED ->
+      SetupFinishedContent()
+  }
+}
+
+@Composable
+private fun BabyWakeupStep(
+  connectionState: ConnectionState,
+  onIntent: (DeviceSetupIntent) -> Unit,
+) {
+  if (connectionState is ConnectionState.Failed) {
+    BabyScaleConnectionFailed(
+      title = BabyScaleSetupStrings.WakeupScale.Title(connectionState),
+      subtitle = BabyScaleSetupStrings.WakeupScale.Subtitle(connectionState),
+      onPairAgain = { onIntent(DeviceSetupIntent.TryAgain) },
+      onSupport = { onIntent(DeviceSetupIntent.OpenHelp) },
+    )
+  } else {
+    BabyScaleLoader(
+      title = BabyScaleSetupStrings.WakeupScale.Title(connectionState),
+      subtitle = BabyScaleSetupStrings.WakeupScale.Subtitle(connectionState),
+    )
+  }
+}
+
+@Composable
+private fun BabyListStep(
+  state: BabyScaleSetupState,
+  onIntent: (DeviceSetupIntent) -> Unit,
+) {
+  BabyListContent(
+    babyProfiles = state.babyProfiles,
+    onEditBaby = { index ->
+      onIntent(BabyScaleSetupIntent.EditBabyProfile(index))
+      onIntent(DeviceSetupIntent.SetNewStep(BabyScaleSetupStep.BABY_PROFILE_FORM))
+    },
+    onDeleteBaby = { index ->
+      onIntent(BabyScaleSetupIntent.DeleteBabyProfile(index))
+    },
+    onAddBaby = {
+      onIntent(BabyScaleSetupIntent.AddAnotherBaby)
+      onIntent(DeviceSetupIntent.SetNewStep(BabyScaleSetupStep.BABY_PROFILE_FORM))
+    },
+  )
+}
+
+@Composable
+private fun BabySetupBottomNav(
+  currentStep: BabyScaleSetupStep,
+  state: BabyScaleSetupState,
+  focusManager: FocusManager,
+  keyboardController: SoftwareKeyboardController?,
+  onIntent: (DeviceSetupIntent) -> Unit,
+) {
+  Row(
+    modifier = Modifier
+      .fillMaxWidth()
+      .padding(horizontal = MeTheme.spacing.sm, vertical = MeTheme.spacing.xs),
+    horizontalArrangement = Arrangement.SpaceBetween,
+    verticalAlignment = Alignment.CenterVertically,
+  ) {
+    AppButton(
+      type = ButtonType.TextPrimary,
+      modifier = Modifier.testTag(TestTags.DeviceSetup.BackButton),
+      label = DeviceSetupStrings.backButton,
+      size = ButtonSize.Small,
+      enabled = !state.isFirstStep,
+      onClick = { onIntent(DeviceSetupIntent.Back) },
+    )
+    // SKIP — only on the baby-profile form; triggers the "Skip Baby Profile?"
+    // confirmation dialog (MOB-440). "You're Paired!" intentionally has no SKIP (design).
+    if (currentStep == BabyScaleSetupStep.BABY_PROFILE_FORM) {
+      AppButton(
+        type = ButtonType.TextPrimary,
+        modifier = Modifier.testTag(TestTags.DeviceSetup.SkipButton),
+        label = DeviceSetupStrings.skipButton,
+        size = ButtonSize.Small,
+        onClick = {
+          focusManager.clearFocus()
+          keyboardController?.hide()
+          onIntent(DeviceSetupIntent.Skip)
+        },
+      )
+    }
+    BabyNavPrimaryButton(
+      currentStep = currentStep,
+      state = state,
+      focusManager = focusManager,
+      keyboardController = keyboardController,
+      onIntent = onIntent,
+    )
+    BabyNavFinishButton(
+      currentStep = currentStep,
+      state = state,
+      focusManager = focusManager,
+      keyboardController = keyboardController,
+      onIntent = onIntent,
+    )
+  }
+}
+
+@Composable
+private fun BabyNavPrimaryButton(
+  currentStep: BabyScaleSetupStep,
+  state: BabyScaleSetupState,
+  focusManager: FocusManager,
+  keyboardController: SoftwareKeyboardController?,
+  onIntent: (DeviceSetupIntent) -> Unit,
+) {
+  when (currentStep) {
+    BabyScaleSetupStep.SCALE_INFO,
+    BabyScaleSetupStep.PERMISSIONS ->
+      AppButton(
+        type = ButtonType.PrimaryFilled,
+        modifier = Modifier.testTag(TestTags.DeviceSetup.NextButton),
+        label = DeviceSetupStrings.nextButton,
+        size = ButtonSize.Small,
+        enabled = state.isFirstStep || state.nextEnabled,
+        onClick = {
+          focusManager.clearFocus()
+          onIntent(DeviceSetupIntent.Next)
+        },
+      )
+
+    BabyScaleSetupStep.SCALE_NAME ->
+      AppButton(
+        type = ButtonType.PrimaryFilled,
+        modifier = Modifier.testTag(TestTags.DeviceSetup.NextButton),
+        label = DeviceSetupStrings.nextButton,
+        size = ButtonSize.Small,
+        enabled = state.nickname.isNotBlank(),
+        onClick = {
+          focusManager.clearFocus()
+          keyboardController?.hide()
+          onIntent(DeviceSetupIntent.Next)
+        },
+      )
+
+    BabyScaleSetupStep.PAIRED_SUCCESS ->
+      AppButton(
+        type = ButtonType.PrimaryFilled,
+        modifier = Modifier.testTag(TestTags.DeviceSetup.ContinueButton),
+        label = BabyScaleSetupStrings.SetupButtons.Continue,
+        size = ButtonSize.Small,
+        onClick = { onIntent(DeviceSetupIntent.Next) },
+      )
+
+    else -> {}
+  }
+}
+
+@Composable
+private fun BabyNavFinishButton(
+  currentStep: BabyScaleSetupStep,
+  state: BabyScaleSetupState,
+  focusManager: FocusManager,
+  keyboardController: SoftwareKeyboardController?,
+  onIntent: (DeviceSetupIntent) -> Unit,
+) {
+  when (currentStep) {
+    BabyScaleSetupStep.BABY_PROFILE_FORM ->
+      AppButton(
+        type = ButtonType.PrimaryFilled,
+        modifier = Modifier.testTag(TestTags.DeviceSetup.NextButton),
+        label = DeviceSetupStrings.nextButton,
+        size = ButtonSize.Small,
+        enabled = state.editingProfile.name.isNotBlank(),
+        onClick = {
+          focusManager.clearFocus()
+          keyboardController?.hide()
+          onIntent(BabyScaleSetupIntent.SaveBabyProfile)
+          onIntent(DeviceSetupIntent.SetNewStep(BabyScaleSetupStep.BABY_LIST))
+        },
+      )
+
+    // FINISH on the baby list advances to the "You're Done!" screen rather than
+    // exiting directly, so the completion screen is shown (design screen 9).
+    BabyScaleSetupStep.BABY_LIST ->
+      AppButton(
+        type = ButtonType.PrimaryFilled,
+        modifier = Modifier.testTag(TestTags.DeviceSetup.FinishButton),
+        label = BabyScaleSetupStrings.SetupButtons.Finish,
+        size = ButtonSize.Small,
+        onClick = {
+          onIntent(DeviceSetupIntent.SetNewStep(BabyScaleSetupStep.SETUP_FINISHED))
+        },
+      )
+
+    // "You're Done!" — FINISH exits setup (saves scale + uploads baby profiles).
+    BabyScaleSetupStep.SETUP_FINISHED ->
+      AppButton(
+        type = ButtonType.PrimaryFilled,
+        modifier = Modifier.testTag(TestTags.DeviceSetup.FinishButton),
+        label = BabyScaleSetupStrings.SetupButtons.Finish,
+        size = ButtonSize.Small,
+        onClick = { onIntent(DeviceSetupIntent.ExitSetup(true)) },
+      )
+
+    else -> {}
   }
 }

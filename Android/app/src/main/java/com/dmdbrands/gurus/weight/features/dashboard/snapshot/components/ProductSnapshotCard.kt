@@ -148,19 +148,7 @@ fun BpSnapshotCard(
     val chart = state.bp
 
     SnapshotCardContainer(modifier = modifier.testTag(TestTags.Dashboard.BpCard), onClickLabel = DashboardSnapshotStrings.OpenBpDashboard, onTap = onTap) {
-        Row(modifier = Modifier.padding(horizontal = MeTheme.spacing.sm)) {
-            Text(
-                text = DashboardSnapshotStrings.Mmhg,
-                style = MeTheme.typography.subHeading1,
-                color = MeTheme.colorScheme.textSubheading,
-            )
-            Spacer(modifier = Modifier.weight(1f))
-            Text(
-                text = DashboardSnapshotStrings.Pulse,
-                style = MeTheme.typography.subHeading1,
-                color = MeTheme.colorScheme.textSubheading,
-            )
-        }
+        BpSnapshotHeader()
 
         Spacer(modifier = Modifier.height(MeTheme.spacing.x3s))
 
@@ -170,68 +158,106 @@ fun BpSnapshotCard(
         val diastolic = parts.getOrNull(1)?.toIntOrNull()
         val pulse = chart.secondaryLabel.toIntOrNull()
 
-        Row(
-            verticalAlignment = Alignment.Bottom,
-            modifier = Modifier.padding(horizontal = MeTheme.spacing.sm),
-        ) {
-            if (chart.isEmpty) {
-                Text(
-                    text = "${DashboardSnapshotStrings.ZeroSystolic}/${DashboardSnapshotStrings.ZeroDiastolic}",
-                    color = SnapshotColors.BloodPressure,
-                    style = SnapshotValueStyle,
-                )
-            } else if (systolic != null && diastolic != null) {
-                BpSystolicDiastolic(
-                    systolic = systolic,
-                    diastolic = diastolic,
-                    style = SnapshotValueStyle,
-                )
-            } else {
-                Text(
-                    text = DashboardSnapshotStrings.PlaceholderDash,
-                    color = SnapshotColors.BloodPressure,
-                    style = SnapshotValueStyle,
-                )
-            }
-            Spacer(modifier = Modifier.weight(1f))
-            Text(
-                text = if (chart.isEmpty) DashboardSnapshotStrings.ZeroPulse else chart.secondaryLabel.ifEmpty { DashboardSnapshotStrings.PlaceholderDash },
-                color = if (pulse != null) SnapshotColors.pulseColor(pulse) else MeTheme.colorScheme.textSubheading,
-                style = SnapshotValueStyle,
-            )
-        }
+        BpSnapshotValues(chart = chart, systolic = systolic, diastolic = diastolic, pulse = pulse)
 
         Spacer(modifier = Modifier.height(MeTheme.spacing.xs))
 
-        if (chart.isEmpty) {
-            EmptyDashboardGraph(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    // TalkBack: an empty chart is otherwise invisible — announce it.
-                    .semantics { contentDescription = DashboardSnapshotStrings.accEmptyChartDescription },
-            )
-        } else if (chart.startTimestamp != null && chart.endTimestamp != null) {
-            val chartLineColors = listOfNotNull(
-                systolic?.let { SnapshotColors.systolicColor(it) },
-                diastolic?.let { SnapshotColors.diastolicColor(it) },
-                pulse?.let { SnapshotColors.pulseColor(it) },
-            )
+        BpSnapshotChart(viewModel = viewModel, chart = chart, systolic = systolic, diastolic = diastolic, pulse = pulse)
+    }
+}
 
-            SnapshotLineChart(
-                modelProducer = viewModel.bpModelProducer,
-                lineColor = SnapshotColors.BloodPressure,
-                lineColors = chartLineColors.ifEmpty { null },
-                startTimestamp = chart.startTimestamp,
-                endTimestamp = chart.endTimestamp,
-                yStep = chart.yStep,
-                yMin = chart.yMin,
-                yMax = chart.yMax,
-                chartContentDescription = "${DashboardSnapshotStrings.accChartSummaryPrefix} " +
-                    "${chart.label} ${DashboardSnapshotStrings.Mmhg}, " +
-                    "${chart.secondaryLabel} ${DashboardSnapshotStrings.Pulse}",
-                modifier = Modifier.fillMaxWidth(),
+@Composable
+private fun BpSnapshotHeader() {
+    Row(modifier = Modifier.padding(horizontal = MeTheme.spacing.sm)) {
+        Text(
+            text = DashboardSnapshotStrings.Mmhg,
+            style = MeTheme.typography.subHeading1,
+            color = MeTheme.colorScheme.textSubheading,
+        )
+        Spacer(modifier = Modifier.weight(1f))
+        Text(
+            text = DashboardSnapshotStrings.Pulse,
+            style = MeTheme.typography.subHeading1,
+            color = MeTheme.colorScheme.textSubheading,
+        )
+    }
+}
+
+@Composable
+private fun BpSnapshotValues(
+    chart: SnapshotChartData,
+    systolic: Int?,
+    diastolic: Int?,
+    pulse: Int?,
+) {
+    Row(
+        verticalAlignment = Alignment.Bottom,
+        modifier = Modifier.padding(horizontal = MeTheme.spacing.sm),
+    ) {
+        if (chart.isEmpty) {
+            Text(
+                text = "${DashboardSnapshotStrings.ZeroSystolic}/${DashboardSnapshotStrings.ZeroDiastolic}",
+                color = SnapshotColors.BloodPressure,
+                style = SnapshotValueStyle,
+            )
+        } else if (systolic != null && diastolic != null) {
+            BpSystolicDiastolic(
+                systolic = systolic,
+                diastolic = diastolic,
+                style = SnapshotValueStyle,
+            )
+        } else {
+            Text(
+                text = DashboardSnapshotStrings.PlaceholderDash,
+                color = SnapshotColors.BloodPressure,
+                style = SnapshotValueStyle,
             )
         }
+        Spacer(modifier = Modifier.weight(1f))
+        Text(
+            text = if (chart.isEmpty) DashboardSnapshotStrings.ZeroPulse else chart.secondaryLabel.ifEmpty { DashboardSnapshotStrings.PlaceholderDash },
+            color = if (pulse != null) SnapshotColors.pulseColor(pulse) else MeTheme.colorScheme.textSubheading,
+            style = SnapshotValueStyle,
+        )
+    }
+}
+
+@Composable
+private fun BpSnapshotChart(
+    viewModel: DashboardSnapshotViewModel,
+    chart: SnapshotChartData,
+    systolic: Int?,
+    diastolic: Int?,
+    pulse: Int?,
+) {
+    if (chart.isEmpty) {
+        EmptyDashboardGraph(
+            modifier = Modifier
+                .fillMaxWidth()
+                // TalkBack: an empty chart is otherwise invisible — announce it.
+                .semantics { contentDescription = DashboardSnapshotStrings.accEmptyChartDescription },
+        )
+    } else if (chart.startTimestamp != null && chart.endTimestamp != null) {
+        val chartLineColors = listOfNotNull(
+            systolic?.let { SnapshotColors.systolicColor(it) },
+            diastolic?.let { SnapshotColors.diastolicColor(it) },
+            pulse?.let { SnapshotColors.pulseColor(it) },
+        )
+
+        SnapshotLineChart(
+            modelProducer = viewModel.bpModelProducer,
+            lineColor = SnapshotColors.BloodPressure,
+            lineColors = chartLineColors.ifEmpty { null },
+            startTimestamp = chart.startTimestamp,
+            endTimestamp = chart.endTimestamp,
+            yStep = chart.yStep,
+            yMin = chart.yMin,
+            yMax = chart.yMax,
+            chartContentDescription = "${DashboardSnapshotStrings.accChartSummaryPrefix} " +
+                "${chart.label} ${DashboardSnapshotStrings.Mmhg}, " +
+                "${chart.secondaryLabel} ${DashboardSnapshotStrings.Pulse}",
+            modifier = Modifier.fillMaxWidth(),
+        )
     }
 }
 
@@ -265,60 +291,74 @@ fun BabySnapshotCard(
             chart.label
         }
 
-        if (displayLabel.isNotEmpty() && displayLabel != DashboardSnapshotStrings.PlaceholderDash) {
-            // Parse "8 lbs 14.4 oz" → numbers large, units small inline
-            Text(
-                text = buildAnnotatedString {
-                    val parts = displayLabel.split(" ")
-                    parts.forEachIndexed { i, part ->
-                        if (i > 0) append(" ")
-                        if (part.toDoubleOrNull() != null || part.toIntOrNull() != null) {
-                            withStyle(SpanStyle(fontSize = SnapshotValueStyle.fontSize, fontWeight = SnapshotValueStyle.fontWeight)) {
-                                append(part)
-                            }
-                        } else {
-                            withStyle(SpanStyle(fontSize = SnapshotLabelFontSize, fontWeight = FontWeight.Normal, color = MeTheme.colorScheme.textSubheading)) {
-                                append(part)
-                            }
-                        }
-                    }
-                },
-                color = SnapshotColors.Baby,
-                modifier = Modifier.padding(horizontal = MeTheme.spacing.sm),
-            )
-        } else {
-            Text(
-                text = DashboardSnapshotStrings.PlaceholderDash,
-                color = SnapshotColors.Baby,
-                style = SnapshotValueStyle,
-                modifier = Modifier.padding(horizontal = MeTheme.spacing.sm),
-            )
-        }
+        BabySnapshotValue(displayLabel = displayLabel)
 
         Spacer(modifier = Modifier.height(MeTheme.spacing.xs))
 
-        if (chart.isEmpty) {
-            EmptyDashboardGraph(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    // TalkBack: an empty chart is otherwise invisible — announce it.
-                    .semantics { contentDescription = DashboardSnapshotStrings.accEmptyChartDescription },
-            )
-        } else if (chart.startTimestamp != null && chart.endTimestamp != null) {
-            SnapshotLineChart(
-                modelProducer = viewModel.getBabyModelProducer(product.profile.id),
-                lineColor = SnapshotColors.Baby,
-                secondaryLayerColor = if (chart.hasPercentile) SnapshotColors.PercentileBand else null,
-                startTimestamp = chart.startTimestamp,
-                endTimestamp = chart.endTimestamp,
-                yStep = chart.yStep,
-                yMin = chart.yMin,
-                yMax = chart.yMax,
-                chartContentDescription = "${DashboardSnapshotStrings.accChartSummaryPrefix} " +
-                    "${product.profile.name.lowercase()}'s ${DashboardSnapshotStrings.Weight} ${chart.label}",
-                modifier = Modifier.fillMaxWidth(),
-            )
-        }
+        BabySnapshotChart(viewModel = viewModel, product = product, chart = chart)
+    }
+}
+
+@Composable
+private fun BabySnapshotValue(displayLabel: String) {
+    if (displayLabel.isNotEmpty() && displayLabel != DashboardSnapshotStrings.PlaceholderDash) {
+        // Parse "8 lbs 14.4 oz" → numbers large, units small inline
+        Text(
+            text = buildAnnotatedString {
+                val parts = displayLabel.split(" ")
+                parts.forEachIndexed { i, part ->
+                    if (i > 0) append(" ")
+                    if (part.toDoubleOrNull() != null || part.toIntOrNull() != null) {
+                        withStyle(SpanStyle(fontSize = SnapshotValueStyle.fontSize, fontWeight = SnapshotValueStyle.fontWeight)) {
+                            append(part)
+                        }
+                    } else {
+                        withStyle(SpanStyle(fontSize = SnapshotLabelFontSize, fontWeight = FontWeight.Normal, color = MeTheme.colorScheme.textSubheading)) {
+                            append(part)
+                        }
+                    }
+                }
+            },
+            color = SnapshotColors.Baby,
+            modifier = Modifier.padding(horizontal = MeTheme.spacing.sm),
+        )
+    } else {
+        Text(
+            text = DashboardSnapshotStrings.PlaceholderDash,
+            color = SnapshotColors.Baby,
+            style = SnapshotValueStyle,
+            modifier = Modifier.padding(horizontal = MeTheme.spacing.sm),
+        )
+    }
+}
+
+@Composable
+private fun BabySnapshotChart(
+    viewModel: DashboardSnapshotViewModel,
+    product: ProductSelection.Baby,
+    chart: SnapshotChartData,
+) {
+    if (chart.isEmpty) {
+        EmptyDashboardGraph(
+            modifier = Modifier
+                .fillMaxWidth()
+                // TalkBack: an empty chart is otherwise invisible — announce it.
+                .semantics { contentDescription = DashboardSnapshotStrings.accEmptyChartDescription },
+        )
+    } else if (chart.startTimestamp != null && chart.endTimestamp != null) {
+        SnapshotLineChart(
+            modelProducer = viewModel.getBabyModelProducer(product.profile.id),
+            lineColor = SnapshotColors.Baby,
+            secondaryLayerColor = if (chart.hasPercentile) SnapshotColors.PercentileBand else null,
+            startTimestamp = chart.startTimestamp,
+            endTimestamp = chart.endTimestamp,
+            yStep = chart.yStep,
+            yMin = chart.yMin,
+            yMax = chart.yMax,
+            chartContentDescription = "${DashboardSnapshotStrings.accChartSummaryPrefix} " +
+                "${product.profile.name.lowercase()}'s ${DashboardSnapshotStrings.Weight} ${chart.label}",
+            modifier = Modifier.fillMaxWidth(),
+        )
     }
 }
 

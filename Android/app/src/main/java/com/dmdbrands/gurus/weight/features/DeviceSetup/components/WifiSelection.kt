@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.HorizontalDivider
@@ -73,89 +74,120 @@ fun WifiSelection(
       .fillMaxSize(),
     contentPadding = PaddingValues(vertical = spacing.md, horizontal = spacing.sm)
   ) {
-    item {
-      AppText(
-        text = title,
-        textType = TextType.ListTitle2,
-        modifier = Modifier.padding(bottom = spacing.xs),
-      )
-    }
+    wifiHeaderItems(title = title, subtitle = subtitle)
+    wifiNetworkItems(wifiList = wifiList, configuredSSID = configuredSSID, onSelect = onSelect)
+    wifiRefreshItem(onRefresh = onRefresh)
+  }
+}
 
+private fun LazyListScope.wifiHeaderItems(
+  title: String,
+  subtitle: String,
+) {
+  item {
+    AppText(
+      text = title,
+      textType = TextType.ListTitle2,
+      modifier = Modifier.padding(bottom = spacing.xs),
+    )
+  }
+
+  item {
+    AppText(
+      text = subtitle,
+      textType = TextType.Body,
+      modifier = Modifier.padding(bottom = spacing.lg),
+    )
+  }
+}
+
+private fun LazyListScope.wifiNetworkItems(
+  wifiList: List<GGWifiInfo>,
+  configuredSSID: String?,
+  onSelect: (String) -> Unit,
+) {
+  if (wifiList.isEmpty()) {
     item {
       AppText(
-        text = subtitle,
+        text = DeviceSetupStrings.WifiList.NoNetworks,
         textType = TextType.Body,
         modifier = Modifier.padding(bottom = spacing.lg),
       )
     }
+  } else {
+    wifiConnectedItem(wifiList = wifiList, configuredSSID = configuredSSID)
+    wifiAvailableItems(wifiList = wifiList, configuredSSID = configuredSSID, onSelect = onSelect)
+  }
+}
 
-    if (wifiList.isEmpty()) {
+private fun LazyListScope.wifiConnectedItem(
+  wifiList: List<GGWifiInfo>,
+  configuredSSID: String?,
+) {
+  // Connected SSID
+  configuredSSID?.let { configuredSsid ->
+    val connectedWifi = wifiList.find { it.ssid == configuredSsid }
+    connectedWifi?.let { wifi ->
       item {
         AppText(
-          text = DeviceSetupStrings.WifiList.NoNetworks,
-          textType = TextType.Body,
-          modifier = Modifier.padding(bottom = spacing.lg),
+          text = DeviceSetupStrings.WifiList.ConnectedNetwork,
+          textType = TextType.ListTitle1,
+          modifier = Modifier.padding(bottom = spacing.xs),
         )
-      }
-    } else {
-      // Connected SSID
-      configuredSSID?.let { configuredSsid ->
-        val connectedWifi = wifiList.find { it.ssid == configuredSsid }
-        connectedWifi?.let { wifi ->
-          item {
-            AppText(
-              text = DeviceSetupStrings.WifiList.ConnectedNetwork,
-              textType = TextType.ListTitle1,
-              modifier = Modifier.padding(bottom = spacing.xs),
-            )
-            WifiItem(
-              ssid = wifi.ssid,
-              isConfigured = true,
-              index = 0,
-              total = 1,
-            )
-            Spacer(Modifier.padding(bottom = spacing.sm))
-          }
-        }
-      }
-
-      val availableNetworks = wifiList.filter { it.ssid != configuredSSID }
-      if (availableNetworks.isNotEmpty()) {
-        item {
-          AppText(
-            text = DeviceSetupStrings.WifiList.AvailableNetworks,
-            textType = TextType.ListTitle1,
-            modifier = Modifier.padding(bottom = spacing.xs),
-          )
-        }
-
-        itemsIndexed(
-          items = availableNetworks,
-          key = { _, wifi -> wifi.listKey() },
-        ) { index, wifi ->
-          WifiItem(
-            ssid = wifi.ssid,
-            isConfigured = false,
-            index = index,
-            total = availableNetworks.size,
-            onClick = { onSelect(wifi.ssid) },
-          )
-        }
+        WifiItem(
+          ssid = wifi.ssid,
+          isConfigured = true,
+          index = 0,
+          total = 1,
+        )
+        Spacer(Modifier.padding(bottom = spacing.sm))
       }
     }
+  }
+}
 
+private fun LazyListScope.wifiAvailableItems(
+  wifiList: List<GGWifiInfo>,
+  configuredSSID: String?,
+  onSelect: (String) -> Unit,
+) {
+  val availableNetworks = wifiList.filter { it.ssid != configuredSSID }
+  if (availableNetworks.isNotEmpty()) {
     item {
-      Column(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalAlignment = Alignment.CenterHorizontally,
-      ) {
-        Spacer(Modifier.height(spacing.md))
-        AppButton(
-          label = DeviceSetupStrings.SetupButtons.Refresh,
-          type = ButtonType.InlineTextPrimary,
-          onClick = { onRefresh() },
-        )
-      }
+      AppText(
+        text = DeviceSetupStrings.WifiList.AvailableNetworks,
+        textType = TextType.ListTitle1,
+        modifier = Modifier.padding(bottom = spacing.xs),
+      )
+    }
+
+    itemsIndexed(
+      items = availableNetworks,
+      key = { _, wifi -> wifi.listKey() },
+    ) { index, wifi ->
+      WifiItem(
+        ssid = wifi.ssid,
+        isConfigured = false,
+        index = index,
+        total = availableNetworks.size,
+        onClick = { onSelect(wifi.ssid) },
+      )
+    }
+  }
+}
+
+private fun LazyListScope.wifiRefreshItem(onRefresh: () -> Unit) {
+  item {
+    Column(
+      modifier = Modifier.fillMaxWidth(),
+      horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+      Spacer(Modifier.height(spacing.md))
+      AppButton(
+        label = DeviceSetupStrings.SetupButtons.Refresh,
+        type = ButtonType.InlineTextPrimary,
+        onClick = { onRefresh() },
+      )
     }
   }
 }

@@ -7,6 +7,8 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.GridItemSpan
+import androidx.compose.foundation.lazy.grid.LazyGridScope
+import androidx.compose.foundation.lazy.grid.LazyGridState
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
@@ -16,11 +18,13 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.hapticfeedback.HapticFeedback
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.unit.dp
 import com.dmdbrands.gurus.weight.domain.model.common.WeightProgress
 import com.dmdbrands.gurus.weight.features.common.components.reorderable.ReorderableItem
+import com.dmdbrands.gurus.weight.features.common.components.reorderable.ReorderableLazyGridState
 import com.dmdbrands.gurus.weight.features.common.components.reorderable.rememberReorderableLazyGridState
 import com.dmdbrands.gurus.weight.features.common.helper.DeviceType
 import com.dmdbrands.gurus.weight.features.common.helper.getDeviceType
@@ -58,73 +62,110 @@ fun DashboardMilestoneGrid(
 ) {
   val currentDeviceType = getDeviceType()
   val spanCount = if (currentDeviceType == DeviceType.Tablet) 3 else 2
-
   var localVisibleMilestones by remember(visibleMilestones) {
     mutableStateOf(visibleMilestones.reorderGrid(spanCount))
   }
   val hapticFeedback = LocalHapticFeedback.current
   val lazyGridState = rememberLazyGridState()
-
   val reorderableState = rememberReorderableLazyGridState(
     lazyGridState = lazyGridState,
     onMove = { from, to ->
       if (!isGoalProgressMilestone(localVisibleMilestones[to.index])) {
-        val goalIndex = hasGoalCardBetweenIndices(localVisibleMilestones, from.index, to.index)
-        localVisibleMilestones = if (goalIndex != null) {
-          val tempLocalVisibleMileStone = localVisibleMilestones.toMutableList().apply {
-            val item = removeAt(from.index)
-            add(to.index, item)
-          }
-          tempLocalVisibleMileStone.toMutableList().apply {
-            val goalItemIndex =
-              hasGoalCardBetweenIndices(tempLocalVisibleMileStone, -1, tempLocalVisibleMileStone.size)
-            if (goalItemIndex != null) {
-              val goalItem = removeAt(goalItemIndex)
-              add(goalIndex, goalItem)
-            }
-          }
-        } else {
-          // 📦 Move item to 'to.index' and shift others accordingly
-          localVisibleMilestones.toMutableList().apply {
-            val item = removeAt(from.index)
-            add(to.index, item)
-          }
-        }
-
+        localVisibleMilestones = reorderMilestones(localVisibleMilestones, from.index, to.index)
         hapticFeedback.performHapticFeedback(HapticFeedbackType.SegmentFrequentTick)
-
-        // Call the reorder callback with the new order
         onMilestoneReordered(localVisibleMilestones)
       }
     },
   )
-
   // Handle milestone movement with goal repositioning
   val handleMilestoneMoved = { isAdded: Boolean, milestone: Stat ->
     onMilestoneMoved(isAdded, milestone)
-
-    // If a milestone was removed (hidden), reposition the goal card
     if (!isAdded && !isGoalProgressMilestone(milestone)) {
-      // Determine where the tile was before removal so we know if it was from the first row
       val removedIndex = localVisibleMilestones.indexOf(milestone)
       removedIndex in 0 until spanCount
-
-      // Update local state to reflect the removal
       localVisibleMilestones = localVisibleMilestones.filter { it != milestone }
-
-      // Notify parent of the reordered state
       onMilestoneReordered(localVisibleMilestones)
     }
   }
+  MilestoneGridBody(
+    localVisibleMilestones = localVisibleMilestones,
+    hiddenMilestones = hiddenMilestones,
+    reorderableState = reorderableState,
+    spanCount = spanCount,
+    inEditMode = inEditMode,
+    hasVisibleMetrics = hasVisibleMetrics,
+    isFromSetup = isFromSetup,
+    isProgressUpdating = isProgressUpdating,
+    progress = progress,
+    latestWeight = latestWeight,
+    hapticFeedback = hapticFeedback,
+    onMilestoneMoved = handleMilestoneMoved,
+    onNavigateToGoal = onNavigateToGoal,
+    onLongClick = onLongClick,
+    lazyGridState = lazyGridState,
+  )
+}
 
+/**
+ * Computes the reordered milestone list for a drag move, keeping any goal card in
+ * its correct position (extracted verbatim from the reorder onMove logic).
+ */
+private fun reorderMilestones(
+  current: List<Stat>,
+  fromIndex: Int,
+  toIndex: Int,
+): List<Stat> {
+  val goalIndex = hasGoalCardBetweenIndices(current, fromIndex, toIndex)
+  return if (goalIndex != null) {
+    val tempLocalVisibleMileStone = current.toMutableList().apply {
+      val item = removeAt(fromIndex)
+      add(toIndex, item)
+    }
+    tempLocalVisibleMileStone.toMutableList().apply {
+      val goalItemIndex =
+        hasGoalCardBetweenIndices(tempLocalVisibleMileStone, -1, tempLocalVisibleMileStone.size)
+      if (goalItemIndex != null) {
+        val goalItem = removeAt(goalItemIndex)
+        add(goalIndex, goalItem)
+      }
+    }
+  } else {
+    // 📦 Move item to 'to.index' and shift others accordingly
+    current.toMutableList().apply {
+      val item = removeAt(fromIndex)
+      add(toIndex, item)
+    }
+  }
+}
+
+/**
+ * The milestone [LazyVerticalGrid] itself: visible (reorderable) items plus the
+ * hidden items shown while in edit mode.
+ */
+@Composable
+private fun MilestoneGridBody(
+  localVisibleMilestones: List<Stat>,
+  hiddenMilestones: List<Stat>,
+  reorderableState: ReorderableLazyGridState,
+  spanCount: Int,
+  inEditMode: Boolean,
+  hasVisibleMetrics: Boolean,
+  isFromSetup: Boolean,
+  isProgressUpdating: Boolean,
+  progress: WeightProgress,
+  latestWeight: Double?,
+  hapticFeedback: HapticFeedback,
+  onMilestoneMoved: (isAdded: Boolean, milestone: Stat) -> Unit,
+  onNavigateToGoal: () -> Unit,
+  onLongClick: (Stat?, WeightProgress?) -> Unit,
+  lazyGridState: LazyGridState,
+) {
   LazyVerticalGrid(
     columns = GridCells.Fixed(spanCount),
     state = lazyGridState,
     contentPadding = if (inEditMode || hasVisibleMetrics) {
       PaddingValues(vertical = spacing.sm)
-    } else {
-      PaddingValues(bottom = spacing.sm)
-    },
+    } else PaddingValues(bottom = spacing.sm),
     userScrollEnabled = false,
     modifier = Modifier
       .fillMaxWidth()
@@ -133,74 +174,130 @@ fun DashboardMilestoneGrid(
     horizontalArrangement = Arrangement.spacedBy(spacing.sm),
     verticalArrangement = Arrangement.spacedBy(spacing.sm),
   ) {
-    // Visible milestones (reorderable)
-    items(
-      items = localVisibleMilestones,
-      key = { getMilestoneKey(it, isVisible = true) },
-      span = { milestone ->
-        if (isGoalProgressMilestone(milestone)) {
-          GridItemSpan(spanCount)
-        } else {
-          GridItemSpan(1)
-        }
-      },
-    ) { milestone ->
+    visibleMilestoneItems(
+      milestones = localVisibleMilestones,
+      spanCount = spanCount,
+      reorderableState = reorderableState,
+      inEditMode = inEditMode,
+      progress = progress,
+      isProgressUpdating = isProgressUpdating,
+      isFromSetup = isFromSetup,
+      hapticFeedback = hapticFeedback,
+      onMilestoneMoved = onMilestoneMoved,
+      onNavigateToGoal = onNavigateToGoal,
+      onLongClick = onLongClick,
+      latestWeight = latestWeight,
+    )
+    hiddenMilestoneItems(
+      milestones = hiddenMilestones,
+      spanCount = spanCount,
+      inEditMode = inEditMode,
+      progress = progress,
+      isProgressUpdating = isProgressUpdating,
+      isFromSetup = isFromSetup,
+      onMilestoneMoved = onMilestoneMoved,
+      onNavigateToGoal = onNavigateToGoal,
+      latestWeight = latestWeight,
+    )
+  }
+}
 
-      ReorderableItem(
-        state = reorderableState,
-        key = getMilestoneKey(milestone, isVisible = true),
-        enabled = inEditMode && !isGoalProgressMilestone(milestone),
-      ) { isDragging ->
-        MilestoneItem(
-          progress = progress,
-          isProgressUpdating = isProgressUpdating,
-          milestone = milestone,
-          inEditMode = inEditMode,
-          isDragging = isDragging,
-          isFromSetup = isFromSetup,
-          isVisible = true,
-          modifier = Modifier.longPressDraggableHandle(
-            enabled = inEditMode,
-            onDragStarted = {
-              hapticFeedback.performHapticFeedback(HapticFeedbackType.GestureThresholdActivate)
-            },
-            onDragStopped = {
-              hapticFeedback.performHapticFeedback(HapticFeedbackType.GestureEnd)
-            },
-          ),
-          onMilestoneMoved = handleMilestoneMoved,
-          onNavigateToGoal = onNavigateToGoal,
-          onLongClick = onLongClick,
-          latestWeight = latestWeight,
-        )
+/**
+ * Visible (reorderable) milestone items for the grid.
+ */
+private fun LazyGridScope.visibleMilestoneItems(
+  milestones: List<Stat>,
+  spanCount: Int,
+  reorderableState: ReorderableLazyGridState,
+  inEditMode: Boolean,
+  progress: WeightProgress,
+  isProgressUpdating: Boolean,
+  isFromSetup: Boolean,
+  hapticFeedback: HapticFeedback,
+  onMilestoneMoved: (isAdded: Boolean, milestone: Stat) -> Unit,
+  onNavigateToGoal: () -> Unit,
+  onLongClick: (Stat?, WeightProgress?) -> Unit,
+  latestWeight: Double?,
+) {
+  items(
+    items = milestones,
+    key = { getMilestoneKey(it, isVisible = true) },
+    span = { milestone ->
+      if (isGoalProgressMilestone(milestone)) {
+        GridItemSpan(spanCount)
+      } else {
+        GridItemSpan(1)
       }
+    },
+  ) { milestone ->
+    ReorderableItem(
+      state = reorderableState,
+      key = getMilestoneKey(milestone, isVisible = true),
+      enabled = inEditMode && !isGoalProgressMilestone(milestone),
+    ) { isDragging ->
+      MilestoneItem(
+        progress = progress,
+        isProgressUpdating = isProgressUpdating,
+        milestone = milestone,
+        inEditMode = inEditMode,
+        isDragging = isDragging,
+        isFromSetup = isFromSetup,
+        isVisible = true,
+        modifier = Modifier.longPressDraggableHandle(
+          enabled = inEditMode,
+          onDragStarted = {
+            hapticFeedback.performHapticFeedback(HapticFeedbackType.GestureThresholdActivate)
+          },
+          onDragStopped = {
+            hapticFeedback.performHapticFeedback(HapticFeedbackType.GestureEnd)
+          },
+        ),
+        onMilestoneMoved = onMilestoneMoved,
+        onNavigateToGoal = onNavigateToGoal,
+        onLongClick = onLongClick,
+        latestWeight = latestWeight,
+      )
     }
-    // Hidden milestones (not reorderable)
-    if (inEditMode) {
-      items(
-        items = hiddenMilestones,
-        key = { stat -> getMilestoneKey(stat, isVisible = false) },
-        span = { milestone ->
-          if (isGoalProgressMilestone(milestone)) {
-            GridItemSpan(spanCount)
-          } else {
-            GridItemSpan(1)
-          }
-        },
-      ) { milestone ->
-        MilestoneItem(
-          progress = progress,
-          isProgressUpdating = isProgressUpdating,
-          milestone = milestone,
-          inEditMode = true,
-          isVisible = false,
-          isFromSetup = isFromSetup,
-          onMilestoneMoved = handleMilestoneMoved,
-          onNavigateToGoal = onNavigateToGoal,
-          latestWeight = latestWeight,
-        )
+  }
+}
+
+/**
+ * Hidden milestone items, shown only when in edit mode.
+ */
+private fun LazyGridScope.hiddenMilestoneItems(
+  milestones: List<Stat>,
+  spanCount: Int,
+  inEditMode: Boolean,
+  progress: WeightProgress,
+  isProgressUpdating: Boolean,
+  isFromSetup: Boolean,
+  onMilestoneMoved: (isAdded: Boolean, milestone: Stat) -> Unit,
+  onNavigateToGoal: () -> Unit,
+  latestWeight: Double?,
+) {
+  if (!inEditMode) return
+  items(
+    items = milestones,
+    key = { stat -> getMilestoneKey(stat, isVisible = false) },
+    span = { milestone ->
+      if (isGoalProgressMilestone(milestone)) {
+        GridItemSpan(spanCount)
+      } else {
+        GridItemSpan(1)
       }
-    }
+    },
+  ) { milestone ->
+    MilestoneItem(
+      progress = progress,
+      isProgressUpdating = isProgressUpdating,
+      milestone = milestone,
+      inEditMode = true,
+      isVisible = false,
+      isFromSetup = isFromSetup,
+      onMilestoneMoved = onMilestoneMoved,
+      onNavigateToGoal = onNavigateToGoal,
+      latestWeight = latestWeight,
+    )
   }
 }
 

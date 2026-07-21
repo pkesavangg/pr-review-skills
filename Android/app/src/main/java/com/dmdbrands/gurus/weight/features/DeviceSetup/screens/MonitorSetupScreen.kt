@@ -13,6 +13,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusManager
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.heading
@@ -81,8 +82,6 @@ fun BpmSetupScreenContent(
   val focusManager = LocalFocusManager.current
   val pagerState = rememberPagerState { state.scaleSetupState.steps.size }
   val currentStep = state.step
-  val primarySku = DeviceHelper.primaryBpmSku(sku)
-  val setupType = MonitorSetupStepHelper.setupTypeForSku(sku)
 
   LaunchedEffect(currentStep) {
     val targetPage = state.steps.indexOf(currentStep)
@@ -104,193 +103,263 @@ fun BpmSetupScreenContent(
       steps = state.steps,
       containerColor = MeTheme.colorScheme.secondaryBackground,
       pagerState = pagerState,
-      leadingContent = {
-        AppButton(
-          type = ButtonType.TextPrimary,
-          modifier = Modifier.testTag(TestTags.BpmSetup.BackButton),
-          label = DeviceSetupStrings.backButton,
-          size = ButtonSize.Small,
-          enabled = state.backEnabled,
-          onClick = { onIntent(DeviceSetupIntent.Back) },
-        )
-      },
+      leadingContent = { BpmLeadingButton(state = state, onIntent = onIntent) },
       trailingContent = {
-        AppButton(
-          type = ButtonType.PrimaryFilled,
-          modifier = Modifier.testTag(TestTags.BpmSetup.NextButton),
-          label = if (state.isLastStep || currentStep == MonitorSetupStep.SUCCESS_SCREEN) DeviceSetupStrings.FinishButton else DeviceSetupStrings.nextButton,
-          size = ButtonSize.Small,
-          enabled = state.nextEnabled,
-          onClick = {
-            focusManager.clearFocus()
-            onIntent(DeviceSetupIntent.Next)
-          },
-        )
+        BpmTrailingButton(state = state, currentStep = currentStep, focusManager = focusManager, onIntent = onIntent)
       },
       pageContent = { step ->
-        Column(modifier = Modifier.fillMaxSize()) {
-          when (step) {
-            MonitorSetupStep.MONITOR_DETAIL -> {
-              DeviceInfoContent(sku = sku, setupType = setupType)
-            }
-
-            MonitorSetupStep.PERMISSIONS -> {
-              DevicePermissions(
-                sku = sku,
-                permissions = state.scaleSetupState.permissions,
-                onRequestPermission = { onIntent(DeviceSetupIntent.RequestPermission(it)) },
-              )
-            }
-
-            MonitorSetupStep.USER_SELECTION -> {
-              val selectedUser = state.selectedUser
-              val userItems = if (state.hasNumericUsers) {
-                listOf(
-                  SelectButtonItem("1", SelectButtonDisplayValue.Image(AppIcons.Monitor.UserToggleImage(primarySku, "1")), emitValue = "1", isSelected = selectedUser == "1"),
-                  SelectButtonItem("2", SelectButtonDisplayValue.Image(AppIcons.Monitor.UserToggleImage(primarySku, "2")), emitValue = "2", isSelected = selectedUser == "2"),
-                )
-              } else {
-                listOf(
-                  SelectButtonItem("A", SelectButtonDisplayValue.Image(AppIcons.Monitor.UserToggleImage(primarySku, "A")), emitValue = "A", isSelected = selectedUser == "A"),
-                  SelectButtonItem("B", SelectButtonDisplayValue.Image(AppIcons.Monitor.UserToggleImage(primarySku, "B")), emitValue = "B", isSelected = selectedUser == "B"),
-                )
-              }
-              SelectButton(
-                title = MonitorSetupStrings.UserSelection.Title,
-                subtitle = MonitorSetupStrings.UserSelection.Subtitle,
-                selectButtonItems = userItems,
-                isSelectable = true,
-                imageWidth = 130.dp,
-                imageHeight = 210.dp,
-                onItemSelected = { value ->
-                  onIntent(MonitorSetupIntent.SetSelectedUser(value))
-                },
-              )
-            }
-
-            MonitorSetupStep.POWER_SWITCH -> {
-              SetupContent(
-                title = MonitorSetupStrings.PowerSwitch.Title,
-                subtitle = MonitorSetupStrings.PowerSwitch.Subtitle,
-                noteMessage = MonitorSetupStrings.PowerSwitch.Note,
-                supportingImage = AppIcons.Monitor.PowerSwitchImage,
-              )
-            }
-
-            MonitorSetupStep.USER_CONFIRMATION -> {
-              val selectedUser = state.selectedUser ?: if (state.hasNumericUsers) "1" else "A"
-              val userLabel = "User $selectedUser"
-              SetupContent(
-                title = "${MonitorSetupStrings.UserConfirmation.Title} $userLabel",
-                subtitle = MonitorSetupStrings.UserConfirmation.Subtitle(primarySku),
-                supportingImage = AppIcons.Monitor.UserGif(primarySku, selectedUser),
-                isGifImage = true,
-              )
-            }
-
-            MonitorSetupStep.MONITOR_OFF -> {
-              SetupContent(
-                title = MonitorSetupStrings.MonitorOff.Title,
-                subtitle = MonitorSetupStrings.MonitorOff.Subtitle(primarySku),
-                supportingImage = AppIcons.Monitor.MonitorOffImage(primarySku),
-                // supportingImageSize removed — SetupContent does not accept this parameter
-              )
-            }
-
-            MonitorSetupStep.MEMORY_SELECTION -> {
-              SetupContent(
-                title = MonitorSetupStrings.MemorySelection.Title(primarySku),
-                subtitle = MonitorSetupStrings.MemorySelection.Subtitle(primarySku),
-                supportingImage = AppIcons.Monitor.PulseGif(primarySku),
-                isGifImage = true,
-              )
-            }
-
-            MonitorSetupStep.MONITOR_PAIRING -> {
-              SetupContent(
-                title = MonitorSetupStrings.Connectivity.SearchingTitle,
-                subtitle = MonitorSetupStrings.Connectivity.SuccessSubtitle,
-                supportingImage = AppIcons.Monitor.SyncingGif(primarySku),
-                isGifImage = true,
-                connectionState = state.scaleSetupState.setupState.connectionState,
-                loaderText = MonitorSetupStrings.Connectivity.SearchingTitle,
-                loaderClick = { onIntent(DeviceSetupIntent.TryAgain) },
-              )
-            }
-
-            MonitorSetupStep.MONITOR_NICKNAME -> {
-              val nicknameFormControl = remember(state.monitorNickname) {
-                FormControl.create(
-                  initialValue = state.monitorNickname,
-                  onValueChangeCallback = { _, newValue ->
-                    onIntent(MonitorSetupIntent.SetMonitorNickname(newValue))
-                  },
-                )
-              }
-              Column(
-                modifier = Modifier.fillMaxSize().padding(horizontal = spacing.sm, vertical = spacing.md),
-                horizontalAlignment = Alignment.CenterHorizontally,
-              ) {
-                AppText(
-                  text = MonitorSetupStrings.MonitorNickname.Title,
-                  textType = TextType.Title,
-                  // TalkBack: step title is the heading.
-                  modifier = Modifier.semantics { heading() },
-                )
-                Spacer(modifier = Modifier.height(spacing.lg))
-                AppInput(
-                  formControl = nicknameFormControl,
-                  label = MonitorSetupStrings.MonitorNickname.Label,
-                  modifier = Modifier.fillMaxWidth(),
-                  testTag = TestTags.BpmSetup.NicknameField,
-                  imeAction = ImeAction.Done,
-                  onImeAction = { focusManager.clearFocus() },
-                )
-              }
-            }
-
-            // ── Success & instruction screens ─────────────────────────────────
-
-            MonitorSetupStep.SUCCESS_SCREEN -> {
-              // Companion scale is paired separately (not in this wizard), so every monitor shows
-              // the same monitor-only success copy + "learn how to measure" tutorial link. (MOB-596)
-              SetupContent(
-                title = MonitorSetupStrings.SuccessScreen.Title,
-                subtitle = MonitorSetupStrings.SuccessScreen.Subtitle,
-                annotatedSubtitle = MonitorSetupStrings.SuccessScreen.TutorialLinkText,
-                onAnnotationClick = { onIntent(MonitorSetupIntent.TutorialLinkClicked) },
-                setupFinished = true,
-              )
-            }
-
-            MonitorSetupStep.INSTRUCTION_CUFF -> {
-              SetupContent(
-                title = MonitorSetupStrings.InstructionCuff.Title,
-                subtitle = MonitorSetupStrings.InstructionCuff.Subtitle(primarySku),
-                supportingImage = AppIcons.Monitor.CuffGif(primarySku),
-                isGifImage = true,
-              )
-            }
-
-            MonitorSetupStep.INSTRUCTION_START -> {
-              SetupContent(
-                title = MonitorSetupStrings.InstructionStart.Title,
-                subtitle = MonitorSetupStrings.InstructionStart.Subtitle(primarySku),
-                supportingImage = AppIcons.Monitor.StartGif(primarySku),
-                isGifImage = true,
-              )
-            }
-
-            MonitorSetupStep.SETUP_COMPLETED -> {
-              SetupContent(
-                title = MonitorSetupStrings.SetupCompleted.Title,
-                subtitle = MonitorSetupStrings.SetupCompleted.Subtitle,
-                setupFinished = true,
-              )
-            }
-          }
-        }
+        BpmStepContent(step = step, sku = sku, state = state, focusManager = focusManager, onIntent = onIntent)
       },
     )
   }
+}
+
+@Composable
+private fun BpmLeadingButton(
+  state: MonitorSetupState,
+  onIntent: (DeviceSetupIntent) -> Unit,
+) {
+  AppButton(
+    type = ButtonType.TextPrimary,
+    modifier = Modifier.testTag(TestTags.BpmSetup.BackButton),
+    label = DeviceSetupStrings.backButton,
+    size = ButtonSize.Small,
+    enabled = state.backEnabled,
+    onClick = { onIntent(DeviceSetupIntent.Back) },
+  )
+}
+
+@Composable
+private fun BpmTrailingButton(
+  state: MonitorSetupState,
+  currentStep: MonitorSetupStep,
+  focusManager: FocusManager,
+  onIntent: (DeviceSetupIntent) -> Unit,
+) {
+  AppButton(
+    type = ButtonType.PrimaryFilled,
+    modifier = Modifier.testTag(TestTags.BpmSetup.NextButton),
+    label = if (state.isLastStep || currentStep == MonitorSetupStep.SUCCESS_SCREEN) DeviceSetupStrings.FinishButton else DeviceSetupStrings.nextButton,
+    size = ButtonSize.Small,
+    enabled = state.nextEnabled,
+    onClick = {
+      focusManager.clearFocus()
+      onIntent(DeviceSetupIntent.Next)
+    },
+  )
+}
+
+@Composable
+private fun BpmStepContent(
+  step: MonitorSetupStep,
+  sku: String,
+  state: MonitorSetupState,
+  focusManager: FocusManager,
+  onIntent: (DeviceSetupIntent) -> Unit,
+) {
+  val primarySku = DeviceHelper.primaryBpmSku(sku)
+  val setupType = MonitorSetupStepHelper.setupTypeForSku(sku)
+  Column(modifier = Modifier.fillMaxSize()) {
+    when (step) {
+      MonitorSetupStep.MONITOR_DETAIL -> DeviceInfoContent(sku = sku, setupType = setupType)
+      MonitorSetupStep.PERMISSIONS -> BpmPermissionsContent(sku = sku, state = state, onIntent = onIntent)
+      MonitorSetupStep.USER_SELECTION -> BpmUserSelectionContent(primarySku = primarySku, state = state, onIntent = onIntent)
+      MonitorSetupStep.POWER_SWITCH -> BpmPowerSwitchContent()
+      MonitorSetupStep.USER_CONFIRMATION -> BpmUserConfirmationContent(primarySku = primarySku, state = state)
+      MonitorSetupStep.MONITOR_OFF -> BpmMonitorOffContent(primarySku = primarySku)
+      MonitorSetupStep.MEMORY_SELECTION -> BpmMemorySelectionContent(primarySku = primarySku)
+      MonitorSetupStep.MONITOR_PAIRING -> BpmMonitorPairingContent(primarySku = primarySku, state = state, onIntent = onIntent)
+      MonitorSetupStep.MONITOR_NICKNAME -> BpmNicknameContent(state = state, focusManager = focusManager, onIntent = onIntent)
+      MonitorSetupStep.SUCCESS_SCREEN -> BpmSuccessScreenContent(onIntent = onIntent)
+      MonitorSetupStep.INSTRUCTION_CUFF -> BpmInstructionCuffContent(primarySku = primarySku)
+      MonitorSetupStep.INSTRUCTION_START -> BpmInstructionStartContent(primarySku = primarySku)
+      MonitorSetupStep.SETUP_COMPLETED -> BpmSetupCompletedContent()
+    }
+  }
+}
+
+@Composable
+private fun BpmPermissionsContent(
+  sku: String,
+  state: MonitorSetupState,
+  onIntent: (DeviceSetupIntent) -> Unit,
+) {
+  DevicePermissions(
+    sku = sku,
+    permissions = state.scaleSetupState.permissions,
+    onRequestPermission = { onIntent(DeviceSetupIntent.RequestPermission(it)) },
+  )
+}
+
+@Composable
+private fun BpmUserSelectionContent(
+  primarySku: String,
+  state: MonitorSetupState,
+  onIntent: (DeviceSetupIntent) -> Unit,
+) {
+  val selectedUser = state.selectedUser
+  val userItems = if (state.hasNumericUsers) {
+    listOf(
+      SelectButtonItem("1", SelectButtonDisplayValue.Image(AppIcons.Monitor.UserToggleImage(primarySku, "1")), emitValue = "1", isSelected = selectedUser == "1"),
+      SelectButtonItem("2", SelectButtonDisplayValue.Image(AppIcons.Monitor.UserToggleImage(primarySku, "2")), emitValue = "2", isSelected = selectedUser == "2"),
+    )
+  } else {
+    listOf(
+      SelectButtonItem("A", SelectButtonDisplayValue.Image(AppIcons.Monitor.UserToggleImage(primarySku, "A")), emitValue = "A", isSelected = selectedUser == "A"),
+      SelectButtonItem("B", SelectButtonDisplayValue.Image(AppIcons.Monitor.UserToggleImage(primarySku, "B")), emitValue = "B", isSelected = selectedUser == "B"),
+    )
+  }
+  SelectButton(
+    title = MonitorSetupStrings.UserSelection.Title,
+    subtitle = MonitorSetupStrings.UserSelection.Subtitle,
+    selectButtonItems = userItems,
+    isSelectable = true,
+    imageWidth = 130.dp,
+    imageHeight = 210.dp,
+    onItemSelected = { value ->
+      onIntent(MonitorSetupIntent.SetSelectedUser(value))
+    },
+  )
+}
+
+@Composable
+private fun BpmPowerSwitchContent() {
+  SetupContent(
+    title = MonitorSetupStrings.PowerSwitch.Title,
+    subtitle = MonitorSetupStrings.PowerSwitch.Subtitle,
+    noteMessage = MonitorSetupStrings.PowerSwitch.Note,
+    supportingImage = AppIcons.Monitor.PowerSwitchImage,
+  )
+}
+
+@Composable
+private fun BpmUserConfirmationContent(
+  primarySku: String,
+  state: MonitorSetupState,
+) {
+  val selectedUser = state.selectedUser ?: if (state.hasNumericUsers) "1" else "A"
+  val userLabel = "User $selectedUser"
+  SetupContent(
+    title = "${MonitorSetupStrings.UserConfirmation.Title} $userLabel",
+    subtitle = MonitorSetupStrings.UserConfirmation.Subtitle(primarySku),
+    supportingImage = AppIcons.Monitor.UserGif(primarySku, selectedUser),
+    isGifImage = true,
+  )
+}
+
+@Composable
+private fun BpmMonitorOffContent(primarySku: String) {
+  SetupContent(
+    title = MonitorSetupStrings.MonitorOff.Title,
+    subtitle = MonitorSetupStrings.MonitorOff.Subtitle(primarySku),
+    supportingImage = AppIcons.Monitor.MonitorOffImage(primarySku),
+    // supportingImageSize removed — SetupContent does not accept this parameter
+  )
+}
+
+@Composable
+private fun BpmMemorySelectionContent(primarySku: String) {
+  SetupContent(
+    title = MonitorSetupStrings.MemorySelection.Title(primarySku),
+    subtitle = MonitorSetupStrings.MemorySelection.Subtitle(primarySku),
+    supportingImage = AppIcons.Monitor.PulseGif(primarySku),
+    isGifImage = true,
+  )
+}
+
+@Composable
+private fun BpmMonitorPairingContent(
+  primarySku: String,
+  state: MonitorSetupState,
+  onIntent: (DeviceSetupIntent) -> Unit,
+) {
+  SetupContent(
+    title = MonitorSetupStrings.Connectivity.SearchingTitle,
+    subtitle = MonitorSetupStrings.Connectivity.SuccessSubtitle,
+    supportingImage = AppIcons.Monitor.SyncingGif(primarySku),
+    isGifImage = true,
+    connectionState = state.scaleSetupState.setupState.connectionState,
+    loaderText = MonitorSetupStrings.Connectivity.SearchingTitle,
+    loaderClick = { onIntent(DeviceSetupIntent.TryAgain) },
+  )
+}
+
+@Composable
+private fun BpmNicknameContent(
+  state: MonitorSetupState,
+  focusManager: FocusManager,
+  onIntent: (DeviceSetupIntent) -> Unit,
+) {
+  val nicknameFormControl = remember(state.monitorNickname) {
+    FormControl.create(
+      initialValue = state.monitorNickname,
+      onValueChangeCallback = { _, newValue ->
+        onIntent(MonitorSetupIntent.SetMonitorNickname(newValue))
+      },
+    )
+  }
+  Column(
+    modifier = Modifier.fillMaxSize().padding(horizontal = spacing.sm, vertical = spacing.md),
+    horizontalAlignment = Alignment.CenterHorizontally,
+  ) {
+    AppText(
+      text = MonitorSetupStrings.MonitorNickname.Title,
+      textType = TextType.Title,
+      // TalkBack: step title is the heading.
+      modifier = Modifier.semantics { heading() },
+    )
+    Spacer(modifier = Modifier.height(spacing.lg))
+    AppInput(
+      formControl = nicknameFormControl,
+      label = MonitorSetupStrings.MonitorNickname.Label,
+      modifier = Modifier.fillMaxWidth(),
+      testTag = TestTags.BpmSetup.NicknameField,
+      imeAction = ImeAction.Done,
+      onImeAction = { focusManager.clearFocus() },
+    )
+  }
+}
+
+// ── Success & instruction screens ─────────────────────────────────
+
+@Composable
+private fun BpmSuccessScreenContent(onIntent: (DeviceSetupIntent) -> Unit) {
+  // Companion scale is paired separately (not in this wizard), so every monitor shows
+  // the same monitor-only success copy + "learn how to measure" tutorial link. (MOB-596)
+  SetupContent(
+    title = MonitorSetupStrings.SuccessScreen.Title,
+    subtitle = MonitorSetupStrings.SuccessScreen.Subtitle,
+    annotatedSubtitle = MonitorSetupStrings.SuccessScreen.TutorialLinkText,
+    onAnnotationClick = { onIntent(MonitorSetupIntent.TutorialLinkClicked) },
+    setupFinished = true,
+  )
+}
+
+@Composable
+private fun BpmInstructionCuffContent(primarySku: String) {
+  SetupContent(
+    title = MonitorSetupStrings.InstructionCuff.Title,
+    subtitle = MonitorSetupStrings.InstructionCuff.Subtitle(primarySku),
+    supportingImage = AppIcons.Monitor.CuffGif(primarySku),
+    isGifImage = true,
+  )
+}
+
+@Composable
+private fun BpmInstructionStartContent(primarySku: String) {
+  SetupContent(
+    title = MonitorSetupStrings.InstructionStart.Title,
+    subtitle = MonitorSetupStrings.InstructionStart.Subtitle(primarySku),
+    supportingImage = AppIcons.Monitor.StartGif(primarySku),
+    isGifImage = true,
+  )
+}
+
+@Composable
+private fun BpmSetupCompletedContent() {
+  SetupContent(
+    title = MonitorSetupStrings.SetupCompleted.Title,
+    subtitle = MonitorSetupStrings.SetupCompleted.Subtitle,
+    setupFinished = true,
+  )
 }

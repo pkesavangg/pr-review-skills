@@ -64,68 +64,75 @@ fun DashboardSnapshotScreen(
     },
   ) {
     // No pull-to-refresh needed — data updates reactively via Room DAO flows
-    LazyColumn(
-      modifier = Modifier
-        .fillMaxSize()
-        .background(MeTheme.colorScheme.secondaryBackground),
-      contentPadding = PaddingValues(MeTheme.spacing.sm),
-      verticalArrangement = Arrangement.spacedBy(MeTheme.spacing.sm),
-    ) {
-      items(
-        items = products,
-        key = { product ->
-          when (product) {
-            is ProductSelection.MyWeight -> "weight"
-            is ProductSelection.BloodPressure -> "bp"
-            is ProductSelection.Baby -> "baby-${product.profile.id}"
-            is ProductSelection.BabyScale -> "baby-scale"
-          }
-        },
-      ) { product ->
-        when (product) {
-          is ProductSelection.MyWeight -> WeightSnapshotCard(
-            onTap = {
-              scope.launch {
-                viewModel.productSelectionManager.selectProduct(product)
-                viewModel.productSelectionManager.setSnapshotMode(false)
-                navBackStack.addRoute(AppRoute.Main.Dashboard, AppRoute.Home, popUpTo = AppRoute.Main.DashboardSnapshot)
-              }
-            },
-          )
-
-          is ProductSelection.BloodPressure -> BpSnapshotCard(
-            viewModel = viewModel,
-            onTap = {
-              scope.launch {
-                viewModel.productSelectionManager.selectProduct(product)
-                viewModel.productSelectionManager.setSnapshotMode(false)
-                navBackStack.addRoute(AppRoute.Main.Dashboard, AppRoute.Home, popUpTo = AppRoute.Main.DashboardSnapshot)
-              }
-            },
-          )
-
-          is ProductSelection.Baby -> BabySnapshotCard(
-            product = product,
-            viewModel = viewModel,
-            onTap = {
-              scope.launch {
-                viewModel.productSelectionManager.selectProduct(product)
-                viewModel.productSelectionManager.setSnapshotMode(false)
-                navBackStack.addRoute(AppRoute.Main.Dashboard, AppRoute.Home, popUpTo = AppRoute.Main.DashboardSnapshot)
-              }
-            },
-          )
-
-          // Baby scale owned but no profile: show the add-a-baby empty card (MOB-592).
-          is ProductSelection.BabyScale -> BabyEmptySnapshotCard(
-            onAddBaby = {
-              scope.launch {
-                navBackStack.addRoute(AppRoute.AccountSettings.AddBaby())
-              }
-            },
-          )
+    SnapshotProductList(
+      products = products,
+      viewModel = viewModel,
+      onSelect = { selected ->
+        scope.launch {
+          viewModel.productSelectionManager.selectProduct(selected)
+          viewModel.productSelectionManager.setSnapshotMode(false)
+          navBackStack.addRoute(AppRoute.Main.Dashboard, AppRoute.Home, popUpTo = AppRoute.Main.DashboardSnapshot)
         }
-      }
+      },
+      onAddBaby = {
+        scope.launch {
+          navBackStack.addRoute(AppRoute.AccountSettings.AddBaby())
+        }
+      },
+    )
+  }
+}
+
+@Composable
+private fun SnapshotProductList(
+  products: List<ProductSelection>,
+  viewModel: DashboardSnapshotViewModel,
+  onSelect: (ProductSelection) -> Unit,
+  onAddBaby: () -> Unit,
+) {
+  LazyColumn(
+    modifier = Modifier
+      .fillMaxSize()
+      .background(MeTheme.colorScheme.secondaryBackground),
+    contentPadding = PaddingValues(MeTheme.spacing.sm),
+    verticalArrangement = Arrangement.spacedBy(MeTheme.spacing.sm),
+  ) {
+    items(
+      items = products,
+      key = { product -> snapshotKey(product) },
+    ) { product ->
+      SnapshotProductRow(
+        product = product,
+        viewModel = viewModel,
+        onSelect = onSelect,
+        onAddBaby = onAddBaby,
+      )
     }
+  }
+}
+
+private fun snapshotKey(product: ProductSelection): String = when (product) {
+  is ProductSelection.MyWeight -> "weight"
+  is ProductSelection.BloodPressure -> "bp"
+  is ProductSelection.Baby -> "baby-${product.profile.id}"
+  is ProductSelection.BabyScale -> "baby-scale"
+}
+
+@Composable
+private fun SnapshotProductRow(
+  product: ProductSelection,
+  viewModel: DashboardSnapshotViewModel,
+  onSelect: (ProductSelection) -> Unit,
+  onAddBaby: () -> Unit,
+) {
+  when (product) {
+    is ProductSelection.MyWeight -> WeightSnapshotCard(onTap = { onSelect(product) })
+
+    is ProductSelection.BloodPressure -> BpSnapshotCard(viewModel = viewModel, onTap = { onSelect(product) })
+
+    is ProductSelection.Baby -> BabySnapshotCard(product = product, viewModel = viewModel, onTap = { onSelect(product) })
+
+    // Baby scale owned but no profile: show the add-a-baby empty card (MOB-592).
+    is ProductSelection.BabyScale -> BabyEmptySnapshotCard(onAddBaby = onAddBaby)
   }
 }

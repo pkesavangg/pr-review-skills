@@ -266,6 +266,15 @@ class BtWifiScaleSetupReducer : IReducer<BtWifiScaleSetupState, BtWifiScaleSetup
     state: BtWifiScaleSetupState,
     intent: BtWifiScaleSetupIntent,
   ): BtWifiScaleSetupState? =
+    reduceSetters(state, intent)
+      ?: reduceControls(state, intent)
+      ?: reduceForm(state, intent)
+
+  /** Value-setter intents (state.copy of a single field). Returns null when not handled here. */
+  private fun reduceSetters(
+    state: BtWifiScaleSetupState,
+    intent: BtWifiScaleSetupIntent,
+  ): BtWifiScaleSetupState? =
     when (intent) {
       is BtWifiScaleSetupIntent.SetConnectedSSID -> state.copy(connectedSSID = intent.ssid)
       is BtWifiScaleSetupIntent.SetUserList -> state.copy(userList = intent.userList.toImmutableList())
@@ -294,6 +303,15 @@ class BtWifiScaleSetupReducer : IReducer<BtWifiScaleSetupState, BtWifiScaleSetup
 
       is BtWifiScaleSetupIntent.SetPermissions -> state.copy(permissions = intent.permissions)
       is BtWifiScaleSetupIntent.SetCanProceedToNext -> state.copy(canProceedToNext = intent.canProceed)
+      else -> null
+    }
+
+  /** Navigation / flow-control intents. Returns null when not handled here. */
+  private fun reduceControls(
+    state: BtWifiScaleSetupState,
+    intent: BtWifiScaleSetupIntent,
+  ): BtWifiScaleSetupState? =
+    when (intent) {
       is BtWifiScaleSetupIntent.Next -> {
         state.copy(errorCode = null, isSetupFinished = state.isLastStep)
       }
@@ -333,6 +351,15 @@ class BtWifiScaleSetupReducer : IReducer<BtWifiScaleSetupState, BtWifiScaleSetup
       is BtWifiScaleSetupIntent.SetIsSaving -> state.copy(isSaving = intent.value)
       is BtWifiScaleSetupIntent.SetVisitedCustomizeSteps -> state.copy(visitedCustomizeSteps = intent.steps)
       is BtWifiScaleSetupIntent.SetScaleMetrics -> state.copy(deviceMetrics = intent.deviceMetrics.toImmutableList())
+      else -> null
+    }
+
+  /** Remaining setup intents; the terminal branch returns [state] unchanged for anything else. */
+  private fun reduceForm(
+    state: BtWifiScaleSetupState,
+    intent: BtWifiScaleSetupIntent,
+  ): BtWifiScaleSetupState =
+    when (intent) {
       is BtWifiScaleSetupIntent.SetInitialStep -> state.copy(initialStep = intent.initialStep)
       is BtWifiScaleSetupIntent.UpdateUsernameForm -> state.copy(
         usernameForm = DeviceUsernameFormControls.create().copy(

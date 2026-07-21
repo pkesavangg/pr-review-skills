@@ -98,16 +98,14 @@ fun DashboardScreen() {
     title = null,
     navigationIcon = if (hasMultipleProducts) {
       {
-        IconButton(
+        SnapshotBackButton(
           onClick = {
             scope.launch {
               psm.setSnapshotMode(true)
               navBackStack.replaceStack(listOf(AppRoute.Main.DashboardSnapshot), AppRoute.Home)
             }
           },
-        ) {
-          Icon(Icons.AutoMirrored.Filled.ArrowBack, DashboardString.BackContentDescription, Modifier.size(24.dp), MeTheme.colorScheme.textHeading)
-        }
+        )
       }
     } else null,
     topBarContent = {
@@ -118,139 +116,173 @@ fun DashboardScreen() {
       )
     },
   ) {
-    when (product) {
-      is ProductSelection.MyWeight -> {
-        val vm: WeightDashboardViewModel = hiltViewModel()
-        val state by vm.state.collectAsStateWithLifecycle()
-        DashboardPage(
-          vm = vm,
-          product = product,
-          goal = state.goal,
-          scrollToTopSignal = state.resetSignal,
-          // Goal set → goal-anchored range + goal badge; no goal → a default range so the Y axis
-          // still shows (consistent with BP/Baby) instead of a bare, axis-less grid.
-          emptyRange = EmptyGraphDefaults.weightGoal(
-            goalDisplay = state.goal?.goalWeight,
-            isKg = state.weightUnit == WeightUnit.KG,
-          ) ?: EmptyGraphDefaults.weightDefault(isKg = state.weightUnit == WeightUnit.KG),
-          onRefresh = { vm.handleIntent(WeightDashboardIntent.Refresh) },
-          createFallbackEntry = { ts, yValues, seg ->
-            val y = yValues.firstOrNull() ?: return@DashboardPage null
-            val period = java.time.Instant.ofEpochMilli(ts).atZone(java.time.ZoneId.systemDefault()).let { dt ->
-              if (seg == GraphSegment.WEEK || seg == GraphSegment.MONTH) dt.format(java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd"))
-              else dt.format(java.time.format.DateTimeFormatter.ofPattern("yyyy-MM"))
-            }
-            PeriodBodyScaleSummary(
-              period = period,
-              entryTimestamp = DateTimeConverter.timestampToIso(ts),
-              weight = y,
-              unit = WeightUnit.LB,
-            )
-          },
-        ) { s ->
-          WeightDashboardContent(
-            state = s,
-            activeSegmentState = s.forSegment(s.selectedSegment),
-            handleIntent = vm::handleIntent,
-          )
+    DashboardContent(
+      product = product,
+      onAddBaby = {
+        scope.launch {
+          navBackStack.addRoute(AppRoute.AccountSettings.AddBaby())
         }
-      }
+      },
+    )
+  }
+}
 
-      is ProductSelection.BloodPressure -> {
-        val vm: BpDashboardViewModel = hiltViewModel()
-        DashboardPage(
-          vm = vm,
-          product = product,
-          emptyRange = EmptyGraphDefaults.Bp,
-          onRefresh = { vm.handleIntent(BpDashboardIntent.Refresh) },
-          createFallbackEntry = { ts, yValues, seg ->
-            if (yValues.size < 3) return@DashboardPage null
-            val period = java.time.Instant.ofEpochMilli(ts).atZone(java.time.ZoneId.systemDefault()).let { dt ->
-              if (seg == GraphSegment.WEEK || seg == GraphSegment.MONTH) dt.format(java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd"))
-              else dt.format(java.time.format.DateTimeFormatter.ofPattern("yyyy-MM"))
-            }
-            PeriodBpmSummary(
-              period = period,
-              entryTimestamp = DateTimeConverter.timestampToIso(ts),
-              avgSystolic = yValues[0].toInt(),
-              avgDiastolic = yValues[1].toInt(),
-              avgPulse = yValues[2].toInt(),
-            )
-          },
-        ) { s ->
-          BpDashboardContent(
-            state = s,
-            onConnectDevice = { vm.handleIntent(BpDashboardIntent.OnConnectDevice) },
-          )
-        }
-      }
+/**
+ * Snapshot navigation icon shown when more than one product is available.
+ */
+@Composable
+private fun SnapshotBackButton(onClick: () -> Unit) {
+  IconButton(onClick = onClick) {
+    Icon(Icons.AutoMirrored.Filled.ArrowBack, DashboardString.BackContentDescription, Modifier.size(24.dp), MeTheme.colorScheme.textHeading)
+  }
+}
 
-      is ProductSelection.Baby -> {
-        val babyProduct = product as ProductSelection.Baby
-        // Key by baby id so switching babies returns a distinct VM (subscribed to that baby's
-        // babyId-filtered graph data) instead of reusing the first baby's instance — without a
-        // key, hiltViewModel caches one instance per composition and ignores creationCallback on
-        // subsequent babies, so every baby showed the first baby's entries. (MOB-598)
-        val vm: BabyDashboardViewModel = hiltViewModel(
-          key = "baby:${babyProduct.profile.id}",
-          creationCallback = { factory: BabyDashboardViewModel.Factory -> factory.create(babyProduct) },
-        )
-        val state by vm.state.collectAsStateWithLifecycle()
-        DashboardPage(
-          vm = vm,
-          product = product,
-          // Only show the WHO growth-percentile bands when a series is actually available.
-          // A "Private" gender baby has no percentile series (BabyPercentileHelper returns null),
-          // so the bands — and their layer — must be suppressed entirely (MOB-1537).
-          hasPercentile = state.activePercentile != null,
-          // Fill height only when there's data; the empty state needs a fixed-height
-          // grid so the CONNECT DEVICE CTA stays visible below the chart (MOB-432).
-          chartFillsHeight = !state.isEmpty,
-          emptyRange = if (state.selectedMetric == BabyMetric.HEIGHT) EmptyGraphDefaults.BabyHeight else EmptyGraphDefaults.BabyWeight,
-          onRefresh = { vm.handleIntent(BabyDashboardIntent.Refresh) },
-          createFallbackEntry = { ts, yValues, seg ->
-            val y = yValues.firstOrNull() ?: return@DashboardPage null
-            val period = java.time.Instant.ofEpochMilli(ts).atZone(java.time.ZoneId.systemDefault()).let { dt ->
-              if (seg == GraphSegment.WEEK || seg == GraphSegment.MONTH) dt.format(java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd"))
-              else dt.format(java.time.format.DateTimeFormatter.ofPattern("yyyy-MM"))
-            }
-            // Chart plots ONE metric at a time, in the account's baby unit (kg/cm for metric,
-            // lb/in otherwise). Convert the interpolated Y back to storage units for
-            // PeriodBabySummary using the SAME unit the series was plotted in. (MOB-1499)
-            val isWeight = state.selectedMetric == BabyMetric.WEIGHT
-            val isMetric = state.isMetric
-            PeriodBabySummary(
-              period = period,
-              entryTimestamp = DateTimeConverter.timestampToIso(ts),
-              babyId = babyProduct.profile.id,
-              avgWeightDecigrams = if (isWeight) {
-                if (isMetric) ConversionTools.convertKgToDecigrams(y) else ConversionTools.convertLbToDecigrams(y)
-              } else null,
-              avgLengthMillimeters = if (!isWeight) {
-                if (isMetric) ConversionTools.convertCmToMm(y) else ConversionTools.convertInchesToMm(y)
-              } else null,
-            )
-          },
-        ) { s ->
-          if (s.isEmpty) {
-            EmptyMetric(onConnectScaleClick = { vm.handleIntent(BabyDashboardIntent.OnConnectDevice) })
-          }
-        }
-      }
+/**
+ * Routes the currently selected product to its dashboard page.
+ */
+@Composable
+private fun DashboardContent(
+  product: ProductSelection,
+  onAddBaby: () -> Unit,
+) {
+  when (product) {
+    is ProductSelection.MyWeight -> WeightDashboardPage(product = product)
 
-      is ProductSelection.BabyScale -> {
-        // Owns the baby product but no baby profile yet: show the baby empty dashboard
-        // (zero value + W/H toggle + grid + tabs) followed by the "No babies added yet"
-        // ADD A BABY card, surfaced under the "Baby Scale" title. A profile — not a
-        // device — is the blocker here, so the CTA routes to add-a-baby. (MOB-592, MOB-1246)
-        BabyScaleEmptyDashboard(
-          onAddBaby = {
-            scope.launch {
-              navBackStack.addRoute(AppRoute.AccountSettings.AddBaby())
-            }
-          },
-        )
+    is ProductSelection.BloodPressure -> BpDashboardPage(product = product)
+
+    is ProductSelection.Baby -> BabyDashboardPage(product = product)
+
+    is ProductSelection.BabyScale -> {
+      // Owns the baby product but no baby profile yet: show the baby empty dashboard
+      // (zero value + W/H toggle + grid + tabs) followed by the "No babies added yet"
+      // ADD A BABY card, surfaced under the "Baby Scale" title. A profile — not a
+      // device — is the blocker here, so the CTA routes to add-a-baby. (MOB-592, MOB-1246)
+      BabyScaleEmptyDashboard(onAddBaby = onAddBaby)
+    }
+  }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun WeightDashboardPage(product: ProductSelection) {
+  val vm: WeightDashboardViewModel = hiltViewModel()
+  val state by vm.state.collectAsStateWithLifecycle()
+  DashboardPage(
+    vm = vm,
+    product = product,
+    goal = state.goal,
+    scrollToTopSignal = state.resetSignal,
+    // Goal set → goal-anchored range + goal badge; no goal → a default range so the Y axis
+    // still shows (consistent with BP/Baby) instead of a bare, axis-less grid.
+    emptyRange = EmptyGraphDefaults.weightGoal(
+      goalDisplay = state.goal?.goalWeight,
+      isKg = state.weightUnit == WeightUnit.KG,
+    ) ?: EmptyGraphDefaults.weightDefault(isKg = state.weightUnit == WeightUnit.KG),
+    onRefresh = { vm.handleIntent(WeightDashboardIntent.Refresh) },
+    createFallbackEntry = { ts, yValues, seg ->
+      val y = yValues.firstOrNull() ?: return@DashboardPage null
+      val period = java.time.Instant.ofEpochMilli(ts).atZone(java.time.ZoneId.systemDefault()).let { dt ->
+        if (seg == GraphSegment.WEEK || seg == GraphSegment.MONTH) dt.format(java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd"))
+        else dt.format(java.time.format.DateTimeFormatter.ofPattern("yyyy-MM"))
       }
+      PeriodBodyScaleSummary(
+        period = period,
+        entryTimestamp = DateTimeConverter.timestampToIso(ts),
+        weight = y,
+        unit = WeightUnit.LB,
+      )
+    },
+  ) { s ->
+    WeightDashboardContent(
+      state = s,
+      activeSegmentState = s.forSegment(s.selectedSegment),
+      handleIntent = vm::handleIntent,
+    )
+  }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun BpDashboardPage(product: ProductSelection) {
+  val vm: BpDashboardViewModel = hiltViewModel()
+  DashboardPage(
+    vm = vm,
+    product = product,
+    emptyRange = EmptyGraphDefaults.Bp,
+    onRefresh = { vm.handleIntent(BpDashboardIntent.Refresh) },
+    createFallbackEntry = { ts, yValues, seg ->
+      if (yValues.size < 3) return@DashboardPage null
+      val period = java.time.Instant.ofEpochMilli(ts).atZone(java.time.ZoneId.systemDefault()).let { dt ->
+        if (seg == GraphSegment.WEEK || seg == GraphSegment.MONTH) dt.format(java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd"))
+        else dt.format(java.time.format.DateTimeFormatter.ofPattern("yyyy-MM"))
+      }
+      PeriodBpmSummary(
+        period = period,
+        entryTimestamp = DateTimeConverter.timestampToIso(ts),
+        avgSystolic = yValues[0].toInt(),
+        avgDiastolic = yValues[1].toInt(),
+        avgPulse = yValues[2].toInt(),
+      )
+    },
+  ) { s ->
+    BpDashboardContent(
+      state = s,
+      onConnectDevice = { vm.handleIntent(BpDashboardIntent.OnConnectDevice) },
+    )
+  }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun BabyDashboardPage(product: ProductSelection) {
+  val babyProduct = product as ProductSelection.Baby
+  // Key by baby id so switching babies returns a distinct VM (subscribed to that baby's
+  // babyId-filtered graph data) instead of reusing the first baby's instance — without a
+  // key, hiltViewModel caches one instance per composition and ignores creationCallback on
+  // subsequent babies, so every baby showed the first baby's entries. (MOB-598)
+  val vm: BabyDashboardViewModel = hiltViewModel(
+    key = "baby:${babyProduct.profile.id}",
+    creationCallback = { factory: BabyDashboardViewModel.Factory -> factory.create(babyProduct) },
+  )
+  val state by vm.state.collectAsStateWithLifecycle()
+  DashboardPage(
+    vm = vm,
+    product = product,
+    // Only show the WHO growth-percentile bands when a series is actually available.
+    // A "Private" gender baby has no percentile series (BabyPercentileHelper returns null),
+    // so the bands — and their layer — must be suppressed entirely (MOB-1537).
+    hasPercentile = state.activePercentile != null,
+    // Fill height only when there's data; the empty state needs a fixed-height
+    // grid so the CONNECT DEVICE CTA stays visible below the chart (MOB-432).
+    chartFillsHeight = !state.isEmpty,
+    emptyRange = if (state.selectedMetric == BabyMetric.HEIGHT) EmptyGraphDefaults.BabyHeight else EmptyGraphDefaults.BabyWeight,
+    onRefresh = { vm.handleIntent(BabyDashboardIntent.Refresh) },
+    createFallbackEntry = { ts, yValues, seg ->
+      val y = yValues.firstOrNull() ?: return@DashboardPage null
+      val period = java.time.Instant.ofEpochMilli(ts).atZone(java.time.ZoneId.systemDefault()).let { dt ->
+        if (seg == GraphSegment.WEEK || seg == GraphSegment.MONTH) dt.format(java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd"))
+        else dt.format(java.time.format.DateTimeFormatter.ofPattern("yyyy-MM"))
+      }
+      // Chart plots ONE metric at a time, in the account's baby unit (kg/cm for metric,
+      // lb/in otherwise). Convert the interpolated Y back to storage units for
+      // PeriodBabySummary using the SAME unit the series was plotted in. (MOB-1499)
+      val isWeight = state.selectedMetric == BabyMetric.WEIGHT
+      val isMetric = state.isMetric
+      PeriodBabySummary(
+        period = period,
+        entryTimestamp = DateTimeConverter.timestampToIso(ts),
+        babyId = babyProduct.profile.id,
+        avgWeightDecigrams = if (isWeight) {
+          if (isMetric) ConversionTools.convertKgToDecigrams(y) else ConversionTools.convertLbToDecigrams(y)
+        } else null,
+        avgLengthMillimeters = if (!isWeight) {
+          if (isMetric) ConversionTools.convertCmToMm(y) else ConversionTools.convertInchesToMm(y)
+        } else null,
+      )
+    },
+  ) { s ->
+    if (s.isEmpty) {
+      EmptyMetric(onConnectScaleClick = { vm.handleIntent(BabyDashboardIntent.OnConnectDevice) })
     }
   }
 }

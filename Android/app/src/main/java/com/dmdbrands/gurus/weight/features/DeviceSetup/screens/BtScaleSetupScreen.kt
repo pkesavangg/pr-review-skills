@@ -2,6 +2,7 @@ package com.dmdbrands.gurus.weight.features.DeviceSetup.screens
 
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.pager.PagerState
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -66,19 +67,8 @@ fun BtScaleSetupScreenContent(
   val pagerState = rememberPagerState { state.scaleSetupState.steps.size }
   val currentStep = state.step
 
-  // Sync ViewModel state to Pager state
-  LaunchedEffect(currentStep) {
-    val targetPage = currentStep.ordinal
-    // Only scroll if we're not already on the target page
-    if (pagerState.currentPage != targetPage) {
-      try {
-        pagerState.animateScrollToPage(targetPage)
-      } catch (e: Exception) {
-        // If animation fails, snap to page immediately
-        pagerState.scrollToPage(targetPage)
-      }
-    }
-  }
+  BtStepSync(currentStep = currentStep, pagerState = pagerState)
+
   DeviceSetupHeader(
     sku = sku,
     onBack = { onIntent(DeviceSetupIntent.ExitSetup(state.isLastStep)) },
@@ -115,84 +105,140 @@ fun BtScaleSetupScreenContent(
         )
       },
       pageContent = { step ->
-        Column(
-          modifier =
-            Modifier
-              .fillMaxSize(),
-        ) {
-          when (step) {
-            BtScaleSetupStep.SCALE_INFO -> {
-              DeviceInfoContent(sku = sku, setupType = DeviceSetupType.Bluetooth,)
-            }
-
-            BtScaleSetupStep.PERMISSIONS -> {
-              DevicePermissions(
-                sku = sku,
-                permissions = state.scaleSetupState.permissions,
-                onRequestPermission = { onIntent(DeviceSetupIntent.RequestPermission(it)) },
-              )
-            }
-
-            BtScaleSetupStep.SELECT_USER -> {
-              val userNumbers = (1..8).toList()
-              val userButtons = SelectButtonHelper.createUserNumberButtons(userNumbers, selectedNumber = state.user)
-              SelectButton(
-                title = BtScaleSetupStrings.ChooseUser.Title,
-                subtitle = BtScaleSetupStrings.ChooseUser.Message,
-                selectButtonItems = userButtons,
-                isSelectable = true,
-                sku = sku,
-                modifier = Modifier,
-                onItemSelected = { value ->
-                  onIntent(BtScaleSetupIntent.SetUser(value.toInt()))
-                },
-              )
-            }
-
-            BtScaleSetupStep.PAIRING_MODE -> {
-              SetupContent(
-                title = BtScaleSetupStrings.PairingMode.Title,
-                subtitle = BtScaleSetupStrings.PairingMode.Subtitle,
-                isGifImage = true,
-                supportingImage = AppIcons.Setup.PairModeGif(sku),
-                loaderText = BtScaleSetupStrings.PairingMode.PairModeText(state.scaleSetupState.setupState.connectionState),
-                connectionState = state.scaleSetupState.setupState.connectionState,
-                loaderClick = {
-                  onIntent(DeviceSetupIntent.TryAgain)
-                },
-              )
-            }
-
-            BtScaleSetupStep.SET_DEVICE_USER -> {
-              SetupContent(
-                title = BtScaleSetupStrings.SetDeviceUser.Title,
-                subtitle = BtScaleSetupStrings.SetDeviceUser.Subtitle(sku, state.userString),
-                isGifImage = true,
-                supportingImage = AppIcons.Setup.SetUserGif(sku),
-              )
-            }
-
-            BtScaleSetupStep.STEP_ON -> {
-              SetupContent(
-                title = BtScaleSetupStrings.StepOn.Title,
-                subtitle = BtScaleSetupStrings.StepOn.Subtitle,
-                isGifImage = true,
-                supportingImage = AppIcons.Setup.StepOnGif(sku),
-                loaderText = BtScaleSetupStrings.StepOn.StepOnText(state.scaleSetupState.setupState.connectionState),
-                connectionState = state.scaleSetupState.setupState.connectionState,
-              )
-            }
-
-            BtScaleSetupStep.SETUP_FINISHED -> {
-              SetupContent(
-                title = BtScaleSetupStrings.SetupFinished.Title,
-                subtitle = BtScaleSetupStrings.SetupFinished.Subtitle,
-                setupFinished = true,
-              )
-            }
-          }
-        }
+        BtStepContent(step = step, state = state, sku = sku, onIntent = onIntent)
       },
     )
   }
+}
+
+// Sync ViewModel state to Pager state
+@Composable
+private fun BtStepSync(
+  currentStep: BtScaleSetupStep,
+  pagerState: PagerState,
+) {
+  LaunchedEffect(currentStep) {
+    val targetPage = currentStep.ordinal
+    // Only scroll if we're not already on the target page
+    if (pagerState.currentPage != targetPage) {
+      try {
+        pagerState.animateScrollToPage(targetPage)
+      } catch (e: Exception) {
+        // If animation fails, snap to page immediately
+        pagerState.scrollToPage(targetPage)
+      }
+    }
+  }
+}
+
+@Composable
+private fun BtStepContent(
+  step: BtScaleSetupStep,
+  state: BtScaleSetupState,
+  sku: String,
+  onIntent: (DeviceSetupIntent) -> Unit,
+) {
+  Column(
+    modifier =
+      Modifier
+        .fillMaxSize(),
+  ) {
+    when (step) {
+      BtScaleSetupStep.SCALE_INFO -> {
+        DeviceInfoContent(sku = sku, setupType = DeviceSetupType.Bluetooth,)
+      }
+
+      BtScaleSetupStep.PERMISSIONS -> {
+        DevicePermissions(
+          sku = sku,
+          permissions = state.scaleSetupState.permissions,
+          onRequestPermission = { onIntent(DeviceSetupIntent.RequestPermission(it)) },
+        )
+      }
+
+      BtScaleSetupStep.SELECT_USER -> {
+        BtSelectUserContent(state = state, sku = sku, onIntent = onIntent)
+      }
+
+      BtScaleSetupStep.PAIRING_MODE -> {
+        BtPairingModeContent(state = state, sku = sku, onIntent = onIntent)
+      }
+
+      BtScaleSetupStep.SET_DEVICE_USER -> {
+        SetupContent(
+          title = BtScaleSetupStrings.SetDeviceUser.Title,
+          subtitle = BtScaleSetupStrings.SetDeviceUser.Subtitle(sku, state.userString),
+          isGifImage = true,
+          supportingImage = AppIcons.Setup.SetUserGif(sku),
+        )
+      }
+
+      BtScaleSetupStep.STEP_ON -> {
+        BtStepOnContent(state = state, sku = sku)
+      }
+
+      BtScaleSetupStep.SETUP_FINISHED -> {
+        SetupContent(
+          title = BtScaleSetupStrings.SetupFinished.Title,
+          subtitle = BtScaleSetupStrings.SetupFinished.Subtitle,
+          setupFinished = true,
+        )
+      }
+    }
+  }
+}
+
+@Composable
+private fun BtSelectUserContent(
+  state: BtScaleSetupState,
+  sku: String,
+  onIntent: (DeviceSetupIntent) -> Unit,
+) {
+  val userNumbers = (1..8).toList()
+  val userButtons = SelectButtonHelper.createUserNumberButtons(userNumbers, selectedNumber = state.user)
+  SelectButton(
+    title = BtScaleSetupStrings.ChooseUser.Title,
+    subtitle = BtScaleSetupStrings.ChooseUser.Message,
+    selectButtonItems = userButtons,
+    isSelectable = true,
+    sku = sku,
+    modifier = Modifier,
+    onItemSelected = { value ->
+      onIntent(BtScaleSetupIntent.SetUser(value.toInt()))
+    },
+  )
+}
+
+@Composable
+private fun BtPairingModeContent(
+  state: BtScaleSetupState,
+  sku: String,
+  onIntent: (DeviceSetupIntent) -> Unit,
+) {
+  SetupContent(
+    title = BtScaleSetupStrings.PairingMode.Title,
+    subtitle = BtScaleSetupStrings.PairingMode.Subtitle,
+    isGifImage = true,
+    supportingImage = AppIcons.Setup.PairModeGif(sku),
+    loaderText = BtScaleSetupStrings.PairingMode.PairModeText(state.scaleSetupState.setupState.connectionState),
+    connectionState = state.scaleSetupState.setupState.connectionState,
+    loaderClick = {
+      onIntent(DeviceSetupIntent.TryAgain)
+    },
+  )
+}
+
+@Composable
+private fun BtStepOnContent(
+  state: BtScaleSetupState,
+  sku: String,
+) {
+  SetupContent(
+    title = BtScaleSetupStrings.StepOn.Title,
+    subtitle = BtScaleSetupStrings.StepOn.Subtitle,
+    isGifImage = true,
+    supportingImage = AppIcons.Setup.StepOnGif(sku),
+    loaderText = BtScaleSetupStrings.StepOn.StepOnText(state.scaleSetupState.setupState.connectionState),
+    connectionState = state.scaleSetupState.setupState.connectionState,
+  )
 }

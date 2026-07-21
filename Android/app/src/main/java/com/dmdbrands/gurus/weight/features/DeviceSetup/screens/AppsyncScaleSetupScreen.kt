@@ -1,7 +1,9 @@
 package com.dmdbrands.gurus.weight.features.DeviceSetup.screens
 
+import android.content.Context
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.pager.PagerState
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -12,6 +14,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusManager
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.testTag
@@ -45,6 +48,7 @@ import com.dmdbrands.gurus.weight.theme.MeTheme.spacing
 import com.greatergoods.libs.appsync.startAppSyncScan
 import com.greatergoods.libs.appsync.utility.AppSyncResultFactory
 import kotlinx.collections.immutable.persistentListOf
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 
 @Composable
@@ -75,12 +79,45 @@ fun AppsyncScaleSetupScreenContent(
 
   val context = LocalContext.current
 
-  // Sync ViewModel state to Pager state
+  AppsyncStepSync(
+    state = state,
+    pagerState = pagerState,
+    coroutineScope = coroutineScope,
+    context = context,
+    onScanningChange = { isScanning = it },
+    onIntent = onIntent,
+  )
+
+  DeviceSetupHeader(
+    sku = state.sku,
+    onBack = { onIntent(AppsyncScaleSetupIntent.ExitSetup(false)) },
+    onHelp = { onIntent(AppsyncScaleSetupIntent.OpenHelp) },
+  ) {
+    AppsyncSetupPager(
+      state = state,
+      pagerState = pagerState,
+      isScanning = isScanning,
+      focusManager = focusManager,
+      onIntent = onIntent,
+    )
+  }
+}
+
+// Sync ViewModel state to Pager state
+@Composable
+private fun AppsyncStepSync(
+  state: AppsyncScaleSetupState,
+  pagerState: PagerState,
+  coroutineScope: CoroutineScope,
+  context: Context,
+  onScanningChange: (Boolean) -> Unit,
+  onIntent: (AppsyncScaleSetupIntent) -> Unit,
+) {
   LaunchedEffect(state.currentStep) {
     val targetPage = state.currentStep.ordinal
     // Skip pager animation for OPEN_CAMERA step since we launch a separate activity
     if (state.currentStep == AppsyncScaleSetupStep.OPEN_CAMERA) {
-      isScanning = true
+      onScanningChange(true)
       coroutineScope.launch {
         try {
           val result = startAppSyncScan(
@@ -102,7 +139,7 @@ fun AppsyncScaleSetupScreenContent(
         } catch (e: Exception) {
           AppLog.e("AppSyncScan", "AppSync scan failed on setup flow: ${e.message}", e)
         } finally {
-          isScanning = false
+          onScanningChange(false)
         }
       }
     } else {
@@ -117,137 +154,154 @@ fun AppsyncScaleSetupScreenContent(
       }
     }
   }
+}
 
-  DeviceSetupHeader(
-    sku = state.sku,
-    onBack = { onIntent(AppsyncScaleSetupIntent.ExitSetup(false)) },
-    onHelp = { onIntent(AppsyncScaleSetupIntent.OpenHelp) },
-  ) {
-    HorizontalPagerWithBottomNavigation(
-      steps = state.steps,
-      containerColor = MeTheme.colorScheme.secondaryBackground,
-      pagerState = pagerState,
-      leadingContent = when (state.currentStep) {
-        AppsyncScaleSetupStep.OPEN_CAMERA -> null
-        else -> {
-          {
-            AppButton(
-              type = ButtonType.TextPrimary,
-              modifier = Modifier.testTag(TestTags.DeviceSetup.BackButton),
-              label = DeviceSetupStrings.backButton,
-              size = ButtonSize.Small,
-              enabled = !state.isFirstStep && !state.isLastStep,
-              onClick = { onIntent(AppsyncScaleSetupIntent.Back) },
-            )
-          }
+@Composable
+private fun AppsyncSetupPager(
+  state: AppsyncScaleSetupState,
+  pagerState: PagerState,
+  isScanning: Boolean,
+  focusManager: FocusManager,
+  onIntent: (AppsyncScaleSetupIntent) -> Unit,
+) {
+  HorizontalPagerWithBottomNavigation(
+    steps = state.steps,
+    containerColor = MeTheme.colorScheme.secondaryBackground,
+    pagerState = pagerState,
+    leadingContent = when (state.currentStep) {
+      AppsyncScaleSetupStep.OPEN_CAMERA -> null
+      else -> {
+        {
+          AppButton(
+            type = ButtonType.TextPrimary,
+            modifier = Modifier.testTag(TestTags.DeviceSetup.BackButton),
+            label = DeviceSetupStrings.backButton,
+            size = ButtonSize.Small,
+            enabled = !state.isFirstStep && !state.isLastStep,
+            onClick = { onIntent(AppsyncScaleSetupIntent.Back) },
+          )
         }
-      },
-      trailingContent = when (state.currentStep) {
-        AppsyncScaleSetupStep.OPEN_CAMERA -> null
-        else -> {
-          {
-            AppButton(
-              type = ButtonType.PrimaryFilled,
-              modifier = Modifier.testTag(TestTags.DeviceSetup.NextButton),
-              label = if (state.isLastStep) DeviceSetupStrings.FinishButton else DeviceSetupStrings.nextButton,
-              size = ButtonSize.Small,
-              enabled = state.isNextEnabled && !isScanning,
-              onClick = {
-                focusManager.clearFocus()
-                if (state.isLastStep) {
-                  onIntent(AppsyncScaleSetupIntent.ExitSetup(true))
-                } else {
-                  onIntent(AppsyncScaleSetupIntent.Next)
-                }
-              },
-            )
-          }
+      }
+    },
+    trailingContent = when (state.currentStep) {
+      AppsyncScaleSetupStep.OPEN_CAMERA -> null
+      else -> {
+        {
+          AppButton(
+            type = ButtonType.PrimaryFilled,
+            modifier = Modifier.testTag(TestTags.DeviceSetup.NextButton),
+            label = if (state.isLastStep) DeviceSetupStrings.FinishButton else DeviceSetupStrings.nextButton,
+            size = ButtonSize.Small,
+            enabled = state.isNextEnabled && !isScanning,
+            onClick = {
+              focusManager.clearFocus()
+              if (state.isLastStep) {
+                onIntent(AppsyncScaleSetupIntent.ExitSetup(true))
+              } else {
+                onIntent(AppsyncScaleSetupIntent.Next)
+              }
+            },
+          )
         }
-      },
-      pageContent = { step ->
-        when (step) {
-          AppsyncScaleSetupStep.SCALE_INFO -> {
-            DeviceInfoContent(sku = state.sku, setupType = DeviceSetupType.AppSync,)
-          }
+      }
+    },
+    pageContent = { step ->
+      AppsyncPageContent(step = step, state = state, onIntent = onIntent)
+    },
+  )
+}
 
-          AppsyncScaleSetupStep.PERMISSIONS -> {
-            DevicePermissions(
-              sku = state.sku,
-              permissions = state.permissions,
-              onRequestPermission = {
-                onIntent(AppsyncScaleSetupIntent.RequestPermission(it))
-              },
-            )
-          }
+@Composable
+private fun AppsyncPageContent(
+  step: AppsyncScaleSetupStep,
+  state: AppsyncScaleSetupState,
+  onIntent: (AppsyncScaleSetupIntent) -> Unit,
+) {
+  when (step) {
+    AppsyncScaleSetupStep.SCALE_INFO -> {
+      DeviceInfoContent(sku = state.sku, setupType = DeviceSetupType.AppSync,)
+    }
 
-          AppsyncScaleSetupStep.ACTIVATE_SCALE -> {
-            SetupContent(
-              title = AppsyncSetupStrings.ActivateScale.Title,
-              subtitle = AppsyncSetupStrings.ActivateScale.Message,
-            )
-          }
+    AppsyncScaleSetupStep.PERMISSIONS -> {
+      DevicePermissions(
+        sku = state.sku,
+        permissions = state.permissions,
+        onRequestPermission = {
+          onIntent(AppsyncScaleSetupIntent.RequestPermission(it))
+        },
+      )
+    }
 
-          AppsyncScaleSetupStep.ADD_INFO -> {
-            SetupContent(
-              title = AppsyncSetupStrings.AddInfo.Title,
-              subtitle = AppsyncSetupStrings.AddInfo.Message,
-            ) {
-              Column(verticalArrangement = Arrangement.spacedBy(spacing.xs)) {
-                AppText(
-                  text = AppsyncSetupStrings.AddInfo.UserNumber,
-                  textType = TextType.ListTitle1,
-                  // TalkBack: section header.
-                  modifier = Modifier.semantics { heading() },
-                )
-                AppText(
-                  text = AppsyncSetupStrings.AddInfo.UserNumberMessage,
-                  textType = TextType.Body,
-                  canApplyUppercaseStyle = true,
-                )
-              }
-              Column(verticalArrangement = Arrangement.spacedBy(spacing.xs)) {
-                AppText(
-                  text = AppsyncSetupStrings.AddInfo.BodyComp,
-                  textType = TextType.ListTitle1,
-                  // TalkBack: section header.
-                  modifier = Modifier.semantics { heading() },
-                )
-                AppText(
-                  text = AppsyncSetupStrings.AddInfo.BodyCompMessage,
-                  textType = TextType.Body,
-                  canApplyUppercaseStyle = true,
-                )
-              }
-              Column(verticalArrangement = Arrangement.spacedBy(spacing.xs)) {
-                AppText(
-                  text = AppsyncSetupStrings.AddInfo.HeightAge,
-                  textType = TextType.ListTitle1,
-                  // TalkBack: section header.
-                  modifier = Modifier.semantics { heading() },
-                )
-              }
-            }
-          }
+    AppsyncScaleSetupStep.ACTIVATE_SCALE -> {
+      SetupContent(
+        title = AppsyncSetupStrings.ActivateScale.Title,
+        subtitle = AppsyncSetupStrings.ActivateScale.Message,
+      )
+    }
 
-          AppsyncScaleSetupStep.STEP_ON -> {
-            SetupContent(
-              title = AppsyncSetupStrings.StepOn.Title,
-              subtitle = AppsyncSetupStrings.StepOn.Message,
-            )
-          }
+    AppsyncScaleSetupStep.ADD_INFO -> {
+      SetupContent(
+        title = AppsyncSetupStrings.AddInfo.Title,
+        subtitle = AppsyncSetupStrings.AddInfo.Message,
+      ) {
+        AppsyncAddInfoContent()
+      }
+    }
 
-          AppsyncScaleSetupStep.SETUP_FINISHED -> {
-            SetupContent(
-              title = AppsyncSetupStrings.SetupComplete.Title,
-              subtitle = AppsyncSetupStrings.SetupComplete.Message,
-              setupFinished = true,
-              supportingImage = AppIcons.Setup.AppSyncNavBar,
-            )
-          }
+    AppsyncScaleSetupStep.STEP_ON -> {
+      SetupContent(
+        title = AppsyncSetupStrings.StepOn.Title,
+        subtitle = AppsyncSetupStrings.StepOn.Message,
+      )
+    }
 
-          else -> Unit
-        }
-      },
+    AppsyncScaleSetupStep.SETUP_FINISHED -> {
+      SetupContent(
+        title = AppsyncSetupStrings.SetupComplete.Title,
+        subtitle = AppsyncSetupStrings.SetupComplete.Message,
+        setupFinished = true,
+        supportingImage = AppIcons.Setup.AppSyncNavBar,
+      )
+    }
+
+    else -> Unit
+  }
+}
+
+@Composable
+private fun AppsyncAddInfoContent() {
+  Column(verticalArrangement = Arrangement.spacedBy(spacing.xs)) {
+    AppText(
+      text = AppsyncSetupStrings.AddInfo.UserNumber,
+      textType = TextType.ListTitle1,
+      // TalkBack: section header.
+      modifier = Modifier.semantics { heading() },
+    )
+    AppText(
+      text = AppsyncSetupStrings.AddInfo.UserNumberMessage,
+      textType = TextType.Body,
+      canApplyUppercaseStyle = true,
+    )
+  }
+  Column(verticalArrangement = Arrangement.spacedBy(spacing.xs)) {
+    AppText(
+      text = AppsyncSetupStrings.AddInfo.BodyComp,
+      textType = TextType.ListTitle1,
+      // TalkBack: section header.
+      modifier = Modifier.semantics { heading() },
+    )
+    AppText(
+      text = AppsyncSetupStrings.AddInfo.BodyCompMessage,
+      textType = TextType.Body,
+      canApplyUppercaseStyle = true,
+    )
+  }
+  Column(verticalArrangement = Arrangement.spacedBy(spacing.xs)) {
+    AppText(
+      text = AppsyncSetupStrings.AddInfo.HeightAge,
+      textType = TextType.ListTitle1,
+      // TalkBack: section header.
+      modifier = Modifier.semantics { heading() },
     )
   }
 }

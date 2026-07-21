@@ -168,97 +168,38 @@ class BabyDashboardViewModel @AssistedInject constructor(
     val targetData = entries.toImmutableList<PeriodSummary>()
 
     for (segment in segments) {
-      val isSingleWindow = GraphUtil.isSingleWindow(segment, firstDataTs, endTs)
-
-      // Canonical chart-wide X bounds — the same rule the weight/BP graph uses
-      // (GraphUtil.computeChartXBounds): TOTAL pads the data extents by ±6 months; MONTH
-      // reaches into the current month; WEEK/YEAR run from the oldest entry's window start to
-      // the current period end. chartMinX is the EARLIEST data's window start (NOT the
-      // birthdate — anchoring to birth collapsed the scroll domain and clipped pre-birth test
-      // entries), except TOTAL which anchors to birth so the growth curve starts at day 0.
-      val (boundMin, boundMax) = GraphUtil.computeChartXBounds(segment, firstDataTs, endTs, now)
-      val chartMinX = when (segment) {
-        GraphSegment.TOTAL -> minOf(birthDate, boundMin ?: firstDataTs)
-        else -> boundMin ?: firstDataTs
-      }.toDouble()
-      val chartMaxX = (boundMax ?: endTs).toDouble()
-
-      // Initial visible window:
-      //  • TOTAL — the whole padded domain (it fits everything; not scrollable).
-      //  • Single-window data (e.g. one month of entries, which aggregates to ONE monthly
-      //    point on YEAR/TOTAL) — the FULL calendar window (week/month/year) so the lone
-      //    point lands at its true position mid-chart instead of pinned to the right edge,
-      //    which read as an empty graph. (MOB-592)
-      //  • Otherwise — the latest rolling window, scrollable back to older data.
-      val (startX, endX) = when {
-        segment == GraphSegment.TOTAL -> chartMinX.toLong() to chartMaxX.toLong()
-        isSingleWindow -> (GraphUtil.getStartRange(segment, endTs) ?: firstDataTs) to
-          (GraphUtil.getEndRange(segment, endTs) ?: endTs)
-        else -> (
-          GraphUtil.getRollingWindowStart(segment, endTs)
-            ?: GraphUtil.getStartRange(segment, endTs)
-            ?: now
-          ) to endTs
-      }
-      val filteredTarget = entries.filter { it.getTimeStamp() in startX..endX }
-
-      // Match ScrollAwareRangeProvider padding (paddingEntries=1): include 1 entry just
-      // before and 1 entry just after the rolling window so seed Y range matches the
-      // runtime Y range exactly. Without this, an entry just outside the window would
-      // expand the runtime range and cause a frame-1 → frame-2 slide on initial load.
-      val seedSource = run {
-        val sorted = entries.sortedBy { it.getTimeStamp() }
-        val firstIdx = sorted.indexOfFirst { it.getTimeStamp() >= startX }
-        val lastIdx = sorted.indexOfLast { it.getTimeStamp() <= endX }
-        if (firstIdx < 0 || lastIdx < 0 || firstIdx > lastIdx) {
-          filteredTarget
-        } else {
-          val from = (firstIdx - 1).coerceAtLeast(0)
-          val to = (lastIdx + 1).coerceAtMost(sorted.lastIndex)
-          sorted.subList(from, to + 1)
-        }
-      }
-
-      val yValues: List<Double> = when (_state.value.selectedMetric) {
-        BabyMetric.WEIGHT -> seedSource.mapNotNull { e ->
-          e.avgWeightDecigrams?.let { weightToDisplay(it) }
-        }
-        BabyMetric.HEIGHT -> seedSource.mapNotNull { e ->
-          e.avgLengthMillimeters?.let { heightToDisplay(it) }
-        }
-      }.filter { it.isFinite() && it > 0.0 }
-
-      val seed: Pair<Double, Double>? = if (yValues.isNotEmpty()) {
-        val scale = generateNiceScale(
-          minValue = yValues.min(),
-          maxValue = yValues.max(),
-          goalWeight = 0.0,
-          isWeightLessMode = false,
-          targetTickCount = 4,
-        )
-        scale.min to scale.max
-      } else null
+      val bounds = computeBabySegmentBounds(segment, birthDate, firstDataTs, endTs, now)
+      val filteredTarget = entries.filter { it.getTimeStamp() in bounds.startX..bounds.endX }
+      val seed = computeBabySeedRange(
+        entries = entries,
+        startX = bounds.startX,
+        endX = bounds.endX,
+        filteredTarget = filteredTarget,
+        selectedMetric = _state.value.selectedMetric,
+        weightToDisplay = ::weightToDisplay,
+        heightToDisplay = ::heightToDisplay,
+      )
 
       AppLog.d(
         TAG,
-        "YTDEBUG range seg=$segment single=$isSingleWindow startX=$startX endX=$endX " +
-          "cMin=$chartMinX cMax=$chartMaxX tgt=${filteredTarget.size} yv=${yValues.size} seed=$seed " +
+        "YTDEBUG range seg=$segment single=${bounds.isSingleWindow} startX=${bounds.startX} endX=${bounds.endX} " +
+          "cMin=${bounds.chartMinX} cMax=${bounds.chartMaxX} tgt=${filteredTarget.size} yv=${seed.yValueCount} seed=${seed.range} " +
           "ptTs=${entries.firstOrNull()?.getTimeStamp()}",
       )
       updateSegmentState(segment) {
         it.copy(
           data = targetData,
           target = filteredTarget.toImmutableList<PeriodSummary>(),
-          chartMinX = chartMinX,
-          chartMaxX = chartMaxX,
-          isSingleWindow = isSingleWindow,
+          chartMinX = bounds.chartMinX,
+          chartMaxX = bounds.chartMaxX,
+          isSingleWindow = bounds.isSingleWindow,
           isEmptyGraph = false,
           startTimestamp = firstDataTs,
           endTimestamp = endTs,
-          visibleMin = it.visibleMin ?: startX,
-          visibleMax = it.visibleMax ?: endX,
-          seedMinY = seed?.first ?: it.seedMinY,
-          seedMaxY = seed?.second ?: it.seedMaxY,
+          visibleMin = it.visibleMin ?: bounds.startX,
+          visibleMax = it.visibleMax ?: bounds.endX,
+          seedMinY = seed.range?.first ?: it.seedMinY,
+          seedMaxY = seed.range?.second ?: it.seedMaxY,
         )
       }
     }
@@ -395,4 +336,115 @@ internal fun prependBirthPoint(
     avgLengthMillimeters = profile.birthLengthMillimeters,
   )
   return listOf(birthPoint) + entries
+}
+
+/** Per-segment X-axis bounds for the baby chart (extracted from updateBabySegmentRanges). */
+private data class BabySegmentBounds(
+  val isSingleWindow: Boolean,
+  val chartMinX: Double,
+  val chartMaxX: Double,
+  val startX: Long,
+  val endX: Long,
+)
+
+/** Seed Y-range plus the count of finite positive values (kept for the YTDEBUG log). */
+private data class BabySeed(
+  val range: Pair<Double, Double>?,
+  val yValueCount: Int,
+)
+
+/** Pure X-axis bounds computation for one baby-chart [segment]. */
+private fun computeBabySegmentBounds(
+  segment: GraphSegment,
+  birthDate: Long,
+  firstDataTs: Long,
+  endTs: Long,
+  now: Long,
+): BabySegmentBounds {
+  val isSingleWindow = GraphUtil.isSingleWindow(segment, firstDataTs, endTs)
+
+  // Canonical chart-wide X bounds — the same rule the weight/BP graph uses
+  // (GraphUtil.computeChartXBounds): TOTAL pads the data extents by ±6 months; MONTH
+  // reaches into the current month; WEEK/YEAR run from the oldest entry's window start to
+  // the current period end. chartMinX is the EARLIEST data's window start (NOT the
+  // birthdate — anchoring to birth collapsed the scroll domain and clipped pre-birth test
+  // entries), except TOTAL which anchors to birth so the growth curve starts at day 0.
+  val (boundMin, boundMax) = GraphUtil.computeChartXBounds(segment, firstDataTs, endTs, now)
+  val chartMinX = when (segment) {
+    GraphSegment.TOTAL -> minOf(birthDate, boundMin ?: firstDataTs)
+    else -> boundMin ?: firstDataTs
+  }.toDouble()
+  val chartMaxX = (boundMax ?: endTs).toDouble()
+
+  // Initial visible window:
+  //  • TOTAL — the whole padded domain (it fits everything; not scrollable).
+  //  • Single-window data (e.g. one month of entries, which aggregates to ONE monthly
+  //    point on YEAR/TOTAL) — the FULL calendar window (week/month/year) so the lone
+  //    point lands at its true position mid-chart instead of pinned to the right edge,
+  //    which read as an empty graph. (MOB-592)
+  //  • Otherwise — the latest rolling window, scrollable back to older data.
+  val (startX, endX) = when {
+    segment == GraphSegment.TOTAL -> chartMinX.toLong() to chartMaxX.toLong()
+    isSingleWindow -> (GraphUtil.getStartRange(segment, endTs) ?: firstDataTs) to
+      (GraphUtil.getEndRange(segment, endTs) ?: endTs)
+    else -> (
+      GraphUtil.getRollingWindowStart(segment, endTs)
+        ?: GraphUtil.getStartRange(segment, endTs)
+        ?: now
+      ) to endTs
+  }
+  return BabySegmentBounds(isSingleWindow, chartMinX, chartMaxX, startX, endX)
+}
+
+/**
+ * Pure seed Y-range computation for the baby chart. Matches ScrollAwareRangeProvider padding
+ * (paddingEntries=1): include 1 entry just before and 1 entry just after the rolling window so
+ * the seed Y range matches the runtime Y range exactly. Without this, an entry just outside the
+ * window would expand the runtime range and cause a frame-1 → frame-2 slide on initial load.
+ */
+private fun computeBabySeedRange(
+  entries: List<PeriodBabySummary>,
+  startX: Long,
+  endX: Long,
+  filteredTarget: List<PeriodBabySummary>,
+  selectedMetric: BabyMetric,
+  // Unit-aware conversions supplied by the ViewModel (kg/cm for metric, lb/in otherwise) so the
+  // seed Y range is scaled in the SAME unit the series is plotted in. (MOB-1499)
+  weightToDisplay: (Int) -> Double,
+  heightToDisplay: (Int) -> Double,
+): BabySeed {
+  val seedSource = run {
+    val sorted = entries.sortedBy { it.getTimeStamp() }
+    val firstIdx = sorted.indexOfFirst { it.getTimeStamp() >= startX }
+    val lastIdx = sorted.indexOfLast { it.getTimeStamp() <= endX }
+    if (firstIdx < 0 || lastIdx < 0 || firstIdx > lastIdx) {
+      filteredTarget
+    } else {
+      val from = (firstIdx - 1).coerceAtLeast(0)
+      val to = (lastIdx + 1).coerceAtMost(sorted.lastIndex)
+      sorted.subList(from, to + 1)
+    }
+  }
+
+  val yValues: List<Double> = when (selectedMetric) {
+    BabyMetric.WEIGHT -> seedSource.mapNotNull { e ->
+      e.avgWeightDecigrams?.let { weightToDisplay(it) }
+    }
+    BabyMetric.HEIGHT -> seedSource.mapNotNull { e ->
+      e.avgLengthMillimeters?.let { heightToDisplay(it) }
+    }
+  }.filter { it.isFinite() && it > 0.0 }
+
+  val range: Pair<Double, Double>? = if (yValues.isNotEmpty()) {
+    val scale = generateNiceScale(
+      minValue = yValues.min(),
+      maxValue = yValues.max(),
+      goalWeight = 0.0,
+      isWeightLessMode = false,
+      targetTickCount = 4,
+    )
+    scale.min to scale.max
+  } else null
+
+  return BabySeed(range, yValues.size)
 }

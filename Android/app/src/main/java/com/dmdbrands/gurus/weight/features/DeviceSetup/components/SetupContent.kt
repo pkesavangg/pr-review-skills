@@ -66,35 +66,12 @@ fun SetupContent(
       .padding(vertical = spacing.md, horizontal = spacing.sm),
     verticalArrangement = Arrangement.spacedBy(spacing.lg),
   ) {
-    Column(verticalArrangement = Arrangement.spacedBy(spacing.xs)) {
-      AppText(
-        text = title,
-        textType = TextType.Title,
-        // TalkBack: expose the step title as a heading for by-heading navigation.
-        modifier = Modifier
-          .fillMaxWidth()
-          .semantics { heading() },
-      )
-      subtitle?.let {
-        val isClickable = annotatedSubtitle != null && onAnnotationClick != null
-        val linkSpanStyle = if (isClickable) {
-          SpanStyle(
-            color = MeTheme.colorScheme.primaryAction,
-            textDecoration = TextDecoration.Underline,
-          )
-        } else null
-        AppText(
-          text = subtitle,
-          annotatedText = annotatedSubtitle,
-          textType = TextType.Body,
-          canApplyUppercaseStyle = !isClickable,
-          modifier = Modifier.fillMaxWidth(),
-          spanStyle = linkSpanStyle,
-          annotationPosition = AnnotationPosition.Middle,
-          onAnnotationClick = onAnnotationClick?.let { click -> { _ -> click() } },
-        )
-      }
-    }
+    SetupContentHeader(
+      title = title,
+      subtitle = subtitle,
+      annotatedSubtitle = annotatedSubtitle,
+      onAnnotationClick = onAnnotationClick,
+    )
 
     if (setupFinished) {
       Image(
@@ -107,72 +84,146 @@ fun SetupContent(
     }
 
     if (supportingImage != null) {
-      Column(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalAlignment = Alignment.CenterHorizontally,
-      ) {
-        if (isGifImage) {
-          AppGifImage(
-            id = supportingImage,
-            modifier = Modifier.size(370.dp, 211.dp),
-          )
-        } else {
-          Image(
-            painter = painterResource(id = supportingImage),
-            contentDescription = null,
-          )
-        }
-
-        Spacer(modifier = Modifier.height(spacing.xs))
-        if (loaderText != null &&
-          (connectionState == ConnectionState.Loading)) {
-          Spacer(modifier = Modifier.height(spacing.xs))
-          LoadingTextWithDots(
-            baseText = loaderText,
-            textColor = MeTheme.colorScheme.secondaryAction,
-          )
-        } else if(loaderText != null && connectionState is ConnectionState.Success ){
-          Spacer(modifier = Modifier.height(spacing.xs))
-          AppText(
-            text = loaderText,
-            textType = TextType.Subtitle,
-            // TalkBack: announce the connection result when it appears.
-            modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite },
-          )
-        }
-        else if(connectionState is ConnectionState.Failed && loaderText != null) {
-          Spacer(modifier = Modifier.height(spacing.xs))
-          AppButton(
-            label = loaderText,
-            type = ButtonType.PrimaryFilled,
-            onClick = {
-              loaderClick?.invoke()
-            },
-          )
-        }
-        noteMessage?.let {
-          AppNote(
-            message = noteMessage,
-            showNote = true,
-            modifier = Modifier.padding(top = spacing.md),
-          )
-        }
-
-        if (supportingButtonLabel != null && onSupportingButtonClick != null) {
-          Spacer(modifier = Modifier.height(spacing.md))
-          AppButton(
-            label = supportingButtonLabel,
-            type = ButtonType.InlineTextPrimary,
-            onClick = onSupportingButtonClick,
-            modifier = Modifier.align(Alignment.CenterHorizontally),
-          )
-        }
-      }
+      SetupContentSupportingImage(
+        supportingImage = supportingImage,
+        isGifImage = isGifImage,
+        loaderText = loaderText,
+        connectionState = connectionState,
+        loaderClick = loaderClick,
+        noteMessage = noteMessage,
+        supportingButtonLabel = supportingButtonLabel,
+        onSupportingButtonClick = onSupportingButtonClick,
+      )
     }
 
     content?.let {
       content()
     }
+  }
+}
+
+@Composable
+private fun SetupContentHeader(
+  title: String,
+  subtitle: String?,
+  annotatedSubtitle: String?,
+  onAnnotationClick: (() -> Unit)?,
+) {
+  Column(verticalArrangement = Arrangement.spacedBy(spacing.xs)) {
+    AppText(
+      text = title,
+      textType = TextType.Title,
+      // TalkBack: expose the step title as a heading for by-heading navigation.
+      modifier = Modifier
+        .fillMaxWidth()
+        .semantics { heading() },
+    )
+    subtitle?.let {
+      val isClickable = annotatedSubtitle != null && onAnnotationClick != null
+      val linkSpanStyle = if (isClickable) {
+        SpanStyle(
+          color = MeTheme.colorScheme.primaryAction,
+          textDecoration = TextDecoration.Underline,
+        )
+      } else null
+      AppText(
+        text = subtitle,
+        annotatedText = annotatedSubtitle,
+        textType = TextType.Body,
+        canApplyUppercaseStyle = !isClickable,
+        modifier = Modifier.fillMaxWidth(),
+        spanStyle = linkSpanStyle,
+        annotationPosition = AnnotationPosition.Middle,
+        onAnnotationClick = onAnnotationClick?.let { click -> { _ -> click() } },
+      )
+    }
+  }
+}
+
+@Composable
+private fun SetupContentSupportingImage(
+  supportingImage: Int,
+  isGifImage: Boolean,
+  loaderText: String?,
+  connectionState: ConnectionState?,
+  loaderClick: (() -> Unit)?,
+  noteMessage: String?,
+  supportingButtonLabel: String?,
+  onSupportingButtonClick: (() -> Unit)?,
+) {
+  Column(
+    modifier = Modifier.fillMaxWidth(),
+    horizontalAlignment = Alignment.CenterHorizontally,
+  ) {
+    if (isGifImage) {
+      AppGifImage(
+        id = supportingImage,
+        modifier = Modifier.size(370.dp, 211.dp),
+      )
+    } else {
+      Image(
+        painter = painterResource(id = supportingImage),
+        contentDescription = null,
+      )
+    }
+
+    Spacer(modifier = Modifier.height(spacing.xs))
+    SetupContentLoaderState(
+      loaderText = loaderText,
+      connectionState = connectionState,
+      loaderClick = loaderClick,
+    )
+    noteMessage?.let {
+      AppNote(
+        message = noteMessage,
+        showNote = true,
+        modifier = Modifier.padding(top = spacing.md),
+      )
+    }
+
+    if (supportingButtonLabel != null && onSupportingButtonClick != null) {
+      Spacer(modifier = Modifier.height(spacing.md))
+      AppButton(
+        label = supportingButtonLabel,
+        type = ButtonType.InlineTextPrimary,
+        onClick = onSupportingButtonClick,
+        modifier = Modifier.align(Alignment.CenterHorizontally),
+      )
+    }
+  }
+}
+
+@Composable
+private fun SetupContentLoaderState(
+  loaderText: String?,
+  connectionState: ConnectionState?,
+  loaderClick: (() -> Unit)?,
+) {
+  if (loaderText != null &&
+    (connectionState == ConnectionState.Loading)) {
+    Spacer(modifier = Modifier.height(spacing.xs))
+    LoadingTextWithDots(
+      baseText = loaderText,
+      textColor = MeTheme.colorScheme.secondaryAction,
+    )
+  } else if(loaderText != null && connectionState is ConnectionState.Success ){
+    Spacer(modifier = Modifier.height(spacing.xs))
+    AppText(
+      text = loaderText,
+      textType = TextType.Subtitle,
+      // TalkBack: announce the connection result when it appears.
+      modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite },
+    )
+  }
+  else if(connectionState is ConnectionState.Failed && loaderText != null) {
+    Spacer(modifier = Modifier.height(spacing.xs))
+    AppButton(
+      label = loaderText,
+      type = ButtonType.PrimaryFilled,
+      onClick = {
+        loaderClick?.invoke()
+      },
+    )
   }
 }
 

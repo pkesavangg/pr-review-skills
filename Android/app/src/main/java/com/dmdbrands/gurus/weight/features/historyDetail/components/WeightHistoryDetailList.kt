@@ -83,90 +83,94 @@ fun WeightHistoryDetailList(
 @Composable
 fun HistoryDetailListPreview() {
   MeAppTheme {
-    val sampleItems =
-      listOf(
-        ScaleEntry(
-          entry = EntryEntity(
-            id = 478,
-            accountId = "4SWOWDAP9t2gS50MFp9HQS",
-            entryTimestamp = "2025-06-19T06:30:00.000Z",
-            serverTimestamp = "2025-06-19T10:29:13.914Z",
-            opTimestamp = null,
-            operationType = "create",
-            deviceType = "scale",
-            deviceId = "manual",
-            attempts = 0,
-            unit = WeightUnit.LB,
-            isSynced = true,
-          ),
-          scale = ScaleEntryWithMetrics(
-            scaleEntry = BodyScaleEntryEntity(
-              id = 478,
-              weight = 150.0,
-              bodyFat = 15.2,
-              muscleMass = 35.0,
-              water = 55.0,
-              bmi = 22.5,
-              source = "manual",
-            ),
-            scaleEntryMetric = BodyScaleEntryMetricEntity(
-              id = 478,
-              bmr = 1800.0,
-              metabolicAge = 28,
-              proteinPercent = 18.0,
-              pulse = 60,
-              skeletalMusclePercent = 52.7,
-              subcutaneousFatPercent = 10.3,
-              visceralFatLevel = 8.0,
-              boneMass = 4.4,
-              impedance = 500,
-            ),
-          ),
-        ),
-        ScaleEntry(
-          entry = EntryEntity(
-            id = 479,
-            accountId = "4SWOWDAP9t2gS50MFp9HQS",
-            entryTimestamp = "2025-06-20T06:30:00.000Z",
-            serverTimestamp = "2025-06-20T10:29:13.914Z",
-            opTimestamp = null,
-            operationType = "create",
-            deviceType = "scale",
-            deviceId = "manual",
-            attempts = 0,
-            unit = WeightUnit.KG,
-            isSynced = true,
-          ),
-          scale = ScaleEntryWithMetrics(
-            scaleEntry = BodyScaleEntryEntity(
-              id = 479,
-              weight = 70.0,
-              bodyFat = 14.0,
-              muscleMass = 33.0,
-              water = 58.0,
-              bmi = 21.5,
-              source = "manual",
-            ),
-            scaleEntryMetric = BodyScaleEntryMetricEntity(
-              id = 479,
-              bmr = 1700.0,
-              metabolicAge = 27,
-              proteinPercent = 19.0,
-              pulse = 65,
-              skeletalMusclePercent = 50.1,
-              subcutaneousFatPercent = 9.5,
-              visceralFatLevel = 7.0,
-              boneMass = 4.1,
-              impedance = 510,
-            ),
-          ),
-        ),
-      )
     WeightHistoryDetailList(
-      historyDetails = sampleItems,
+      historyDetails = listOf(
+        historyDetailListPreviewEntry478(),
+        historyDetailListPreviewEntry479(),
+      ),
       itemsOpened = emptyList(),
       onItemsOpen = {},
       onItemDelete = {},
     )
   }
 }
+
+private fun historyDetailListPreviewEntry478(): ScaleEntry =
+  ScaleEntry(
+    entry = EntryEntity(
+      id = 478,
+      accountId = "4SWOWDAP9t2gS50MFp9HQS",
+      entryTimestamp = "2025-06-19T06:30:00.000Z",
+      serverTimestamp = "2025-06-19T10:29:13.914Z",
+      opTimestamp = null,
+      operationType = "create",
+      deviceType = "scale",
+      deviceId = "manual",
+      attempts = 0,
+      unit = WeightUnit.LB,
+      isSynced = true,
+    ),
+    scale = ScaleEntryWithMetrics(
+      scaleEntry = BodyScaleEntryEntity(
+        id = 478,
+        weight = 150.0,
+        bodyFat = 15.2,
+        muscleMass = 35.0,
+        water = 55.0,
+        bmi = 22.5,
+        source = "manual",
+      ),
+      scaleEntryMetric = BodyScaleEntryMetricEntity(
+        id = 478,
+        bmr = 1800.0,
+        metabolicAge = 28,
+        proteinPercent = 18.0,
+        pulse = 60,
+        skeletalMusclePercent = 52.7,
+        subcutaneousFatPercent = 10.3,
+        visceralFatLevel = 8.0,
+        boneMass = 4.4,
+        impedance = 500,
+      ),
+    ),
+  )
+
+private fun historyDetailListPreviewEntry479(): ScaleEntry =
+  ScaleEntry(
+    entry = EntryEntity(
+      id = 479,
+      accountId = "4SWOWDAP9t2gS50MFp9HQS",
+      entryTimestamp = "2025-06-20T06:30:00.000Z",
+      serverTimestamp = "2025-06-20T10:29:13.914Z",
+      opTimestamp = null,
+      operationType = "create",
+      deviceType = "scale",
+      deviceId = "manual",
+      attempts = 0,
+      unit = WeightUnit.KG,
+      isSynced = true,
+    ),
+    scale = ScaleEntryWithMetrics(
+      scaleEntry = BodyScaleEntryEntity(
+        id = 479,
+        weight = 70.0,
+        bodyFat = 14.0,
+        muscleMass = 33.0,
+        water = 58.0,
+        bmi = 21.5,
+        source = "manual",
+      ),
+      scaleEntryMetric = BodyScaleEntryMetricEntity(
+        id = 479,
+        bmr = 1700.0,
+        metabolicAge = 27,
+        proteinPercent = 19.0,
+        pulse = 65,
+        skeletalMusclePercent = 50.1,
+        subcutaneousFatPercent = 9.5,
+        visceralFatLevel = 7.0,
+        boneMass = 4.1,
+        impedance = 510,
+      ),
+    ),
+  )

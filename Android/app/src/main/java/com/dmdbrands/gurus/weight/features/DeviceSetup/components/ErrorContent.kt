@@ -56,98 +56,7 @@ fun ErrorContent(
     }
 
     // Error-specific content
-    when (errorCode.lowercase()) {
-      "t204" -> {
-        AppText(
-          text = WifiScaleSetupStrings.ErrorDetail.T204a,
-          textType = TextType.Body,
-          modifier = Modifier.fillMaxWidth(),
-        )
-        AppText(
-          text = WifiScaleSetupStrings.ErrorDetail.T204b,
-          textType = TextType.Body,
-          modifier = Modifier.fillMaxWidth(),
-        )
-        AppText(
-          text = WifiScaleSetupStrings.ErrorDetail.T204c,
-          textType = TextType.Body,
-          modifier = Modifier.fillMaxWidth(),
-        )
-      }
-
-      "t205" -> {
-        AppText(
-          text = WifiScaleSetupStrings.ErrorDetail.T205a,
-          textType = TextType.Body,
-          modifier = Modifier.fillMaxWidth(),
-        )
-        AppText(
-          text = WifiScaleSetupStrings.ErrorDetail.T205b,
-          textType = TextType.Body,
-          modifier = Modifier.fillMaxWidth(),
-        )
-      }
-
-      "t163", "t206", "t323" -> {
-        AppText(
-          text = WifiScaleSetupStrings.ErrorDetail.T163a,
-          textType = TextType.Body,
-          modifier = Modifier.fillMaxWidth(),
-        )
-        AppText(
-          text = WifiScaleSetupStrings.ErrorDetail.T163b,
-          textType = TextType.Body,
-          modifier = Modifier.fillMaxWidth(),
-        )
-        AppText(
-          text = WifiScaleSetupStrings.ErrorDetail.T163c,
-          textType = TextType.Body,
-          modifier = Modifier.fillMaxWidth(),
-        )
-        AppText(
-          text = WifiScaleSetupStrings.ErrorDetail.T163d,
-          textType = TextType.Body,
-          modifier = Modifier.fillMaxWidth(),
-        )
-      }
-
-      "t164", "t315", "t325" -> {
-        AppText(
-          text = WifiScaleSetupStrings.ErrorDetail.T164a,
-          textType = TextType.Body,
-          modifier = Modifier.fillMaxWidth(),
-        )
-        AppText(
-          text = WifiScaleSetupStrings.ErrorDetail.T164b,
-          textType = TextType.Body,
-          modifier = Modifier.fillMaxWidth(),
-        )
-      }
-
-      "t165" -> {
-        AppText(
-          text = WifiScaleSetupStrings.ErrorDetail.T165,
-          textType = TextType.Body,
-          modifier = Modifier.fillMaxWidth(),
-        )
-      }
-
-      "other" -> {
-        AppText(
-          text = WifiScaleSetupStrings.ErrorDetail.Other,
-          textType = TextType.Body,
-          modifier = Modifier.fillMaxWidth(),
-        )
-      }
-
-      else -> {
-        AppText(
-          text = WifiScaleSetupStrings.ErrorDetail.Copy,
-          textType = TextType.Body,
-          modifier = Modifier.fillMaxWidth(),
-        )
-      }
-    }
+    ErrorContentDetails(errorCode = errorCode)
 
     // Default content for non-special error codes
     if (!listOf("t163", "t206", "t323").contains(errorCode.lowercase())) {
@@ -158,6 +67,117 @@ fun ErrorContent(
       )
     }
   }
+}
+
+@Composable
+private fun ErrorContentDetails(errorCode: String) {
+  when (errorCode.lowercase()) {
+    "t204" -> ErrorDetailT204()
+    "t205" -> ErrorDetailT205()
+    "t163", "t206", "t323" -> ErrorDetailT163()
+    "t164", "t315", "t325" -> ErrorDetailT164()
+    "t165" -> ErrorDetailT165()
+    "other" -> ErrorDetailOther()
+    else -> ErrorDetailDefault()
+  }
+}
+
+@Composable
+private fun ErrorDetailT204() {
+  AppText(
+    text = WifiScaleSetupStrings.ErrorDetail.T204a,
+    textType = TextType.Body,
+    modifier = Modifier.fillMaxWidth(),
+  )
+  AppText(
+    text = WifiScaleSetupStrings.ErrorDetail.T204b,
+    textType = TextType.Body,
+    modifier = Modifier.fillMaxWidth(),
+  )
+  AppText(
+    text = WifiScaleSetupStrings.ErrorDetail.T204c,
+    textType = TextType.Body,
+    modifier = Modifier.fillMaxWidth(),
+  )
+}
+
+@Composable
+private fun ErrorDetailT205() {
+  AppText(
+    text = WifiScaleSetupStrings.ErrorDetail.T205a,
+    textType = TextType.Body,
+    modifier = Modifier.fillMaxWidth(),
+  )
+  AppText(
+    text = WifiScaleSetupStrings.ErrorDetail.T205b,
+    textType = TextType.Body,
+    modifier = Modifier.fillMaxWidth(),
+  )
+}
+
+@Composable
+private fun ErrorDetailT163() {
+  AppText(
+    text = WifiScaleSetupStrings.ErrorDetail.T163a,
+    textType = TextType.Body,
+    modifier = Modifier.fillMaxWidth(),
+  )
+  AppText(
+    text = WifiScaleSetupStrings.ErrorDetail.T163b,
+    textType = TextType.Body,
+    modifier = Modifier.fillMaxWidth(),
+  )
+  AppText(
+    text = WifiScaleSetupStrings.ErrorDetail.T163c,
+    textType = TextType.Body,
+    modifier = Modifier.fillMaxWidth(),
+  )
+  AppText(
+    text = WifiScaleSetupStrings.ErrorDetail.T163d,
+    textType = TextType.Body,
+    modifier = Modifier.fillMaxWidth(),
+  )
+}
+
+@Composable
+private fun ErrorDetailT164() {
+  AppText(
+    text = WifiScaleSetupStrings.ErrorDetail.T164a,
+    textType = TextType.Body,
+    modifier = Modifier.fillMaxWidth(),
+  )
+  AppText(
+    text = WifiScaleSetupStrings.ErrorDetail.T164b,
+    textType = TextType.Body,
+    modifier = Modifier.fillMaxWidth(),
+  )
+}
+
+@Composable
+private fun ErrorDetailT165() {
+  AppText(
+    text = WifiScaleSetupStrings.ErrorDetail.T165,
+    textType = TextType.Body,
+    modifier = Modifier.fillMaxWidth(),
+  )
+}
+
+@Composable
+private fun ErrorDetailOther() {
+  AppText(
+    text = WifiScaleSetupStrings.ErrorDetail.Other,
+    textType = TextType.Body,
+    modifier = Modifier.fillMaxWidth(),
+  )
+}
+
+@Composable
+private fun ErrorDetailDefault() {
+  AppText(
+    text = WifiScaleSetupStrings.ErrorDetail.Copy,
+    textType = TextType.Body,
+    modifier = Modifier.fillMaxWidth(),
+  )
 }
 
 @PreviewTheme

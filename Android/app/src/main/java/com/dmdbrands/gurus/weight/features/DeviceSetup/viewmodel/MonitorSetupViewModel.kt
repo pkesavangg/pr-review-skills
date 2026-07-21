@@ -263,42 +263,7 @@ constructor(
     handleIntent(DeviceSetupIntent.AlterConnectionState(ConnectionState.Loading))
     try {
       startObservingDevices { data ->
-        if (_state.value.step != MonitorSetupStep.MONITOR_PAIRING) {
-          AppLog.d(TAG, "Ignoring device found — not on pairing step (current: ${_state.value.step})")
-          return@startObservingDevices
-        }
-        AppLog.d(TAG, "BPM device found: ${data.deviceName}")
-        discoveredScale = Device(
-            device = data,
-            deviceType = setupType.value,
-            sku = sku,
-            userNumber = selectedUserToNumber(),
-        )
-        clearBluetoothTimeout()
-
-        val pairedMonitor = discoveredScale ?: return@startObservingDevices
-        ggDeviceService.pairDevice(pairedMonitor.toGGBTDevice()) {
-          when (it) {
-            GGUserActionResponseType.CREATION_COMPLETED -> {
-              AppLog.d(TAG, "BPM device pairing completed successfully")
-              checkIsKnownMonitor()
-            }
-
-            GGUserActionResponseType.DIFFERENT_USER -> {
-              AppLog.w(TAG, "BPM reported different user than selected")
-              showDifferentUserDialog()
-            }
-
-            else -> {
-              AppLog.w(TAG, "BPM device pairing failed with response: $it")
-              showRetryDialog()
-              handleIntent(
-                  DeviceSetupIntent.AlterConnectionState(
-                      ConnectionState.Failed.ErrorWithMessage(
-                          DeviceSetupConstants.ERROR_WAKEUP_001)))
-            }
-          }
-        }
+        onMonitorDeviceFound(data)
       }
 
       bluetoothTimeoutJob = viewModelScope.launch {
@@ -328,6 +293,45 @@ constructor(
             DeviceSetupIntent.AlterConnectionState(
                 ConnectionState.Failed.ErrorWithMessage(
                     DeviceSetupConstants.ERROR_WAKEUP_002)))
+      }
+    }
+  }
+
+  private fun onMonitorDeviceFound(data: GGDeviceDetail) {
+    if (_state.value.step != MonitorSetupStep.MONITOR_PAIRING) {
+      AppLog.d(TAG, "Ignoring device found — not on pairing step (current: ${_state.value.step})")
+      return
+    }
+    AppLog.d(TAG, "BPM device found: ${data.deviceName}")
+    discoveredScale = Device(
+        device = data,
+        deviceType = setupType.value,
+        sku = sku,
+        userNumber = selectedUserToNumber(),
+    )
+    clearBluetoothTimeout()
+
+    val pairedMonitor = discoveredScale ?: return
+    ggDeviceService.pairDevice(pairedMonitor.toGGBTDevice()) {
+      when (it) {
+        GGUserActionResponseType.CREATION_COMPLETED -> {
+          AppLog.d(TAG, "BPM device pairing completed successfully")
+          checkIsKnownMonitor()
+        }
+
+        GGUserActionResponseType.DIFFERENT_USER -> {
+          AppLog.w(TAG, "BPM reported different user than selected")
+          showDifferentUserDialog()
+        }
+
+        else -> {
+          AppLog.w(TAG, "BPM device pairing failed with response: $it")
+          showRetryDialog()
+          handleIntent(
+              DeviceSetupIntent.AlterConnectionState(
+                  ConnectionState.Failed.ErrorWithMessage(
+                      DeviceSetupConstants.ERROR_WAKEUP_001)))
+        }
       }
     }
   }

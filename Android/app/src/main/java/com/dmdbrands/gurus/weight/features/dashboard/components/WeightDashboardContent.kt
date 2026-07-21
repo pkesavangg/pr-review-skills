@@ -62,99 +62,187 @@ fun WeightDashboardContent(
       EmptyMetric(onConnectScaleClick = { handleIntent(WeightDashboardIntent.OnConnectScale) })
     }
   } else {
-    Column(
-      modifier = Modifier
-        .fillMaxSize()
-        .clickable(onClick = {
-          if (inEditMode) {
-            currentVisibleMetrics = state.visibleKeys.filterIsInstance<DashboardKey.Metric>()
-            currentVisibleMilestones = state.visibleKeys.filterIsInstance<DashboardKey.Milestone>()
-            inEditMode = false
-          }
-        }),
-      verticalArrangement = Arrangement.Center,
-      horizontalAlignment = Alignment.CenterHorizontally,
-    ) {
-      DashboardMetrics(
-        metricData = activeSegmentState.target.filterIsInstance<PeriodBodyScaleSummary>(),
-        inEditMode = inEditMode,
-        visibleKeys = currentVisibleMetrics,
-        selectedStat = state.selectedStat,
-        dashboardType = state.dashboardType,
-        onMetricClick = { handleIntent(WeightDashboardIntent.SetSelectedStat(it)) },
-        onLongClick = {
-          if (!inEditMode) {
-            handleIntent(WeightDashboardIntent.SetSelectedStat(null))
-            inEditMode = true
-          }
-        },
-        onMetricsChanged = { currentVisibleMetrics = it },
-      )
-      if ((!inEditMode && currentVisibleMilestones.isNotEmpty() && currentVisibleMetrics.isNotEmpty()) || inEditMode) {
-        HorizontalDivider(
-          color = MeTheme.colorScheme.utility,
-          modifier = Modifier.padding(horizontal = MeTheme.spacing.lg),
-        )
-      }
-
-      DashboardMilestone(
-        progress = state.progress,
-        isProgressUpdating = state.isProgressUpdating,
-        latestWeight = state.latestWeight,
-        inEditMode = inEditMode,
-        hasVisibleMetrics = currentVisibleMetrics.isNotEmpty(),
-        visibleKeys = currentVisibleMilestones,
-        onMilestonesChanged = { currentVisibleMilestones = it },
-        onLongClick = { _, _ ->
-          if (!inEditMode) {
-            handleIntent(WeightDashboardIntent.SetSelectedStat(null))
-            inEditMode = true
-          }
-        },
-        onNavigateToGoal = { handleIntent(WeightDashboardIntent.NavigateToGoal) },
-      )
-      if ((!inEditMode && currentVisibleMilestones.isNotEmpty() && currentVisibleMetrics.isNotEmpty()) || inEditMode) {
-        Spacer(modifier = Modifier.height(MeTheme.spacing.sm))
-      }
-      DashboardControlPanel(
-        inEditMode = inEditMode,
-        hasGoal = state.progress.goal?.account != null && state.progress.goal.account.goalType != null,
-        onResetClick = {
-          handleIntent(WeightDashboardIntent.SetSelectedStat(null))
-          handleIntent(WeightDashboardIntent.ResetDashboard)
-        },
-        onEditClick = { editMode ->
-          if (editMode && !inEditMode) {
-            handleIntent(WeightDashboardIntent.SetSelectedStat(null))
-          } else if (!editMode && inEditMode) {
-            handleIntent(WeightDashboardIntent.UpdateVisibleKeys(currentVisibleMetrics + currentVisibleMilestones, state.dashboardType))
-          }
-          inEditMode = editMode
-        },
-        onUpdateGoalClick = { handleIntent(WeightDashboardIntent.NavigateToGoal) },
-        onMetricInfoClick = {
-          val isSingleEntry = state.markerIndex != null
-          val rangeText = (activeSegmentState.visibleMin ?: activeSegmentState.chartMinX?.toLong())?.let { min ->
-            (activeSegmentState.visibleMax ?: activeSegmentState.chartMaxX?.toLong())?.let { max ->
-              GraphUtil.formatDateRange(min, max, state.selectedSegment)
-            }
-          }
-          val info = fromPeriodSummaries(
-            periodBodyScaleSummaries = activeSegmentState.target.filterIsInstance<PeriodBodyScaleSummary>(),
-            isSingleEntry = isSingleEntry,
-            rangeText = rangeText,
-          )
-          val key = (state.selectedStat?.key as? DashboardKey.Metric)?.key ?: MetricKey.WEIGHT
-          handleIntent(
-            WeightDashboardIntent.OpenMetricInfo(
-              info = info,
-              key = key,
-              source = getSourceFromSegment(state.selectedSegment),
-            ),
-          )
-        },
-      )
-    }
+    WeightDashboardBody(
+      state = state,
+      activeSegmentState = activeSegmentState,
+      handleIntent = handleIntent,
+      inEditMode = inEditMode,
+      onInEditModeChange = { inEditMode = it },
+      currentVisibleMetrics = currentVisibleMetrics,
+      onCurrentVisibleMetricsChange = { currentVisibleMetrics = it },
+      currentVisibleMilestones = currentVisibleMilestones,
+      onCurrentVisibleMilestonesChange = { currentVisibleMilestones = it },
+    )
     Spacer(modifier = Modifier.height(MeTheme.spacing.sm))
   }
+}
+
+@Composable
+private fun WeightDashboardBody(
+  state: WeightDashboardState,
+  activeSegmentState: SegmentState,
+  handleIntent: (WeightDashboardIntent) -> Unit,
+  inEditMode: Boolean,
+  onInEditModeChange: (Boolean) -> Unit,
+  currentVisibleMetrics: List<DashboardKey>,
+  onCurrentVisibleMetricsChange: (List<DashboardKey>) -> Unit,
+  currentVisibleMilestones: List<DashboardKey>,
+  onCurrentVisibleMilestonesChange: (List<DashboardKey>) -> Unit,
+) {
+  Column(
+    modifier = Modifier
+      .fillMaxSize()
+      .clickable(onClick = {
+        if (inEditMode) {
+          onCurrentVisibleMetricsChange(state.visibleKeys.filterIsInstance<DashboardKey.Metric>())
+          onCurrentVisibleMilestonesChange(state.visibleKeys.filterIsInstance<DashboardKey.Milestone>())
+          onInEditModeChange(false)
+        }
+      }),
+    verticalArrangement = Arrangement.Center,
+    horizontalAlignment = Alignment.CenterHorizontally,
+  ) {
+    WeightDashboardMetricsSection(
+      state = state,
+      activeSegmentState = activeSegmentState,
+      inEditMode = inEditMode,
+      currentVisibleMetrics = currentVisibleMetrics,
+      handleIntent = handleIntent,
+      onInEditModeChange = onInEditModeChange,
+      onCurrentVisibleMetricsChange = onCurrentVisibleMetricsChange,
+    )
+    WeightDashboardMilestoneSection(
+      state = state,
+      inEditMode = inEditMode,
+      currentVisibleMetrics = currentVisibleMetrics,
+      currentVisibleMilestones = currentVisibleMilestones,
+      handleIntent = handleIntent,
+      onInEditModeChange = onInEditModeChange,
+      onCurrentVisibleMilestonesChange = onCurrentVisibleMilestonesChange,
+    )
+    WeightDashboardControlPanel(
+      state = state,
+      activeSegmentState = activeSegmentState,
+      inEditMode = inEditMode,
+      currentVisibleMetrics = currentVisibleMetrics,
+      currentVisibleMilestones = currentVisibleMilestones,
+      handleIntent = handleIntent,
+      onInEditModeChange = onInEditModeChange,
+    )
+  }
+}
+
+@Composable
+private fun WeightDashboardMetricsSection(
+  state: WeightDashboardState,
+  activeSegmentState: SegmentState,
+  inEditMode: Boolean,
+  currentVisibleMetrics: List<DashboardKey>,
+  handleIntent: (WeightDashboardIntent) -> Unit,
+  onInEditModeChange: (Boolean) -> Unit,
+  onCurrentVisibleMetricsChange: (List<DashboardKey>) -> Unit,
+) {
+  DashboardMetrics(
+    metricData = activeSegmentState.target.filterIsInstance<PeriodBodyScaleSummary>(),
+    inEditMode = inEditMode,
+    visibleKeys = currentVisibleMetrics,
+    selectedStat = state.selectedStat,
+    dashboardType = state.dashboardType,
+    onMetricClick = { handleIntent(WeightDashboardIntent.SetSelectedStat(it)) },
+    onLongClick = {
+      if (!inEditMode) {
+        handleIntent(WeightDashboardIntent.SetSelectedStat(null))
+        onInEditModeChange(true)
+      }
+    },
+    onMetricsChanged = { onCurrentVisibleMetricsChange(it) },
+  )
+}
+
+@Composable
+private fun WeightDashboardMilestoneSection(
+  state: WeightDashboardState,
+  inEditMode: Boolean,
+  currentVisibleMetrics: List<DashboardKey>,
+  currentVisibleMilestones: List<DashboardKey>,
+  handleIntent: (WeightDashboardIntent) -> Unit,
+  onInEditModeChange: (Boolean) -> Unit,
+  onCurrentVisibleMilestonesChange: (List<DashboardKey>) -> Unit,
+) {
+  if ((!inEditMode && currentVisibleMilestones.isNotEmpty() && currentVisibleMetrics.isNotEmpty()) || inEditMode) {
+    HorizontalDivider(
+      color = MeTheme.colorScheme.utility,
+      modifier = Modifier.padding(horizontal = MeTheme.spacing.lg),
+    )
+  }
+
+  DashboardMilestone(
+    progress = state.progress,
+    isProgressUpdating = state.isProgressUpdating,
+    latestWeight = state.latestWeight,
+    inEditMode = inEditMode,
+    hasVisibleMetrics = currentVisibleMetrics.isNotEmpty(),
+    visibleKeys = currentVisibleMilestones,
+    onMilestonesChanged = { onCurrentVisibleMilestonesChange(it) },
+    onLongClick = { _, _ ->
+      if (!inEditMode) {
+        handleIntent(WeightDashboardIntent.SetSelectedStat(null))
+        onInEditModeChange(true)
+      }
+    },
+    onNavigateToGoal = { handleIntent(WeightDashboardIntent.NavigateToGoal) },
+  )
+}
+
+@Composable
+private fun WeightDashboardControlPanel(
+  state: WeightDashboardState,
+  activeSegmentState: SegmentState,
+  inEditMode: Boolean,
+  currentVisibleMetrics: List<DashboardKey>,
+  currentVisibleMilestones: List<DashboardKey>,
+  handleIntent: (WeightDashboardIntent) -> Unit,
+  onInEditModeChange: (Boolean) -> Unit,
+) {
+  if ((!inEditMode && currentVisibleMilestones.isNotEmpty() && currentVisibleMetrics.isNotEmpty()) || inEditMode) {
+    Spacer(modifier = Modifier.height(MeTheme.spacing.sm))
+  }
+  DashboardControlPanel(
+    inEditMode = inEditMode,
+    hasGoal = state.progress.goal?.account != null && state.progress.goal.account.goalType != null,
+    onResetClick = {
+      handleIntent(WeightDashboardIntent.SetSelectedStat(null))
+      handleIntent(WeightDashboardIntent.ResetDashboard)
+    },
+    onEditClick = { editMode ->
+      if (editMode && !inEditMode) {
+        handleIntent(WeightDashboardIntent.SetSelectedStat(null))
+      } else if (!editMode && inEditMode) {
+        handleIntent(WeightDashboardIntent.UpdateVisibleKeys(currentVisibleMetrics + currentVisibleMilestones, state.dashboardType))
+      }
+      onInEditModeChange(editMode)
+    },
+    onUpdateGoalClick = { handleIntent(WeightDashboardIntent.NavigateToGoal) },
+    onMetricInfoClick = {
+      val isSingleEntry = state.markerIndex != null
+      val rangeText = (activeSegmentState.visibleMin ?: activeSegmentState.chartMinX?.toLong())?.let { min ->
+        (activeSegmentState.visibleMax ?: activeSegmentState.chartMaxX?.toLong())?.let { max ->
+          GraphUtil.formatDateRange(min, max, state.selectedSegment)
+        }
+      }
+      val info = fromPeriodSummaries(
+        periodBodyScaleSummaries = activeSegmentState.target.filterIsInstance<PeriodBodyScaleSummary>(),
+        isSingleEntry = isSingleEntry,
+        rangeText = rangeText,
+      )
+      val key = (state.selectedStat?.key as? DashboardKey.Metric)?.key ?: MetricKey.WEIGHT
+      handleIntent(
+        WeightDashboardIntent.OpenMetricInfo(
+          info = info,
+          key = key,
+          source = getSourceFromSegment(state.selectedSegment),
+        ),
+      )
+    },
+  )
 }

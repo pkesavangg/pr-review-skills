@@ -101,48 +101,7 @@ class BLEDiscoveryManager(
             GGScanResponseType.NEW_DEVICE -> {
                 if (ggDeviceDetail.protocolType == GGDeviceProtocolType.GG_DEVICE_PROTOCOL_R4.value) {
                     scope.launch {
-                        val discoveredSku = ggDeviceDetail.getSKU()
-                        if (!DeviceHelper.isBpmDevice(discoveredSku) &&
-                            deviceService.pairedScales.first()
-                                .any { it.device?.macAddress == ggDeviceDetail.macAddress } &&
-                            !ggDeviceService.localSkipDevices.value.contains(ggDeviceDetail.broadcastIdString)
-                        ) {
-                            pairingTimeoutJob?.cancel()
-                            pairingTimeoutJob = null
-                            stopObservingDevices()
-                            showDialog(
-                                DialogModel.Alert(
-                                    title = BtWifiScaleSetupStrings.KnownScaleDiscoveredAlert.Title,
-                                    message = BtWifiScaleSetupStrings.KnownScaleDiscoveredAlert.Subtitle,
-                                    onDismiss = {
-                                        onExitSetup(true)
-                                        dismissCurrentDialog()
-                                    },
-                                ),
-                            )
-                        } else {
-                            pairingTimeoutJob?.cancel()
-                            pairingTimeoutJob = null
-                            val deviceSku = ggDeviceDetail.getSKU()
-                            val shouldShow = if (deviceSku == SKU_0412) {
-                                bluetoothPreferencesService.shouldShowDevice(ggDeviceDetail.macAddress)
-                            } else {
-                                true
-                            }
-                            if (!shouldShow) return@launch
-                            stopObservingDevices()
-                            customizeDevice(ggDeviceDetail)
-                            AppLog.d(TAG, "Device discovered, waiting for scale to fully wake up")
-                            delay(connectionDelay)
-                            AppLog.d(TAG, "Wake up successful, proceeding to next step")
-                            onIntent(
-                                BtWifiScaleSetupIntent.SetStepConnectionState(
-                                    BtWifiSetupStep.WAKEUP,
-                                    ConnectionState.Success,
-                                ),
-                            )
-                            onNext()
-                        }
+                        handleNewDeviceDiscovered(ggDeviceDetail)
                     }
                 }
             }
@@ -158,6 +117,51 @@ class BLEDiscoveryManager(
             }
 
             else -> Unit
+        }
+    }
+
+    private suspend fun handleNewDeviceDiscovered(ggDeviceDetail: GGDeviceDetail) {
+        val discoveredSku = ggDeviceDetail.getSKU()
+        if (!DeviceHelper.isBpmDevice(discoveredSku) &&
+            deviceService.pairedScales.first()
+                .any { it.device?.macAddress == ggDeviceDetail.macAddress } &&
+            !ggDeviceService.localSkipDevices.value.contains(ggDeviceDetail.broadcastIdString)
+        ) {
+            pairingTimeoutJob?.cancel()
+            pairingTimeoutJob = null
+            stopObservingDevices()
+            showDialog(
+                DialogModel.Alert(
+                    title = BtWifiScaleSetupStrings.KnownScaleDiscoveredAlert.Title,
+                    message = BtWifiScaleSetupStrings.KnownScaleDiscoveredAlert.Subtitle,
+                    onDismiss = {
+                        onExitSetup(true)
+                        dismissCurrentDialog()
+                    },
+                ),
+            )
+        } else {
+            pairingTimeoutJob?.cancel()
+            pairingTimeoutJob = null
+            val deviceSku = ggDeviceDetail.getSKU()
+            val shouldShow = if (deviceSku == SKU_0412) {
+                bluetoothPreferencesService.shouldShowDevice(ggDeviceDetail.macAddress)
+            } else {
+                true
+            }
+            if (!shouldShow) return
+            stopObservingDevices()
+            customizeDevice(ggDeviceDetail)
+            AppLog.d(TAG, "Device discovered, waiting for scale to fully wake up")
+            delay(connectionDelay)
+            AppLog.d(TAG, "Wake up successful, proceeding to next step")
+            onIntent(
+                BtWifiScaleSetupIntent.SetStepConnectionState(
+                    BtWifiSetupStep.WAKEUP,
+                    ConnectionState.Success,
+                ),
+            )
+            onNext()
         }
     }
 

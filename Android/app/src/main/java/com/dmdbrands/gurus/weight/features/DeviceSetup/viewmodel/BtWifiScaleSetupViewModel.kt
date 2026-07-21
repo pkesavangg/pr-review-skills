@@ -255,65 +255,69 @@ class BtWifiScaleSetupViewModel @AssistedInject constructor(
             state.collect { currentState ->
                 val currentStep = currentState.currentStep
                 if (previousStep != null && previousStep != currentStep) {
-                    when (currentStep) {
-                        BtWifiSetupStep.WAKEUP -> bleManager.startPairing()
-                        BtWifiSetupStep.CONNECTING_BLUETOOTH -> scalePairingManager.connectToBluetooth()
-                        BtWifiSetupStep.DUPLICATES_FOUND ->
-                            handleIntent(BtWifiScaleSetupIntent.UpdateNextButtonText(DeviceSetupStrings.SetupButtons.Save))
-                        BtWifiSetupStep.GATHERING_NETWORK -> {
-                            if (!AppPermissionsHelper.areRequiredPermissionsEnabled(
-                                    state.value.permissions, setupType = DeviceSetupType.BtWifiR4,
-                                )
-                            ) {
-                                setGatheringNetworkFailed()
-                            } else {
-                                wifiManager.gatherNetworks()
-                            }
-                        }
-                        BtWifiSetupStep.WIFI_PASSWORD ->
-                            handleIntent(BtWifiScaleSetupIntent.UpdateNextButtonText(DeviceSetupStrings.SetupButtons.Connect))
-                        BtWifiSetupStep.CONNECTING_WIFI -> wifiManager.connectToWifi()
-                        BtWifiSetupStep.CUSTOMIZE_SETTINGS -> {
-                            loadDashboardKeys()
-                            loadGoalProgress()
-                        }
-                        BtWifiSetupStep.UPDATE_SETTINGS -> {
-                            val currentUpdateSettingsState = currentState.stepConnectionStates[BtWifiSetupStep.UPDATE_SETTINGS]
-                            if (currentUpdateSettingsState !is ConnectionState.Success) {
-                                handleIntent(
-                                    BtWifiScaleSetupIntent.SetStepConnectionState(
-                                        BtWifiSetupStep.UPDATE_SETTINGS,
-                                        ConnectionState.Loading,
-                                    ),
-                                )
-                            }
-                        }
-                        BtWifiSetupStep.STEP_ON -> {
-                            if (!AppPermissionsHelper.areRequiredPermissionsEnabled(
-                                    state.value.permissions, setupType = DeviceSetupType.BtWifiR4,
-                                )
-                            ) {
-                                val disabledPermissions = AppPermissionsHelper.getDisabledPermissionsForSetupType(
-                                    permissionMap = state.value.permissions, setupType = DeviceSetupType.BtWifiR4,
-                                )
-                                val isOnlyNetworkPermissionMissing = disabledPermissions.size == 1 &&
-                                    disabledPermissions.contains(GGPermissionType.WIFI_SWITCH)
-                                if (!isOnlyNetworkPermissionMissing) setMeasurementFailed() else stepOn()
-                            } else {
-                                stepOn()
-                            }
-                        }
-                        BtWifiSetupStep.MEASUREMENT -> {
-                            val measurementConnectionState = currentState.stepConnectionStates[BtWifiSetupStep.MEASUREMENT]
-                            if (measurementConnectionState !is ConnectionState.Failed) {
-                                collectMeasurement()
-                            }
-                        }
-                        else -> {}
-                    }
+                    handleStepChange(currentStep, currentState)
                 }
                 previousStep = currentStep
             }
+        }
+    }
+
+    private fun handleStepChange(currentStep: BtWifiSetupStep, currentState: BtWifiScaleSetupState) {
+        when (currentStep) {
+            BtWifiSetupStep.WAKEUP -> bleManager.startPairing()
+            BtWifiSetupStep.CONNECTING_BLUETOOTH -> scalePairingManager.connectToBluetooth()
+            BtWifiSetupStep.DUPLICATES_FOUND ->
+                handleIntent(BtWifiScaleSetupIntent.UpdateNextButtonText(DeviceSetupStrings.SetupButtons.Save))
+            BtWifiSetupStep.GATHERING_NETWORK -> {
+                if (!AppPermissionsHelper.areRequiredPermissionsEnabled(
+                        state.value.permissions, setupType = DeviceSetupType.BtWifiR4,
+                    )
+                ) {
+                    setGatheringNetworkFailed()
+                } else {
+                    wifiManager.gatherNetworks()
+                }
+            }
+            BtWifiSetupStep.WIFI_PASSWORD ->
+                handleIntent(BtWifiScaleSetupIntent.UpdateNextButtonText(DeviceSetupStrings.SetupButtons.Connect))
+            BtWifiSetupStep.CONNECTING_WIFI -> wifiManager.connectToWifi()
+            BtWifiSetupStep.CUSTOMIZE_SETTINGS -> {
+                loadDashboardKeys()
+                loadGoalProgress()
+            }
+            BtWifiSetupStep.UPDATE_SETTINGS -> {
+                val currentUpdateSettingsState = currentState.stepConnectionStates[BtWifiSetupStep.UPDATE_SETTINGS]
+                if (currentUpdateSettingsState !is ConnectionState.Success) {
+                    handleIntent(
+                        BtWifiScaleSetupIntent.SetStepConnectionState(
+                            BtWifiSetupStep.UPDATE_SETTINGS,
+                            ConnectionState.Loading,
+                        ),
+                    )
+                }
+            }
+            BtWifiSetupStep.STEP_ON -> {
+                if (!AppPermissionsHelper.areRequiredPermissionsEnabled(
+                        state.value.permissions, setupType = DeviceSetupType.BtWifiR4,
+                    )
+                ) {
+                    val disabledPermissions = AppPermissionsHelper.getDisabledPermissionsForSetupType(
+                        permissionMap = state.value.permissions, setupType = DeviceSetupType.BtWifiR4,
+                    )
+                    val isOnlyNetworkPermissionMissing = disabledPermissions.size == 1 &&
+                        disabledPermissions.contains(GGPermissionType.WIFI_SWITCH)
+                    if (!isOnlyNetworkPermissionMissing) setMeasurementFailed() else stepOn()
+                } else {
+                    stepOn()
+                }
+            }
+            BtWifiSetupStep.MEASUREMENT -> {
+                val measurementConnectionState = currentState.stepConnectionStates[BtWifiSetupStep.MEASUREMENT]
+                if (measurementConnectionState !is ConnectionState.Failed) {
+                    collectMeasurement()
+                }
+            }
+            else -> {}
         }
     }
 
@@ -667,64 +671,7 @@ class BtWifiScaleSetupViewModel @AssistedInject constructor(
                     )
                 }
                 if (preferences != null) {
-                    if (discoveredScale?.connectionStatus != BLEStatus.CONNECTED) {
-                        val bid = discoveredScale?.device?.broadcastId ?: discoveredScale?.device?.broadcastIdString
-                        if (bid != null) {
-                            val connected = withTimeoutOrNull(20_000L) {
-                                ggDeviceService.deviceCache.first { cache ->
-                                    (cache[bid] as? Device)?.connectionStatus == BLEStatus.CONNECTED
-                                }
-                            }
-                            if (connected == null) {
-                                AppLog.w(TAG, "Scale did not reconnect within timeout before UPDATE_SETTINGS")
-                                setUpdateSettingsError()
-                                return@launch
-                            }
-                        } else {
-                            setUpdateSettingsError()
-                            return@launch
-                        }
-                    }
-                    val settingsScale = discoveredScale ?: run {
-                        AppLog.e(TAG, "discoveredScale is null during settings update")
-                        setUpdateSettingsError()
-                        return@launch
-                    }
-                    val newName = _state.value.usernameForm.username.value
-                    val updatedDevice = settingsScale.copy(
-                        preferences = preferences.copy(
-                            displayName = newName.ifEmpty { preferences.displayName },
-                            id = settingsScale.id,
-                        ),
-                    )
-                    discoveredScale = updatedDevice
-                    ggDeviceService.updateAccount(updatedDevice.toGGBTDevice()) {
-                        when (it) {
-                            GGUserActionResponseType.CREATION_COMPLETED, GGUserActionResponseType.UPDATE_COMPLETED -> {
-                                viewModelScope.launch {
-                                    updateSettingsTimeoutJob?.cancel()
-                                    updateSettingsTimeoutJob = null
-                                    val savedPrefs = discoveredScale?.preferences
-                                    if (savedPrefs != null) {
-                                        updateScalePreferences(discoveredScale?.id ?: "", savedPrefs.toR4ScalePreferenceApiModel())
-                                    }
-                                    AppLog.d(TAG, "Scale settings updated successfully")
-                                    handleIntent(
-                                        BtWifiScaleSetupIntent.SetStepConnectionState(
-                                            BtWifiSetupStep.UPDATE_SETTINGS, ConnectionState.Success,
-                                        ),
-                                    )
-                                    discoveredScale?.let { ggDeviceService.syncDevices(listOf(it.toGGBTDevice())) }
-                                    onNext()
-                                }
-                            }
-                            else -> viewModelScope.launch { setUpdateSettingsError() }
-                        }
-                    }
-                    if (!state.value.hasSavedSettings) {
-                        val scaleId = discoveredScale?.id ?: settingsScale.id
-                        updateScalePreferences(scaleId, preferences.toR4ScalePreferenceApiModel())
-                    }
+                    applyDevicePreferences(preferences)
                 } else {
                     updateSettingsTimeoutJob?.cancel()
                     updateSettingsTimeoutJob = null
@@ -733,6 +680,71 @@ class BtWifiScaleSetupViewModel @AssistedInject constructor(
                 AppLog.e(TAG, "Error during settings update", e)
                 setUpdateSettingsError()
             }
+        }
+    }
+
+    private suspend fun applyDevicePreferences(preferences: Preferences) {
+        if (discoveredScale?.connectionStatus != BLEStatus.CONNECTED) {
+            val bid = discoveredScale?.device?.broadcastId ?: discoveredScale?.device?.broadcastIdString
+            if (bid != null) {
+                val connected = withTimeoutOrNull(20_000L) {
+                    ggDeviceService.deviceCache.first { cache ->
+                        (cache[bid] as? Device)?.connectionStatus == BLEStatus.CONNECTED
+                    }
+                }
+                if (connected == null) {
+                    AppLog.w(TAG, "Scale did not reconnect within timeout before UPDATE_SETTINGS")
+                    setUpdateSettingsError()
+                    return
+                }
+            } else {
+                setUpdateSettingsError()
+                return
+            }
+        }
+        val settingsScale = discoveredScale ?: run {
+            AppLog.e(TAG, "discoveredScale is null during settings update")
+            setUpdateSettingsError()
+            return
+        }
+        val newName = _state.value.usernameForm.username.value
+        val updatedDevice = settingsScale.copy(
+            preferences = preferences.copy(
+                displayName = newName.ifEmpty { preferences.displayName },
+                id = settingsScale.id,
+            ),
+        )
+        discoveredScale = updatedDevice
+        ggDeviceService.updateAccount(updatedDevice.toGGBTDevice()) {
+            onUpdateAccountResponse(it)
+        }
+        if (!state.value.hasSavedSettings) {
+            val scaleId = discoveredScale?.id ?: settingsScale.id
+            updateScalePreferences(scaleId, preferences.toR4ScalePreferenceApiModel())
+        }
+    }
+
+    private fun onUpdateAccountResponse(response: GGUserActionResponseType) {
+        when (response) {
+            GGUserActionResponseType.CREATION_COMPLETED, GGUserActionResponseType.UPDATE_COMPLETED -> {
+                viewModelScope.launch {
+                    updateSettingsTimeoutJob?.cancel()
+                    updateSettingsTimeoutJob = null
+                    val savedPrefs = discoveredScale?.preferences
+                    if (savedPrefs != null) {
+                        updateScalePreferences(discoveredScale?.id ?: "", savedPrefs.toR4ScalePreferenceApiModel())
+                    }
+                    AppLog.d(TAG, "Scale settings updated successfully")
+                    handleIntent(
+                        BtWifiScaleSetupIntent.SetStepConnectionState(
+                            BtWifiSetupStep.UPDATE_SETTINGS, ConnectionState.Success,
+                        ),
+                    )
+                    discoveredScale?.let { ggDeviceService.syncDevices(listOf(it.toGGBTDevice())) }
+                    onNext()
+                }
+            }
+            else -> viewModelScope.launch { setUpdateSettingsError() }
         }
     }
 

@@ -82,8 +82,6 @@ fun HistoryScreenContent(
   onRefresh: (() -> Unit)? = null,
   handleIntent: (HistoryIntent) -> Unit,
 ) {
-  val navBackStack = LocalNavBackStack.current
-  val coroutineScope = rememberCoroutineScope()
   val selectedProduct = productSelectionManager?.selectedProduct
       ?.collectAsState2()
   val hasMultipleProducts = (productSelectionManager?.availableProducts
@@ -92,12 +90,7 @@ fun HistoryScreenContent(
   // Export is enabled when the ACTIVE product has history to export — each product keeps its
   // own list, so keying off the weight list alone left Balance/Baby exports disabled (MOB-1230).
   val activeSelection = selectedProduct?.value ?: ProductSelection.MyWeight
-  val canExport = when (activeSelection) {
-    is ProductSelection.MyWeight -> state.historyItems.isNotEmpty()
-    is ProductSelection.BloodPressure -> state.bpHistoryItems.isNotEmpty()
-    is ProductSelection.Baby -> state.babyHistoryItems[activeSelection.profile.id]?.isNotEmpty() == true
-    is ProductSelection.BabyScale -> false
-  }
+  val canExport = canExportHistory(activeSelection, state)
 
   AppScaffold(
     title = if (productSelectionManager == null) HistoryScreenStrings.Title else null,
@@ -129,136 +122,172 @@ fun HistoryScreenContent(
     Box(modifier = modifier.fillMaxSize()) {
       val currentProduct = selectedProduct?.value ?: ProductSelection.MyWeight
       when (currentProduct) {
-        is ProductSelection.MyWeight -> {
-          if (state.historyItems.isEmpty()) {
-            if (state.hasWeightDevice) {
-              ProductHistoryEmptyState(
-                icon = AppIcons.Default.History,
-                iconTint = SnapshotColors.Weight,
-                iconContentDescription = HistoryEmptyStateStrings.NoEntriesIconDescription,
-                title = HistoryEmptyStateStrings.WeightNoEntryTitle,
-                description = HistoryEmptyStateStrings.WeightNoEntryDescription,
-                primaryLabel = HistoryEmptyStateStrings.LogManually,
-                onPrimaryClick = { handleIntent(HistoryIntent.OnLogManually) },
-              )
-            } else {
-              ProductHistoryEmptyState(
-                icon = AppIcons.Default.WeightScale,
-                iconTint = SnapshotColors.Weight,
-                iconContentDescription = HistoryEmptyStateStrings.WeightIconDescription,
-                title = HistoryEmptyStateStrings.WeightNoDeviceTitle,
-                description = HistoryEmptyStateStrings.WeightNoDeviceDescription,
-                primaryLabel = HistoryEmptyStateStrings.AddDevice,
-                onPrimaryClick = { handleIntent(HistoryIntent.OnConnectScale) },
-              )
-            }
-          } else {
-            WeightHistoryList(
-              items = state.historyItems,
-              onItemClick = { item ->
-                if (item.entryTimestamp != null) {
-                  coroutineScope.launch {
-                    navBackStack.addRoute(
-                      AppRoute.History.MonthDetails(item.entryTimestamp, ProductType.MY_WEIGHT),
-                    )
-                  }
-                }
-              },
-            )
-          }
-        }
-
-        is ProductSelection.BloodPressure -> {
-          if (state.bpHistoryItems.isEmpty()) {
-            if (state.hasBpmDevice) {
-              ProductHistoryEmptyState(
-                icon = AppIcons.Default.History,
-                iconTint = SnapshotColors.BloodPressure,
-                iconContentDescription = HistoryEmptyStateStrings.NoEntriesIconDescription,
-                title = HistoryEmptyStateStrings.BpmNoEntryTitle,
-                description = HistoryEmptyStateStrings.BpmNoEntryDescription,
-                primaryLabel = HistoryEmptyStateStrings.LogManually,
-                onPrimaryClick = { handleIntent(HistoryIntent.OnLogManually) },
-              )
-            } else {
-              ProductHistoryEmptyState(
-                icon = AppIcons.Default.BloodPressureMonitor,
-                iconTint = SnapshotColors.BloodPressure,
-                iconContentDescription = HistoryEmptyStateStrings.BpmIconDescription,
-                title = HistoryEmptyStateStrings.BpmNoDeviceTitle,
-                description = HistoryEmptyStateStrings.BpmNoDeviceDescription,
-                primaryLabel = HistoryEmptyStateStrings.AddDevice,
-                onPrimaryClick = { handleIntent(HistoryIntent.OnConnectScale) },
-              )
-            }
-          } else {
-            BpHistoryList(
-              items = state.bpHistoryItems,
-              onItemClick = { item ->
-                coroutineScope.launch {
-                  navBackStack.addRoute(
-                    AppRoute.History.MonthDetails(item.entryTimestamp, ProductType.BLOOD_PRESSURE),
-                  )
-                }
-              },
-            )
-          }
-        }
-
-        is ProductSelection.Baby -> {
-          val babyGroups = state.babyHistoryItems[currentProduct.profile.id] ?: persistentListOf()
-          if (babyGroups.isEmpty()) {
-            if (state.hasBabyDevice) {
-              ProductHistoryEmptyState(
-                icon = AppIcons.Default.History,
-                iconTint = SnapshotColors.Baby,
-                iconContentDescription = HistoryEmptyStateStrings.NoEntriesIconDescription,
-                title = HistoryEmptyStateStrings.BabyNoEntryTitle,
-                description = HistoryEmptyStateStrings.BabyNoEntryDescription,
-                primaryLabel = HistoryEmptyStateStrings.LogManually,
-                onPrimaryClick = { handleIntent(HistoryIntent.OnLogManually) },
-              )
-            } else {
-              ProductHistoryEmptyState(
-                icon = AppIcons.Default.BabyScale,
-                iconTint = SnapshotColors.Baby,
-                iconContentDescription = HistoryEmptyStateStrings.BabyScaleIconDescription,
-                title = HistoryEmptyStateStrings.BabyNoDeviceTitle,
-                description = HistoryEmptyStateStrings.BabyNoDeviceDescription,
-                primaryLabel = HistoryEmptyStateStrings.AddDevice,
-                onPrimaryClick = { handleIntent(HistoryIntent.OnConnectScale) },
-              )
-            }
-          } else {
-            BabyHistoryList(
-              groups = babyGroups,
-              babyWeightUnit = state.babyWeightUnit,
-              birthdate = (currentProduct as? ProductSelection.Baby)?.profile?.birthdate,
-              onItemClick = {  item ->
-                coroutineScope.launch {
-                navBackStack.addRoute(
-                  AppRoute.History.MonthDetails(item.dateKey, ProductType.BABY),
-                )
-              }},
-            )
-          }
-        }
-
-        is ProductSelection.BabyScale -> {
-          // No baby profile yet: Manual Entry and History both show the add-a-baby empty
-          // state (baby icon + "No babies added yet"), under the "Baby Scale" title. (MOB-592)
-          BabyEmptyState(
-            onAddBaby = {
-              coroutineScope.launch {
-                navBackStack.addRoute(AppRoute.AccountSettings.AddBaby())
-              }
-            },
-            description = BabyEmptyStateStrings.EntryDescription,
-          )
-        }
+        is ProductSelection.MyWeight -> WeightHistoryContent(state = state, handleIntent = handleIntent)
+        is ProductSelection.BloodPressure -> BpHistoryContent(state = state, handleIntent = handleIntent)
+        is ProductSelection.Baby ->
+          BabyHistoryContent(product = currentProduct, state = state, handleIntent = handleIntent)
+        is ProductSelection.BabyScale -> BabyScaleEmptyContent()
       }
     }
   }
+}
+
+private fun canExportHistory(activeSelection: ProductSelection, state: HistoryState): Boolean =
+  when (activeSelection) {
+    is ProductSelection.MyWeight -> state.historyItems.isNotEmpty()
+    is ProductSelection.BloodPressure -> state.bpHistoryItems.isNotEmpty()
+    is ProductSelection.Baby -> state.babyHistoryItems[activeSelection.profile.id]?.isNotEmpty() == true
+    is ProductSelection.BabyScale -> false
+  }
+
+@Composable
+private fun WeightHistoryContent(
+  state: HistoryState,
+  handleIntent: (HistoryIntent) -> Unit,
+) {
+  val navBackStack = LocalNavBackStack.current
+  val coroutineScope = rememberCoroutineScope()
+  if (state.historyItems.isEmpty()) {
+    if (state.hasWeightDevice) {
+      ProductHistoryEmptyState(
+        icon = AppIcons.Default.History,
+        iconTint = SnapshotColors.Weight,
+        iconContentDescription = HistoryEmptyStateStrings.NoEntriesIconDescription,
+        title = HistoryEmptyStateStrings.WeightNoEntryTitle,
+        description = HistoryEmptyStateStrings.WeightNoEntryDescription,
+        primaryLabel = HistoryEmptyStateStrings.LogManually,
+        onPrimaryClick = { handleIntent(HistoryIntent.OnLogManually) },
+      )
+    } else {
+      ProductHistoryEmptyState(
+        icon = AppIcons.Default.WeightScale,
+        iconTint = SnapshotColors.Weight,
+        iconContentDescription = HistoryEmptyStateStrings.WeightIconDescription,
+        title = HistoryEmptyStateStrings.WeightNoDeviceTitle,
+        description = HistoryEmptyStateStrings.WeightNoDeviceDescription,
+        primaryLabel = HistoryEmptyStateStrings.AddDevice,
+        onPrimaryClick = { handleIntent(HistoryIntent.OnConnectScale) },
+      )
+    }
+  } else {
+    WeightHistoryList(
+      items = state.historyItems,
+      onItemClick = { item ->
+        if (item.entryTimestamp != null) {
+          coroutineScope.launch {
+            navBackStack.addRoute(
+              AppRoute.History.MonthDetails(item.entryTimestamp, ProductType.MY_WEIGHT),
+            )
+          }
+        }
+      },
+    )
+  }
+}
+
+@Composable
+private fun BpHistoryContent(
+  state: HistoryState,
+  handleIntent: (HistoryIntent) -> Unit,
+) {
+  val navBackStack = LocalNavBackStack.current
+  val coroutineScope = rememberCoroutineScope()
+  if (state.bpHistoryItems.isEmpty()) {
+    if (state.hasBpmDevice) {
+      ProductHistoryEmptyState(
+        icon = AppIcons.Default.History,
+        iconTint = SnapshotColors.BloodPressure,
+        iconContentDescription = HistoryEmptyStateStrings.NoEntriesIconDescription,
+        title = HistoryEmptyStateStrings.BpmNoEntryTitle,
+        description = HistoryEmptyStateStrings.BpmNoEntryDescription,
+        primaryLabel = HistoryEmptyStateStrings.LogManually,
+        onPrimaryClick = { handleIntent(HistoryIntent.OnLogManually) },
+      )
+    } else {
+      ProductHistoryEmptyState(
+        icon = AppIcons.Default.BloodPressureMonitor,
+        iconTint = SnapshotColors.BloodPressure,
+        iconContentDescription = HistoryEmptyStateStrings.BpmIconDescription,
+        title = HistoryEmptyStateStrings.BpmNoDeviceTitle,
+        description = HistoryEmptyStateStrings.BpmNoDeviceDescription,
+        primaryLabel = HistoryEmptyStateStrings.AddDevice,
+        onPrimaryClick = { handleIntent(HistoryIntent.OnConnectScale) },
+      )
+    }
+  } else {
+    BpHistoryList(
+      items = state.bpHistoryItems,
+      onItemClick = { item ->
+        coroutineScope.launch {
+          navBackStack.addRoute(
+            AppRoute.History.MonthDetails(item.entryTimestamp, ProductType.BLOOD_PRESSURE),
+          )
+        }
+      },
+    )
+  }
+}
+
+@Composable
+private fun BabyHistoryContent(
+  product: ProductSelection.Baby,
+  state: HistoryState,
+  handleIntent: (HistoryIntent) -> Unit,
+) {
+  val navBackStack = LocalNavBackStack.current
+  val coroutineScope = rememberCoroutineScope()
+  val babyGroups = state.babyHistoryItems[product.profile.id] ?: persistentListOf()
+  if (babyGroups.isEmpty()) {
+    if (state.hasBabyDevice) {
+      ProductHistoryEmptyState(
+        icon = AppIcons.Default.History,
+        iconTint = SnapshotColors.Baby,
+        iconContentDescription = HistoryEmptyStateStrings.NoEntriesIconDescription,
+        title = HistoryEmptyStateStrings.BabyNoEntryTitle,
+        description = HistoryEmptyStateStrings.BabyNoEntryDescription,
+        primaryLabel = HistoryEmptyStateStrings.LogManually,
+        onPrimaryClick = { handleIntent(HistoryIntent.OnLogManually) },
+      )
+    } else {
+      ProductHistoryEmptyState(
+        icon = AppIcons.Default.BabyScale,
+        iconTint = SnapshotColors.Baby,
+        iconContentDescription = HistoryEmptyStateStrings.BabyScaleIconDescription,
+        title = HistoryEmptyStateStrings.BabyNoDeviceTitle,
+        description = HistoryEmptyStateStrings.BabyNoDeviceDescription,
+        primaryLabel = HistoryEmptyStateStrings.AddDevice,
+        onPrimaryClick = { handleIntent(HistoryIntent.OnConnectScale) },
+      )
+    }
+  } else {
+    BabyHistoryList(
+      groups = babyGroups,
+      babyWeightUnit = state.babyWeightUnit,
+      birthdate = product.profile.birthdate,
+      onItemClick = {  item ->
+        coroutineScope.launch {
+        navBackStack.addRoute(
+          AppRoute.History.MonthDetails(item.dateKey, ProductType.BABY),
+        )
+      }},
+    )
+  }
+}
+
+@Composable
+private fun BabyScaleEmptyContent() {
+  val navBackStack = LocalNavBackStack.current
+  val coroutineScope = rememberCoroutineScope()
+  // No baby profile yet: Manual Entry and History both show the add-a-baby empty
+  // state (baby icon + "No babies added yet"), under the "Baby Scale" title. (MOB-592)
+  BabyEmptyState(
+    onAddBaby = {
+      coroutineScope.launch {
+        navBackStack.addRoute(AppRoute.AccountSettings.AddBaby())
+      }
+    },
+    description = BabyEmptyStateStrings.EntryDescription,
+  )
 }
 
 @PreviewTheme

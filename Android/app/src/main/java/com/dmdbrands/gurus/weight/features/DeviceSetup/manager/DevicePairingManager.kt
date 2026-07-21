@@ -97,94 +97,7 @@ class DevicePairingManager(
                 ggDeviceService.pairDevice(device = ggBtDevice) { response ->
                     bluetoothConnectionTimeoutJob?.cancel()
                     bluetoothConnectionTimeoutJob = null
-                    when (response) {
-                        GGUserActionResponseType.CREATION_COMPLETED -> {
-                            scope.launch {
-                                onIntent(BtWifiScaleSetupIntent.SetScaleId(getDiscoveredScale()?.id ?: ""))
-                                onIntent(
-                                    BtWifiScaleSetupIntent.SetStepConnectionState(
-                                        BtWifiSetupStep.CONNECTING_BLUETOOTH,
-                                        ConnectionState.Success,
-                                    ),
-                                )
-                                val currentTime = Instant.now().toString()
-                                val pairedScale = getDiscoveredScale() ?: return@launch
-                                val updatedScale = pairedScale.copy(
-                                    connectionStatus = BLEStatus.CONNECTED,
-                                    deviceType = DeviceSetupType.BtWifiR4.value,
-                                    sku = sku,
-                                    createdAt = currentTime,
-                                )
-                                setDiscoveredScale(updatedScale)
-                                setDiscoveredScale(deviceService.saveScale(requireNotNull(getDiscoveredScale()) { "discoveredScale unexpectedly null after copy" }))
-                                setIsScaleSaved(true)
-                                try {
-                                    fetchUserList()
-                                    val activeAccount = accountService.activeAccountFlow.first()
-                                    if (activeAccount?.dashboardType == DashboardType.DASHBOARD_4_METRICS.value) {
-                                        accountService.updateDashboardType(DashboardType.DASHBOARD_12_METRICS)
-                                        val dashboardMetrics = activeAccount.dashboardMetrics ?: emptyList()
-                                        val additionalMetrics = StatHelper.getAdditionalMetrics()
-                                        val updatedMetrics = dashboardMetrics.toMutableList().apply {
-                                            additionalMetrics.forEach { metric ->
-                                                if (!contains(metric)) add(metric)
-                                            }
-                                        }
-                                        val metricKeys = updatedMetrics.mapNotNull { MetricKeyConstants.CAMEL_CASE_TO_ENUM[it] }
-                                        dashboardService.updateVisibleMetricKeys(getAccountId(), metricKeys, DashboardType.DASHBOARD_12_METRICS)
-                                    }
-                                } catch (e: CancellationException) {
-                                    throw e
-                                } catch (e: Exception) {
-                                    // Pairing has already succeeded; this catch only swallows
-                                    // background-housekeeping failures so the user still sees
-                                    // the success visual and advances to the next step.
-                                    AppLog.e(TAG, "Error in background operations (user list fetch or dashboard update)", e)
-                                }
-                                AppLog.d(TAG, "BT pairing complete, holding success state for ${SetupLoaderTimings.SUCCESS_DISPLAY_MS}ms before advancing")
-                                delay(SetupLoaderTimings.SUCCESS_DISPLAY_MS)
-                                // Honour cancellation if the screen was disposed during the success hold.
-                                currentCoroutineContext().ensureActive()
-                                // Guard against a late state change (e.g. BLE disconnect during the hold)
-                                // before navigating; the success visual was raised pre-try, so re-check now.
-                                val finalState = getState().stepConnectionStates[BtWifiSetupStep.CONNECTING_BLUETOOTH]
-                                if (finalState !is ConnectionState.Success) {
-                                    AppLog.w(TAG, "Connection state changed during success hold to $finalState — skipping auto-advance")
-                                    return@launch
-                                }
-                                onNext()
-                            }
-                        }
-
-                        GGUserActionResponseType.DUPLICATE_USER_ERROR -> {
-                            scope.launch {
-                                fetchUserList()
-                                val duplicateUserName = getDiscoveredScale()?.preferences?.displayName
-                                    ?: getState().usernameForm.username.value.takeIf { it.isNotEmpty() }
-                                    ?: accountService.activeAccountFlow.first()?.firstName?.take(20)
-                                AppLog.d(TAG, "Found duplicate user: $duplicateUserName")
-                                checkDuplicateUserList()
-                                if (duplicateUserName != null) {
-                                    onIntent(SetCurrentStep(BtWifiSetupStep.DUPLICATES_FOUND))
-                                } else {
-                                    AppLog.e(TAG, "Could not determine duplicate username")
-                                    setBluetoothFailedStatus()
-                                }
-                            }
-                        }
-
-                        GGUserActionResponseType.MEMORY_FULL -> {
-                            scope.launch {
-                                fetchUserList(
-                                    onSuccess = {
-                                        onIntent(SetCurrentStep(BtWifiSetupStep.USER_LIMIT_REACHED))
-                                    },
-                                )
-                            }
-                        }
-
-                        else -> setBluetoothFailedStatus()
-                    }
+                    handlePairDeviceResponse(response)
                 }
             } catch (e: Exception) {
                 bluetoothConnectionTimeoutJob?.cancel()
@@ -197,6 +110,105 @@ class DevicePairingManager(
                     ),
                 )
             }
+        }
+    }
+
+    private fun handlePairDeviceResponse(response: GGUserActionResponseType) {
+        when (response) {
+            GGUserActionResponseType.CREATION_COMPLETED -> {
+                scope.launch {
+                    handlePairingSuccess()
+                }
+            }
+
+            GGUserActionResponseType.DUPLICATE_USER_ERROR -> {
+                scope.launch {
+                    handleDuplicateUserError()
+                }
+            }
+
+            GGUserActionResponseType.MEMORY_FULL -> {
+                scope.launch {
+                    fetchUserList(
+                        onSuccess = {
+                            onIntent(SetCurrentStep(BtWifiSetupStep.USER_LIMIT_REACHED))
+                        },
+                    )
+                }
+            }
+
+            else -> setBluetoothFailedStatus()
+        }
+    }
+
+    private suspend fun handlePairingSuccess() {
+        onIntent(BtWifiScaleSetupIntent.SetScaleId(getDiscoveredScale()?.id ?: ""))
+        onIntent(
+            BtWifiScaleSetupIntent.SetStepConnectionState(
+                BtWifiSetupStep.CONNECTING_BLUETOOTH,
+                ConnectionState.Success,
+            ),
+        )
+        val currentTime = Instant.now().toString()
+        val pairedScale = getDiscoveredScale() ?: return
+        val updatedScale = pairedScale.copy(
+            connectionStatus = BLEStatus.CONNECTED,
+            deviceType = DeviceSetupType.BtWifiR4.value,
+            sku = sku,
+            createdAt = currentTime,
+        )
+        setDiscoveredScale(updatedScale)
+        setDiscoveredScale(deviceService.saveScale(requireNotNull(getDiscoveredScale()) { "discoveredScale unexpectedly null after copy" }))
+        setIsScaleSaved(true)
+        try {
+            fetchUserList()
+            val activeAccount = accountService.activeAccountFlow.first()
+            if (activeAccount?.dashboardType == DashboardType.DASHBOARD_4_METRICS.value) {
+                accountService.updateDashboardType(DashboardType.DASHBOARD_12_METRICS)
+                val dashboardMetrics = activeAccount.dashboardMetrics ?: emptyList()
+                val additionalMetrics = StatHelper.getAdditionalMetrics()
+                val updatedMetrics = dashboardMetrics.toMutableList().apply {
+                    additionalMetrics.forEach { metric ->
+                        if (!contains(metric)) add(metric)
+                    }
+                }
+                val metricKeys = updatedMetrics.mapNotNull { MetricKeyConstants.CAMEL_CASE_TO_ENUM[it] }
+                dashboardService.updateVisibleMetricKeys(getAccountId(), metricKeys, DashboardType.DASHBOARD_12_METRICS)
+            }
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            // Pairing has already succeeded; this catch only swallows
+            // background-housekeeping failures so the user still sees
+            // the success visual and advances to the next step.
+            AppLog.e(TAG, "Error in background operations (user list fetch or dashboard update)", e)
+        }
+        AppLog.d(TAG, "BT pairing complete, holding success state for ${SetupLoaderTimings.SUCCESS_DISPLAY_MS}ms before advancing")
+        delay(SetupLoaderTimings.SUCCESS_DISPLAY_MS)
+        // Honour cancellation if the screen was disposed during the success hold.
+        currentCoroutineContext().ensureActive()
+        // Guard against a late state change (e.g. BLE disconnect during the hold)
+        // before navigating; the success visual was raised pre-try, so re-check now.
+        val finalState = getState().stepConnectionStates[BtWifiSetupStep.CONNECTING_BLUETOOTH]
+        if (finalState !is ConnectionState.Success) {
+            AppLog.w(TAG, "Connection state changed during success hold to $finalState — skipping auto-advance")
+            return
+        }
+        onNext()
+    }
+
+    private suspend fun handleDuplicateUserError() {
+        fetchUserList()
+        val duplicateUserName = getDiscoveredScale()?.preferences?.displayName
+            ?: getState().usernameForm.username.value.takeIf { it.isNotEmpty() }
+            ?: accountService.activeAccountFlow.first()?.firstName?.take(20)
+        AppLog.d(TAG, "Found duplicate user: $duplicateUserName")
+        checkDuplicateUserList()
+        if (duplicateUserName != null) {
+            onIntent(SetCurrentStep(BtWifiSetupStep.DUPLICATES_FOUND))
+        } else {
+            AppLog.e(TAG, "Could not determine duplicate username")
+            setBluetoothFailedStatus()
         }
     }
 

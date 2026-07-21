@@ -245,37 +245,17 @@ fun BabyProfileFormContent(
 
   val currentProfile by rememberUpdatedState(profile)
 
-  LaunchedEffect(birthdayForm) {
-    snapshotFlow { birthdayForm.value }
-      .collect { dateValue ->
-        val formatted = when (dateValue) {
-          is DateTimeValue.Date -> DateTimeValue.getDateFormatFromMilliseconds(dateValue.millis)
-          else -> null
-        }
-        if (formatted != null && formatted != currentProfile.birthday) {
-          onProfileChanged(currentProfile.copy(birthday = formatted))
-        }
-      }
-  }
-
-  val sexOptions = remember {
-    listOf(
-      RadioButtonOption(id = BabyScaleSetupStrings.BabyProfileForm.SexMale, label = BabyScaleSetupStrings.BabyProfileForm.SexMale),
-      RadioButtonOption(id = BabyScaleSetupStrings.BabyProfileForm.SexFemale, label = BabyScaleSetupStrings.BabyProfileForm.SexFemale),
-      RadioButtonOption(id = BabyScaleSetupStrings.BabyProfileForm.SexOther, label = BabyScaleSetupStrings.BabyProfileForm.SexOther),
-    )
-  }
+  BabyBirthdaySync(
+    birthdayForm = birthdayForm,
+    profile = profile,
+    onProfileChanged = onProfileChanged,
+  )
 
   if (showSexModal) {
-    AppRadioGroupModal(
-      title = BabyScaleSetupStrings.BabyProfileForm.SexHint,
-      options = sexOptions,
+    BabySexModal(
       selectedItem = profile.biologicalSex?.ifEmpty { null },
-      onCancel = { showSexModal = false },
-      onOk = { selected ->
-        if (selected != null) onProfileChanged(currentProfile.copy(biologicalSex = selected))
-        showSexModal = false
-      },
+      onSelectSex = { selected -> onProfileChanged(currentProfile.copy(biologicalSex = selected)) },
+      onDismiss = { showSexModal = false },
     )
   }
 
@@ -289,76 +269,155 @@ fun BabyProfileFormContent(
       .verticalScroll(rememberScrollState())
       .padding(vertical = spacing.md, horizontal = spacing.sm),
   ) {
-    AppText(text = BabyScaleSetupStrings.BabyProfileForm.Title, textType = TextType.Title, modifier = Modifier.fillMaxWidth().semantics { heading() })
-    Spacer(modifier = Modifier.height(spacing.xs))
-    AppText(text = BabyScaleSetupStrings.BabyProfileForm.Subtitle, textType = TextType.Body, modifier = Modifier.fillMaxWidth())
-    Spacer(modifier = Modifier.height(spacing.lg))
-
-    InputFieldBase<String>(
-      value = profile.name,
-      onValueChange = { onProfileChanged(profile.copy(name = it ?: "")) },
-      label = BabyScaleSetupStrings.BabyProfileForm.NameHint,
-      modifier = Modifier.fillMaxWidth(),
-      focusRequester = nameFocusRequester,
-      keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
-      onImeAction = { birthLengthFocusRequester.requestFocus() },
+    BabyProfileFormFieldsTop(
+      profile = profile,
+      onProfileChanged = onProfileChanged,
+      birthdayForm = birthdayForm,
+      nameFocusRequester = nameFocusRequester,
+      birthLengthFocusRequester = birthLengthFocusRequester,
+      onShowSexModal = { showSexModal = true },
     )
-    Spacer(modifier = Modifier.height(spacing.xs))
-
-    AppText(text = BabyScaleSetupStrings.BabyProfileForm.BirthdayHint, textType = TextType.Subtitle, modifier = Modifier.padding(bottom = spacing.xs))
-    DateTimeInput(
-      formControl = birthdayForm,
-      mode = DateTimeInputMode.Date,
-      maxValue = DateTimeValue.Date(System.currentTimeMillis()),
-      // DOB: calendar grid only to prevent silent leap-day normalization. (MOB-868)
-      showModeToggle = false,
-    )
-    Spacer(modifier = Modifier.height(spacing.sm))
-
-    Box(modifier = Modifier.fillMaxWidth()) {
-      CardTextField(
-        value = profile.biologicalSex ?: "",
-        label = BabyScaleSetupStrings.BabyProfileForm.SexHint,
-        trailingIcon = {
-          Icon(
-            painter = painterResource(id = com.dmdbrands.gurus.weight.R.drawable.ic_chevron_down),
-            contentDescription = BabyScaleSetupStrings.BabyProfileForm.SexSelectContentDescription,
-            tint = colorScheme.textBody,
-          )
-        },
-      )
-      Box(
-        modifier = Modifier
-          .matchParentSize()
-          .clickable(
-            indication = null,
-            interactionSource = remember { MutableInteractionSource() },
-          ) { showSexModal = true },
-      )
-    }
-    Spacer(modifier = Modifier.height(spacing.md))
-
-    InputFieldBase<String>(
-      value = profile.birthLength ?: "",
-      onValueChange = { onProfileChanged(profile.copy(birthLength = it)) },
-      label = BabyScaleSetupStrings.BabyProfileForm.BirthLengthHint,
-      modifier = Modifier.fillMaxWidth(),
-      focusRequester = birthLengthFocusRequester,
-      keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal, imeAction = ImeAction.Next),
-      onImeAction = { birthWeightFocusRequester.requestFocus() },
-    )
-    Spacer(modifier = Modifier.height(spacing.sm))
-
-    InputFieldBase<String>(
-      value = profile.birthWeight ?: "",
-      onValueChange = { onProfileChanged(profile.copy(birthWeight = it)) },
-      label = BabyScaleSetupStrings.BabyProfileForm.BirthWeightHint,
-      modifier = Modifier.fillMaxWidth(),
-      focusRequester = birthWeightFocusRequester,
-      keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal, imeAction = ImeAction.Done),
-      onImeAction = { birthWeightFocusRequester.freeFocus() },
+    BabyProfileFormFieldsBottom(
+      profile = profile,
+      onProfileChanged = onProfileChanged,
+      birthLengthFocusRequester = birthLengthFocusRequester,
+      birthWeightFocusRequester = birthWeightFocusRequester,
     )
   }
+}
+
+@Composable
+private fun BabyBirthdaySync(
+  birthdayForm: FormControl<DateTimeValue>,
+  profile: BabyProfile,
+  onProfileChanged: (BabyProfile) -> Unit,
+) {
+  val currentProfile by rememberUpdatedState(profile)
+  LaunchedEffect(birthdayForm) {
+    snapshotFlow { birthdayForm.value }
+      .collect { dateValue ->
+        val formatted = when (dateValue) {
+          is DateTimeValue.Date -> DateTimeValue.getDateFormatFromMilliseconds(dateValue.millis)
+          else -> null
+        }
+        if (formatted != null && formatted != currentProfile.birthday) {
+          onProfileChanged(currentProfile.copy(birthday = formatted))
+        }
+      }
+  }
+}
+
+@Composable
+private fun BabySexModal(
+  selectedItem: String?,
+  onSelectSex: (String) -> Unit,
+  onDismiss: () -> Unit,
+) {
+  val sexOptions = remember {
+    listOf(
+      RadioButtonOption(id = BabyScaleSetupStrings.BabyProfileForm.SexMale, label = BabyScaleSetupStrings.BabyProfileForm.SexMale),
+      RadioButtonOption(id = BabyScaleSetupStrings.BabyProfileForm.SexFemale, label = BabyScaleSetupStrings.BabyProfileForm.SexFemale),
+      RadioButtonOption(id = BabyScaleSetupStrings.BabyProfileForm.SexOther, label = BabyScaleSetupStrings.BabyProfileForm.SexOther),
+    )
+  }
+  AppRadioGroupModal(
+    title = BabyScaleSetupStrings.BabyProfileForm.SexHint,
+    options = sexOptions,
+    selectedItem = selectedItem,
+    onCancel = onDismiss,
+    onOk = { selected ->
+      if (selected != null) onSelectSex(selected)
+      onDismiss()
+    },
+  )
+}
+
+@Composable
+private fun BabyProfileFormFieldsTop(
+  profile: BabyProfile,
+  onProfileChanged: (BabyProfile) -> Unit,
+  birthdayForm: FormControl<DateTimeValue>,
+  nameFocusRequester: FocusRequester,
+  birthLengthFocusRequester: FocusRequester,
+  onShowSexModal: () -> Unit,
+) {
+  AppText(text = BabyScaleSetupStrings.BabyProfileForm.Title, textType = TextType.Title, modifier = Modifier.fillMaxWidth().semantics { heading() })
+  Spacer(modifier = Modifier.height(spacing.xs))
+  AppText(text = BabyScaleSetupStrings.BabyProfileForm.Subtitle, textType = TextType.Body, modifier = Modifier.fillMaxWidth())
+  Spacer(modifier = Modifier.height(spacing.lg))
+
+  InputFieldBase<String>(
+    value = profile.name,
+    onValueChange = { onProfileChanged(profile.copy(name = it ?: "")) },
+    label = BabyScaleSetupStrings.BabyProfileForm.NameHint,
+    modifier = Modifier.fillMaxWidth(),
+    focusRequester = nameFocusRequester,
+    keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
+    onImeAction = { birthLengthFocusRequester.requestFocus() },
+  )
+  Spacer(modifier = Modifier.height(spacing.xs))
+
+  AppText(text = BabyScaleSetupStrings.BabyProfileForm.BirthdayHint, textType = TextType.Subtitle, modifier = Modifier.padding(bottom = spacing.xs))
+  DateTimeInput(
+    formControl = birthdayForm,
+    mode = DateTimeInputMode.Date,
+    maxValue = DateTimeValue.Date(System.currentTimeMillis()),
+    // DOB: calendar grid only to prevent silent leap-day normalization. (MOB-868)
+    showModeToggle = false,
+  )
+  Spacer(modifier = Modifier.height(spacing.sm))
+
+  Box(modifier = Modifier.fillMaxWidth()) {
+    CardTextField(
+      value = profile.biologicalSex ?: "",
+      label = BabyScaleSetupStrings.BabyProfileForm.SexHint,
+      trailingIcon = {
+        Icon(
+          painter = painterResource(id = com.dmdbrands.gurus.weight.R.drawable.ic_chevron_down),
+          contentDescription = BabyScaleSetupStrings.BabyProfileForm.SexSelectContentDescription,
+          tint = colorScheme.textBody,
+        )
+      },
+    )
+    Box(
+      modifier = Modifier
+        .matchParentSize()
+        .clickable(
+          indication = null,
+          interactionSource = remember { MutableInteractionSource() },
+        ) { onShowSexModal() },
+    )
+  }
+  Spacer(modifier = Modifier.height(spacing.md))
+}
+
+@Composable
+private fun BabyProfileFormFieldsBottom(
+  profile: BabyProfile,
+  onProfileChanged: (BabyProfile) -> Unit,
+  birthLengthFocusRequester: FocusRequester,
+  birthWeightFocusRequester: FocusRequester,
+) {
+  InputFieldBase<String>(
+    value = profile.birthLength ?: "",
+    onValueChange = { onProfileChanged(profile.copy(birthLength = it)) },
+    label = BabyScaleSetupStrings.BabyProfileForm.BirthLengthHint,
+    modifier = Modifier.fillMaxWidth(),
+    focusRequester = birthLengthFocusRequester,
+    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal, imeAction = ImeAction.Next),
+    onImeAction = { birthWeightFocusRequester.requestFocus() },
+  )
+  Spacer(modifier = Modifier.height(spacing.sm))
+
+  InputFieldBase<String>(
+    value = profile.birthWeight ?: "",
+    onValueChange = { onProfileChanged(profile.copy(birthWeight = it)) },
+    label = BabyScaleSetupStrings.BabyProfileForm.BirthWeightHint,
+    modifier = Modifier.fillMaxWidth(),
+    focusRequester = birthWeightFocusRequester,
+    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal, imeAction = ImeAction.Done),
+    onImeAction = { birthWeightFocusRequester.freeFocus() },
+  )
 }
 
 /**
@@ -392,39 +451,14 @@ fun BabyListContent(
 
     Column(verticalArrangement = Arrangement.spacedBy(spacing.x3s)) {
       babyProfiles.forEachIndexed { index, profile ->
-        AppSwipeableListItem(
-          onActionOpened = { openedIdx -> openIndex = openedIdx },
-          isSwipeable = true,
+        BabyProfileRow(
           index = index,
-          iconWidth = 56.dp,
+          profile = profile,
           showAction = openIndex == index,
-          actionContent = {
-            AppSwipeableListActions {
-              AppSwipeableActionItem(
-                iconId = AppIcons.Default.Delete,
-                contentDescription = BabyScaleSetupStrings.BabyList.DeleteContentDescription,
-                backgroundColor = MeTheme.colorScheme.danger,
-              ) { onDeleteBaby(index) }
-            }
-          },
-        ) {
-          BaseListItem(
-            title = profile.name.ifEmpty { BabyScaleSetupStrings.BabyList.BabyFallbackName(index) },
-            leadingContent = {
-              BabyAvatar(name = profile.name.ifEmpty { BabyScaleSetupStrings.BabyList.AvatarInitialFallback })
-            },
-            trailingContent = {
-              IconButton(onClick = { onEditBaby(index) }) {
-                Icon(
-                  painter = painterResource(AppIcons.Default.EditPencil),
-                  contentDescription = BabyScaleSetupStrings.BabyList.EditContentDescription,
-                  tint = MeTheme.colorScheme.textBody,
-                  modifier = Modifier.size(20.dp),
-                )
-              }
-            },
-          )
-        }
+          onActionOpened = { openedIdx -> openIndex = openedIdx },
+          onDeleteBaby = onDeleteBaby,
+          onEditBaby = onEditBaby,
+        )
       }
     }
 
@@ -438,6 +472,50 @@ fun BabyListContent(
         size = ButtonSize.Small,
       )
     }
+  }
+}
+
+@Composable
+private fun BabyProfileRow(
+  index: Int,
+  profile: BabyProfile,
+  showAction: Boolean,
+  onActionOpened: (Int?) -> Unit,
+  onDeleteBaby: (Int) -> Unit,
+  onEditBaby: (Int) -> Unit,
+) {
+  AppSwipeableListItem(
+    onActionOpened = onActionOpened,
+    isSwipeable = true,
+    index = index,
+    iconWidth = 56.dp,
+    showAction = showAction,
+    actionContent = {
+      AppSwipeableListActions {
+        AppSwipeableActionItem(
+          iconId = AppIcons.Default.Delete,
+          contentDescription = BabyScaleSetupStrings.BabyList.DeleteContentDescription,
+          backgroundColor = MeTheme.colorScheme.danger,
+        ) { onDeleteBaby(index) }
+      }
+    },
+  ) {
+    BaseListItem(
+      title = profile.name.ifEmpty { BabyScaleSetupStrings.BabyList.BabyFallbackName(index) },
+      leadingContent = {
+        BabyAvatar(name = profile.name.ifEmpty { BabyScaleSetupStrings.BabyList.AvatarInitialFallback })
+      },
+      trailingContent = {
+        IconButton(onClick = { onEditBaby(index) }) {
+          Icon(
+            painter = painterResource(AppIcons.Default.EditPencil),
+            contentDescription = BabyScaleSetupStrings.BabyList.EditContentDescription,
+            tint = MeTheme.colorScheme.textBody,
+            modifier = Modifier.size(20.dp),
+          )
+        }
+      },
+    )
   }
 }
 

@@ -270,85 +270,50 @@ class DashboardSnapshotViewModel @Inject constructor(
     }
 
     val xValues = sorted.map { DateTimeConverter.isoToTimestamp(it.entryTimestamp).toDouble() }
-    // Convert decigrams to lb + oz display
-    val latestWeight = sorted.last().avgWeightDecigrams ?: 0
-    val lbs = ConversionTools.convertDecigramsToLb(latestWeight)
-    val oz = ConversionTools.convertDecigramsToOz(latestWeight)
-    val label = "$lbs ${DashboardSnapshotStrings.Lbs} ${String.format(java.util.Locale.US, "%.1f", oz)} ${DashboardSnapshotStrings.Oz}"
-
     // Convert decigrams to lbs for chart display
     val yValues = sorted.map { ConversionTools.convertDecigramsToLbExact(it.avgWeightDecigrams ?: 0) }
+    if (xValues.isEmpty()) return
 
-    if (xValues.isNotEmpty()) {
-      val endX = xValues.max().toLong()
-      val startX = xValues.min().toLong()
-      val startTimestamp = GraphUtil.getStartRange(segment = GraphSegment.WEEK, startX)
-      val endTimestamp = GraphUtil.getRelativeEnd(segment = GraphSegment.WEEK, endX)
-
-      // Percentile curves from birth to age+120 days (dense, own X timestamps)
-      val birthDateMillis = profile.birthdate?.let { DateTimeConverter.isoToTimestamp(it) }
-      val pSeries = if (birthDateMillis != null) {
-        BabyPercentileHelper.getWeightPercentileSeries(
-          sex = profile.sex,
-          birthDateMillis = birthDateMillis,
-        )
-      } else null
-
-      // Only include visible percentile values in Y range
-      val visibleP5 = pSeries?.let { s ->
-        s.p5.filterIndexed { i, _ -> s.xTimestamps[i] in xValues.min()..xValues.max() }
-      } ?: emptyList()
-      val visibleP95 = pSeries?.let { s ->
-        s.p95.filterIndexed { i, _ -> s.xTimestamps[i] in xValues.min()..xValues.max() }
-      } ?: emptyList()
-      val allYValues = yValues + visibleP5 + visibleP95
-      val graphMeta = generateNiceScale(
-        minValue = allYValues.min(),
-        maxValue = allYValues.max(),
-        goalWeight = 0.0,
-        targetTickCount = 4,
+    // Percentile curves from birth to age+120 days (dense, own X timestamps)
+    val birthDateMillis = profile.birthdate?.let { DateTimeConverter.isoToTimestamp(it) }
+    val pSeries = if (birthDateMillis != null) {
+      BabyPercentileHelper.getWeightPercentileSeries(
+        sex = profile.sex,
+        birthDateMillis = birthDateMillis,
       )
+    } else null
 
-      // Start from the week of the last percentile point before weight data
-      val percentileWeekStart = pSeries?.xTimestamps
-        ?.lastOrNull { it < (startTimestamp?.toDouble() ?: Double.MAX_VALUE) }
-        ?.toLong()
-        ?.let { GraphUtil.getStartRange(GraphSegment.WEEK, it) }
+    val chartData = buildBabyChartData(sorted, xValues, yValues, pSeries)
+    handleIntent(DashboardSnapshotIntent.SetBabyChart(profileId, chartData))
 
-      handleIntent(
-        DashboardSnapshotIntent.SetBabyChart(
-          profileId,
-          SnapshotChartData(
-            label = label,
-            yStep = graphMeta.step,
-            yMin = graphMeta.min,
-            yMax = graphMeta.max,
-            startTimestamp = percentileWeekStart ?: startTimestamp,
-            endTimestamp = endTimestamp,
-            hasPercentile = pSeries != null,
-          ),
-        ),
-      )
+    pushBabyChartProducer(profileId, xValues, yValues, pSeries)
+  }
 
-      val producer = babyModelProducers.getOrPut(profileId) { CartesianChartModelProducer() }
-      try {
-        producer.runTransaction {
-          // Layer 1 (behind): percentile bands
-          if (pSeries != null) {
-            lineSeries {
-              pSeries.allBands().forEach { band ->
-                series(x = pSeries.xTimestamps, y = band)
-              }
+  /** Pushes the layered (percentile bands + weight line) producer transaction for a baby chart. */
+  private suspend fun pushBabyChartProducer(
+    profileId: String,
+    xValues: List<Double>,
+    yValues: List<Double>,
+    pSeries: BabyPercentileHelper.PercentileSeries?,
+  ) {
+    val producer = babyModelProducers.getOrPut(profileId) { CartesianChartModelProducer() }
+    try {
+      producer.runTransaction {
+        // Layer 1 (behind): percentile bands
+        if (pSeries != null) {
+          lineSeries {
+            pSeries.allBands().forEach { band ->
+              series(x = pSeries.xTimestamps, y = band)
             }
           }
-          // Layer 2 (on top): baby weight line
-          lineSeries {
-            series(x = xValues, y = yValues)
-          }
         }
-      } catch (e: Exception) {
-        AppLog.e(TAG, "Failed to update baby chart model for $profileId", e)
+        // Layer 2 (on top): baby weight line
+        lineSeries {
+          series(x = xValues, y = yValues)
+        }
       }
+    } catch (e: Exception) {
+      AppLog.e(TAG, "Failed to update baby chart model for $profileId", e)
     }
   }
 
@@ -359,4 +324,57 @@ class DashboardSnapshotViewModel @Inject constructor(
   companion object {
     private const val TAG = "DashboardSnapshotVM"
   }
+}
+
+/**
+ * Pure computation of the baby snapshot chart metadata (label, Y scale, visible window) from the
+ * sorted weight points and optional percentile series. Extracted from updateBabyChart.
+ */
+private fun buildBabyChartData(
+  sorted: List<PeriodBabySummary>,
+  xValues: List<Double>,
+  yValues: List<Double>,
+  pSeries: BabyPercentileHelper.PercentileSeries?,
+): SnapshotChartData {
+  // Convert decigrams to lb + oz display
+  val latestWeight = sorted.last().avgWeightDecigrams ?: 0
+  val lbs = ConversionTools.convertDecigramsToLb(latestWeight)
+  val oz = ConversionTools.convertDecigramsToOz(latestWeight)
+  val label = "$lbs ${DashboardSnapshotStrings.Lbs} ${String.format(java.util.Locale.US, "%.1f", oz)} ${DashboardSnapshotStrings.Oz}"
+
+  val endX = xValues.max().toLong()
+  val startX = xValues.min().toLong()
+  val startTimestamp = GraphUtil.getStartRange(segment = GraphSegment.WEEK, startX)
+  val endTimestamp = GraphUtil.getRelativeEnd(segment = GraphSegment.WEEK, endX)
+
+  // Only include visible percentile values in Y range
+  val visibleP5 = pSeries?.let { s ->
+    s.p5.filterIndexed { i, _ -> s.xTimestamps[i] in xValues.min()..xValues.max() }
+  } ?: emptyList()
+  val visibleP95 = pSeries?.let { s ->
+    s.p95.filterIndexed { i, _ -> s.xTimestamps[i] in xValues.min()..xValues.max() }
+  } ?: emptyList()
+  val allYValues = yValues + visibleP5 + visibleP95
+  val graphMeta = generateNiceScale(
+    minValue = allYValues.min(),
+    maxValue = allYValues.max(),
+    goalWeight = 0.0,
+    targetTickCount = 4,
+  )
+
+  // Start from the week of the last percentile point before weight data
+  val percentileWeekStart = pSeries?.xTimestamps
+    ?.lastOrNull { it < (startTimestamp?.toDouble() ?: Double.MAX_VALUE) }
+    ?.toLong()
+    ?.let { GraphUtil.getStartRange(GraphSegment.WEEK, it) }
+
+  return SnapshotChartData(
+    label = label,
+    yStep = graphMeta.step,
+    yMin = graphMeta.min,
+    yMax = graphMeta.max,
+    startTimestamp = percentileWeekStart ?: startTimestamp,
+    endTimestamp = endTimestamp,
+    hasPercentile = pSeries != null,
+  )
 }

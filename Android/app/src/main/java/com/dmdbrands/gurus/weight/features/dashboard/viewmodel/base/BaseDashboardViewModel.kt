@@ -72,88 +72,31 @@ abstract class BaseDashboardViewModel<S : BaseDashboardState, I : BaseGraphInten
     val timestamps = entries.map { it.getTimeStamp() }.sorted()
     val initialTimeStamp = timestamps.minOrNull()
     val endTimeStamp = timestamps.maxOrNull()
-    val calendar = Calendar.getInstance()
 
     for (segment in segments) {
-      val isSingleWindow = GraphUtil.isSingleWindow(segment, initialTimeStamp, endTimeStamp)
-
-      val (startX, endX) = if (segment == GraphSegment.TOTAL) {
-        val start = (initialTimeStamp ?: calendar.timeInMillis).let {
-          Calendar.getInstance().apply { timeInMillis = it; add(Calendar.MONTH, -6) }.timeInMillis
-        }
-        val end = (endTimeStamp ?: calendar.timeInMillis).let {
-          Calendar.getInstance().apply { timeInMillis = it; add(Calendar.MONTH, +6) }.timeInMillis
-        }
-        start to end
-      } else {
-        val start = GraphUtil.getRollingWindowStart(segment, endTimeStamp)
-          ?: GraphUtil.getStartRange(segment, endTimeStamp)
-          ?: calendar.timeInMillis
-        val end = endTimeStamp ?: calendar.timeInMillis
-        start to end
-      }
-
-      val chartMinX = if (segment == GraphSegment.TOTAL) {
-        startX.toDouble()
-      } else {
-        GraphUtil.getStartRange(segment, initialTimeStamp)?.toDouble() ?: startX.toDouble()
-      }
-      val chartMaxX = if (segment == GraphSegment.TOTAL) {
-        endX.toDouble()
-      } else if (segment == GraphSegment.MONTH) {
-        val paddedStart = GraphUtil.getStartRange(segment, calendar.timeInMillis) ?: calendar.timeInMillis
-        Calendar.getInstance().apply { timeInMillis = paddedStart; add(Calendar.DAY_OF_YEAR, 30) }
-          .timeInMillis.toDouble()
-      } else {
-        GraphUtil.getEndRange(segment, calendar.timeInMillis)?.toDouble() ?: endX.toDouble()
-      }
-
-      val filteredTarget = entries.filter { it.getTimeStamp() in startX..endX }
-
-      // Match ScrollAwareRangeProvider.computeVisibleEntries padding (paddingEntries=1):
-      // include 1 entry just before and 1 entry just after the visible window so the
-      // seed Y range matches the runtime Y range exactly. Without this, an entry just
-      // outside the window with a different weight would expand the runtime range and
-      // cause a frame-1 → frame-2 slide on initial load.
-      val seedSource = if (getYValuesForSeed != null) {
-        val sorted = entries.sortedBy { it.getTimeStamp() }
-        val firstIdx = sorted.indexOfFirst { it.getTimeStamp() >= startX }
-        val lastIdx = sorted.indexOfLast { it.getTimeStamp() <= endX }
-        if (firstIdx < 0 || lastIdx < 0 || firstIdx > lastIdx) {
-          filteredTarget
-        } else {
-          val from = (firstIdx - 1).coerceAtLeast(0)
-          val to = (lastIdx + 1).coerceAtMost(sorted.lastIndex)
-          sorted.subList(from, to + 1)
-        }
-      } else filteredTarget
-
-      val seed = if (getYValuesForSeed != null) {
-        val yValues = getYValuesForSeed(seedSource).filter { it.isFinite() && it > 0.0 }
-        if (yValues.isNotEmpty()) {
-          val scale = generateNiceScale(
-            minValue = yValues.min(),
-            maxValue = yValues.max(),
-            goalWeight = goalWeight,
-            isWeightLessMode = isWeightlessMode,
-            targetTickCount = 4,
-          )
-          scale.min to scale.max
-        } else null
-      } else null
+      val bounds = computeSegmentBounds(segment, initialTimeStamp, endTimeStamp)
+      val filteredTarget = entries.filter { it.getTimeStamp() in bounds.startX..bounds.endX }
+      val seed = computeSeedRange(
+        entries = entries,
+        startX = bounds.startX,
+        endX = bounds.endX,
+        goalWeight = goalWeight,
+        isWeightlessMode = isWeightlessMode,
+        getYValuesForSeed = getYValuesForSeed,
+      )
 
       updateSegmentState(segment) {
         it.copy(
           data = entries.toImmutableList(),
           target = filteredTarget.toImmutableList(),
-          chartMinX = chartMinX,
-          chartMaxX = chartMaxX,
-          isSingleWindow = isSingleWindow,
+          chartMinX = bounds.chartMinX,
+          chartMaxX = bounds.chartMaxX,
+          isSingleWindow = bounds.isSingleWindow,
           isEmptyGraph = false,
           startTimestamp = initialTimeStamp,
           endTimestamp = endTimeStamp,
-          visibleMin = it.visibleMin ?: startX,
-          visibleMax = it.visibleMax ?: endX,
+          visibleMin = it.visibleMin ?: bounds.startX,
+          visibleMax = it.visibleMax ?: bounds.endX,
           seedMinY = seed?.first ?: it.seedMinY,
           seedMaxY = seed?.second ?: it.seedMaxY,
         )
@@ -207,4 +150,99 @@ abstract class BaseDashboardViewModel<S : BaseDashboardState, I : BaseGraphInten
     }
     super.handleIntent(intent)
   }
+}
+
+/** Per-segment X-axis bounds computed from the entry time range. */
+private data class SegmentBounds(
+  val startX: Long,
+  val endX: Long,
+  val chartMinX: Double,
+  val chartMaxX: Double,
+  val isSingleWindow: Boolean,
+)
+
+/** Pure X-axis bounds computation for a single [segment] (extracted from updateSegmentRanges). */
+private fun computeSegmentBounds(
+  segment: GraphSegment,
+  initialTimeStamp: Long?,
+  endTimeStamp: Long?,
+): SegmentBounds {
+  val calendar = Calendar.getInstance()
+  val isSingleWindow = GraphUtil.isSingleWindow(segment, initialTimeStamp, endTimeStamp)
+
+  val (startX, endX) = if (segment == GraphSegment.TOTAL) {
+    val start = (initialTimeStamp ?: calendar.timeInMillis).let {
+      Calendar.getInstance().apply { timeInMillis = it; add(Calendar.MONTH, -6) }.timeInMillis
+    }
+    val end = (endTimeStamp ?: calendar.timeInMillis).let {
+      Calendar.getInstance().apply { timeInMillis = it; add(Calendar.MONTH, +6) }.timeInMillis
+    }
+    start to end
+  } else {
+    val start = GraphUtil.getRollingWindowStart(segment, endTimeStamp)
+      ?: GraphUtil.getStartRange(segment, endTimeStamp)
+      ?: calendar.timeInMillis
+    val end = endTimeStamp ?: calendar.timeInMillis
+    start to end
+  }
+
+  val chartMinX = if (segment == GraphSegment.TOTAL) {
+    startX.toDouble()
+  } else {
+    GraphUtil.getStartRange(segment, initialTimeStamp)?.toDouble() ?: startX.toDouble()
+  }
+  val chartMaxX = if (segment == GraphSegment.TOTAL) {
+    endX.toDouble()
+  } else if (segment == GraphSegment.MONTH) {
+    val paddedStart = GraphUtil.getStartRange(segment, calendar.timeInMillis) ?: calendar.timeInMillis
+    Calendar.getInstance().apply { timeInMillis = paddedStart; add(Calendar.DAY_OF_YEAR, 30) }
+      .timeInMillis.toDouble()
+  } else {
+    GraphUtil.getEndRange(segment, calendar.timeInMillis)?.toDouble() ?: endX.toDouble()
+  }
+
+  return SegmentBounds(startX, endX, chartMinX, chartMaxX, isSingleWindow)
+}
+
+/**
+ * Pure seed Y-range computation (extracted from updateSegmentRanges). Returns null when no
+ * [getYValuesForSeed] extractor is provided or no finite positive values fall in the window.
+ *
+ * Match ScrollAwareRangeProvider.computeVisibleEntries padding (paddingEntries=1): include 1
+ * entry just before and 1 entry just after the visible window so the seed Y range matches the
+ * runtime Y range exactly. Without this, an entry just outside the window with a different
+ * weight would expand the runtime range and cause a frame-1 → frame-2 slide on initial load.
+ */
+private fun computeSeedRange(
+  entries: List<PeriodSummary>,
+  startX: Long,
+  endX: Long,
+  goalWeight: Double,
+  isWeightlessMode: Boolean,
+  getYValuesForSeed: ((List<PeriodSummary>) -> List<Double>)?,
+): Pair<Double, Double>? {
+  if (getYValuesForSeed == null) return null
+
+  val sorted = entries.sortedBy { it.getTimeStamp() }
+  val firstIdx = sorted.indexOfFirst { it.getTimeStamp() >= startX }
+  val lastIdx = sorted.indexOfLast { it.getTimeStamp() <= endX }
+  val seedSource = if (firstIdx < 0 || lastIdx < 0 || firstIdx > lastIdx) {
+    entries.filter { it.getTimeStamp() in startX..endX }
+  } else {
+    val from = (firstIdx - 1).coerceAtLeast(0)
+    val to = (lastIdx + 1).coerceAtMost(sorted.lastIndex)
+    sorted.subList(from, to + 1)
+  }
+
+  val yValues = getYValuesForSeed(seedSource).filter { it.isFinite() && it > 0.0 }
+  if (yValues.isEmpty()) return null
+
+  val scale = generateNiceScale(
+    minValue = yValues.min(),
+    maxValue = yValues.max(),
+    goalWeight = goalWeight,
+    isWeightLessMode = isWeightlessMode,
+    targetTickCount = 4,
+  )
+  return scale.min to scale.max
 }
