@@ -311,7 +311,25 @@ enum ChartPrep {
         let visibleLength = period == .week
             ? DashboardConstants.TimeInterval.weightWeekWindow
             : config.visibleDomainLength(for: period)
-        let xDomain = config.fullXDomain(for: period, from: operations)
+        // MOB-1726 (issue 1): the baby TOTAL section is a fixed (non-scrollable) view whose data is bucketed
+        // by MONTH at the month-START. The generic `firstEntry − 6mo` domain plus curves that begin at the
+        // exact birthday (day-of-life 0) left the curves starting mid-chart (the birthday sat well right of
+        // the domain's left edge). Fix: anchor the domain AND the curves' age-axis to the BIRTH-MONTH start,
+        // so the monthly percentile marks line up with the month-bucketed data (both on a month-start axis)
+        // and the curves begin at the leading edge, aligned with the data line. The selected percentile is
+        // still computed from the real birthday (see `GraphSelectionPresentationResolver`), so only the
+        // reference-curve DISPLAY is month-anchored. Other periods keep the shared full-domain geometry +
+        // exact-birthday curves.
+        let totalCurveAnchor: Date? = period == .total
+            && BabyDashboardChartSupport.canResolveGrowthPercentiles(for: babyProfile)
+            ? calendar.dateInterval(
+                of: .month,
+                for: BabyDashboardChartSupport.resolvedBirthday(for: babyProfile, calendar: calendar)
+              )?.start
+            : nil
+        let xDomain = (period == .total
+            ? babyTotalDomain(operations: operations, birthMonthStart: totalCurveAnchor, calendar: calendar)
+            : config.fullXDomain(for: period, from: operations))
             ?? xDomainRange(plotted: [], scrollPosition: scrollPosition, visibleLength: visibleLength)
         // Curves span the full (scroll-independent) domain; the y-axis adapts to the visible window (parity
         // with the legacy `babyChartVisibleDateRange`) — total isn't scrollable, so it uses the whole domain.
@@ -330,21 +348,32 @@ enum ChartPrep {
                 from: operations, isWeightlessMode: false, anchorWeight: nil, convertWeight: convertWeight
             )
             rawCurves = BabyDashboardChartSupport.percentileSeries(
-                for: babyProfile, dateRange: xDomain, convertDecigramsToDisplay: convertDecigramsToDisplay
+                for: babyProfile,
+                dateRange: xDomain,
+                convertDecigramsToDisplay: convertDecigramsToDisplay,
+                birthdayOverride: totalCurveAnchor
             )
             scale = BabyDashboardChartSupport.yAxisScale(
                 for: operations,
                 babyProfile: babyProfile,
                 dateRange: yWindow,
                 convertStoredWeightToDisplay: { convertWeight(Double($0)) },
-                convertDecigramsToDisplay: convertDecigramsToDisplay
+                convertDecigramsToDisplay: convertDecigramsToDisplay,
+                birthdayOverride: totalCurveAnchor
             )
         case .height:
             dataName = BabyDashboardChartSupport.heightSeriesName
             rawData = BabyDashboardChartSupport.heightSeries(from: operations)
-            rawCurves = BabyDashboardChartSupport.heightPercentileSeries(for: babyProfile, dateRange: xDomain)
+            rawCurves = BabyDashboardChartSupport.heightPercentileSeries(
+                for: babyProfile,
+                dateRange: xDomain,
+                birthdayOverride: totalCurveAnchor
+            )
             scale = BabyDashboardChartSupport.heightYAxisScale(
-                for: operations, babyProfile: babyProfile, dateRange: yWindow
+                for: operations,
+                babyProfile: babyProfile,
+                dateRange: yWindow,
+                birthdayOverride: totalCurveAnchor
             )
         }
 
@@ -558,6 +587,38 @@ enum ChartPrep {
             return first.addingTimeInterval(-half)...first.addingTimeInterval(half)
         }
         return first...last
+    }
+
+    /// MOB-1726 (issue 1): the baby TOTAL x-domain, anchored to the BIRTH-MONTH start. Total data is bucketed
+    /// by month at the month-START, and the curves are age-anchored to the same birth-month start (see
+    /// `buildBaby`), so opening the domain at the birth-month start makes both begin at the leading edge and
+    /// share one month-granular axis. Closes a short pad (1 month) after the last reading so the last point
+    /// isn't pinned to the trailing rule. `min(birthMonthStart, firstEntry)` keeps the birth month visible
+    /// even when the first reading is later (curves from birth; data inset where readings begin).
+    ///
+    /// Falls back to the generic `firstEntry ± 6mo` span when there is no birth anchor (unknown birthday or
+    /// withheld sex → `birthMonthStart == nil`), so we never fabricate a birthday extent for a chart that
+    /// shows no reference curves. `nil` for an empty dataset (caller widens it).
+    private static func babyTotalDomain(
+        operations: [BathScaleWeightSummary],
+        birthMonthStart: Date?,
+        calendar: Calendar
+    ) -> ClosedRange<Date>? {
+        guard let firstEntry = operations.first?.date, let lastEntry = operations.last?.date else { return nil }
+        // No curves → no birth anchor to show. Keep the legacy data-padded span (parity with `fullXDomain`).
+        guard let birthMonthStart else {
+            let lower = calendar.date(byAdding: .month, value: -6, to: firstEntry) ?? firstEntry
+            let upper = calendar.date(byAdding: .month, value: 6, to: lastEntry) ?? lastEntry
+            return lower <= upper ? lower...upper : upper...lower
+        }
+        // MOB-1726: pad ONE month before the leading content (birth month / first reading) so the birth point
+        // isn't glued to the left rule — matching the one-month pad after the last reading. The percentile
+        // curves still begin at birth (day-of-life 0 clamps at the birth-month start), so this leading month is
+        // intentional empty breathing room, symmetric with the trailing gap. (No pre-birth curve is drawn.)
+        let contentStart = min(birthMonthStart, firstEntry)
+        let lower = calendar.date(byAdding: .month, value: -1, to: contentStart) ?? contentStart
+        let upper = calendar.date(byAdding: .month, value: 1, to: lastEntry) ?? lastEntry
+        return lower <= upper ? lower...upper : upper...lower
     }
 
     /// Change token that EXCLUDES the y-axis: series count + first/last (xDate, value) per series.

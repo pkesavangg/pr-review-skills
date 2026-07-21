@@ -39,6 +39,13 @@ protocol ProductTypeStoreProtocol: AnyObject {
     /// Used to decide whether to redirect returning users straight to the product detail dashboard.
     var hasPersistedSelection: Bool { get }
 
+    /// The raw persisted selection id for the active account, read synchronously from local storage
+    /// (`nil` when there is no active account or nothing persisted). Matches `ProductSelection.id`
+    /// (e.g. `myWeight`, `myBloodPressure`, `baby_<id>`). The dashboard compares this against the
+    /// currently-applied selection to know whether the persisted product (restored asynchronously)
+    /// has landed yet — so it can hold a skeleton instead of flashing the default weight scaffold.
+    var persistedSelectionId: String? { get }
+
     /// Removes the persisted product selection for the current account.
     /// Call this when the user explicitly navigates back to the snapshot overview so the
     /// next cold launch shows the snapshot instead of jumping straight to the product dashboard.

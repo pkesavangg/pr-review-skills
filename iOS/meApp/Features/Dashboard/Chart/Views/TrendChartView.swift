@@ -42,13 +42,14 @@ private struct GoalChipYKey: PreferenceKey {
     }
 }
 
-/// MOB-1591 (baby): carries the top-left anchor (in the chart's coordinate space) where the "NN%" growth-
-/// percentile label floats — the LEADING edge of the plot at the selected reading's y-level. Previously the
-/// label was an `.annotation(alignment: .trailing)` on the horizontal crosshair `RuleMark(y:)`, which spans
-/// the ENTIRE scroll domain — so the annotation pinned to the far-right of all history, landing in a future
-/// window that the user had to scroll to before the "%" became visible. Floating it at the visible plot's
-/// leading edge (parity with the Figma design, where the "6%" sits at the left, on the crosshair line) keeps
-/// it in view in the current window at any scroll position.
+/// MOB-1591 / MOB-1726 (baby): carries the anchor (in the chart's coordinate space) where the "NN%" growth-
+/// percentile label floats — a fixed inset from the leading edge of the VISIBLE window, at the selected
+/// reading's y-level. Originally the label was an `.annotation(alignment: .trailing)` on the horizontal
+/// crosshair `RuleMark(y:)`, which spans the ENTIRE scroll domain — so it pinned to the far edge of all
+/// history. A fixed `plot.minX + offset` then pinned it to the FULL-content leading edge (the first window),
+/// which scrolls off-screen once the user moves to a later window. It now maps the current scroll position
+/// (`scrollX`, the visible window's leading edge) into the plot, so it stays at the left of whatever window
+/// is on screen, at any scroll position — not near the point and not stranded in another window.
 private struct PercentileCalloutPointKey: PreferenceKey {
     static let defaultValue: CGPoint? = nil
     static func reduce(value: inout CGPoint?, nextValue: () -> CGPoint?) {
@@ -329,7 +330,21 @@ struct TrendChartView: View {
               let anchor = proxy.plotFrame,
               let yInPlot = proxy.position(forY: value) else { return nil }
         let plot = geo[anchor]
-        let x = plot.minX + 30
+        // MOB-1726 (issue 4): anchor the "NN%" to the LEFT of the VISIBLE window at ANY scroll position.
+        // `plot.minX` is the FULL-content leading edge (the first window); once the user scrolls to a later
+        // window it sits off-screen to the left, so a fixed `plot.minX + 30` only showed the label in the very
+        // first window (the reported bug: pick a reading in a later window → the "%" is stranded in the first
+        // window, off-screen). Map the current scroll position (`scrollX` = the visible window's leading edge)
+        // into the plot the SAME way the working date callout does (`plot.minX + position(forX:)`) and offset
+        // from there, so the label rides whatever window is on screen. Total isn't scrollable → the content
+        // edge IS the visible edge, so fall back to `plot.minX`.
+        let windowLeftX: CGFloat
+        if isScrollable, let leadingX = proxy.position(forX: scrollX) {
+            windowLeftX = plot.minX + leadingX
+        } else {
+            windowLeftX = plot.minX
+        }
+        let x = windowLeftX + 30
         let y = min(max(plot.minY + yInPlot - 12, plot.minY + 12), plot.maxY - 12)
         return CGPoint(x: x, y: y)
     }
@@ -389,6 +404,11 @@ struct TrendChartView: View {
                     .foregroundStyle(colors.line)
                     .interpolationMethod(.monotone)
                     .lineStyle(StrokeStyle(lineWidth: style.lineWidth))
+                    // MOB-1726 (issue 2): baby percentile `.reference` curves draw BEHIND the crosshair rules
+                    // (which sit at zIndex −100), so the selection line reads ON TOP of the gray curves. `.data`
+                    // series (weight/BPM lines + the baby data line) stay at the front (zIndex 0). No effect on
+                    // weight/BPM — they have no `.reference`-role series.
+                    .zIndex(style.role == .reference ? -200 : 0)
 
                     if style.showsPoints {
                         PointMark(

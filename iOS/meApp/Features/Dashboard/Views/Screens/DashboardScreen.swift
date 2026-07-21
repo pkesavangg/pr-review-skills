@@ -195,7 +195,9 @@ struct DashboardScreen: View {
         // always carries a product-tinted title (My Weight / My BP / baby name). When there
         // is no snapshot overview there is only one product, so the title is static (no
         // chevron/selector). When a selector is warranted the chevron is added below.
-        let showTitle = showProductSelector || !canShowSnapshotOverview
+        // MOB-1726: suppress the title until the persisted product is resolved, so a persisted
+        // baby launch doesn't show the default "My Weight" title before flipping to the baby name.
+        let showTitle = (showProductSelector || !canShowSnapshotOverview) && store.hasResolvedInitialProduct
         return NavbarHeaderView<AppIconView, EmptyView>(
             title: showTitle ? store.selectedProductItem.dashboardTitle : nil,
             // Per Me.Health 2.0: the product-type title is tinted by product
@@ -229,7 +231,12 @@ struct DashboardScreen: View {
     private func dashboardScroll(availableHeight: CGFloat) -> some View {
         ScrollView(showsIndicators: false) {
             VStack(spacing: 0) {
-                if case .baby(let profile) = store.selectedProductItem {
+                // MOB-1726: while the persisted product selection is still restoring (async), show a
+                // neutral graph skeleton instead of the default weight scaffold — otherwise a persisted
+                // baby launch renders the weight header + graph and then flips to baby (the flash).
+                if !store.hasResolvedInitialProduct {
+                    resolvingProductPlaceholder(availableHeight: availableHeight)
+                } else if case .baby(let profile) = store.selectedProductItem {
                     babyDashboardContent(babyProfile: profile)
                 } else if store.productType == .bpm {
                     bpmDashboardContent(availableHeight: availableHeight)
@@ -247,6 +254,19 @@ struct DashboardScreen: View {
                 }
         )
         .padding(.top, .zero)
+    }
+
+    /// MOB-1726: neutral loading state shown while the persisted product selection is still being
+    /// restored asynchronously, so the default weight scaffold never flashes before baby/BPM. Uses the
+    /// taller baby skeleton height when the pending selection is a baby to avoid a resize on resolve.
+    @ViewBuilder
+    private func resolvingProductPlaceholder(availableHeight: CGFloat) -> some View {
+        let height = store.pendingPersistedProductIsBaby
+            ? DashboardChartLayout.babyHeight(forAvailableHeight: availableHeight)
+            : DashboardChartLayout.standardHeight
+        GraphSkeletonView(height: height)
+            .padding(.horizontal, .spacingSM)
+            .padding(.top, .spacingSM)
     }
 
     @ViewBuilder

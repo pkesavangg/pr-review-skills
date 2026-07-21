@@ -72,10 +72,14 @@ enum BabyDashboardChartSupport {
         for babyProfile: BabyProfile,
         dateRange: ClosedRange<Date>,
         convertDecigramsToDisplay: (Int) -> Double,
-        calendar: Calendar = .current
+        calendar: Calendar = .current,
+        // MOB-1726: TOTAL passes the birth-MONTH start here so the age-axis of the curves lines up with the
+        // month-bucketed data (both on a month-start axis) and the curves begin at the leading edge. `nil`
+        // (week/month/year) → the real birthday, unchanged.
+        birthdayOverride: Date? = nil
     ) -> [GraphSeries] {
         guard canResolveGrowthPercentiles(for: babyProfile) else { return [] }
-        let birthday = resolvedBirthday(for: babyProfile, calendar: calendar)
+        let birthday = birthdayOverride ?? resolvedBirthday(for: babyProfile, calendar: calendar)
 
         return BabyPercentileGrowthReference.percentileChartPoints(
             biologicalSex: babyProfile.biologicalSex,
@@ -129,10 +133,11 @@ enum BabyDashboardChartSupport {
     static func heightPercentileSeries(
         for babyProfile: BabyProfile,
         dateRange: ClosedRange<Date>,
-        calendar: Calendar = .current
+        calendar: Calendar = .current,
+        birthdayOverride: Date? = nil   // MOB-1726: TOTAL → birth-month start (see `percentileSeries`)
     ) -> [GraphSeries] {
         guard canResolveGrowthPercentiles(for: babyProfile) else { return [] }
-        let birthday = resolvedBirthday(for: babyProfile, calendar: calendar)
+        let birthday = birthdayOverride ?? resolvedBirthday(for: babyProfile, calendar: calendar)
 
         return BabyPercentileGrowthReference.lengthPercentileChartPoints(
             biologicalSex: babyProfile.biologicalSex,
@@ -177,7 +182,8 @@ enum BabyDashboardChartSupport {
         dateRange: ClosedRange<Date>,
         convertStoredWeightToDisplay: (Int) -> Double,
         convertDecigramsToDisplay: (Int) -> Double,
-        calendar: Calendar = .current
+        calendar: Calendar = .current,
+        birthdayOverride: Date? = nil   // MOB-1726: keep the axis in sync with the (possibly re-anchored) curves
     ) -> YAxisScale {
         let baseScale = DashboardChartScaleProvider.babyWeightScale(
             operations: operations,
@@ -187,7 +193,8 @@ enum BabyDashboardChartSupport {
             for: babyProfile,
             dateRange: dateRange,
             convertDecigramsToDisplay: convertDecigramsToDisplay,
-            calendar: calendar
+            calendar: calendar,
+            birthdayOverride: birthdayOverride
         ).map(\.value)
         return expandedWeightScale(baseScale: baseScale, percentileValues: percentileValues)
     }
@@ -251,13 +258,15 @@ enum BabyDashboardChartSupport {
         for operations: [BathScaleWeightSummary],
         babyProfile: BabyProfile,
         dateRange: ClosedRange<Date>,
-        calendar: Calendar = .current
+        calendar: Calendar = .current,
+        birthdayOverride: Date? = nil   // MOB-1726: keep the axis in sync with the (possibly re-anchored) curves
     ) -> YAxisScale {
         let primaryValues = heightSeries(from: operations).map(\.value)
         let percentileValues = heightPercentileSeries(
             for: babyProfile,
             dateRange: dateRange,
-            calendar: calendar
+            calendar: calendar,
+            birthdayOverride: birthdayOverride
         ).map(\.value)
         return heightScale(primaryValues: primaryValues, percentileValues: percentileValues)
     }

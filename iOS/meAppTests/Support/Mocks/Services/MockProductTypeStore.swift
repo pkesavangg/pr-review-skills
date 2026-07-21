@@ -18,6 +18,9 @@ final class MockProductTypeStore: ProductTypeStoreProtocol {
     var hasPersistedSelectionResult: Bool = false
     var hasPersistedSelection: Bool { hasPersistedSelectionResult }
 
+    var persistedSelectionIdResult: String?
+    var persistedSelectionId: String? { persistedSelectionIdResult }
+
     private(set) var selectCalls = 0
     private(set) var autoSelectBabyCalls = 0
     private(set) var selectLastAddedCalls = 0

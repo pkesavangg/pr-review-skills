@@ -228,9 +228,10 @@ struct GraphRenderingConfigurationTests {
         // Opens on the containing week's Sunday (2026-03-15) — strictly before the reading, so the point sits
         // at its weekday inset from the left edge.
         #expect(domain?.lowerBound == isoDate("2026-03-15T00:00:00Z"))
-        // A full 7-day window that ends just before the next Sunday (2026-03-22) → even day columns with the
-        // last column (Saturday) no longer flush against the right rule.
-        #expect(domain.map { $0.upperBound < isoDate("2026-03-22T00:00:00Z") } == true)
+        // MOB-1726: a full 7-day window ending EXACTLY on the next Sunday boundary (2026-03-22 00:00), so the
+        // last Sunday-aligned window fits and the value-aligned scroll can rest on it (no snap-back). The
+        // previous `−1s` (upper < 2026-03-22) left it a second short and broke scrolling to the last week.
+        #expect(domain?.upperBound == isoDate("2026-03-22T00:00:00Z"))
         #expect(domain.map { $0.upperBound.timeIntervalSince($0.lowerBound) > 6 * DashboardConstants.TimeInterval.day } == true)
     }
 
@@ -246,8 +247,9 @@ struct GraphRenderingConfigurationTests {
         // Left edge = the Sunday of the first entry's week (2026-03-15), NOT Wednesday — so the whole Sun→Sat
         // week renders with the first point on its weekday instead of pinned to the left edge.
         #expect(domain?.lowerBound == isoDate("2026-03-15T00:00:00Z"))
-        // Right edge = just before the next Sunday (2026-03-22 00:00, exclusive) so the last column is even.
-        #expect(domain.map { $0.upperBound < isoDate("2026-03-22T00:00:00Z") } == true)
+        // Right edge = EXACTLY the next Sunday (2026-03-22 00:00) — MOB-1726: a clean whole-week boundary so
+        // the last window fits and the value-aligned scroll can rest on it (was `< 2026-03-22` with the old −1s).
+        #expect(domain?.upperBound == isoDate("2026-03-22T00:00:00Z"))
         #expect(domain.map { $0.upperBound.timeIntervalSince($0.lowerBound) > 6 * DashboardConstants.TimeInterval.day } == true)
     }
 
@@ -261,9 +263,9 @@ struct GraphRenderingConfigurationTests {
         let domain = sut.fullXDomain(for: .week, from: ops)
         // Opens on the reading's week Sunday…
         #expect(domain?.lowerBound == isoDate("2026-06-14T00:00:00Z"))
-        // …and runs forward to the CURRENT week's end (just before next Sunday 2026-07-19), so today's week is
-        // reachable by scrolling — not stopping at the June reading's week.
-        #expect(domain.map { $0.upperBound < isoDate("2026-07-19T00:00:00Z") } == true)
+        // …and runs forward to the CURRENT week's end — EXACTLY next Sunday 2026-07-19 (MOB-1726: a clean
+        // whole-week boundary so today's week is reachable AND the scroll rests on it; was `< 2026-07-19`).
+        #expect(domain?.upperBound == isoDate("2026-07-19T00:00:00Z"))
         #expect(domain.map { $0.upperBound > isoDate("2026-07-12T00:00:00Z") } == true)
     }
 
