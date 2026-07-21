@@ -137,6 +137,10 @@ class DashboardStore: ObservableObject, DashboardStateProviding {
         return nil
     }
 
+    /// MOB-1726 review: exposes the selected baby id on `DashboardStateProviding` so managers read it
+    /// without downcasting to `DashboardStore`.
+    var selectedBabyProfileId: String? { selectedBabyProfile?.id }
+
     /// True when the baby product is selected but no real baby profile exists yet — i.e. the
     /// "Baby Scale" placeholder selection. Drives the "No babies added yet" / ADD A BABY empty
     /// state (a profile, not a device, is the blocker per MOB-1245).

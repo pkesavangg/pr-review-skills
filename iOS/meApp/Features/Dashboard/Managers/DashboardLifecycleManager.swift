@@ -126,7 +126,7 @@ final class DashboardLifecycleManager: DashboardLifecycleManaging { // swiftlint
         // `refreshSelectedProductContext`'s explicit load). Load the per-profile data here so EVERY
         // init path shows the populated baby graph on first render.
         if stateProvider.isBabySelection,
-           let babyId = (stateProvider as? DashboardStore)?.selectedBabyProfile?.id {
+           let babyId = stateProvider.selectedBabyProfileId {
             await entryService.loadBabyDashboardData(babyId: babyId)
             cacheManager.invalidateContinuousOperationsCache()
         }
@@ -375,7 +375,7 @@ final class DashboardLifecycleManager: DashboardLifecycleManaging { // swiftlint
         // entry add/delete (e.g. clearing all baby history), reload the baby dashboard data
         // before recalculating so the chart and headline reflect the change immediately.
         if stateProvider.isBabySelection,
-           let babyId = (stateProvider as? DashboardStore)?.selectedBabyProfile?.id {
+           let babyId = stateProvider.selectedBabyProfileId {
             reloadBabyDashboardDataThenRefresh(babyId: babyId)
         }
 
