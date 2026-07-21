@@ -201,7 +201,7 @@ struct LoggerServiceTests {
 
         sut.log(level: .debug, tag: "T", message: "debug msg")
         sut.flushPendingLogs()
-        try? await Task.sleep(nanoseconds: 100_000_000)
+        await sut.awaitPendingFlush()
 
         #expect(repo.saveLogEntriesCalls == 0)
         #expect(repo.logs.isEmpty)
@@ -214,7 +214,7 @@ struct LoggerServiceTests {
 
         sut.log(level: .info, tag: "Tag", message: "info msg")
         sut.flushPendingLogs()
-        try? await Task.sleep(nanoseconds: 100_000_000)
+        await sut.awaitPendingFlush()
 
         #expect(repo.saveLogEntriesCalls == 1)
         #expect(repo.savedBatches.first?.count == 1)
@@ -230,7 +230,7 @@ struct LoggerServiceTests {
         sut.log(level: .info, tag: "T", message: "b")
         sut.log(level: .success, tag: "T", message: "c")
         sut.flushPendingLogs()
-        try? await Task.sleep(nanoseconds: 100_000_000)
+        await sut.awaitPendingFlush()
 
         #expect(repo.saveLogEntriesCalls == 1)          // one transaction…
         #expect(repo.savedBatches.first?.count == 3)     // …for all three lines
@@ -244,23 +244,36 @@ struct LoggerServiceTests {
         sut.log(level: .info, tag: "T", message: "b")
         #expect(repo.saveLogEntriesCalls == 0)           // not yet
         sut.log(level: .info, tag: "T", message: "c")    // hits threshold
-        try? await Task.sleep(nanoseconds: 100_000_000)
+        await sut.awaitPendingFlush()
 
         #expect(repo.saveLogEntriesCalls == 1)
         #expect(repo.savedBatches.first?.count == 3)
     }
 
-    @Test("error flushes the whole buffer immediately via the SYNC durable path")
+    @Test("error flushes the whole buffer immediately via the async OFF-MAIN batch path")
     func errorFlushesImmediately() async {
         let (sut, repo, _, _) = makeSUT()
 
         sut.log(level: .info, tag: "T", message: "buffered")   // stays buffered
-        sut.log(level: .error, tag: "T", message: "boom")       // forces immediate SYNC flush
-        try? await Task.sleep(nanoseconds: 100_000_000)
+        sut.log(level: .error, tag: "T", message: "boom")       // forces immediate off-main flush
+        await sut.awaitPendingFlush()
+
+        #expect(repo.saveLogEntriesCalls == 1)                   // async batch write, not on main…
+        #expect(repo.saveLogEntriesSyncCalls == 0)               // …the sync path is reserved for .critical
+        #expect(repo.savedBatches.first?.count == 2)             // buffered info + the error
+    }
+
+    @Test("critical flushes the whole buffer immediately via the SYNC durable path")
+    func criticalFlushesSynchronously() async {
+        let (sut, repo, _, _) = makeSUT()
+
+        sut.log(level: .info, tag: "T", message: "buffered")   // stays buffered
+        sut.log(level: .critical, tag: "T", message: "fatal")   // forces immediate SYNC durable flush
+        // Sync durable path completes before `log()` returns — no await needed.
 
         #expect(repo.saveLogEntriesSyncCalls == 1)               // durable synchronous write…
         #expect(repo.saveLogEntriesCalls == 0)                   // …not the async batch path
-        #expect(repo.savedBatches.first?.count == 2)             // buffered info + the error
+        #expect(repo.savedBatches.first?.count == 2)             // buffered info + the critical
     }
 
     @Test("raised floor (.error) drops info/success from disk; errors still persist")
@@ -270,12 +283,12 @@ struct LoggerServiceTests {
         sut.log(level: .info, tag: "T", message: "info")
         sut.log(level: .success, tag: "T", message: "success")
         sut.flushPendingLogs()
-        try? await Task.sleep(nanoseconds: 100_000_000)
+        await sut.awaitPendingFlush()
         #expect(repo.saveLogEntriesCalls == 0)                   // both dropped below floor
 
-        sut.log(level: .error, tag: "T", message: "err")         // at/above floor → sync flush now
-        try? await Task.sleep(nanoseconds: 100_000_000)
-        #expect(repo.saveLogEntriesSyncCalls == 1)
+        sut.log(level: .error, tag: "T", message: "err")         // at/above floor → immediate off-main flush
+        await sut.awaitPendingFlush()
+        #expect(repo.saveLogEntriesCalls == 1)                   // async batch path (.error no longer blocks main)
         #expect(repo.savedBatches.first?.first?.message == "err")
     }
 

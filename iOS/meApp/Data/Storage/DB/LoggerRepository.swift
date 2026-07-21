@@ -90,9 +90,10 @@ final class LoggerRepository: LoggerRepositoryProtocol {
 
     func saveLogEntriesSync(_ entries: [LogEntrySnapshot]) {
         guard !entries.isEmpty else { return }
-        // Synchronous write on a main-actor context so an `.error`/`.critical`
-        // is durable the moment `log()` returns (MOB-519) — the async batch path
-        // may not have reached disk yet when a crash follows the log call.
+        // Synchronous write on a main-actor context so a `.critical` log is
+        // durable the moment `log()` returns (MOB-519) — an in-process crash may
+        // follow a fatal condition before the async batch path reaches disk.
+        // `.error` uses the async off-main path so error storms don't stall main.
         let context = ModelContext(container)
         for entry in entries {
             let newEntry = LogEntry(

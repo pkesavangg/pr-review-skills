@@ -40,6 +40,11 @@ final class LoggerService: LoggerServiceProtocol {
     /// Rows awaiting a batched write. Main-actor isolated (the class is `@MainActor`).
     private var pendingLogs: [LogEntrySnapshot] = []
     private var flushTimerTask: Task<Void, Never>?
+    /// Retains the most recent fire-and-forget batch write so tests can await it
+    /// deterministically via `awaitPendingFlush()` instead of a wall-clock
+    /// `Task.sleep` (a CI-flake source). `.critical` persists synchronously and
+    /// never sets this; `.info`/`.success`/`.error` batch through it (MOB-519).
+    private var pendingFlushTask: Task<Void, Never>?
     
     init(
         loggerRepository: LoggerRepositoryProtocol? = nil,
@@ -113,13 +118,17 @@ final class LoggerService: LoggerServiceProtocol {
     private func enqueueForPersistence(_ payload: LogEntrySnapshot, level: LogLevel) {
         pendingLogs.append(payload)
 
-        // Errors/criticals are support-critical — persist SYNCHRONOUSLY so a crash
-        // occurring right after this call can't lose them (or the batch riding
-        // along). Everything else batches: flush when the buffer fills, otherwise
-        // on a trailing timer window.
-        if level.severityRank >= LogLevel.error.severityRank {
+        // `.critical` is the only level that persists SYNCHRONOUSLY: a fatal
+        // condition may be followed immediately by an in-process crash, so the
+        // brief main-thread stall to guarantee it (and the batch riding along)
+        // reaches disk is worth it — and criticals are rare. `.error` also flushes
+        // immediately, but OFF the main thread via the async batch path, so an
+        // error storm (retry/decode loops emitting repeated `.error`) can't stall
+        // the main thread on disk I/O (MOB-519). Everything else batches: flush
+        // when the buffer fills, otherwise on a trailing timer window.
+        if level.severityRank >= LogLevel.critical.severityRank {
             flushPendingLogsSync()
-        } else if pendingLogs.count >= flushThreshold {
+        } else if level.severityRank >= LogLevel.error.severityRank || pendingLogs.count >= flushThreshold {
             flushPendingLogs()
         } else {
             scheduleFlush()
@@ -153,7 +162,7 @@ final class LoggerService: LoggerServiceProtocol {
     /// (no-op when the buffer is empty).
     func flushPendingLogs() {
         guard let batch = drainPendingLogs() else { return }
-        Task { @MainActor [weak self] in
+        pendingFlushTask = Task { @MainActor [weak self] in
             await self?.loggerRepository.saveLogEntries(batch)
         }
     }
@@ -171,6 +180,14 @@ final class LoggerService: LoggerServiceProtocol {
     private func flushPendingLogsSync() {
         guard let batch = drainPendingLogs() else { return }
         loggerRepository.saveLogEntriesSync(batch)
+    }
+
+    /// Test-only awaitable seam: awaits the most recent fire-and-forget batch
+    /// write dispatched by `flushPendingLogs()` so unit tests can assert on the
+    /// persisted result deterministically instead of sleeping on a wall clock
+    /// (MOB-519). No-op when no async flush has been dispatched.
+    func awaitPendingFlush() async {
+        await pendingFlushTask?.value
     }
 
     #if canImport(UIKit)
