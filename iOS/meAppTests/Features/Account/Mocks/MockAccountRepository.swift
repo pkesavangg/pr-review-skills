@@ -11,11 +11,13 @@ final class MockAccountRepository: AccountRepositoryProtocol {
     private(set) var updateAccountCalls = 0
     private(set) var deleteAccountCalls = 0
     private(set) var deleteAllAccountsCalls = 0
+    private(set) var deactivateAccountsCalls = 0
 
     var saveAccountError: Error?
     var updateAccountError: Error?
     var deleteAccountError: Error?
     var deleteAllAccountsError: Error?
+    var deactivateAccountsError: Error?
 
     func fetchAccount(byId id: String) async throws -> Account? {
         fetchAccountCalls += 1
@@ -45,6 +47,16 @@ final class MockAccountRepository: AccountRepositoryProtocol {
             throw updateAccountError
         }
         accountsById[account.accountId] = account
+    }
+
+    func deactivateAccounts(exceptId activeId: String) async throws {
+        deactivateAccountsCalls += 1
+        if let deactivateAccountsError {
+            throw deactivateAccountsError
+        }
+        for (id, account) in accountsById where id != activeId {
+            account.isActiveAccount = false
+        }
     }
 
     func deleteAccount(byId id: String) async throws {

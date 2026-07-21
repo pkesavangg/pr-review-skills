@@ -33,6 +33,12 @@ protocol AccountRepositoryProtocol {
     /// - Parameter account: The updated Account object.
     func updateAccount(_ account: Account) async throws
 
+    /// Clears the active flag on every account except the given one, in a single transaction.
+    ///
+    /// Batched replacement for deactivating other accounts one-at-a-time (one disk commit each).
+    /// - Parameter activeId: The account ID to keep active — its flag is not modified here.
+    func deactivateAccounts(exceptId activeId: String) async throws
+
     /// Deletes an account by its unique ID.
     /// - Parameter id: The ID of the account to delete.
     func deleteAccount(byId id: String) async throws

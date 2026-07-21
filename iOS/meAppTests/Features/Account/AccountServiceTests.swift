@@ -447,6 +447,28 @@ struct AccountServiceTests {
         #expect(updatedA.isActiveAccount == false)
         #expect(updatedB.isActiveAccount == true)
         #expect(sut.activeAccount?.accountId == "102")
+        // MOB-520: others are deactivated in a single batched transaction, not one save each.
+        #expect(local.deactivateAccountsCalls == 1)
+    }
+
+    @Test("setActiveAccount: deactivates all others in one batched call (MOB-520)")
+    func setActiveAccountBatchesDeactivation() async throws {
+        let local = MockAccountRepository()
+        let acct1 = AccountTestFixtures.makeAccountModel(id: "1", email: "a@example.com", isLoggedIn: true, isActive: true)
+        let acct2 = AccountTestFixtures.makeAccountModel(id: "2", email: "b@example.com", isLoggedIn: true, isActive: false)
+        let acct3 = AccountTestFixtures.makeAccountModel(id: "3", email: "c@example.com", isLoggedIn: true, isActive: false)
+        local.seed([acct1, acct2, acct3])
+
+        let sut = makeSUT(local: local)
+
+        try await sut.setActiveAccount(accountId: "3")
+
+        // Exactly one deactivation transaction regardless of how many other accounts exist.
+        #expect(local.deactivateAccountsCalls == 1)
+        let all = local.all()
+        #expect(all.first { $0.accountId == "1" }?.isActiveAccount == false)
+        #expect(all.first { $0.accountId == "2" }?.isActiveAccount == false)
+        #expect(all.first { $0.accountId == "3" }?.isActiveAccount == true)
     }
 
     // MARK: - Goal / Profile

@@ -74,6 +74,13 @@ class ServiceRegistry {
         let httpClient = HTTPClient.shared
         DependencyContainer.shared.register(httpClient)
         DependencyContainer.shared.register(httpClient as HTTPClientProtocol)
+
+        // MOB-520: production performance telemetry. Passive MetricKit subscriber; must be
+        // registered at launch to receive the previous launch's hang / CPU-exception / crash
+        // payloads. Read-only diagnostics — no product behaviour depends on it.
+        let metricKit = MetricKitService.shared
+        metricKit.start()
+        DependencyContainer.shared.register(metricKit)
     }
 
     @MainActor private func registerCoreInfrastructure() {
