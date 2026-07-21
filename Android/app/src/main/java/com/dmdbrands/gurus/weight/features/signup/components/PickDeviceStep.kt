@@ -27,6 +27,7 @@ import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.dmdbrands.gurus.weight.domain.enums.ProductType
 import com.dmdbrands.gurus.weight.features.common.components.AppStyledCard
@@ -36,6 +37,7 @@ import com.dmdbrands.gurus.weight.features.common.components.TextType
 import com.dmdbrands.gurus.weight.features.common.composition.LocalCardAlignment
 import com.dmdbrands.gurus.weight.features.common.helper.form.FormControl
 import com.dmdbrands.gurus.weight.features.common.helper.form.FormValidations
+import com.dmdbrands.gurus.weight.features.signup.strings.DeviceReadyStrings
 import com.dmdbrands.gurus.weight.features.signup.strings.PickDeviceStrings
 import com.dmdbrands.gurus.weight.resources.AppIcons
 import com.dmdbrands.gurus.weight.theme.MeAppTheme
@@ -93,19 +95,7 @@ fun PickDeviceStep(
         cardAlignmentType = LocalCardAlignment.current,
         modifier = modifier,
     ) {
-        // TalkBack: the step title is a heading for by-heading navigation.
-        AppText(
-            PickDeviceStrings.title,
-            TextType.Title,
-            spacing = MeTheme.spacing.xs,
-            modifier = Modifier.semantics { heading() },
-        )
-        AppText(
-            text = PickDeviceStrings.addLaterNote,
-            textType = TextType.SubHeading,
-            color = MeTheme.colorScheme.textSubheading,
-            spacing = MeTheme.spacing.lg,
-        )
+        PickDeviceHeader(registeredDevices)
 
         Column(
             verticalArrangement = Arrangement.spacedBy(MeTheme.spacing.sm),
@@ -122,6 +112,38 @@ fun PickDeviceStep(
             }
         }
     }
+}
+
+/**
+ * Step header. On loop passes (at least one device already registered) it becomes the
+ * profiles-ready message naming ALL completed devices, with a "connect another" prompt,
+ * centered to match the Figma success layout; the first pass keeps the neutral,
+ * left-aligned device-picker copy. (MOB-1453)
+ */
+@Composable
+private fun PickDeviceHeader(registeredDevices: Set<ProductType>) {
+    val isLoopPass = registeredDevices.isNotEmpty()
+    val headerAlign = if (isLoopPass) TextAlign.Center else TextAlign.Start
+    // TalkBack: the step title is a heading for by-heading navigation.
+    AppText(
+        text = if (isLoopPass) {
+            DeviceReadyStrings.readyTitle(registeredDevices)
+        } else {
+            PickDeviceStrings.title
+        },
+        textType = TextType.Title,
+        textAlign = headerAlign,
+        spacing = MeTheme.spacing.xs,
+        modifier = Modifier.fillMaxWidth().semantics { heading() },
+    )
+    AppText(
+        text = if (isLoopPass) PickDeviceStrings.connectAnotherNote else PickDeviceStrings.addLaterNote,
+        textType = TextType.SubHeading,
+        color = MeTheme.colorScheme.textSubheading,
+        textAlign = headerAlign,
+        spacing = MeTheme.spacing.lg,
+        modifier = Modifier.fillMaxWidth(),
+    )
 }
 
 @Composable

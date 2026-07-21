@@ -79,14 +79,14 @@ class SignupStepsAccessibilityTest {
         composeTestRule.setContent {
             MeAppTheme {
                 DeviceReadyStep(
-                    deviceId = ProductType.MY_WEIGHT.id,
+                    registeredDevices = setOf(ProductType.MY_WEIGHT),
                     onFinish = {},
                     onConnectAnother = {},
                 )
             }
         }
 
-        val title = DeviceReadyStrings.deviceTitle(ProductType.MY_WEIGHT.displayName)
+        val title = DeviceReadyStrings.readyTitle(setOf(ProductType.MY_WEIGHT))
         composeTestRule.onNodeWithText(title)
             .assert(SemanticsMatcher.keyIsDefined(SemanticsProperties.Heading))
     }
