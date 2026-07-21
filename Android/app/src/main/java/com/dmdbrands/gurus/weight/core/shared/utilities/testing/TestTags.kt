@@ -223,6 +223,12 @@ object TestTags {
     const val CloseButton = "my_kids_close_button"
     const val AddBabyButton = "my_kids_add_baby_button"
 
+    // Expandable baby-profile list (MOB-1606). Suffix with the baby id for per-row targeting.
+    const val BabyRow = "my_kids_baby_row"
+    const val EditBabyButton = "my_kids_edit_baby_button"
+    const val ExpandBabyButton = "my_kids_expand_baby_button"
+    const val BabyDetails = "my_kids_baby_details"
+
     // Add Baby screen
     const val AddBabyScreenRoot = "add_baby_screen_root"
     const val AddBabyCloseButton = "add_baby_close_button"
