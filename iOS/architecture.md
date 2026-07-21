@@ -142,6 +142,7 @@ Registered via `ServiceRegistry` at launch (essential) or post-login (session-sc
 | `KeychainService` | Secure token and credential storage |
 | `KvStorageService` | Local key-value persistence |
 | `LoggerService` | App logging |
+| `MetricKitService` | Subscribes to MetricKit at launch; forwards OS-collected performance metrics and hang/CPU/crash/disk-write diagnostics to `LoggerService` for field triage |
 
 ---
 

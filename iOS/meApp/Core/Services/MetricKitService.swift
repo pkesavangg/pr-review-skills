@@ -24,7 +24,7 @@ import MetricKit
 final class MetricKitService: NSObject, MXMetricManagerSubscriber, @unchecked Sendable {
     static let shared = MetricKitService()
 
-    private let tag = "MetricKitService"
+    private static let tag = "MetricKitService"
 
     /// Sink for a serialized payload `(level, message, json)`. Injected so tests can assert
     /// forwarding without constructing MetricKit payloads (which have no public initializers).
@@ -34,7 +34,7 @@ final class MetricKitService: NSObject, MXMetricManagerSubscriber, @unchecked Se
     init(logHandler: (@Sendable (LogLevel, String, String) -> Void)? = nil) {
         self.logHandler = logHandler ?? { level, message, json in
             Task { @MainActor in
-                LoggerService.shared.log(level: level, tag: "MetricKitService", message: message, data: json)
+                LoggerService.shared.log(level: level, tag: MetricKitService.tag, message: message, data: json)
             }
         }
         super.init()
