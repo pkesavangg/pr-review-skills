@@ -98,5 +98,3 @@ Build a `ChartModel` via `ChartPrep.buildWeight`, then assert `TrendChartSelecti
 ## Verification
 - Compile: `xcodebuild build-for-testing -scheme meAppTests -configuration Dev -destination generic/platform=iOS` (local Xcode type-checks; CI is Xcode 16.4).
 - Run on a **connected physical device** (hard project rule — never simulator); then a coverage pass to confirm ≥ 80% on the touched store/engine seams.
-</content>
-</invoke>
