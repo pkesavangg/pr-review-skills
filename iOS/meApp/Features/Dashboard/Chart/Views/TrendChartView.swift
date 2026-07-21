@@ -356,8 +356,12 @@ struct TrendChartView: View {
         }
     }
 
-    var body: some View {
-        Chart {
+    /// Extracted from `body` so the `Chart { … }` mark builder is its own sub-expression. Inline, `body`
+    /// exceeded Xcode 16.x's "unable to type-check this expression in reasonable time" budget (MOB-1726) —
+    /// the newer local toolchain tolerated it, CI (16.4) did not. Splitting the marks out is the compiler's
+    /// own suggested remedy ("break up the expression into distinct sub-expressions").
+    @ChartContentBuilder
+    private var chartContent: some ChartContent {
             // MOB-1516 (BPM): fixed horizontal reference rules (systolic 120 / diastolic 80), drawn FIRST so
             // the data series render on top. Empty for weight/baby → nothing drawn.
             ForEach(Array(model.referenceLines.enumerated()), id: \.offset) { _, line in
@@ -376,6 +380,9 @@ struct TrendChartView: View {
                 // MOB-1516: per-series style (role/lineWidth/showsPoints) is baked into the model. Weight/BPM
                 // series are `.data` (line + dots); baby percentile curves are `.reference` (line only).
                 let style = model.style(for: name)
+                // MOB-1726: hoist the z-index out of the mark modifier so the ChartContent builder type-checks
+                // cheaply (inline, the ternary pushed `body` over Xcode 16.x's "unable to type-check" budget).
+                let seriesZIndex: Double = style.role == .reference ? -200 : 0
                 let regularColors = DashboardChartStyleProvider.seriesColors(
                     for: name,
                     productType: model.productType,
@@ -408,7 +415,7 @@ struct TrendChartView: View {
                     // (which sit at zIndex −100), so the selection line reads ON TOP of the gray curves. `.data`
                     // series (weight/BPM lines + the baby data line) stay at the front (zIndex 0). No effect on
                     // weight/BPM — they have no `.reference`-role series.
-                    .zIndex(style.role == .reference ? -200 : 0)
+                    .zIndex(seriesZIndex)
 
                     if style.showsPoints {
                         PointMark(
@@ -445,7 +452,10 @@ struct TrendChartView: View {
             // it to the plot's INNER trailing edge, left of the y-axis numbers — the "shows differently" bug).
             // It's floated as an overlay over the trailing y-axis label column instead (see `goalChipY` +
             // the `.overlayPreferenceValue` below), matching the legacy chip's on-axis placement.
-        }
+    }
+
+    var body: some View {
+        Chart { chartContent }
         .chartXSelection(value: $selectedX)
         .chartYScale(domain: yDomain)
         .chartXScale(domain: ChartDomainSanitizer.orderedDates(model.xDomain))
