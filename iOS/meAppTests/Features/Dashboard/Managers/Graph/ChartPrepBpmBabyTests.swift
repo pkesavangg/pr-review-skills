@@ -211,4 +211,70 @@ struct ChartPrepBpmBabyTests {
         // The real reading series still renders.
         #expect(model.orderedSeriesNames.contains(DashboardStrings.weight))
     }
+
+    // MARK: - buildBaby TOTAL domain (MOB-1726, issue 1)
+
+    @Test("buildBaby TOTAL anchors the x-domain to the birth month, ahead of the first reading")
+    func buildBabyTotalAnchorsDomainToBirthMonth() throws {
+        // First reading is a MONTH AFTER birth (2026-01-01) → exercises `min(birthMonthStart, firstEntry)`
+        // picking the birth month so it stays visible.
+        let firstDay = date("2026-02-01")
+        let lastDay = date("2026-04-01")
+        let ops = [
+            babyWeightSummary(day: "2026-02-01", weight: 100),
+            babyWeightSummary(day: "2026-03-01", weight: 120),
+            babyWeightSummary(day: "2026-04-01", weight: 140)
+        ]
+
+        let model = ChartPrep.buildBaby(
+            operations: ops,
+            period: .total,
+            scrollPosition: firstDay,
+            babyProfile: babyProfile(sex: "male"),
+            metric: .weight,
+            convertWeight: { $0 },
+            convertDecigramsToDisplay: convertDecigrams
+        )
+
+        let cal = Calendar.current
+        let fallbackLower = try #require(cal.date(byAdding: .month, value: -6, to: firstDay))
+        let expectedUpper = try #require(cal.date(byAdding: .month, value: 1, to: lastDay))
+        // The domain opens at/before the birthday (so the WHO/CDC curves begin at the leading edge)…
+        #expect(model.xDomain.lowerBound <= date("2026-01-01"))
+        // …and LATER than the no-anchor fallback would produce (`firstEntry − 6mo`), proving it is
+        // birth-anchored rather than the generic data-padded span.
+        #expect(model.xDomain.lowerBound > fallbackLower)
+        // Closes exactly one month after the last reading (symmetric trailing breathing room).
+        #expect(model.xDomain.upperBound == expectedUpper)
+        // Curves resolve for a known birthday + sex.
+        #expect(model.orderedSeriesNames.contains { BabyDashboardChartSupport.isPercentileSeries($0) })
+    }
+
+    @Test("buildBaby TOTAL falls back to the data-padded ±6mo span when there is no birth anchor")
+    func buildBabyTotalNoAnchorFallsBackToDataPaddedSpan() throws {
+        // Withheld sex → no percentile curves → no birth anchor → the generic firstEntry ± 6mo span.
+        let firstDay = date("2026-02-01")
+        let lastDay = date("2026-04-01")
+        let ops = [
+            babyWeightSummary(day: "2026-02-01", weight: 100),
+            babyWeightSummary(day: "2026-04-01", weight: 140)
+        ]
+
+        let model = ChartPrep.buildBaby(
+            operations: ops,
+            period: .total,
+            scrollPosition: firstDay,
+            babyProfile: babyProfile(sex: "private"),
+            metric: .weight,
+            convertWeight: { $0 },
+            convertDecigramsToDisplay: convertDecigrams
+        )
+
+        let cal = Calendar.current
+        let expectedLower = try #require(cal.date(byAdding: .month, value: -6, to: firstDay))
+        let expectedUpper = try #require(cal.date(byAdding: .month, value: 6, to: lastDay))
+        #expect(model.orderedSeriesNames.allSatisfy { !BabyDashboardChartSupport.isPercentileSeries($0) })
+        #expect(model.xDomain.lowerBound == expectedLower)
+        #expect(model.xDomain.upperBound == expectedUpper)
+    }
 }

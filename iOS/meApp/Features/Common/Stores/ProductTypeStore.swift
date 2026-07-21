@@ -133,6 +133,12 @@ final class ProductTypeStore: ObservableObject, ProductTypeStoreProtocol {
                                                accountId: accountService.activeAccount?.accountId)
     }
 
+    var persistedSelectionId: String? {
+        guard let accountId = accountService.activeAccount?.accountId else { return nil }
+        let key = KvStorageKeys.selectedProductTypeKey(for: accountId)
+        return kvStorage.getValue(forKey: key) as? String
+    }
+
     func clearPersistedSelection() {
         ProductTypeStore.clearPersistedSelection(kvStorage: kvStorage,
                                                  accountId: accountService.activeAccount?.accountId)

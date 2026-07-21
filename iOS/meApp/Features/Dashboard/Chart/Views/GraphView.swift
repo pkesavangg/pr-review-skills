@@ -63,8 +63,13 @@ struct GraphView: View {
         // sync populates it — the fixed 300 ms `isGraphReady` timer would otherwise hide the
         // skeleton into an empty graph for a few seconds. Keep the skeleton until data lands.
         // Once the sync finishes (isSyncing=false), a genuinely empty account falls through to
-        // the empty state (no infinite skeleton). Weight engine only; baby/BPM unaffected.
-        if usesNewEngine, dashboardStore.continuousOperations.isEmpty, dashboardStore.isSyncing {
+        // the empty state (no infinite skeleton).
+        // MOB-1726: gate on `!hasCompletedInitialSync` so this only holds during the FIRST-login
+        // sync. Every product switch also triggers a sync, and on a switch to a genuinely-empty
+        // product (empty `continuousOperations`) this guard re-showed the skeleton mid-sync — the
+        // "graph loads twice" flash. After the initial sync, an empty product is known empty.
+        if usesNewEngine, dashboardStore.continuousOperations.isEmpty, dashboardStore.isSyncing,
+           !dashboardStore.hasCompletedInitialSync {
             return true
         }
         return false

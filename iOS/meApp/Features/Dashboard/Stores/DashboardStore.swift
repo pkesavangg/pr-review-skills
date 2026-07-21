@@ -53,6 +53,38 @@ class DashboardStore: ObservableObject, DashboardStateProviding {
     /// `isGraphReady` timer hid the skeleton into an empty graph (MOB-516).
     @Published private(set) var isSyncing: Bool = false
 
+    /// MOB-1726: `true` once the FIRST entry sync of this account session has finished. The MOB-516
+    /// skeleton guard (`GraphView.shouldShowSkeleton`) keeps the skeleton up while `isSyncing` and the
+    /// local store is still empty — its purpose is the FIRST-login full-history sync, where an empty
+    /// `continuousOperations` just means "data hasn't landed yet". But every product switch also kicks
+    /// off a sync, so on a switch to a genuinely-empty product (e.g. Weight/BPM with no readings) that
+    /// guard re-showed the skeleton mid-sync — the "graph loads twice" flash. Gating the guard on
+    /// `!hasCompletedInitialSync` limits it to the initial sync: afterwards an empty product is known
+    /// empty, so later syncs no longer re-trigger the skeleton. Reset on account switch so a new
+    /// account's first-login sync re-arms it.
+    @Published private(set) var hasCompletedInitialSync: Bool = false
+
+    /// MOB-1726: `false` while a persisted product selection (e.g. a baby) is still being restored
+    /// asynchronously by `ProductTypeStore` — during that window the store still holds the default
+    /// (`My Weight`) selection, so `DashboardScreen` shows a neutral skeleton instead of building the
+    /// weight header + graph and then flipping to baby (the "weight renders first, then changes to
+    /// baby" flash on launch). Flips `true` once the applied selection matches the persisted id, once
+    /// the user picks a product explicitly, or via a bounded fallback so it can never hang.
+    @Published private(set) var hasResolvedInitialProduct: Bool = false
+
+    /// True when the persisted (to-be-restored) selection is a baby, so the resolving-state skeleton
+    /// can use the taller baby height and avoid a resize when the real baby graph lands.
+    var pendingPersistedProductIsBaby: Bool {
+        (productTypeStore.persistedSelectionId ?? "").hasPrefix("baby_")
+    }
+
+    /// Whether the currently-applied selection already matches what will be restored from storage
+    /// (or there is nothing persisted to wait for).
+    private var isPersistedSelectionApplied: Bool {
+        guard let persistedId = productTypeStore.persistedSelectionId else { return true }
+        return selectedProductItem.id == persistedId
+    }
+
     // MARK: - Private Properties
 
     private var cancellables = Set<AnyCancellable>()
@@ -104,6 +136,10 @@ class DashboardStore: ObservableObject, DashboardStateProviding {
         }
         return nil
     }
+
+    /// MOB-1726 review: exposes the selected baby id on `DashboardStateProviding` so managers read it
+    /// without downcasting to `DashboardStore`.
+    var selectedBabyProfileId: String? { selectedBabyProfile?.id }
 
     /// True when the baby product is selected but no real baby profile exists yet — i.e. the
     /// "Baby Scale" placeholder selection. Drives the "No babies added yet" / ADD A BABY empty
@@ -192,6 +228,27 @@ class DashboardStore: ObservableObject, DashboardStateProviding {
         availableProductItems = productTypeStore.availableItems
         selectedProductItem = productTypeStore.selectedItem
 
+        // MOB-1726: align the active product to the (already-restored) persisted selection BEFORE the
+        // first `initializeDashboard()` runs, so cold-open performs ONE initialization for the correct
+        // product. Without this, init always starts on the default `.scale`, then the product
+        // subscription delivers the restored selection and runs a SECOND `initializeDashboard()` via
+        // `switchProductType` — the double skeleton (and, for baby, the flash of the empty graph) on
+        // launch. Mirrors `switchProductType`'s context setup (data source + cache context) minus the
+        // graph-state reset, which is a no-op before the chart is built.
+        // Qualify with `self.` — inside `init` the bare names `cacheManager` resolve to the optional
+        // init PARAMETER, not the stored property.
+        let restoredProductType = selectedProductItem.entryType
+        if productType != restoredProductType {
+            productType = restoredProductType
+            self.dataManager.switchDataSource(to: restoredProductType)
+        }
+        self.cacheManager.setProductContext(productType: restoredProductType, babyProfileId: selectedBabyProfile?.id)
+
+        // MOB-1726: if the persisted product selection is already applied (or there is none), the
+        // dashboard can render its product immediately; otherwise hold the resolving skeleton until the
+        // async restore lands (see `hasResolvedInitialProduct`).
+        hasResolvedInitialProduct = isPersistedSelectionApplied
+
         if !streakManager.state.streakItems.isEmpty {
             state.ui.hasLoadedProgressMetrics = true
             if state.ui.streakGridOrder.isEmpty {
@@ -210,6 +267,13 @@ class DashboardStore: ObservableObject, DashboardStateProviding {
             await lifecycleManager.initializeDashboard()
             await MainActor.run {
                 isInitialized = true
+            }
+            // MOB-1726: bounded fallback so the resolving-product skeleton can never hang if the
+            // persisted selection never resolves (e.g. a persisted baby whose profile fails to load).
+            // No-op when the product subscription already resolved it.
+            if !hasResolvedInitialProduct {
+                try? await Task.sleep(nanoseconds: 1_500_000_000)
+                await MainActor.run { hasResolvedInitialProduct = true }
             }
         }
     }
@@ -413,7 +477,15 @@ class DashboardStore: ObservableObject, DashboardStateProviding {
             .removeDuplicates()
             .receive(on: DispatchQueue.main)
             .sink { [weak self] syncing in
-                self?.isSyncing = syncing
+                guard let self else { return }
+                // MOB-1726: a true->false transition means the current sync just finished. Mark the
+                // first-login sync complete so the MOB-516 skeleton guard stops firing on later syncs
+                // (e.g. the sync every product switch kicks off) — otherwise switching to an empty
+                // product re-shows the skeleton mid-sync (the "loads twice" flash).
+                if self.isSyncing, !syncing {
+                    self.hasCompletedInitialSync = true
+                }
+                self.isSyncing = syncing
             }
             .store(in: &cancellables)
 
@@ -460,6 +532,9 @@ class DashboardStore: ObservableObject, DashboardStateProviding {
             .dropFirst()
             .sink { [weak self] account in
                 if account != nil {
+                    // MOB-1726: a new account session re-arms the first-login skeleton guard, so its
+                    // (possibly empty) local store shows the skeleton during its own initial sync.
+                    self?.hasCompletedInitialSync = false
                     self?.lifecycleManager.handleActiveAccountChanged()
                 }
             }
@@ -514,6 +589,11 @@ class DashboardStore: ObservableObject, DashboardStateProviding {
                 let previousSelection = self.selectedProductItem
                 self.selectedProductItem = selection
                 let newType = selection.entryType
+                // MOB-1726: the persisted product just landed (or any selection now matches storage) —
+                // let the dashboard render its real scaffold instead of the resolving skeleton.
+                if !self.hasResolvedInitialProduct, self.isPersistedSelectionApplied {
+                    self.hasResolvedInitialProduct = true
+                }
                 if self.productType != newType {
                     self.switchProductType(to: newType)
                 } else if previousSelection != selection {
@@ -575,6 +655,9 @@ class DashboardStore: ObservableObject, DashboardStateProviding {
 
     func selectProductItem(_ item: ProductSelection) {
         let previousSelection = selectedProductItem
+        // MOB-1726: an explicit user pick resolves the initial-product gate immediately (they chose,
+        // so there is nothing left to wait for).
+        hasResolvedInitialProduct = true
         // Suppress the Combine subscriber while we handle selection directly.
         isSelectingDirectly = true
         defer { isSelectingDirectly = false }

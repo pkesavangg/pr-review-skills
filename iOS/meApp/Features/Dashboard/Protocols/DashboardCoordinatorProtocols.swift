@@ -21,6 +21,10 @@ protocol DashboardStateProviding: AnyObject {
     var state: DashboardState { get set }
     var productType: EntryType { get }
     var isBabySelection: Bool { get }
+    /// The selected baby profile's id (`nil` when a baby product isn't selected). Surfaced on the
+    /// protocol so managers read it without downcasting to the concrete `DashboardStore` — keeps the
+    /// manager/store seam intact and makes the baby-data path exercisable with a mock (MOB-1726 review).
+    var selectedBabyProfileId: String? { get }
     func scheduleUIUpdate()
     func forceImmediateUIUpdate()
     func yAxisScale(for operations: [BathScaleWeightSummary], chartHeight: CGFloat) -> YAxisScale

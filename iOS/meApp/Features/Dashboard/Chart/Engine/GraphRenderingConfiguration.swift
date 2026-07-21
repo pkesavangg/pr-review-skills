@@ -86,9 +86,16 @@ struct GraphRenderingConfiguration {
            let firstWeek = gregorian.dateInterval(of: .weekOfYear, for: minDate),
            let lastWeek = gregorian.dateInterval(of: .weekOfYear, for: maxDate) {
             // Upper bound = the LATER of the last reading's week and the current week, so it's scrollable
-            // forward to today. −1s so the weekly tick generator's exclusive week end doesn't spill a phantom
-            // day into the following week. A single reading in the current week → both coincide → its own week.
-            return firstWeek.start...max(lastWeek.end, currentPeriodEnd(for: .week)).addingTimeInterval(-1)
+            // forward to today. A single reading in the current week → both coincide → its own week.
+            //
+            // MOB-1726 (issue 3): this is a CLEAN next-Sunday midnight (an exclusive week boundary) — NOT
+            // shaved by 1s. The domain width must be an exact whole number of 7-day windows so the LAST
+            // Sunday-aligned window fits: with the old `−1s` the domain was 1s short of the final window's
+            // right edge, so the value-aligned scroll (Sunday `majorAlignment`) could never rest on the last
+            // week and snapped back to the first (e.g. a 2-week baby span Jul 12–26 could not reach Jul 19–25).
+            // The weekly tick generator no longer spills a phantom following week off this boundary end — see
+            // the exclusive-end handling in `weeklyTicks`.
+            return firstWeek.start...max(lastWeek.end, currentPeriodEnd(for: .week))
         }
         if period == .total {
             let lower = gregorian.date(byAdding: .month, value: -6, to: minDate) ?? minDate
@@ -153,7 +160,11 @@ struct GraphRenderingConfiguration {
 
         let (startDate, endDate) = (min(start, end), max(start, end))
         let weekStart = cal.dateInterval(of: .weekOfYear, for: startDate)?.start ?? startDate
-        let weekEndExclusive = cal.dateInterval(of: .weekOfYear, for: endDate)?.end ?? endDate
+        // MOB-1726 (issue 3): treat an end that lands exactly on a week boundary (next-Sunday midnight) as
+        // EXCLUSIVE. The week scroll domain now ends on a clean Sunday boundary (no `−1s`), so looking up the
+        // week of `endDate` itself would return the FOLLOWING week and spill a phantom week of ticks. Nudging
+        // 1s back keeps a boundary end inside the last real week; a non-boundary end is unaffected (same week).
+        let weekEndExclusive = cal.dateInterval(of: .weekOfYear, for: endDate.addingTimeInterval(-1))?.end ?? endDate
 
         var dates: [Date] = []
         var currentWeek = weekStart

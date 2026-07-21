@@ -118,6 +118,19 @@ final class DashboardLifecycleManager: DashboardLifecycleManaging { // swiftlint
         await initializeDataManager()
         await entryService.loadDashboardData(entryType: stateProvider.productType)
 
+        // MOB-1726: the baby chart's `continuousOperations` reads the per-profile summaries
+        // (`babyDailySummariesByProfile`), which `loadDashboardData(.baby)` above does NOT populate —
+        // that call only fills the weight-style `dailySummaries`. So the cold-open init path
+        // (init → switchProductType → here) left `continuousOperations` empty and the baby graph
+        // rendered its empty state until the user re-selected the profile (which hit
+        // `refreshSelectedProductContext`'s explicit load). Load the per-profile data here so EVERY
+        // init path shows the populated baby graph on first render.
+        if stateProvider.isBabySelection,
+           let babyId = stateProvider.selectedBabyProfileId {
+            await entryService.loadBabyDashboardData(babyId: babyId)
+            cacheManager.invalidateContinuousOperationsCache()
+        }
+
         await MainActor.run {
             chartManager.initializeChart()
         }
@@ -362,7 +375,7 @@ final class DashboardLifecycleManager: DashboardLifecycleManaging { // swiftlint
         // entry add/delete (e.g. clearing all baby history), reload the baby dashboard data
         // before recalculating so the chart and headline reflect the change immediately.
         if stateProvider.isBabySelection,
-           let babyId = (stateProvider as? DashboardStore)?.selectedBabyProfile?.id {
+           let babyId = stateProvider.selectedBabyProfileId {
             reloadBabyDashboardDataThenRefresh(babyId: babyId)
         }
 
