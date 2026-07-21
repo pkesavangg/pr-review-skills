@@ -113,10 +113,13 @@ final class LoggerService: LoggerServiceProtocol {
     private func enqueueForPersistence(_ payload: LogEntrySnapshot, level: LogLevel) {
         pendingLogs.append(payload)
 
-        // Errors/criticals are support-critical — flush immediately so a crash
-        // can't lose them. Everything else batches: flush when the buffer fills,
-        // otherwise on a trailing timer window.
-        if level.severityRank >= LogLevel.error.severityRank || pendingLogs.count >= flushThreshold {
+        // Errors/criticals are support-critical — persist SYNCHRONOUSLY so a crash
+        // occurring right after this call can't lose them (or the batch riding
+        // along). Everything else batches: flush when the buffer fills, otherwise
+        // on a trailing timer window.
+        if level.severityRank >= LogLevel.error.severityRank {
+            flushPendingLogsSync()
+        } else if pendingLogs.count >= flushThreshold {
             flushPendingLogs()
         } else {
             scheduleFlush()
@@ -132,23 +135,47 @@ final class LoggerService: LoggerServiceProtocol {
         }
     }
 
-    /// Drains the buffer and persists it in one batched transaction. Safe to call
-    /// repeatedly (no-op when the buffer is empty).
-    func flushPendingLogs() {
+    /// Cancels the pending timer and removes the buffered rows, returning them for
+    /// persistence (or `nil` when empty). Keeping the drain synchronous means the
+    /// buffer state is settled the instant we decide to flush, regardless of how
+    /// the caller then writes the batch.
+    private func drainPendingLogs() -> [LogEntrySnapshot]? {
         flushTimerTask?.cancel()
         flushTimerTask = nil
-        guard !pendingLogs.isEmpty else { return }
+        guard !pendingLogs.isEmpty else { return nil }
         let batch = pendingLogs
         pendingLogs.removeAll(keepingCapacity: true)
+        return batch
+    }
+
+    /// Drains the buffer and persists it in one batched transaction (fire-and-forget
+    /// — the write completes on a background context). Safe to call repeatedly
+    /// (no-op when the buffer is empty).
+    func flushPendingLogs() {
+        guard let batch = drainPendingLogs() else { return }
         Task { @MainActor [weak self] in
-            guard let self else { return }
-            await self.loggerRepository.saveLogEntries(batch)
+            await self?.loggerRepository.saveLogEntries(batch)
         }
+    }
+
+    /// Drains the buffer and persists it, awaiting the write. Used by the
+    /// background-flush path so a `beginBackgroundTask` assertion can hold the app
+    /// awake until the batch is durably written (MOB-519).
+    private func flushPendingLogsAwaiting() async {
+        guard let batch = drainPendingLogs() else { return }
+        await loggerRepository.saveLogEntries(batch)
+    }
+
+    /// Drains the buffer and persists it SYNCHRONOUSLY so an `.error`/`.critical`
+    /// is durable the moment this returns (MOB-519). No-op when empty.
+    private func flushPendingLogsSync() {
+        guard let batch = drainPendingLogs() else { return }
+        loggerRepository.saveLogEntriesSync(batch)
     }
 
     #if canImport(UIKit)
     /// Flush buffered logs when the app backgrounds so a later kill doesn't lose
-    /// them. Errors already flush immediately; this covers the batched
+    /// them. Errors already persist synchronously; this covers the batched
     /// `.info`/`.success` rows. The observer captures no `self` (it references the
     /// shared instance) so the `@Sendable` block stays clean; only registered for
     /// the shared instance (tests pass `skipCleanup: true` and skip it).
@@ -159,9 +186,33 @@ final class LoggerService: LoggerServiceProtocol {
             queue: .main
         ) { _ in
             MainActor.assumeIsolated {
-                LoggerService.shared.flushPendingLogs()
+                LoggerService.shared.flushOnBackground()
             }
         }
+    }
+
+    /// Background task identifier held while the background flush completes.
+    private var backgroundFlushTaskId: UIBackgroundTaskIdentifier = .invalid
+
+    /// Flushes buffered logs on backgrounding under a `beginBackgroundTask`
+    /// assertion, so a fast OS suspend/kill can't drop the pending batch before
+    /// the async write finishes (MOB-519). The expiration handler ends the
+    /// assertion if the OS reclaims it first.
+    private func flushOnBackground() {
+        endBackgroundFlushAssertion()   // clear any stale assertion first
+        backgroundFlushTaskId = UIApplication.shared.beginBackgroundTask(withName: "LoggerService.flush") { [weak self] in
+            MainActor.assumeIsolated { self?.endBackgroundFlushAssertion() }
+        }
+        Task { @MainActor [weak self] in
+            await self?.flushPendingLogsAwaiting()
+            self?.endBackgroundFlushAssertion()
+        }
+    }
+
+    private func endBackgroundFlushAssertion() {
+        guard backgroundFlushTaskId != .invalid else { return }
+        UIApplication.shared.endBackgroundTask(backgroundFlushTaskId)
+        backgroundFlushTaskId = .invalid
     }
     #endif
     

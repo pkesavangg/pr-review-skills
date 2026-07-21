@@ -88,6 +88,34 @@ final class LoggerRepository: LoggerRepositoryProtocol {
         }
     }
 
+    func saveLogEntriesSync(_ entries: [LogEntrySnapshot]) {
+        guard !entries.isEmpty else { return }
+        // Synchronous write on a main-actor context so an `.error`/`.critical`
+        // is durable the moment `log()` returns (MOB-519) — the async batch path
+        // may not have reached disk yet when a crash follows the log call.
+        let context = ModelContext(container)
+        for entry in entries {
+            let newEntry = LogEntry(
+                id: entry.id,
+                accountId: entry.accountId,
+                sessionId: entry.sessionId,
+                tag: entry.tag,
+                tagId: entry.tagId,
+                type: entry.type,
+                message: entry.message,
+                timestamp: entry.timestamp,
+                data: entry.data
+            )
+            context.insert(newEntry)
+        }
+        do {
+            // One transaction for the whole batch — same as the async path.
+            try context.save()
+        } catch {
+            appLogger.log(level: .error, tag: "LoggerRepository", message: "Sync batch save failed", data: error.localizedDescription)
+        }
+    }
+
     func fetchAllLogs() async throws -> [LogEntry] {
         return try await performBackgroundTask { ctx in
             let descriptor = FetchDescriptor<LogEntry>()

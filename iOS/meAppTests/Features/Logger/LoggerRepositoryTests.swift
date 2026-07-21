@@ -97,6 +97,33 @@ struct LoggerRepositoryTests {
         #expect(logs.isEmpty)
     }
 
+    // MARK: - saveLogEntriesSync (synchronous durable write — MOB-519)
+
+    @Test("saveLogEntriesSync: persists every row in the batch, readable via fetchAllLogs")
+    func saveLogEntriesSyncPersistsBatch() async throws {
+        let sut = try makeSUT()
+
+        sut.saveLogEntriesSync([
+            makeData(id: "s1", message: "one"),
+            makeData(id: "s2", message: "two"),
+            makeData(id: "s3", message: "three")
+        ])
+
+        let logs = try await sut.fetchAllLogs()
+        #expect(logs.count == 3)
+        #expect(Set(logs.map(\.id)) == ["s1", "s2", "s3"])
+    }
+
+    @Test("saveLogEntriesSync: empty batch is a no-op")
+    func saveLogEntriesSyncEmptyIsNoOp() async throws {
+        let sut = try makeSUT()
+
+        sut.saveLogEntriesSync([])
+
+        let logs = try await sut.fetchAllLogs()
+        #expect(logs.isEmpty)
+    }
+
     // MARK: - fetchAllLogs
 
     @Test("fetchAllLogs success: returns empty when none")

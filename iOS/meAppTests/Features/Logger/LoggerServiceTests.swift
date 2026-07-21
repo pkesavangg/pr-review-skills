@@ -10,6 +10,7 @@ private final class MockLoggerRepo: LoggerRepositoryProtocol {
     var logs: [LogEntry] = []
     var saveLogEntryCalls = 0
     var saveLogEntriesCalls = 0
+    var saveLogEntriesSyncCalls = 0
     var savedBatches: [[LogEntrySnapshot]] = []
     var deleteLogsForAccountCalls = 0
     var deleteAllLogsCalls = 0
@@ -28,6 +29,16 @@ private final class MockLoggerRepo: LoggerRepositoryProtocol {
 
     func saveLogEntries(_ entries: [LogEntrySnapshot]) async {
         saveLogEntriesCalls += 1
+        appendBatch(entries)
+    }
+
+    func saveLogEntriesSync(_ entries: [LogEntrySnapshot]) {
+        guard !entries.isEmpty else { return }
+        saveLogEntriesSyncCalls += 1
+        appendBatch(entries)
+    }
+
+    private func appendBatch(_ entries: [LogEntrySnapshot]) {
         savedBatches.append(entries)
         for entry in entries {
             logs.append(LogEntry(
@@ -239,15 +250,16 @@ struct LoggerServiceTests {
         #expect(repo.savedBatches.first?.count == 3)
     }
 
-    @Test("error flushes the whole buffer immediately (support-critical)")
+    @Test("error flushes the whole buffer immediately via the SYNC durable path")
     func errorFlushesImmediately() async {
         let (sut, repo, _, _) = makeSUT()
 
         sut.log(level: .info, tag: "T", message: "buffered")   // stays buffered
-        sut.log(level: .error, tag: "T", message: "boom")       // forces immediate flush
+        sut.log(level: .error, tag: "T", message: "boom")       // forces immediate SYNC flush
         try? await Task.sleep(nanoseconds: 100_000_000)
 
-        #expect(repo.saveLogEntriesCalls == 1)
+        #expect(repo.saveLogEntriesSyncCalls == 1)               // durable synchronous write…
+        #expect(repo.saveLogEntriesCalls == 0)                   // …not the async batch path
         #expect(repo.savedBatches.first?.count == 2)             // buffered info + the error
     }
 
@@ -261,9 +273,9 @@ struct LoggerServiceTests {
         try? await Task.sleep(nanoseconds: 100_000_000)
         #expect(repo.saveLogEntriesCalls == 0)                   // both dropped below floor
 
-        sut.log(level: .error, tag: "T", message: "err")         // at/above floor → flushes now
+        sut.log(level: .error, tag: "T", message: "err")         // at/above floor → sync flush now
         try? await Task.sleep(nanoseconds: 100_000_000)
-        #expect(repo.saveLogEntriesCalls == 1)
+        #expect(repo.saveLogEntriesSyncCalls == 1)
         #expect(repo.savedBatches.first?.first?.message == "err")
     }
 
