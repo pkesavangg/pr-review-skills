@@ -8,9 +8,6 @@
     <ID>ForbiddenImport:AuthTokenInterceptor.kt$import kotlinx.coroutines.runBlocking</ID>
     <ID>ForbiddenImport:MainActivity.kt$import kotlinx.coroutines.runBlocking</ID>
     <ID>ForbiddenImport:TokenAuthenticator.kt$import kotlinx.coroutines.runBlocking</ID>
-    <ID>LargeClass:AppViewModel.kt$AppViewModel : BaseIntentViewModel</ID>
-    <ID>LargeClass:DeviceDetailsViewModel.kt$DeviceDetailsViewModel : BaseIntentViewModel</ID>
-    <ID>LargeClass:HealthConnectService.kt$HealthConnectService : BaseServiceIHealthConnectService</ID>
     <ID>LongMethod:AccountPersistenceDataSource.kt$AccountPersistenceDataSource$suspend fun addAccount(account: Account): Account</ID>
     <ID>LongMethod:AccountSwitchInfoModal.kt$@Composable fun AccountSwitchInfoModal( userInitial: String, onAddAccount: () -&gt; Unit, onClose: () -&gt; Unit )</ID>
     <ID>LongMethod:AccountValidationService.kt$AccountValidationService$suspend fun checkLoginStatusForLoggedInAccounts(): Boolean</ID>

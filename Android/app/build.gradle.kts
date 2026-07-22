@@ -95,7 +95,7 @@ android {
       buildConfigField(
         "String",
         "BASE_URL",
-        "\"http://49.207.187.28:3005/wg-develop/v3/\"",
+        "\"http://ec2-13-217-141-203.compute-1.amazonaws.com:3005/v3/\"",
       )
       buildConfigField("Boolean", "ENABLE_ANALYTICS", "false")
     }
