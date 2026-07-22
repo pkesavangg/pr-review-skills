@@ -36,18 +36,20 @@ class MyKidsAccessibilityTest {
     val composeTestRule = createComposeRule()
 
     @Test
-    fun babyAddedTitle_isAHeading() {
+    fun screenTitle_isAHeading() {
+        // MOB-1606 redesigned My Kids and removed the old "Baby Added" step/title; the screen
+        // title ("My Kids") is now the heading TalkBack should announce for the screen.
         composeTestRule.setContent {
             MeAppTheme {
                 AppText(
-                    text = MyKidsStrings.BabyAddedTitle,
+                    text = MyKidsStrings.Title,
                     textType = TextType.Title,
                     modifier = Modifier.semantics { heading() },
                 )
             }
         }
 
-        composeTestRule.onNodeWithText(MyKidsStrings.BabyAddedTitle)
+        composeTestRule.onNodeWithText(MyKidsStrings.Title)
             .assert(SemanticsMatcher.keyIsDefined(SemanticsProperties.Heading))
     }
 
