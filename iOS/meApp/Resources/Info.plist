@@ -12,7 +12,7 @@
              Production (api.weightgurus.com) stays HTTPS under full ATS. -->
         <key>NSExceptionDomains</key>
         <dict>
-            <key>ec2-13-217-141-203.compute-1.amazonaws.com</key>
+            <key>49.207.187.28</key>
             <dict>
                 <key>NSExceptionAllowsInsecureHTTPLoads</key>
                 <true/>

@@ -13,6 +13,6 @@
   <domain-config cleartextTrafficPermitted="true">
     <domain includeSubdomains="true">localhost</domain>
     <domain includeSubdomains="false">10.0.2.2</domain>
-    <domain includeSubdomains="false">ec2-13-217-141-203.compute-1.amazonaws.com</domain>
+    <domain includeSubdomains="false">49.207.187.28</domain>
   </domain-config>
 </network-security-config>
