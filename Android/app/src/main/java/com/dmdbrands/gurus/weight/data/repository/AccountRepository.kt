@@ -371,6 +371,13 @@ constructor(
       AccountEntityMapper.toDomainFromAccountWithRelations(accountWithRelations)
     }
 
+  override suspend fun getUnsyncedMeasurementUnits(): String? =
+    accountDao.getUnsyncedActiveProductSettings()?.measurementUnits
+
+  override suspend fun markMeasurementUnitsUnsynced(measurementUnits: MeasurementUnits) {
+    accountDao.markActiveMeasurementUnitsUnsynced(measurementUnits.value)
+  }
+
   /**
    * Gets the dashboard settings for the active account if it is not synced.
    * @return Dashboard settings if it exists and is not synced, otherwise null

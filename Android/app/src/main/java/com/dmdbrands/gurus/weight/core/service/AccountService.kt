@@ -247,6 +247,11 @@ class AccountService(
     accountRepository.updateMeasurementUnits(measurementUnits)
   }
 
+  override suspend fun markMeasurementUnitsUnsynced(measurementUnits: MeasurementUnits) {
+    AppLog.d(TAG, "Mark Measurement Units unsynced (offline): ${measurementUnits.value}")
+    accountRepository.markMeasurementUnitsUnsynced(measurementUnits)
+  }
+
   override suspend fun addProduct(productType: ProductType) {
     val apiValue = productType.apiValue
     val current = getCurrentAccount()?.productTypes ?: listOf(ProductType.MY_WEIGHT.apiValue)

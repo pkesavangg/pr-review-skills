@@ -12,6 +12,7 @@ import com.dmdbrands.gurus.weight.domain.model.api.metrics.WeightlessRequest
 import com.dmdbrands.gurus.weight.domain.model.api.notification.NotificationSettingsRequest
 import com.dmdbrands.gurus.weight.domain.model.api.user.BodyCompUpdateRequest
 import com.dmdbrands.gurus.weight.domain.model.api.user.ProfileUpdateRequest
+import com.dmdbrands.gurus.weight.domain.model.common.MeasurementUnits
 import com.dmdbrands.gurus.weight.domain.repository.IAccountRepository
 import com.dmdbrands.gurus.weight.domain.repository.IBabyProfileRepository
 import com.dmdbrands.gurus.weight.domain.repository.IBodyCompositionRepository
@@ -64,6 +65,8 @@ class OfflineHandlerService
         syncProfileData()
         // Sync body composition data if there are unsynced body comp accounts
         syncBodyCompositionData()
+        // Re-push an offline measurement-unit (baby unit) change if it never reached the server
+        syncMeasurementUnitsData()
         // Sync device data if there are unsynced devices
         syncDeviceData()
         // Push pending baby creates/edits/deletes BEFORE entry sync (which runs after this in the
@@ -136,6 +139,26 @@ class OfflineHandlerService
         AppLog.i(TAG, "Successfully synced body composition data for account: ${unsyncedAccount.id}")
       } catch (e: Exception) {
         AppLog.e(TAG, "Error syncing body composition data for account ${unsyncedAccount.id}", e)
+      }
+    }
+
+    /**
+     * Re-pushes an offline measurement-unit (baby unit) change to the server on reconnect.
+     * Mirrors [syncBodyCompositionData]: read the unsynced units, then PATCH them via the account
+     * repository, which persists the server-confirmed state with isSynced = true. On failure the
+     * row stays unsynced for the next reconnect. (MOB-1002)
+     */
+    private suspend fun syncMeasurementUnitsData() {
+      val measurementUnits = accountRepository.getUnsyncedMeasurementUnits()
+      if (measurementUnits == null) {
+        AppLog.d(TAG, "No unsynced measurement units for active account")
+        return
+      }
+      try {
+        accountRepository.updateMeasurementUnits(MeasurementUnits.fromValue(measurementUnits))
+        AppLog.i(TAG, "Successfully synced measurement units: $measurementUnits")
+      } catch (e: Exception) {
+        AppLog.e(TAG, "Error syncing measurement units", e)
       }
     }
 

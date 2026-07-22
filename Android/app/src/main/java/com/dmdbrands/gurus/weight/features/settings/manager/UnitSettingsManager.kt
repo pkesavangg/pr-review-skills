@@ -222,14 +222,19 @@ constructor(
     accountId: String,
     newBabyUnit: WeightUnit,
   ) {
-    // Sync to the server FIRST, then persist the device-local display unit only once the
-    // PATCH succeeds. updateMeasurementUnits throws when offline (requireNetworkAvailable)
-    // and on HTTP failure, so guarding the local write behind it keeps the two in lockstep:
-    // writing locally first left the device showing a unit the server never received, with
-    // no rollback in the failure path — a local/server divergence (PR #2109 review).
-    accountService.updateMeasurementUnits(MeasurementUnits.fromWeightUnit(newBabyUnit))
+    val measurementUnits = MeasurementUnits.fromWeightUnit(newBabyUnit)
+    // Offline-first (MOB-1002): keep the device-local display unit regardless so the user's
+    // choice is never lost, then push it to the server. If the PATCH fails (offline / HTTP),
+    // persist the change locally as unsynced so OfflineHandlerService re-pushes it on reconnect
+    // — instead of silently dropping the change (the previous server-first behaviour, PR #2109).
     userDataStore.setBabyWeightUnit(accountId, newBabyUnit)
-    AppLog.i(TAG, "Persisted baby weight unit: ${newBabyUnit.value} (measurement-units API + local)")
+    try {
+      accountService.updateMeasurementUnits(measurementUnits)
+      AppLog.i(TAG, "Persisted baby weight unit: ${newBabyUnit.value} (measurement-units API + local)")
+    } catch (e: Exception) {
+      accountService.markMeasurementUnitsUnsynced(measurementUnits)
+      AppLog.w(TAG, "measurement-units PATCH failed (${e.message}); kept local + marked unsynced for resync")
+    }
   }
 
   // [label] is supplied per section: My Weight uses [WeightUnit.unit] (adult

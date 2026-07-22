@@ -16,6 +16,7 @@ import com.dmdbrands.gurus.weight.domain.model.api.user.AccountInfo
 import com.dmdbrands.gurus.weight.domain.model.api.user.AccountResponse
 import com.dmdbrands.gurus.weight.domain.model.api.user.BodyCompUpdateRequest
 import com.dmdbrands.gurus.weight.domain.model.api.user.ProfileUpdateRequest
+import com.dmdbrands.gurus.weight.domain.model.common.MeasurementUnits
 import com.dmdbrands.gurus.weight.domain.model.common.WeightUnit
 import com.dmdbrands.gurus.weight.domain.model.storage.Account.Account
 import com.dmdbrands.gurus.weight.domain.repository.IAccountRepository
@@ -173,6 +174,7 @@ class OfflineHandlerServiceTest {
         coEvery { userSettingsRepository.getUnsyncedActiveStreakAccountFromDB() } returns null
         coEvery { userSettingsRepository.getUnsyncedActiveWeightlessAccountFromDB() } returns null
         coEvery { accountRepository.getUnsyncedActiveDashboardSettings() } returns null
+        coEvery { accountRepository.getUnsyncedMeasurementUnits() } returns null
     }
 
     private fun stubProfileSync(account: Account = fakeAccount) {
@@ -355,6 +357,41 @@ class OfflineHandlerServiceTest {
 
         service.handleOfflineSync()
 
+        coVerify { goalRepository.updateGoalSetting(any()) }
+    }
+
+    // -------------------------------------------------------------------------
+    // syncMeasurementUnitsData (MOB-1002)
+    // -------------------------------------------------------------------------
+
+    @Test
+    fun `handleOfflineSync re-pushes unsynced measurement units on reconnect`() = runTest(mainDispatcherRule.scheduler) {
+        coEvery { accountRepository.getUnsyncedMeasurementUnits() } returns "metric"
+        coEvery { accountRepository.updateMeasurementUnits(any()) } returns Unit
+
+        service.handleOfflineSync()
+
+        coVerify(exactly = 1) { accountRepository.updateMeasurementUnits(MeasurementUnits.METRIC) }
+    }
+
+    @Test
+    fun `handleOfflineSync skips measurement units sync when nothing unsynced`() = runTest(mainDispatcherRule.scheduler) {
+        // stubAllUnsyncedNull returns null for getUnsyncedMeasurementUnits.
+        service.handleOfflineSync()
+
+        coVerify(exactly = 0) { accountRepository.updateMeasurementUnits(any()) }
+    }
+
+    @Test
+    fun `handleOfflineSync catches measurement units exception and continues`() = runTest(mainDispatcherRule.scheduler) {
+        coEvery { accountRepository.getUnsyncedMeasurementUnits() } returns "imperialLbOz"
+        coEvery { accountRepository.updateMeasurementUnits(any()) } throws RuntimeException("offline")
+        stubGoalSync()
+
+        service.handleOfflineSync()
+
+        // Failure is swallowed and the pipeline continues to the next sync step.
+        coVerify(exactly = 1) { accountRepository.updateMeasurementUnits(MeasurementUnits.IMPERIAL_LB_OZ) }
         coVerify { goalRepository.updateGoalSetting(any()) }
     }
 

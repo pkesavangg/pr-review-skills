@@ -163,6 +163,23 @@ interface AccountDao {
     suspend fun updateProductSettings(settings: ProductSettingsEntity)
 
     /**
+     * Product settings for the active account when its measurement units are unsynced.
+     * One-shot read used by the reconnect re-push (mirrors the body-comp sync). (MOB-1002)
+     */
+    @Query(
+        "SELECT * FROM product_settings WHERE accountId IN " +
+            "(SELECT accountId FROM account WHERE isActiveAccount = 1) AND isSynced = 0",
+    )
+    suspend fun getUnsyncedActiveProductSettings(): ProductSettingsEntity?
+
+    /** Persist a measurement-units change locally as unsynced when the server PATCH fails. (MOB-1002) */
+    @Query(
+        "UPDATE product_settings SET measurementUnits = :measurementUnits, isSynced = 0 " +
+            "WHERE accountId IN (SELECT accountId FROM account WHERE isActiveAccount = 1)",
+    )
+    suspend fun markActiveMeasurementUnitsUnsynced(measurementUnits: String)
+
+    /**
      * Gets the active account if it is not synced.
      * @return Flow of the active account with all relations if it exists and is not synced, otherwise null
      */

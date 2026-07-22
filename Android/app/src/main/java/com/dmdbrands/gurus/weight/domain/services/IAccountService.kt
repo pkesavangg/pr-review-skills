@@ -156,6 +156,12 @@ interface IAccountService {
   suspend fun updateMeasurementUnits(measurementUnits: MeasurementUnits)
 
   /**
+   * Persist a measurement-units change locally and mark it unsynced so it is re-pushed on
+   * reconnect. Called when the server PATCH fails offline (offline-first). (MOB-1002)
+   */
+  suspend fun markMeasurementUnitsUnsynced(measurementUnits: MeasurementUnits)
+
+  /**
    * Adds [productType] to the account's `productTypes` on the server (spec §2.19) and
    * persists the result locally. No-op if the product is already present.
    */
