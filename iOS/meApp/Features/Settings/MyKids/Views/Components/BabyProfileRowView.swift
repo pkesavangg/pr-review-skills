@@ -107,6 +107,8 @@ struct BabyProfileRowView: View {
                 Image(systemName: "square.and.pencil")
                     .font(.system(size: 20))
                     .foregroundColor(theme.statusIconPrimary)
+                    .frame(minWidth: 44, minHeight: 44)
+                    .contentShape(Rectangle())
             }
             .accessibilityLabel(CommonStrings.edit)
             .appAccessibility(id: AccessibilityID.myKidsEditBabyButton + "_" + babyId)
@@ -115,6 +117,8 @@ struct BabyProfileRowView: View {
                 AppIconView(icon: AppAssets.chevronDown)
                     .foregroundColor(theme.statusIconPrimary)
                     .rotationEffect(.degrees(isExpanded ? 180 : 0))
+                    .frame(minWidth: 44, minHeight: 44)
+                    .contentShape(Rectangle())
             }
             .accessibilityLabel(isExpanded
                 ? MyKidsStrings.Details.collapseAccessibilityLabel

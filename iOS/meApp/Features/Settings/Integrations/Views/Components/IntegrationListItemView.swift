@@ -109,7 +109,7 @@ struct IntegrationListItemView: View {
         //   pill fill   → meApp/Action/inverse-pressed (neutral-200):
         //                 #F6F4F1 light · #12161B dark
         (Text(Image(systemName: "info.circle")) + Text(" ") + Text(text))
-            .font(.custom("OpenSans-Regular", size: CustomTextStyle.body4.size))
+            .fontOpenSans(.body4)
             .lineLimit(1)
             .fixedSize(horizontal: true, vertical: false)
             .foregroundColor(theme.actionError)
