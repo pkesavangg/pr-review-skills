@@ -294,73 +294,14 @@ struct TrendChartHost: View {
     ///   (interpolated when empty) or an entry point.
     /// - **Year** shows a line per month → snap to the nearest 1st-of-month.
     /// - **Total** isn't a continuous grid (raw dates, no per-day buckets) → snap to the nearest real entry.
+    /// MOB-1516: ALL products use the same period-aware gridline snapping (week→day, month→Sunday/1st/entry,
+    /// year→month-1st, total→nearest entry). A tap on an empty day/month is an in-between selection whose
+    /// value is Hermite-interpolated per product — weight via `calculateDisplayWeight`, BPM via
+    /// `getBpmDisplayValues`, baby weight/height via `currentDisplay*` + the crosshair resolver.
+    /// MOB-1515: the snap math itself now lives in the pure, unit-tested `TrendChartSelectionSnapper`; this
+    /// stays as the View's thin seam so the gesture call site is unchanged.
     private func snappedSelectionDate(for raw: Date, in model: ChartModel) -> Date? {
-        // MOB-1516: ALL products use the same period-aware gridline snapping (week→day, month→Sunday/1st/entry,
-        // year→month-1st, total→nearest entry). A tap on an empty day/month is an in-between selection whose
-        // value is Hermite-interpolated per product — weight via `calculateDisplayWeight`, BPM via
-        // `getBpmDisplayValues`, baby weight/height via `currentDisplay*` + the crosshair resolver.
-        let points = model.fullResolution[primarySeriesName] ?? []
-        guard let firstDate = points.first?.original.date,
-              let lastDate = points.last?.original.date else { return nil }
-        let calendar = Calendar.current
-        switch model.period {
-        case .week:
-            // Round to the nearest midnight (day gridline), then clamp into the data's day range.
-            let nearestDay = calendar.startOfDay(for: raw.addingTimeInterval(43_200))
-            let lo = calendar.startOfDay(for: firstDate)
-            let hi = calendar.startOfDay(for: lastDate)
-            return min(max(nearestDay, lo), hi)
-        case .month:
-            let lo = calendar.startOfDay(for: firstDate)
-            let hi = calendar.startOfDay(for: lastDate)
-            // Candidates = the shown vertical lines (every Sunday + each month's 1st) ∪ real entry days,
-            // restricted to the data range. Snap to whichever is nearest the tap.
-            var candidates = monthLineCandidates(in: model, calendar: calendar)
-            candidates.append(contentsOf: points.map { calendar.startOfDay(for: $0.original.date) })
-            let inRange = candidates.filter { $0 >= lo && $0 <= hi }
-            if let nearest = inRange.min(by: { abs($0.timeIntervalSince(raw)) < abs($1.timeIntervalSince(raw)) }) {
-                return nearest
-            }
-            // Fallback (no ticks generated yet): nearest day, clamped.
-            return min(max(calendar.startOfDay(for: raw.addingTimeInterval(43_200)), lo), hi)
-        case .year:
-            // Round to the nearest 1st-of-month, then clamp into the data's month range.
-            let nearestMonth = nearestMonthStart(to: raw, calendar: calendar)
-            let lo = monthStart(of: firstDate, calendar: calendar)
-            let hi = monthStart(of: lastDate, calendar: calendar)
-            return min(max(nearestMonth, lo), hi)
-        case .total:
-            return nearestEntry(to: raw, in: model)?.original.date
-        }
-    }
-
-    /// The vertical gridlines the MONTH view draws — every Sunday (the windowed weekly ticks) plus each
-    /// month's 1st (the solid dividers) — snapped to midnight. These are the "shown lines" the user selects
-    /// in month view (in addition to real entry days). Mirrors `WeightChartView.gridTicks` +
-    /// `monthBoundaryTicks` so a selection lands exactly on a drawn rule.
-    private func monthLineCandidates(in model: ChartModel, calendar: Calendar) -> [Date] {
-        guard let lo = model.xAxisTicks.first, let hi = model.xAxisTicks.last else { return [] }
-        // Weekly Sunday ticks (drop the phantom trailing tick), at midnight — the light rules.
-        var candidates = model.xAxisTicks.dropLast().map { calendar.startOfDay(for: $0) }
-        // Each month's 1st within the tick span — the solid divider rules.
-        guard var monthStart = calendar.dateInterval(of: .month, for: lo)?.start else { return candidates }
-        while monthStart <= hi {
-            candidates.append(monthStart)
-            guard let next = calendar.date(byAdding: .month, value: 1, to: monthStart) else { break }
-            monthStart = next
-        }
-        return candidates
-    }
-
-    /// Nearest 1st-of-month (midnight) to `raw` — the year view's selection grid.
-    private func nearestMonthStart(to raw: Date, calendar: Calendar) -> Date {
-        let thisStart = monthStart(of: raw, calendar: calendar)
-        let nextStart = calendar.date(byAdding: .month, value: 1, to: thisStart) ?? thisStart
-        return abs(raw.timeIntervalSince(thisStart)) <= abs(nextStart.timeIntervalSince(raw)) ? thisStart : nextStart
-    }
-
-    private func monthStart(of date: Date, calendar: Calendar) -> Date {
-        calendar.date(from: calendar.dateComponents([.year, .month], from: date)) ?? calendar.startOfDay(for: date)
+        TrendChartSelectionSnapper.snappedDate(for: raw, in: model, primarySeriesName: primarySeriesName)
     }
 
     /// Issue #2 — after a period switch / cold start, make sure the latest plotted point is selected so the
