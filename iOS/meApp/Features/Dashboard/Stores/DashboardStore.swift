@@ -504,6 +504,13 @@ class DashboardStore: ObservableObject, DashboardStateProviding {
             .sink { [weak self] _, _ in
                 guard let self, self.productType == .baby else { return }
                 self.invalidateContinuousOperationsCache()
+                // MOB-1726: seed the model directly from the fresh summaries. Ticking `dataChangeRevision`
+                // alone relies on `TrendChartHost` observing the change, but on a cold open with a persisted
+                // baby the host can mount AFTER the tick and render the empty (collapsed, 265 pt) model until
+                // a period switch forces a rebuild. Rebuilding here — after the ops-cache invalidation, so it
+                // reads the fresh summaries — makes the populated baby model deterministic the moment its data
+                // lands, independent of view mount timing.
+                self.rebuildChartModel(scrollPosition: self.state.graph.xScrollPosition)
                 self.dataChangeRevision &+= 1
                 self.objectWillChange.send()
             }
@@ -727,10 +734,6 @@ class DashboardStore: ObservableObject, DashboardStateProviding {
 
     var productTypeSelectorStore: ProductTypeStore {
         ProductTypeStore.shared
-    }
-
-    func clearProductTypeSelection() {
-        productTypeStore.clearPersistedSelection()
     }
 
     var dashboardEntryService: EntryService {

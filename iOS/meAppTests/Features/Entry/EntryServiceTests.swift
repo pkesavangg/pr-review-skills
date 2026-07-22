@@ -432,6 +432,40 @@ struct EntryServiceTests {
         #expect(baby.syncBabiesCalls == 0)
     }
 
+    // MOB-1726: a sync fired before the active account resolves (a dashboard/refresh trigger racing
+    // login) must NOT mark the initial sync complete. It used to flip `hasCompletedInitialSync` even
+    // though `performSync` bailed at `getAccountId`, which dropped the snapshot cards' skeletons and
+    // flashed the empty "no entries" state on cold login until the real post-account sync landed.
+    @Test("syncAllEntriesWithRemote with no active account leaves initial-sync flag false (MOB-1726)")
+    func syncWithoutActiveAccountDoesNotCompleteInitialSync() async {
+        let sut = makeSUT(activeAccount: nil)
+        #expect(sut.hasCompletedInitialSync == false)
+
+        await sut.syncAllEntriesWithRemote()
+
+        #expect(sut.hasCompletedInitialSync == false)
+        #expect(sut.isSyncing == false)
+    }
+
+    // MOB-1726: the guard above must gate ONLY the no-account no-op — a sync WITH an active account must
+    // still complete the initial sync. (An over-eager fix that skipped the real sync left an account
+    // with entries stuck on an infinite skeleton.)
+    @Test("syncAllEntriesWithRemote with an active account completes the initial sync (MOB-1726)")
+    func syncWithActiveAccountCompletesInitialSync() async {
+        let account = AccountTestFixtures.makeAccountSnapshot(
+            id: "acct-1",
+            email: "entry@example.com",
+            isActiveAccount: true
+        )
+        let sut = makeSUT(remote: MockEntryRepositoryAPI(), activeAccount: account)
+        #expect(sut.hasCompletedInitialSync == false)
+
+        await sut.syncAllEntriesWithRemote()
+
+        #expect(sut.hasCompletedInitialSync == true)
+        #expect(sut.isSyncing == false)
+    }
+
     private func makeSUT(
         repo: MockEntryRepository? = nil,
         remote: MockEntryRepositoryAPI? = nil,

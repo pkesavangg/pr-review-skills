@@ -53,6 +53,9 @@ struct DashboardScreen: View {
                             }
                         )
                     }
+                    .refreshable {
+                        await store.lifecycleManager.refreshAll()
+                    }
                 } else {
                     navbarHeader()
                         .contentShape(Rectangle())
@@ -62,6 +65,9 @@ struct DashboardScreen: View {
                             }
                         }
                     dashboardScroll(availableHeight: proxy.size.height)
+                        .refreshable {
+                            await store.lifecycleManager.refreshAll()
+                        }
                 }
             }
             .screenAccessibilityRoot(AccessibilityID.dashboardScreenRoot)
@@ -70,9 +76,11 @@ struct DashboardScreen: View {
             // stays visible without scrolling). See DashboardChartLayout.babyHeight(forAvailableHeight:).
             .environment(\.dashboardViewportHeight, proxy.size.height)
         }
-        .refreshable {
-            await store.lifecycleManager.refreshAll()
-        }
+        // MOB-1726: `.refreshable` lives on the two content ScrollViews (above), NOT here on the root.
+        // Placed at the root, its `RefreshAction` propagated through the environment into every sheet
+        // presented from this subtree — the "Select Graph" (`ProductTypeSelectorSheet`) List showed a
+        // phantom pull-to-refresh. Scoping it to the scroll views keeps pull-to-refresh on the dashboard
+        // while sheets no longer inherit it.
         .onAppear(perform: store.lifecycleManager.onAppearActions)
         .onAppear {
             // Handles the case where availableProductItems is already populated when the
@@ -206,9 +214,13 @@ struct DashboardScreen: View {
             leadingContent: isProductDashboardFromSnapshot
                 ? { AppIconView(icon: AppAssets.chevronLeft) }
                 : nil,
+            // MOB-1726: back is in-session navigation only — return to the snapshot overview WITHOUT
+            // clearing the persisted product selection. Clearing it made the whole app "forget" the active
+            // product: on relaunch the dashboard showed the overview (intended) but History and Manual Entry —
+            // which share `ProductTypeStore.selectedItem` and have no overview state — fell back to My Weight
+            // (the first item). Keeping the selection means a relaunch reopens the last product everywhere.
             onLeadingTap: isProductDashboardFromSnapshot ? {
                 isInProductDashboard = false
-                store.clearProductTypeSelection()
             } : nil,
             onTitleTap: showProductSelector ? {
                 isProductTypeSelectorPresented = true

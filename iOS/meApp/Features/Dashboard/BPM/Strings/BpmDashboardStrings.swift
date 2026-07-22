@@ -43,6 +43,7 @@ enum BpmDashboardStrings {
     // MARK: - Accessibility
     static let openAhaRatings = "Open AHA ratings"
     static let noBloodPressureData = "No blood pressure data"
+    static let loadingBloodPressure = "Loading blood pressure"
     static let bpPlaceholder = "--/--"
     static let systolicRangePrefix = "Systolic: "
     static let diastolicRangePrefix = "\nDiastolic: "

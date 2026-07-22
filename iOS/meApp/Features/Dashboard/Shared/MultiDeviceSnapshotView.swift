@@ -22,10 +22,10 @@ struct MultiDeviceSnapshotView: View {
 
         VStack(spacing: .spacingSM) {
             ForEach(snapshotItems) { item in
-                if viewModel.isSnapshotReady(item) || viewModel.hasLoadedSnapshots(for: snapshotItems) {
-                    snapshotCard(for: item)
-                } else {
+                if viewModel.shouldShowSkeleton(for: item, in: snapshotItems) {
                     skeletonCard(for: item)
+                } else {
+                    snapshotCard(for: item)
                 }
             }
         }
@@ -45,17 +45,6 @@ struct MultiDeviceSnapshotView: View {
             hasher.combine(item)
         }
         return hasher.finalize()
-    }
-
-    // MARK: - Skeleton Placeholder
-
-    private var snapshotSkeletonCards: some View {
-        let snapshotItems = viewModel.snapshotItems(from: availableItems, selectedItem: selectedItem)
-        return VStack(spacing: .spacingSM) {
-            ForEach(Array(snapshotItems.prefix(3).enumerated()), id: \.offset) { _, item in
-                skeletonCard(for: item)
-            }
-        }
     }
 
     @ViewBuilder

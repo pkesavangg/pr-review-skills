@@ -42,6 +42,11 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
     private static let fullSyncStart = "1970-01-01T00:00:00Z"
 
     @Published var isSyncing: Bool = false
+    /// MOB-1726: `true` once the first full remote sync of this session has finished (success or failure).
+    /// Snapshot cards use it to distinguish "no data yet because the initial sync is still running" (show a
+    /// skeleton) from "genuinely no entries" (show the empty card) — so a fresh login shows skeletons instead
+    /// of flashing the empty state before entries land.
+    @Published private(set) var hasCompletedInitialSync: Bool = false
     @Published var lastSyncTime: Date?
     @Published var progress: ProgressSummary = .empty
     @Published var streak: Int = 0
@@ -65,7 +70,7 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
     private var lastAccountId: String?
     private var lastLoggedEntryCountByAccount: [String: Int] = [:]
     /// Tracks the active sync task so concurrent callers can await it instead of skipping.
-    private var activeSyncTask: Task<Void, Never>?
+    private var activeSyncTask: Task<Bool, Never>?
     /// Tracks an in-flight eager push (fired after a local mutation) so concurrent
     /// eager pushes coalesce onto one task and a full sync can await it before its
     /// own push, preventing the same unsynced rows from being submitted twice.
@@ -1200,17 +1205,29 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
             await existingPush.value
         }
 
-        let task = Task { [weak self] in
-            guard let self else { return }
-            await self.performSync()
+        let task = Task { [weak self] () -> Bool in
+            guard let self else { return false }
+            return await self.performSync()
         }
         activeSyncTask = task
         isSyncing = true
 
-        await task.value
+        let didReachRemote = await task.value
 
         activeSyncTask = nil
         isSyncing = false
+        // MOB-1726: mark the initial sync done ONLY when this pass actually reached the remote (had an
+        // active account and attempted the fetch — success OR network failure). A sync fired before the
+        // account resolves (a dashboard/refresh trigger racing login) bails inside `performSync` at
+        // `getAccountId` and returns false; flipping the flag for THAT no-op marked the initial sync
+        // "complete" against an empty DB, so the snapshot cards dropped their skeletons and flashed the
+        // empty "no entries" state until the real post-account sync landed (cold-login empty flash).
+        // Gating on `didReachRemote` keeps the flag false through the pre-account no-op, so the skeleton
+        // stays up until a real sync completes — while NOT blocking any sync (the account propagates on
+        // the main-actor hop into the task, so `getAccountId` still succeeds for the legitimate sync).
+        if didReachRemote {
+            hasCompletedInitialSync = true
+        }
     }
 
     /// Pushes locally-saved-but-unsynced changes to the server immediately after a
@@ -1265,13 +1282,17 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
     }
 
     /// The actual sync work — only one instance runs at a time.
-    private func performSync() async {
+    /// Returns `true` when the sync reached the remote (had an active account and attempted the fetch —
+    /// success OR network failure), `false` when it bailed before that because no account had resolved
+    /// yet. The caller uses this to decide whether to mark the initial sync complete (MOB-1726): a
+    /// pre-account no-op must NOT complete it, or the snapshot cards flash the empty state on cold login.
+    private func performSync() async -> Bool {
         let accountId: String
         do {
             accountId = try getAccountId()
         } catch {
             logger.log(level: .error, tag: tag, message: "Sync failed: No account ID available")
-            return
+            return false
         }
         logger.log(level: .info, tag: tag, message: "Full entry sync started: accountId=\(accountId)")
 
@@ -1307,7 +1328,7 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
             // defers to one full reload instead.
             let dashboardDataChanged = hadPushedCreates || mergeResult.hadChanges
             if dashboardDataChanged {
-                await loadDashboardData()
+                await reloadAllDashboardData()
             }
 
             let syncTimestamp = remoteOps.timestamp ?? ISO8601DateFormatter().string(from: Date())
@@ -1333,6 +1354,22 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
 
         } catch {
             logger.log(level: .error, tag: tag, message: "Full entry sync failed: accountId=\(accountId), error=\(error.localizedDescription)")
+        }
+        // Reached the remote (fetch succeeded or threw) — a real attempt, so the caller may complete the
+        // initial sync. Only the no-account bail above returns false.
+        return true
+    }
+
+    /// MOB-1726: refresh EVERY product's published dashboard summaries after a merge — not just weight.
+    /// The snapshot overview's BPM/baby cards mirror `bpmDailySummaries` / `babyDailySummariesByProfile`,
+    /// which only these calls republish; reloading `.scale` alone left them stuck on their pre-sync values
+    /// (the "all three empty on first login" bug — the first snapshot load ran against an empty DB and
+    /// nothing re-aggregated BPM/baby after sync).
+    private func reloadAllDashboardData() async {
+        await loadDashboardData(entryType: .scale)
+        await loadDashboardData(entryType: .bpm)
+        for baby in babyService?.currentBabies ?? [] where baby.isServerCreated && !baby.isDeleted {
+            await loadBabyDashboardData(babyId: baby.id)
         }
     }
 

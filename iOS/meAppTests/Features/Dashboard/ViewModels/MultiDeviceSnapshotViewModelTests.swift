@@ -330,6 +330,50 @@ struct MultiDeviceSnapshotViewModelTests {
         #expect(result.isEmpty)
     }
 
+    // MARK: - shouldShowSkeleton (MOB-1726 empty-flash gate)
+
+    @Test("shouldShowSkeleton: not yet loaded → skeleton")
+    func skeletonWhenNotLoaded() {
+        let (sut, _) = makeSUT()
+        // Fresh VM: no load has run, so neither isSnapshotReady nor hasLoadedSnapshots is true.
+        #expect(sut.shouldShowSkeleton(for: .myWeight, in: [.myWeight]) == true)
+    }
+
+    @Test("shouldShowSkeleton: loaded + no data + initial sync pending → skeleton (no empty flash)")
+    func skeletonWhenLoadedButEmptyAndSyncPending() async {
+        let (sut, _) = makeSUT()
+        // Load completes against an empty local store; no remote sync has finished yet.
+        await sut.loadSnapshots(availableItems: [.myWeight])
+        #expect(sut.shouldShowSkeleton(for: .myWeight, in: [.myWeight]) == true)
+    }
+
+    @Test("shouldShowSkeleton: loaded + has data → card")
+    func cardWhenLoadedWithData() async {
+        let (sut, entryService) = makeSUT()
+        await sut.loadSnapshots(availableItems: [.myWeight])
+        entryService.dailySummaries = DashboardTestFixtures.makeSortedDailySummaries()
+        #expect(sut.shouldShowSkeleton(for: .myWeight, in: [.myWeight]) == false)
+    }
+
+    @Test("shouldShowSkeleton: loaded + no data + initial sync done → card (genuine empty)")
+    func cardWhenLoadedEmptyButSyncComplete() async {
+        let (sut, entryService) = makeSUT()
+        await sut.loadSnapshots(availableItems: [.myWeight])
+        // Complete the initial remote sync (account present → reaches remote → flag flips true),
+        // then wait for the VM's mirrored flag to catch up.
+        await entryService.syncAllEntriesWithRemote()
+        await DashboardTestFixtures.waitUntil { sut.hasCompletedInitialSync }
+        #expect(sut.shouldShowSkeleton(for: .myWeight, in: [.myWeight]) == false)
+    }
+
+    @Test("shouldShowSkeleton: pending baby placeholder → never skeleton")
+    func neverSkeletonForPendingBaby() {
+        let (sut, _) = makeSUT()
+        let pending = BabyProfile(id: BabyProfile.pendingSelectionId, name: "Baby Scale")
+        let items: [ProductSelection] = [.myWeight, .baby(profile: pending)]
+        #expect(sut.shouldShowSkeleton(for: .baby(profile: pending), in: items) == false)
+    }
+
     // MARK: - Private Helpers
 
     private func makeBpmSummary(systolic: Double, diastolic: Double, date: Date) -> BathScaleWeightSummary {
