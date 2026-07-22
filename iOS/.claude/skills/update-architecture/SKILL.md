@@ -19,12 +19,11 @@ This skill keeps two things in sync with the code:
 
 | Changed area | Doc to update |
 |---|---|
-| `iOS/meApp/Domain/Models/DB/*`, Android `data/storage/*`, `proto/*` | [`docs/database-schema.md`](../../../../docs/database-schema.md) |
-| `*ProductType*` / `*ProductSelection*` (Phase 2 product model) | [`docs/product-types-current-state.md`](../../../../docs/product-types-current-state.md) |
-| Account-switching flow (`*AccountSwitch*`) | [`docs/account-switching-flow.md`](../../../../docs/account-switching-flow.md) |
-| Dashboard chart engine (unified v2, `Dashboard/Chart/*`) | [`docs/dashboard-hybrid-latest-vs-average.md`](../../../../docs/dashboard-hybrid-latest-vs-average.md) |
-| `.circleci/*` | [`docs/circleci.md`](../../../../docs/circleci.md) |
-| `.lefthook.yml`, `scripts/*`, `.claude/*`, `iOS/.claude/*`, `Android/.claude/*` | [`docs/automation.md`](../../../../docs/automation.md) |
+| `iOS/meApp/Domain/Models/DB/*`, Android `data/storage/*`, `proto/*` | [`docs/guides/DATABASE_SCHEMA.md`](../../../../docs/guides/DATABASE_SCHEMA.md) |
+| `*ProductType*` / `*ProductSelection*` (Phase 2 product model) | [`docs/guides/PRODUCT_TYPES_CURRENT_STATE.md`](../../../../docs/guides/PRODUCT_TYPES_CURRENT_STATE.md) |
+| Account-switching flow (`*AccountSwitch*`) | [`docs/guides/ACCOUNT_SWITCHING_FLOW.md`](../../../../docs/guides/ACCOUNT_SWITCHING_FLOW.md) |
+| `.circleci/*` | [`docs/guides/CIRCLECI.md`](../../../../docs/guides/CIRCLECI.md) |
+| `.lefthook.yml`, `scripts/*`, `.claude/*`, `iOS/.claude/*`, `Android/.claude/*` | [`docs/overview/CLAUDE_AUTOMATION.md`](../../../../docs/overview/CLAUDE_AUTOMATION.md) |
 | New feature / service / model / DI registration (structural) | `iOS/architecture.md` |
 
 If you add, move, or retire a maintained doc, update **both** this table and the

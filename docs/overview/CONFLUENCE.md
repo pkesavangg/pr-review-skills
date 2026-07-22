@@ -31,7 +31,7 @@ should sync to which page. Keep the IDs here in step with Confluence; the
 ## Which repo change syncs to which page
 
 The **meApp - Development** page (`1552482315`) mirrors this repo's architecture docs and
-[`docs/automation.md`](automation.md), so it's the target for almost every code/config change:
+[`docs/overview/CLAUDE_AUTOMATION.md`](CLAUDE_AUTOMATION.md), so it's the target for almost every code/config change:
 
 | Repo change | Confluence page → section |
 |---|---|
@@ -46,7 +46,7 @@ The **meApp - Development** page (`1552482315`) mirrors this repo's architecture
 
 This is a **two-step mirror**: code → local doc → Confluence.
 
-1. A code change updates the matching local `docs/` file (enforced by the docs-freshness hook — see [automation.md](automation.md)).
+1. A code change updates the matching local `docs/` file (enforced by the docs-freshness hook — see [CLAUDE_AUTOMATION.md](CLAUDE_AUTOMATION.md)).
 2. The same hook prints a `🌐 Also mirror this to Confluence → …` line naming the page above.
 3. Run [`/update-confluence`](../.claude/skills/update-confluence/SKILL.md) — it reads the target page, drafts the section edit from the current repo state, shows you the before/after, and **writes only after you approve**.
 

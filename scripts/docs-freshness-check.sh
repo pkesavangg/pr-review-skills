@@ -45,7 +45,7 @@ MAJOR_LINES=20
 
 # Every doc-mapped change also mirrors to the Confluence "meApp - Development" page,
 # which tracks architecture + CI/CD & automation. (Test-infra and release changes have
-# their own Confluence pages, updated manually — see docs/confluence.md.) The
+# their own Confluence pages, updated manually — see docs/overview/CONFLUENCE.md.) The
 # /update-confluence skill reads the page and drafts the edit; writes need approval.
 CONF_PAGE='meApp - Development (page 1552482315)'
 
@@ -78,17 +78,15 @@ doc_for() {
     *DerivedData*|*SourcePackages*|*/build/*|*/.build/*)         return 0 ;;
     *Tests/*|*/src/test/*|*/src/androidTest/*)                   return 0 ;;
     # --- persistence schema (SwiftData models + Room/proto storage) ---
-    iOS/meApp/Domain/Models/DB/*)                                printf 'docs/database-schema.md' ;;
-    *data/storage/*|*/main/proto/*)                              printf 'docs/database-schema.md' ;;
+    iOS/meApp/Domain/Models/DB/*)                                printf 'docs/guides/DATABASE_SCHEMA.md' ;;
+    *data/storage/*|*/main/proto/*)                              printf 'docs/guides/DATABASE_SCHEMA.md' ;;
     # --- Phase 2 product model ---
-    *ProductType*|*ProductSelection*)                            printf 'docs/product-types-current-state.md' ;;
+    *ProductType*|*ProductSelection*)                            printf 'docs/guides/PRODUCT_TYPES_CURRENT_STATE.md' ;;
     # --- multi-account switching flow ---
-    *AccountSwitch*)                                             printf 'docs/account-switching-flow.md' ;;
-    # --- dashboard chart engine (weight/BPM/baby, unified v2 under Dashboard/Chart/) ---
-    *iOS/meApp/Features/Dashboard/Chart/*)                      printf 'docs/dashboard-hybrid-latest-vs-average.md' ;;
+    *AccountSwitch*)                                             printf 'docs/guides/ACCOUNT_SWITCHING_FLOW.md' ;;
     # --- repo automation surfaces ---
-    .circleci/*)                                                 printf 'docs/circleci.md' ;;
-    .lefthook.yml|scripts/*|.claude/*|iOS/.claude/*|Android/.claude/*) printf 'docs/automation.md' ;;
+    .circleci/*)                                                 printf 'docs/guides/CIRCLECI.md' ;;
+    .lefthook.yml|scripts/*|.claude/*|iOS/.claude/*|Android/.claude/*) printf 'docs/overview/CLAUDE_AUTOMATION.md' ;;
     # --- iOS structural change -> architecture.md (via /update-architecture) ---
     iOS/meApp/Features/*|iOS/meApp/Core/DI/*|iOS/meApp/Data/Services/*|iOS/meApp/Core/Services/ServiceRegistry.swift) printf 'iOS/architecture.md' ;;
     *)                                                           return 0 ;;

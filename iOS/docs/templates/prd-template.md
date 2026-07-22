@@ -59,14 +59,14 @@
 
 Which maintained docs / Confluence pages this change will outdate. Derive from the source→doc
 map (`scripts/docs-freshness-check.sh` / the `/update-architecture` Scope table) and the
-Confluence map in `docs/confluence.md`. Put a single `—` row and tick "No documentation impact"
+Confluence map in `docs/overview/CONFLUENCE.md`. Put a single `—` row and tick "No documentation impact"
 if the change touches nothing documented.
 
 | Change area | Local doc to update | Confluence page |
 |-------------|---------------------|-----------------|
-| {e.g. new SwiftData model / schema field} | `docs/database-schema.md` | meApp - Development (`1552482315`) |
+| {e.g. new SwiftData model / schema field} | `docs/guides/DATABASE_SCHEMA.md` | meApp - Development (`1552482315`) |
 | {e.g. new feature / service / DI} | `iOS/architecture.md` | meApp - Development (`1552482315`) |
-| {e.g. new/changed skill · run.sh · CI · hook} | `docs/automation.md` | meApp - Development (`1552482315`) |
+| {e.g. new/changed skill · run.sh · CI · hook} | `docs/overview/CLAUDE_AUTOMATION.md` | meApp - Development (`1552482315`) |
 
 - [ ] No documentation impact — the change touches nothing in the maps above.
 

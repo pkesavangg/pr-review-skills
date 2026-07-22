@@ -18,8 +18,8 @@ This directory contains the Android-specific code and resources for the MeApp pr
 
 Detailed documentation can be found in the following files:
 
--   [Database Schema](../docs/database-schema.md) - Complete database schema documentation
--   [Account Switching Flow](../docs/account-switching-flow.md) - Account management and switching feature documentation
+-   [Database Schema](../docs/guides/DATABASE_SCHEMA.md) - Complete database schema documentation
+-   [Account Switching Flow](../docs/guides/ACCOUNT_SWITCHING_FLOW.md) - Account management and switching feature documentation
 
 ## Notes
 

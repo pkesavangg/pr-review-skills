@@ -203,7 +203,7 @@ Each phase is independently committable. Run `git mv` (not delete+add) so histor
 1. Add a **Phase 2 section** to root `CLAUDE.md` and `iOS/CLAUDE.md` (the §2 content here, condensed): multi-product model, `productTypes`/`measurementUnits`, unified endpoints, baby permissions, backward-compat rule, current branch = `develop`.
 2. New generic skill **`phase2-context`** — the canonical "what is 2.0" brief + API-change cheat sheet (links to Confluence) so any task can pull it in.
 3. New iOS skill **`phase2-design-system`** — Figma file key + the two node IDs (design system `8-2145`, screens `26501-375864`) + how to pull tokens via `read-figma`; map Figma tokens → `Theme/` tokens.
-4. Update `docs/product-types-current-state.md` if it predates the `productTypes` API setter (`PATCH /v3/account/products`).
+4. Update `docs/guides/PRODUCT_TYPES_CURRENT_STATE.md` if it predates the `productTypes` API setter (`PATCH /v3/account/products`).
 
 ### Phase D — Drift / stale-reference fixes
 1. **`orchestra.md`:** `MA-XXXX` → `MOB-XXXX` (line ~259 verification checklist); "Branch from main" → "Branch from `develop`" (lines ~75, ~332); fix the **duplicate `### 4.11`** (Fix PR Comments *and* Release Preparation both numbered 4.11 → renumber Release to 4.12).
