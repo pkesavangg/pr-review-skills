@@ -79,28 +79,10 @@ interface EntryDao {
     return entryId
   }
 
-  /**
-   * Insert a list of entries with their related details in a single transaction.
-   * Inserts one entry at a time so each [insertEntryEntity] returns the correct generated id
-   * (SQLite multi-row INSERT returns only the last rowid, so bulk insert + returned IDs would break
-   * the body_scale_entry foreign key to entry). One transaction still gives a large speedup vs N transactions.
-   * @param entries The list of Entry objects to insert
-   */
-  @Transaction
-  suspend fun insert(entries: List<Entry>) {
-    if (entries.isEmpty()) return
-    for (entry in entries) {
-      val entryId = insertEntryEntity(entry.entry)
-      when (entry) {
-        is BpmEntry -> insertBpm(entry.bpmEntry.copy(id = entryId))
-        is ScaleEntry -> {
-          insertBodyScale(entry.scale.scaleEntry.copy(id = entryId))
-          entry.scale.scaleEntryMetric?.let { insertBodyScaleMetric(it.copy(id = entryId)) }
-        }
-        is BabyEntry -> insertBabyEntry(entry.babyEntry.copy(id = entryId))
-      }
-    }
-  }
+  // NOTE: batch insert(List<Entry>) was intentionally removed (MOB-1750). It wrapped the whole
+  // list in one @Transaction, so a single constraint violation (e.g. an orphan baby entry) rolled
+  // back every row and silently dropped all synced entries. Callers now loop over insert(entry)
+  // — one transaction per entry — so a bad row is skipped without losing the rest.
 
   @Transaction
   suspend fun update(entry: Entry): Long {
