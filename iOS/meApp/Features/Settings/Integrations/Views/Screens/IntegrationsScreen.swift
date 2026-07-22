@@ -41,6 +41,10 @@ struct IntegrationsScreen: View {
                                 item: item
                             ) { store.selectIntegration(item: item) }
                             .listRowInsets()
+                            // Full-bleed row divider (edge to edge of the card),
+                            // matching the mock — pull the separator's leading
+                            // out past the row's leading content inset.
+                            .alignmentGuide(.listRowSeparatorLeading) { _ in -.spacingSM }
                             .accessibilityIdentifier(AccessibilityID.integrationRow + "_" + item.type.snakeKey)
                         }
                     }

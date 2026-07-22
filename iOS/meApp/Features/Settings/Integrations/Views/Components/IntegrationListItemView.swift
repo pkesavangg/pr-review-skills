@@ -17,66 +17,40 @@ struct IntegrationListItemView: View {
     /// If `nil`, the tap is ignored and row tap will be triggered instead.
     var onBadgeTap: (() -> Void)?
     let rowHeight: CGFloat = 80
+    /// Fixed leading logo column. Kept in one place so the title row and the
+    /// deprecation-notice indent stay in lockstep across every provider.
+    private let iconSize: CGFloat = 32
     var body: some View {
-        VStack {
-            Spacer()
-            HStack(spacing: .spacingSM) {
-                
-                ZStack(alignment: .topTrailing) {
-                    // Icon tap: triggers onTap()
-                    Button(action: {
-                        if item.isOutOfSync {
-                            onBadgeTap?()
-                        } else {
-                            onTap()
-                        }
-                    }, label: {
-                        Image(item.type.iconAsset)
-                            .resizable()
-                            .frame(width: 42, height: 44)
-                    })
-                    .buttonStyle(.plain)
-                    
-                    // Badge tap: triggers onBadgeTap()
-                    if item.isOutOfSync {
-                        Button(action: {
-                            onBadgeTap?()
-                        }, label: {
-                            AppIconView(
-                                icon: AppAssets.exclamationMark,
-                                size: IconSize(width: 20, height: 20)
-                            )
-                            .foregroundColor(theme.statusError)
-                        })
-                        .buttonStyle(.plain)
-                        .offset(x: 12, y: -10)
-                    }
-                }
-                .frame(width: 42, height: 44)
-                .padding(.top, .spacingXS)
+        // Logo is centred against the full text block (title + optional notice),
+        // while the provider name and the selection indicator share the first
+        // line and the notice hangs beneath the title — matching the Figma mock.
+        HStack(alignment: .center, spacing: .spacingSM) {
+            logo
 
-                VStack(alignment: .leading, spacing: 2) {
+            VStack(alignment: .leading, spacing: 2) {
+                // Title + selection indicator on the same line.
+                HStack(alignment: .center, spacing: .spacingSM) {
                     Text(item.type.displayName)
                         .fontOpenSans(.itemTitle)
                         .foregroundColor(theme.textBody)
 
-                    // Optional, non-interactive provider notice (e.g. Fitbit
-                    // deprecation). Display-only — does not affect row tap
-                    // or connect/sync behaviour (MOB-1608).
-                    if let notice = item.type.deprecationNotice {
-                        deprecationNotice(notice)
-                    }
+                    Spacer()
+
+                    AppIconView(
+                        icon: item.isSelected ? AppAssets.circleCheckFilled : AppAssets.circleOutline,
+                        size: IconSize(width: 24, height: 24)
+                    )
+                    .foregroundColor(theme.statusIconPrimary)
                 }
 
-                Spacer()
-
-                AppIconView(
-                    icon: item.isSelected ? AppAssets.circleCheckFilled : AppAssets.circleOutline,
-                    size: IconSize(width: 24, height: 24)
-                )
-                .foregroundColor(theme.statusIconPrimary)
+                // Optional, non-interactive provider notice (e.g. Fitbit
+                // deprecation). Display-only — does not affect row tap or
+                // connect/sync behaviour (MOB-1608). Sits directly beneath
+                // the title text.
+                if let notice = item.type.deprecationNotice {
+                    deprecationNotice(notice)
+                }
             }
-            Spacer()
         }
         // minHeight (not a fixed height) so the row can grow to fit the
         // deprecation notice and larger Dynamic Type sizes without clipping.
@@ -85,22 +59,63 @@ struct IntegrationListItemView: View {
         .onTapGesture { onTap() }
     }
 
+    // MARK: - Logo
+    /// Provider logo with an optional out-of-sync warning badge overlaid at the
+    /// top-trailing corner. Fixed to `iconSize` so every row's logo lines up.
+    private var logo: some View {
+        ZStack(alignment: .topTrailing) {
+            // Icon tap: triggers onTap()
+            Button(action: {
+                if item.isOutOfSync {
+                    onBadgeTap?()
+                } else {
+                    onTap()
+                }
+            }, label: {
+                Image(item.type.iconAsset)
+                    .resizable()
+                    .frame(width: iconSize, height: iconSize)
+            })
+            .buttonStyle(.plain)
+
+            // Badge tap: triggers onBadgeTap()
+            if item.isOutOfSync {
+                Button(action: {
+                    onBadgeTap?()
+                }, label: {
+                    AppIconView(
+                        icon: AppAssets.exclamationMark,
+                        size: IconSize(width: 20, height: 20)
+                    )
+                    .foregroundColor(theme.statusError)
+                })
+                .buttonStyle(.plain)
+                .offset(x: 12, y: -10)
+            }
+        }
+        .frame(width: iconSize, height: iconSize)
+    }
+
     // MARK: - Deprecation notice
     /// Subtle inline info pill shown beneath a provider title. Non-interactive.
     private func deprecationNotice(_ text: String) -> some View {
         // Render the info icon INLINE with the text (a single Text) so it sits on the same
-        // line as "Moving …", baseline-aligned, and stays with the first word when the
-        // notice wraps. Design spec: 12px / regular with an 18px line-height — body4 is
-        // 12px OpenSans-Regular (~16.3px natural line height), so ~2pt of extra line
-        // spacing lands the line box at the 18px design value.
+        // line as "Moving …", baseline-aligned. The single space between icon and text
+        // mirrors the mock's 3px gap. The notice is a single, non-wrapping line per the
+        // Figma "Fitbit alert" mock — lineLimit(1) + fixedSize lets the pill hug its
+        // content width. Typography is Body 4 (12px OpenSans-Regular).
+        // Colours bind to the exact semantic tokens shown in the Figma inspector:
+        //   text + icon → meApp/Action/error-default (red-800)
+        //   pill fill   → meApp/Action/inverse-pressed (neutral-200):
+        //                 #F6F4F1 light · #12161B dark
         (Text(Image(systemName: "info.circle")) + Text(" ") + Text(text))
             .font(.custom("OpenSans-Regular", size: CustomTextStyle.body4.size))
-            .lineSpacing(2)
-            .foregroundColor(theme.textError)
-            .fixedSize(horizontal: false, vertical: true)
+            .lineLimit(1)
+            .fixedSize(horizontal: true, vertical: false)
+            .foregroundColor(theme.actionError)
             .padding(.horizontal, 6)
             .padding(.vertical, 2)
-            .background(theme.backgroundSecondary)
+            .background(theme.actionInversePressed)
             .clipShape(Capsule())
             .accessibilityLabel(text)
     }
