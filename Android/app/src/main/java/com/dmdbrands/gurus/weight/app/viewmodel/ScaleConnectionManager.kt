@@ -16,8 +16,6 @@ import com.dmdbrands.gurus.weight.domain.repository.IDeviceService
 import com.dmdbrands.gurus.weight.domain.services.IAccountService
 import com.dmdbrands.gurus.weight.domain.services.IEntryReadService
 import com.dmdbrands.gurus.weight.features.appPermissions.helper.AppPermissionsHelper
-import com.dmdbrands.gurus.weight.features.common.enums.DeviceSetupType
-import com.dmdbrands.gurus.weight.features.common.helper.DeviceDataHelper
 import com.dmdbrands.gurus.weight.features.common.helper.DeviceHelper.getSKU
 import com.dmdbrands.library.ggbluetooth.enums.GGAppType
 import com.dmdbrands.library.ggbluetooth.enums.GGPermissionType
@@ -105,6 +103,20 @@ class ScaleConnectionManager(
     }
   }
 
+  /**
+   * Cancels the per-session observers started by [startObserversOnly]. Must run on every
+   * return-to-landing path (logout / account deletion / unauthorized / encryption failure) —
+   * otherwise the permission observer keeps collecting on the landing screen and can fire the
+   * notification prompt there off the still-populated paired-scales list (MOB-1579).
+   */
+  fun cancelAccountObservers() {
+    permissionSubscribeJob?.cancel()
+    deviceSubscribeJob?.cancel()
+    syncScaleJob?.cancel()
+    pairedScalesSubscribeJob?.cancel()
+    initialized = false
+  }
+
   private fun subscribePermissions() {
     startScan()
     permissionSubscribeJob =
@@ -119,26 +131,29 @@ class ScaleConnectionManager(
               if (!initialized) {
                 val pairedScales = deviceService.pairedScales.first()
                 AppLog.d(TAG, "Paired scales: $pairedScales")
-                val hasBtWifiScales =
-                  pairedScales.isNotEmpty() &&
-                    pairedScales.any { savedScale ->
-                      val scaleInfo = DeviceDataHelper.findScaleInfoBySku(savedScale.getSKU())
-                      scaleInfo?.setupType in
-                        listOf(
-                          DeviceSetupType.BtWifiR4,
-                          DeviceSetupType.Lcbt,
-                          DeviceSetupType.EspTouchWifi,
-                          DeviceSetupType.Wifi,
-                        )
-                    }
+                // Only WiFi-capable scales warrant the notification prompt — their readings are
+                // delivered server-side as push notifications. Lcbt (Bluetooth-only) is excluded
+                // inside the helper (MOB-774 — the exclusion existed on release/5.0.3 but was
+                // missing here).
+                val hasWifiScales = AppPermissionsHelper.hasNotificationCapableScales(pairedScales)
                 val canRequestNotifPermission =
                   AppPermissionsHelper
                     .canRequestNotificationPermission(ggPermissionService.permissionCallBackFlow.value)
-                if (canRequestNotifPermission && hasBtWifiScales) {
+                // This observer is started on login (startObserversOnly) and cancelled on logout
+                // (cancelAccountObservers), so it only runs while the user is inside the app — it
+                // no longer lingers on the auth/landing screen and fire the notification prompt
+                // there (MOB-1579).
+                if (canRequestNotifPermission && hasWifiScales) {
                   checkAndRequestNotificationPermission()
                 }
-                // Get only the required permissions for the paired scales
-                val requiredPermissionSets = AppPermissionsHelper.getRequiredPermissionSets(pairedScales)
+                // Exclude NOTIFICATION from the required set: it is optional and handled once by
+                // the dismissal-gated checkAndRequestNotificationPermission() above. Leaving it in
+                // makes the "ALL permissions" alert re-fire on every launch when the user ignores
+                // the notification prompt (MOB-774).
+                val requiredPermissionSets =
+                  AppPermissionsHelper.getRequiredPermissionSets(pairedScales)
+                    .filterNot { it == GGPermissionType.NOTIFICATION }
+                    .toSet()
                 if (requiredPermissionSets.isNotEmpty()) {
                   // Check if all required permissions are enabled
                   val areAllRequiredPermissionsEnabled =

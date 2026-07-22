@@ -392,6 +392,31 @@ object AppPermissionsHelper {
       permissions[GGPermissionType.NOTIFICATION] != GGPermissionState.PERMANENTLY_DENIED
   }
 
+  /**
+   * Scale setup types whose readings are delivered as server-side push notifications, and which
+   * therefore warrant the POST_NOTIFICATIONS runtime prompt. Only WiFi-capable scales qualify —
+   * [DeviceSetupType.Lcbt] is a Bluetooth-only scale that syncs over BLE and has no use for
+   * notifications, so it is deliberately excluded (MOB-774).
+   */
+  private val NOTIFICATION_CAPABLE_SETUP_TYPES = listOf(
+    DeviceSetupType.BtWifiR4,
+    DeviceSetupType.EspTouchWifi,
+    DeviceSetupType.Wifi,
+  )
+
+  /**
+   * True when at least one paired scale delivers readings via push notifications and so justifies
+   * requesting the notification permission. Pure so it can be unit-tested independently of the
+   * dashboard/permission plumbing (MOB-1579).
+   */
+  fun hasNotificationCapableScales(pairedScales: List<Device>): Boolean {
+    if (pairedScales.isEmpty()) return false
+    return pairedScales.any { savedScale ->
+      val scaleInfo = DeviceDataHelper.findScaleInfoBySku(savedScale.getSKU())
+      scaleInfo?.setupType in NOTIFICATION_CAPABLE_SETUP_TYPES
+    }
+  }
+
   private fun getPermissionItems(
     requiredPermissionTypes: List<String>,
     permissionMap: GGPermissionStatusMap,

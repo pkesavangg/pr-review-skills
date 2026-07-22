@@ -176,6 +176,7 @@ class AppViewModel
         ggInAppMessagingService = ggInAppMessagingService,
         onStopScan = { scaleConnectionManager.stopScan() },
         onResetScaleDiscoveredState = { deviceResponseManager.resetScaleDiscoveredState() },
+        onCancelAccountObservers = { scaleConnectionManager.cancelAccountObservers() },
         onStartObserversOnly = { account, fromLoadingScreen ->
           scaleConnectionManager.startObserversOnly(account, fromLoadingScreen)
         },

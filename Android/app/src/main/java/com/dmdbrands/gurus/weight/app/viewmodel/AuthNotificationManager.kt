@@ -49,6 +49,7 @@ class AuthNotificationManager(
   private val ggInAppMessagingService: GGInAppMessagingService,
   private val onStopScan: () -> Unit,
   private val onResetScaleDiscoveredState: () -> Unit,
+  private val onCancelAccountObservers: () -> Unit,
   private val onStartObserversOnly: (Account, Boolean) -> Unit,
   private val onStartScan: () -> Unit,
   private val onSyncScales: () -> Unit,
@@ -88,6 +89,7 @@ class AuthNotificationManager(
       is AuthState.LoggedOut -> {
         onStopScan()
         if (authState.isActiveAccount || authState.isLastAccount) {
+          onCancelAccountObservers()
           onResetScaleDiscoveredState()
           routeToLandingOrApp()
           dialogQueueService.clear()
@@ -96,6 +98,7 @@ class AuthNotificationManager(
 
       is AuthState.AccountDeleted -> {
         if (authState.isActiveAccount) {
+          onCancelAccountObservers()
           onStopScan()
           dashboardService.setSelectedKey(null)
           routeToLandingOrApp()
@@ -145,6 +148,7 @@ class AuthNotificationManager(
       val activeAccount =
         accountService.handleUnauthorizedLogout(authState.accountId)
       if (activeAccount != null) {
+        onCancelAccountObservers()
         onStopScan()
         navigationService.replaceStack(route = AppRoute.Auth.MultiAccountLanding)
         dialogUtility.showAccountLoggedOutAlert(activeAccount.firstName)
@@ -160,6 +164,7 @@ class AuthNotificationManager(
       val username = activeAccount?.firstName ?: ""
       // Log out all accounts since encrypted storage is shared
       accountService.logoutAll()
+      onCancelAccountObservers()
       onStopScan()
       navigationService.replaceStack(route = AppRoute.Auth.Landing)
       if (username.isNotEmpty()) {
