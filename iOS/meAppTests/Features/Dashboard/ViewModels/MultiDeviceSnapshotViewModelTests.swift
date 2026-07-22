@@ -19,11 +19,22 @@ struct MultiDeviceSnapshotViewModelTests {
         account.activeAccount = AccountTestFixtures.makeAccountSnapshot(
             id: "acct-1", email: "snapshot@example.com", isActiveAccount: true
         )
+        // Inject a MockEntryWorker backed by the same mock repo. The weight/BP dashboard read
+        // path (getAllEntriesAsDTO) goes through the WORKER, not localRepo — so without this the
+        // SUT falls back to a real SwiftDataWorker over the shared PersistenceController store.
+        // In the full serialized run, leftover "acct-1" weight rows another suite left in that
+        // shared store made loadSnapshots return data, so `shouldShowSkeleton` (empty + sync
+        // pending) saw non-empty summaries and flipped to the card — the cross-suite flake that
+        // passed in isolation but failed on CI. The mock worker keeps reads isolated and empty.
+        let localRepo = MockEntryRepository()
+        let worker = MockEntryWorker()
+        worker.backingRepo = localRepo
         let entryService = EntryService(
             accountService: account,
-            localRepo: MockEntryRepository(),
+            localRepo: localRepo,
             localKVRepo: MockEntrySyncStore(),
-            remoteRepo: MockEntryRepositoryAPI()
+            remoteRepo: MockEntryRepositoryAPI(),
+            worker: worker
         )
         DependencyContainer.shared.register(entryService as EntryService)
         _ = deps
