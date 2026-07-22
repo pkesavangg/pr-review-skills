@@ -185,6 +185,16 @@ class BtWifiScaleSetupViewModel @AssistedInject constructor(
         getDiscoveredScale = { discoveredScale },
         onNext = ::onNext,
         startObservingEntries = ::startObservingEntries,
+        // Re-sync paired devices so the R4 re-establishes its BLE link on a measurement retry (MOB-1580).
+        onSyncForBleReconnection = {
+            try {
+                val pairedDevices = deviceService.pairedScales.first().map { it.toGGBTDevice() }
+                AppLog.d(TAG, "Syncing ${pairedDevices.size} paired devices for setup BLE reconnection")
+                ggDeviceService.syncDevices(pairedDevices)
+            } catch (e: Exception) {
+                AppLog.e(TAG, "Error during setup BLE reconnection sync", e)
+            }
+        },
     )
 
     private val settingsManager = BtWifiSettingsManager(
@@ -501,7 +511,7 @@ class BtWifiScaleSetupViewModel @AssistedInject constructor(
             }
             BtWifiSetupStep.MEASUREMENT -> {
                 measurementManager.cancelMeasurementTimeout()
-                measurementManager.collectMeasurement()
+                measurementManager.retryMeasurement()
             }
             else -> AppLog.w(TAG, "Try again called on step that doesn't support retry: ${currentState.currentStep}")
         }

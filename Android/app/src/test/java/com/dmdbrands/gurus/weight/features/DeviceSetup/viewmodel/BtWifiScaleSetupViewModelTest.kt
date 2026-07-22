@@ -6,6 +6,8 @@ import com.dmdbrands.gurus.weight.core.service.BluetoothPreferencesService
 import com.dmdbrands.gurus.weight.domain.interfaces.IDialogUtility
 import com.dmdbrands.gurus.weight.domain.model.common.WeightProgress
 import com.dmdbrands.gurus.weight.domain.model.permission.PermissionState
+import com.dmdbrands.gurus.weight.domain.model.storage.BLEStatus
+import com.dmdbrands.gurus.weight.domain.model.storage.Device
 import com.dmdbrands.gurus.weight.domain.repository.IDeviceRepository
 import com.dmdbrands.gurus.weight.domain.repository.IDeviceService
 import com.dmdbrands.gurus.weight.domain.services.IAccountService
@@ -475,6 +477,64 @@ class BtWifiScaleSetupViewModelTest {
         assertThat(viewModel.state.value.currentStep).isEqualTo(BtWifiSetupStep.STEP_ON)
         assertThat(viewModel.state.value.stepConnectionStates[BtWifiSetupStep.MEASUREMENT])
             .isNotInstanceOf(ConnectionState.Failed::class.java)
+    }
+
+    // -------------------------------------------------------------------------
+    // MOB-1580 — TRY AGAIN on "Error Collecting Measurement" re-initiates the BLE connect
+    // -------------------------------------------------------------------------
+
+    private fun setDiscoveredScale(device: Device?) {
+        val field = BtWifiScaleSetupViewModel::class.java.superclass.getDeclaredField("discoveredScale")
+        field.isAccessible = true
+        field.set(viewModel, device)
+    }
+
+    @Test
+    fun `TryAgain on MEASUREMENT re-initiates BLE scan and reconnect when scale is disconnected`() {
+        advanceScheduler()
+        // A previously-paired scale whose BLE link was torn down when the collection failed.
+        setDiscoveredScale(Device(connectionStatus = BLEStatus.DISCONNECTED))
+        viewModel.handleIntent(BtWifiScaleSetupIntent.SetCurrentStep(BtWifiSetupStep.MEASUREMENT))
+        advanceScheduler()
+
+        viewModel.handleIntent(BtWifiScaleSetupIntent.TryAgain)
+        advanceScheduler()
+
+        // The retry must actually re-issue a BLE scan + paired-device reconnect — not just
+        // re-observe entries on the (dead) connection.
+        verify { ggDeviceService.resumeScan(true) }
+        verify { ggDeviceService.syncDevices(any()) }
+    }
+
+    @Test
+    fun `TryAgain on MEASUREMENT with connected scale collects without re-scanning`() {
+        advanceScheduler()
+        // Scale still connected — no reconnect needed, go straight to collecting.
+        setDiscoveredScale(Device(connectionStatus = BLEStatus.CONNECTED))
+        viewModel.handleIntent(BtWifiScaleSetupIntent.SetCurrentStep(BtWifiSetupStep.MEASUREMENT))
+        advanceScheduler()
+
+        viewModel.handleIntent(BtWifiScaleSetupIntent.TryAgain)
+        advanceScheduler()
+
+        verify(exactly = 0) { ggDeviceService.resumeScan(any()) }
+        assertThat(viewModel.state.value.stepConnectionStates[BtWifiSetupStep.MEASUREMENT])
+            .isEqualTo(ConnectionState.Loading)
+    }
+
+    @Test
+    fun `TryAgain on MEASUREMENT with no discovered scale surfaces the error`() {
+        advanceScheduler()
+        setDiscoveredScale(null)
+        viewModel.handleIntent(BtWifiScaleSetupIntent.SetCurrentStep(BtWifiSetupStep.MEASUREMENT))
+        advanceScheduler()
+
+        viewModel.handleIntent(BtWifiScaleSetupIntent.TryAgain)
+        advanceScheduler()
+
+        verify(exactly = 0) { ggDeviceService.resumeScan(any()) }
+        assertThat(viewModel.state.value.stepConnectionStates[BtWifiSetupStep.MEASUREMENT])
+            .isInstanceOf(ConnectionState.Failed::class.java)
     }
 
     // -------------------------------------------------------------------------
