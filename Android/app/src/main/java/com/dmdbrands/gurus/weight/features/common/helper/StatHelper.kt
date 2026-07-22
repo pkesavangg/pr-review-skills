@@ -136,12 +136,7 @@ object StatHelper {
     ) {
       // MOB-1168: 1 -> "day", 2-999 -> "days", 1000+ -> "d" (no max cap) to prevent
       // ellipsis truncation of large streak counts on the milestone card.
-      val days = value.toInt()
-      when {
-        days <= 1 -> DashboardString.MileStone.StreakDaySingular
-        days <= 999 -> DashboardString.MileStone.StreakDayPlural
-        else -> DashboardString.MileStone.StreakDayAbbrev
-      }
+      DashboardString.MileStone.streakDaySuffix(value.toInt())
     } else {
       meta.valueSuffix(useShort).takeIf { it.isNotEmpty() }
     }

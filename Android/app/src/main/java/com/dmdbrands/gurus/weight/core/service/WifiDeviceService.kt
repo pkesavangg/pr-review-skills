@@ -106,97 +106,111 @@ class WifiDeviceService @Inject constructor(
         // Validate setup data
         validateSetupDataOrThrow(setupInfo, setupType)
 
-        val request = when (setupType) {
-          WifiSetupType.ESP_TOUCH_WIFI -> {
-            val params = EsptouchParams(
-              ssid = setupInfo.ssid ?: "",
-              bssid = setupInfo.bssid ?: "",
-              password = setupInfo.password ?: "",
-              userNumber = setupInfo.userNumber ?: 0,
-              token = setupInfo.token ?: "",
-            )
-            WifiConnectRequest.Esptouch(params)
-          }
-
-          WifiSetupType.FIRST, WifiSetupType.JOIN -> {
-            val params = SmartConfigParams(
-              ssid = setupInfo.ssid ?: "",
-              password = setupInfo.password ?: "",
-              userNumber = setupInfo.userNumber ?: 0,
-              tokenHexString = setupInfo.token ?: "",
-            )
-            WifiConnectRequest.SmartConfig(params)
-          }
-
-          WifiSetupType.CHANGE -> {
-            // CHANGE is AP Mode
-            val params = ApConnectParams(
-              ssid = setupInfo.ssid ?: "",
-              password = setupInfo.password ?: "",
-              userNumber = setupInfo.userNumber ?: 1,
-              tokenHexString = setupInfo.token ?: "",
-            )
-            WifiConnectRequest.ApMode(params)
-          }
-        }
-
+        val request = buildWifiConnectRequest(setupInfo, setupType)
         val result = wifiSmartConnectManager.connect(request, currentActivity)
-
-        when (result) {
-          is WifiConnectResult.Esptouch -> {
-            when (result.result) {
-              is EsptouchResult.Success -> {
-                AppLog.d(
-                  TAG,
-                  "Esptouch connection successful",
-                )
-                onSuccess()
-              }
-
-              is EsptouchResult.Failure -> {
-                val errorMsg =
-                  "Esptouch connection failed: ${(result.result as EsptouchResult.Failure).errorMessage}"
-                AppLog.e(TAG, "Esptouch connection failed: ${(result.result as EsptouchResult.Failure).errorMessage}")
-                onError(errorMsg)
-              }
-            }
-          }
-
-          is WifiConnectResult.SmartConfig -> {
-            when (result.result) {
-              is SmartConfigResult.Success -> {
-                AppLog.d(
-                  TAG,
-                  "SmartConfig connection successful",
-                )
-                onSuccess()
-              }
-
-              is SmartConfigResult.Failure -> {
-                val errorMsg =
-                  "SmartConfig connection failed: ${(result.result as SmartConfigResult.Failure).errorMessage}"
-                AppLog.e(
-                  TAG,
-                  "SmartConfig connection failed: ${(result.result as SmartConfigResult.Failure).errorMessage}",
-                )
-                onError(errorMsg)
-              }
-            }
-          }
-
-          is WifiConnectResult.ApMode -> {
-            // You may want to handle ApMode result here if needed
-            AppLog.d(TAG, "AP Mode connection result: $result")
-            onSuccess() // Or handle error if needed
-          }
-
-          else -> {
-          }
-        }
+        handleWifiConnectResult(result, onSuccess, onError)
       } catch (e: Exception) {
         val errorMsg = "Connect failed: ${e.message}"
         AppLog.e(TAG, "Connect failed: ${e.message}", e)
         onError(errorMsg)
+      }
+    }
+  }
+
+  /** Builds the protocol-specific [WifiConnectRequest] for the given setup type. */
+  private fun buildWifiConnectRequest(
+    setupInfo: WifiSetupInfo,
+    setupType: WifiSetupType,
+  ): WifiConnectRequest =
+    when (setupType) {
+      WifiSetupType.ESP_TOUCH_WIFI -> {
+        val params = EsptouchParams(
+          ssid = setupInfo.ssid ?: "",
+          bssid = setupInfo.bssid ?: "",
+          password = setupInfo.password ?: "",
+          userNumber = setupInfo.userNumber ?: 0,
+          token = setupInfo.token ?: "",
+        )
+        WifiConnectRequest.Esptouch(params)
+      }
+
+      WifiSetupType.FIRST, WifiSetupType.JOIN -> {
+        val params = SmartConfigParams(
+          ssid = setupInfo.ssid ?: "",
+          password = setupInfo.password ?: "",
+          userNumber = setupInfo.userNumber ?: 0,
+          tokenHexString = setupInfo.token ?: "",
+        )
+        WifiConnectRequest.SmartConfig(params)
+      }
+
+      WifiSetupType.CHANGE -> {
+        // CHANGE is AP Mode
+        val params = ApConnectParams(
+          ssid = setupInfo.ssid ?: "",
+          password = setupInfo.password ?: "",
+          userNumber = setupInfo.userNumber ?: 1,
+          tokenHexString = setupInfo.token ?: "",
+        )
+        WifiConnectRequest.ApMode(params)
+      }
+    }
+
+  /** Dispatches the connection [result] to [onSuccess] / [onError] per protocol. */
+  private fun handleWifiConnectResult(
+    result: WifiConnectResult?,
+    onSuccess: () -> Unit,
+    onError: (String) -> Unit,
+  ) {
+    when (result) {
+      is WifiConnectResult.Esptouch -> {
+        when (result.result) {
+          is EsptouchResult.Success -> {
+            AppLog.d(
+              TAG,
+              "Esptouch connection successful",
+            )
+            onSuccess()
+          }
+
+          is EsptouchResult.Failure -> {
+            val errorMsg =
+              "Esptouch connection failed: ${(result.result as EsptouchResult.Failure).errorMessage}"
+            AppLog.e(TAG, "Esptouch connection failed: ${(result.result as EsptouchResult.Failure).errorMessage}")
+            onError(errorMsg)
+          }
+        }
+      }
+
+      is WifiConnectResult.SmartConfig -> {
+        when (result.result) {
+          is SmartConfigResult.Success -> {
+            AppLog.d(
+              TAG,
+              "SmartConfig connection successful",
+            )
+            onSuccess()
+          }
+
+          is SmartConfigResult.Failure -> {
+            val errorMsg =
+              "SmartConfig connection failed: ${(result.result as SmartConfigResult.Failure).errorMessage}"
+            AppLog.e(
+              TAG,
+              "SmartConfig connection failed: ${(result.result as SmartConfigResult.Failure).errorMessage}",
+            )
+            onError(errorMsg)
+          }
+        }
+      }
+
+      is WifiConnectResult.ApMode -> {
+        // You may want to handle ApMode result here if needed
+        AppLog.d(TAG, "AP Mode connection result: $result")
+        onSuccess() // Or handle error if needed
+      }
+
+      else -> {
       }
     }
   }

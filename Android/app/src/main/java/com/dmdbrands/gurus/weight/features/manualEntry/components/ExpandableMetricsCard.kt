@@ -46,7 +46,6 @@ import com.dmdbrands.gurus.weight.theme.MeTheme
  * @param onImeAction Optional callback for when the last input's IME action is triggered.
  * @param dashboardType The dashboard type to determine the focus flow.
  */
-@Suppress("LongMethod")
 @Composable
 fun ExpandableMetricsCard(
     title: String,
@@ -64,80 +63,118 @@ fun ExpandableMetricsCard(
     val heartRateFocusRequester = remember { FocusRequester() }
 
     Column {
-        Row(
-            modifier =
-                Modifier
-                    .fillMaxWidth()
-                    .clickable(
-                      interactionSource = remember { MutableInteractionSource() },
-                      indication = null,
-                      // TalkBack: this Row is the actual toggle control — announce it as a button
-                      // and source the expand/collapse action label from strings. The chevron icon
-                      // below is decorative (contentDescription = null) so the action isn't read twice.
-                      role = Role.Button,
-                      onClickLabel =
-                          if (expanded) {
-                              EntryScreenStrings.accMetricsCollapseLabel
-                          } else {
-                              EntryScreenStrings.accMetricsExpandLabel
-                          },
-                    ) { expanded = !expanded},
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Column(Modifier.weight(1f)) {
-                Text(
-                    title,
-                    style = MeTheme.typography.heading4,
-                    color = MeTheme.colorScheme.textHeading,
-                    // TalkBack: mark the metrics section title as a heading so users
-                    // can navigate to it by heading. The Text's own text is the spoken name.
-                    modifier = Modifier.semantics { heading() },
-                )
-                if (subheading != null) {
-                    Text(
-                        subheading,
-                        style = MeTheme.typography.subHeading1,
-                        color = MeTheme.colorScheme.textSubheading,
-                    )
-                }
-            }
-            Icon(
-                painter = painterResource(AppIcons.Default.ChevronDown),
-                // Decorative: the expand/collapse action is announced on the clickable Row above
-                // (role = Button + onClickLabel), so the chevron must not repeat it.
-                contentDescription = null,
-                modifier = Modifier.rotate(rotation),
-                tint = MeTheme.colorScheme.iconPrimary,
-            )
-        }
+        MetricsCardHeader(
+            title = title,
+            subheading = subheading,
+            expanded = expanded,
+            rotation = rotation,
+            onToggle = { expanded = !expanded },
+        )
         AnimatedVisibility(visible = expanded) {
-            Column {
-                GeneralMetricsSection(
-                    generalMetrics,
-                    dashboardType,
-                    nextFocusRequester =
-                        if (dashboardType != DashboardType.DASHBOARD_4_METRICS &&
-                            r4ScaleMetrics != null
-                        ) {
-                            heartRateFocusRequester
-                        } else {
-                            null
-                        },
-                    onImeAction = if (dashboardType == DashboardType.DASHBOARD_4_METRICS) onImeAction else null,
-                    enabled = enabled,
-                )
-                if (dashboardType == DashboardType.DASHBOARD_12_METRICS && r4ScaleMetrics != null) {
-                    R4ScaleMetricsSection(
-                        r4ScaleMetrics,
-                        onImeAction = onImeAction,
-                        heartRateFocusRequester = heartRateFocusRequester,
-                        enabled = enabled,
-                    )
-                }
-            }
+            MetricsCardContent(
+                generalMetrics = generalMetrics,
+                r4ScaleMetrics = r4ScaleMetrics,
+                dashboardType = dashboardType,
+                heartRateFocusRequester = heartRateFocusRequester,
+                onImeAction = onImeAction,
+                enabled = enabled,
+            )
         }
         val spacing = if (!expanded) MeTheme.spacing.x3l else MeTheme.spacing.xl
         Spacer(modifier = Modifier.height(spacing))
+    }
+}
+
+/** Clickable title/subheading row with the animated chevron; toggles the card via [onToggle]. */
+@Composable
+private fun MetricsCardHeader(
+    title: String,
+    subheading: String?,
+    expanded: Boolean,
+    rotation: Float,
+    onToggle: () -> Unit,
+) {
+    Row(
+        modifier =
+            Modifier
+                .fillMaxWidth()
+                .clickable(
+                  interactionSource = remember { MutableInteractionSource() },
+                  indication = null,
+                  // TalkBack: this Row is the actual toggle control — announce it as a button
+                  // and source the expand/collapse action label from strings. The chevron icon
+                  // below is decorative (contentDescription = null) so the action isn't read twice.
+                  role = Role.Button,
+                  onClickLabel =
+                      if (expanded) {
+                          EntryScreenStrings.accMetricsCollapseLabel
+                      } else {
+                          EntryScreenStrings.accMetricsExpandLabel
+                      },
+                ) { onToggle() },
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Column(Modifier.weight(1f)) {
+            Text(
+                title,
+                style = MeTheme.typography.heading4,
+                color = MeTheme.colorScheme.textHeading,
+                // TalkBack: mark the metrics section title as a heading so users
+                // can navigate to it by heading. The Text's own text is the spoken name.
+                modifier = Modifier.semantics { heading() },
+            )
+            if (subheading != null) {
+                Text(
+                    subheading,
+                    style = MeTheme.typography.subHeading1,
+                    color = MeTheme.colorScheme.textSubheading,
+                )
+            }
+        }
+        Icon(
+            painter = painterResource(AppIcons.Default.ChevronDown),
+            // Decorative: the expand/collapse action is announced on the clickable Row above
+            // (role = Button + onClickLabel), so the chevron must not repeat it.
+            contentDescription = null,
+            modifier = Modifier.rotate(rotation),
+            tint = MeTheme.colorScheme.iconPrimary,
+        )
+    }
+}
+
+/** Expanded body: general metrics, plus R4/scale metrics when the dashboard type includes them. */
+@Composable
+private fun MetricsCardContent(
+    generalMetrics: GeneralMetricsFormControls,
+    r4ScaleMetrics: R4ScaleMetricsFormControls?,
+    dashboardType: DashboardType,
+    heartRateFocusRequester: FocusRequester,
+    onImeAction: (() -> Unit)?,
+    enabled: Boolean,
+) {
+    Column {
+        GeneralMetricsSection(
+            generalMetrics,
+            dashboardType,
+            nextFocusRequester =
+                if (dashboardType != DashboardType.DASHBOARD_4_METRICS &&
+                    r4ScaleMetrics != null
+                ) {
+                    heartRateFocusRequester
+                } else {
+                    null
+                },
+            onImeAction = if (dashboardType == DashboardType.DASHBOARD_4_METRICS) onImeAction else null,
+            enabled = enabled,
+        )
+        if (dashboardType == DashboardType.DASHBOARD_12_METRICS && r4ScaleMetrics != null) {
+            R4ScaleMetricsSection(
+                r4ScaleMetrics,
+                onImeAction = onImeAction,
+                heartRateFocusRequester = heartRateFocusRequester,
+                enabled = enabled,
+            )
+        }
     }
 }
 

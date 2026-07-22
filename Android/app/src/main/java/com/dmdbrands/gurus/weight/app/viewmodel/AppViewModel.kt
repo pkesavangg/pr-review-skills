@@ -330,114 +330,134 @@ class AppViewModel
     }
 
     private fun initEvents() {
+      observeAuthEvents()
+      observeNotificationSync()
+      observeReceivedNotifications()
+      observeNotificationTaps()
+    }
+
+    private fun observeAuthEvents() {
       viewModelScope.launch {
         appNavigationService.authEvent.collect { authState ->
-          when (authState) {
-            is AuthState.LoggedInFromLoading -> {
-              stopScan()
-              resetScaleDiscoveredState()
-              startObserversOnly(authState.account, fromLoadingScreen = true)
-              dashboardService.setSelectedKey(null)
-            }
-
-            is AuthState.LoggedOut -> {
-              stopScan()
-              if (authState.isActiveAccount || authState.isLastAccount) {
-                resetScaleDiscoveredState()
-                routeToLandingOrApp()
-                dialogQueueService.clear()
-              }
-            }
-
-            is AuthState.AccountDeleted -> {
-              if (authState.isActiveAccount) {
-                stopScan()
-                dashboardService.setSelectedKey(null)
-                routeToLandingOrApp()
-              }
-            }
-
-            is AuthState.UnauthorizedLogout -> {
-              // Show account logged out alert
-              viewModelScope.launch {
-                val activeAccount =
-                  accountService.handleUnauthorizedLogout(authState.accountId)
-                if (activeAccount != null) {
-                  stopScan()
-                  navigationService.replaceStack(route = AppRoute.Auth.MultiAccountLanding)
-                  dialogUtility.showAccountLoggedOutAlert(activeAccount.firstName)
-                }
-              }
-            }
-
-            is AuthState.EncryptionFailure -> {
-              // Encryption failure affects all accounts (shared encrypted file).
-              // Reuse existing logout alert pattern — force re-login.
-              viewModelScope.launch {
-                val activeAccount = accountService.getCurrentAccount()
-                val username = activeAccount?.firstName ?: ""
-                // Log out all accounts since encrypted storage is shared
-                accountService.logoutAll()
-                stopScan()
-                navigationService.replaceStack(route = AppRoute.Auth.Landing)
-                if (username.isNotEmpty()) {
-                  dialogUtility.showAccountLoggedOutAlert(username)
-                }
-              }
-            }
-
-            is AuthState.AccountAdded -> {
-            }
-
-            is AuthState.AccountSwitched -> {
-              // Switching accounts must start the new account with a clean scan state. Otherwise the
-              // previous account's skip/ignore flags leak across and can suppress the duplicate-user
-              // reconnect alert after switching back to a previously connected account (MOB-175).
-              // Mirrors the reset already done on LoggedInFromLoading / LoggedOut.
-              resetScaleDiscoveredState()
-              if (authState.showToast) {
-                val accountName = authState.account.firstName
-                dialogQueueService.showToast(
-                  Toast.Simple(
-                    title = null,
-                    message =
-                      ToastStrings.Success.AccountSwitchSuccess.Message(
-                        accountName,
-                      ),
-                    action = null,
-                  ),
-                )
-              }
-            }
-
-            is AuthState.ProfileUpdated -> {
-              // Profile updated - no navigation needed, just log
-              AppLog.d(TAG, "Profile updated for account: ${authState.account.id}")
-            }
-
-            is AuthState.NavigateToMyAccounts -> {
-              // Stop scan when navigating to MyAccounts screen
-              stopScan()
-              AppLog.d(TAG, "Stopped scan due to navigation to MyAccounts screen")
-            }
-
-            is AuthState.NavigateBackFromMyAccounts -> {
-              // Start scan when navigating back from MyAccounts screen
-              startScan()
-              syncScales()
-              AppLog.d(TAG, "Started scan due to navigation back from MyAccounts screen")
-            }
-
-            is AuthState.Error -> {
-              // Handle auth errors without triggering navigation
-              AppLog.e(TAG, "Auth error: ${authState.message}")
-            }
-
-            // handle other AuthState events as needed
-            else -> {}
-          }
+          handleAuthState(authState)
         }
       }
+    }
+
+    private suspend fun handleAuthState(authState: AuthState) {
+      when (authState) {
+        is AuthState.LoggedInFromLoading -> {
+          stopScan()
+          resetScaleDiscoveredState()
+          startObserversOnly(authState.account, fromLoadingScreen = true)
+          dashboardService.setSelectedKey(null)
+        }
+
+        is AuthState.LoggedOut -> {
+          stopScan()
+          if (authState.isActiveAccount || authState.isLastAccount) {
+            resetScaleDiscoveredState()
+            routeToLandingOrApp()
+            dialogQueueService.clear()
+          }
+        }
+
+        is AuthState.AccountDeleted -> {
+          if (authState.isActiveAccount) {
+            stopScan()
+            dashboardService.setSelectedKey(null)
+            routeToLandingOrApp()
+          }
+        }
+
+        is AuthState.UnauthorizedLogout -> handleUnauthorizedLogout(authState)
+
+        is AuthState.EncryptionFailure -> handleEncryptionFailure()
+
+        is AuthState.AccountAdded -> {
+        }
+
+        is AuthState.AccountSwitched -> handleAccountSwitched(authState)
+
+        is AuthState.ProfileUpdated -> {
+          // Profile updated - no navigation needed, just log
+          AppLog.d(TAG, "Profile updated for account: ${authState.account.id}")
+        }
+
+        is AuthState.NavigateToMyAccounts -> {
+          // Stop scan when navigating to MyAccounts screen
+          stopScan()
+          AppLog.d(TAG, "Stopped scan due to navigation to MyAccounts screen")
+        }
+
+        is AuthState.NavigateBackFromMyAccounts -> {
+          // Start scan when navigating back from MyAccounts screen
+          startScan()
+          syncScales()
+          AppLog.d(TAG, "Started scan due to navigation back from MyAccounts screen")
+        }
+
+        is AuthState.Error -> {
+          // Handle auth errors without triggering navigation
+          AppLog.e(TAG, "Auth error: ${authState.message}")
+        }
+
+        // handle other AuthState events as needed
+        else -> {}
+      }
+    }
+
+    private fun handleUnauthorizedLogout(authState: AuthState.UnauthorizedLogout) {
+      // Show account logged out alert
+      viewModelScope.launch {
+        val activeAccount =
+          accountService.handleUnauthorizedLogout(authState.accountId)
+        if (activeAccount != null) {
+          stopScan()
+          navigationService.replaceStack(route = AppRoute.Auth.MultiAccountLanding)
+          dialogUtility.showAccountLoggedOutAlert(activeAccount.firstName)
+        }
+      }
+    }
+
+    private fun handleEncryptionFailure() {
+      // Encryption failure affects all accounts (shared encrypted file).
+      // Reuse existing logout alert pattern — force re-login.
+      viewModelScope.launch {
+        val activeAccount = accountService.getCurrentAccount()
+        val username = activeAccount?.firstName ?: ""
+        // Log out all accounts since encrypted storage is shared
+        accountService.logoutAll()
+        stopScan()
+        navigationService.replaceStack(route = AppRoute.Auth.Landing)
+        if (username.isNotEmpty()) {
+          dialogUtility.showAccountLoggedOutAlert(username)
+        }
+      }
+    }
+
+    private fun handleAccountSwitched(authState: AuthState.AccountSwitched) {
+      // Switching accounts must start the new account with a clean scan state. Otherwise the
+      // previous account's skip/ignore flags leak across and can suppress the duplicate-user
+      // reconnect alert after switching back to a previously connected account (MOB-175).
+      // Mirrors the reset already done on LoggedInFromLoading / LoggedOut.
+      resetScaleDiscoveredState()
+      if (authState.showToast) {
+        val accountName = authState.account.firstName
+        dialogQueueService.showToast(
+          Toast.Simple(
+            title = null,
+            message =
+              ToastStrings.Success.AccountSwitchSuccess.Message(
+                accountName,
+              ),
+            action = null,
+          ),
+        )
+      }
+    }
+
+    private fun observeNotificationSync() {
       viewModelScope.launch {
         AppNotificationEventService.events.collect {
           when (it) {
@@ -455,11 +475,17 @@ class AppViewModel
           }
         }
       }
+    }
+
+    private fun observeReceivedNotifications() {
       viewModelScope.launch {
         AppNotificationEventService.receivedEvents.collect { payload ->
           showRemoteSyncToast(payload)
         }
       }
+    }
+
+    private fun observeNotificationTaps() {
       viewModelScope.launch {
         AppNotificationEventService.tapEvents.collect { tap ->
           handleNotificationTap(tap)
@@ -840,90 +866,7 @@ class AppViewModel
         AppLog.d(TAG, "device response ${deviceResponse.type}")
 
         when (deviceResponse.type) {
-          GGScanResponseType.NEW_DEVICE -> {
-            AppLog.d(TAG, "new device discovered ${data.macAddress} $canShowScaleDiscoveredModal")
-            if (canShowScaleDiscoveredModal && data.protocolType in DISCOVERY_ELIGIBLE_PROTOCOLS) {
-              val currentRoute = navigationService.getCurrentRoute()
-              val isSetupInProgress = deviceService.isSetupInProgress()
-              val isOnMainScreen = currentRoute is AppRoute.Home || currentRoute is AppRoute.Main.Dashboard
-
-              if (isOnMainScreen && currentRoute !is AppRoute.DeviceSetup && !isSetupInProgress) {
-                // Check if device is in skipDevices list
-                val isSkipped =
-                  data.broadcastId?.let { bluetoothPreferencesService.containsSkipDevice(it) } == true ||
-                    data.macAddress.let { bluetoothPreferencesService.containsSkipDevice(it) }
-
-                // Check if same scale was shown recently (15 seconds)
-                val isIgnored = data.macAddress == scaleToIgnore
-                AppLog.d(TAG, "isSkipped: $isSkipped, isIgnored: $isIgnored")
-
-                // Apply MAC address filtering for 0412 scales (similar to Angular's onfoundnewsmartwifiscale)
-                val deviceSku = data.getSKU().orEmpty()
-                val shouldShow =
-                  if (deviceSku == SKU_0412) {
-                    val isAllow = bluetoothPreferencesService.shouldShowDevice(data.macAddress)
-                    isAllow
-                  } else {
-                    true // Don't filter non-0412 scales
-                  }
-                AppLog.d(TAG, "devicesku: $deviceSku")
-                // Only show if not skipped, not ignored, not known, and shouldShow is true
-                if (!isSkipped && !isIgnored && !isKnownScale && shouldShow) {
-                  handleIntent(AppIntent.SetScaleDiscovered(true))
-                  handleIntent(AppIntent.SetSku(deviceSku))
-                  sku = deviceSku
-                  discoveredBroadcastId = data.broadcastId
-
-                  // Set scaleToIgnore for 15 seconds to prevent showing same scale again
-                  data.macAddress.let { macAddress ->
-                    scaleToIgnore = macAddress
-                    viewModelScope.launch {
-                      delay(SCALEDISCOVEREDTIMEOUT)
-                      scaleToIgnore = null
-                    }
-                  }
-
-                  val customizedDevice =
-                    when {
-                      deviceSku == SKU_0412 -> customizeDevice(data)
-                      DeviceHelper.isBabyScale(deviceSku) ->
-                        Device(
-                          device = data,
-                          deviceType = DeviceSetupType.BabyScale.value,
-                          sku = deviceSku,
-                        )
-                      DeviceHelper.isBpmDevice(deviceSku) ->
-                        Device(
-                          device = data,
-                          deviceType = MonitorSetupStepHelper.setupTypeForSku(deviceSku).value,
-                          sku = deviceSku,
-                        )
-                      else ->
-                        Device(
-                          device = data,
-                          deviceType = DeviceSetupType.Lcbt.value,
-                          sku = deviceSku,
-                        )
-                    }
-                  ggDeviceService.addCacheDevice(discoveredBroadcastId, customizedDevice)
-                  canShowScaleDiscoveredModal = false
-                } else {
-                  if (isSkipped) {
-                    AppLog.d(TAG, "Skipped device with broadcastId: ${data.broadcastId} or MAC: ${data.macAddress}")
-                  }
-                  if (isIgnored) {
-                    AppLog.d(TAG, "Ignoring recently shown scale with MAC: ${data.macAddress}")
-                  }
-                  if (isKnownScale) {
-                    AppLog.d(TAG, "Known device (already paired) with broadcastId: ${data.broadcastId}")
-                  }
-                  if (!shouldShow) {
-                    AppLog.d(TAG, "Filtered out 0412 scale with MAC: ${data.macAddress}")
-                  }
-                }
-              }
-            }
-          }
+          GGScanResponseType.NEW_DEVICE -> handleNewDeviceDiscovered(data, isKnownScale)
 
           GGScanResponseType.DEVICE_CONNECTED -> {
             AppLog.d(TAG, "Device connected ${data.broadcastId}")
@@ -964,108 +907,205 @@ class AppViewModel
             )
           }
 
-          GGScanResponseType.DEVICE_MEMORY_FULL -> {
-            val currentRoute = navigationService.getCurrentRoute()
-            val isOnAuthScreen = currentRoute is AppRoute.Auth
-            if (currentRoute !is AppRoute.DeviceSetup && isKnownScale && !isOnAuthScreen) {
-              dialogQueueService.showDialog(
-                ReconnectScale.getMaxUserAlert(
-                  onConfirm = {
-                    viewModelScope.launch {
-                      try {
-                        val accountId = currentAccountId ?: return@launch
-                        val broadcastId = data.broadcastId ?: return@launch
-                        val device = deviceService.getScaleByBroadcastId(broadcastId, accountId)
-                        if (device == null) {
-                          AppLog.w(TAG, "DEVICE_MEMORY_FULL: scale not found for broadcastId=$broadcastId")
-                          return@launch
-                        }
-                        dialogQueueService.showLoader("Loading...")
-                        ggDeviceService.addCacheDevice(data.broadcastId, device)
-                        ggDeviceService.getUsers(device.toGGBTDevice()) { response ->
-                          viewModelScope.launch {
-                            dialogQueueService.dismissLoader()
-                            navigationService.navigateTo(
-                              AppRoute.DeviceSetup.BtWifiScaleSetup(
-                                sku = data.getSKU().orEmpty(),
-                                initialStep = BtWifiSetupStep.USER_LIMIT_REACHED,
-                                broadcastId = data.broadcastId,
-                                userList = response.user,
-                              ),
-                            )
-                          }
-                        }
-                      } catch (e: Exception) {
-                        AppLog.e(TAG, "DEVICE_MEMORY_FULL: error handling max user alert", e)
-                        dialogQueueService.dismissLoader()
-                      }
-                    }
-                  },
-                  onCancel = {
-                    data.broadcastId?.let { broadcastId ->
-                      ggDeviceService.skipDevice(broadcastId, considerForSession = true)
-                    }
-                  },
-                ),
-              )
-            }
-          }
+          GGScanResponseType.DEVICE_MEMORY_FULL -> handleDeviceMemoryFull(data, isKnownScale)
 
-          GGScanResponseType.DEVICE_DUPLICATE_USER -> {
-            try {
-              val currentRoute = navigationService.getCurrentRoute()
-              val isOnAuthScreen = currentRoute is AppRoute.Auth
-              if (currentRoute !is AppRoute.DeviceSetup && !isOnAuthScreen) {
-                dialogQueueService.showDialog(
-                  ReconnectScale.getDuplicateUserAlert(
-                    onConfirm = {
-                      viewModelScope.launch {
-                        val accountId = currentAccountId ?: return@launch
-                        val broadcastId = data.broadcastId ?: return@launch
-                        val device = deviceService.getScaleByBroadcastId(broadcastId, accountId) ?: return@launch
-                        val userList =
-                          suspendCoroutine { continuation ->
-                            ggDeviceService.getUsers(device.toGGBTDevice()) { response ->
-                              continuation.resume(response.user)
-                            }
-                          }
-                        val scaleToken =
-                          selectDuplicateUserToken(
-                            userList = userList,
-                            displayName = device.preferences?.displayName,
-                            localToken = device.toGGBTDevice().token,
-                          )
-                        ggDeviceService.deleteAccount(device.toGGBTDevice().copy(token = scaleToken)) {
-                          if (it.name == GGUserActionResponseType.DELETE_COMPLETED.name) {
-                            viewModelScope.launch {
-                              ggDeviceService.addCacheDevice(data.broadcastId, device)
-                              navigationService.navigateTo(
-                                AppRoute.DeviceSetup.BtWifiScaleSetup(
-                                  data.getSKU().orEmpty(),
-                                  BtWifiSetupStep.CONNECTING_BLUETOOTH,
-                                  data.broadcastId,
-                                ),
-                              )
-                            }
-                          }
-                        }
-                      }
-                    },
-                    onCancel = {
-                      data.broadcastId?.let { broadcastId ->
-                        ggDeviceService.skipDevice(broadcastId, considerForSession = true)
-                      }
-                    },
-                  ),
-                )
-              }
-            } catch (e: Exception) {
-              AppLog.d(TAG, "Error during duplicate user alert $e")
-            }
-          }
+          GGScanResponseType.DEVICE_DUPLICATE_USER -> handleDeviceDuplicateUser(data)
 
           else -> null
         }
+      }
+    }
+
+    /** Handles a freshly-discovered device: filters, caches it, and shows the discovered modal. */
+    private suspend fun handleNewDeviceDiscovered(data: GGDeviceDetail, isKnownScale: Boolean) {
+      AppLog.d(TAG, "new device discovered ${data.macAddress} $canShowScaleDiscoveredModal")
+      if (canShowScaleDiscoveredModal && data.protocolType in DISCOVERY_ELIGIBLE_PROTOCOLS) {
+        val currentRoute = navigationService.getCurrentRoute()
+        val isSetupInProgress = deviceService.isSetupInProgress()
+        val isOnMainScreen = currentRoute is AppRoute.Home || currentRoute is AppRoute.Main.Dashboard
+
+        if (isOnMainScreen && currentRoute !is AppRoute.DeviceSetup && !isSetupInProgress) {
+          // Check if device is in skipDevices list
+          val isSkipped =
+            data.broadcastId?.let { bluetoothPreferencesService.containsSkipDevice(it) } == true ||
+              data.macAddress.let { bluetoothPreferencesService.containsSkipDevice(it) }
+
+          // Check if same scale was shown recently (15 seconds)
+          val isIgnored = data.macAddress == scaleToIgnore
+          AppLog.d(TAG, "isSkipped: $isSkipped, isIgnored: $isIgnored")
+
+          // Apply MAC address filtering for 0412 scales (similar to Angular's onfoundnewsmartwifiscale)
+          val deviceSku = data.getSKU().orEmpty()
+          val shouldShow =
+            if (deviceSku == SKU_0412) {
+              val isAllow = bluetoothPreferencesService.shouldShowDevice(data.macAddress)
+              isAllow
+            } else {
+              true // Don't filter non-0412 scales
+            }
+          AppLog.d(TAG, "devicesku: $deviceSku")
+          // Only show if not skipped, not ignored, not known, and shouldShow is true
+          if (!isSkipped && !isIgnored && !isKnownScale && shouldShow) {
+            showDiscoveredScale(data, deviceSku)
+          } else {
+            if (isSkipped) {
+              AppLog.d(TAG, "Skipped device with broadcastId: ${data.broadcastId} or MAC: ${data.macAddress}")
+            }
+            if (isIgnored) {
+              AppLog.d(TAG, "Ignoring recently shown scale with MAC: ${data.macAddress}")
+            }
+            if (isKnownScale) {
+              AppLog.d(TAG, "Known device (already paired) with broadcastId: ${data.broadcastId}")
+            }
+            if (!shouldShow) {
+              AppLog.d(TAG, "Filtered out 0412 scale with MAC: ${data.macAddress}")
+            }
+          }
+        }
+      }
+    }
+
+    /** Marks the scale discovered, sets the 15s ignore window, caches it, and gates the modal. */
+    private suspend fun showDiscoveredScale(data: GGDeviceDetail, deviceSku: String) {
+      handleIntent(AppIntent.SetScaleDiscovered(true))
+      handleIntent(AppIntent.SetSku(deviceSku))
+      sku = deviceSku
+      discoveredBroadcastId = data.broadcastId
+
+      // Set scaleToIgnore for 15 seconds to prevent showing same scale again
+      data.macAddress.let { macAddress ->
+        scaleToIgnore = macAddress
+        viewModelScope.launch {
+          delay(SCALEDISCOVEREDTIMEOUT)
+          scaleToIgnore = null
+        }
+      }
+
+      val customizedDevice =
+        when {
+          deviceSku == SKU_0412 -> customizeDevice(data)
+          DeviceHelper.isBabyScale(deviceSku) ->
+            Device(
+              device = data,
+              deviceType = DeviceSetupType.BabyScale.value,
+              sku = deviceSku,
+            )
+          DeviceHelper.isBpmDevice(deviceSku) ->
+            Device(
+              device = data,
+              deviceType = MonitorSetupStepHelper.setupTypeForSku(deviceSku).value,
+              sku = deviceSku,
+            )
+          else ->
+            Device(
+              device = data,
+              deviceType = DeviceSetupType.Lcbt.value,
+              sku = deviceSku,
+            )
+        }
+      ggDeviceService.addCacheDevice(discoveredBroadcastId, customizedDevice)
+      canShowScaleDiscoveredModal = false
+    }
+
+    /** Shows the "scale memory full / max users" reconnect alert for a known scale. */
+    private suspend fun handleDeviceMemoryFull(data: GGDeviceDetail, isKnownScale: Boolean) {
+      val currentRoute = navigationService.getCurrentRoute()
+      val isOnAuthScreen = currentRoute is AppRoute.Auth
+      if (currentRoute !is AppRoute.DeviceSetup && isKnownScale && !isOnAuthScreen) {
+        dialogQueueService.showDialog(
+          ReconnectScale.getMaxUserAlert(
+            onConfirm = {
+              viewModelScope.launch {
+                try {
+                  val accountId = currentAccountId ?: return@launch
+                  val broadcastId = data.broadcastId ?: return@launch
+                  val device = deviceService.getScaleByBroadcastId(broadcastId, accountId)
+                  if (device == null) {
+                    AppLog.w(TAG, "DEVICE_MEMORY_FULL: scale not found for broadcastId=$broadcastId")
+                    return@launch
+                  }
+                  dialogQueueService.showLoader("Loading...")
+                  ggDeviceService.addCacheDevice(data.broadcastId, device)
+                  ggDeviceService.getUsers(device.toGGBTDevice()) { response ->
+                    viewModelScope.launch {
+                      dialogQueueService.dismissLoader()
+                      navigationService.navigateTo(
+                        AppRoute.DeviceSetup.BtWifiScaleSetup(
+                          sku = data.getSKU().orEmpty(),
+                          initialStep = BtWifiSetupStep.USER_LIMIT_REACHED,
+                          broadcastId = data.broadcastId,
+                          userList = response.user,
+                        ),
+                      )
+                    }
+                  }
+                } catch (e: Exception) {
+                  AppLog.e(TAG, "DEVICE_MEMORY_FULL: error handling max user alert", e)
+                  dialogQueueService.dismissLoader()
+                }
+              }
+            },
+            onCancel = {
+              data.broadcastId?.let { broadcastId ->
+                ggDeviceService.skipDevice(broadcastId, considerForSession = true)
+              }
+            },
+          ),
+        )
+      }
+    }
+
+    /** Shows the duplicate-user reconnect alert, reclaiming the scale slot on confirm. */
+    private suspend fun handleDeviceDuplicateUser(data: GGDeviceDetail) {
+      try {
+        val currentRoute = navigationService.getCurrentRoute()
+        val isOnAuthScreen = currentRoute is AppRoute.Auth
+        if (currentRoute !is AppRoute.DeviceSetup && !isOnAuthScreen) {
+          dialogQueueService.showDialog(
+            ReconnectScale.getDuplicateUserAlert(
+              onConfirm = {
+                viewModelScope.launch {
+                  val accountId = currentAccountId ?: return@launch
+                  val broadcastId = data.broadcastId ?: return@launch
+                  val device = deviceService.getScaleByBroadcastId(broadcastId, accountId) ?: return@launch
+                  val userList =
+                    suspendCoroutine { continuation ->
+                      ggDeviceService.getUsers(device.toGGBTDevice()) { response ->
+                        continuation.resume(response.user)
+                      }
+                    }
+                  val scaleToken =
+                    selectDuplicateUserToken(
+                      userList = userList,
+                      displayName = device.preferences?.displayName,
+                      localToken = device.toGGBTDevice().token,
+                    )
+                  ggDeviceService.deleteAccount(device.toGGBTDevice().copy(token = scaleToken)) {
+                    if (it.name == GGUserActionResponseType.DELETE_COMPLETED.name) {
+                      viewModelScope.launch {
+                        ggDeviceService.addCacheDevice(data.broadcastId, device)
+                        navigationService.navigateTo(
+                          AppRoute.DeviceSetup.BtWifiScaleSetup(
+                            data.getSKU().orEmpty(),
+                            BtWifiSetupStep.CONNECTING_BLUETOOTH,
+                            data.broadcastId,
+                          ),
+                        )
+                      }
+                    }
+                  }
+                }
+              },
+              onCancel = {
+                data.broadcastId?.let { broadcastId ->
+                  ggDeviceService.skipDevice(broadcastId, considerForSession = true)
+                }
+              },
+            ),
+          )
+        }
+      } catch (e: Exception) {
+        AppLog.d(TAG, "Error during duplicate user alert $e")
       }
     }
 
@@ -1118,37 +1158,7 @@ class AppViewModel
         // imperial (lb) accounts, and as kg for metric accounts. (MOB-872)
         val isMetric = activeAccount?.isMetric == true
 
-        val entry =
-          ggEntry.map { ggScaleEntry ->
-            val scaleEntry = ggScaleEntry.toScaleEntry(accountId, device?.id ?: "", isMetric)
-
-            // Check if BMI is 0.0 or null and calculate it if user height is available
-            if ((scaleEntry.scale.scaleEntry.bmi == null || scaleEntry.scale.scaleEntry.bmi == 0.0) &&
-              userHeight != null
-            ) {
-              val calculatedBmi =
-                EntryHelper.getCalculatedBMI(
-                  weight =
-                    scaleEntry.scale.scaleEntry.weight
-                      .toFloat(),
-                  unit = scaleEntry.entry.unit,
-                  height = userHeight,
-                )
-
-              // Update the BMI in the scale entry
-              val updatedScaleEntry = scaleEntry.scale.scaleEntry.copy(bmi = calculatedBmi)
-              val updatedScaleEntryWithMetrics = scaleEntry.scale.copy(scaleEntry = updatedScaleEntry)
-
-              AppLog.d(
-                TAG,
-                "Calculated BMI: $calculatedBmi for weight: ${scaleEntry.scale.scaleEntry.weight}, height: $userHeight",
-              )
-
-              scaleEntry.copy(scale = updatedScaleEntryWithMetrics)
-            } else {
-              scaleEntry
-            }
-          }
+        val entry = buildScaleEntriesWithBmi(ggEntry, accountId, device?.id ?: "", isMetric, userHeight)
 
         if (isSetupInProgress) {
           // During setup, save immediately without toast
@@ -1160,18 +1170,62 @@ class AppViewModel
           }
         } else {
           // Show reading toast — user decides to save or discard
-          val readingType =
-            device?.sku?.let { sku ->
-              when {
-                DeviceHelper.isBabyScale(sku) -> ProductType.BABY
-                DeviceHelper.isBpmDevice(sku) -> ProductType.BLOOD_PRESSURE
-                else -> ProductType.MY_WEIGHT
-              }
-            } ?: ProductType.MY_WEIGHT
-          showReadingToast(entry, readingType, sourceSku = device?.sku)
+          showReadingToast(entry, resolveReadingType(device), sourceSku = device?.sku)
         }
       }
     }
+
+    /**
+     * Maps raw [GGScaleEntry] readings to [ScaleEntry]s, back-filling BMI from [userHeight] when the
+     * reading carried none (0.0/null). Behaviour extracted verbatim from [saveEntry].
+     */
+    private fun buildScaleEntriesWithBmi(
+      ggEntry: List<GGScaleEntry>,
+      accountId: String,
+      deviceId: String,
+      isMetric: Boolean,
+      userHeight: Int?,
+    ): List<ScaleEntry> =
+      ggEntry.map { ggScaleEntry ->
+        val scaleEntry = ggScaleEntry.toScaleEntry(accountId, deviceId, isMetric)
+
+        // Check if BMI is 0.0 or null and calculate it if user height is available
+        if ((scaleEntry.scale.scaleEntry.bmi == null || scaleEntry.scale.scaleEntry.bmi == 0.0) &&
+          userHeight != null
+        ) {
+          val calculatedBmi =
+            EntryHelper.getCalculatedBMI(
+              weight =
+                scaleEntry.scale.scaleEntry.weight
+                  .toFloat(),
+              unit = scaleEntry.entry.unit,
+              height = userHeight,
+            )
+
+          // Update the BMI in the scale entry
+          val updatedScaleEntry = scaleEntry.scale.scaleEntry.copy(bmi = calculatedBmi)
+          val updatedScaleEntryWithMetrics = scaleEntry.scale.copy(scaleEntry = updatedScaleEntry)
+
+          AppLog.d(
+            TAG,
+            "Calculated BMI: $calculatedBmi for weight: ${scaleEntry.scale.scaleEntry.weight}, height: $userHeight",
+          )
+
+          scaleEntry.copy(scale = updatedScaleEntryWithMetrics)
+        } else {
+          scaleEntry
+        }
+      }
+
+    /** Classifies a reading's [ProductType] from the originating device SKU (weight by default). */
+    private fun resolveReadingType(device: Device?): ProductType =
+      device?.sku?.let { sku ->
+        when {
+          DeviceHelper.isBabyScale(sku) -> ProductType.BABY
+          DeviceHelper.isBpmDevice(sku) -> ProductType.BLOOD_PRESSURE
+          else -> ProductType.MY_WEIGHT
+        }
+      } ?: ProductType.MY_WEIGHT
 
     /**
      * Shows the post-reading toast (Save/Discard, or the baby assign flow) for [entry]. Extracted
@@ -1242,41 +1296,9 @@ class AppViewModel
             noBabyProfile = hasNoBabyProfile,
             assignTargetName = singleBabyName,
             additionalCount = additionalCount,
-            primaryAction = {
-              if (hasNoBabyProfile) {
-                // Hold the reading and auto-assign it to the baby the user is about to create; the
-                // deactivate handler assigns on success or drops it on cancel (Option A).
-                pendingBabyReading =
-                  PendingBabyReading(
-                    reading = reading,
-                    entry = entry,
-                    sourceSku = sourceSku,
-                    baselineBabyIds = babiesAtArrival.map { it.id }.toSet(),
-                  )
-                viewModelScope.launch {
-                  registerAddBabyDeactivateHandler()
-                  navigationService.navigateTo(AppRoute.AccountSettings.AddBaby())
-                }
-              } else if (readingType == ProductType.BABY) {
-                if (babiesAtArrival.size == 1) {
-                  // Single baby — SAVE persists straight to that baby (no picker) (MOB-598).
-                  viewModelScope.launch {
-                    assignReadingToBaby(
-                      reading,
-                      entry,
-                      babiesAtArrival.first().id,
-                      babiesAtArrival,
-                      emptyList(),
-                      sourceSku,
-                    )
-                  }
-                } else {
-                  showAssignMeasurementDialog(reading, entry, sourceSku = sourceSku)
-                }
-              } else {
-                saveEntryFromToast(entry)
-              }
-            },
+            primaryAction = buildReadingToastPrimaryAction(
+              reading, entry, sourceSku, readingType, babiesAtArrival, hasNoBabyProfile,
+            ),
             secondaryAction = {
               // The reading is only persisted on Save/Assign, so discarding an unsynced
               // reading just dismisses the card — nothing was written (MOB-428). Also drop any
@@ -1292,48 +1314,108 @@ class AppViewModel
             // Timeout = no user response → KEEP the reading (per Figma "auto-assign on timeout"),
             // NOT discard: weight/BPM auto-save, baby auto-assigns to its target. Only the no-baby
             // and multi-baby-without-a-target cases have nowhere to save, so they just dismiss.
-            onTimeout =
-              when {
-                hasNoBabyProfile -> null
-                autoAssignBabyId != null -> {
-                  val babyId = autoAssignBabyId
-                  {
-                    viewModelScope.launch {
-                      assignReadingToBaby(
-                        reading,
-                        entry,
-                        babyId,
-                        babiesAtArrival,
-                        emptyList(),
-                        sourceSku,
-                      )
-                    }
-                  }
-                }
-                readingType == ProductType.BABY && babiesAtArrival.size == 1 -> {
-                  val babyId = babiesAtArrival.first().id
-                  {
-                    viewModelScope.launch {
-                      assignReadingToBaby(
-                        reading,
-                        entry,
-                        babyId,
-                        babiesAtArrival,
-                        emptyList(),
-                        sourceSku,
-                      )
-                    }
-                  }
-                }
-                readingType == ProductType.BABY -> null
-                else -> {
-                  { saveEntryFromToast(entry) }
-                }
-              },
+            onTimeout = buildReadingToastTimeout(
+              reading, entry, sourceSku, readingType, babiesAtArrival, hasNoBabyProfile, autoAssignBabyId,
+            ),
           ),
         ),
       )
     }
+
+    /** Builds the reading toast's SAVE / assign / add-baby primary action. */
+    private fun buildReadingToastPrimaryAction(
+      reading: String,
+      entry: List<ScaleEntry>,
+      sourceSku: String?,
+      readingType: ProductType,
+      babiesAtArrival: List<BabyProfile>,
+      hasNoBabyProfile: Boolean,
+    ): () -> Unit = {
+      if (hasNoBabyProfile) {
+        // Hold the reading and auto-assign it to the baby the user is about to create; the
+        // deactivate handler assigns on success or drops it on cancel (Option A).
+        pendingBabyReading =
+          PendingBabyReading(
+            reading = reading,
+            entry = entry,
+            sourceSku = sourceSku,
+            baselineBabyIds = babiesAtArrival.map { it.id }.toSet(),
+          )
+        viewModelScope.launch {
+          registerAddBabyDeactivateHandler()
+          navigationService.navigateTo(AppRoute.AccountSettings.AddBaby())
+        }
+      } else if (readingType == ProductType.BABY) {
+        if (babiesAtArrival.size == 1) {
+          // Single baby — SAVE persists straight to that baby (no picker) (MOB-598).
+          viewModelScope.launch {
+            assignReadingToBaby(
+              reading,
+              entry,
+              babiesAtArrival.first().id,
+              babiesAtArrival,
+              emptyList(),
+              sourceSku,
+            )
+          }
+        } else {
+          showAssignMeasurementDialog(reading, entry, sourceSku = sourceSku)
+        }
+      } else {
+        saveEntryFromToast(entry)
+      }
+    }
+
+    /**
+     * Builds the reading toast's timeout action: KEEP the reading (auto-save / auto-assign) except
+     * the no-baby and multi-baby-without-target cases, which have nowhere to save (return null).
+     */
+    private fun buildReadingToastTimeout(
+      reading: String,
+      entry: List<ScaleEntry>,
+      sourceSku: String?,
+      readingType: ProductType,
+      babiesAtArrival: List<BabyProfile>,
+      hasNoBabyProfile: Boolean,
+      autoAssignBabyId: String?,
+    ): (() -> Unit)? =
+      when {
+        hasNoBabyProfile -> null
+        autoAssignBabyId != null -> {
+          val babyId = autoAssignBabyId
+          {
+            viewModelScope.launch {
+              assignReadingToBaby(
+                reading,
+                entry,
+                babyId,
+                babiesAtArrival,
+                emptyList(),
+                sourceSku,
+              )
+            }
+          }
+        }
+        readingType == ProductType.BABY && babiesAtArrival.size == 1 -> {
+          val babyId = babiesAtArrival.first().id
+          {
+            viewModelScope.launch {
+              assignReadingToBaby(
+                reading,
+                entry,
+                babyId,
+                babiesAtArrival,
+                emptyList(),
+                sourceSku,
+              )
+            }
+          }
+        }
+        readingType == ProductType.BABY -> null
+        else -> {
+          { saveEntryFromToast(entry) }
+        }
+      }
 
     /** Saves a non-baby reading straight from the reading toast's SAVE action. */
     private fun saveEntryFromToast(entry: List<ScaleEntry>) {

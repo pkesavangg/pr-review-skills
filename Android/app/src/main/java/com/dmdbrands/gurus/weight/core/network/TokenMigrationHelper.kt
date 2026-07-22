@@ -22,12 +22,7 @@ class TokenMigrationHelper @Inject constructor(
     suspend fun migrateIfNeeded() {
         // Check if encrypted storage is available at all
         if (!secureTokenStore.isAvailable) {
-            val retryCount = secureTokenStore.getMigrationRetryCount()
-            AppLog.e(TAG, "Encrypted storage unavailable — retry $retryCount/$MAX_MIGRATION_RETRIES")
-            if (retryCount >= MAX_MIGRATION_RETRIES) {
-                AppLog.e(TAG, "Migration permanently failed after $retryCount attempts — forcing re-login")
-                appNavigationService.emitAuthEvent(AuthState.EncryptionFailure(null))
-            }
+            handleStorageUnavailable()
             return
         }
 
@@ -42,7 +37,21 @@ class TokenMigrationHelper @Inject constructor(
         }
 
         AppLog.i(TAG, "Starting token migration from DataStore to EncryptedSharedPreferences")
+        performTokenMigration()
+    }
 
+    /** Logs the unavailable-storage retry state and forces re-login once retries are exhausted. */
+    private suspend fun handleStorageUnavailable() {
+        val retryCount = secureTokenStore.getMigrationRetryCount()
+        AppLog.e(TAG, "Encrypted storage unavailable — retry $retryCount/$MAX_MIGRATION_RETRIES")
+        if (retryCount >= MAX_MIGRATION_RETRIES) {
+            AppLog.e(TAG, "Migration permanently failed after $retryCount attempts — forcing re-login")
+            appNavigationService.emitAuthEvent(AuthState.EncryptionFailure(null))
+        }
+    }
+
+    /** Runs the DataStore→EncryptedSharedPreferences token migration with retry/failure handling. */
+    private suspend fun performTokenMigration() {
         try {
             val allAccounts = userDataStore.getData().accountsMap
 
@@ -52,43 +61,10 @@ class TokenMigrationHelper @Inject constructor(
                 return
             }
 
-            var migratedCount = 0
-            var verificationFailed = false
+            val result = migrateAndVerifyTokens(allAccounts)
 
-            allAccounts.forEach { (accountId, userAccount) ->
-                val token = Token(
-                    accountId = accountId,
-                    isActive = userAccount.isActive,
-                    accessToken = userAccount.accessToken,
-                    refreshToken = userAccount.refreshToken,
-                    expiresAt = userAccount.expiresAt,
-                )
-
-                // Only migrate if there are actual token values
-                if (!token.accessToken.isNullOrEmpty() || !token.refreshToken.isNullOrEmpty()) {
-                    secureTokenStore.saveToken(accountId, token)
-
-                    // VERIFY the write is readable before deleting old data
-                    val verified = secureTokenStore.getToken(accountId)
-                    if (verified != null && verified.accessToken == token.accessToken) {
-                        migratedCount++
-                        AppLog.v(TAG, "Migrated and verified token for account: $accountId")
-                    } else {
-                        AppLog.e(TAG, "Migration verification failed for account: $accountId")
-                        verificationFailed = true
-                        return@forEach
-                    }
-                }
-            }
-
-            if (verificationFailed) {
-                secureTokenStore.incrementMigrationRetryCount()
-                val retryCount = secureTokenStore.getMigrationRetryCount()
-                AppLog.e(TAG, "Migration verification failed — retry $retryCount/$MAX_MIGRATION_RETRIES")
-                if (retryCount >= MAX_MIGRATION_RETRIES) {
-                    AppLog.e(TAG, "Migration permanently failed — forcing re-login")
-                    appNavigationService.emitAuthEvent(AuthState.EncryptionFailure(null))
-                }
+            if (result.verificationFailed) {
+                onMigrationVerificationFailed()
                 return
             }
 
@@ -103,7 +79,7 @@ class TokenMigrationHelper @Inject constructor(
             }
 
             secureTokenStore.setMigrationCompleted()
-            AppLog.i(TAG, "Token migration completed successfully. Migrated $migratedCount accounts.")
+            AppLog.i(TAG, "Token migration completed successfully. Migrated ${result.migratedCount} accounts.")
         } catch (e: EncryptionUnavailableException) {
             secureTokenStore.incrementMigrationRetryCount()
             val retryCount = secureTokenStore.getMigrationRetryCount()
@@ -114,6 +90,55 @@ class TokenMigrationHelper @Inject constructor(
         } catch (e: Exception) {
             AppLog.e(TAG, "Token migration failed", e.toString())
             // Don't set migration completed so it retries next launch
+        }
+    }
+
+    /** Outcome of migrating each account's token: how many migrated + whether any verify failed. */
+    private data class TokenMigrationResult(val migratedCount: Int, val verificationFailed: Boolean)
+
+    /** Saves + verifies each account's token into encrypted storage; stops marking on first failure. */
+    private suspend fun migrateAndVerifyTokens(
+        allAccounts: Map<String, com.dmdbrands.gurus.weight.proto.UserAccount>,
+    ): TokenMigrationResult {
+        var migratedCount = 0
+        var verificationFailed = false
+
+        allAccounts.forEach { (accountId, userAccount) ->
+            val token = Token(
+                accountId = accountId,
+                isActive = userAccount.isActive,
+                accessToken = userAccount.accessToken,
+                refreshToken = userAccount.refreshToken,
+                expiresAt = userAccount.expiresAt,
+            )
+
+            // Only migrate if there are actual token values
+            if (!token.accessToken.isNullOrEmpty() || !token.refreshToken.isNullOrEmpty()) {
+                secureTokenStore.saveToken(accountId, token)
+
+                // VERIFY the write is readable before deleting old data
+                val verified = secureTokenStore.getToken(accountId)
+                if (verified != null && verified.accessToken == token.accessToken) {
+                    migratedCount++
+                    AppLog.v(TAG, "Migrated and verified token for account: $accountId")
+                } else {
+                    AppLog.e(TAG, "Migration verification failed for account: $accountId")
+                    verificationFailed = true
+                    return@forEach
+                }
+            }
+        }
+        return TokenMigrationResult(migratedCount, verificationFailed)
+    }
+
+    /** Handles a failed migration verification: increment retry and force re-login when exhausted. */
+    private suspend fun onMigrationVerificationFailed() {
+        secureTokenStore.incrementMigrationRetryCount()
+        val retryCount = secureTokenStore.getMigrationRetryCount()
+        AppLog.e(TAG, "Migration verification failed — retry $retryCount/$MAX_MIGRATION_RETRIES")
+        if (retryCount >= MAX_MIGRATION_RETRIES) {
+            AppLog.e(TAG, "Migration permanently failed — forcing re-login")
+            appNavigationService.emitAuthEvent(AuthState.EncryptionFailure(null))
         }
     }
 }

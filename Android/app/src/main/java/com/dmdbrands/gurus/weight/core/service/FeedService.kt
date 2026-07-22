@@ -310,59 +310,7 @@ class FeedService @Inject constructor(
       AppLog.d(TAG, "Handling feed modal action: $actionType for ${feedItem.titleText} (${feedItem.feedType})")
 
       when (actionType) {
-        "buy_now", "learn_more" -> {
-          // Handle navigation based on feed type
-          when (feedItem.feedType) {
-            FeedTypes.LINK -> {
-              // Track click (shop now / link tap) before opening link
-              try {
-                updateFeedItem(feedItem, FeedActionType.shopNowClick, null)
-                AppLog.d(TAG, "Feed modal link click tracked for: ${feedItem.titleText}")
-              } catch (e: Exception) {
-                AppLog.e(TAG, "Failed to track feed modal link click", e.toString())
-              }
-              // Open external link on main thread so Custom Tabs / intent fires
-              AppLog.d(TAG, "Opening external link for: ${feedItem.titleText}")
-              feedItem.linkTarget?.let { link ->
-                try {
-                  withContext(Dispatchers.Main) {
-                    val linkOpener = com.greatergoods.ggInAppMessaging.util.LinkOpener
-                    linkOpener.openInCustomTab(
-                      context = context,
-                      url = link,
-                      showTitle = true
-                    )
-                  }
-                  AppLog.d(TAG, "Successfully opened external link: $link")
-                } catch (e: Exception) {
-                  AppLog.e(TAG, "Failed to open external link: $link", e.toString())
-                }
-              } ?: run {
-                AppLog.w(TAG, "No link target found for feed item: ${feedItem.titleText}")
-              }
-            }
-
-            FeedTypes.LANDING -> {
-              // Set the selected feed item before navigating
-              AppLog.d(TAG, "Setting selected feed item and navigating to feed landing for: ${feedItem.titleText}")
-              try {
-                // Set the feed item in the holder so the landing screen can access it
-                selectedFeedItemHolder.setSelectedFeedItem(feedItem)
-                AppLog.d(TAG, "Set selected feed item: ${feedItem.elementId}")
-
-                // Navigate to feed landing page
-                appNavigationService.navigateTo(AppRoute.Feed.FeedLanding)
-                AppLog.d(TAG, "Successfully navigated to feed landing")
-              } catch (e: Exception) {
-                AppLog.e(TAG, "Failed to navigate to feed landing", e.toString())
-              }
-            }
-
-            else -> {
-              AppLog.w(TAG, "Unknown feed type: ${feedItem.feedType} for feed item: ${feedItem.titleText}")
-            }
-          }
-        }
+        "buy_now", "learn_more" -> handleFeedNavigationAction(feedItem)
 
         "settings" -> {
           // Navigate to feed messages settings
@@ -381,6 +329,63 @@ class FeedService @Inject constructor(
       }
     } catch (e: Exception) {
       AppLog.e(TAG, "Failed to handle feed modal action", e.toString())
+    }
+  }
+
+  /** Handles buy-now / learn-more navigation for a feed item based on its [FeedItem.feedType]. */
+  private suspend fun handleFeedNavigationAction(
+    feedItem: com.greatergoods.ggInAppMessaging.domain.models.FeedItem,
+  ) {
+    // Handle navigation based on feed type
+    when (feedItem.feedType) {
+      FeedTypes.LINK -> {
+        // Track click (shop now / link tap) before opening link
+        try {
+          updateFeedItem(feedItem, FeedActionType.shopNowClick, null)
+          AppLog.d(TAG, "Feed modal link click tracked for: ${feedItem.titleText}")
+        } catch (e: Exception) {
+          AppLog.e(TAG, "Failed to track feed modal link click", e.toString())
+        }
+        // Open external link on main thread so Custom Tabs / intent fires
+        AppLog.d(TAG, "Opening external link for: ${feedItem.titleText}")
+        feedItem.linkTarget?.let { link ->
+          try {
+            withContext(Dispatchers.Main) {
+              val linkOpener = com.greatergoods.ggInAppMessaging.util.LinkOpener
+              linkOpener.openInCustomTab(
+                context = context,
+                url = link,
+                showTitle = true
+              )
+            }
+            AppLog.d(TAG, "Successfully opened external link: $link")
+          } catch (e: Exception) {
+            AppLog.e(TAG, "Failed to open external link: $link", e.toString())
+          }
+        } ?: run {
+          AppLog.w(TAG, "No link target found for feed item: ${feedItem.titleText}")
+        }
+      }
+
+      FeedTypes.LANDING -> {
+        // Set the selected feed item before navigating
+        AppLog.d(TAG, "Setting selected feed item and navigating to feed landing for: ${feedItem.titleText}")
+        try {
+          // Set the feed item in the holder so the landing screen can access it
+          selectedFeedItemHolder.setSelectedFeedItem(feedItem)
+          AppLog.d(TAG, "Set selected feed item: ${feedItem.elementId}")
+
+          // Navigate to feed landing page
+          appNavigationService.navigateTo(AppRoute.Feed.FeedLanding)
+          AppLog.d(TAG, "Successfully navigated to feed landing")
+        } catch (e: Exception) {
+          AppLog.e(TAG, "Failed to navigate to feed landing", e.toString())
+        }
+      }
+
+      else -> {
+        AppLog.w(TAG, "Unknown feed type: ${feedItem.feedType} for feed item: ${feedItem.titleText}")
+      }
     }
   }
 

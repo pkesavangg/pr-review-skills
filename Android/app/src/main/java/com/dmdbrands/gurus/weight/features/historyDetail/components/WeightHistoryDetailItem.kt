@@ -60,17 +60,31 @@ fun SwipeableListItemScope.WeightHistoryDetailItem(
 ) {
     val bodyMetric = fromScaleEntry(item)
 
+    // Header + the note/edit container live inside Swipeable so the swipe-to-delete background
+    // stretches across the grey entry block — down to (and stopping at) the edit container. The
+    // metrics list stays in Static (below, outside the swipe box) so Delete does NOT cover it.
     Swipeable {
-        WeightHistoryDetailItemHeader(
-            item = item,
-            // Always expandable so note-less entries can still reveal the add-note
-            // affordance in the details section (MOB-438).
-            canExpand = true,
-            isExpanded = isExpanded,
-            onClick = {
-                onItemOpen(item.entry.id)
-            },
-        )
+        Column(modifier = Modifier.fillMaxWidth()) {
+            WeightHistoryDetailItemHeader(
+                item = item,
+                // Always expandable so note-less entries can still reveal the add-note
+                // affordance in the details section (MOB-438).
+                canExpand = true,
+                isExpanded = isExpanded,
+                onClick = {
+                    onItemOpen(item.entry.id)
+                },
+            )
+            AnimatedVisibility(
+                visible = isExpanded,
+                modifier = modifier.fillMaxWidth(),
+            ) {
+                WeightHistoryDetailNote(
+                    item = item,
+                    onEditEntry = onEditEntry,
+                )
+            }
+        }
     }
 
     Static {
@@ -78,10 +92,7 @@ fun SwipeableListItemScope.WeightHistoryDetailItem(
             visible = isExpanded,
             modifier = modifier.fillMaxWidth(),
         ) {
-            WeightHistoryDetailItemDetails(
-                item = item,
-                onEditEntry = onEditEntry,
-            )
+            WeightHistoryDetailMetrics(item = item)
         }
         if (!isExpanded) {
             HorizontalDivider(color = MeTheme.colorScheme.utility, thickness = 1.dp)

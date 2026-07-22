@@ -128,6 +128,13 @@ interface IHealthConnectService {
   suspend fun syncData(entries: List<PeriodBodyScaleSummary>)
 
   /**
+   * Incrementally pushes newly-created [entries] (weight AND blood-pressure) to Health Connect.
+   * Unlike [syncData] (weight-only), this covers [BpmEntry] via the combined payload, so a manual
+   * BP reading reaches Health Connect on save instead of only on the next full re-sync.
+   */
+  suspend fun syncEntries(entries: List<Entry>)
+
+  /**
    * Deletes an entry from Health Connect.
    * @param entry The entry to delete from Health Connect
    * @return true if deletion was successful, false otherwise

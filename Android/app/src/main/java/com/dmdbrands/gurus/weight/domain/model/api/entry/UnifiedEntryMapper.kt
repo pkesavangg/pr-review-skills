@@ -56,6 +56,12 @@ fun ScaleEntry.toUnifiedRequest(): UnifiedEntryRequest {
         unit = api.unit,
         pulse = api.pulse,
         source = api.source,
+        visceralFatLevel = api.visceralFatLevel,
+        subcutaneousFatPercent = api.subcutaneousFatPercent,
+        proteinPercent = api.proteinPercent,
+        skeletalMusclePercent = api.skeletalMusclePercent,
+        bmr = api.bmr,
+        metabolicAge = api.metabolicAge,
     )
 }
 
@@ -211,12 +217,12 @@ private fun UnifiedEntry.toScaleApiEntry(): ScaleApiEntry = ScaleApiEntry(
     unit = unit,
     impedance = impedance,
     pulse = pulse,
-    visceralFatLevel = null,
-    subcutaneousFatPercent = null,
-    proteinPercent = null,
-    skeletalMusclePercent = null,
-    bmr = null,
-    metabolicAge = null,
+    visceralFatLevel = visceralFatLevel,
+    subcutaneousFatPercent = subcutaneousFatPercent,
+    proteinPercent = proteinPercent,
+    skeletalMusclePercent = skeletalMusclePercent,
+    bmr = bmr,
+    metabolicAge = metabolicAge,
 )
 
 private fun UnifiedEntry.toBpmEntry(accountId: String): BpmEntry {

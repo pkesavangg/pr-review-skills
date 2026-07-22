@@ -72,6 +72,120 @@ data class EntryForm(
       } ?: ""
     }
 
+    private fun buildGeneralMetrics(
+      scaleEntry: com.dmdbrands.gurus.weight.domain.model.storage.entry.ScaleEntry?,
+    ): GeneralMetricsFormControls =
+      GeneralMetricsFormControls(
+        bodyMassIndex = FormControl.create(
+          formatScaleEntryValue(scaleEntry?.scale?.scaleEntry?.bmi),
+          listOf(FormValidations.bodyCompValidator()),
+        ),
+        bodyFat = FormControl.create(
+          formatScaleEntryValue(scaleEntry?.scale?.scaleEntry?.bodyFat),
+          listOf(FormValidations.bodyCompValidator()),
+        ),
+        muscleMass = FormControl.create(
+          formatScaleEntryValue(scaleEntry?.scale?.scaleEntry?.muscleMass),
+          listOf(FormValidations.bodyCompValidator()),
+        ),
+        bodyWater = FormControl.create(
+          formatScaleEntryValue(scaleEntry?.scale?.scaleEntry?.water),
+          listOf(FormValidations.bodyCompValidator()),
+        ),
+        // Add more general metrics here if needed
+      )
+
+    private fun buildWeightDateTime(
+      weightUnit: WeightUnit?,
+      height: Int?,
+      scaleEntry: com.dmdbrands.gurus.weight.domain.model.storage.entry.ScaleEntry?,
+      isValueChangeAllowed: (String, String) -> Boolean,
+      generalMetrics: GeneralMetricsFormControls,
+    ): WeightDateTimeFormControls {
+      val calendar = Calendar.getInstance()
+      val currentTimeMillis = calendar.timeInMillis
+      val hour = calendar.get(Calendar.HOUR_OF_DAY)
+      val minute = calendar.get(Calendar.MINUTE)
+      return WeightDateTimeFormControls(
+        weight = FormControl.create(
+          if (scaleEntry != null) {
+            val isMetric = scaleEntry.entry.unit.value.lowercase() == "kg"
+            val displayWeight = ConversionTools.convertStoredToDisplay(scaleEntry.scale.scaleEntry.weight, isMetric)
+            formatScaleEntryValue(displayWeight)
+          } else "",
+          listOf(
+            FormValidations.weightValidator(weightUnit),
+            FormValidations.required(),
+          ),
+          onValueChangeCallback = { old, new ->
+            if (height != null && isValueChangeAllowed(old, new)) {
+              val weight = when {
+                new.isBlank() -> 0.0
+                weightUnit == WeightUnit.LB || weightUnit == WeightUnit.LB_OZ ->
+                  ConversionTools.convertStoredToKg(new.toDouble())
+
+                else -> new.toDouble() / 10
+              }
+              val storedHeight = ConversionTools.convertStoredHeightToCm(height)
+              val bmi = ConversionTools.calculateBMI(weight, storedHeight.toInt())
+              val bmiValue = when {
+                bmi <= 0.0 -> ""
+                bmi >= AppValidatorConfig.BMI.MAX_VALUE -> AppValidatorConfig.BMI.MAX_VALUE.toString()
+
+                else -> bmi.toString()
+              }
+              generalMetrics.bodyMassIndex.onValueChange(bmiValue)
+            }
+          },
+        ),
+        notes = FormControl.create("", emptyList()),
+        dateTime = FormControl.create(
+          DateTimeValue.DateTime(millis = currentTimeMillis, hour = hour, minute = minute),
+          listOf(),
+        ),
+      )
+    }
+
+    private fun buildR4ScaleMetrics(): R4ScaleMetricsFormControls =
+      R4ScaleMetricsFormControls(
+        heartRate = FormControl.create(
+          "",
+          listOf(
+            FormValidations.bodyCompValidator(
+              AppValidatorConfig.HeartRate.MIN, AppValidatorConfig.HeartRate.MAX, false,
+            ),
+          ),
+        ),
+        boneMass = FormControl.create("", listOf(FormValidations.bodyCompValidator())),
+        visceralFat = FormControl.create(
+          "",
+          listOf(
+            FormValidations.bodyCompValidator(
+              AppValidatorConfig.VisceralFat.MIN, AppValidatorConfig.VisceralFat.MAX, false,
+            ),
+          ),
+        ),
+        subcutaneousFat = FormControl.create("", listOf(FormValidations.bodyCompValidator())),
+        protein = FormControl.create("", listOf(FormValidations.bodyCompValidator())),
+        skeletalMuscles = FormControl.create("", listOf(FormValidations.bodyCompValidator())),
+        bmr = FormControl.create(
+          "",
+          listOf(
+            FormValidations.bodyCompValidator(
+              AppValidatorConfig.BMR.MIN, AppValidatorConfig.BMR.MAX, false,
+            ),
+          ),
+        ),
+        metabolicAge = FormControl.create(
+          "",
+          listOf(
+            FormValidations.bodyCompValidator(
+              AppValidatorConfig.MetabolicAge.MIN, AppValidatorConfig.MetabolicAge.MAX, false,
+            ),
+          ),
+        ),
+      )
+
     fun create(
       includeR4ScaleMetrics: Boolean = false,
       weightUnit: WeightUnit? = null,
@@ -79,110 +193,15 @@ data class EntryForm(
       scaleEntry: com.dmdbrands.gurus.weight.domain.model.storage.entry.ScaleEntry? = null,
       isValueChangeAllowed: (String, String) -> Boolean = { _, _ -> true }
     ): EntryForm {
-      val calendar = Calendar.getInstance()
-      val currentTimeMillis = calendar.timeInMillis
-      val hour = calendar.get(Calendar.HOUR_OF_DAY)
-      val minute = calendar.get(Calendar.MINUTE)
-      val generalMetrics =
-        GeneralMetricsFormControls(
-          bodyMassIndex = FormControl.create(
-            formatScaleEntryValue(scaleEntry?.scale?.scaleEntry?.bmi),
-            listOf(FormValidations.bodyCompValidator()),
-          ),
-          bodyFat = FormControl.create(
-            formatScaleEntryValue(scaleEntry?.scale?.scaleEntry?.bodyFat),
-            listOf(FormValidations.bodyCompValidator()),
-          ),
-          muscleMass = FormControl.create(
-            formatScaleEntryValue(scaleEntry?.scale?.scaleEntry?.muscleMass),
-            listOf(FormValidations.bodyCompValidator()),
-          ),
-          bodyWater = FormControl.create(
-            formatScaleEntryValue(scaleEntry?.scale?.scaleEntry?.water),
-            listOf(FormValidations.bodyCompValidator()),
-          ),
-          // Add more general metrics here if needed
-        )
-      val weightDateTime =
-        WeightDateTimeFormControls(
-          weight = FormControl.create(
-            if (scaleEntry != null) {
-              val isMetric = scaleEntry.entry.unit.value.lowercase() == "kg"
-              val displayWeight = ConversionTools.convertStoredToDisplay(scaleEntry.scale.scaleEntry.weight, isMetric)
-              formatScaleEntryValue(displayWeight)
-            } else "",
-            listOf(
-              FormValidations.weightValidator(weightUnit),
-              FormValidations.required(),
-            ),
-            onValueChangeCallback = { old, new ->
-              if (height != null && isValueChangeAllowed(old, new)) {
-                val weight = when {
-                  new.isBlank() -> 0.0
-                  weightUnit == WeightUnit.LB || weightUnit == WeightUnit.LB_OZ ->
-                    ConversionTools.convertStoredToKg(new.toDouble())
-
-                  else -> new.toDouble() / 10
-                }
-                val storedHeight = ConversionTools.convertStoredHeightToCm(height)
-                val bmi = ConversionTools.calculateBMI(weight, storedHeight.toInt())
-                val bmiValue = when {
-                  bmi <= 0.0 -> ""
-                  bmi >= AppValidatorConfig.BMI.MAX_VALUE -> AppValidatorConfig.BMI.MAX_VALUE.toString()
-
-                  else -> bmi.toString()
-                }
-                generalMetrics.bodyMassIndex.onValueChange(bmiValue)
-              }
-            },
-          ),
-          notes = FormControl.create("", emptyList()),
-          dateTime = FormControl.create(
-            DateTimeValue.DateTime(millis = currentTimeMillis, hour = hour, minute = minute),
-            listOf(),
-          ),
-        )
-      val r4ScaleMetrics =
-        if (includeR4ScaleMetrics) {
-          R4ScaleMetricsFormControls(
-            heartRate = FormControl.create(
-              "",
-              listOf(
-                FormValidations.bodyCompValidator(
-                  AppValidatorConfig.HeartRate.MIN, AppValidatorConfig.HeartRate.MAX, false,
-                ),
-              ),
-            ),
-            boneMass = FormControl.create("", listOf(FormValidations.bodyCompValidator())),
-            visceralFat = FormControl.create(
-              "",
-              listOf(
-                FormValidations.bodyCompValidator(
-                  AppValidatorConfig.VisceralFat.MIN, AppValidatorConfig.VisceralFat.MAX, false,
-                ),
-              ),
-            ),
-            subcutaneousFat = FormControl.create("", listOf(FormValidations.bodyCompValidator())),
-            protein = FormControl.create("", listOf(FormValidations.bodyCompValidator())),
-            skeletalMuscles = FormControl.create("", listOf(FormValidations.bodyCompValidator())),
-            bmr = FormControl.create(
-              "",
-              listOf(
-                FormValidations.bodyCompValidator(
-                  AppValidatorConfig.BMR.MIN, AppValidatorConfig.BMR.MAX, false,
-                ),
-              ),
-            ),
-            metabolicAge = FormControl.create(
-              "",
-              listOf(
-                FormValidations.bodyCompValidator(
-                  AppValidatorConfig.MetabolicAge.MIN, AppValidatorConfig.MetabolicAge.MAX, false,
-                ),
-              ),
-            ),
-          )
-        } else null
+      val generalMetrics = buildGeneralMetrics(scaleEntry)
+      val weightDateTime = buildWeightDateTime(
+        weightUnit = weightUnit,
+        height = height,
+        scaleEntry = scaleEntry,
+        isValueChangeAllowed = isValueChangeAllowed,
+        generalMetrics = generalMetrics,
+      )
+      val r4ScaleMetrics = if (includeR4ScaleMetrics) buildR4ScaleMetrics() else null
       return EntryForm(
         weightDateTime = FormGroup(weightDateTime),
         generalMetrics = FormGroup(generalMetrics),

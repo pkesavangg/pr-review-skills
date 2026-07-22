@@ -9,10 +9,8 @@
     <ID>ForbiddenImport:MainActivity.kt$import kotlinx.coroutines.runBlocking</ID>
     <ID>ForbiddenImport:TokenAuthenticator.kt$import kotlinx.coroutines.runBlocking</ID>
     <ID>LargeClass:AppViewModel.kt$AppViewModel : BaseIntentViewModel</ID>
-    <ID>LargeClass:BtWifiScaleSetupViewModel.kt$BtWifiScaleSetupViewModel : DeviceSetupViewmodel</ID>
     <ID>LargeClass:DeviceDetailsViewModel.kt$DeviceDetailsViewModel : BaseIntentViewModel</ID>
     <ID>LargeClass:HealthConnectService.kt$HealthConnectService : BaseServiceIHealthConnectService</ID>
-    <ID>LargeClass:WifiScaleSetupViewModel.kt$WifiScaleSetupViewModel : DeviceSetupViewmodelDefaultLifecycleObserver</ID>
     <ID>LongMethod:AccountPersistenceDataSource.kt$AccountPersistenceDataSource$suspend fun addAccount(account: Account): Account</ID>
     <ID>LongMethod:AccountSwitchInfoModal.kt$@Composable fun AccountSwitchInfoModal( userInitial: String, onAddAccount: () -&gt; Unit, onClose: () -&gt; Unit )</ID>
     <ID>LongMethod:AccountValidationService.kt$AccountValidationService$suspend fun checkLoginStatusForLoggedInAccounts(): Boolean</ID>
@@ -41,16 +39,10 @@
     <ID>LongMethod:AppUserList.kt$@Composable fun AppUserList( accounts: List&lt;Account&gt;, modifier: Modifier = Modifier, showAccountActivity: Boolean = false, canRemoveAccount: Boolean = false, maxVisibleItems: Int? = null, onDeleteRequest: (Account) -&gt; Unit, onAccountSelect: (Account) -&gt; Unit, onLoginRequest: (Account) -&gt; Unit, contentPadding: PaddingValues = PaddingValues(), footerContent: @Composable (() -&gt; Unit)? = null, )</ID>
     <ID>LongMethod:AppUserList.kt$@PreviewTheme @Composable fun AppUserListMaxVisibleItemsPreview()</ID>
     <ID>LongMethod:AppUserList.kt$@PreviewTheme @Composable fun AppUserListPreview()</ID>
-    <ID>LongMethod:AppViewModel.kt$AppViewModel$private fun handleDeviceResponse(deviceResponse: GGScanResponse.DeviceDetail)</ID>
-    <ID>LongMethod:AppViewModel.kt$AppViewModel$private fun initEvents()</ID>
-    <ID>LongMethod:AppViewModel.kt$AppViewModel$private fun saveEntry(ggEntry: List&lt;GGScaleEntry&gt;)</ID>
-    <ID>LongMethod:AppViewModel.kt$AppViewModel$private fun showReadingToast( entry: List&lt;ScaleEntry&gt;, readingType: ProductType, sourceSku: String?, )</ID>
     <ID>LongMethod:AppsyncEntryPopup.kt$@Composable fun AppsyncEntryPopup( entry: ScaleEntry, onEdit: () -&gt; Unit, onSave: () -&gt; Unit, )</ID>
     <ID>LongMethod:BLEDiscoveryManager.kt$BLEDiscoveryManager$override fun handleScanResponse(response: GGScanResponse.DeviceDetail)</ID>
     <ID>LongMethod:BabyCdcPercentilesBottomSheet.kt$@Composable fun BabyCdcPercentilesBottomSheet( heightInches: Double?, heightPercentile: Int?, weightLbs: Int?, weightOz: Double?, weightPercentile: Int?, onDismiss: () -&gt; Unit, )</ID>
-    <ID>LongMethod:BabyDashboardViewModel.kt$BabyDashboardViewModel$private fun updateBabySegmentRanges(entries: List&lt;PeriodBabySummary&gt;, segments: List&lt;GraphSegment&gt;)</ID>
     <ID>LongMethod:BabyHistoryItem.kt$@Composable fun BabyHistoryItem( item: BabyWeekHistory, onClick: () -&gt; Unit, )</ID>
-    <ID>LongMethod:BabyScaleBLESetupViewModel.kt$BabyScaleBLESetupViewModel$private fun wakeUpScale()</ID>
     <ID>LongMethod:BabyScaleComponents.kt$@Composable fun BabyListContent( babyProfiles: ImmutableList&lt;BabyProfile&gt;, onEditBaby: (Int) -&gt; Unit, onDeleteBaby: (Int) -&gt; Unit, onAddBaby: () -&gt; Unit, modifier: Modifier = Modifier, )</ID>
     <ID>LongMethod:BabyScaleComponents.kt$@Composable fun BabyProfileFormContent( profile: BabyProfile, onProfileChanged: (BabyProfile) -&gt; Unit, modifier: Modifier = Modifier, )</ID>
     <ID>LongMethod:BaseDashboardViewModel.kt$BaseDashboardViewModel$protected fun updateSegmentRanges( entries: List&lt;PeriodSummary&gt;, segments: List&lt;GraphSegment&gt;, goalWeight: Double = 0.0, isWeightlessMode: Boolean = false, getYValuesForSeed: ((List&lt;PeriodSummary&gt;) -&gt; List&lt;Double&gt;)? = null, )</ID>
@@ -65,13 +57,6 @@
     <ID>LongMethod:ChangePasswordReducer.kt$ChangePasswordFormControls.Companion$fun create(): ChangePasswordFormControls</ID>
     <ID>LongMethod:ChangePasswordScreen.kt$@Composable private fun ChangePasswordContent( state: ChangePasswordState, handleIntent: (ChangePasswordIntent) -&gt; Unit, )</ID>
     <ID>LongMethod:CustomizeDeviceSettings.kt$@Composable fun CustomizeDeviceSettings( modifier: Modifier = Modifier, title: String, subtitle: String, state: BtWifiScaleSetupState, userList: List&lt;GGBTUser&gt; = emptyList(), discoveredScale: com.dmdbrands.gurus.weight.domain.model.storage.Device? = null, onIntent: (BtWifiScaleSetupIntent) -&gt; Unit, )</ID>
-    <ID>LongMethod:DashboardMetrics.kt$@Composable fun DashboardMetrics( metricData: List&lt;PeriodBodyScaleSummary&gt;, inEditMode: Boolean = false, visibleKeys: List&lt;DashboardKey&gt; = listOf(), selectedStat: Stat? = null, isFromSetup: Boolean = false, dashboardType: DashboardType = DashboardType.DASHBOARD_12_METRICS, onMetricClick: (Stat?) -&gt; Unit = {}, onLongClick: (Stat) -&gt; Unit = { }, onMetricsChanged: (List&lt;DashboardKey&gt;) -&gt; Unit = { } )</ID>
-    <ID>LongMethod:DashboardMetrics.kt$@Composable private fun DashboardMetricsGrid( visibleMetrics: List&lt;Stat&gt;, hiddenMetrics: List&lt;Stat&gt;, inEditMode: Boolean, isFromSetup: Boolean, selectedStat: Stat?, onMetricClick: (Stat?) -&gt; Unit, onReorder: (List&lt;Stat&gt;) -&gt; Unit, dashboardType: DashboardType, onLongClick: (Stat) -&gt; Unit, onMetricMoved: (fromVisible: Boolean, toVisible: Boolean, metric: Stat) -&gt; Unit )</ID>
-    <ID>LongMethod:DashboardMileStone.kt$@Composable fun DashboardMilestone( progress: WeightProgress, isProgressUpdating: Boolean = false, latestWeight: Double? = null, inEditMode: Boolean = false, isFromSetup: Boolean = false, hasVisibleMetrics: Boolean = false, visibleKeys: List&lt;DashboardKey&gt; = listOf(), onMilestonesChanged: (List&lt;DashboardKey&gt;) -&gt; Unit = { }, onNavigateToGoal: () -&gt; Unit = {}, onLongClick: (Stat?, WeightProgress?) -&gt; Unit = { _, _ -&gt; }, modifier: Modifier = Modifier )</ID>
-    <ID>LongMethod:DashboardMilestoneGrid.kt$@Composable fun DashboardMilestoneGrid( progress: WeightProgress, visibleMilestones: List&lt;Stat&gt;, hiddenMilestones: List&lt;Stat&gt;, hasVisibleMetrics: Boolean = false, inEditMode: Boolean, isFromSetup: Boolean, isProgressUpdating: Boolean = false, latestWeight: Double? = null, onMilestoneMoved: (isAdded: Boolean, milestone: Stat) -&gt; Unit, onMilestoneReordered: (List&lt;Stat&gt;) -&gt; Unit, onLongClick: (Stat?, WeightProgress?) -&gt; Unit = { _, _ -&gt; }, onNavigateToGoal: () -&gt; Unit = {}, )</ID>
-    <ID>LongMethod:DashboardScreen.kt$@OptIn(ExperimentalMaterial3Api::class) @Composable fun DashboardScreen()</ID>
-    <ID>LongMethod:DashboardSnapshotScreen.kt$@Composable fun DashboardSnapshotScreen( viewModel: DashboardSnapshotViewModel = hiltViewModel(), )</ID>
-    <ID>LongMethod:DashboardSnapshotViewModel.kt$DashboardSnapshotViewModel$private suspend fun updateBabyChart(profile: BabyProfile, points: List&lt;PeriodBabySummary&gt;)</ID>
     <ID>LongMethod:DecimalInputVisualTransformation.kt$DecimalInputVisualTransformation$override fun filter(text: AnnotatedString): TransformedText</ID>
     <ID>LongMethod:DeviceCatalogSection.kt$@Composable fun DeviceCatalogSection( title: String, iconId: Int, iconTint: Color, devices: List&lt;DeviceModelInfo&gt;, onDeviceSelected: (DeviceModelInfo) -&gt; Unit, )</ID>
     <ID>LongMethod:DeviceDetailsScreen.kt$@OptIn(ExperimentalMaterial3Api::class) @Composable fun DeviceDetailsScreenContent( state: DeviceDetailsState, handleIntent: (DeviceDetailsIntent) -&gt; Unit, )</ID>
@@ -80,21 +65,9 @@
     <ID>LongMethod:DeviceMetricItem.kt$@Composable fun DeviceMetricItem( metric: DeviceMetric, isDragging: Boolean, onToggle: (Boolean) -&gt; Unit, dragHandleModifier: Modifier = Modifier, modifier: Modifier = Modifier, )</ID>
     <ID>LongMethod:DeviceMetricsSettingScreen.kt$@Composable fun DeviceMetricsSettingScreen( currentMetrics: List&lt;String&gt; = emptyList(), onMetricsChanged: (List&lt;String&gt;) -&gt; Unit = {}, modifier: Modifier = Modifier, scrollState : ScrollableState? = null, includeHeartRate: Boolean = true, showAllMetrics: Boolean = true, )</ID>
     <ID>LongMethod:DeviceModeSettings.kt$@Composable fun DeviceModeSettingsScreen( isAllBodyMetrics: Boolean, isHeartRateOn: Boolean, onModeSelected: (Boolean) -&gt; Unit, onHeartRateToggle: (Boolean) -&gt; Unit, onBioimpedanceClick: () -&gt; Unit, )</ID>
-    <ID>LongMethod:DeviceModeViewModel.kt$DeviceModeViewModel$private fun saveModeSettings()</ID>
-    <ID>LongMethod:DevicePairingManager.kt$DevicePairingManager$override fun connectToBluetooth()</ID>
-    <ID>LongMethod:DeviceService.kt$DeviceService$private suspend fun syncDevicesInternal( tempDevice: Device? )</ID>
-    <ID>LongMethod:DeviceSetupLoader.kt$@Composable fun DeviceSetupLoader( connectionState: ConnectionState? = null, modifier: Modifier = Modifier, scaleImageSku: String? = null, title: String? = null, subtitle: String? = null, errorCode: String? = null, showIndicationOnly: Boolean = false, setupImage: Int? = null, isGifImage: Boolean = false, indicatorIcon: LoaderIconType = LoaderIconType.Bluetooth, primaryButtonText: String = DeviceSetupStrings.SetupButtons.TryAgain, secondaryButtonText: String = DeviceSetupStrings.SetupButtons.Support, contentButtonText: String? = null, primaryButtonClick: (() -&gt; Unit)? = null, secondaryButtonClick: (() -&gt; Unit)? = null, contentButtonClick: (() -&gt; Unit)? = null )</ID>
     <ID>LongMethod:DeviceUserList.kt$@Composable fun DeviceUserList( modifier: Modifier = Modifier, userList: List&lt;GGBTUser&gt; = emptyList(), title: String? = null, subtitle: String? = null, userFormControl: FormControl&lt;String&gt;? = null, onDeleteUser: (GGBTUser) -&gt; Unit, )</ID>
     <ID>LongMethod:DialogHost.kt$@Composable fun DialogHost()</ID>
     <ID>LongMethod:DialogQueueHost.kt$@Composable fun DialogQueueHost( dialogQueueViewModel: DialogQueueViewModel, customDialogContent: ( @Composable ( DialogModel.Custom, ) -&gt; Unit )? = null, )</ID>
-    <ID>LongMethod:EntryReducer.kt$EntryForm.Companion$fun create( includeR4ScaleMetrics: Boolean = false, weightUnit: WeightUnit? = null, height: Int? = 0, scaleEntry: com.dmdbrands.gurus.weight.domain.model.storage.entry.ScaleEntry? = null, isValueChangeAllowed: (String, String) -&gt; Boolean = { _, _ -&gt; true } ): EntryForm</ID>
-    <ID>LongMethod:EntryScreen.kt$@Composable private fun EntryScreenContent( state: EntryState, productSelectionManager: IProductSelectionManager, initializeDeactivate: (() -&gt; Unit) -&gt; Unit, handleIntent: (EntryIntent) -&gt; Unit, )</ID>
-    <ID>LongMethod:EntryService.kt$EntryService$private suspend fun syncOperationsInternal( accountId: String, newEntries: List&lt;Entry&gt; = emptyList(), deleteOps: List&lt;Entry&gt; = emptyList(), )</ID>
-    <ID>LongMethod:EntryViewModel.kt$EntryViewModel$private fun saveBloodPressureEntry()</ID>
-    <ID>LongMethod:ErrorContent.kt$@Composable fun ErrorContent( errorCode: String, modifier: Modifier = Modifier, )</ID>
-    <ID>LongMethod:ExpandableMetricsCard.kt$@Composable fun ExpandableMetricsCard( title: String, subheading: String? = null, generalMetrics: GeneralMetricsFormControls, r4ScaleMetrics: R4ScaleMetricsFormControls? = null, expandedInitially: Boolean = false, onImeAction: (() -&gt; Unit)? = null, dashboardType: DashboardType = DashboardType.DASHBOARD_12_METRICS, )</ID>
-    <ID>LongMethod:FeedService.kt$FeedService$private suspend fun handleFeedModalAction( feedItem: com.greatergoods.ggInAppMessaging.domain.models.FeedItem, actionType: String )</ID>
-    <ID>LongMethod:GeneralMetricsSection.kt$@Composable fun GeneralMetricsSection( controls: GeneralMetricsFormControls, isDashboardType: DashboardType, nextFocusRequester: FocusRequester? = null, onImeAction: (() -&gt; Unit)? = null, )</ID>
     <ID>LongMethod:GoalMilestoneDisplay.kt$@Composable private fun LoseGainGoalDisplay( account: Account, currentWeight: Double, goalWeight: Double, progressPercentage: Double, weightlessWeight: Float?, )</ID>
     <ID>LongMethod:GoalProgressMilestoneCard.kt$@Composable fun GoalProgressMilestoneCard( progress: WeightProgress, inEditMode: Boolean, isDragging: Boolean = false, isVisible: Boolean = true, latestWeight: Double? = null, modifier: Modifier = Modifier, onBadgeClick: () -&gt; Unit = {}, onNavigateToGoal: () -&gt; Unit = {}, onLongClick: (WeightProgress) -&gt; Unit = {} )</ID>
     <ID>LongMethod:GoalScreen.kt$@Composable private fun GoalContent(state: GoalState, handleIntent: (GoalIntent) -&gt; Unit)</ID>
@@ -103,22 +76,16 @@
     <ID>LongMethod:GraphScrollHintModal.kt$@Composable fun GraphScrollHintModal( onDismiss: () -&gt; Unit, )</ID>
     <ID>LongMethod:GraphScrollHintModal.kt$@Composable private fun AnimatedHintGraph(modifier: Modifier = Modifier)</ID>
     <ID>LongMethod:GraphSkeletonView.kt$@Composable fun GraphSkeletonView( modifier: Modifier = Modifier, )</ID>
-    <ID>LongMethod:GraphUtil.kt$GraphUtil$fun normalizeMetricToWeightRange( metricGraphLine: GraphLine, weightMin: Double, weightMax: Double, minX: Long, maxX: Long, ): GraphLine</ID>
-    <ID>LongMethod:GraphUtil.kt$GraphUtil$fun normalizeYValues( series: List&lt;com.patrykandpatrick.vico.compose.cartesian.data.LineCartesianLayerModel.Entry&gt;, weightMin: Double, weightMax: Double, minX: Long, maxX: Long, ): DoubleArray?</ID>
     <ID>LongMethod:GraphView.kt$@OptIn(FlowPreview::class) @Composable fun GraphView( modifier: Modifier = Modifier, state: BaseDashboardState, segmentState: SegmentState, chartConfig: ChartConfig, modelProducer: CartesianChartModelProducer, segment: GraphSegment = GraphSegment.WEEK, scrollTarget: Double? = null, canScrollToAnchor: Boolean = false, handleGraphIntent: (BaseGraphIntent) -&gt; Unit, createFallbackEntry: (timestamp: Long, yValues: List&lt;Double&gt;, segment: GraphSegment) -&gt; PeriodSummary? = { _, _, _ -&gt; null }, onScrollTargetConsumed: (Boolean) -&gt; Unit = {}, chartFillsHeight: Boolean = false, )</ID>
     <ID>LongMethod:HealthConnectIntegrationScreen.kt$@OptIn(ExperimentalFoundationApi::class) @Composable fun HealthConnectIntegrationContent( state: HealthConnectUiState, handleIntent: (HealthConnectIntent) -&gt; Unit, onBack: () -&gt; Unit, onDismiss: () -&gt; Unit )</ID>
-    <ID>LongMethod:HealthConnectService.kt$HealthConnectService$override suspend fun checkHealthConnectPermissionDisabled()</ID>
-    <ID>LongMethod:HealthConnectService.kt$HealthConnectService$override suspend fun healthConnectOutOfSync(): Boolean</ID>
     <ID>LongMethod:HelpContent.kt$@Composable fun ContactUsContent(handleIntent: (HelpIntent) -&gt; Unit)</ID>
     <ID>LongMethod:HelpScreen.kt$@Composable private fun HelpContent( viewModel: HelpViewModel, handleIntent: (HelpIntent) -&gt; Unit )</ID>
     <ID>LongMethod:HistoryDetailScreen.kt$@Composable fun HistoryDetailScreenContent( state: HistoryDetailState, productType: ProductType = ProductType.MY_WEIGHT, isRefreshing: Boolean = false, onRefresh: (() -&gt; Unit)? = null, handleIntent: (HistoryDetailIntent) -&gt; Unit, )</ID>
     <ID>LongMethod:HistoryDetailScreen.kt$@PreviewTheme @Composable fun HistoryDetailScreenPreview()</ID>
     <ID>LongMethod:HistoryScreen.kt$@Composable fun HistoryScreenContent( state: HistoryState, productSelectionManager: IProductSelectionManager? = null, isRefreshing: Boolean = false, onRefresh: (() -&gt; Unit)? = null, handleIntent: (HistoryIntent) -&gt; Unit, )</ID>
     <ID>LongMethod:HomeScreen.kt$@Composable fun HomeScreenContent( state: HomeState, handleIntent: (HomeIntent) -&gt; Unit, showUnreadFeedIndicator: Boolean = false, isSnapshotMode: Boolean = false, )</ID>
-    <ID>LongMethod:HomeViewModel.kt$HomeViewModel$private fun checkAndRequestCameraPermission(onResult: (Boolean) -&gt; Unit)</ID>
     <ID>LongMethod:Horizontalxis.kt$@Composable internal fun bottomAxis( segment: GraphSegment, separators: List&lt;Double&gt; = emptyList(), horizontalItemPlacer: HorizontalAxis.ItemPlacer = HorizontalAxis.ItemPlacer.aligned() ): Axis&lt;Axis.Position.Horizontal.Bottom&gt;</ID>
     <ID>LongMethod:IAMFeedModal.kt$@Preview @Composable fun IAMFeedModalReview()</ID>
-    <ID>LongMethod:IonicDataConverter.kt$IonicDataConverter$fun convertCursorToScaleEntry(cursor: Cursor, isOpStack: Boolean = false): ScaleEntry?</ID>
     <ID>LongMethod:LandingScreen.kt$@Composable fun LandingScreen()</ID>
     <ID>LongMethod:LoginScreen.kt$@Composable private fun LoginContent( state: LoginState, handleIntent: (LoginIntent) -&gt; Unit, )</ID>
     <ID>LongMethod:MainBottomNav.kt$@Composable fun MainBottomNav( badgeVisible: List&lt;AppRoute&gt; = emptyList(), showAppsync: Boolean, onOpenAppSync: () -&gt; Unit, showUnreadFeedIndicator: Boolean = false, isSnapshotMode: Boolean = false, )</ID>
@@ -135,33 +102,21 @@
     <ID>LongMethod:ProductChart.kt$@SuppressLint("RestrictedApi") @Composable fun rememberProductChart( config: ChartConfig, graphState: BaseDashboardState, segmentState: SegmentState, defaultMarker: CartesianMarker, segment: GraphSegment, horizontalItemPlacer: HorizontalAxis.ItemPlacer, fadingEdges: FadingEdges? = null, scrubController: ScrubMarkerController? = null, onYRangeSettled: (Double, Double) -&gt; Unit = { _, _ -&gt; }, ): CartesianChart</ID>
     <ID>LongMethod:ProfileScreen.kt$@Composable private fun ProfileContent(state: ProfileState, handleIntent: (ProfileIntent) -&gt; Unit,onBack: () -&gt; Unit,)</ID>
     <ID>LongMethod:ProfileViewModel.kt$ProfileViewModel$private fun onSubmit()</ID>
-    <ID>LongMethod:ProgressCalculator.kt$internal fun calculateProgressPure( latestEntry: Entry?, last7Days: List&lt;Entry&gt;, last30Days: List&lt;Entry&gt;, months: List&lt;HistoryMonth&gt;, startingWeightDisplay: Double?, firstRecordedWeightDisplay: Double?, currentStreak: Int, longestStreak: Int, totalCount: Int, unit: WeightUnit, goal: Goal?, ): WeightProgress</ID>
-    <ID>LongMethod:R4ScaleMetricsSection.kt$@Composable fun R4ScaleMetricsSection( controls: R4ScaleMetricsFormControls, onImeAction: (() -&gt; Unit)? = null, heartRateFocusRequester: FocusRequester? = null, )</ID>
     <ID>LongMethod:ReorderableLazyCollection.kt$ReorderableLazyCollectionState$internal fun onDrag(offset: Offset)</ID>
     <ID>LongMethod:SegmentButtonGroup.kt$@PreviewTheme @Composable fun SegmentButtonPreview()</ID>
     <ID>LongMethod:SelectButtonGrid.kt$@Composable private fun SelectButtonItem( item: SelectButtonItem, isSelectable: Boolean, onItemSelected: ((String) -&gt; Unit)?, modifier: Modifier = Modifier, sku: String? = null, imageWidth: Dp = SelectItemWidth, imageHeight: Dp = SelectItemHeight, )</ID>
     <ID>LongMethod:SettingSection.kt$@Composable private fun SettingsItemRow( item: SettingsItem, )</ID>
     <ID>LongMethod:SettingSection.kt$@PreviewTheme @Composable private fun SettingsSectionPreview()</ID>
     <ID>LongMethod:SettingsScreen.kt$@OptIn(ExperimentalMaterial3Api::class) @Composable fun SettingsScreenContent( state: SettingsState, handleIntent: (SettingsIntent) -&gt; Unit, viewModel: SettingsViewModel? = null, )</ID>
-    <ID>LongMethod:SettingsViewModel.kt$SettingsViewModel$override fun handleIntent(intent: SettingsIntent)</ID>
-    <ID>LongMethod:SetupContent.kt$@Composable fun SetupContent( title: String, modifier: Modifier = Modifier, subtitle: String? = null, noteMessage: String? = null, setupFinished: Boolean = false, isGifImage: Boolean = false, supportingImage: Int? = null, loaderText: String? = null, annotatedSubtitle: String? = null, onAnnotationClick: (() -&gt; Unit)? = null, supportingButtonLabel: String? = null, onSupportingButtonClick: (() -&gt; Unit)? = null, loaderClick: (() -&gt; Unit)? = null, connectionState: ConnectionState? = null, content: (@Composable () -&gt; Unit)? = null )</ID>
-    <ID>LongMethod:SignupReducer.kt$SignupFormControls.Companion$fun create(): SignupFormControls</ID>
-    <ID>LongMethod:SignupReducer.kt$SignupReducer$override fun reduce( state: SignupState, intent: SignupIntent, ): SignupState</ID>
     <ID>LongMethod:SignupScreen.kt$@Composable fun SignupScreenContent( state: SignupState, handleIntent: (SignupIntent) -&gt; Unit, onBack: () -&gt; Unit, )</ID>
     <ID>LongMethod:SnapshotLineChart.kt$@Composable fun SnapshotLineChart( modelProducer: CartesianChartModelProducer, lineColor: Color, lineColors: List&lt;Color&gt;? = null, secondaryLayerColor: Color? = null, startTimestamp: Long, endTimestamp: Long, yStep: Double? = null, yMin: Double? = null, yMax: Double? = null, chartContentDescription: String? = null, modifier: Modifier = Modifier, )</ID>
     <ID>LongMethod:StatCard.kt$@Composable fun AnimatedStatCard( stat: Stat, inEditMode: Boolean, isDragging: Boolean = false, isSelected: Boolean? = false, isVisible: Boolean = true, isFromSetup: Boolean = true, modifier: Modifier = Modifier, onBadgeClick: () -&gt; Unit = {}, canLongPress: Boolean = false, onLongClick: (Stat) -&gt; Unit = {}, onClick: () -&gt; Unit = {}, )</ID>
     <ID>LongMethod:StatCard.kt$@Composable internal fun StatCard( stat: Stat, enabled: Boolean = true, isVisible: Boolean = true, isSelected: Boolean = false, modifier: Modifier = Modifier, isFromSetup: Boolean = false, isPlaceHolder: Boolean = false, onMetricLongClick: (Stat) -&gt; Unit = {}, onMetricClick: (Stat) -&gt; Unit = {} )</ID>
     <ID>LongMethod:ToastCard.kt$@Composable fun ToastCard( modifier: Modifier = Modifier, toast: Toast.Simple, clearToast: () -&gt; Unit = {}, )</ID>
     <ID>LongMethod:ToastHandler.kt$@OptIn(ExperimentalFoundationApi::class) @Composable fun ToastHandler( toast: Toast? = null, hostState: SnackbarHostState, clearToast: () -&gt; Unit, )</ID>
-    <ID>LongMethod:TokenAuthenticator.kt$TokenAuthenticator$private suspend fun tokenRefresh(accountId: String?): Token?</ID>
-    <ID>LongMethod:TokenMigrationHelper.kt$TokenMigrationHelper$suspend fun migrateIfNeeded()</ID>
     <ID>LongMethod:WebViewScreen.kt$@OptIn(ExperimentalMaterial3Api::class) @Composable fun WebViewScreen( url: String, onClose: () -&gt; Unit, )</ID>
-    <ID>LongMethod:WeightDashboardContent.kt$@Composable fun WeightDashboardContent( state: WeightDashboardState, activeSegmentState: SegmentState, handleIntent: (WeightDashboardIntent) -&gt; Unit, )</ID>
-    <ID>LongMethod:WeightHistoryDetailItem.kt$@Composable fun WeightHistoryDetailItemHeader( item: ScaleEntry, canExpand: Boolean, isExpanded: Boolean, onClick: () -&gt; Unit, )</ID>
-    <ID>LongMethod:WeightHistoryDetailList.kt$@PreviewTheme @Composable fun HistoryDetailListPreview()</ID>
     <ID>LongMethod:WeightScaleCatalogSection.kt$@Composable fun WeightScaleCatalogSection( onScaleSelected: (DeviceModelInfo) -&gt; Unit, )</ID>
     <ID>LongMethod:WeightlessScreen.kt$@Composable private fun WeightlessContent(state: WeightlessState, handleIntent: (WeightlessIntent) -&gt; Unit)</ID>
-    <ID>LongMethod:WiFiConfigManager.kt$WiFiConfigManager$private fun setupWifi()</ID>
     <ID>LongMethod:WifiDeviceService.kt$WifiDeviceService$fun connect( setupInfo: WifiSetupInfo, setupType: WifiSetupType, onSuccess: () -&gt; Unit, onError: (String) -&gt; Unit )</ID>
     <ID>LongMethod:WifiScaleSetupReducer.kt$WifiScaleSetupReducer$override fun reduce( state: WifiScaleSetupState, intent: WifiScaleSetupIntent, ): WifiScaleSetupState?</ID>
     <ID>LongMethod:WifiScaleSetupViewModel.kt$WifiScaleSetupViewModel$private fun observeStepChanges()</ID>

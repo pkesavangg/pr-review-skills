@@ -198,7 +198,7 @@ private fun BpStreakCard(
     )
     Column {
       Text(
-        text = "$value ${if (value == 1) "day" else "days"}",
+        text = "$value ${MilestoneStrings.MileStone.streakDaySuffix(value)}",
         style = MeTheme.typography.heading4,
         color = MeTheme.colorScheme.textHeading,
       )

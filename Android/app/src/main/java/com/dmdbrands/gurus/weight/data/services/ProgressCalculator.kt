@@ -54,7 +54,6 @@ internal fun calculateProgressPure(
     var initWeek: Entry? = null
     var month: Double? = null
     var initMonth: Entry? = null
-    var year: Double? = null
     var initYear: HistoryMonth? = null
     var total: Double? = null
     initWeek = if (last7Days.isNotEmpty()) last7Days.last() else null
@@ -74,35 +73,7 @@ internal fun calculateProgressPure(
             "Total milestone calc -> latest=${latestEntry.scale.scaleEntry.weight}, starting=$startingWeightDisplay, firstRecorded=$firstRecordedWeightDisplay, baseline=$totalBaselineWeight, total=$total",
         )
     }
-    val thirtyDaysAgoDate = Calendar.getInstance().apply { add(Calendar.DAY_OF_YEAR, -30) }
-    if (initYear != null && initYear.entryTimestamp != null) {
-        try {
-            val yearMonthFormat = SimpleDateFormat("MMM yyyy", Locale.ENGLISH)
-            val initYearDate = yearMonthFormat.parse(initYear.entryTimestamp)
-            val initYearCalendar = Calendar.getInstance().apply {
-                if (initYearDate != null) time = initYearDate
-                set(Calendar.DAY_OF_MONTH, 1)
-            }
-            val thirtyDaysAgoDateString = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(thirtyDaysAgoDate.time)
-            val initYearDateString = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(initYearCalendar.time)
-            if (initYearDateString >= thirtyDaysAgoDateString) {
-                if (latestEntry != null && initMonth != null && latestEntry is ScaleEntry && initMonth is ScaleEntry) {
-                    year = latestEntry.scale.scaleEntry.weight.toDouble() - initMonth.scale.scaleEntry.weight.toDouble()
-                }
-            } else {
-                val avgWeight = initYear.avgWeight
-                if (latestEntry != null && avgWeight != null && latestEntry is ScaleEntry) {
-                    year = latestEntry.scale.scaleEntry.weight.toDouble() - avgWeight
-                }
-            }
-        } catch (e: Exception) {
-            AppLog.e("EntryService", "Error parsing initYear date: ${initYear.entryTimestamp}", e)
-            val avgWeight = initYear.avgWeight
-            if (latestEntry != null && avgWeight != null && latestEntry is ScaleEntry) {
-                year = latestEntry.scale.scaleEntry.weight.toDouble() - avgWeight
-            }
-        }
-    }
+    val year = calculateYearProgress(latestEntry, initMonth, initYear)
     return WeightProgress(
         latest = latestEntry,
         goal = goal,
@@ -118,4 +89,49 @@ internal fun calculateProgressPure(
         initMonth = initMonth,
         initYear = initYear,
     )
+}
+
+/**
+ * Computes the year milestone delta. Returns null when there is no comparable year baseline
+ * (matching the original behaviour where `year` stayed null).
+ */
+private fun calculateYearProgress(
+    latestEntry: Entry?,
+    initMonth: Entry?,
+    initYear: HistoryMonth?,
+): Double? {
+    if (initYear == null || initYear.entryTimestamp == null) return null
+    val thirtyDaysAgoDate = Calendar.getInstance().apply { add(Calendar.DAY_OF_YEAR, -30) }
+    return try {
+        val yearMonthFormat = SimpleDateFormat("MMM yyyy", Locale.ENGLISH)
+        val initYearDate = yearMonthFormat.parse(initYear.entryTimestamp)
+        val initYearCalendar = Calendar.getInstance().apply {
+            if (initYearDate != null) time = initYearDate
+            set(Calendar.DAY_OF_MONTH, 1)
+        }
+        val thirtyDaysAgoDateString = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(thirtyDaysAgoDate.time)
+        val initYearDateString = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(initYearCalendar.time)
+        if (initYearDateString >= thirtyDaysAgoDateString) {
+            if (latestEntry != null && initMonth != null && latestEntry is ScaleEntry && initMonth is ScaleEntry) {
+                latestEntry.scale.scaleEntry.weight.toDouble() - initMonth.scale.scaleEntry.weight.toDouble()
+            } else {
+                null
+            }
+        } else {
+            val avgWeight = initYear.avgWeight
+            if (latestEntry != null && avgWeight != null && latestEntry is ScaleEntry) {
+                latestEntry.scale.scaleEntry.weight.toDouble() - avgWeight
+            } else {
+                null
+            }
+        }
+    } catch (e: Exception) {
+        AppLog.e("EntryService", "Error parsing initYear date: ${initYear.entryTimestamp}", e)
+        val avgWeight = initYear.avgWeight
+        if (latestEntry != null && avgWeight != null && latestEntry is ScaleEntry) {
+            latestEntry.scale.scaleEntry.weight.toDouble() - avgWeight
+        } else {
+            null
+        }
+    }
 }

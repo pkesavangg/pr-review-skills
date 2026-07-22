@@ -184,6 +184,27 @@ class EntryServiceTest {
     }
 
     @Test
+    fun `addEntry syncs a created BP entry to Health Connect despite lowercase create op`() = runTest {
+        // Regression (MOB-1498): BP ops carry lowercase "create"; the case-sensitive gate used to
+        // skip tryLocalIntegration for them, so BP never reached Health Connect while weight did.
+        coEvery { entryRepository.getUnSynced(testAccountId) } returns emptyList()
+        coEvery { entryRepository.getOperationCount(testAccountId) } returns 0
+        coEvery { accountRepository.getSyncTimeStamp() } returns flowOf("")
+        coEvery { entryRepository.sendBatchToAPI(any()) } returns
+            UnifiedEntryResponse(entries = emptyList(), timestamp = "2024-01-01T00:00:00.000Z")
+        coEvery { healthConnectService.checkIntegrated() } returns true
+
+        service.updateAllData(testAccountId)
+        service.addEntry(listOf(realBpmEntry()))
+
+        coVerify {
+            healthConnectService.syncEntries(
+                match { entries -> entries.any { it is com.dmdbrands.gurus.weight.domain.model.storage.entry.BpmEntry } },
+            )
+        }
+    }
+
+    @Test
     fun `addEntry sends a baby weight entry to the entries endpoint`() = runTest {
         // Manual baby entries go through addEntry (syncing path), unlike addBabyEntry (local-only).
         coEvery { entryRepository.getUnSynced(testAccountId) } returns emptyList()

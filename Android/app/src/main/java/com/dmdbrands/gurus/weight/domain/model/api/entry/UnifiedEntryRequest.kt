@@ -23,6 +23,15 @@ data class UnifiedEntryRequest(
     val boneMass: Int? = null,
     val impedance: Int? = null,
     val unit: String? = null,
+    // Advanced R4 body-composition metrics (12-metric scales). Mirror the legacy
+    // /v3/operation/r4/ field names carried by ScaleApiEntry so a full 12-metric manual/scale
+    // reading survives the /v3/entries round-trip instead of being dropped on sync. (MOB-1496 follow-up)
+    val visceralFatLevel: Int? = null,
+    val subcutaneousFatPercent: Int? = null,
+    val proteinPercent: Int? = null,
+    val skeletalMusclePercent: Int? = null,
+    val bmr: Int? = null,
+    val metabolicAge: Int? = null,
 
     // ── bp ──
     val systolic: Int? = null,

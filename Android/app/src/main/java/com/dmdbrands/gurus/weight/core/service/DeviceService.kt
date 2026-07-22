@@ -338,10 +338,38 @@ constructor(
 
     val unsyncedDevices = mutableListOf<Device>()
     val syncedDevicesToStore = mutableListOf<Device>()
-    // Ids deleted this run — hoisted to function scope so the GET-merge (separate try below) can
-    // exclude them and never resurrect a just-deleted device.
-    var deletedIds: Set<String> = emptySet()
+    // Ids deleted this run — the GET-merge excludes them so it never resurrects a just-deleted device.
+    val deletedIds = syncPendingDeviceChanges(tag, accountId, tempDevice, unsyncedDevices, syncedDevicesToStore)
 
+    // 6. Get fresh data from API and merge with unsynced by id: same id = copy unsynced property onto existing item; new id = append
+    val finalDevices = fetchAndMergeApiDevices(tag, accountId, syncedDevicesToStore, unsyncedDevices, deletedIds)
+
+    // 7. Store updated device list locally
+    try {
+      deviceRepository.deleteAllDevicesForAccount(accountId = accountId)
+      finalDevices.forEach { device ->
+        deviceRepository.saveDeviceToDb(device, accountId)
+      }
+      // 8. Refresh the pairedScales StateFlow to reflect changes in UI
+      fetchScales(currentAccountId)
+    } catch (e: Exception) {
+      AppLog.e(tag, "Error storing final device list $e", )
+    }
+  }
+
+  /**
+   * Classifies stored + temp devices and pushes new/updated + deletions to the API, filling
+   * [unsyncedDevices] and [syncedDevicesToStore]. Returns the ids deleted this run (empty if the
+   * classification itself failed).
+   */
+  private suspend fun syncPendingDeviceChanges(
+    tag: String,
+    accountId: String,
+    tempDevice: Device?,
+    unsyncedDevices: MutableList<Device>,
+    syncedDevicesToStore: MutableList<Device>,
+  ): Set<String> {
+    var deletedIds: Set<String> = emptySet()
     try {
       // 1. Get locally stored devices
       val storedDevices = deviceRepository.getDevices(accountId, false).first().toMutableList()
@@ -372,70 +400,10 @@ constructor(
       syncedDevicesToStore.addAll(onlineScales)
 
       // 4. Sync new/updated devices
-      for (device in devicesToSync) {
-        try {
-          // Save via the unified POST /v3/paired-device/ (§2.3) — the legacy /v3/paired-scale/
-          // POST is rejected (400) on the 2.0 backend, and paired-device is required for
-          // baby/BPM device types (MOB-598).
-          var savedDevice = deviceRepository.createPairedDevice(device, accountId)
-          savedDevice = savedDevice.copy(isSynced = true)
-
-          // Sync preference if needed
-          if (savedDevice.deviceType == DeviceSetupType.BtWifiR4.value && savedDevice.preferences != null) {
-            try {
-              val updatedPref = savedDevice.preferences.copy(
-                isSynced = true,
-                id = savedDevice.id,
-              )
-              deviceRepository.saveScalePreferencesToApi(updatedPref.toR4ScalePreferenceApiModel())
-              savedDevice = savedDevice.copy(preferences = updatedPref)
-            } catch (e: Exception) {
-              AppLog.e(tag, "Error syncing preference for ${savedDevice.id}", e)
-              savedDevice = savedDevice.copy(
-                preferences = savedDevice.preferences?.copy(isSynced = false),
-              )
-            }
-          }
-
-          // ✅ FIX: If ID changed (server-generated ID), remove old temp record
-          if (savedDevice.id != device.id) {
-            try {
-              deviceRepository.deleteDeviceFromDb(device.id)
-            } catch (e: Exception) {
-              AppLog.e(tag, "Could not delete temp local device ${device.id}", e)
-            }
-          }
-
-          syncedDevicesToStore.add(savedDevice)
-        } catch (e: Exception) {
-          AppLog.e(tag, "Error syncing device ${device.id}", e)
-          unsyncedDevices.add(device.copy(isSynced = false))
-        }
-      }
+      syncNewOrUpdatedDevices(tag, devicesToSync, accountId, unsyncedDevices, syncedDevicesToStore)
 
       // 5. Delete devices marked for deletion
-      for (device in devicesMarkedDeleted) {
-        try {
-          // Devices are registered via the unified POST /v3/paired-device/, so they must be deleted
-          // via the unified DELETE /v3/paired-device/{id} — NOT the legacy /v3/paired-scale/{id}
-          // (deleteDeviceFromApi), which doesn't know the unified id and errors. The legacy delete
-          // "worked" on the release line only because that line also creates via paired-scale. (MOB-378)
-          deviceRepository.deletePairedDevice(device.id)
-          deviceRepository.deleteDeviceFromDb(device.id)
-        } catch (e: Exception) {
-          AppLog.e(tag, "Error deleting device ${device.id}", e)
-          val errorMessage = e.message ?: ""
-          if (errorMessage.contains("Not Found")) {
-            AppLog.d(tag, "Device ${device.id} not found on server, marking as synced and deleted")
-            deviceRepository.markDeviceSynced(device.id, true)
-            deviceRepository.markDeviceDeleted(device.id, true)
-            deviceRepository.deleteDeviceFromDb(device.id)
-          } else {
-            deviceRepository.updateDevice(device.copy(isDeleted = true, isSynced = false), accountId = accountId)
-            unsyncedDevices.add(device.copy(isDeleted = true, isSynced = false))
-          }
-        }
-      }
+      deleteMarkedDevices(tag, devicesMarkedDeleted, accountId, unsyncedDevices)
     } catch (e: Exception) {
       AppLog.e(tag, "General sync error for account $currentAccountId", e)
       tempDevice?.let {
@@ -447,9 +415,102 @@ constructor(
         )
       }
     }
+    return deletedIds
+  }
 
-    // 6. Get fresh data from API and merge with unsynced by id: same id = copy unsynced property onto existing item; new id = append
-    val finalDevices = try {
+  /** Pushes each new/updated device (+ its R4 preference) via the unified paired-device POST. */
+  private suspend fun syncNewOrUpdatedDevices(
+    tag: String,
+    devicesToSync: List<Device>,
+    accountId: String,
+    unsyncedDevices: MutableList<Device>,
+    syncedDevicesToStore: MutableList<Device>,
+  ) {
+    for (device in devicesToSync) {
+      try {
+        // Save via the unified POST /v3/paired-device/ (§2.3) — the legacy /v3/paired-scale/
+        // POST is rejected (400) on the 2.0 backend, and paired-device is required for
+        // baby/BPM device types (MOB-598).
+        var savedDevice = deviceRepository.createPairedDevice(device, accountId)
+        savedDevice = savedDevice.copy(isSynced = true)
+
+        // Sync preference if needed
+        if (savedDevice.deviceType == DeviceSetupType.BtWifiR4.value && savedDevice.preferences != null) {
+          try {
+            val updatedPref = savedDevice.preferences.copy(
+              isSynced = true,
+              id = savedDevice.id,
+            )
+            deviceRepository.saveScalePreferencesToApi(updatedPref.toR4ScalePreferenceApiModel())
+            savedDevice = savedDevice.copy(preferences = updatedPref)
+          } catch (e: Exception) {
+            AppLog.e(tag, "Error syncing preference for ${savedDevice.id}", e)
+            savedDevice = savedDevice.copy(
+              preferences = savedDevice.preferences?.copy(isSynced = false),
+            )
+          }
+        }
+
+        // ✅ FIX: If ID changed (server-generated ID), remove old temp record
+        if (savedDevice.id != device.id) {
+          try {
+            deviceRepository.deleteDeviceFromDb(device.id)
+          } catch (e: Exception) {
+            AppLog.e(tag, "Could not delete temp local device ${device.id}", e)
+          }
+        }
+
+        syncedDevicesToStore.add(savedDevice)
+      } catch (e: Exception) {
+        AppLog.e(tag, "Error syncing device ${device.id}", e)
+        unsyncedDevices.add(device.copy(isSynced = false))
+      }
+    }
+  }
+
+  /** Deletes devices marked for deletion via the unified paired-device DELETE, handling 404s. */
+  private suspend fun deleteMarkedDevices(
+    tag: String,
+    devicesMarkedDeleted: List<Device>,
+    accountId: String,
+    unsyncedDevices: MutableList<Device>,
+  ) {
+    for (device in devicesMarkedDeleted) {
+      try {
+        // Devices are registered via the unified POST /v3/paired-device/, so they must be deleted
+        // via the unified DELETE /v3/paired-device/{id} — NOT the legacy /v3/paired-scale/{id}
+        // (deleteDeviceFromApi), which doesn't know the unified id and errors. The legacy delete
+        // "worked" on the release line only because that line also creates via paired-scale. (MOB-378)
+        deviceRepository.deletePairedDevice(device.id)
+        deviceRepository.deleteDeviceFromDb(device.id)
+      } catch (e: Exception) {
+        AppLog.e(tag, "Error deleting device ${device.id}", e)
+        val errorMessage = e.message ?: ""
+        if (errorMessage.contains("Not Found")) {
+          AppLog.d(tag, "Device ${device.id} not found on server, marking as synced and deleted")
+          deviceRepository.markDeviceSynced(device.id, true)
+          deviceRepository.markDeviceDeleted(device.id, true)
+          deviceRepository.deleteDeviceFromDb(device.id)
+        } else {
+          deviceRepository.updateDevice(device.copy(isDeleted = true, isSynced = false), accountId = accountId)
+          unsyncedDevices.add(device.copy(isDeleted = true, isSynced = false))
+        }
+      }
+    }
+  }
+
+  /**
+   * GETs the API device list and merges it with the locally-synced + unsynced devices, preserving
+   * local-only fields the GET omits and never resurrecting devices deleted this run ([deletedIds]).
+   */
+  private suspend fun fetchAndMergeApiDevices(
+    tag: String,
+    accountId: String,
+    syncedDevicesToStore: List<Device>,
+    unsyncedDevices: List<Device>,
+    deletedIds: Set<String>,
+  ): List<Device> =
+    try {
       val apiDevices = deviceRepository.getDevicesFromApi(accountId)
       AppLog.i(tag, "Successfully fetched ${apiDevices.size} devices from API")
       // The unified POST /v3/paired-device/ (§2.3) echoes broadcastId, userNumber, mac, password and
@@ -462,30 +523,7 @@ constructor(
       val syncedList = apiDevices.map { apiDev ->
         val source = deviceRepository.getDevice(apiDev.id).first() ?: syncedById[apiDev.id]
         if (source != null) {
-          apiDev.copy(
-            isSynced = true,
-            // Top-level userNumber is omitted by the GET, so preserve the user slot from the source
-            // or every sync would null it — breaking multi-user reading attribution.
-            userNumber = apiDev.userNumber ?: source.userNumber,
-            // BACKEND WORKAROUND: the GET (and POST) never return scaleToken, so preserve the local
-            // token here — otherwise every sync nulls it and R4 (0412) getUsers/updateAccount fail
-            // (e.g. blank scale-user names). REMOVE once the backend returns scaleToken.
-            token = apiDev.token?.takeIf { it.isNotBlank() } ?: source.token,
-            // R4 scale preferences (incl. the user's displayName) are local-only — there is no GET
-            // for them, so the paired-device GET never returns them. Preserve from the local source
-            // or every sync nulls the preference and the scale-detail "Users" name goes blank.
-            preferences = apiDev.preferences ?: source.preferences,
-            device = apiDev.device?.copy(
-              macAddress = source.device?.macAddress ?: apiDev.device?.macAddress ?: "",
-              // peripheralIdentifier is dropped by the GET too; same-user pairing detection keys on it.
-              identifier = apiDev.device?.identifier?.takeIf { it.isNotBlank() }
-                ?: source.device?.identifier ?: "",
-              broadcastId = apiDev.device?.broadcastId ?: source.device?.broadcastId,
-              broadcastIdString = apiDev.device?.broadcastIdString ?: source.device?.broadcastIdString,
-              password = apiDev.device?.password ?: source.device?.password,
-              isWifiConfigured = source.device?.isWifiConfigured ?: apiDev.device?.isWifiConfigured ?: false,
-            ),
-          )
+          mergeApiDeviceWithLocal(apiDev, source)
         } else {
           apiDev.copy(isSynced = true)
         }
@@ -503,18 +541,33 @@ constructor(
       // Use syncedDevicesToStore (contains both already synced and newly synced devices) as fallback
       mergeSyncedWithUnsyncedById(syncedDevicesToStore, unsyncedDevices)
     }
-    // 7. Store updated device list locally
-    try {
-      deviceRepository.deleteAllDevicesForAccount(accountId = accountId)
-      finalDevices.forEach { device ->
-        deviceRepository.saveDeviceToDb(device, accountId)
-      }
-      // 8. Refresh the pairedScales StateFlow to reflect changes in UI
-      fetchScales(currentAccountId)
-    } catch (e: Exception) {
-      AppLog.e(tag, "Error storing final device list $e", )
-    }
-  }
+
+  /** Merges one API device with its local [source], preserving GET-omitted local-only fields. */
+  private fun mergeApiDeviceWithLocal(apiDev: Device, source: Device): Device =
+    apiDev.copy(
+      isSynced = true,
+      // Top-level userNumber is omitted by the GET, so preserve the user slot from the source
+      // or every sync would null it — breaking multi-user reading attribution.
+      userNumber = apiDev.userNumber ?: source.userNumber,
+      // BACKEND WORKAROUND: the GET (and POST) never return scaleToken, so preserve the local
+      // token here — otherwise every sync nulls it and R4 (0412) getUsers/updateAccount fail
+      // (e.g. blank scale-user names). REMOVE once the backend returns scaleToken.
+      token = apiDev.token?.takeIf { it.isNotBlank() } ?: source.token,
+      // R4 scale preferences (incl. the user's displayName) are local-only — there is no GET
+      // for them, so the paired-device GET never returns them. Preserve from the local source
+      // or every sync nulls the preference and the scale-detail "Users" name goes blank.
+      preferences = apiDev.preferences ?: source.preferences,
+      device = apiDev.device?.copy(
+        macAddress = source.device?.macAddress ?: apiDev.device?.macAddress ?: "",
+        // peripheralIdentifier is dropped by the GET too; same-user pairing detection keys on it.
+        identifier = apiDev.device?.identifier?.takeIf { it.isNotBlank() }
+          ?: source.device?.identifier ?: "",
+        broadcastId = apiDev.device?.broadcastId ?: source.device?.broadcastId,
+        broadcastIdString = apiDev.device?.broadcastIdString ?: source.device?.broadcastIdString,
+        password = apiDev.device?.password ?: source.device?.password,
+        isWifiConfigured = source.device?.isWifiConfigured ?: apiDev.device?.isWifiConfigured ?: false,
+      ),
+    )
 
   /**
    * Save a new scale or update an existing one using syncDevices.

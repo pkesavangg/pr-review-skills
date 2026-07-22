@@ -53,6 +53,17 @@ object DashboardString {
     const val StreakDayPlural = "days"
     const val StreakDayAbbrev = "d"
     const val StreakZeroDays = "0 days"
+
+    /**
+     * Streak-count unit suffix (MOB-1168): 0 -> "days", 1 -> "day", 2-999 -> "days", 1000+ -> "d"
+     * (no max cap) so large streak counts don't get ellipsis-truncated on the milestone / BP
+     * dashboard cards. Zero uses the plural to match [StreakZeroDays] ("0 days").
+     */
+    fun streakDaySuffix(days: Int): String = when {
+      days == 1 -> StreakDaySingular
+      days <= 999 -> StreakDayPlural
+      else -> StreakDayAbbrev
+    }
     const val LbsPerWeek = "lb/week"
     const val KgsPerWeek = "kg/week"
     const val LbsPerMonth = "lb/month"

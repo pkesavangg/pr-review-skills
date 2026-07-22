@@ -1,21 +1,14 @@
 package com.dmdbrands.gurus.weight.features.DeviceSetup.viewmodel
 
 import androidx.lifecycle.viewModelScope
-import com.dmdbrands.gurus.weight.core.config.AppConfig
-import com.dmdbrands.gurus.weight.core.navigation.AppRoute
 import com.dmdbrands.gurus.weight.core.network.interfaces.IConnectivityObserver
-import com.dmdbrands.gurus.weight.core.network.utility.NetworkState
 import com.dmdbrands.gurus.weight.core.service.BluetoothPreferencesService
 import com.dmdbrands.gurus.weight.core.shared.utilities.NameUtils
 import com.dmdbrands.gurus.weight.core.shared.utilities.logging.AppLog
-import com.dmdbrands.gurus.weight.domain.enums.DashboardType
 import com.dmdbrands.gurus.weight.domain.interfaces.IDialogUtility
-import com.dmdbrands.gurus.weight.domain.model.api.device.R4ScalePreferenceApiModel
-import com.dmdbrands.gurus.weight.domain.model.api.device.toR4ScalePreferenceApiModel
 import com.dmdbrands.gurus.weight.domain.model.storage.BLEStatus
 import com.dmdbrands.gurus.weight.domain.model.common.ProductSelection
 import com.dmdbrands.gurus.weight.domain.model.storage.Device
-import com.dmdbrands.gurus.weight.domain.model.storage.Preferences
 import com.dmdbrands.gurus.weight.domain.model.storage.entry.ScaleEntry
 import com.dmdbrands.gurus.weight.domain.model.storage.toGGBTDevice
 import com.dmdbrands.gurus.weight.domain.repository.IDeviceRepository
@@ -24,9 +17,13 @@ import com.dmdbrands.gurus.weight.domain.services.IAccountService
 import com.dmdbrands.gurus.weight.domain.services.IDashboardService
 import com.dmdbrands.gurus.weight.domain.services.IEntryService
 import com.dmdbrands.gurus.weight.domain.services.IEntryReadService
-import com.dmdbrands.gurus.weight.features.DeviceSetup.DeviceSetupConstants
 import com.dmdbrands.gurus.weight.features.DeviceSetup.enums.BtWifiSetupStep
 import com.dmdbrands.gurus.weight.features.DeviceSetup.manager.BLEDiscoveryManager
+import com.dmdbrands.gurus.weight.features.DeviceSetup.manager.BtWifiDialogPresenter
+import com.dmdbrands.gurus.weight.features.DeviceSetup.manager.BtWifiExitManager
+import com.dmdbrands.gurus.weight.features.DeviceSetup.manager.BtWifiMeasurementManager
+import com.dmdbrands.gurus.weight.features.DeviceSetup.manager.BtWifiPermissionsManager
+import com.dmdbrands.gurus.weight.features.DeviceSetup.manager.BtWifiSettingsManager
 import com.dmdbrands.gurus.weight.features.DeviceSetup.manager.IBLEDiscoveryManager
 import com.dmdbrands.gurus.weight.features.DeviceSetup.manager.IDevicePairingManager
 import com.dmdbrands.gurus.weight.features.DeviceSetup.manager.IWiFiConfigManager
@@ -39,18 +36,12 @@ import com.dmdbrands.gurus.weight.features.DeviceSetup.reducer.BtWifiScaleSetupR
 import com.dmdbrands.gurus.weight.features.DeviceSetup.reducer.BtWifiScaleSetupState
 import com.dmdbrands.gurus.weight.features.DeviceSetup.strings.DeviceSetupStrings
 import com.dmdbrands.gurus.weight.features.appPermissions.helper.AppPermissionsHelper
-import com.dmdbrands.gurus.weight.features.common.components.DialogType
 import com.dmdbrands.gurus.weight.features.DeviceSetup.helper.switchActiveProductAfterSetup
 import com.dmdbrands.gurus.weight.features.common.enums.DeviceSetupType
-import com.dmdbrands.gurus.weight.features.common.model.DashboardKey
 import com.dmdbrands.gurus.weight.features.common.model.DialogModel
-import com.dmdbrands.library.ggbluetooth.enums.GGPermissionState
 import com.dmdbrands.library.ggbluetooth.enums.GGPermissionType
 import com.dmdbrands.library.ggbluetooth.enums.GGScanResponseType
-import com.dmdbrands.library.ggbluetooth.enums.GGUserActionResponseType
 import com.dmdbrands.library.ggbluetooth.model.GGBTUser
-import com.dmdbrands.library.ggbluetooth.model.GGLiveDataResponse
-import com.dmdbrands.library.ggbluetooth.model.GGPermissionStatusMap
 import com.dmdbrands.library.ggbluetooth.model.GGScanResponse
 import com.greatergoods.blewrapper.GGDeviceService
 import com.greatergoods.blewrapper.GGPermissionService
@@ -58,24 +49,16 @@ import dagger.assisted.Assisted
 import dagger.assisted.AssistedFactory
 import dagger.assisted.AssistedInject
 import dagger.hilt.android.lifecycle.HiltViewModel
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.flow.catch
-import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.flow.flowOf
-import kotlinx.coroutines.flow.map
-import kotlinx.coroutines.flow.merge
-import kotlinx.coroutines.flow.onStart
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withTimeoutOrNull
-import java.time.Instant
-import java.util.TimeZone
-import kotlin.coroutines.resume
-import kotlinx.coroutines.suspendCancellableCoroutine
 
 /**
  * Coordinator ViewModel for the BtWifiScaleSetupScreen.
- * Delegates BLE discovery, WiFi config, and scale pairing to focused manager classes.
+ *
+ * Owns navigation between setup steps and delegates each cohesive slice to a focused
+ * collaborator: BLE discovery / WiFi config / scale pairing (existing managers) plus
+ * permissions, measurement, settings, exit teardown, and dialogs (MOB-1501 split to clear
+ * detekt's LargeClass limit). The ViewModel stays the thin state holder and step router.
  */
 @HiltViewModel(assistedFactory = BtWifiScaleSetupViewModel.Factory::class)
 class BtWifiScaleSetupViewModel @AssistedInject constructor(
@@ -118,11 +101,7 @@ class BtWifiScaleSetupViewModel @AssistedInject constructor(
 
     private var isScaleConnected: Boolean = discoveredScale?.connectionStatus == BLEStatus.CONNECTED
     private var isScaleSaved: Boolean = false
-    private var isExiting: Boolean = false
-    private var fetchUserListJob: kotlinx.coroutines.Job? = null
     private var accountId: String? = null
-    private var updateSettingsTimeoutJob: kotlinx.coroutines.Job? = null
-    private var measurementTimeoutJob: kotlinx.coroutines.Job? = null
 
     // Managers — ViewModel creates and owns them, passing itself as the dependency source
     private val bleManager: IBLEDiscoveryManager = BLEDiscoveryManager(
@@ -159,7 +138,7 @@ class BtWifiScaleSetupViewModel @AssistedInject constructor(
         getDiscoveredScale = { discoveredScale },
         onNext = ::onNext,
         onExitSetup = ::onExitSetup,
-        requestNotificationPermission = { requestPermission(GGPermissionType.NOTIFICATION) },
+        requestNotificationPermission = { permissionsManager.requestPermission(GGPermissionType.NOTIFICATION) },
     )
 
     private val scalePairingManager: IDevicePairingManager = DevicePairingManager(
@@ -180,15 +159,91 @@ class BtWifiScaleSetupViewModel @AssistedInject constructor(
         enqueueDialog = { dialogQueueService.enqueue(it) },
     )
 
+    private val permissionsManager = BtWifiPermissionsManager(
+        ggDeviceService = ggDeviceService,
+        permissionService = permissionService,
+        connectivityObserver = connectivityObserver,
+        deviceService = deviceService,
+        dialogUtility = dialogUtility,
+        scope = viewModelScope,
+        permissionCheckTimeOut = permissionCheckTimeOut,
+        getState = { state.value },
+        getStateFlow = { state },
+        onIntent = ::handleIntent,
+        getDiscoveredScale = { discoveredScale },
+        onUpdateSettingsError = { settingsManager.setUpdateSettingsError() },
+        onMeasurementFailed = { measurementManager.setMeasurementFailed() },
+        cancelPairingTimeout = { scalePairingManager.cancelTimeout() },
+    )
+
+    private val measurementManager = BtWifiMeasurementManager(
+        ggDeviceService = ggDeviceService,
+        scope = viewModelScope,
+        operationTimeout = operationTimeout,
+        getState = { state.value },
+        onIntent = ::handleIntent,
+        getDiscoveredScale = { discoveredScale },
+        onNext = ::onNext,
+        startObservingEntries = ::startObservingEntries,
+    )
+
+    private val settingsManager = BtWifiSettingsManager(
+        ggDeviceService = ggDeviceService,
+        deviceService = deviceService,
+        deviceRepository = deviceRepository,
+        dashboardService = dashboardService,
+        entryReadService = entryReadService,
+        scope = viewModelScope,
+        operationTimeout = operationTimeout,
+        getState = { state.value },
+        onIntent = ::handleIntent,
+        getDiscoveredScale = { discoveredScale },
+        setDiscoveredScale = { discoveredScale = it },
+        getAccountId = { accountId },
+        onNext = ::onNext,
+    )
+
+    private val exitManager = BtWifiExitManager(
+        ggDeviceService = ggDeviceService,
+        deviceService = deviceService,
+        scope = viewModelScope,
+        initialStep = initialStep,
+        cleanupTimeoutMs = cleanupTimeoutMs,
+        getState = { state.value },
+        onIntent = ::handleIntent,
+        getDiscoveredScale = { discoveredScale },
+        getIsScaleSaved = { isScaleSaved },
+        clearAllTimeouts = ::clearAllTimeouts,
+        enqueueDialog = { dialogQueueService.enqueue(it) },
+        showLoader = { dialogQueueService.showLoader(it) },
+        dismissLoader = { dialogQueueService.dismissLoader() },
+        navigateBack = { navigationService.navigateBack() },
+        switchActiveProductAfterSetup = {
+            // Auto-switch the dashboard header to the newly added scale (MOB-422).
+            productSelectionManager.switchActiveProductAfterSetup(ProductSelection.MyWeight)
+        },
+    )
+
+    private val dialogPresenter = BtWifiDialogPresenter(
+        scope = viewModelScope,
+        getState = { state.value },
+        onIntent = ::handleIntent,
+        enqueueDialog = { dialogQueueService.enqueue(it) },
+        dismissCurrentDialog = { dialogQueueService.dismissCurrent() },
+        showLoader = { dialogQueueService.showLoader(it) },
+        dismissLoader = { dialogQueueService.dismissLoader() },
+        openInAppBrowser = { openInAppBrowser(it) },
+    )
+
     init {
         deviceService.setSetupInProgress(true)
         loadScaleInfo()
-        initializePermissionsImmediately()
-        observePermissions()
+        permissionsManager.initializePermissionsImmediately()
+        permissionsManager.observePermissions()
         observeStepChanges()
         initializeSetup()
         subscribeLatestWeight()
-        fallbackToErrorsIfPermissionIsDisabled()
+        permissionsManager.fallbackToErrorsIfPermissionIsDisabled()
         viewModelScope.launch {
             accountId = accountService.activeAccountFlow.first()?.id
         }
@@ -206,15 +261,16 @@ class BtWifiScaleSetupViewModel @AssistedInject constructor(
             BtWifiScaleSetupIntent.Back -> onBack()
             BtWifiScaleSetupIntent.Skip -> onSkip()
             BtWifiScaleSetupIntent.TryAgain -> onTryAgain()
-            is BtWifiScaleSetupIntent.UpdateSettings -> updateDevicePreferences(intent.dashboardKeys, intent.preferences)
-            BtWifiScaleSetupIntent.ShowSavingLoader -> showSavingLoader()
+            is BtWifiScaleSetupIntent.UpdateSettings ->
+                settingsManager.updateDevicePreferences(intent.dashboardKeys, intent.preferences)
+            BtWifiScaleSetupIntent.ShowSavingLoader -> dialogPresenter.showSavingLoader()
             BtWifiScaleSetupIntent.RefreshNetworks -> onRefreshNetworks()
             BtWifiScaleSetupIntent.HandlePasswordNetworkStatus -> wifiManager.handlePasswordNetworkStatus()
-            is BtWifiScaleSetupIntent.RequestPermission -> requestPermission(intent.permissionType)
+            is BtWifiScaleSetupIntent.RequestPermission -> permissionsManager.requestPermission(intent.permissionType)
             is BtWifiScaleSetupIntent.ExitSetup -> onExitSetup(intent.isSetupFinished)
-            BtWifiScaleSetupIntent.OpenHelp -> openHelpModal()
-            BtWifiScaleSetupIntent.OpenAccucheckModal -> openAccucheckModel()
-            BtWifiScaleSetupIntent.OpenBiaModal -> openBiaModel()
+            BtWifiScaleSetupIntent.OpenHelp -> dialogPresenter.openHelpModal()
+            BtWifiScaleSetupIntent.OpenAccucheckModal -> dialogPresenter.openAccucheckModel()
+            BtWifiScaleSetupIntent.OpenBiaModal -> dialogPresenter.openBiaModel()
             is BtWifiScaleSetupIntent.DeleteUser -> scalePairingManager.deleteUser(intent.user)
             BtWifiScaleSetupIntent.ClearWifiPasswordForm -> wifiManager.clearWifiPasswordForm()
             else -> {}
@@ -231,8 +287,7 @@ class BtWifiScaleSetupViewModel @AssistedInject constructor(
     override fun onEntryResponse(response: GGScanResponse.Entry) {
         when (response.type) {
             GGScanResponseType.SINGLE_ENTRY -> {
-                measurementTimeoutJob?.cancel()
-                measurementTimeoutJob = null
+                measurementManager.cancelMeasurementTimeout()
                 viewModelScope.launch {
                     handleIntent(
                         BtWifiScaleSetupIntent.SetStepConnectionState(
@@ -273,7 +328,7 @@ class BtWifiScaleSetupViewModel @AssistedInject constructor(
                         state.value.permissions, setupType = DeviceSetupType.BtWifiR4,
                     )
                 ) {
-                    setGatheringNetworkFailed()
+                    permissionsManager.setGatheringNetworkFailed()
                 } else {
                     wifiManager.gatherNetworks()
                 }
@@ -282,8 +337,8 @@ class BtWifiScaleSetupViewModel @AssistedInject constructor(
                 handleIntent(BtWifiScaleSetupIntent.UpdateNextButtonText(DeviceSetupStrings.SetupButtons.Connect))
             BtWifiSetupStep.CONNECTING_WIFI -> wifiManager.connectToWifi()
             BtWifiSetupStep.CUSTOMIZE_SETTINGS -> {
-                loadDashboardKeys()
-                loadGoalProgress()
+                settingsManager.loadDashboardKeys()
+                settingsManager.loadGoalProgress()
             }
             BtWifiSetupStep.UPDATE_SETTINGS -> {
                 val currentUpdateSettingsState = currentState.stepConnectionStates[BtWifiSetupStep.UPDATE_SETTINGS]
@@ -306,15 +361,15 @@ class BtWifiScaleSetupViewModel @AssistedInject constructor(
                     )
                     val isOnlyNetworkPermissionMissing = disabledPermissions.size == 1 &&
                         disabledPermissions.contains(GGPermissionType.WIFI_SWITCH)
-                    if (!isOnlyNetworkPermissionMissing) setMeasurementFailed() else stepOn()
+                    if (!isOnlyNetworkPermissionMissing) measurementManager.setMeasurementFailed() else measurementManager.stepOn()
                 } else {
-                    stepOn()
+                    measurementManager.stepOn()
                 }
             }
             BtWifiSetupStep.MEASUREMENT -> {
                 val measurementConnectionState = currentState.stepConnectionStates[BtWifiSetupStep.MEASUREMENT]
                 if (measurementConnectionState !is ConnectionState.Failed) {
-                    collectMeasurement()
+                    measurementManager.collectMeasurement()
                 }
             }
             else -> {}
@@ -322,7 +377,7 @@ class BtWifiScaleSetupViewModel @AssistedInject constructor(
     }
 
     private fun onNext() {
-        if (isExiting) return
+        if (exitManager.isExiting) return
         val currentState = state.value
         if (currentState.isLastStep) handleIntent(BtWifiScaleSetupIntent.ExitSetup(true))
         when (currentState.currentStep) {
@@ -334,7 +389,7 @@ class BtWifiScaleSetupViewModel @AssistedInject constructor(
                     if (arePermissionsEnabled) {
                         handleIntent(SetCurrentStep(BtWifiSetupStep.WAKEUP))
                     } else {
-                        permissionAccess()
+                        permissionsManager.permissionAccess()
                         handleIntent(SetCurrentStep(BtWifiSetupStep.PERMISSIONS))
                     }
                 }
@@ -439,16 +494,14 @@ class BtWifiScaleSetupViewModel @AssistedInject constructor(
                 handleIntent(SetCurrentStep(BtWifiSetupStep.GATHERING_NETWORK))
                 wifiManager.gatherNetworks()
             }
-            BtWifiSetupStep.STEP_ON -> stepOn()
+            BtWifiSetupStep.STEP_ON -> measurementManager.stepOn()
             BtWifiSetupStep.UPDATE_SETTINGS -> {
-                updateSettingsTimeoutJob?.cancel()
-                updateSettingsTimeoutJob = null
+                settingsManager.cancelUpdateSettingsTimeout()
                 goToCustomiseSettings()
             }
             BtWifiSetupStep.MEASUREMENT -> {
-                measurementTimeoutJob?.cancel()
-                measurementTimeoutJob = null
-                collectMeasurement()
+                measurementManager.cancelMeasurementTimeout()
+                measurementManager.collectMeasurement()
             }
             else -> AppLog.w(TAG, "Try again called on step that doesn't support retry: ${currentState.currentStep}")
         }
@@ -462,479 +515,18 @@ class BtWifiScaleSetupViewModel @AssistedInject constructor(
         handleIntent(SetCurrentStep(BtWifiSetupStep.GATHERING_NETWORK))
     }
 
-    // --- Exit ---
-
     private fun onExitSetup(isSetupFinished: Boolean) {
-        deviceService.setSetupInProgress(false)
-        if (isSetupFinished) {
-            onExit()
-        } else {
-            isExiting = true
-            fetchUserListForExit()
-            dialogQueueService.enqueue(
-                DialogModel.Confirm(
-                    title = DeviceSetupStrings.ExitSetupAlert.Title,
-                    message = DeviceSetupStrings.ExitSetupAlert.Message(discoveredScale?.connectionStatus == BLEStatus.CONNECTED),
-                    confirmText = DeviceSetupStrings.ExitSetupAlert.Exit,
-                    cancelText = DeviceSetupStrings.ExitSetupAlert.GoBack,
-                    onConfirm = { onExit() },
-                    onCancel = { cancelExitFetch() },
-                    onDismiss = { cancelExitFetch() },
-                ),
-            )
-        }
-    }
-
-    private fun cancelExitFetch() {
-        fetchUserListJob?.cancel()
-        fetchUserListJob = null
-        isExiting = false
-    }
-
-    private fun fetchUserListForExit() {
-        val scale = discoveredScale ?: return
-        fetchUserListJob = viewModelScope.launch {
-            try {
-                ggDeviceService.getUsers(scale.toGGBTDevice()) { response ->
-                    handleIntent(BtWifiScaleSetupIntent.SetUserList(response.user))
-                }
-            } catch (e: Exception) {
-                AppLog.e(TAG, "Error fetching user list for exit", e)
-            }
-        }
-    }
-
-    private fun onExit() {
-        isExiting = true
-        clearAllTimeouts()
-        viewModelScope.launch {
-            try {
-                ggDeviceService.resumeScan(false)
-                discoveredScale?.let { scale ->
-                    ggDeviceService.cancelWifi(scale.toGGBTDevice()) {}
-                    if (!isScaleSaved && initialStep != BtWifiSetupStep.GATHERING_NETWORK) {
-                        if (state.value.currentStep.ordinal >= BtWifiSetupStep.CONNECTING_BLUETOOTH.ordinal) {
-                            dialogQueueService.showLoader("Exiting..")
-                            val scaleToken = state.value.userList
-                                .find { user -> user.name == scale.preferences?.displayName }
-                                ?.token
-                                ?: scale.token
-                            val deleteResult = withTimeoutOrNull(cleanupTimeoutMs) {
-                                suspendCancellableCoroutine { continuation ->
-                                    ggDeviceService.deleteAccount(scale.toGGBTDevice().copy(token = scaleToken)) { result ->
-                                        AppLog.d(TAG, "deleteAccount completed with result: $result")
-                                        if (continuation.isActive) continuation.resume(result)
-                                    }
-                                }
-                            }
-                            if (deleteResult == null) {
-                                AppLog.w(TAG, "deleteAccount timed out")
-                            }
-                            ggDeviceService.disconnectDevice(scale.toGGBTDevice())
-                        }
-                    }
-                }
-                loadPluginData()
-                if (isScaleSaved) {
-                    // Auto-switch the dashboard header to the newly added scale (MOB-422).
-                    productSelectionManager.switchActiveProductAfterSetup(ProductSelection.MyWeight)
-                }
-            } catch (e: Exception) {
-                AppLog.e(TAG, "Error during Bluetooth cleanup", e)
-            } finally {
-                dialogQueueService.dismissLoader()
-            }
-            try {
-                navigationService.navigateBack()
-            } catch (e: Exception) {
-                AppLog.e(TAG, "Failed to navigate back from scale setup", e)
-            }
-        }
-    }
-
-    private suspend fun loadPluginData() {
-        try {
-            val device = this@BtWifiScaleSetupViewModel.discoveredScale
-            var connectedDeviceBroadcastID: String? = null
-            ggDeviceService.localSkipDevices.value.forEach {
-                if (device?.device?.broadcastId == it && device.connectionStatus == BLEStatus.CONNECTED) {
-                    connectedDeviceBroadcastID = it
-                } else {
-                    ggDeviceService.skipDevice(it, considerForSession = true)
-                }
-            }
-            if (connectedDeviceBroadcastID != null) {
-                ggDeviceService.removeSkipDeviceBroadcastID(connectedDeviceBroadcastID)
-            }
-            val pairedDevices = deviceService.pairedScales.first().map { it.toGGBTDevice() }
-            AppLog.d(TAG, "Syncing ${pairedDevices.size} paired devices")
-            ggDeviceService.syncDevices(pairedDevices)
-        } catch (e: Exception) {
-            AppLog.e(TAG, "Error during Bluetooth cleanup", e)
-        }
-    }
-
-    private suspend fun syncForSetupBleReconnection() {
-        try {
-            val pairedDevices = deviceService.pairedScales.first().map { it.toGGBTDevice() }
-            AppLog.d(TAG, "Syncing ${pairedDevices.size} paired devices for setup BLE reconnection")
-            ggDeviceService.syncDevices(pairedDevices)
-        } catch (e: Exception) {
-            AppLog.e(TAG, "Error during setup BLE reconnection sync", e)
-        }
-    }
-
-    // --- Measurement / Step-on ---
-
-    private fun stepOn() {
-        AppLog.d(TAG, "Starting step on process")
-        handleIntent(
-            BtWifiScaleSetupIntent.SetStepConnectionState(BtWifiSetupStep.STEP_ON, ConnectionState.Loading),
-        )
-        try {
-            subscribeToLiveData()
-        } catch (e: Exception) {
-            AppLog.e(TAG, "Error during step on", e)
-            handleIntent(
-                BtWifiScaleSetupIntent.SetStepConnectionState(BtWifiSetupStep.STEP_ON, ConnectionState.Failed.Error),
-            )
-        }
-    }
-
-    private fun subscribeToLiveData() {
-        val scale = discoveredScale ?: run {
-            AppLog.e(TAG, "discoveredScale is null when subscribing to live data")
-            return
-        }
-        ggDeviceService.subscribeToLiveData(scale.toGGBTDevice()) {
-            when (it) {
-                is GGLiveDataResponse.Success -> {
-                    handleIntent(
-                        BtWifiScaleSetupIntent.SetStepConnectionState(BtWifiSetupStep.STEP_ON, ConnectionState.Success),
-                    )
-                    onNext()
-                }
-                else -> Unit
-            }
-        }
-    }
-
-    private fun collectMeasurement() {
-        handleIntent(
-            BtWifiScaleSetupIntent.SetStepConnectionState(BtWifiSetupStep.MEASUREMENT, ConnectionState.Loading),
-        )
-        viewModelScope.launch {
-            try {
-                measurementTimeoutJob = viewModelScope.launch {
-                    delay(operationTimeout)
-                    if (state.value.currentStep == BtWifiSetupStep.MEASUREMENT) {
-                        AppLog.w(TAG, "Measurement collection timeout reached")
-                        handleIntent(
-                            BtWifiScaleSetupIntent.SetStepConnectionState(
-                                BtWifiSetupStep.MEASUREMENT, ConnectionState.Failed.Error,
-                            ),
-                        )
-                    }
-                }
-                startObservingEntries()
-            } catch (e: Exception) {
-                measurementTimeoutJob?.cancel()
-                measurementTimeoutJob = null
-                AppLog.e(TAG, "Error during measurement collection", e)
-                handleIntent(
-                    BtWifiScaleSetupIntent.SetStepConnectionState(
-                        BtWifiSetupStep.MEASUREMENT, ConnectionState.Failed.Error,
-                    ),
-                )
-            }
-        }
-    }
-
-    // --- Settings update ---
-
-    private fun updateDevicePreferences(dashboardKeys: List<DashboardKey>? = null, preferences: Preferences? = null) {
-        viewModelScope.launch {
-            try {
-                updateSettingsTimeoutJob?.cancel()
-                updateSettingsTimeoutJob = viewModelScope.launch {
-                    delay(operationTimeout)
-                    if (state.value.currentStep == BtWifiSetupStep.UPDATE_SETTINGS) {
-                        AppLog.w(TAG, "Update settings timeout reached")
-                        setUpdateSettingsError()
-                    }
-                }
-                if (dashboardKeys != null) {
-                    dashboardService.updateVisibleKeys(
-                        accountId = accountId,
-                        keys = dashboardKeys,
-                        dashboardType = DashboardType.DASHBOARD_12_METRICS,
-                    )
-                }
-                if (preferences != null) {
-                    applyDevicePreferences(preferences)
-                } else {
-                    updateSettingsTimeoutJob?.cancel()
-                    updateSettingsTimeoutJob = null
-                }
-            } catch (e: Exception) {
-                AppLog.e(TAG, "Error during settings update", e)
-                setUpdateSettingsError()
-            }
-        }
-    }
-
-    private suspend fun applyDevicePreferences(preferences: Preferences) {
-        if (discoveredScale?.connectionStatus != BLEStatus.CONNECTED) {
-            val bid = discoveredScale?.device?.broadcastId ?: discoveredScale?.device?.broadcastIdString
-            if (bid != null) {
-                val connected = withTimeoutOrNull(20_000L) {
-                    ggDeviceService.deviceCache.first { cache ->
-                        (cache[bid] as? Device)?.connectionStatus == BLEStatus.CONNECTED
-                    }
-                }
-                if (connected == null) {
-                    AppLog.w(TAG, "Scale did not reconnect within timeout before UPDATE_SETTINGS")
-                    setUpdateSettingsError()
-                    return
-                }
-            } else {
-                setUpdateSettingsError()
-                return
-            }
-        }
-        val settingsScale = discoveredScale ?: run {
-            AppLog.e(TAG, "discoveredScale is null during settings update")
-            setUpdateSettingsError()
-            return
-        }
-        val newName = _state.value.usernameForm.username.value
-        val updatedDevice = settingsScale.copy(
-            preferences = preferences.copy(
-                displayName = newName.ifEmpty { preferences.displayName },
-                id = settingsScale.id,
-            ),
-        )
-        discoveredScale = updatedDevice
-        ggDeviceService.updateAccount(updatedDevice.toGGBTDevice()) {
-            onUpdateAccountResponse(it)
-        }
-        if (!state.value.hasSavedSettings) {
-            val scaleId = discoveredScale?.id ?: settingsScale.id
-            updateScalePreferences(scaleId, preferences.toR4ScalePreferenceApiModel())
-        }
-    }
-
-    private fun onUpdateAccountResponse(response: GGUserActionResponseType) {
-        when (response) {
-            GGUserActionResponseType.CREATION_COMPLETED, GGUserActionResponseType.UPDATE_COMPLETED -> {
-                viewModelScope.launch {
-                    updateSettingsTimeoutJob?.cancel()
-                    updateSettingsTimeoutJob = null
-                    val savedPrefs = discoveredScale?.preferences
-                    if (savedPrefs != null) {
-                        updateScalePreferences(discoveredScale?.id ?: "", savedPrefs.toR4ScalePreferenceApiModel())
-                    }
-                    AppLog.d(TAG, "Scale settings updated successfully")
-                    handleIntent(
-                        BtWifiScaleSetupIntent.SetStepConnectionState(
-                            BtWifiSetupStep.UPDATE_SETTINGS, ConnectionState.Success,
-                        ),
-                    )
-                    discoveredScale?.let { ggDeviceService.syncDevices(listOf(it.toGGBTDevice())) }
-                    onNext()
-                }
-            }
-            else -> viewModelScope.launch { setUpdateSettingsError() }
-        }
-    }
-
-    private suspend fun updateScalePreferences(deviceId: String, preferences: R4ScalePreferenceApiModel): Boolean {
-        AppLog.d(TAG, "Updating scale preferences for device: $deviceId")
-        return try {
-            val updatedPreference = preferences.copy(
-                wifiFotaScheduleTime = 0,
-                tzOffset = getTimeZoneInMinutes(),
-            )
-            deviceRepository.saveScalePreferencesToApi(updatedPreference)
-            deviceService.syncDevices()
-            AppLog.d(TAG, "Scale preferences updated successfully")
-            true
-        } catch (e: Exception) {
-            AppLog.e(TAG, "Error updating scale preferences", e)
-            false
-        }
+        exitManager.onExitSetup(isSetupFinished)
     }
 
     private fun hasCustomizationChanges(): Boolean = state.value.hasSavedSettings
 
-    private fun getTimeZoneInMinutes(): Int {
-        val timeZone = TimeZone.getDefault()
-        return timeZone.getOffset(System.currentTimeMillis()) / (60 * 1000)
-    }
-
-    // --- Permissions ---
-
-    private fun fallbackToErrorsIfPermissionIsDisabled() {
-        viewModelScope.launch {
-            state.map { it.currentStep }.collect {
-                delay(permissionCheckTimeOut)
-                handlePermissionBasedErrors()
-            }
-        }
-    }
-
-    private fun initializePermissionsImmediately() {
-        viewModelScope.launch {
-            try {
-                val currentPermissions = permissionService.permissionCallBackFlow.value
-                val networkState = try {
-                    connectivityObserver.observe().first()
-                } catch (e: Exception) {
-                    AppLog.d(TAG, "Network state unavailable during initialization (offline mode)")
-                    NetworkState(available = false, unAvailable = true)
-                }
-                updatePermissionsState(currentPermissions, networkState.available)
-            } catch (e: Exception) {
-                AppLog.e(TAG, "Error initializing permissions immediately", e)
-            }
-        }
-    }
-
-    private fun updatePermissionsState(permissions: GGPermissionStatusMap, isNetworkAvailable: Boolean) {
-        val networkStatus = if (isNetworkAvailable) GGPermissionState.ENABLED else GGPermissionState.DISABLED
-        val wifiSwitchStatus = permissions[GGPermissionType.WIFI_SWITCH] ?: GGPermissionState.DISABLED
-        val updatedWifiSwitchStatus = if (networkStatus == GGPermissionState.ENABLED ||
-            wifiSwitchStatus == GGPermissionState.ENABLED
-        ) GGPermissionState.ENABLED else GGPermissionState.DISABLED
-        val updatedPermissions = permissions.toMutableMap().apply {
-            put(GGPermissionType.WIFI_SWITCH, updatedWifiSwitchStatus)
-        }
-        handleIntent(BtWifiScaleSetupIntent.SetPermissions(updatedPermissions))
-    }
-
-    private fun observePermissions() {
-        viewModelScope.launch {
-            val defaultNetworkState = NetworkState(available = false, unAvailable = true)
-            val networkStateFlow = merge(
-                flowOf(defaultNetworkState),
-                connectivityObserver.observe().catch { e ->
-                    AppLog.d(TAG, "Network state unavailable (offline mode): ${e.message}")
-                    emit(defaultNetworkState)
-                },
-            )
-            combine(
-                permissionService.permissionCallBackFlow.onStart { AppLog.d(TAG, "Starting permission observation") },
-                networkStateFlow,
-            ) { permissions, networkState ->
-                updatePermissionsState(permissions, networkState.available)
-                val areRequiredPermissionsEnabled = AppPermissionsHelper.areRequiredPermissionsEnabled(
-                    state.value.permissions, setupType = DeviceSetupType.BtWifiR4,
-                )
-                if (!areRequiredPermissionsEnabled) {
-                    handlePermissionBasedErrors()
-                } else {
-                    val currentStep = state.value.currentStep
-                    if (currentStep == BtWifiSetupStep.CUSTOMIZE_SETTINGS || currentStep == BtWifiSetupStep.UPDATE_SETTINGS) {
-                        viewModelScope.launch { syncForSetupBleReconnection() }
-                    }
-                }
-            }.catch { e ->
-                AppLog.e(TAG, "Error in permission observation flow", e)
-                try {
-                    val currentPermissions = permissionService.permissionCallBackFlow.value
-                    updatePermissionsState(currentPermissions, false)
-                } catch (updateError: Exception) {
-                    AppLog.e(TAG, "Error updating permissions in offline mode", updateError)
-                }
-            }.collect { }
-        }
-    }
-
+    /**
+     * Retained on the ViewModel because [BtWifiScaleSetupViewModelTest] invokes it reflectively
+     * to simulate a permission drop; delegates to [permissionsManager].
+     */
     private fun handlePermissionBasedErrors() {
-        val areRequiredPermissionsEnabled = AppPermissionsHelper.areRequiredPermissionsEnabled(
-            state.value.permissions, setupType = DeviceSetupType.BtWifiR4,
-        )
-        if (!areRequiredPermissionsEnabled) {
-            val disabledPermissions = AppPermissionsHelper.getDisabledPermissionsForSetupType(
-                permissionMap = state.value.permissions, setupType = DeviceSetupType.BtWifiR4,
-            )
-            val isOnlyNetworkPermissionMissing = disabledPermissions.size == 1 &&
-                disabledPermissions.contains(GGPermissionType.WIFI_SWITCH)
-            when (state.value.currentStep) {
-                BtWifiSetupStep.WAKEUP -> {
-                    goToPermissionSlide()
-                    handleIntent(SetCurrentStep(BtWifiSetupStep.PERMISSIONS))
-                }
-                BtWifiSetupStep.GATHERING_NETWORK -> setGatheringNetworkFailed()
-                BtWifiSetupStep.UPDATE_SETTINGS -> {
-                    if (!isOnlyNetworkPermissionMissing) setUpdateSettingsError()
-                }
-                BtWifiSetupStep.STEP_ON,
-                BtWifiSetupStep.MEASUREMENT -> {
-                    // Bluetooth (or nearby-device / location) switched off during "One Last Step" or
-                    // while the reading is being collected must surface the "Error Collecting
-                    // Measurement" screen — mirroring the on-entry guard in observeStepChanges —
-                    // instead of leaving the user stranded on "One Last Step" (MOB-871). A missing
-                    // *network* permission alone doesn't block the BLE reading, so it's ignored here.
-                    if (!isOnlyNetworkPermissionMissing) setMeasurementFailed()
-                }
-                BtWifiSetupStep.CONNECTING_BLUETOOTH -> {
-                    // Scale is already paired/CONNECTED, so goToPermissionSlide() is a no-op
-                    // here (its guard blocks navigation once connected). If Bluetooth itself
-                    // is switched off in this window the screen would otherwise freeze, so
-                    // surface a retryable error instead. A missing network-only permission
-                    // must NOT fail BLE pairing, which doesn't need the network. (MOB-248)
-                    if (!isOnlyNetworkPermissionMissing) setConnectingBluetoothFailed()
-                }
-                BtWifiSetupStep.DUPLICATES_FOUND,
-                BtWifiSetupStep.USER_LIMIT_REACHED -> goToPermissionSlide()
-                else -> {}
-            }
-        }
-    }
-
-    private fun goToPermissionSlide() {
-        if (discoveredScale?.connectionStatus != BLEStatus.CONNECTED) {
-            handleIntent(SetCurrentStep(BtWifiSetupStep.PERMISSIONS))
-        }
-    }
-
-    private fun requestPermission(permissionType: String, isDuringStepOn: Boolean = false) {
-        if (permissionType == GGPermissionType.WIFI_SWITCH) {
-            permissionService.requestPermission(permissionType)
-            return
-        }
-        viewModelScope.launch {
-            try {
-                dialogUtility.permissionAlert(
-                    permissionType = permissionType,
-                    isScaleSetupRequest = isDuringStepOn,
-                    onRequest = { permissionService.requestPermission(permissionType) },
-                )
-            } catch (e: Exception) {
-                AppLog.e(TAG, "Error requesting permission $permissionType", e.toString())
-            }
-        }
-    }
-
-    fun permissionAccess() {
-        val currentPermissions = state.value.permissions
-        if (currentPermissions[GGPermissionType.BLUETOOTH_SWITCH] != GGPermissionState.ENABLED) {
-            handleIntent(BtWifiScaleSetupIntent.RequestPermission(GGPermissionType.BLUETOOTH_SWITCH))
-        }
-        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S) {
-            if (currentPermissions[GGPermissionType.NEARBY_DEVICE] != GGPermissionState.ENABLED) {
-                handleIntent(BtWifiScaleSetupIntent.RequestPermission(GGPermissionType.NEARBY_DEVICE))
-                return
-            }
-        } else {
-            if (currentPermissions[GGPermissionType.LOCATION_SWITCH] != GGPermissionState.ENABLED) {
-                handleIntent(BtWifiScaleSetupIntent.RequestPermission(GGPermissionType.LOCATION_SWITCH))
-            }
-            if (currentPermissions[GGPermissionType.LOCATION] != GGPermissionState.ENABLED) {
-                handleIntent(BtWifiScaleSetupIntent.RequestPermission(GGPermissionType.LOCATION))
-            }
-        }
+        permissionsManager.handlePermissionBasedErrors()
     }
 
     // --- Init helpers ---
@@ -994,127 +586,6 @@ class BtWifiScaleSetupViewModel @AssistedInject constructor(
         }
     }
 
-    private fun loadDashboardKeys() {
-        viewModelScope.launch {
-            dashboardService.getVisibleKeys().collect { dashboardKeys ->
-                handleIntent(BtWifiScaleSetupIntent.SetDashboardKeys(dashboardKeys))
-            }
-        }
-    }
-
-    private fun loadGoalProgress() {
-        viewModelScope.launch {
-            entryReadService.weightProgress().collect {
-                handleIntent(BtWifiScaleSetupIntent.SetGoalProgress(it))
-            }
-        }
-    }
-
-    // --- Error state setters ---
-
-    private fun setGatheringNetworkFailed() {
-        handleIntent(
-            BtWifiScaleSetupIntent.SetStepConnectionState(
-                BtWifiSetupStep.GATHERING_NETWORK, ConnectionState.Failed.Error,
-            ),
-        )
-    }
-
-    private fun setConnectingBluetoothFailed() {
-        // Stop the pending pairing timeout so it can't re-fire over the failed state.
-        scalePairingManager.cancelTimeout()
-        handleIntent(
-            BtWifiScaleSetupIntent.SetStepConnectionState(
-                BtWifiSetupStep.CONNECTING_BLUETOOTH, ConnectionState.Failed.Error,
-            ),
-        )
-    }
-
-    private fun setMeasurementFailed() {
-        // Stop the pending collection timeout so it can't overwrite/duplicate the failed state later.
-        measurementTimeoutJob?.cancel()
-        measurementTimeoutJob = null
-        handleIntent(
-            BtWifiScaleSetupIntent.SetStepConnectionState(BtWifiSetupStep.MEASUREMENT, ConnectionState.Failed.Error),
-        )
-        handleIntent(SetCurrentStep(BtWifiSetupStep.MEASUREMENT))
-    }
-
-    private fun setUpdateSettingsError() {
-        handleIntent(
-            BtWifiScaleSetupIntent.SetStepConnectionState(
-                BtWifiSetupStep.UPDATE_SETTINGS, ConnectionState.Failed.Error,
-            ),
-        )
-        updateSettingsTimeoutJob?.cancel()
-        updateSettingsTimeoutJob = null
-    }
-
-    // --- UI helpers ---
-
-    /**
-     * Shows a fixed-duration cosmetic "Saving..." loader after the user taps SAVE on a
-     * Customize Settings sub-page, then signals the UI to scroll back to page 0.
-     *
-     * The delay is intentionally fixed (UX-only) and not tied to actual save completion —
-     * the SAVE handler dispatches Set* intents which are pure reducer state mutations;
-     * persistence to the device happens later when the user finalizes setup via
-     * [BtWifiScaleSetupIntent.UpdateSettings]. If persistence is ever moved into this flow,
-     * gate dismissal on completion instead of [DeviceSetupConstants.DELAY_AFTER_SAVE_MS].
-     *
-     * The [BtWifiScaleSetupIntent.SetIsSaving] flag prevents double-tap re-entry while the
-     * loader is up (the SAVE button gates on `state.isSaving`). The try/finally guarantees
-     * the flag, the loader, and the scroll-back signal all clear even if the dialog service
-     * throws or the coroutine is cancelled. Fixes MA-2501.
-     */
-    private fun showSavingLoader() {
-        viewModelScope.launch {
-            handleIntent(BtWifiScaleSetupIntent.SetIsSaving(true))
-            try {
-                dialogQueueService.showLoader(DeviceSetupStrings.SaveScaleLoader)
-                delay(DeviceSetupConstants.DELAY_AFTER_SAVE_MS)
-            } finally {
-                dialogQueueService.dismissLoader()
-                handleIntent(BtWifiScaleSetupIntent.SetIsSaving(false))
-                handleIntent(BtWifiScaleSetupIntent.ScrollToRootPage)
-            }
-        }
-    }
-
-    private fun openHelpModal() {
-        dialogQueueService.enqueue(
-            DialogModel.Custom(
-                contentKey = DialogType.HelpPopup,
-                params = mapOf(
-                    "showGuide" to true,
-                    "onGuideClick" to {
-                        openProductGuide()
-                        dialogQueueService.dismissCurrent()
-                    },
-                ),
-            ),
-        )
-    }
-
-    private fun openAccucheckModel() {
-        dialogQueueService.enqueue(DialogModel.Custom(contentKey = DialogType.AccucheckModal, dismissOnBackPress = true))
-    }
-
-    private fun openBiaModel() {
-        dialogQueueService.enqueue(
-            DialogModel.Custom(
-                contentKey = DialogType.BiaModal,
-                dismissOnBackPress = true,
-                dismissOnClickOutside = true,
-            ),
-        )
-    }
-
-    private fun openProductGuide() {
-        val url = "${AppConfig.PRODUCT_URL}/${state.value.sku}"
-        openInAppBrowser(url)
-    }
-
     // --- Lifecycle ---
 
     override fun onCleared() {
@@ -1128,10 +599,7 @@ class BtWifiScaleSetupViewModel @AssistedInject constructor(
         bleManager.cancelPairing()
         scalePairingManager.cancelTimeout()
         wifiManager.cancelTimeout()
-        updateSettingsTimeoutJob?.cancel()
-        updateSettingsTimeoutJob = null
-        measurementTimeoutJob?.cancel()
-        measurementTimeoutJob = null
+        settingsManager.cancelUpdateSettingsTimeout()
+        measurementManager.cancelMeasurementTimeout()
     }
-
 }

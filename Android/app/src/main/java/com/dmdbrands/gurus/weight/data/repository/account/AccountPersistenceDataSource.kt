@@ -50,7 +50,8 @@ constructor(
   suspend fun addAccount(account: Account): Account {
     val accountEntity = AccountEntityMapper.toEntity(account)
     val existingAccount = accountDao.getAccountEntity(account.id)
-    if (existingAccount != null) {
+    val isUpdate = existingAccount != null
+    if (isUpdate) {
       // Account exists - update it instead of replacing to avoid CASCADE DELETE
       val updatedAccountEntity = accountEntity.copy(
         // Preserve any local-only fields if needed
@@ -61,6 +62,15 @@ constructor(
       accountDao.insertAccount(accountEntity)
     }
 
+    persistAccountCoreSettings(account, isUpdate)
+    persistAccountFeatureSettings(account, isUpdate)
+
+    AppLog.d(TAG, "Added account with all entity relations: ${account.id}")
+    return account
+  }
+
+  /** Upserts the weight-comp / notification / streaks / weightless settings for [account]. */
+  private suspend fun persistAccountCoreSettings(account: Account, isUpdate: Boolean) {
     // Insert WeightCompSettings entity with data from account
     val weightCompSettings =
       WeightCompSettingsEntity(
@@ -70,7 +80,7 @@ constructor(
         weightUnit = account.weightUnit.value, // Default weight unit
         isSynced = true, // New account data is already synced
       )
-    if (existingAccount != null) {
+    if (isUpdate) {
       accountDao.updateWeightCompSettings(weightCompSettings)
     } else {
       accountDao.insertWeightCompSettings(weightCompSettings)
@@ -83,7 +93,7 @@ constructor(
         shouldSendEntryNotifications = account.shouldSendEntryNotifications ?: false,
         shouldSendWeightInEntryNotifications = account.shouldSendWeightInEntryNotifications ?: false,
       )
-    if (existingAccount != null) {
+    if (isUpdate) {
       accountDao.updateNotificationSettings(notificationCompSettings)
     } else {
       accountDao.insertNotificationSettings(notificationCompSettings)
@@ -97,7 +107,7 @@ constructor(
         streakTimestamp = System.currentTimeMillis().toString(),
         isSynced = true,
       )
-    if (existingAccount != null) {
+    if (isUpdate) {
       accountDao.updateStreaksSettings(streaksSettings)
     } else {
       accountDao.insertStreaksSettings(streaksSettings)
@@ -112,11 +122,15 @@ constructor(
         weightlessWeight = account.weightlessWeight?.toFloat() ?: 0.0f,
         isSynced = true,
       )
-    if (existingAccount != null) {
+    if (isUpdate) {
       accountDao.updateWeightlessSettings(weightlessSettings)
     } else {
       accountDao.insertWeightlessSettings(weightlessSettings)
     }
+  }
+
+  /** Upserts the goal / integrations / dashboard / product settings for [account]. */
+  private suspend fun persistAccountFeatureSettings(account: Account, isUpdate: Boolean) {
     val goalEntity =
       GoalSettingsEntity(
         accountId = account.id,
@@ -126,7 +140,7 @@ constructor(
         goalPercent = account.goalPercent.toFloat(), // Will be calculated when needed
         isSynced = true,
       )
-    if (existingAccount != null) {
+    if (isUpdate) {
       accountDao.updateGoalSettings(goalEntity)
     } else {
       accountDao.insertGoalSettings(goalEntity)
@@ -142,7 +156,7 @@ constructor(
       isMFPOn = account.isMFPOn,
       isMFPValid = account.isMFPValid,
     )
-    if (existingAccount != null) {
+    if (isUpdate) {
       accountDao.updateIntegrationsSettings(integrationEntity)
     } else {
       accountDao.insertIntegrationsSettings(integrationEntity)
@@ -155,7 +169,7 @@ constructor(
         dashboardType = account.dashboardType ?: DashboardType.DASHBOARD_4_METRICS.name,
         isSynced = true,
       )
-    if (existingAccount != null) {
+    if (isUpdate) {
       accountDao.updateDashboardSettings(dashboardSettings)
     } else {
       accountDao.insertDashboardSettings(dashboardSettings)
@@ -168,13 +182,11 @@ constructor(
       measurementUnits = account.measurementUnits.value,
       isSynced = true,
     )
-    if (existingAccount != null) {
+    if (isUpdate) {
       accountDao.updateProductSettings(productSettings)
     } else {
       accountDao.insertProductSettings(productSettings)
     }
-    AppLog.d(TAG, "Added account with all entity relations: ${account.id}")
-    return account
   }
 
   /**

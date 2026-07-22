@@ -1,6 +1,7 @@
 package com.dmdbrands.gurus.weight.features.manualEntry
 
 import androidx.activity.compose.BackHandler
+import androidx.compose.foundation.ScrollState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -118,72 +119,90 @@ private fun EntryScreenContent(
       return@AppScaffold
     }
 
-    Column(
-      modifier = Modifier
-        .verticalScroll(scrollState)
-        .padding(horizontal = MeTheme.spacing.sm)
-        .padding(top = MeTheme.spacing.md)
-        .dismissKeyboardOnTap(),
-      verticalArrangement = Arrangement.Top,
-    ) {
-      when (selectedProduct) {
-        is ProductSelection.MyWeight -> WeightEntrySection(state = state)
+    EntryFormColumn(
+      selectedProduct = selectedProduct,
+      state = state,
+      scrollState = scrollState,
+      onImeClear = {
+        focusManager.clearFocus()
+        keyboardController?.hide()
+      },
+      onSave = {
+        keyboardController?.hide()
+        handleIntent(EntryIntent.Save)
+      },
+    )
+  }
+}
 
-        is ProductSelection.BloodPressure -> {
-          val bpForm = (state.activeForm as? ActiveEntryForm.BloodPressure)?.form
-          if (bpForm != null) {
-            BloodPressureSection(
-              controls = bpForm.forms.bloodPressure.controls,
-              onImeAction = {
-                focusManager.clearFocus()
-                keyboardController?.hide()
-              },
-            )
-          }
+/**
+ * The scrollable entry form for the selected product plus the single shared save button.
+ * [onImeClear] dismisses focus/keyboard for the section IME actions; [onSave] triggers a save.
+ */
+@Composable
+private fun EntryFormColumn(
+  selectedProduct: ProductSelection,
+  state: EntryState,
+  scrollState: ScrollState,
+  onImeClear: () -> Unit,
+  onSave: () -> Unit,
+) {
+  Column(
+    modifier = Modifier
+      .verticalScroll(scrollState)
+      .padding(horizontal = MeTheme.spacing.sm)
+      .padding(top = MeTheme.spacing.md)
+      .dismissKeyboardOnTap(),
+    verticalArrangement = Arrangement.Top,
+  ) {
+    when (selectedProduct) {
+      is ProductSelection.MyWeight -> WeightEntrySection(state = state)
+
+      is ProductSelection.BloodPressure -> {
+        val bpForm = (state.activeForm as? ActiveEntryForm.BloodPressure)?.form
+        if (bpForm != null) {
+          BloodPressureSection(
+            controls = bpForm.forms.bloodPressure.controls,
+            onImeAction = onImeClear,
+          )
         }
-
-        is ProductSelection.Baby -> {
-          val babyForm = (state.activeForm as? ActiveEntryForm.Baby)?.form
-          if (babyForm != null) {
-            BabyEntrySection(
-              controls = babyForm.forms.baby.controls,
-              weightUnit = state.babyWeightMode,
-              onImeAction = {
-                focusManager.clearFocus()
-                keyboardController?.hide()
-              },
-            )
-          }
-        }
-
-        // Handled above before the form column.
-        is ProductSelection.BabyScale -> Unit
       }
 
-      // Single save button for all product types
-      Spacer(modifier = Modifier.height(MeTheme.spacing.lg))
-      Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
-        AppButton(
-          enabled = state.activeForm.isValid,
-          label = EntryScreenStrings.SaveButton,
-          size = ButtonSize.Large,
-          type = ButtonType.PrimaryFilled,
-          // One shared button; id mirrors iOS's per-product save ids by product.
-          modifier = Modifier.testTag(
-            when (selectedProduct) {
-              is ProductSelection.BloodPressure -> TestTags.ManualEntry.BpSaveButton
-              is ProductSelection.Baby, is ProductSelection.BabyScale -> TestTags.ManualEntry.BabySaveButton
-              else -> TestTags.ManualEntry.SaveButton
-            },
-          ),
-          onClick = {
-            keyboardController?.hide()
-            handleIntent(EntryIntent.Save)
-          },
-        )
+      is ProductSelection.Baby -> {
+        val babyForm = (state.activeForm as? ActiveEntryForm.Baby)?.form
+        if (babyForm != null) {
+          BabyEntrySection(
+            controls = babyForm.forms.baby.controls,
+            weightUnit = state.babyWeightMode,
+            onImeAction = onImeClear,
+          )
+        }
       }
-      Spacer(modifier = Modifier.height(MeTheme.spacing.x3l))
+
+      // Handled above before the form column.
+      is ProductSelection.BabyScale -> Unit
     }
+
+    // Single save button for all product types
+    Spacer(modifier = Modifier.height(MeTheme.spacing.lg))
+    Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
+      AppButton(
+        enabled = state.activeForm.isValid,
+        label = EntryScreenStrings.SaveButton,
+        size = ButtonSize.Large,
+        type = ButtonType.PrimaryFilled,
+        // One shared button; id mirrors iOS's per-product save ids by product.
+        modifier = Modifier.testTag(
+          when (selectedProduct) {
+            is ProductSelection.BloodPressure -> TestTags.ManualEntry.BpSaveButton
+            is ProductSelection.Baby, is ProductSelection.BabyScale -> TestTags.ManualEntry.BabySaveButton
+            else -> TestTags.ManualEntry.SaveButton
+          },
+        ),
+        onClick = onSave,
+      )
+    }
+    Spacer(modifier = Modifier.height(MeTheme.spacing.x3l))
   }
 }
 

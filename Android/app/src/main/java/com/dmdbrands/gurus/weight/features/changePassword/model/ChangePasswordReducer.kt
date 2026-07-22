@@ -65,65 +65,37 @@ data class ChangePasswordFormControls(
             }
 
         /**
+         * Creates a password [FormControl] with the shared required/min/max validators used by all
+         * three change-password fields.
+         */
+        private fun createPasswordControl(): FormControl<String> =
+            FormControl.create(
+                initialValue = "",
+                validators =
+                    listOf(
+                        FormValidations.required(ChangePasswordStrings.PasswordMin),
+                        FormValidations.minLength(
+                            AppValidatorConfig.Password.MIN_LENGTH,
+                            customMessage = ChangePasswordStrings.PasswordMin,
+                            allowSpaces = true,
+                        ),
+                        FormValidations.maxLength(
+                            AppValidatorConfig.Password.MAX_LENGTH,
+                            customMessage = ChangePasswordStrings.PasswordMax,
+                            allowSpaces = true,
+                        ),
+                    ),
+            )
+
+        /**
          * Creates a new instance of ChangePasswordFormControls with default values and validations.
          */
         fun create(): ChangePasswordFormControls {
             val controls =
                 ChangePasswordFormControls(
-                    currentPassword =
-                        FormControl.create(
-                            initialValue = "",
-                            validators =
-                                listOf(
-                                    FormValidations.required(ChangePasswordStrings.PasswordMin),
-                                    FormValidations.minLength(
-                                        AppValidatorConfig.Password.MIN_LENGTH,
-                                        customMessage = ChangePasswordStrings.PasswordMin,
-                                        allowSpaces = true,
-                                    ),
-                                    FormValidations.maxLength(
-                                        AppValidatorConfig.Password.MAX_LENGTH,
-                                        customMessage = ChangePasswordStrings.PasswordMax,
-                                        allowSpaces = true,
-                                    ),
-                                ),
-                        ),
-                    newPassword =
-                        FormControl.create(
-                            initialValue = "",
-                            validators =
-                                listOf(
-                                    FormValidations.required(ChangePasswordStrings.PasswordMin),
-                                    FormValidations.minLength(
-                                      AppValidatorConfig.Password.MIN_LENGTH,
-                                      customMessage = ChangePasswordStrings.PasswordMin,
-                                      allowSpaces = true,
-                                    ),
-                                    FormValidations.maxLength(
-                                      AppValidatorConfig.Password.MAX_LENGTH,
-                                      customMessage = ChangePasswordStrings.PasswordMax,
-                                      allowSpaces = true,
-                                    ),
-                                ),
-                        ),
-                    confirmPassword =
-                        FormControl.create(
-                            initialValue = "",
-                            validators =
-                                listOf(
-                                    FormValidations.required(ChangePasswordStrings.PasswordMin),
-                                    FormValidations.minLength(
-                                      AppValidatorConfig.Password.MIN_LENGTH,
-                                      customMessage = ChangePasswordStrings.PasswordMin,
-                                      allowSpaces = true,
-                                    ),
-                                    FormValidations.maxLength(
-                                      AppValidatorConfig.Password.MAX_LENGTH,
-                                      customMessage = ChangePasswordStrings.PasswordMax,
-                                      allowSpaces = true,
-                                    ),
-                                ),
-                        ),
+                    currentPassword = createPasswordControl(),
+                    newPassword = createPasswordControl(),
+                    confirmPassword = createPasswordControl(),
                 )
 
             val formGroup = FormGroup(controls)

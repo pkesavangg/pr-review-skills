@@ -187,16 +187,7 @@ class TokenAuthenticator @Inject constructor(
     private suspend fun tokenRefresh(accountId: String?): Token? {
         val newDeferred = CompletableDeferred<Token?>()
 
-        // Under lock: either join an ongoing refresh or register ourselves as the owner
-        val deferredToAwait: CompletableDeferred<Token?>? = refreshMutex.withLock {
-            val existing = ongoingRefreshDeferred
-            if (existing != null) {
-                existing // another thread is already refreshing — await it
-            } else {
-                ongoingRefreshDeferred = newDeferred
-                null // we own the refresh
-            }
-        }
+        val deferredToAwait = acquireRefreshOwnership(newDeferred)
 
         if (deferredToAwait != null) {
             AppLog.v(TAG, "Token refresh already in progress, waiting for completion...")
@@ -244,29 +235,57 @@ class TokenAuthenticator @Inject constructor(
             newToken
 
         } catch (e: Exception) {
-            AppLog.e(TAG, "Token refresh failed for account: $accountId", e.toString())
-            refreshMutex.withLock { ongoingRefreshDeferred = null }
-
-            when (e) {
-                is java.net.UnknownHostException,
-                is java.net.SocketTimeoutException,
-                is java.io.InterruptedIOException,
-                is java.io.IOException -> {
-                    // Network problem — don't logout
-                    newDeferred.complete(null)
-                    return null
-                }
-            }
-
-            // Only logout when refresh endpoint returns 401/403
-            val httpCode = (e as? retrofit2.HttpException)?.code()
-                ?: (e.cause as? retrofit2.HttpException)?.code()
-            if (httpCode == 401 || getErrorStatus(e) == 401) {
-                logoutUser(accountId, isCurrentAccount(accountId))
-            }
-            newDeferred.complete(null)
-            null
+            handleRefreshFailure(e, accountId, newDeferred)
         }
+    }
+
+    /**
+     * Under [refreshMutex]: joins an ongoing refresh (returns its deferred to await) or registers
+     * [newDeferred] as the owner (returns null → caller performs the refresh).
+     */
+    private suspend fun acquireRefreshOwnership(
+        newDeferred: CompletableDeferred<Token?>,
+    ): CompletableDeferred<Token?>? = refreshMutex.withLock {
+        val existing = ongoingRefreshDeferred
+        if (existing != null) {
+            existing // another thread is already refreshing — await it
+        } else {
+            ongoingRefreshDeferred = newDeferred
+            null // we own the refresh
+        }
+    }
+
+    /**
+     * Cleans up ownership and completes [newDeferred] on a failed refresh. Only a 401 triggers
+     * logout; network errors are swallowed so a transient outage never logs the user out.
+     */
+    private suspend fun handleRefreshFailure(
+        e: Exception,
+        accountId: String?,
+        newDeferred: CompletableDeferred<Token?>,
+    ): Token? {
+        AppLog.e(TAG, "Token refresh failed for account: $accountId", e.toString())
+        refreshMutex.withLock { ongoingRefreshDeferred = null }
+
+        when (e) {
+            is java.net.UnknownHostException,
+            is java.net.SocketTimeoutException,
+            is java.io.InterruptedIOException,
+            is java.io.IOException -> {
+                // Network problem — don't logout
+                newDeferred.complete(null)
+                return null
+            }
+        }
+
+        // Only logout when refresh endpoint returns 401/403
+        val httpCode = (e as? retrofit2.HttpException)?.code()
+            ?: (e.cause as? retrofit2.HttpException)?.code()
+        if (httpCode == 401 || getErrorStatus(e) == 401) {
+            logoutUser(accountId, isCurrentAccount(accountId))
+        }
+        newDeferred.complete(null)
+        return null
     }
 
     /**

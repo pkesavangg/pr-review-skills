@@ -52,12 +52,12 @@ private fun EntryApiModel.toScaleEntry(accountId: String): ScaleEntry {
         unit = unit,
         impedance = impedance,
         pulse = pulse,
-        visceralFatLevel = null,
-        subcutaneousFatPercent = null,
-        proteinPercent = null,
-        skeletalMusclePercent = null,
-        bmr = null,
-        metabolicAge = null,
+        visceralFatLevel = visceralFatLevel,
+        subcutaneousFatPercent = subcutaneousFatPercent,
+        proteinPercent = proteinPercent,
+        skeletalMusclePercent = skeletalMusclePercent,
+        bmr = bmr,
+        metabolicAge = metabolicAge,
     )
     return ScaleEntry.fromScaleApiEntry(scaleApiEntry, accountId = accountId)
 }

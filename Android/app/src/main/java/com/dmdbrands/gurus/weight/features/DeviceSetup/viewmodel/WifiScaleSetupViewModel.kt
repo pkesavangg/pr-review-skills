@@ -6,20 +6,17 @@ import androidx.lifecycle.viewModelScope
 import com.dmdbrands.gurus.weight.core.config.AppConfig
 import com.dmdbrands.gurus.weight.core.network.interfaces.IConnectivityObserver
 import com.dmdbrands.gurus.weight.core.service.WifiDeviceService
-import com.dmdbrands.gurus.weight.core.service.WifiSetupInfo
 import com.dmdbrands.gurus.weight.core.service.WifiSetupType
-import com.dmdbrands.gurus.weight.core.service.WifiStatus
 import com.dmdbrands.gurus.weight.core.shared.utilities.logging.AppLog
-import com.dmdbrands.gurus.weight.domain.enum.CustomPermissionType
 import com.dmdbrands.gurus.weight.domain.interfaces.IDialogUtility
 import com.dmdbrands.gurus.weight.domain.model.common.ProductSelection
-import com.dmdbrands.gurus.weight.domain.model.storage.Device
 import com.dmdbrands.gurus.weight.domain.repository.IDeviceService
-import com.dmdbrands.gurus.weight.features.DeviceSetup.DeviceSetupConstants
 import com.dmdbrands.gurus.weight.features.DeviceSetup.enums.WifiModes
 import com.dmdbrands.gurus.weight.features.DeviceSetup.enums.WifiScaleSetupStep
+import com.dmdbrands.gurus.weight.features.DeviceSetup.manager.WifiConnectManager
+import com.dmdbrands.gurus.weight.features.DeviceSetup.manager.WifiNetworkManager
+import com.dmdbrands.gurus.weight.features.DeviceSetup.manager.WifiPermissionsManager
 import com.dmdbrands.gurus.weight.features.DeviceSetup.reducer.SetupPath
-import com.dmdbrands.gurus.weight.features.DeviceSetup.reducer.WifiScalePasswordFormControls
 import com.dmdbrands.gurus.weight.features.DeviceSetup.reducer.WifiScaleSetupIntent
 import com.dmdbrands.gurus.weight.features.DeviceSetup.reducer.WifiScaleSetupReducer
 import com.dmdbrands.gurus.weight.features.DeviceSetup.reducer.WifiScaleSetupState
@@ -28,15 +25,9 @@ import com.dmdbrands.gurus.weight.features.appPermissions.helper.AppPermissionsH
 import com.dmdbrands.gurus.weight.features.common.components.DialogType
 import com.dmdbrands.gurus.weight.features.DeviceSetup.helper.switchActiveProductAfterSetup
 import com.dmdbrands.gurus.weight.features.common.enums.DeviceSetupType
-import com.dmdbrands.gurus.weight.features.common.helper.form.FormControl
-import com.dmdbrands.gurus.weight.features.common.helper.form.FormValidations
 import com.dmdbrands.gurus.weight.features.common.model.DialogModel
-import com.dmdbrands.gurus.weight.features.common.model.DEVICES
 import com.dmdbrands.gurus.weight.features.common.model.DeviceModelInfo
-import com.dmdbrands.gurus.weight.features.common.model.Toast
-import com.dmdbrands.library.ggbluetooth.enums.GGPermissionState
 import com.dmdbrands.library.ggbluetooth.enums.GGPermissionType
-import com.dmdbrands.library.ggbluetooth.model.GGDeviceDetail
 import com.dmdbrands.library.ggbluetooth.model.GGScanResponse
 import com.greatergoods.blewrapper.GGDeviceService
 import com.greatergoods.blewrapper.GGPermissionService
@@ -46,11 +37,17 @@ import dagger.assisted.AssistedInject
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.distinctUntilChanged
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withTimeoutOrNull
 
+/**
+ * Coordinator ViewModel for the WifiScaleSetupScreen.
+ *
+ * Owns step navigation and delegates each cohesive slice to a focused collaborator:
+ * network status / SSID form / validation ([WifiNetworkManager]), scale-token / connect / save /
+ * exit ([WifiConnectManager]) and permissions / alerts ([WifiPermissionsManager]). Split from a
+ * single large ViewModel in MOB-1501 to clear detekt's LargeClass limit; behaviour-preserving.
+ */
 @HiltViewModel(
   assistedFactory = WifiScaleSetupViewModel.Factory::class,
 )
@@ -81,16 +78,50 @@ constructor(
 
   private val TAG = "WifiScaleSetupViewModel"
 
-  // WiFi setup properties
-  private var scaleToken: String? = null
-  private var wifiStatus: WifiStatus? = null
-  private var lastSsid: String? = null
-  private var mac: String? = null
-  private var connectedSsid: String? = null
-  private var connectedBssid: String? = null
   private var wifiSetupType: WifiSetupType = WifiSetupType.FIRST
-  private var isDestroyed = false
   private var isWifiSwitchingContext = false // Track if we're in WiFi switching context
+
+  private val networkManager: WifiNetworkManager = WifiNetworkManager(
+    wifiScaleService = wifiScaleService,
+    permissionService = permissionService,
+    scope = viewModelScope,
+    getState = { state.value },
+    onIntent = ::handleIntent,
+    getScaleToken = { connectManager.scaleToken },
+    onRefreshScaleToken = { connectManager.getScaleToken() },
+  )
+
+  private val connectManager: WifiConnectManager = WifiConnectManager(
+    wifiScaleService = wifiScaleService,
+    deviceService = deviceService,
+    scope = viewModelScope,
+    scaleInfo = scaleInfo,
+    getState = { state.value },
+    onIntent = ::handleIntent,
+    enqueueDialog = { dialogQueueService.enqueue(it) },
+    showLoader = { dialogQueueService.showLoader(message = it) },
+    dismissLoader = { dialogQueueService.dismissLoader() },
+    showToast = { dialogQueueService.showToast(it) },
+    navigateBackNav = { navigationService.navigateBack() },
+    switchActiveProductAfterSetup = {
+      // Auto-switch the dashboard header to the newly added scale (MOB-422).
+      productSelectionManager.switchActiveProductAfterSetup(ProductSelection.MyWeight)
+    },
+    onRequestNotificationPermission = { permissionsManager.requestPermission(GGPermissionType.NOTIFICATION) },
+  )
+
+  private val permissionsManager: WifiPermissionsManager = WifiPermissionsManager(
+    permissionService = permissionService,
+    dialogUtility = dialogUtility,
+    wifiScaleService = wifiScaleService,
+    scope = viewModelScope,
+    getState = { state.value },
+    onIntent = ::handleIntent,
+    subscribePermissions = { subscribePermissions(true) },
+    onUpdateNetworkStatus = { networkManager.updateNetworkStatus() },
+    isAllLocationPermissionGranted = { networkManager.isAllLocationPermissionGranted() },
+    enqueueDialog = { dialogQueueService.enqueue(it) },
+  )
 
   init {
     // Convert wifiSetupTypeString to WifiSetupType enum
@@ -103,12 +134,12 @@ constructor(
     // Set setup in progress when initialization starts
     deviceService.setSetupInProgress(true)
     loadScaleInfo()
-    observePermissions()
+    permissionsManager.observePermissions()
     observeStepChanges()
-    getNetworkInfo()
-    getScaleToken()
+    networkManager.getNetworkInfo()
+    connectManager.getScaleToken()
     // Start monitoring network status
-    monitorNetworkStatus()
+    networkManager.monitorNetworkStatus()
     // Observe selectedWifiMode changes and update canProceedToNext in WIFI_MODE step
     viewModelScope.launch {
       state
@@ -116,7 +147,7 @@ constructor(
         .distinctUntilChanged()
         .collect { (step, _) ->
           if (step == WifiScaleSetupStep.WIFI_MODE) {
-            val canProceed = isWifiModeSelected()
+            val canProceed = networkManager.isWifiModeSelected()
             handleIntent(WifiScaleSetupIntent.SetCanProceedToNext(canProceed))
           }
         }
@@ -144,9 +175,9 @@ constructor(
         )
 
       is WifiScaleSetupIntent.OpenHelp -> openHelpModal()
-      is WifiScaleSetupIntent.RequestPermission -> requestPermission(intent.permissionType)
+      is WifiScaleSetupIntent.RequestPermission -> permissionsManager.requestPermission(intent.permissionType)
       is WifiScaleSetupIntent.GoToWifiSettings -> goToWifiSettings()
-      is WifiScaleSetupIntent.OnGetScaleMacAddress -> onGetScaleMacAddress()
+      is WifiScaleSetupIntent.OnGetScaleMacAddress -> permissionsManager.onGetScaleMacAddress()
       else -> {}
     }
     super.handleIntent(intent)
@@ -160,23 +191,8 @@ constructor(
     handleIntent(WifiScaleSetupIntent.SetScaleSku(sku))
   }
 
-  private fun observePermissions() {
-    viewModelScope.launch {
-      subscribePermissions(true).collect { permissions ->
-        handleIntent(WifiScaleSetupIntent.SetPermissions(permissions))
-        AppPermissionsHelper.areRequiredPermissionsEnabled(permissions, setupType = DeviceSetupType.Wifi)
-        // Refresh WiFi information when permissions change to ensure WiFi name is current
-        updateNetworkStatus()
-      }
-    }
-  }
-
   /**
    * Observes step changes and triggers appropriate functions when steps change.
-   * Handles the three flows:
-   * 1. MAC setup: SCALE_INFO -> PERMISSIONS -> ACTIVATE_SCALE -> WIFI_MODE -> SWITCH_WIFI -> MAC_ADDRESS -> EXIT
-   * 2. Permissions skipped: SCALE_INFO -> WIFI_PASSWORD -> SELECT_USER -> ACTIVATE_SCALE -> WIFI_MODE -> SWITCH_WIFI -> SCALE_COUNTS -> STEP_ON -> SETUP_FINISHED
-   * 3. Normal flow: SCALE_INFO -> PERMISSIONS -> WIFI_PASSWORD -> SELECT_USER -> ACTIVATE_SCALE -> WIFI_MODE -> SWITCH_WIFI/SCALE_COUNTS -> STEP_ON -> SETUP_FINISHED
    */
   private fun observeStepChanges() {
     viewModelScope.launch {
@@ -202,19 +218,19 @@ constructor(
   private fun handleStepChange(currentStep: WifiScaleSetupStep, currentState: WifiScaleSetupState) {
     when (currentStep) {
       WifiScaleSetupStep.SCALE_INFO -> {
-        updateNetworkStatus()
+        networkManager.updateNetworkStatus()
       }
 
-      WifiScaleSetupStep.PERMISSIONS -> handlePermissionsStep()
+      WifiScaleSetupStep.PERMISSIONS -> permissionsManager.handlePermissionsStep()
 
       WifiScaleSetupStep.WIFI_PASSWORD -> {
-        updateNetworkStatus()
-        val canProceed = isWifiPasswordFormValid()
+        networkManager.updateNetworkStatus()
+        val canProceed = networkManager.isWifiPasswordFormValid()
         handleIntent(WifiScaleSetupIntent.SetCanProceedToNext(canProceed))
       }
 
       WifiScaleSetupStep.SELECT_USER -> {
-        val canProceed = isUserSelected()
+        val canProceed = networkManager.isUserSelected()
         handleIntent(WifiScaleSetupIntent.SetCanProceedToNext(canProceed))
       }
 
@@ -259,16 +275,6 @@ constructor(
     }
   }
 
-  private fun handlePermissionsStep() {
-    val areRequiredPermissionsEnabled = AppPermissionsHelper
-      .areRequiredPermissionsEnabled(state.value.permissions, setupType = DeviceSetupType.Wifi)
-    handleIntent(WifiScaleSetupIntent.SetCanProceedToNext(areRequiredPermissionsEnabled))
-    if (areRequiredPermissionsEnabled) {
-      handleIntent(WifiScaleSetupIntent.SetCurrentStep(WifiScaleSetupStep.WIFI_PASSWORD))
-    }
-    updateNetworkStatus()
-  }
-
   private fun handleWifiModeStep(currentState: WifiScaleSetupState) {
     if (currentState.isGetMACSetup || currentState.permissionsSkipped) {
       // Only AP mode available for MAC setup and permission skipped flows
@@ -276,13 +282,13 @@ constructor(
       handleIntent(WifiScaleSetupIntent.SetCanProceedToNext(canProceed))
     } else {
       // Normal flow - both modes available
-      val canProceed = isWifiModeSelected()
+      val canProceed = networkManager.isWifiModeSelected()
       handleIntent(WifiScaleSetupIntent.SetCanProceedToNext(canProceed))
     }
   }
 
   private fun handleSwitchWifiStep() {
-    val canProceed = isConnectedToScaleWifi()
+    val canProceed = networkManager.isConnectedToScaleWifi()
     if (!state.value.permissionsSkipped || state.value.isGetMACSetup) {
       handleIntent(WifiScaleSetupIntent.SetCanProceedToNext(canProceed))
     } else {
@@ -295,7 +301,7 @@ constructor(
       if (currentState.selectedWifiMode == WifiModes.AP_MODE.value) {
         viewModelScope.launch {
           try {
-            val macAddress = getMacAddress()
+            val macAddress = networkManager.getMacAddress()
             if (macAddress != null) {
               handleIntent(WifiScaleSetupIntent.SetMacAddress(macAddress))
             }
@@ -324,32 +330,30 @@ constructor(
 
   /**
    * Observes app resume events and triggers network status updates.
-   * Equivalent to TypeScript platform.resume subscription.
    */
   private fun observeAppResume() {
     viewModelScope.launch {
       AppLog.d(TAG, "App resumed - updating network status and checking permissions")
 
       // Update network status immediately on resume
-      updateNetworkStatus()
+      networkManager.updateNetworkStatus()
       // Check if we need to show permission alerts
       val currentState = state.value
       val currentStep = currentState.currentStep
-      val hasLocationPermission = isAllLocationPermissionGranted()
+      val hasLocationPermission = networkManager.isAllLocationPermissionGranted()
       if (currentStep != WifiScaleSetupStep.SCALE_INFO &&
         currentStep != WifiScaleSetupStep.PERMISSIONS &&
         !hasLocationPermission && !state.value.permissionsSkipped
       ) {
         // Delay permission alert slightly to avoid immediate display
         delay(300)
-        showPermissionRevokedAlert()
+        permissionsManager.showPermissionRevokedAlert()
       }
     }
   }
 
   /**
    * Handles skipping the current step.
-   * Equivalent to TypeScript skipHandler()
    */
   private fun onSkip() {
     if (!checkScaleToken()) {
@@ -364,7 +368,7 @@ constructor(
         onConfirm = {
           handleIntent(WifiScaleSetupIntent.SetPermissionsSkipped(true))
           if(state.value.wifiPasswordForm.ssid.value.isEmpty()){
-            clearWifiPasswordForm()
+            networkManager.clearWifiPasswordForm()
           }
           handleUserConfirmSelected(SetupPath.AP_MODE)
           handleIntent(WifiScaleSetupIntent.Next)
@@ -380,7 +384,7 @@ constructor(
     // Clear setup in progress state when exiting
     deviceService.setSetupInProgress(false)
     if (isSetupFinished) {
-      navigateBack(waitForScaleInList = true)
+      connectManager.navigateBack(waitForScaleInList = true)
       return
     }
     dialogQueueService.enqueue(
@@ -390,7 +394,7 @@ constructor(
         confirmText = DeviceSetupStrings.ExitSetupAlert.Exit,
         cancelText = DeviceSetupStrings.ExitSetupAlert.GoBack,
         onConfirm = {
-          navigateBack()
+          connectManager.navigateBack()
         },
       ),
     )
@@ -421,485 +425,7 @@ constructor(
   }
 
   /**
-   * Requests a specific permission using the PermissionService.
-   */
-  private fun requestPermission(permissionType: String) {
-    if (permissionType == CustomPermissionType.WIFI_SWITCH_LOCATION.value) {
-      // Check if location permissions are granted before allowing WiFi switch request
-      val hasLocationPermissions = isAllLocationPermissionGranted()
-      if (!hasLocationPermissions) {
-        AppLog.w(TAG, "Location permissions not granted")
-        return
-      }
-      permissionService.requestPermission(GGPermissionType.WIFI_SWITCH)
-      return
-    }
-    viewModelScope.launch {
-      try {
-        dialogUtility.permissionAlert(
-          permissionType = permissionType,
-          onRequest = {
-            permissionService.requestPermission(permissionType)
-          },
-        )
-      } catch (e: Exception) {
-        AppLog.e(TAG, "Error requesting permission ${permissionType}", e)
-      }
-    }
-  }
-
-  /**
-   * Navigates back from the setup screen.
-   * @param waitForScaleInList If true (e.g. after setup finished), waits for saved scale to appear in pairedScales before navigating so the list is not empty.
-   */
-  private fun navigateBack(waitForScaleInList: Boolean = false) {
-    viewModelScope.launch {
-      try {
-        if (waitForScaleInList) {
-          waitForScaleInPairedList(savedDevice = null, currentSku = state.value.sku)
-        }
-        navigationService.navigateBack()
-        AppLog.d(TAG, "Successfully navigated back from scale setup")
-      } catch (e: Exception) {
-        AppLog.e(TAG, "Failed to navigate back from scale setup", e)
-      }
-    }
-  }
-
-  /**
-   * Gets the scale token from the API.
-   * Equivalent to TypeScript getScaleToken()
-   */
-  private fun getScaleToken() {
-    viewModelScope.launch {
-      try {
-        val token = wifiScaleService.getScaleToken()
-        scaleToken = token
-        AppLog.d(TAG, "getScaleToken - token retrieved successfully")
-      } catch (e: Exception) {
-        AppLog.e(TAG, "getScaleToken - Error getting scale token", e)
-      }
-    }
-  }
-
-  /**
-   * Gets network information including WiFi status.
-   * Equivalent to TypeScript getNetworkInfo()
-   */
-  private fun getNetworkInfo() {
-    viewModelScope.launch {
-      try {
-        val status = wifiScaleService.getConnectedWifiInfo()
-        wifiStatus = status
-
-        // Update SSID if it changed
-        if (status.ssid.isNotEmpty()) {
-          lastSsid = status.ssid
-          handleIntent(WifiScaleSetupIntent.SetWifiSsid(status.ssid))
-          val hasLocationPermission = isAllLocationPermissionGranted()
-          if (hasLocationPermission) {
-            handleIntent(WifiScaleSetupIntent.SetWifiAutoPopulated(true))
-          }
-          updateFormValuesWithSsid(status.ssid)
-        }
-
-        handleIntent(WifiScaleSetupIntent.SetWifiStatus(status))
-        AppLog.d(TAG, "getNetworkInfo: $status")
-      } catch (e: Exception) {
-        AppLog.e(TAG, "getNetworkInfo - Error getting network info", e)
-      }
-    }
-  }
-
-  /**
-   * Updates the network status.
-   * Equivalent to TypeScript updateNetworkStatus()
-   *
-   * Permission-state transitions are handled explicitly:
-   * - Permission granted + live SSID available → auto-populate mode (isWifiAutoPopulated = true).
-   * - Permission revoked (or denied) → clear lastSsid, clear form, revert to manual-entry mode
-   *   (isWifiAutoPopulated = false) so the field is editable again.
-   * - Permission granted but no SSID yet → keep current state, do not force manual mode.
-   */
-  private fun updateNetworkStatus() {
-    viewModelScope.launch {
-      try {
-        val hasLocationPermission = isAllLocationPermissionGranted()
-        val status = wifiScaleService.getConnectedWifiInfo(hasLocationPermission)
-        wifiStatus = status
-        val currentState = state.value
-        val hasAllRequiredPermissions = AppPermissionsHelper
-          .areRequiredPermissionsEnabled(currentState.permissions, setupType = DeviceSetupType.Wifi)
-
-        if (!hasAllRequiredPermissions) {
-          handleIntent(WifiScaleSetupIntent.SetWifiStatus(status))
-          return@launch
-        }
-
-        // Permissions are granted from here on.
-        if (status.ssid.isNotEmpty()) {
-          val previousAutoFilledSsid = lastSsid
-          lastSsid = status.ssid
-          if (currentState.permissionsSkipped) {
-            // User skipped the permission screen but permissions are active.
-            // Auto-populate the field so they see the network name pre-filled,
-            // but only if they haven't already started typing their own value.
-            // Never set isWifiAutoPopulated=true here — the field must stay editable.
-            val ssidField = currentState.wifiPasswordForm.ssid
-            // dirty/touched alone is not reliable because SetWifiPasswordFormSsid
-            // marks the control dirty/touched programmatically during auto-fill.
-            // Compare the field value against the *previous* auto-filled SSID:
-            // if the user hasn't touched it, the field still holds the old auto-filled
-            // value (or is empty), so we can safely overwrite with the new SSID.
-            val userIsEditing = ssidField.value.isNotEmpty() &&
-              ssidField.value != previousAutoFilledSsid &&
-              ssidField.value != status.ssid
-            if (!userIsEditing) {
-              AppLog.d(TAG, "updateNetworkStatus - permissionsSkipped + untouched field; pre-filling SSID as editable")
-              updateFormValuesWithSsid(status.ssid)
-            } else {
-              AppLog.d(TAG, "updateNetworkStatus - permissionsSkipped + user is editing; not overriding input")
-            }
-          } else {
-            handleIntent(WifiScaleSetupIntent.SetWifiSsid(status.ssid))
-            handleIntent(WifiScaleSetupIntent.SetWifiAutoPopulated(true))
-            updateFormValuesWithSsid(status.ssid)
-          }
-        } else {
-          // Permissions granted but no SSID yet — do not flip back to manual mode,
-          // just reflect the empty status so the user is not confused.
-          handleIntent(WifiScaleSetupIntent.SetWifiSsid(""))
-          if (currentState.isWifiAutoPopulated) {
-            // Lost the network momentarily; keep lastSsid but switch to manual so the field
-            // is editable in case the network change is intentional.
-            AppLog.d(TAG, "updateNetworkStatus - Permission granted but SSID lost; switching to manual entry")
-            handleIntent(WifiScaleSetupIntent.SetWifiAutoPopulated(false))
-            clearWifiPasswordFormSsid()
-          }
-        }
-        handleIntent(WifiScaleSetupIntent.SetWifiStatus(status))
-      } catch (e: Exception) {
-        AppLog.e(TAG, "updateNetworkStatus - Error updating network status", e)
-      }
-    }
-  }
-
-  /**
-   * Monitors network status continuously, updating every 1.5 seconds.
-   * Equivalent to TypeScript monitorNetworkStatus()
-   * Runs until the ViewModel is destroyed.
-   */
-  private fun monitorNetworkStatus() {
-    viewModelScope.launch {
-      while (!isDestroyed) {
-        try {
-          updateNetworkStatus()
-          if (scaleToken.isNullOrEmpty()) {
-            getScaleToken()
-          }
-        } catch (err: Exception) {
-          AppLog.e(TAG, "monitorNetworkStatus - Error monitoring network status", err)
-        } finally {
-          // Wait 1.5 seconds before next iteration
-          delay(1500)
-        }
-      }
-      AppLog.d(TAG, "monitorNetworkStatus - Stopped monitoring (ViewModel destroyed)")
-    }
-  }
-
-  /**
-   * Gets the MAC address of the connected WiFi network.
-   * Equivalent to TypeScript getMacAddress()
-   */
-  suspend fun getMacAddress(): String? {
-    return try {
-      val ssid = wifiScaleService.getConnectedSsid()
-      val scanResults = wifiScaleService.getScanResults()
-
-      for (network in scanResults) {
-        if (network.SSID == ssid) {
-          var mac = network.BSSID
-          val hexes = mac.split(":")
-          val formattedHexes = hexes.map { hex ->
-            if (hex.length == 1) "0$hex" else hex
-          }
-          mac = formattedHexes.joinToString(":")
-          this.mac = mac
-          AppLog.d(TAG, "getMacAddress - MAC address found: $mac")
-          return mac
-        }
-      }
-
-      AppLog.w(TAG, "getMacAddress - No matching network found")
-      null
-    } catch (e: Exception) {
-      AppLog.e(TAG, "getMacAddress - Error getting MAC address", e)
-      null
-    }
-  }
-
-  /**
-   * Gets the setup information based on the setup type.
-   * Equivalent to TypeScript getSetupInfo()
-   */
-  private fun getSetupInfo(setupType: WifiSetupType): WifiSetupInfo {
-    val currentState = state.value
-    val hasPassword = !currentState.wifiPasswordForm.noPasswordNetwork.value
-    val currentUserNumber = currentState.selectedUser
-
-    return when (setupType) {
-      WifiSetupType.JOIN -> {
-        WifiSetupInfo(
-          userNumber = currentUserNumber,
-          token = scaleToken,
-        )
-      }
-
-      WifiSetupType.CHANGE -> {
-        WifiSetupInfo(
-          ssid = currentState.wifiPasswordForm.ssid.value,
-          password = if (hasPassword) currentState.wifiPasswordForm.password.value else "",
-          userNumber = currentUserNumber,
-          token = scaleToken,
-        )
-      }
-
-      else -> {
-        WifiSetupInfo(
-          ssid = currentState.wifiPasswordForm.ssid.value,
-          bssid = currentState.wifiStatus?.bssid ?: "",
-          password = if (hasPassword) currentState.wifiPasswordForm.password.value else "",
-          userNumber = currentUserNumber,
-          token = scaleToken,
-        )
-      }
-    }
-  }
-
-  /**
-   * Starts smart connect process.
-   * Equivalent to TypeScript startSmartConnect()
-   */
-  private fun startSmartConnect() {
-    viewModelScope.launch {
-      try {
-        // If permission is skipped stop the scale to pair through the normal setup
-        if (state.value.permissionsSkipped) {
-          return@launch
-        }
-
-        // Determine the correct setup type based on scaleInfo
-        val setupType = when (scaleInfo?.setupType) {
-          DeviceSetupType.EspTouchWifi -> WifiSetupType.ESP_TOUCH_WIFI
-          DeviceSetupType.Wifi -> WifiSetupType.FIRST
-          else -> WifiSetupType.FIRST // Default fallback
-        }
-
-        val info = getSetupInfo(setupType)
-        wifiScaleService.stop()
-        connectedSsid = info.ssid
-        connectedBssid = info.bssid
-
-        wifiScaleService.connect(
-          setupInfo = info,
-          setupType = setupType,
-          onSuccess = {
-            AppLog.d(TAG, "Connection successful")
-            handleIntent(WifiScaleSetupIntent.SetConnectionSuccess(true))
-          },
-          onError = { error ->
-            AppLog.e(TAG, "Connection failed: $error")
-          },
-        )
-      } catch (e: Exception) {
-        AppLog.e(TAG, "startSmartConnect - Error starting connect", e)
-      }
-    }
-  }
-
-  /**
-   * Starts AP mode process.
-   * Equivalent to TypeScript startApMode()
-   */
-  private fun startApMode(count: Int = 0) {
-    viewModelScope.launch {
-      try {
-        val info = getSetupInfo(WifiSetupType.CHANGE)
-        wifiScaleService.stop()
-        info.ssid = connectedSsid ?: info.ssid
-        info.bssid = connectedBssid ?: info.bssid
-        wifiScaleService.connect(
-          setupInfo = info,
-          setupType = WifiSetupType.CHANGE,
-          onSuccess = {
-            AppLog.d(TAG, "AP Mode connection successful")
-            handleIntent(WifiScaleSetupIntent.SetConnectionSuccess(true))
-          },
-          onError = { error ->
-            AppLog.e(TAG, "AP Mode connection failed: $error")
-          },
-        )
-      } catch (e: Exception) {
-        AppLog.e(TAG, "startApMode - Error starting AP mode", e)
-
-        // Retry logic similar to TypeScript
-        if (count < 5) {
-          delay(5000) // 5 seconds delay
-          startApMode(count + 1)
-        } else {
-          AppLog.e(TAG, "AP Mode failed after 5 attempts")
-        }
-      }
-    }
-  }
-
-  /**
-   * Checks if scale token is available.
-   * Shows a toast message if the token is not available.
-   * Equivalent to TypeScript checkScaleToken()
-   */
-  fun checkScaleToken(): Boolean {
-    if (scaleToken.isNullOrEmpty()) {
-      AppLog.w(TAG, "checkScaleToken - No scale token available")
-      dialogQueueService.showToast(
-        Toast.Simple(
-          title = DeviceSetupStrings.PermissionAlerts.InternetRequired.Title,
-          message = DeviceSetupStrings.PermissionAlerts.InternetRequired.Message,
-          action = null,
-        ),
-      )
-      return false
-    }
-    return true
-  }
-
-  /**
-   * Updates form values when SSID changes.
-   * Helper method to keep form values in sync with network status.
-   *
-   * Logic:
-   * - Fill with SSID when we have it, including when user skipped permission (so they see connected network).
-   * - When user skipped permissions and then clears the field: do not refill (respect user's clear).
-   * - If on early steps (index < 3), only fill WiFi password form
-   * - If in WiFi switching context (after SWITCH_WIFI step), only fill scale network form
-   */
-  private fun updateFormValuesWithSsid(ssid: String) {
-    val currentState = state.value
-    val currentStep = currentState.currentStep
-    val currentStepIndex = currentState.currentStepIndex
-    val arePermissionsCurrentlyEnabled = AppPermissionsHelper
-      .areRequiredPermissionsEnabled(currentState.permissions, setupType = DeviceSetupType.Wifi)
-    val shouldAutoPopulate = !currentState.permissionsSkipped || currentState.isGetMACSetup || arePermissionsCurrentlyEnabled
-    // Skip flow with permissions on: respect user's clear - don't refill if they cleared the field.
-    // We cannot rely on dirty/touched because SetWifiPasswordFormSsid marks the control
-    // dirty/touched programmatically during auto-fill. Instead, treat the field as
-    // "user cleared" when it is empty and lastSsid is non-null (meaning we previously
-    // auto-filled a value that the user then removed).
-    val ssidControl = currentState.wifiPasswordForm.ssid
-    val userClearedSsid = ssidControl.value.isEmpty() && lastSsid != null
-    if (currentState.permissionsSkipped && arePermissionsCurrentlyEnabled &&
-      userClearedSsid &&
-      currentState.wifiPasswordForm.ssid.value.isEmpty() && ssid.isNotEmpty() && currentStepIndex < 3
-    ) {
-      AppLog.d(TAG, "Skipping auto-population of WiFi form - permissions were skipped and user cleared the field")
-      return
-    }
-    if (shouldAutoPopulate) {
-      val isEarlyStep = currentStepIndex < 3
-      if (isEarlyStep) {
-        if (currentStep == WifiScaleSetupStep.WIFI_PASSWORD || currentStep == WifiScaleSetupStep.SCALE_INFO) {
-          handleIntent(WifiScaleSetupIntent.SetWifiPasswordFormSsid(ssid))
-        }
-      } else if (currentStep == WifiScaleSetupStep.SWITCH_WIFI) {
-        if( ssid.contains("gg_SmartScaleSetup",ignoreCase = true)){
-          handleIntent(WifiScaleSetupIntent.SetScaleNetworkFormSsid(ssid))
-        }
-      } else {
-        if (currentStep == WifiScaleSetupStep.WIFI_PASSWORD || currentStep == WifiScaleSetupStep.SCALE_INFO) {
-          handleIntent(WifiScaleSetupIntent.SetWifiPasswordFormSsid(ssid))
-        }
-      }
-    } else {
-      AppLog.d(TAG, "Skipping auto-population of WiFi form - permissions were skipped, not in MAC setup mode, and permissions not currently enabled")
-    }
-  }
-
-  /**
-   * Clears the WiFi password form when permissions are skipped.
-   * Resets form controls to initial state to avoid validation errors.
-   */
-  private fun clearWifiPasswordForm() {
-    // Create fresh form controls with empty initial values
-    val emptySsid = FormControl.create(
-      initialValue = "",
-      validators = listOf(FormValidations.required()),
-    )
-    val emptyPassword = FormControl.create(
-      initialValue = "",
-      validators = listOf(
-        FormValidations.required(),
-      ),
-    )
-    val noPasswordControl = FormControl.create(
-      initialValue = false,
-      validators = emptyList(),
-    )
-
-    // Update the form with fresh controls using the correct type
-    handleIntent(
-      WifiScaleSetupIntent.SetWifiPasswordForm(
-        WifiScalePasswordFormControls(
-          ssid = emptySsid,
-          password = emptyPassword,
-          noPasswordNetwork = noPasswordControl,
-        ),
-      ),
-    )
-    AppLog.d(TAG, "Cleared WiFi password form - reset all form controls to initial state")
-  }
-
-  /**
-   * Clears only the SSID field of the WiFi password form, leaving password and toggle untouched.
-   * Used when reverting from auto-populated mode to manual-entry mode after permission revocation.
-   */
-  private fun clearWifiPasswordFormSsid() {
-    val emptySsid = FormControl.create(
-      initialValue = "",
-      validators = listOf(FormValidations.required()),
-    )
-    val currentForm = state.value.wifiPasswordForm
-    handleIntent(
-      WifiScaleSetupIntent.SetWifiPasswordForm(
-        WifiScalePasswordFormControls(
-          ssid = emptySsid,
-          password = currentForm.password,
-          noPasswordNetwork = currentForm.noPasswordNetwork,
-        ),
-      ),
-    )
-    AppLog.d(TAG, "clearWifiPasswordFormSsid - reset SSID form control to empty for manual entry")
-  }
-
-  /**
-   * Checks if all location permissions are granted.
-   */
-  private fun isAllLocationPermissionGranted(): Boolean {
-    return try {
-      val permissions = permissionService.permissionCallBackFlow.value
-      val locationSwitchEnabled = permissions[GGPermissionType.LOCATION_SWITCH] == GGPermissionState.ENABLED
-      val locationEnabled = permissions[GGPermissionType.LOCATION] == GGPermissionState.ENABLED
-
-      locationSwitchEnabled && locationEnabled
-    } catch (e: Exception) {
-      AppLog.e(TAG, "Error checking location permissions", e.toString())
-      false
-    }
-  }
-
-  /**
    * Handles user confirmation selection.
-   * Equivalent to TypeScript handleUserConfirmSelected()
    */
   fun handleUserConfirmSelected(result: SetupPath) {
     AppLog.d(TAG, "handleUserConfirmSelected called with result: $result")
@@ -926,7 +452,7 @@ constructor(
 
       WifiScaleSetupStep.ACTIVATE_SCALE -> {
         handleIntent(WifiScaleSetupIntent.SetShowApMode(false))
-        startSmartConnect()
+        connectManager.startSmartConnect()
         return
       }
 
@@ -937,26 +463,26 @@ constructor(
         if(state.value.selectedWifiMode == WifiModes.AP_MODE.value){
           handleIntent(WifiScaleSetupIntent.SetShowApMode(true))
         }
-        startSmartConnect()
+        connectManager.startSmartConnect()
         return
       }
 
       WifiScaleSetupStep.SWITCH_WIFI -> {
         if (!currentState.isGetMACSetup) {
           // For normal setup, start AP mode
-          startApMode()
+          connectManager.startApMode()
         }
       }
 
       WifiScaleSetupStep.STEP_ON -> {
-        saveScale()
-        notificationPermission()
+        connectManager.saveScale()
+        connectManager.notificationPermission()
       }
 
       WifiScaleSetupStep.MAC_ADDRESS -> {
         if (currentState.isGetMACSetup) {
           // End MAC setup flow
-          startExitSetup(true)
+          connectManager.startExitSetup(true)
           return
         }
       }
@@ -964,13 +490,13 @@ constructor(
       WifiScaleSetupStep.ERROR_CODE_SELECTED -> {
         // Clear error state and exit
         handleIntent(WifiScaleSetupIntent.SetShowError(false))
-        startExitSetup(true)
+        connectManager.startExitSetup(true)
         return
       }
 
       WifiScaleSetupStep.TROUBLE_SHOOTING -> {
         // From troubleshooting, user wants to exit
-        startExitSetup(true)
+        connectManager.startExitSetup(true)
         return
       }
 
@@ -978,7 +504,7 @@ constructor(
         // Handle button text actions for backward compatibility
         when (currentState.nextButtonText) {
           "Finish", "close", "exit", "Close" -> {
-            startExitSetup(true)
+            connectManager.startExitSetup(true)
             return
           }
         }
@@ -1013,263 +539,24 @@ constructor(
       // Reset auto-populated flag so when the user returns, the SSID detection runs fresh
       // via updateNetworkStatus() rather than showing a stale auto-populated chip.
       handleIntent(WifiScaleSetupIntent.SetWifiAutoPopulated(false))
-      clearWifiPasswordFormSsid()
+      networkManager.clearWifiPasswordFormSsid()
     }
 
     AppLog.d(TAG, "Moving back from step: ${currentState.currentStep}")
   }
 
   /**
-   * Saves the scale and waits for it to appear in pairedScales before completing.
-   * Call from a coroutine; runs sequentially so navigation after this sees the updated list.
+   * Checks if scale token is available. Retained on the ViewModel because
+   * [WifiScaleSetupViewModelTest] calls it directly; delegates to [connectManager].
    */
-  private suspend fun checkAndSaveScale() {
-    val currentSku = state.value.sku
-    if (currentSku.isBlank()) {
-      AppLog.e(TAG, "SKU is blank, cannot save scale")
-      return
-    }
-    val scaleInfo = DEVICES.find { it.sku == currentSku }
-    val wifiDevice = Device(
-      device = GGDeviceDetail(
-        deviceName = scaleInfo?.productName ?: "",
-        macAddress = state.value.macAddress,
-        identifier = "",
-      ),
-      sku = currentSku,
-      deviceType = DeviceSetupType.Wifi.value,
-      nickname = scaleInfo?.productName ?: DeviceSetupStrings.UnknownScale,
-      token = scaleToken,
-      userNumber = state.value.selectedUser,
-    )
-    val savedDevice = deviceService.saveScale(wifiDevice)
-    waitForScaleInPairedList(savedDevice, currentSku)
-    // Auto-switch the dashboard header to the newly added scale (MOB-422).
-    productSelectionManager.switchActiveProductAfterSetup(ProductSelection.MyWeight)
-  }
-
-  /**
-   * Waits for the saved scale to appear in [deviceService.pairedScales] (with timeout).
-   * Ensures list is updated before we dismiss loader / navigate so the scale list is not empty.
-   */
-  private suspend fun waitForScaleInPairedList(savedDevice: Device?, currentSku: String) {
-    val listWithScale = withTimeoutOrNull(DeviceSetupConstants.WAIT_FOR_SCALE_IN_LIST_MS) {
-      deviceService.pairedScales.first { list ->
-        list.any { device ->
-          if (savedDevice != null) device.id == savedDevice.id
-          else device.sku == currentSku && device.deviceType == DeviceSetupType.Wifi.value
-        }
-      }
-    }
-    if (listWithScale == null) {
-      AppLog.w(TAG, "Timeout waiting for WiFi scale in paired list; continuing anyway")
-    }
-  }
-
-  /**
-   * Saves the scale configuration. Shows loader, awaits save and list update, then dismisses loader.
-   * Equivalent to TypeScript saveScale(). Run before navigating so scale list is populated.
-   */
-  private fun saveScale() {
-    viewModelScope.launch {
-      dialogQueueService.showLoader(message = DeviceSetupStrings.SaveScaleLoader)
-      try {
-        checkAndSaveScale()
-      } catch (e: Exception) {
-        AppLog.e(TAG, "Error saving scale", e)
-      } finally {
-        dialogQueueService.dismissLoader()
-      }
-    }
-  }
-
-  /**
-   * Starts exit setup process.
-   * Equivalent to TypeScript startExitSetup()
-   */
-  private fun startExitSetup(canExit: Boolean = false) {
-    val currentState = state.value
-    try {
-      wifiScaleService.stop()
-    } catch (e: Exception) {
-      AppLog.e(TAG, "Error stopping WiFi service", e)
-    }
-    if (currentState.saved || canExit) {
-      // Only wait for scale to appear in paired list when the scale was actually saved.
-      // Exit paths like troubleshooting / error-code / MAC-only never save a scale,
-      // so waiting would block on the full timeout and delay the FINISH response.
-      navigateBack(waitForScaleInList = currentState.saved)
-      return
-    }
-
-
-    dialogQueueService.enqueue(
-      DialogModel.Confirm(
-        title = DeviceSetupStrings.ExitSetupAlert.Title,
-        message = DeviceSetupStrings.ExitSetupAlert.Message(currentState.isConnected),
-        confirmText = DeviceSetupStrings.ExitSetupAlert.Exit,
-        cancelText = DeviceSetupStrings.ExitSetupAlert.Return,
-        onConfirm = {
-          navigateBack()
-        },
-      ),
-    )
-  }
-
-  /**
-   * Validates the WiFi password form to determine if user can proceed to next step.
-   * @return true if the form is valid and user can proceed, false otherwise
-   */
-  private fun isWifiPasswordFormValid(): Boolean {
-    val currentState = state.value
-    val form = currentState.wifiPasswordForm
-
-    // Check if SSID is selected/entered
-    val isSsidValid = form.ssid.value.isNotEmpty()
-
-    // Check if password is valid (either entered or "no password" is selected)
-    val isPasswordValid = if (form.noPasswordNetwork.value) {
-      // If "no password" is selected, password field is not required
-      true
-    } else {
-      // If "no password" is not selected, password must be entered and valid
-      form.password.value.isNotEmpty() && form.password.isValueValid()
-    }
-
-    // Check if SSID form control is valid
-    val isSsidFormValid = form.ssid.isValueValid()
-
-    AppLog.d(
-      TAG,
-      "WiFi password form validation - SSID: $isSsidValid, Password: $isPasswordValid, SSID Form: $isSsidFormValid",
-    )
-
-    return isSsidValid && isPasswordValid && isSsidFormValid
-  }
-
-  /**
-   * Validates if a user has been selected for the scale setup.
-   * @return true if a user is selected, false otherwise
-   */
-  private fun isUserSelected(): Boolean {
-    val currentState = state.value
-    val isSelected = currentState.selectedUser != null
-    AppLog.d(TAG, "User selection validation - selected user: ${currentState.selectedUser}, is valid: $isSelected")
-    return isSelected
-  }
-
-  /**
-   * Validates if a WiFi mode has been selected for the scale setup.
-   * @return true if a WiFi mode is selected, false otherwise
-   */
-  private fun isWifiModeSelected(): Boolean {
-    val currentState = state.value
-    val isSelected = !currentState.selectedWifiMode.isNullOrEmpty()
-    AppLog.d(
-      TAG,
-      "WiFi mode selection validation - selected mode: ${currentState.selectedWifiMode}, is valid: $isSelected",
-    )
-    return isSelected
-  }
-
-  /**
-   * Checks if the user is connected to the scale's WiFi network in AP mode.
-   * @return true if connected to scale's WiFi, false otherwise
-   */
-  private fun isConnectedToScaleWifi(): Boolean {
-    val currentState = state.value
-    val isConnected = currentState.scaleNetworkForm.ssid.value.isNotEmpty()
-    AppLog.d(TAG, "Scale WiFi connection check - is connected: $isConnected")
-    return isConnected
-  }
-
-  /**
-   * Shows permission revoked alert.
-   * Equivalent to TypeScript showPermissionRevokedAlert()
-   */
-  private fun showPermissionRevokedAlert() {
-    viewModelScope.launch {
-      try {
-        val currentState = state.value
-        val permissions = currentState.permissions
-
-        // Check location switch permission
-        val isLocationSwitchEnabled = permissions[GGPermissionType.LOCATION_SWITCH] == GGPermissionState.ENABLED
-        val isLocationAuthorized = permissions[GGPermissionType.LOCATION] == GGPermissionState.ENABLED
-
-        AppLog.d(
-          TAG,
-          "showPermissionRevokedAlert - Location switch: $isLocationSwitchEnabled, Location: $isLocationAuthorized",
-        )
-
-        if (!isLocationSwitchEnabled) {
-          // Show location disabled error
-          dialogQueueService.enqueue(
-            DialogModel.Alert(
-              title = DeviceSetupStrings.PermissionAlerts.LocationDisabled.Title,
-              message = DeviceSetupStrings.PermissionAlerts.LocationDisabled.Message,
-              dismissText = DeviceSetupStrings.PermissionAlerts.LocationDisabled.Enable,
-              onDismiss = {
-                // Open location settings
-                try {
-                  wifiScaleService.openWifiSettings()
-                } catch (e: Exception) {
-                  AppLog.e(TAG, "Failed to open location settings", e)
-                }
-              },
-            ),
-          )
-        } else if (!isLocationAuthorized) {
-          // Show location access disabled error
-          dialogQueueService.enqueue(
-            DialogModel.Alert(
-              title = DeviceSetupStrings.PermissionAlerts.LocationAccessDisabled.Title,
-              message = DeviceSetupStrings.PermissionAlerts.LocationAccessDisabled.Message,
-              dismissText = DeviceSetupStrings.PermissionAlerts.LocationAccessDisabled.Enable,
-              onDismiss = {
-                requestPermission(GGPermissionType.LOCATION)
-              },
-            ),
-          )
-        }
-      } catch (e: Exception) {
-        AppLog.e(TAG, "Error showing permission revoked alert", e)
-      }
-    }
-  }
-
-  private fun notificationPermission() {
-    val canRequestNotifPermission =
-      AppPermissionsHelper.canRequestNotificationPermission(state.value.permissions)
-    if (canRequestNotifPermission) {
-      requestPermission(GGPermissionType.NOTIFICATION)
-    }
-  }
-
-  /**
-   * Handles the "Get Scale MAC Address" button click
-   */
-  private fun onGetScaleMacAddress() {
-    AppLog.d(TAG, "MAC address setup requested")
-    handleIntent(WifiScaleSetupIntent.SetShouldGetMacAddress(true))
-    val currentState = state.value
-    val arePermissionsCurrentlyEnabled = AppPermissionsHelper
-      .areRequiredPermissionsEnabled(currentState.permissions, setupType = DeviceSetupType.Wifi)
-    if(arePermissionsCurrentlyEnabled){
-        handleIntent(WifiScaleSetupIntent.SetCurrentStep(WifiScaleSetupStep.ACTIVATE_SCALE))
-    }
-    else {
-      handleIntent(WifiScaleSetupIntent.SetCurrentStep(WifiScaleSetupStep.PERMISSIONS))
-    }
-    // The intent is already handled by the reducer to set MAC setup flags
-  }
+  fun checkScaleToken(): Boolean = connectManager.checkScaleToken()
 
   /**
    * Cleanup method called when ViewModel is destroyed.
    */
   override fun onCleared() {
     super.onCleared()
-    isDestroyed = true
+    networkManager.stopMonitoring()
     isWifiSwitchingContext = false // Reset WiFi switching context flag
     wifiScaleService.stop()
     deviceService.setSetupInProgress(false)

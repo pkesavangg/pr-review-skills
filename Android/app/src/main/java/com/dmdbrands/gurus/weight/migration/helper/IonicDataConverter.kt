@@ -207,71 +207,14 @@ object IonicDataConverter {
       }
 
       // Parse timestamp (keep as string for EntryEntity)
-      val timestampString = try {
-        when {
-          timestampStr.matches(Regex("\\d+")) -> {
-            // Convert epoch timestamp to ISO string
-            val date = Date(timestampStr.toLong())
-            date.toString()
-          }
+      val timestampString = parseIonicTimestamp(timestampStr)
 
-          else -> timestampStr // Use as-is
-        }
-      } catch (e: Exception) {
-        timestampStr // Use original string as fallback
-      }
-
-      // Create EntryEntity
-      val entryEntity = EntryEntity(
-        id = 0, // Will be auto-generated
-        accountId = userId,
-        entryTimestamp = timestampString,
-        serverTimestamp = timestampString, // Use same timestamp as fallback
-        opTimestamp = timestampString,
-        operationType = operationType,
-        deviceType = "scale",
-        deviceId = UUID.randomUUID().toString(),
-        unit = WeightUnit.LB, // Default to pounds
-        attempts = cursor.getIntOrNull(20) ?: 0,
-        isSynced = !isOpStack,
-      )
-
-      // Create BodyScaleEntryEntity
-      val scaleEntryEntity = BodyScaleEntryEntity(
-        id = 0, // Will be auto-generated
-        weight = weight.toDouble(),
-        bodyFat = cursor.getIntOrNull(5)?.toDouble(),
-        muscleMass = cursor.getIntOrNull(6)?.toDouble(),
-        water = cursor.getIntOrNull(7)?.toDouble(),
-        bmi = cursor.getIntOrNull(8)?.toDouble(),
-        source = cursor.getStringOrNull(9) ?: "IONIC_MIGRATION",
-      )
-
-      // Create BodyScaleEntryMetricEntity
-      val scaleEntryMetricEntity = BodyScaleEntryMetricEntity(
-        id = 0, // Will be auto-generated
-        bmr = cursor.getIntOrNull(11)?.toDouble(),
-        metabolicAge = cursor.getIntOrNull(12),
-        proteinPercent = cursor.getIntOrNull(13)?.toDouble(),
-        pulse = cursor.getIntOrNull(14),
-        skeletalMusclePercent = cursor.getIntOrNull(15)?.toDouble(),
-        subcutaneousFatPercent = cursor.getIntOrNull(16)?.toDouble(),
-        visceralFatLevel = cursor.getIntOrNull(17)?.toDouble(),
-        boneMass = cursor.getIntOrNull(18)?.toDouble(),
-        impedance = cursor.getIntOrNull(19), // Available in entry_metric, null in opStack_metric
-      )
+      val entryEntity = buildIonicEntryEntity(cursor, userId, timestampString, operationType, isOpStack)
+      val scaleEntryEntity = buildIonicScaleEntryEntity(cursor, weight)
+      val scaleEntryMetricEntity = buildIonicScaleMetricEntity(cursor)
 
       // Get unit from metrics if available (may be null for opStack entries)
-      val unit = try {
-        val unitStr = cursor.getString(20)
-        when (unitStr?.lowercase()) {
-          "kg" -> WeightUnit.KG
-          "lb", "lbs" -> WeightUnit.LB
-          else -> WeightUnit.LB // Default to pounds
-        }
-      } catch (e: Exception) {
-        WeightUnit.LB
-      }
+      val unit = parseIonicUnit(cursor)
 
       // Update entry entity with correct unit
       val updatedEntryEntity = entryEntity.copy(unit = unit)
@@ -292,6 +235,84 @@ object IonicDataConverter {
       null
     }
   }
+
+  /** Parses an Ionic timestamp column: epoch millis → Date string, otherwise used as-is. */
+  private fun parseIonicTimestamp(timestampStr: String): String =
+    try {
+      when {
+        timestampStr.matches(Regex("\\d+")) -> {
+          // Convert epoch timestamp to ISO string
+          val date = Date(timestampStr.toLong())
+          date.toString()
+        }
+
+        else -> timestampStr // Use as-is
+      }
+    } catch (e: Exception) {
+      timestampStr // Use original string as fallback
+    }
+
+  /** Resolves the weight unit from the cursor, defaulting to pounds. */
+  private fun parseIonicUnit(cursor: Cursor): WeightUnit =
+    try {
+      val unitStr = cursor.getString(20)
+      when (unitStr?.lowercase()) {
+        "kg" -> WeightUnit.KG
+        "lb", "lbs" -> WeightUnit.LB
+        else -> WeightUnit.LB // Default to pounds
+      }
+    } catch (e: Exception) {
+      WeightUnit.LB
+    }
+
+  /** Builds the migrated [EntryEntity] (unit is corrected by the caller via [parseIonicUnit]). */
+  private fun buildIonicEntryEntity(
+    cursor: Cursor,
+    userId: String,
+    timestampString: String,
+    operationType: String,
+    isOpStack: Boolean,
+  ): EntryEntity =
+    EntryEntity(
+      id = 0, // Will be auto-generated
+      accountId = userId,
+      entryTimestamp = timestampString,
+      serverTimestamp = timestampString, // Use same timestamp as fallback
+      opTimestamp = timestampString,
+      operationType = operationType,
+      deviceType = "scale",
+      deviceId = UUID.randomUUID().toString(),
+      unit = WeightUnit.LB, // Default to pounds
+      attempts = cursor.getIntOrNull(20) ?: 0,
+      isSynced = !isOpStack,
+    )
+
+  /** Builds the migrated [BodyScaleEntryEntity] core body-composition values. */
+  private fun buildIonicScaleEntryEntity(cursor: Cursor, weight: Int): BodyScaleEntryEntity =
+    BodyScaleEntryEntity(
+      id = 0, // Will be auto-generated
+      weight = weight.toDouble(),
+      bodyFat = cursor.getIntOrNull(5)?.toDouble(),
+      muscleMass = cursor.getIntOrNull(6)?.toDouble(),
+      water = cursor.getIntOrNull(7)?.toDouble(),
+      bmi = cursor.getIntOrNull(8)?.toDouble(),
+      source = cursor.getStringOrNull(9) ?: "IONIC_MIGRATION",
+    )
+
+  /** Builds the migrated [BodyScaleEntryMetricEntity] advanced-metric values. */
+  private fun buildIonicScaleMetricEntity(cursor: Cursor): BodyScaleEntryMetricEntity =
+    BodyScaleEntryMetricEntity(
+      id = 0, // Will be auto-generated
+      bmr = cursor.getIntOrNull(11)?.toDouble(),
+      metabolicAge = cursor.getIntOrNull(12),
+      proteinPercent = cursor.getIntOrNull(13)?.toDouble(),
+      pulse = cursor.getIntOrNull(14),
+      skeletalMusclePercent = cursor.getIntOrNull(15)?.toDouble(),
+      subcutaneousFatPercent = cursor.getIntOrNull(16)?.toDouble(),
+      visceralFatLevel = cursor.getIntOrNull(17)?.toDouble(),
+      boneMass = cursor.getIntOrNull(18)?.toDouble(),
+      impedance = cursor.getIntOrNull(19), // Available in entry_metric, null in opStack_metric
+    )
 
   /**
    * Helper extension to safely get nullable integers from cursor.

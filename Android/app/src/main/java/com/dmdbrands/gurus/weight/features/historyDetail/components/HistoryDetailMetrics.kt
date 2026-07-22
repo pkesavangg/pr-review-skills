@@ -135,11 +135,27 @@ private fun AnimatedMetricItem(
   )
 }
 
-@OptIn(ExperimentalLayoutApi::class)
+/**
+ * The note / edit container shown at the top of an expanded weight entry (grey block, matches the
+ * header background). Kept separate from the metrics list so the swipe-to-delete background can
+ * stretch across the header + this container only — and stop there, not over the metrics rows.
+ */
 @Composable
-fun WeightHistoryDetailItemDetails(
+fun WeightHistoryDetailNote(
   item: ScaleEntry,
   onEditEntry: () -> Unit = {},
+) {
+  WeightDetailNoteRow(item = item, onEditEntry = onEditEntry)
+}
+
+/**
+ * The body-composition metrics list shown below the note/edit container of an expanded entry.
+ * Rendered outside the swipe area (Static) so the delete background ends at the edit container.
+ */
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+fun WeightHistoryDetailMetrics(
+  item: ScaleEntry,
 ) {
   val metrics = getMetrics(fromScaleEntry(item), showMetricIcon = true)
   val navBackStack = LocalNavBackStack.current
@@ -151,7 +167,6 @@ fun WeightHistoryDetailItemDetails(
         .fillMaxWidth()
         .background(MeTheme.colorScheme.primaryBackground),
   ) {
-    WeightDetailNoteRow(item = item, onEditEntry = onEditEntry)
     // Divider under the note, separating it from the metrics list (MOB-1470).
     HorizontalDivider(
       thickness = 0.5.dp,

@@ -30,6 +30,14 @@ data class UnifiedEntry(
     val boneMass: Int? = null,
     val impedance: Int? = null,
     val unit: String? = null,
+    // Advanced R4 body-composition metrics (12-metric scales); echoed back on POST so a
+    // freshly-saved 12-metric reading isn't stripped when the response overwrites local. (MOB-1496 follow-up)
+    val visceralFatLevel: Int? = null,
+    val subcutaneousFatPercent: Int? = null,
+    val proteinPercent: Int? = null,
+    val skeletalMusclePercent: Int? = null,
+    val bmr: Int? = null,
+    val metabolicAge: Int? = null,
 
     // bp
     val systolic: Int? = null,

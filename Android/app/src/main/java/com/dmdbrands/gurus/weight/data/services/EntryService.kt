@@ -348,79 +348,18 @@ class EntryService(
         try {
             _isUpdating.value = true
 
-            // 1. Get existing unsynced entries
-            val unSyncedEntries = entryRepository.getUnSynced(accountId).toMutableList()
+            // 1-2. Build the unsynced list (existing + new + deletes), sorted by timestamp
+            val unSyncedEntries = buildUnsyncedList(accountId, newEntries, deleteOps)
 
-            // 2. Add new operations to unsynced list
-            newEntries.forEach { entry ->
-                unSyncedEntries.add(0, entry.updateEntry(entry.entry.copy(accountId = accountId)))
-            }
-            deleteOps.forEach { entry ->
-                unSyncedEntries.add(0, entry)
-            }
-            unSyncedEntries.sortBy { it.entry.entryTimestamp }
+            // 3. Push the atomic batch; returns (successful, failed) ops
+            val (successfulOperations, failedOperations) = pushUnsyncedBatch(accountId, unSyncedEntries)
 
-            // 3. Process operations
-            val successfulOperations = mutableListOf<Entry>()
-            val failedOperations = mutableListOf<Entry>()
-
-            // Build a single atomic batch for POST /v3/entries/. Each op maps to 0..N
-            // requests — a combined baby row fans out to weight + measureLength (§2.16),
-            // so we track ops (for isSynced bookkeeping) separately from the flat request list.
-            val sendable = unSyncedEntries
-                .map { op -> op to op.toUnifiedRequests() }
-                .filter { it.second.isNotEmpty() }
-            if (sendable.isNotEmpty()) {
-                try {
-                    val response = entryRepository.sendBatchToAPI(sendable.flatMap { it.second })
-                    // Whole batch succeeded — mark every sent op synced.
-                    sendable.forEach { (op, _) ->
-                        successfulOperations.add(op.updateEntry(entry = op.entry.copy(isSynced = true)))
-                    }
-                    // Persist the source rows as synced on the happy path, keyed off the request rows
-                    // (not response.entries). The atomic batch guarantees every sent op was accepted, so
-                    // an empty/partial server echo must NOT leave rows isSynced = false — otherwise they
-                    // would be re-POSTed on the next sync and duplicated server-side.
-                    EntryServiceHelper.executeOperations(
-                        entryRepository,
-                        successfulOperations,
-                        userHasOperations = true,
-                    )
-                    // Persist any server-confirmed entries (with serverTimestamp) and advance the cursor.
-                    // TODO(MOB-380): the legacy GET refetch below also advances the sync cursor. When the
-                    // unified GET replaces operation/r4, drive a single sync-cursor source to avoid
-                    // skipping cross-device entries between the two timestamp values.
-                    val confirmed = response.entries.toDomainEntries(accountId)
-                    EntryServiceHelper.executeOperations(entryRepository, confirmed)
-                    response.timestamp?.takeIf { it.isNotBlank() }?.let { accountRepository.updateSyncTimeStamp(it) }
-                } catch (e: Exception) {
-                    // Atomic failure — the whole batch is rolled back server-side; leave every
-                    // op unsynced (attempts++) so the entire batch is retried on the next sync.
-                    sendable.forEach { (op, _) ->
-                        failedOperations.add(
-                            op.updateEntry(
-                                entry = op.entry.copy(
-                                    isSynced = false,
-                                    attempts = op.entry.attempts.plus(1),
-                                ),
-                            ),
-                        )
-                    }
-                    AppLog.e(TAG, "Atomic batch send failed; whole batch left unsynced for retry", e)
-                }
-            }
-
-            if (failedOperations.isNotEmpty()) {
-                EntryServiceHelper.executeOperations(
-                    entryRepository,
-                    failedOperations,
-                    userHasOperations = true,
-                )
-            }
-
-            // Try local integration for create operations
+            // Try local integration for create operations.
+            // ignoreCase: weight ops use "CREATE" (OperationType.CREATE.name) but BP/baby ops use
+            // lowercase "create", so a case-sensitive check silently skipped BP → it never synced
+            // to Health Connect. (operationType case asymmetry — MOB-1498)
             newEntries.forEach { operation ->
-                if (operation.entry.operationType == OperationType.CREATE.name) {
+                if (operation.entry.operationType.equals(OperationType.CREATE.name, ignoreCase = true)) {
                     tryLocalIntegration(operation)
                 }
             }
@@ -428,58 +367,158 @@ class EntryService(
             // 4. Capture last valid operation for goal alert
             val lastValidOperation =
                 (successfulOperations + failedOperations)
-                    .filter { it.entry.operationType == OperationType.CREATE.name }
+                    .filter { it.entry.operationType.equals(OperationType.CREATE.name, ignoreCase = true) }
                     .maxByOrNull { it.entry.entryTimestamp }
 
             // 5. Pull delta from unified /v3/entries/ (sync mode) — MOB-380.
-            // Falls back to legacy operation/r4 GET if the unified endpoint is unavailable.
-            val operationCount = entryRepository.getOperationCount(accountId)
-            // Pull baby profiles first so any incoming baby entry can satisfy the
-            // baby_entry → baby_profile foreign key (MOB-598). Isolated so a baby-profile
-            // failure never blocks weight/BP sync.
-            try {
-                babyProfileRepository.refresh(accountId)
-            } catch (e: Exception) {
-                AppLog.e(TAG, "Baby profile refresh before entry sync failed", e)
-            }
-            try {
-                val syncTimeStamp = accountRepository.getSyncTimeStamp().first()
-                val response = entryRepository.getEntriesSync(start = syncTimeStamp)
-                val domainEntries = response.entries.toDomainEntries(accountId)
-                if (domainEntries.isNotEmpty()) {
-                    EntryServiceHelper.executeOperations(entryRepository, domainEntries)
-                }
-                response.timestamp?.takeIf { it.isNotBlank() }?.let { accountRepository.updateSyncTimeStamp(it) }
-                AppLog.d(TAG, "Unified sync: ${domainEntries.size} entries applied, cursor=${response.timestamp}")
-            } catch (e: Exception) {
-                AppLog.e(TAG, "Unified sync GET failed, persisting placeholders for retry", e)
-                EntryServiceHelper.executeOperations(
-                    entryRepository,
-                    successfulOperations,
-                    userHasOperations = operationCount > 0,
-                    arePlaceholders = true,
-                )
-            }
+            pullEntriesDelta(accountId, successfulOperations)
 
             // 7. API sync done: update timestamp, clear loader
             _lastUpdated.value = System.currentTimeMillis()
             _isUpdating.value = false
 
             // 8. Handle goal alerts
-            if (lastValidOperation != null && lastValidOperation is ScaleEntry) {
-                val operationWeight = lastValidOperation.scale.scaleEntry.weight
-                appScope.launch {
-                    try {
-                        delay(GOAL_ALERT_DELAY_MS)
-                        goalService.showGoalCompletionAlert(operationWeight * WEIGHT_CONVERSION_FACTOR)
-                    } catch (err: Exception) {
-                        AppLog.e(TAG, "syncOperations - unable to set Goal met", err)
-                    }
-                }
-            }
+            maybeShowGoalAlert(lastValidOperation)
         } catch (e: Exception) {
             AppLog.e(TAG, "Error in syncOperations", e)
             _isUpdating.value = false
+        }
+    }
+
+    /** Builds the unsynced operation list: existing unsynced + new entries + deletes, timestamp-sorted. */
+    private suspend fun buildUnsyncedList(
+        accountId: String,
+        newEntries: List<Entry>,
+        deleteOps: List<Entry>,
+    ): List<Entry> {
+        // 1. Get existing unsynced entries
+        val unSyncedEntries = entryRepository.getUnSynced(accountId).toMutableList()
+
+        // 2. Add new operations to unsynced list
+        newEntries.forEach { entry ->
+            unSyncedEntries.add(0, entry.updateEntry(entry.entry.copy(accountId = accountId)))
+        }
+        deleteOps.forEach { entry ->
+            unSyncedEntries.add(0, entry)
+        }
+        unSyncedEntries.sortBy { it.entry.entryTimestamp }
+        return unSyncedEntries
+    }
+
+    /**
+     * Sends the unsynced entries as one atomic POST /v3/entries/ batch. Returns the
+     * (successful, failed) operation lists; on atomic failure the whole batch is left unsynced.
+     */
+    private suspend fun pushUnsyncedBatch(
+        accountId: String,
+        unSyncedEntries: List<Entry>,
+    ): Pair<List<Entry>, List<Entry>> {
+        val successfulOperations = mutableListOf<Entry>()
+        val failedOperations = mutableListOf<Entry>()
+
+        // Build a single atomic batch for POST /v3/entries/. Each op maps to 0..N
+        // requests — a combined baby row fans out to weight + measureLength (§2.16),
+        // so we track ops (for isSynced bookkeeping) separately from the flat request list.
+        val sendable = unSyncedEntries
+            .map { op -> op to op.toUnifiedRequests() }
+            .filter { it.second.isNotEmpty() }
+        if (sendable.isNotEmpty()) {
+            try {
+                val response = entryRepository.sendBatchToAPI(sendable.flatMap { it.second })
+                // Whole batch succeeded — mark every sent op synced.
+                sendable.forEach { (op, _) ->
+                    successfulOperations.add(op.updateEntry(entry = op.entry.copy(isSynced = true)))
+                }
+                // Persist the source rows as synced on the happy path, keyed off the request rows
+                // (not response.entries). The atomic batch guarantees every sent op was accepted, so
+                // an empty/partial server echo must NOT leave rows isSynced = false — otherwise they
+                // would be re-POSTed on the next sync and duplicated server-side.
+                EntryServiceHelper.executeOperations(
+                    entryRepository,
+                    successfulOperations,
+                    userHasOperations = true,
+                )
+                // Persist any server-confirmed entries (with serverTimestamp) and advance the cursor.
+                // TODO(MOB-380): the legacy GET refetch below also advances the sync cursor. When the
+                // unified GET replaces operation/r4, drive a single sync-cursor source to avoid
+                // skipping cross-device entries between the two timestamp values.
+                val confirmed = response.entries.toDomainEntries(accountId)
+                EntryServiceHelper.executeOperations(entryRepository, confirmed)
+                response.timestamp?.takeIf { it.isNotBlank() }?.let { accountRepository.updateSyncTimeStamp(it) }
+            } catch (e: Exception) {
+                // Atomic failure — the whole batch is rolled back server-side; leave every
+                // op unsynced (attempts++) so the entire batch is retried on the next sync.
+                sendable.forEach { (op, _) ->
+                    failedOperations.add(
+                        op.updateEntry(
+                            entry = op.entry.copy(
+                                isSynced = false,
+                                attempts = op.entry.attempts.plus(1),
+                            ),
+                        ),
+                    )
+                }
+                AppLog.e(TAG, "Atomic batch send failed; whole batch left unsynced for retry", e)
+            }
+        }
+
+        if (failedOperations.isNotEmpty()) {
+            EntryServiceHelper.executeOperations(
+                entryRepository,
+                failedOperations,
+                userHasOperations = true,
+            )
+        }
+        return successfulOperations to failedOperations
+    }
+
+    /**
+     * Pulls the delta from unified /v3/entries/ (sync mode) — MOB-380 — after refreshing baby
+     * profiles. On failure, persists [successfulOperations] as placeholders for retry.
+     */
+    private suspend fun pullEntriesDelta(accountId: String, successfulOperations: List<Entry>) {
+        // Falls back to legacy operation/r4 GET if the unified endpoint is unavailable.
+        val operationCount = entryRepository.getOperationCount(accountId)
+        // Pull baby profiles first so any incoming baby entry can satisfy the
+        // baby_entry → baby_profile foreign key (MOB-598). Isolated so a baby-profile
+        // failure never blocks weight/BP sync.
+        try {
+            babyProfileRepository.refresh(accountId)
+        } catch (e: Exception) {
+            AppLog.e(TAG, "Baby profile refresh before entry sync failed", e)
+        }
+        try {
+            val syncTimeStamp = accountRepository.getSyncTimeStamp().first()
+            val response = entryRepository.getEntriesSync(start = syncTimeStamp)
+            val domainEntries = response.entries.toDomainEntries(accountId)
+            if (domainEntries.isNotEmpty()) {
+                EntryServiceHelper.executeOperations(entryRepository, domainEntries)
+            }
+            response.timestamp?.takeIf { it.isNotBlank() }?.let { accountRepository.updateSyncTimeStamp(it) }
+            AppLog.d(TAG, "Unified sync: ${domainEntries.size} entries applied, cursor=${response.timestamp}")
+        } catch (e: Exception) {
+            AppLog.e(TAG, "Unified sync GET failed, persisting placeholders for retry", e)
+            EntryServiceHelper.executeOperations(
+                entryRepository,
+                successfulOperations,
+                userHasOperations = operationCount > 0,
+                arePlaceholders = true,
+            )
+        }
+    }
+
+    /** Fires the delayed goal-completion alert when the last create op is a weight reading. */
+    private fun maybeShowGoalAlert(lastValidOperation: Entry?) {
+        if (lastValidOperation != null && lastValidOperation is ScaleEntry) {
+            val operationWeight = lastValidOperation.scale.scaleEntry.weight
+            appScope.launch {
+                try {
+                    delay(GOAL_ALERT_DELAY_MS)
+                    goalService.showGoalCompletionAlert(operationWeight * WEIGHT_CONVERSION_FACTOR)
+                } catch (err: Exception) {
+                    AppLog.e(TAG, "syncOperations - unable to set Goal met", err)
+                }
+            }
         }
     }
 
@@ -509,6 +548,12 @@ class EntryService(
                 } else {
                     AppLog.w(TAG, "Could not convert entry to PeriodBodyScaleSummary")
                 }
+            } else if (entry is BpmEntry) {
+                // Blood-pressure readings weren't pushed incrementally (only weight was), so a manual
+                // BP entry only reached Health Connect on the next full re-sync. Push it here too so
+                // it syncs on save, matching the weight path (MOB-1498).
+                healthConnectService.syncEntries(listOf(entry))
+                AppLog.d(TAG, "Successfully synced BP entry to Health Connect")
             }
         } catch (err: Exception) {
             AppLog.e(TAG, "Error syncing to Health Connect", err)

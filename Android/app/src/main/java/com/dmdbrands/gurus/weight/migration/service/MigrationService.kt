@@ -223,21 +223,7 @@ class MigrationService @Inject constructor(
       val modelStateMap = CapacitorStorageHelper.locateAndReadIntegrationSettings(context, "outOfSyncModalState")
 
       // Parse JSON integration status data
-      val integrationStatusMap =
-        CapacitorStorageHelper.locateAndReadIntegrationSettings(context, "healthServerIntegration")
-          .mapValues { (_, integrationStatusString) ->
-            try {
-              AppLog.i(TAG, integrationStatusString.toString())
-              val gson = GsonBuilder()
-                .registerTypeAdapter(IntegratedDeviceInfo::class.java, IntegratedDeviceInfoAdapter())
-                .registerTypeAdapter(Preferences::class.java, PreferencesAdapter())
-                .create()
-              gson.fromJson(integrationStatusString, IntegratedDeviceInfo::class.java)
-            } catch (e: Exception) {
-              AppLog.e(TAG, "Failed to parse integration status: ${e.message}")
-              null
-            }
-          }
+      val integrationStatusMap = parseIntegrationStatusMap(context)
       val grantedPermissionMap =
         CapacitorStorageHelper.locateAndReadIntegrationSettings(context, "healthConnectPermissionList")
 
@@ -263,18 +249,17 @@ class MigrationService @Inject constructor(
       }
 
       // Create consolidated IonicHealthConnectData for each account key
-      val result = keysToMigrate.associateWith { key ->
-        IonicHealthConnectData(
-          assignedTo = assignedToMap[key] ?: "",
-          integrated = integratedMap[key] ?: "",
-          alertSeen = alertSeenMap[key] ?: "",
-          open = openMap[key] ?: "",
-          outOfSync = outOfSyncMap[key] ?: "",
-          modalState = modelStateMap[key] ?: "",
-          integrationStatus = integrationStatusMap[key],
-          grantedPermission = grantedPermissionMap[key] ?: "",
-        )
-      }
+      val result = buildConsolidatedIntegrationData(
+        keysToMigrate = keysToMigrate,
+        assignedToMap = assignedToMap,
+        integratedMap = integratedMap,
+        alertSeenMap = alertSeenMap,
+        openMap = openMap,
+        outOfSyncMap = outOfSyncMap,
+        modelStateMap = modelStateMap,
+        integrationStatusMap = integrationStatusMap,
+        grantedPermissionMap = grantedPermissionMap,
+      )
 
       // Save all consolidated integration settings to the database
       migrationRepository.saveIntegrationSettings(result)
@@ -283,6 +268,49 @@ class MigrationService @Inject constructor(
       AppLog.e(TAG, "Integration settings migration failed: ${e.message}")
     }
   }
+
+  /** Reads + JSON-parses the `healthServerIntegration` map into [IntegratedDeviceInfo] values. */
+  private fun parseIntegrationStatusMap(context: Context): Map<String, IntegratedDeviceInfo?> =
+    CapacitorStorageHelper.locateAndReadIntegrationSettings(context, "healthServerIntegration")
+      .mapValues { (_, integrationStatusString) ->
+        try {
+          AppLog.i(TAG, integrationStatusString.toString())
+          val gson = GsonBuilder()
+            .registerTypeAdapter(IntegratedDeviceInfo::class.java, IntegratedDeviceInfoAdapter())
+            .registerTypeAdapter(Preferences::class.java, PreferencesAdapter())
+            .create()
+          gson.fromJson(integrationStatusString, IntegratedDeviceInfo::class.java)
+        } catch (e: Exception) {
+          AppLog.e(TAG, "Failed to parse integration status: ${e.message}")
+          null
+        }
+      }
+
+  /** Consolidates the per-key Health Connect setting maps into [IonicHealthConnectData] per account. */
+  @Suppress("LongParameterList")
+  private fun buildConsolidatedIntegrationData(
+    keysToMigrate: List<String>,
+    assignedToMap: Map<String, String>,
+    integratedMap: Map<String, String>,
+    alertSeenMap: Map<String, String>,
+    openMap: Map<String, String>,
+    outOfSyncMap: Map<String, String>,
+    modelStateMap: Map<String, String>,
+    integrationStatusMap: Map<String, IntegratedDeviceInfo?>,
+    grantedPermissionMap: Map<String, String>,
+  ): Map<String, IonicHealthConnectData> =
+    keysToMigrate.associateWith { key ->
+      IonicHealthConnectData(
+        assignedTo = assignedToMap[key] ?: "",
+        integrated = integratedMap[key] ?: "",
+        alertSeen = alertSeenMap[key] ?: "",
+        open = openMap[key] ?: "",
+        outOfSync = outOfSyncMap[key] ?: "",
+        modalState = modelStateMap[key] ?: "",
+        integrationStatus = integrationStatusMap[key],
+        grantedPermission = grantedPermissionMap[key] ?: "",
+      )
+    }
 
   /**
    * Migrates per-account operations sync timestamp (timestampkey-{userId}) from Capacitor Storage

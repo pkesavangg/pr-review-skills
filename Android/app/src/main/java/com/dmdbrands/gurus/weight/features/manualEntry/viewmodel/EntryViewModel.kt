@@ -457,6 +457,40 @@ constructor(
     }
   }
 
+  private fun buildBpmEntry(controls: BloodPressureFormControls, accountId: String): BpmEntry {
+    val systolic = controls.systolic.value.toIntOrNull() ?: 0
+    val diastolic = controls.diastolic.value.toIntOrNull() ?: 0
+    val pulse = controls.pulse.value.toIntOrNull() ?: 0
+    val meanArterial = ((systolic + 2 * diastolic) / 3).toString()
+    val note = controls.notes.value.ifBlank { null }
+
+    val bpmEntryEntity = BpmEntryEntity(
+      id = 0L,
+      systolic = systolic,
+      diastolic = diastolic,
+      pulse = pulse,
+      meanArterial = meanArterial,
+      note = note,
+      // Manual entry → mark the origin so it's recognised as editable in History even before
+      // it syncs (a device-synced reading carries its own source from the server). (MOB-1173)
+      source = EntrySource.MANUAL.value,
+    )
+    val entryEntity = EntryEntity(
+      accountId = accountId,
+      // Persist the user's chosen date/time from the form, not "now" — otherwise a back-dated
+      // reading was silently stamped with the current time and mis-grouped in History (MOB-1427).
+      // Matches the weight (EntryHelper.toScaleEntry) and baby (buildBabyEntry) save paths.
+      entryTimestamp = DateTimeConverter.timestampToIso(controls.dateTime.value.getTimestamp()),
+      operationType = "create",
+      deviceType = "manual",
+      deviceId = "",
+    )
+    return BpmEntry(
+      entry = entryEntity,
+      bpmEntry = bpmEntryEntity,
+    )
+  }
+
   private fun saveBloodPressureEntry() {
     val bpForm = (_state.value.activeForm as? ActiveEntryForm.BloodPressure)?.form ?: return
     dialogQueueService.showLoader(message = DashboardString.Loader.save)
@@ -464,43 +498,13 @@ constructor(
       val accountId = accountService.activeAccountFlow.first()?.id ?: return@launch
       try {
         val controls = bpForm.forms.bloodPressure.controls
-        val systolic = controls.systolic.value.toIntOrNull() ?: 0
-        val diastolic = controls.diastolic.value.toIntOrNull() ?: 0
-        val pulse = controls.pulse.value.toIntOrNull() ?: 0
-        val meanArterial = ((systolic + 2 * diastolic) / 3).toString()
-        val note = controls.notes.value.ifBlank { null }
-
-        val bpmEntryEntity = BpmEntryEntity(
-          id = 0L,
-          systolic = systolic,
-          diastolic = diastolic,
-          pulse = pulse,
-          meanArterial = meanArterial,
-          note = note,
-          // Manual entry → mark the origin so it's recognised as editable in History even before
-          // it syncs (a device-synced reading carries its own source from the server). (MOB-1173)
-          source = EntrySource.MANUAL.value,
-        )
-        val entryEntity = EntryEntity(
-          accountId = accountId,
-          // Persist the user's chosen date/time from the form, not "now" — otherwise a back-dated
-          // reading was silently stamped with the current time and mis-grouped in History (MOB-1427).
-          // Matches the weight (EntryHelper.toScaleEntry) and baby (buildBabyEntry) save paths.
-          entryTimestamp = DateTimeConverter.timestampToIso(controls.dateTime.value.getTimestamp()),
-          operationType = "create",
-          deviceType = "manual",
-          deviceId = "",
-        )
-        val bpmEntry = BpmEntry(
-          entry = entryEntity,
-          bpmEntry = bpmEntryEntity,
-        )
+        val bpmEntry = buildBpmEntry(controls, accountId)
         entryService.addEntry(entry = bpmEntry)
         analyticsService.logEvent(IAnalyticsService.Events.MANUAL_ENTRY_CREATED)
         showSavedToLogToast(
-          reading = "$systolic/$diastolic",
+          reading = "${bpmEntry.bpmEntry.systolic}/${bpmEntry.bpmEntry.diastolic}",
           type = ProductType.BLOOD_PRESSURE,
-          entryTimestamp = entryEntity.entryTimestamp,
+          entryTimestamp = bpmEntry.entry.entryTimestamp,
         )
         // Reset form
         handleIntent(

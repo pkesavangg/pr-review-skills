@@ -88,6 +88,99 @@ class UnifiedEntryMapperTest {
         assertThat(req.diastolic).isNull()
     }
 
+    // ── 12-metric R4 round-trip (MOB-1496 / PR #2291) ────────────────────────────
+    // Regression guard: the 6 advanced R4 metrics (visceralFatLevel, subcutaneousFatPercent,
+    // proteinPercent, skeletalMusclePercent, bmr, metabolicAge) were previously hardcoded to null
+    // in the unified /v3/entries DTOs, so a 12-metric weight reading lost them on sync. This proves
+    // all 12 metrics survive the write mapper (toUnifiedRequest) AND the read mapper (toDomainEntry).
+
+    /** A ScaleApiEntry carrying all 12 metrics (6 base body-comp + 6 advanced R4), unit = lb. */
+    private fun twelveMetricApi() = ScaleApiEntry(
+        operationType = "create",
+        entryTimestamp = TIMESTAMP,
+        serverTimestamp = TIMESTAMP,
+        weight = 750,
+        bodyFat = 200,
+        muscleMass = 550,
+        boneMass = 30,
+        water = 500,
+        bmi = 240,
+        source = "manual",
+        unit = WeightUnit.LB.value,
+        impedance = 480,
+        pulse = 72,
+        visceralFatLevel = 120,
+        subcutaneousFatPercent = 150,
+        proteinPercent = 180,
+        skeletalMusclePercent = 450,
+        bmr = 1_500,
+        metabolicAge = 30,
+    )
+
+    @Test
+    fun `12-metric weight reading round-trips through the mappers without dropping R4 fields`() {
+        val original = twelveMetricApi()
+        val scaleEntry = ScaleEntry.fromScaleApiEntry(original, accountId = ACCOUNT_ID)
+
+        // WRITE mapper: ScaleEntry → UnifiedEntryRequest must carry every metric.
+        val req = scaleEntry.toUnifiedRequest()
+        assertThat(req.category).isEqualTo(EntryCategory.WEIGHT.value)
+        // 6 base body-composition metrics.
+        assertThat(req.weight).isEqualTo(750)
+        assertThat(req.bodyFat).isEqualTo(200)
+        assertThat(req.muscleMass).isEqualTo(550)
+        assertThat(req.water).isEqualTo(500)
+        assertThat(req.bmi).isEqualTo(240)
+        assertThat(req.boneMass).isEqualTo(30)
+        // 6 advanced R4 metrics — the fields the regression dropped.
+        assertThat(req.visceralFatLevel).isEqualTo(120)
+        assertThat(req.subcutaneousFatPercent).isEqualTo(150)
+        assertThat(req.proteinPercent).isEqualTo(180)
+        assertThat(req.skeletalMusclePercent).isEqualTo(450)
+        assertThat(req.bmr).isEqualTo(1_500)
+        assertThat(req.metabolicAge).isEqualTo(30)
+
+        // READ mapper: the server echoes the same 12 values back; map to domain and re-extract.
+        val echoed = UnifiedEntry(
+            category = req.category,
+            operationType = req.operationType,
+            entryTimestamp = req.entryTimestamp,
+            serverTimestamp = TIMESTAMP,
+            weight = req.weight,
+            bodyFat = req.bodyFat,
+            muscleMass = req.muscleMass,
+            water = req.water,
+            bmi = req.bmi,
+            boneMass = req.boneMass,
+            impedance = req.impedance,
+            unit = req.unit,
+            pulse = req.pulse,
+            source = req.source,
+            visceralFatLevel = req.visceralFatLevel,
+            subcutaneousFatPercent = req.subcutaneousFatPercent,
+            proteinPercent = req.proteinPercent,
+            skeletalMusclePercent = req.skeletalMusclePercent,
+            bmr = req.bmr,
+            metabolicAge = req.metabolicAge,
+        )
+
+        val roundTripped = (echoed.toDomainEntry(ACCOUNT_ID) as ScaleEntry).toScaleApiEntry()
+
+        // All 12 metrics survive the full write→read round-trip unchanged.
+        assertThat(roundTripped.weight).isEqualTo(original.weight)
+        assertThat(roundTripped.bodyFat).isEqualTo(original.bodyFat)
+        assertThat(roundTripped.muscleMass).isEqualTo(original.muscleMass)
+        assertThat(roundTripped.water).isEqualTo(original.water)
+        assertThat(roundTripped.bmi).isEqualTo(original.bmi)
+        assertThat(roundTripped.boneMass).isEqualTo(original.boneMass)
+        assertThat(roundTripped.visceralFatLevel).isEqualTo(original.visceralFatLevel)
+        assertThat(roundTripped.subcutaneousFatPercent).isEqualTo(original.subcutaneousFatPercent)
+        assertThat(roundTripped.proteinPercent).isEqualTo(original.proteinPercent)
+        assertThat(roundTripped.skeletalMusclePercent).isEqualTo(original.skeletalMusclePercent)
+        assertThat(roundTripped.bmr).isEqualTo(original.bmr)
+        assertThat(roundTripped.metabolicAge).isEqualTo(original.metabolicAge)
+    }
+
     // ── BpmEntry → request ───────────────────────────────────────────────────────
 
     @Test
