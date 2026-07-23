@@ -144,14 +144,26 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
                         guard let self = self else { return }
                         Task { @MainActor in
                             let accountChanged = self.lastAccountId != nil && self.lastAccountId != accountId
+                            let previousAccountId = self.lastAccountId
                             self.lastAccountId = accountId
 
+                            self.logger.log(
+                                level: .info,
+                                tag: "AcctFlowDebug",
+                                message: "[EntrySvc] activeAccount emit. prev=\(previousAccountId ?? "nil"), "
+                                    + "new=\(accountId ?? "nil"), willReload=\(accountChanged && accountId != nil)"
+                            )
                             if accountChanged, accountId != nil {
                                 self.invalidateSummaryCaches()
                                 self.babySummaryCacheByProfile.removeAll()
                                 try? await self.clearLastSyncTimestamp()
                                 await self.syncAllEntriesWithRemote()
                                 await self.loadDashboardData(entryType: .scale)
+                                self.logger.log(
+                                    level: .info,
+                                    tag: "AcctFlowDebug",
+                                    message: "[EntrySvc] reloaded entries for accountId=\(accountId ?? "nil")"
+                                )
                             }
                         }
                     }

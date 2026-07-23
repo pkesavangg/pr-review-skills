@@ -234,6 +234,11 @@ class BottomTabBarViewModel: ObservableObject {
         $selectedTab
             .dropFirst()
             .sink { [weak self] tab in
+                self?.logger.log(
+                    level: .debug,
+                    tag: "AcctFlowDebug",
+                    message: "[Tabs] selectedTab changed → \(tab.rawValue)"
+                )
                 if tab == .dash {
                     Task { [weak self] in
                         await self?.checkSetGoalCardPrompt()

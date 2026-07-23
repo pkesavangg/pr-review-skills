@@ -538,6 +538,12 @@ class DashboardStore: ObservableObject, DashboardStateProviding {
             .removeDuplicates()
             .dropFirst()
             .sink { [weak self] account in
+                self?.logger.log(
+                    level: .info,
+                    tag: "AcctFlowDebug",
+                    message: "[Dashboard] activeAccount accountId emit → \(account ?? "nil"), "
+                        + "willReload=\(account != nil)"
+                )
                 if account != nil {
                     // MOB-1726: a new account session re-arms the first-login skeleton guard, so its
                     // (possibly empty) local store shows the skeleton during its own initial sync.

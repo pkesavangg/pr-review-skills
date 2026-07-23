@@ -74,8 +74,12 @@ struct PasswordStepView: View {
                         signupStore.touchAndValidate(field: .zipCode)
                         focusedField = nil // Clear focus
 
+                        // The password step creates the account — mirror the CREATE button
+                        // (SignupScreen footer). Using moveToNextStep() here advanced to the
+                        // Profile Ready slide WITHOUT creating the account, so Get Started then
+                        // fell into recoverFromFinalizeWithoutAccount() and bounced back here.
                         if signupStore.isNextEnabled {
-                            signupStore.moveToNextStep()
+                            signupStore.createAccount()
                         }
                     },
                     onEditingChanged: { isEditing in

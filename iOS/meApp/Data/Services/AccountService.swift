@@ -164,6 +164,12 @@ final class AccountService: AccountServiceProtocol, ObservableObject { // swiftl
                 activeAccount = nil
             }
 
+            logger.log(
+                level: .info,
+                tag: "AcctFlowDebug",
+                message: "[AcctSvc] signUp: newAccountId=\(response.account.id), existingLocal=\(existingAccount != nil), "
+                    + "isSameAccount=\(isSameAccount), activeBefore=\(activeAccount?.accountId ?? "nil")"
+            )
             let account = try await prepareAuthenticatedAccount(from: response, existingAccount: existingAccount)
             try await makeOtherAccountsInactive(except: account)
             if existingAccount == nil {
@@ -172,6 +178,11 @@ final class AccountService: AccountServiceProtocol, ObservableObject { // swiftl
                 try await updateAccountClearingTokens(account)
             }
             try await updatePublishedState()
+            logger.log(
+                level: .info,
+                tag: "AcctFlowDebug",
+                message: "[AcctSvc] signUp done: preparedId=\(account.accountId), activeAfter=\(activeAccount?.accountId ?? "nil")"
+            )
             logger.log(level: .success, tag: tag, message: "Sign up successful for accountId=\(account.accountId), email=\(maskedEmail(email))")
         } catch {
             logger.log(level: .error, tag: tag, message: "Sign up failed for email=\(maskedEmail(email)): \(error.localizedDescription)")
@@ -201,6 +212,12 @@ final class AccountService: AccountServiceProtocol, ObservableObject { // swiftl
                 activeAccount = nil
             }
 
+            logger.log(
+                level: .debug,
+                tag: "AcctFlowDebug",
+                message: "[AcctSvc] logIn: targetId=\(response.account.id), existingLocal=\(existingAccount != nil), "
+                    + "isSameAccount=\(isSameAccount), activeBefore=\(activeAccount?.accountId ?? "nil")"
+            )
             let account = try await prepareAuthenticatedAccount(from: response, existingAccount: existingAccount)
             try await makeOtherAccountsInactive(except: account)
             if existingAccount == nil {
@@ -210,6 +227,11 @@ final class AccountService: AccountServiceProtocol, ObservableObject { // swiftl
             }
             try await updatePublishedState()
             try await refreshAccount()
+            logger.log(
+                level: .debug,
+                tag: "AcctFlowDebug",
+                message: "[AcctSvc] logIn done: preparedId=\(account.accountId), activeAfter=\(activeAccount?.accountId ?? "nil")"
+            )
             logger.log(level: .success, tag: tag, message: "Login successful for accountId=\(account.accountId), email=\(maskedEmail(email))")
         } catch {
             logger.log(level: .error, tag: tag, message: "Login failed for email=\(maskedEmail(email)): \(error.localizedDescription)")
@@ -359,6 +381,11 @@ final class AccountService: AccountServiceProtocol, ObservableObject { // swiftl
             await bluetoothService.disconnectConnectedScales()
             activeAccount = nil
             try await setActiveAccount(accountId: accountId)
+            logger.log(
+                level: .debug,
+                tag: "AcctFlowDebug",
+                message: "[AcctSvc] switchAccount done: activeAfter=\(activeAccount?.accountId ?? "nil"), target=\(targetAccountId)"
+            )
             logger.log(
                 level: .success,
                 tag: tag,
@@ -1351,10 +1378,18 @@ final class AccountService: AccountServiceProtocol, ObservableObject { // swiftl
         allAccounts = snapshots
 
         let nextActive = snapshots.first { $0.isActiveAccount }
+        let previousActiveId = activeAccount?.accountId
         if activeAccount != nextActive {
             activeAccount = nextActive
             Theme.shared.setActiveAccount(nextActive?.accountId)
         }
+        logger.log(
+            level: .info,
+            tag: "AcctFlowDebug",
+            message: "[AcctSvc] updatePublishedState: total=\(allAccounts.count), "
+                + "prevActive=\(previousActiveId ?? "nil"), nextActive=\(nextActive?.accountId ?? "nil"), "
+                + "activeIds=[\(snapshots.filter { $0.isActiveAccount }.map { $0.accountId }.joined(separator: ","))]"
+        )
         logger.log(
             level: .debug,
             tag: tag,
