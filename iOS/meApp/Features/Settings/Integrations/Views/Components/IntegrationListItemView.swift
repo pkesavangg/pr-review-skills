@@ -27,21 +27,19 @@ struct IntegrationListItemView: View {
         HStack(alignment: .center, spacing: .spacingSM) {
             logo
 
+            // Title + optional deprecation notice sit between the logo and the
+            // selection circle, both of which stay vertically centered against
+            // this whole text block.
+            //
+            // maxWidth: .infinity makes this block absorb all the space between
+            // the (fixed-width) logo and circle, so those two icons keep the same
+            // leading/trailing columns on every row — they never shift regardless
+            // of the deprecation pill. The pill itself yields to this width, so it
+            // never overflows and pushes the icons out of alignment.
             VStack(alignment: .leading, spacing: 2) {
-                // Title + selection indicator on the same line.
-                HStack(alignment: .center, spacing: .spacingSM) {
-                    Text(item.type.displayName)
-                        .fontOpenSans(.itemTitle)
-                        .foregroundColor(theme.textBody)
-
-                    Spacer()
-
-                    AppIconView(
-                        icon: item.isSelected ? AppAssets.circleCheckFilled : AppAssets.circleOutline,
-                        size: IconSize(width: 24, height: 24)
-                    )
-                    .foregroundColor(theme.statusIconPrimary)
-                }
+                Text(item.type.displayName)
+                    .fontOpenSans(.body2)
+                    .foregroundColor(theme.textBody)
 
                 // Optional, non-interactive provider notice (e.g. Fitbit
                 // deprecation). Display-only — does not affect row tap or
@@ -51,10 +49,19 @@ struct IntegrationListItemView: View {
                     deprecationNotice(notice)
                 }
             }
+            .frame(maxWidth: .infinity, alignment: .leading)
+
+            AppIconView(
+                icon: item.isSelected ? AppAssets.circleCheckFilled : AppAssets.circleOutline,
+                size: IconSize(width: 24, height: 24)
+            )
+            .foregroundColor(theme.statusIconPrimary)
         }
         // minHeight (not a fixed height) so the row can grow to fit the
         // deprecation notice and larger Dynamic Type sizes without clipping.
         .frame(minHeight: rowHeight)
+        // Full-width underline separating adjacent integration rows.
+        .border(sides: [.bottom], thickness: 0.5)
         .contentShape(Rectangle())
         .onTapGesture { onTap() }
     }
@@ -111,7 +118,11 @@ struct IntegrationListItemView: View {
         (Text(Image(systemName: "info.circle")) + Text(" ") + Text(text))
             .fontOpenSans(.body4)
             .lineLimit(1)
-            .fixedSize(horizontal: true, vertical: false)
+            // Keep the notice on one line. It renders at full size when it fits
+            // the available width; in extreme cases (very long text / large
+            // Dynamic Type) it scales down rather than truncating or forcing
+            // overflow — so the logo and circle never move out of alignment.
+            .minimumScaleFactor(0.6)
             .foregroundColor(theme.actionError)
             .padding(.horizontal, 6)
             .padding(.vertical, 2)
