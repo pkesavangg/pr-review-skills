@@ -17,6 +17,7 @@ import com.dmdbrands.gurus.weight.domain.model.storage.entry.Entry
 import com.dmdbrands.gurus.weight.domain.model.storage.entry.ScaleEntry
 import com.dmdbrands.gurus.weight.domain.repository.IEntryRepository
 import com.dmdbrands.gurus.weight.features.manualEntry.helper.EntryHelper.convertToStored
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 import retrofit2.HttpException
@@ -108,6 +109,8 @@ class EntryRepository @Inject constructor(
     merged.forEach { entry ->
       try {
         entryDao.insert(entry)
+      } catch (e: CancellationException) {
+        throw e
       } catch (e: Exception) {
         skipped++
         AppLog.e(
