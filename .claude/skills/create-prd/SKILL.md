@@ -48,7 +48,7 @@ Based on ticket type:
 
 **Documentation impact:** for each file in *Files to Create/Modify/Delete*, check it against the
 source→doc map in `scripts/docs-freshness-check.sh` (`doc_for()`) and the Confluence map in
-`docs/confluence.md`. List every maintained doc / Confluence page the change will outdate in the
+`docs/overview/CONFLUENCE.md`. List every maintained doc / Confluence page the change will outdate in the
 PRD's **Documentation Impact** table — or tick "No documentation impact" if none match.
 
 ---

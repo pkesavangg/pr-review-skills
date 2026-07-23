@@ -173,7 +173,7 @@ let filtered = data.filter { ... }                    // :222  O(n) every scroll
 
 ## 6. Why 5.1.0 makes it worse
 
-5.1.0 (`docs/product-types-current-state.md`) adds `myBloodPressure` and `baby` product contexts, each with its own dashboard graph, on the engine above:
+5.1.0 (`docs/guides/PRODUCT_TYPES_CURRENT_STATE.md`) adds `myBloodPressure` and `baby` product contexts, each with its own dashboard graph, on the engine above:
 
 | Graph | Series | Lands on which path | Per-frame cost |
 |---|---|---|---|

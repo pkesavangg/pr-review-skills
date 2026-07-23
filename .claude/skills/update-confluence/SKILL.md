@@ -25,7 +25,7 @@ notes at the bottom, and do not rewrite the whole page:
 
 ## 0 — Prerequisites
 
-- Read [`docs/confluence.md`](../../../docs/confluence.md) first — it is the source of truth for the
+- Read [`docs/overview/CONFLUENCE.md`](../../../docs/overview/CONFLUENCE.md) first — it is the source of truth for the
   page tree, page IDs, and the repo-change → page/section map.
 - `cloudId` = `greatergoods.atlassian.net`.
 - The Atlassian MCP tools are deferred — load them with ToolSearch before use:
@@ -34,7 +34,7 @@ notes at the bottom, and do not rewrite the whole page:
 
 ## 1 — Pick the target page
 
-From `$ARGUMENTS` or the recent change, map to a page using `docs/confluence.md`:
+From `$ARGUMENTS` or the recent change, map to a page using `docs/overview/CONFLUENCE.md`:
 
 | Change | Page | Section |
 |---|---|---|
@@ -48,8 +48,8 @@ Most code/automation changes land on **meApp - Development**. If the mapping is 
 ## 2 — Read current repo state + the page
 
 1. Establish what actually changed: `git diff` / `git status`, and read the matching local doc
-   ([`docs/automation.md`](../../../docs/automation.md), [`iOS/architecture.md`](../../../iOS/architecture.md),
-   [`docs/database-schema.md`](../../../docs/database-schema.md), …). **The local doc is the source of
+   ([`docs/overview/CLAUDE_AUTOMATION.md`](../../../docs/overview/CLAUDE_AUTOMATION.md), [`iOS/architecture.md`](../../../iOS/architecture.md),
+   [`docs/guides/DATABASE_SCHEMA.md`](../../../docs/guides/DATABASE_SCHEMA.md), …). **The local doc is the source of
    truth; Confluence mirrors it** — so bring the local doc current first (or via `/update-architecture`).
 2. Fetch the page in **HTML** (round-trip safe — preserves macros, `data-local-id`s, inline comments):
    `getConfluencePage(cloudId, pageId, contentFormat="html")`. Note the current title.
@@ -81,12 +81,12 @@ Present to the user:
 ## 6 — Confirm
 
 Report: page title + URL, the section changed, the new version number, and the `versionMessage`.
-If `docs/confluence.md` shows other pages are also affected by this change, offer to do them next.
+If `docs/overview/CONFLUENCE.md` shows other pages are also affected by this change, offer to do them next.
 
 ## Notes
 
 - **Never auto-write.** The Step 4 approval gate always applies.
 - Keep the local doc and Confluence in the same unit of work: update the local `docs/` file first, then run this to publish upward.
-- If the live page structure has drifted from `docs/confluence.md` (page renamed/moved/split),
-  fix `docs/confluence.md` and the `CONF_PAGE` note in
+- If the live page structure has drifted from `docs/overview/CONFLUENCE.md` (page renamed/moved/split),
+  fix `docs/overview/CONFLUENCE.md` and the `CONF_PAGE` note in
   [`scripts/docs-freshness-check.sh`](../../../scripts/docs-freshness-check.sh) as part of the task.

@@ -2,7 +2,7 @@
 
 How the dashboard weight/metric graph decides **what text and value to show** — the label above the chart, what changes when you tap a point, and the label inside the Metric Info sheet.
 
-This is a behavioural map of the current branch. Sibling doc: [dashboard-hybrid-latest-vs-average.md](dashboard-hybrid-latest-vs-average.md) covers the "latest entry vs day average" UX rule in depth.
+This is a behavioural map of the current branch.
 
 ---
 
@@ -213,4 +213,3 @@ case is routed through `composeMetricInfoLabel`, which trims and lowercases.
 - [DashboardStore.swift](../iOS/meApp/Features/Dashboard/Stores/DashboardStore.swift) — `weightLabel`, `selectionLabel`, `computeDisplayWeight`, `weightDisplayLabel`, `selectionPrefix`, `isLatestDaySelected`, `metricInfoDateLabel`.
 - `DashboardGraphManager.swift` — `formatSelectedDate`, interpolation, scroll snapping.
 - Section VMs (`WeekSectionViewModel`, `MonthSectionViewModel`, `YearSectionViewModel`, `TotalSectionViewModel`) — own `showCrosshair` and the per-period snap rules.
-- [dashboard-hybrid-latest-vs-average.md](dashboard-hybrid-latest-vs-average.md) — deep dive on the hybrid rule.

@@ -50,7 +50,7 @@ Monorepo-wide, so it also catches Android edits (the iOS hooks above only fire u
 
 The source→doc map lives in the script's `doc_for()` and, identically, in the [`update-architecture`](../iOS/.claude/skills/update-architecture/SKILL.md) skill's Scope table — the skill does the actual update (`architecture.md` + `docs/`). Each hit is classified by change size: **`NEW FILE`** (structural), **`major change (N lines)`** when ≥ `MAJOR_LINES` (default 20) added+deleted lines, else **`minor change (N lines)`** — NEW/major say "update the doc", minor says "only if behaviour/schema changed". `architecture.md` is flagged only for **newly-added** structural files; existing-file edits map to their specific doc (schema, product types, etc.) or nothing. Deduped per (doc, tier) per day, so a minor note never hides a later major one. It's a reminder, never a gate.
 
-**Confluence mirror.** Every mapped change also prints a `🌐` line pointing at the [Me App Confluence hub](confluence.md) (the `meApp - Development` page mirrors this repo's architecture + automation docs). Run [`/update-confluence`](../.claude/skills/update-confluence/SKILL.md) to publish upward — it reads the target page, drafts the section edit from repo state, and **writes only after you approve** (Confluence is a shared, hand-curated wiki, so writes are never automatic). The `🌐` line is shown at most once per day. Full page tree + IDs + the change→page map: [`docs/confluence.md`](confluence.md).
+**Confluence mirror.** Every mapped change also prints a `🌐` line pointing at the [Me App Confluence hub](CONFLUENCE.md) (the `meApp - Development` page mirrors this repo's architecture + automation docs). Run [`/update-confluence`](../.claude/skills/update-confluence/SKILL.md) to publish upward — it reads the target page, drafts the section edit from repo state, and **writes only after you approve** (Confluence is a shared, hand-curated wiki, so writes are never automatic). The `🌐` line is shown at most once per day. Full page tree + IDs + the change→page map: [`docs/overview/CONFLUENCE.md`](CONFLUENCE.md).
 
 ---
 
@@ -108,6 +108,6 @@ iOS coverage thresholds (per-layer 75–85%) are documented in [`/iOS/docs/COVER
 ## Related
 
 - Skill catalog & taxonomy: [`.claude/skills/README.md`](../.claude/skills/README.md)
-- Confluence hub structure & sync: [`confluence.md`](confluence.md)
+- Confluence hub structure & sync: [`CONFLUENCE.md`](CONFLUENCE.md)
 - iOS orchestration: [`/iOS/.claude/orchestra.md`](../iOS/.claude/orchestra.md)
 - Monorepo conventions: [`/CLAUDE.md`](../CLAUDE.md) · iOS: [`/iOS/CLAUDE.md`](../iOS/CLAUDE.md) · Android: [`/Android/CLAUDE.md`](../Android/CLAUDE.md)

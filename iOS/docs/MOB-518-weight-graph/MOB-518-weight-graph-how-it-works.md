@@ -363,8 +363,7 @@ where the account has data elsewhere. Because it's read reactively from the stor
 committing a scroll updates it automatically — no separate wiring in the view.
 
 > Note the hybrid latest-day rule still applies: the newest day contributes its *latest reading* (not that
-> day's average) to both its plotted point and the window average — see
-> [dashboard-hybrid-latest-vs-average.md](../../../docs/dashboard-hybrid-latest-vs-average.md). This is a
+> day's average) to both its plotted point and the window average. This is a
 > deliberate deviation from Apple Health, which would use the newest day's daily average too.
 
 **Analogy.** The header is a **live caption** that reads the author's notes (store state), not something the
