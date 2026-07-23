@@ -10,6 +10,9 @@ final class MultiDeviceSnapshotViewModel: ObservableObject {
     @Published private(set) var babyDailySummaries: [String: [BathScaleWeightSummary]] = [:]
     @Published private(set) var isLoadingSnapshots: Bool = false
     @Published private(set) var readySnapshotIDs: Set<String> = []
+    /// MOB-1726: mirrors `EntryService.hasCompletedInitialSync` so the view can keep showing skeletons
+    /// (rather than the empty state) until the first login sync lands the account's real entries.
+    @Published private(set) var hasCompletedInitialSync: Bool = false
 
     private var cancellables = Set<AnyCancellable>()
     private var lastLoadedSignature: Int?
@@ -18,6 +21,12 @@ final class MultiDeviceSnapshotViewModel: ObservableObject {
     init() {
         dailySummaries = entryService.dailySummaries
         bpmDailySummaries = entryService.bpmDailySummaries
+        hasCompletedInitialSync = entryService.hasCompletedInitialSync
+
+        entryService.$hasCompletedInitialSync
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] in self?.hasCompletedInitialSync = $0 }
+            .store(in: &cancellables)
 
         entryService.$dailySummaries
             .receive(on: DispatchQueue.main)
@@ -46,7 +55,16 @@ final class MultiDeviceSnapshotViewModel: ObservableObject {
 
         defer {
             if activeLoadSignature == signature {
-                lastLoadedSignature = signature
+                // MOB-1726: don't latch a CANCELLED load as complete. The dashboard's persistence
+                // redirect can tear this view down (cancelling the task) before the baby fetch publishes,
+                // leaving the baby card empty while the weight card — a faster local-DB aggregate that
+                // already finished — shows data. Recording `lastLoadedSignature` here would make the guard
+                // above early-return forever; skipping it lets the remounted overview reload. A genuinely
+                // empty baby (no entries) still completes without cancellation, so it latches normally and
+                // never retries in a loop.
+                if !Task.isCancelled {
+                    lastLoadedSignature = signature
+                }
                 activeLoadSignature = nil
                 isLoadingSnapshots = false
             }
@@ -184,6 +202,35 @@ final class MultiDeviceSnapshotViewModel: ObservableObject {
 
     func isSnapshotReady(_ item: ProductSelection) -> Bool {
         readySnapshotIDs.contains(snapshotID(for: item))
+    }
+
+    /// MOB-1726: whether to show the skeleton (vs the real card) for a snapshot item.
+    /// Skeletons show while the first snapshot load for this set is still running, AND — the fix —
+    /// afterwards while the item still has no data and the initial remote sync hasn't finished, so a fresh
+    /// login shows skeletons instead of flashing the empty "no entries" card before entries land. Once the
+    /// item has data, or the initial sync is done (empty is now genuine), the real card shows. A pending-baby
+    /// placeholder has no data to load, so it's never a skeleton.
+    func shouldShowSkeleton(for item: ProductSelection, in snapshotItems: [ProductSelection]) -> Bool {
+        if case .baby(let profile) = item, profile.isPendingSelection { return false }
+        let loaded = isSnapshotReady(item) || hasLoadedSnapshots(for: snapshotItems)
+        return !loaded ? true : (!hasData(for: item) && !hasCompletedInitialSync)
+    }
+
+    /// MOB-1726: reads `entryService` DIRECTLY, not the `@Published` mirrors on this VM. The mirrors update
+    /// via `.receive(on: .main)` (an async hop), so when the initial sync ends they can lag `hasCompletedInitialSync`
+    /// by a runloop turn — a one-frame window where the flag is set but the mirrored summaries are still empty,
+    /// which flashed the empty card before the data landed. The service always sets the reloaded summaries
+    /// before the flag, so a direct read is populated the moment the flag is observed. (The mirror
+    /// subscriptions still drive the re-render; only this decision reads the authoritative value.)
+    private func hasData(for item: ProductSelection) -> Bool {
+        switch item {
+        case .myWeight:
+            return !entryService.dailySummaries.isEmpty
+        case .myBloodPressure:
+            return !entryService.bpmDailySummaries.isEmpty
+        case .baby(let profile):
+            return !babySummaries(for: profile).isEmpty
+        }
     }
 
     private func snapshotID(for item: ProductSelection) -> String {

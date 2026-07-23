@@ -125,6 +125,14 @@ struct BpmDisplayView: View {
                     }
                 }
                 .padding(.horizontal, Layout.horizontalPadding)
+            } else if isGraphLoading {
+                // MOB-1726: on a cold open with BPM persisted, the reading isn't loaded yet
+                // (`displayValues == nil`). Showing the "000/00 00" zero placeholder here made the header
+                // flash zeros → skeleton → real value. While the graph is still loading, show the skeleton
+                // straight away (no value) so it's loader-from-the-start; the zero placeholder below is now
+                // only the genuine empty state (no readings, graph ready).
+                bpmValueLoadingPlaceholder
+                    .padding(.horizontal, Layout.horizontalPadding)
             } else {
                 VStack(alignment: .leading, spacing: Layout.contentSpacing) {
                     HStack(alignment: .top, spacing: Layout.valueSpacing) {
@@ -190,6 +198,9 @@ struct BpmDisplayView: View {
         }
         .accessibilityElement(children: .combine)
         .accessibilityLabel({
+            // MOB-1726: while the cold-open loading placeholder is up (no reading yet + graph still
+            // loading), announce a loading state rather than "no data" (which reads as an empty account).
+            if displayValues == nil, isGraphLoading { return BpmDashboardStrings.loadingBloodPressure }
             guard let data = displayValues else { return BpmDashboardStrings.noBloodPressureData }
             return BpmDashboardStrings.bpReadingAccessibility(
                 systolic: data.systolic,
@@ -229,6 +240,33 @@ struct BpmDisplayView: View {
                     .lineLimit(1)
                     .minimumScaleFactor(Layout.valueMinScale)
             }
+    }
+
+    // MARK: - Loading placeholder (no data yet)
+
+    /// MOB-1726: shown while the graph is still loading and no reading has resolved yet. Mirrors the
+    /// empty-state layout (mmhg / pulse labels + columns) but puts the value skeletons in the value slots
+    /// instead of the "000/00 00" zeros, so a cold open reads as loading rather than flashing zeros.
+    private var bpmValueLoadingPlaceholder: some View {
+        VStack(alignment: .leading, spacing: Layout.contentSpacing) {
+            HStack(alignment: .top, spacing: Layout.valueSpacing) {
+                VStack(alignment: .leading, spacing: 0) {
+                    Text(BpmDashboardStrings.mmhg)
+                        .fontOpenSans(.subHeading2)
+                        .foregroundColor(theme.textSubheading)
+                    bpValueSkeleton
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+
+                VStack(alignment: .leading, spacing: 0) {
+                    Text(BpmDashboardStrings.pulse)
+                        .fontOpenSans(.subHeading2)
+                        .foregroundColor(theme.textSubheading)
+                    pulseValueSkeleton
+                }
+                .frame(width: Layout.pulseColumnWidth, alignment: .leading)
+            }
+        }
     }
 
     // MARK: - Skeletons

@@ -19,11 +19,22 @@ struct MultiDeviceSnapshotViewModelTests {
         account.activeAccount = AccountTestFixtures.makeAccountSnapshot(
             id: "acct-1", email: "snapshot@example.com", isActiveAccount: true
         )
+        // Inject a MockEntryWorker backed by the same mock repo. The weight/BP dashboard read
+        // path (getAllEntriesAsDTO) goes through the WORKER, not localRepo — so without this the
+        // SUT falls back to a real SwiftDataWorker over the shared PersistenceController store.
+        // In the full serialized run, leftover "acct-1" weight rows another suite left in that
+        // shared store made loadSnapshots return data, so `shouldShowSkeleton` (empty + sync
+        // pending) saw non-empty summaries and flipped to the card — the cross-suite flake that
+        // passed in isolation but failed on CI. The mock worker keeps reads isolated and empty.
+        let localRepo = MockEntryRepository()
+        let worker = MockEntryWorker()
+        worker.backingRepo = localRepo
         let entryService = EntryService(
             accountService: account,
-            localRepo: MockEntryRepository(),
+            localRepo: localRepo,
             localKVRepo: MockEntrySyncStore(),
-            remoteRepo: MockEntryRepositoryAPI()
+            remoteRepo: MockEntryRepositoryAPI(),
+            worker: worker
         )
         DependencyContainer.shared.register(entryService as EntryService)
         _ = deps
@@ -328,6 +339,50 @@ struct MultiDeviceSnapshotViewModelTests {
         let result = sut.babySummaries(for: pending)
 
         #expect(result.isEmpty)
+    }
+
+    // MARK: - shouldShowSkeleton (MOB-1726 empty-flash gate)
+
+    @Test("shouldShowSkeleton: not yet loaded → skeleton")
+    func skeletonWhenNotLoaded() {
+        let (sut, _) = makeSUT()
+        // Fresh VM: no load has run, so neither isSnapshotReady nor hasLoadedSnapshots is true.
+        #expect(sut.shouldShowSkeleton(for: .myWeight, in: [.myWeight]) == true)
+    }
+
+    @Test("shouldShowSkeleton: loaded + no data + initial sync pending → skeleton (no empty flash)")
+    func skeletonWhenLoadedButEmptyAndSyncPending() async {
+        let (sut, _) = makeSUT()
+        // Load completes against an empty local store; no remote sync has finished yet.
+        await sut.loadSnapshots(availableItems: [.myWeight])
+        #expect(sut.shouldShowSkeleton(for: .myWeight, in: [.myWeight]) == true)
+    }
+
+    @Test("shouldShowSkeleton: loaded + has data → card")
+    func cardWhenLoadedWithData() async {
+        let (sut, entryService) = makeSUT()
+        await sut.loadSnapshots(availableItems: [.myWeight])
+        entryService.dailySummaries = DashboardTestFixtures.makeSortedDailySummaries()
+        #expect(sut.shouldShowSkeleton(for: .myWeight, in: [.myWeight]) == false)
+    }
+
+    @Test("shouldShowSkeleton: loaded + no data + initial sync done → card (genuine empty)")
+    func cardWhenLoadedEmptyButSyncComplete() async {
+        let (sut, entryService) = makeSUT()
+        await sut.loadSnapshots(availableItems: [.myWeight])
+        // Complete the initial remote sync (account present → reaches remote → flag flips true),
+        // then wait for the VM's mirrored flag to catch up.
+        await entryService.syncAllEntriesWithRemote()
+        await DashboardTestFixtures.waitUntil { sut.hasCompletedInitialSync }
+        #expect(sut.shouldShowSkeleton(for: .myWeight, in: [.myWeight]) == false)
+    }
+
+    @Test("shouldShowSkeleton: pending baby placeholder → never skeleton")
+    func neverSkeletonForPendingBaby() {
+        let (sut, _) = makeSUT()
+        let pending = BabyProfile(id: BabyProfile.pendingSelectionId, name: "Baby Scale")
+        let items: [ProductSelection] = [.myWeight, .baby(profile: pending)]
+        #expect(sut.shouldShowSkeleton(for: .baby(profile: pending), in: items) == false)
     }
 
     // MARK: - Private Helpers
