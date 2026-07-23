@@ -33,6 +33,18 @@ enum IntegrationItemType: CaseIterable {
         }
     }
 
+    /// Optional informational notice rendered beneath the provider title.
+    /// Non-interactive and display-only — it never changes connect/sync
+    /// behaviour. Fitbit's legacy Web API is deprecated (Sept 2026); syncing
+    /// will move to Google Health (MOB-1608).
+    var deprecationNotice: String? {
+        switch self {
+        case .fitbit:       return IntegrationsStrings.fitbitDeprecationNotice
+        case .appleHealth,
+             .myFitnessPal: return nil
+        }
+    }
+
     /// Asset name of logo icon.
     var iconAsset: String {
         switch self {
