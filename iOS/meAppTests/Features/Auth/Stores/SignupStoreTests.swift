@@ -658,10 +658,21 @@ struct SignupStoreTests {
     // MARK: - Sequential Multi-Device Loop Tests
 
     @Test("steps excludes email and password on second device loop")
-    func stepsExcludesEmailPasswordOnSecondLoop() {
-        let (store, _, _, _) = makeSUT()
+    func stepsExcludesEmailPasswordOnSecondLoop() async {
+        let (store, accountService, _, _) = makeSUT()
+        accountService.signUpResult = .success(())
         store.selectDeviceType(.weightScale)
         store.signupForm.gender.value = Sex.male.rawValue
+
+        // MOB-1576: password is now gated on whether THIS signup created its own account
+        // (`didCreateSignupAccount`), not on the device-loop count. The account is created on
+        // the first loop's password step, so drive that before entering the second loop —
+        // otherwise password would (correctly) still be offered.
+        store.signupForm.email.value = "user@example.com"
+        store.signupForm.password.value = "secret123"
+        store.createAccount()
+        try? await Task.sleep(nanoseconds: 50_000_000)
+
         store.connectAnotherDevice()
         store.selectDeviceType(.bpm)
 
@@ -1432,15 +1443,115 @@ struct SignupStoreTests {
 
     // MARK: - createAccount guard
 
-    @Test("createAccount is a no-op when isSignupInProgress is already true")
-    func createAccountSkipsWhenAlreadyInProgress() async {
+    @Test("createAccount proceeds even when the global isSignupInProgress flag is already set")
+    func createAccountProceedsWhenGlobalFlagStranded() async {
         let (store, accountService, _, _) = makeSUT()
+        accountService.signUpResult = .success(())
+        // MOB-1576: the re-entrancy guard is now instance-local (`isCreatingAccount`), NOT the
+        // global `isSignupInProgress`. A prior signup sheet torn down without finalizing could
+        // strand `isSignupInProgress == true`; gating on it here permanently no-op'd account
+        // creation ("stuck on password"). createAccount must proceed regardless of that flag.
         accountService.isSignupInProgress = true
 
         store.createAccount()
         try? await Task.sleep(nanoseconds: 50_000_000)
 
-        #expect(accountService.signUpCalls == 0)
+        #expect(accountService.signUpCalls == 1)
+        #expect(store.didCreateSignupAccount == true)
+    }
+
+    // MARK: - MOB-1576 own-account gate (didCreateSignupAccount / signupAccountId)
+
+    @Test("account-switch signup that creates its own account records that account as the signup's")
+    func accountSwitchSignupCreatesAndLandsOnOwnAccount() async {
+        let (store, accountService, _, _) = makeSUT()
+        accountService.signUpResult = .success(())
+        // Simulate an account-switch signup: a different account is already logged in/active.
+        accountService.activeAccount = AccountTestFixtures.makeAccountSnapshot(id: "999", isActiveAccount: true)
+        store.isFromAccountSwitching = true
+
+        // Skip "Add a Baby": weight-scale device, no baby added.
+        store.selectDeviceType(.weightScale)
+        store.signupForm.email.value = "newuser@example.com"
+        store.signupForm.password.value = "secret123"
+
+        store.createAccount()
+        try? await Task.sleep(nanoseconds: 50_000_000)
+
+        // The signup created its OWN account (id "100" from the mock), distinct from the
+        // pre-existing "999" — and that is what gets recorded, so finalize can verify it.
+        #expect(store.didCreateSignupAccount == true)
+        #expect(store.signupAccountId == accountService.activeAccount?.accountId)
+        #expect(store.signupAccountId != "999")
+    }
+
+    @Test("performSaveDevicesAndFinalize refuses to write and routes back when no own account was created")
+    func finalizeRefusesWhenNoOwnAccountCreated() async {
+        let (store, accountService, _, _) = makeSUT()
+        // A pre-existing account is active, but THIS signup never created its own account.
+        accountService.activeAccount = AccountTestFixtures.makeAccountSnapshot(id: "999", isActiveAccount: true)
+        accountService.markSignupInProgress(true)
+        store.selectDeviceType(.weightScale)
+
+        await store.performSaveDevicesAndFinalize()
+
+        // It must not touch the pre-existing account, and must route back to the password step.
+        #expect(store.didCreateSignupAccount == false)
+        #expect(accountService.createGoalCalls == 0)
+        #expect(accountService.updateProductTypesCalls == 0)
+        #expect(store.deviceStatuses.isEmpty)
+        #expect(accountService.isSignupInProgress == false)
+        #expect(store.currentStepIndex == stepIndex(.password, in: store))
+    }
+
+    @Test("performSaveDevicesAndFinalize refuses to write when the active account is no longer the signup's")
+    func finalizeRefusesWhenActiveAccountChanged() async {
+        let (store, accountService, _, _) = makeSUT()
+        accountService.signUpResult = .success(())
+        store.selectDeviceType(.weightScale)
+        store.signupForm.email.value = "newuser@example.com"
+        store.signupForm.password.value = "secret123"
+
+        store.createAccount()
+        try? await Task.sleep(nanoseconds: 50_000_000)
+        #expect(store.didCreateSignupAccount == true)
+
+        // Active account switches out from under the signup (id "100" → "999") before finalize.
+        accountService.activeAccount = AccountTestFixtures.makeAccountSnapshot(id: "999", isActiveAccount: true)
+
+        await store.performSaveDevicesAndFinalize()
+
+        // Guard fails on the accountId mismatch → recover, never writing onto "999":
+        // no device saves ran and the in-progress gate was cleared.
+        #expect(accountService.createGoalCalls == 0)
+        #expect(accountService.updateProductTypesCalls == 0)
+        #expect(store.deviceStatuses.isEmpty)
+        #expect(accountService.isSignupInProgress == false)
+    }
+
+    @Test("resetForm clears the own-account gate so it never strands across an abandoned flow")
+    func resetFormClearsOwnAccountGate() async {
+        let (store, accountService, _, _) = makeSUT()
+        accountService.signUpResult = .success(())
+        store.signupForm.email.value = "newuser@example.com"
+        store.signupForm.password.value = "secret123"
+
+        store.createAccount()
+        try? await Task.sleep(nanoseconds: 50_000_000)
+        #expect(store.didCreateSignupAccount == true)
+        #expect(store.signupAccountId != nil)
+
+        store.resetForm()
+
+        #expect(store.didCreateSignupAccount == false)
+        #expect(store.signupAccountId == nil)
+        #expect(accountService.isSignupInProgress == false)
+
+        // The instance-local `isCreatingAccount` re-entrancy flag is also reset (it is private,
+        // so verify indirectly): a fresh createAccount is not stuck as a no-op afterwards.
+        store.createAccount()
+        try? await Task.sleep(nanoseconds: 50_000_000)
+        #expect(accountService.signUpCalls == 2)
     }
 
     // MARK: - touchAndValidate additional fields

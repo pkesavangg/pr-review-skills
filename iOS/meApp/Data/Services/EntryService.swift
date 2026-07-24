@@ -133,8 +133,16 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
         self.migrationService = migrationService ?? SQLiteMigrationService(entryWorker: resolvedWorker)
         self.kvStorage = kvStorage ?? KvStorageService.shared
 
+        startObserving()
+    }
+
+    /// Wires up the reactive subscriptions this service relies on: active-account
+    /// changes (reload on switch), months-cache invalidation on any entry mutation,
+    /// and the debounced eager push after a local mutation. Extracted from `init`
+    /// so the initializer body stays within the lint length limit.
+    private func startObserving() {
         Task { @MainActor in
-            if let concreteAccountService = accountService as? AccountService {
+            if let concreteAccountService = self.accountService as? AccountService {
                 concreteAccountService.$activeAccount
                     .map { $0?.accountId }
                     .removeDuplicates()
