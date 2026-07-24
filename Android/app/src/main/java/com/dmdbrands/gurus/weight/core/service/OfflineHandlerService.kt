@@ -65,8 +65,6 @@ class OfflineHandlerService
         syncProfileData()
         // Sync body composition data if there are unsynced body comp accounts
         syncBodyCompositionData()
-        // Re-push an offline measurement-unit (baby unit) change if it never reached the server
-        syncMeasurementUnitsData()
         // Sync device data if there are unsynced devices
         syncDeviceData()
         // Push pending baby creates/edits/deletes BEFORE entry sync (which runs after this in the
@@ -78,6 +76,11 @@ class OfflineHandlerService
         syncWeightlessSettings()
         syncStreakSettings()
         syncDashboardData()
+        // Re-push an offline measurement-unit (baby unit) change if it never reached the server.
+        // Runs LAST: updateMeasurementUnits() persists the server's full account snapshot via
+        // syncAccountSettingsWithServer(), which would otherwise clobber the settings synced above
+        // with stale server state before their own scoped sync steps ran (PR #2315 review).
+        syncMeasurementUnitsData()
         // Sync user settings data if there are unsynced user settings accounts
         AppLog.i(TAG, "Selective offline sync process completed")
       } catch (e: Exception) {
