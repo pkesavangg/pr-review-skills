@@ -98,6 +98,11 @@ final class SignupStore: ObservableObject {
     private var isFinalizingSignup = false
     private var isCreatingAccount = false
 
+    // The in-flight `createAccount()` task. Exposed so callers (and tests) have an awaitable
+    // seam for the otherwise fire-and-forget account creation, instead of waiting on a
+    // wall-clock sleep. Nil before the first createAccount() and after resetForm().
+    private(set) var accountCreationTask: Task<Void, Never>?
+
     init() {
         // Resolve once per store instance to avoid cross-test DI races when
         // async step actions execute after other suites reset the container.
@@ -374,19 +379,12 @@ final class SignupStore: ObservableObject {
     /// Sets isSignupInProgress so ContentViewModel does not navigate to dashboard yet.
     /// On success advances to the profileReady slide.
     func createAccount() {
-        logger.log(
-            level: .info,
-            tag: "AcctFlowDebug",
-            message: "[Signup] createAccount tapped. accountSwitching=\(isFromAccountSwitching), "
-                + "isSignupInProgress=\(accountService.isSignupInProgress) "
-                + "(if true → EARLY RETURN, no account created), activeAccount=\(accountService.activeAccount?.accountId ?? "nil")"
-        )
         // Re-entrancy guard is instance-local (not the global isSignupInProgress). The global
         // flag can be stranded true if a prior signup sheet was torn down without finalizing;
         // gating on it here would permanently no-op account creation ("stuck on password").
         guard !isCreatingAccount else { return }
         isCreatingAccount = true
-        Task {
+        accountCreationTask = Task {
             await performCreateAccount()
             isCreatingAccount = false
         }
@@ -422,12 +420,6 @@ final class SignupStore: ObservableObject {
 
     /// Called from the success screen DONE button.
     func completeSignup() {
-        logger.log(
-            level: .info,
-            tag: "AcctFlowDebug",
-            message: "[Signup] completeSignup. accountSwitching=\(isFromAccountSwitching), "
-                + "hasOnSignupSuccess=\(onSignupSuccess != nil), activeAccount=\(accountService.activeAccount?.accountId ?? "nil")"
-        )
         if let onSignupSuccess {
             onSignupSuccess()
         } else if isFromAccountSwitching {
@@ -763,12 +755,6 @@ final class SignupStore: ObservableObject {
         didCreateSignupAccount = true
         signupAccountId = account.accountId
 
-        logger.log(
-            level: .info,
-            tag: "AcctFlowDebug",
-            message: "[Signup] performCreateAccount success. accountSwitching=\(isFromAccountSwitching), "
-                + "activeAccount=\(account.accountId) → moving to profileReady (signupInProgress stays true)"
-        )
         persistSelectedSignupDeviceType(for: account.accountId)
         notificationService.dismissLoader()
         moveToNextStep()
@@ -825,12 +811,6 @@ final class SignupStore: ObservableObject {
 
         notificationService.dismissLoader()
 
-        logger.log(
-            level: .info,
-            tag: "AcctFlowDebug",
-            message: "[Signup] finalize: clearing signupInProgress. accountSwitching=\(isFromAccountSwitching), "
-                + "activeAccount=\(accountService.activeAccount?.accountId ?? "nil")"
-        )
         // Clear the gate before navigating so ContentViewModel can transition to dashboard.
         accountService.markSignupInProgress(false)
 
@@ -1251,6 +1231,7 @@ final class SignupStore: ObservableObject {
         didCreateSignupAccount = false
         signupAccountId = nil
         isCreatingAccount = false
+        accountCreationTask = nil
         // A full form reset means signup is no longer in progress; ensure the gate never
         // strands true across abandoned/cancelled flows.
         accountService.markSignupInProgress(false)

@@ -85,23 +85,10 @@ final class ContentViewModel: ObservableObject {
                     lastActiveTime: account?.lastActiveTime
                 )
 
-                self.logger.log(
-                    level: .info,
-                    tag: "AcctFlowDebug",
-                    message: "[CVM] activeAccount emit. prev=\(previousSignature?.accountId ?? "nil"), "
-                        + "new=\(signature.accountId ?? "nil"), state=\(self.contentViewState), "
-                        + "signupInProgress=\(self.accountService.isSignupInProgress)"
-                )
-
                 // Suppress duplicate emissions for the same logical account/login event.
                 if previousSignature == signature {
                     self.currentAccount = account
                     self.isLoggedIn = (account != nil)
-                    self.logger.log(
-                        level: .info,
-                        tag: "AcctFlowDebug",
-                        message: "[CVM] activeAccount emit → duplicate signature, no reinit."
-                    )
                     return
                 }
 
@@ -116,11 +103,6 @@ final class ContentViewModel: ObservableObject {
                 // metadata above but must not re-run init; doing so re-synced the
                 // whole history and stuttered the UI on every foreground.
                 guard previousSignature?.accountId != signature.accountId else {
-                    self.logger.log(
-                        level: .info,
-                        tag: "AcctFlowDebug",
-                        message: "[CVM] activeAccount emit → same accountId (metadata only), no reinit."
-                    )
                     return
                 }
 
@@ -131,30 +113,15 @@ final class ContentViewModel: ObservableObject {
                     if self.initializationTask != nil {
                         self.queuedAccountSignatureWhileInitializing = signature
                     }
-                    self.logger.log(
-                        level: .info,
-                        tag: "AcctFlowDebug",
-                        message: "[CVM] activeAccount emit → still initializing, queued=\(self.initializationTask != nil). No reinit now."
-                    )
                     return
                 }
 
                 // Account was created mid-signup — hold off on dashboard navigation until
                 // the signup flow explicitly clears this flag via finishSignup/completeSignup.
                 guard !self.accountService.isSignupInProgress else {
-                    self.logger.log(
-                        level: .info,
-                        tag: "AcctFlowDebug",
-                        message: "[CVM] activeAccount emit → GATED by signupInProgress. Reinit deferred to flag-clear edge."
-                    )
                     return
                 }
 
-                self.logger.log(
-                    level: .info,
-                    tag: "AcctFlowDebug",
-                    message: "[CVM] activeAccount emit → performAppInitialization() for accountId=\(signature.accountId ?? "nil")"
-                )
                 self.performAppInitialization()
             }
             .store(in: &cancellables)
@@ -163,19 +130,7 @@ final class ContentViewModel: ObservableObject {
             .dropFirst()
             .sink { [weak self] inProgress in
                 guard let self else { return }
-                self.logger.log(
-                    level: .info,
-                    tag: "AcctFlowDebug",
-                    message: "[CVM] signupInProgress edge=\(inProgress), isLoggedIn=\(self.isLoggedIn), "
-                        + "activeAccount=\(self.accountService.activeAccount?.accountId ?? "nil")"
-                )
                 guard !inProgress, self.isLoggedIn else { return }
-                self.logger.log(
-                    level: .info,
-                    tag: "AcctFlowDebug",
-                    message: "[CVM] signupInProgress→false → performAppInitialization() for "
-                        + "accountId=\(self.accountService.activeAccount?.accountId ?? "nil")"
-                )
                 self.performAppInitialization()
             }
             .store(in: &cancellables)
@@ -309,11 +264,6 @@ final class ContentViewModel: ObservableObject {
             logger.log(level: .error, tag: tag, message: "Failed to update login status from local account state")
         }
         isLoggedIn = (currentAccount != nil)
-        logger.log(
-            level: .info,
-            tag: "AcctFlowDebug",
-            message: "[CVM] checkLoginStatus resolved currentAccount=\(currentAccount?.accountId ?? "nil"), isLoggedIn=\(isLoggedIn)"
-        )
         return isLoggedIn
     }
 

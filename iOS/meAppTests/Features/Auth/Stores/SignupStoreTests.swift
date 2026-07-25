@@ -671,7 +671,7 @@ struct SignupStoreTests {
         store.signupForm.email.value = "user@example.com"
         store.signupForm.password.value = "secret123"
         store.createAccount()
-        try? await Task.sleep(nanoseconds: 50_000_000)
+        await store.accountCreationTask?.value
 
         store.connectAnotherDevice()
         store.selectDeviceType(.bpm)
@@ -1454,7 +1454,7 @@ struct SignupStoreTests {
         accountService.isSignupInProgress = true
 
         store.createAccount()
-        try? await Task.sleep(nanoseconds: 50_000_000)
+        await store.accountCreationTask?.value
 
         #expect(accountService.signUpCalls == 1)
         #expect(store.didCreateSignupAccount == true)
@@ -1476,7 +1476,7 @@ struct SignupStoreTests {
         store.signupForm.password.value = "secret123"
 
         store.createAccount()
-        try? await Task.sleep(nanoseconds: 50_000_000)
+        await store.accountCreationTask?.value
 
         // The signup created its OWN account (id "100" from the mock), distinct from the
         // pre-existing "999" — and that is what gets recorded, so finalize can verify it.
@@ -1513,7 +1513,7 @@ struct SignupStoreTests {
         store.signupForm.password.value = "secret123"
 
         store.createAccount()
-        try? await Task.sleep(nanoseconds: 50_000_000)
+        await store.accountCreationTask?.value
         #expect(store.didCreateSignupAccount == true)
 
         // Active account switches out from under the signup (id "100" → "999") before finalize.
@@ -1537,7 +1537,7 @@ struct SignupStoreTests {
         store.signupForm.password.value = "secret123"
 
         store.createAccount()
-        try? await Task.sleep(nanoseconds: 50_000_000)
+        await store.accountCreationTask?.value
         #expect(store.didCreateSignupAccount == true)
         #expect(store.signupAccountId != nil)
 
@@ -1550,7 +1550,7 @@ struct SignupStoreTests {
         // The instance-local `isCreatingAccount` re-entrancy flag is also reset (it is private,
         // so verify indirectly): a fresh createAccount is not stuck as a no-op afterwards.
         store.createAccount()
-        try? await Task.sleep(nanoseconds: 50_000_000)
+        await store.accountCreationTask?.value
         #expect(accountService.signUpCalls == 2)
     }
 
