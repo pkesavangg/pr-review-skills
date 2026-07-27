@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
@@ -23,17 +24,56 @@ import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import com.dmdbrands.gurus.weight.core.shared.utilities.DateTimeConverter
 import com.dmdbrands.gurus.weight.features.common.components.PreviewTheme
+import com.dmdbrands.gurus.weight.features.common.enums.GraphSegment
+import com.dmdbrands.gurus.weight.features.common.helper.graph.GraphUtil
 import com.dmdbrands.gurus.weight.features.dashboard.snapshot.components.SnapshotColors
 import com.dmdbrands.gurus.weight.theme.MeAppTheme
 import com.dmdbrands.gurus.weight.theme.MeTheme
 import kotlin.math.roundToInt
 
-/** Sunday-first week day labels for the empty-state X axis. */
-private val WeekDayLabels = listOf("sun", "mon", "tue", "wed", "thu", "fri", "sat")
-
 /** Width reserved for the right-hand Y-axis label gutter when a range is shown. */
 private val YGutterWidth = 40.dp
+
+/** Vertical gridline columns drawn for TOTAL, whose empty axis shows no X labels (mirrors 5.0.4). */
+private const val TotalEmptyGridColumns = 6
+
+/**
+ * Per-segment X-axis labels for the empty-state grid, mirroring the live graph's current-period
+ * bottom axis ([GraphUtil.formatTimestampForSegment]): WEEK → day-of-week (sun…sat), MONTH →
+ * day-of-month at each weekly tick (5, 12, 19…), YEAR → month initials (j, f, m…). TOTAL returns
+ * no labels — matching the live/5.0.4 TOTAL axis, which shows only year separators. Labels are for
+ * the period containing [now]. Pure and side-effect-free for testability.
+ */
+internal fun emptyGraphXLabels(
+  segment: GraphSegment,
+  now: Long = System.currentTimeMillis(),
+): List<String> = when (segment) {
+  GraphSegment.WEEK -> {
+    val weekStart = DateTimeConverter.getWeekStart(now)
+    (0 until 7).map {
+      GraphUtil.formatTimestampForSegment(weekStart + it * GraphUtil.ONE_DAY_MILLIS, GraphSegment.WEEK)
+        .lowercase()
+    }
+  }
+
+  GraphSegment.MONTH -> {
+    val monthStart = DateTimeConverter.getMonthStart(now)
+    val monthEnd = DateTimeConverter.getMonthEnd(now)
+    GraphUtil.periodStarts(GraphSegment.WEEK, monthStart, monthEnd)
+      .filter { it in monthStart..monthEnd }
+      .map { GraphUtil.formatTimestampForSegment(it, GraphSegment.MONTH).lowercase() }
+  }
+
+  GraphSegment.YEAR -> GraphUtil.periodStarts(
+    GraphSegment.MONTH,
+    DateTimeConverter.getYearStart(now),
+    DateTimeConverter.getYearEnd(now),
+  ).map { GraphUtil.formatTimestampForSegment(it, GraphSegment.YEAR).lowercase() }
+
+  GraphSegment.TOTAL -> emptyList()
+}
 
 /**
  * Y-axis range for [EmptyDashboardGraph]. When supplied, the grid renders right-aligned
@@ -89,10 +129,14 @@ fun EmptyDashboardGraph(
   modifier: Modifier = Modifier,
   height: Dp = 200.dp,
   range: EmptyGraphRange? = null,
+  segment: GraphSegment = GraphSegment.WEEK,
 ) {
   val showYAxis = range != null && range.yStep > 0.0 && range.yMax > range.yMin
   val yTicks = if (showYAxis && range != null) range.toYTicks() else emptyList()
   val goalFraction = range?.takeIf { showYAxis }?.goalFractionFromTop()
+  val xLabels = remember(segment) { emptyGraphXLabels(segment) }
+  // One gridline column per X label; TOTAL has no labels, so fall back to a plain column grid.
+  val gridColumns = xLabels.size.takeIf { it > 0 } ?: TotalEmptyGridColumns
 
   Column(modifier = modifier.height(height)) {
     Row(modifier = Modifier.weight(1f).fillMaxWidth()) {
@@ -100,13 +144,14 @@ fun EmptyDashboardGraph(
         yTickFractions = yTicks.map { it.second },
         goalValue = range?.goalValue?.takeIf { goalFraction != null },
         goalFraction = goalFraction,
+        gridColumns = gridColumns,
         modifier = Modifier.weight(1f).fillMaxHeight(),
       )
       if (showYAxis) {
         EmptyGraphYLabels(yTicks = yTicks)
       }
     }
-    EmptyGraphDayLabels(reserveYGutter = showYAxis)
+    EmptyGraphXLabels(labels = xLabels, reserveYGutter = showYAxis)
   }
 }
 
@@ -132,6 +177,7 @@ private fun EmptyGraphPlot(
   yTickFractions: List<Float>,
   goalValue: Double?,
   goalFraction: Float?,
+  gridColumns: Int,
   modifier: Modifier = Modifier,
 ) {
   val gridColor = MeTheme.colorScheme.utility
@@ -151,10 +197,10 @@ private fun EmptyGraphPlot(
       val fractions = yTickFractions.ifEmpty { listOf(0.25f, 0.5f, 0.75f, 1f) }
       fractions.forEach { f -> drawLine(faint, Offset(0f, h * f), Offset(w, h * f), stroke) }
 
-      // Vertical dotted gridlines at each day-column center.
+      // Vertical dotted gridlines at each column center.
       val dash = PathEffect.dashPathEffect(floatArrayOf(4f, 6f))
-      WeekDayLabels.indices.forEach { i ->
-        val x = w * (i + 0.5f) / WeekDayLabels.size
+      for (i in 0 until gridColumns) {
+        val x = w * (i + 0.5f) / gridColumns
         drawLine(faint, Offset(x, 0f), Offset(x, h), stroke, pathEffect = dash)
       }
     }
@@ -193,17 +239,17 @@ private fun EmptyGraphYLabels(yTicks: List<Pair<String, Float>>) {
   }
 }
 
-/** Bottom day labels (sun…sat), aligned to the plot area (excluding the Y gutter). */
+/** Bottom X-axis labels, aligned to the plot area (excluding the Y gutter). Empty for TOTAL. */
 @Composable
-private fun EmptyGraphDayLabels(reserveYGutter: Boolean) {
+private fun EmptyGraphXLabels(labels: List<String>, reserveYGutter: Boolean) {
   Row(
     modifier = Modifier
       .fillMaxWidth()
       .padding(end = if (reserveYGutter) YGutterWidth else 0.dp, top = MeTheme.spacing.x3s),
   ) {
-    WeekDayLabels.forEach { day ->
+    labels.forEach { label ->
       Text(
-        text = day,
+        text = label,
         style = MeTheme.typography.body2,
         color = MeTheme.colorScheme.textSubheading,
         textAlign = TextAlign.Center,

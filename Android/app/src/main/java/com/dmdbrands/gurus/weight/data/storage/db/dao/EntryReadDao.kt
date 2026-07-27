@@ -509,7 +509,7 @@ ORDER BY day DESC
     """
     SELECT
         strftime('%Y-%m', datetime(e.entryTimestamp, ${UTC}, ${LOCAL_TIME})) AS period,
-        MAX(e.entryTimestamp) AS entryTimestamp,
+        datetime(MIN(e.entryTimestamp), ${UTC}, ${LOCAL_TIME}, 'start of month') AS entryTimestamp,
         CAST(AVG(bp.systolic) AS INTEGER) AS avgSystolic,
         CAST(AVG(bp.diastolic) AS INTEGER) AS avgDiastolic,
         CAST(AVG(bp.pulse) AS INTEGER) AS avgPulse
@@ -529,9 +529,10 @@ ORDER BY day DESC
    * Used for the WEEK and MONTH graph segments. The most recent day with a valid
    * reading surfaces that **latest reading's** systolic/diastolic/pulse (all taken
    * from the single most recent entry, since BP values are recorded together);
-   * every earlier day surfaces the **daily average**. Earlier-day averaging and the
-   * `MAX(entryTimestamp)` x-position match the previous pure-average query, so only
-   * the latest day's value changes.
+   * every earlier day surfaces the **daily average**. Every day's x-position is now
+   * snapped to `start of day` — the latest day still anchors on `MAX(entryTimestamp)`,
+   * but earlier days anchor on `MIN(entryTimestamp)` rather than the previous pure-average
+   * query's timestamp, so the x-position changed for all days as part of this fix.
    */
   @Query(
     """
@@ -563,7 +564,10 @@ ranked AS (
 )
 SELECT
   day AS period,
-  MAX(entryTimestamp) AS entryTimestamp,
+  CASE WHEN day = latest_day
+    THEN datetime(MAX(entryTimestamp), ${UTC}, ${LOCAL_TIME}, 'start of day')
+    ELSE datetime(MIN(entryTimestamp), ${UTC}, ${LOCAL_TIME}, 'start of day')
+  END AS entryTimestamp,
   CASE WHEN day = latest_day
     THEN CAST(MAX(CASE WHEN entryTimestamp = lt_ts THEN systolic END) AS INTEGER)
     ELSE CAST(AVG(systolic) AS INTEGER)
@@ -829,7 +833,7 @@ ORDER BY period DESC
     SELECT
         be.babyId AS babyId,
         strftime('%Y-%m', datetime(e.entryTimestamp, ${UTC}, ${LOCAL_TIME})) AS period,
-        MAX(e.entryTimestamp) AS entryTimestamp,
+        datetime(MIN(e.entryTimestamp), ${UTC}, ${LOCAL_TIME}, 'start of month') AS entryTimestamp,
         CAST(AVG(be.babyWeightDecigrams) AS INTEGER) AS avgWeightDecigrams,
         CAST(AVG(be.babyLengthMillimeters) AS INTEGER) AS avgLengthMillimeters
     FROM entry_view e
@@ -885,7 +889,10 @@ ranked AS (
 SELECT
   MAX(babyId) AS babyId,
   day AS period,
-  MAX(entryTimestamp) AS entryTimestamp,
+  CASE WHEN day = latest_day
+    THEN datetime(MAX(entryTimestamp), ${UTC}, ${LOCAL_TIME}, 'start of day')
+    ELSE datetime(MIN(entryTimestamp), ${UTC}, ${LOCAL_TIME}, 'start of day')
+  END AS entryTimestamp,
   CASE WHEN day = latest_day
     THEN CAST(MAX(CASE WHEN entryTimestamp = lt_weight AND weightDecigrams > 0 THEN weightDecigrams END) AS INTEGER)
     ELSE CAST(AVG(weightDecigrams) AS INTEGER)

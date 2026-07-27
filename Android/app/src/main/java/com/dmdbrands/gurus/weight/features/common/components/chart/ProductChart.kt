@@ -17,6 +17,7 @@ import com.dmdbrands.gurus.weight.features.common.helper.graph.GraphUtil.visible
 import com.dmdbrands.gurus.weight.features.dashboard.viewmodel.base.BaseDashboardState
 import com.dmdbrands.gurus.weight.features.dashboard.viewmodel.base.SegmentState
 import com.dmdbrands.gurus.weight.features.dashboard.viewmodel.weight.WeightDashboardState
+import com.dmdbrands.gurus.weight.theme.MeTheme
 import com.patrykandpatrick.vico.compose.cartesian.CartesianChart
 import com.patrykandpatrick.vico.compose.cartesian.FadingEdges
 import com.patrykandpatrick.vico.compose.cartesian.axis.Axis
@@ -287,6 +288,7 @@ private fun rememberChartLayers(
     }
     val secLayer = secondaryLayer(
       segment = segment,
+      lineColor = config.secondaryLineColor ?: MeTheme.colorScheme.primaryAction,
       rangeProvider = secondaryRangeProvider,
       yTransform = { series, yRange, visibleXRange ->
         GraphUtil.normalizeYValues(

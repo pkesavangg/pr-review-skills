@@ -161,6 +161,8 @@ private fun GraphSegmentPage(
           modifier = Modifier.fillMaxWidth(),
           height = 300.dp,
           range = emptyRange,
+          // Vary the empty-state X-axis labels per segment instead of always showing WEEK. (MOB-847)
+          segment = currentSegment,
         )
       } else {
         SegmentChartContent(

@@ -92,6 +92,7 @@ internal fun primaryLayer(
 @Composable
 internal fun secondaryLayer(
   segment: GraphSegment,
+  lineColor: Color = MeTheme.colorScheme.primaryAction,
   rangeProvider: CartesianLayerRangeProvider = remember { CartesianLayerRangeProvider.auto() },
   yTransform: ((
     series: List<com.patrykandpatrick.vico.compose.cartesian.data.LineCartesianLayerModel.Entry>,
@@ -101,7 +102,7 @@ internal fun secondaryLayer(
 ): LineCartesianLayer {
   return rememberLineLayerWithConnection(
     segment = segment,
-    lineColor = MeTheme.colorScheme.secondaryAction,
+    lineColor = lineColor,
     verticalAxisPosition = Axis.Position.Vertical.End,
     rangeProvider = rangeProvider,
     yTransform = yTransform,

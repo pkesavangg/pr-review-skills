@@ -33,8 +33,12 @@ fun rememberChartConfig(
   avgPulse: Int? = null,
   hasPercentile: Boolean = false,
 ): ChartConfig {
-  val primaryColor = MeTheme.colorScheme.primaryAction
-  val secondaryColor = MeTheme.colorScheme.secondaryAction
+  // Weight (primary) line = brand blue; the selected-metric overlay (secondary) line = the
+  // high-contrast neutral (iconPrimary/primaryAction = #2C2827 light / #E0E1E1 dark). Mirrors iOS
+  // DashboardChartStyleProvider — secondaryAction is neutral-100 (white in light / chart-bg in
+  // dark), which rendered the metric line invisible. (MOB-847)
+  val primaryColor = MeTheme.colorScheme.wgPrimary
+  val secondaryColor = MeTheme.colorScheme.primaryAction
   // Neutral fallback for the diastolic line when there's no average yet (was a hardcoded grey).
   val diastolicFallback = MeTheme.colorScheme.textSubheading
   return remember(product, goal, avgSystolic, avgDiastolic, avgPulse, hasPercentile) {

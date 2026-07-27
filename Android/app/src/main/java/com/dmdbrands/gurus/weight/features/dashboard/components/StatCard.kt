@@ -121,8 +121,8 @@ internal fun StatCard(
       .alpha(if (isVisible && !isPlaceHolder) 1f else 0.5f), // 50% opacity when not visible,
     shape = RoundedCornerShape(MeTheme.borderRadius.sm),
     colors = CardDefaults.cardColors(
-      containerColor = if (isSelected && isVisible && !isPlaceHolder) MeTheme.colorScheme.secondaryAction else MeTheme.colorScheme.inverseAction,
-      disabledContainerColor = if (isSelected && isVisible && !isPlaceHolder) MeTheme.colorScheme.secondaryAction else MeTheme.colorScheme.inverseAction,
+      containerColor = if (isSelected && isVisible && !isPlaceHolder) MeTheme.colorScheme.primaryAction else MeTheme.colorScheme.inverseAction,
+      disabledContainerColor = if (isSelected && isVisible && !isPlaceHolder) MeTheme.colorScheme.primaryAction else MeTheme.colorScheme.inverseAction,
     ),
   ) {
     Row(

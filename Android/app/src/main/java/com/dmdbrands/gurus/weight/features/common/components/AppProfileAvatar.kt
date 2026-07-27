@@ -61,20 +61,20 @@ fun AppProfileAvatar(
     contentDescription: String? = null,
     onLongPress: (() -> Unit)? = null,
 ) {
-    // Account avatar is the WG brand blue per Figma (Account Switch icon): active = solid wgPrimary
-    // with white initial, inactive = wgPrimary outline + wgPrimary initial. iconPrimary was remapped
-    // to neutral #2C2827 in MOB-987, which had turned the avatar dark. (MOB-1259)
+    // Account avatar per Me.Health 2.0 Figma: active = solid neutral-800 (#2C2827) circle with a
+    // white initial; inactive = neutral-800 outline + neutral-800 initial. Uses the iconPrimary
+    // token (neutral-800 light / #E0E1E1 dark), NOT the WG brand blue. (MOB-847)
     val backgroundColor = when {
-        isActive -> MeTheme.colorScheme.wgPrimary
+        isActive -> MeTheme.colorScheme.iconPrimary
         else -> Color.Transparent
     }
     val textColor = when {
         !enabled -> MeTheme.colorScheme.primaryActionDisabled
         isActive -> MeTheme.colorScheme.inverseAction
-        else -> MeTheme.colorScheme.wgPrimary
+        else -> MeTheme.colorScheme.iconPrimary
     }
     val borderModifier = when {
-        !isActive && enabled -> Modifier.border(2.dp, MeTheme.colorScheme.wgPrimary, CircleShape)
+        !isActive && enabled -> Modifier.border(2.dp, MeTheme.colorScheme.iconPrimary, CircleShape)
         !isActive && !enabled -> Modifier.border(2.dp, MeTheme.colorScheme.iconPrimaryDisabled, CircleShape)
         else -> Modifier
     }
@@ -191,7 +191,7 @@ private fun BoxScope.AvatarProfileIcon(size: Dp) {
         modifier = Modifier
             .align(Alignment.CenterEnd)
             .size(size)
-            .border(BORDER_WIDTH_DP, MeTheme.colorScheme.wgPrimary, CircleShape)
+            .border(BORDER_WIDTH_DP, MeTheme.colorScheme.iconPrimary, CircleShape)
             .clip(CircleShape)
             .background(Color.Transparent),
         contentAlignment = Alignment.Center,
@@ -199,8 +199,8 @@ private fun BoxScope.AvatarProfileIcon(size: Dp) {
         AppIcon(
             id = AppIcons.Filled.Profile,
             contentDescription = AppProfileAvatarStrings.accProfileLabel,
-            // Person glyph is the WG brand blue to match the avatar outline. (MOB-1259)
-            tintColor = MeTheme.colorScheme.wgPrimary,
+            // Person glyph uses neutral-800 to match the avatar outline. (MOB-847)
+            tintColor = MeTheme.colorScheme.iconPrimary,
             modifier = Modifier
                 // Optical nudge compensates for the SVG path's geometric asymmetry so the
                 // glyph appears centered inside the border circle (per Figma).
