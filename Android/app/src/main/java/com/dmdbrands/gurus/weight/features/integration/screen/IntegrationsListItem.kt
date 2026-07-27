@@ -1,17 +1,26 @@
 package com.dmdbrands.gurus.weight.features.integration
 
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material3.Icon
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.unit.dp
+import com.dmdbrands.gurus.weight.core.shared.utilities.testing.TestTags
 import com.dmdbrands.gurus.weight.domain.model.api.integration.IntegrationProvider
 import com.dmdbrands.gurus.weight.features.common.components.AppScaffold
 import com.dmdbrands.gurus.weight.features.common.components.BaseListItem
@@ -20,7 +29,9 @@ import com.dmdbrands.gurus.weight.features.integration.model.IntegrationItem
 import com.dmdbrands.gurus.weight.features.integration.strings.IntegrationStrings
 import com.dmdbrands.gurus.weight.resources.AppIcons
 import com.dmdbrands.gurus.weight.theme.MeAppTheme
+import com.dmdbrands.gurus.weight.theme.MeTheme.colorScheme
 import com.dmdbrands.gurus.weight.theme.MeTheme.spacing
+import com.dmdbrands.gurus.weight.theme.MeTheme.typography
 
 /**
  * Integration list item component that displays integration information with enable/disable toggle.
@@ -34,6 +45,7 @@ import com.dmdbrands.gurus.weight.theme.MeTheme.spacing
 fun IntegrationListItem(
   modifier: Modifier = Modifier,
   integration: IntegrationItem,
+  note: String? = null,
   onToggle: () -> Unit = {},
   onIconClick: (() -> Unit)? = null,
 ) {
@@ -47,6 +59,7 @@ fun IntegrationListItem(
   // Toggle button
   BaseListItem(
     title = integration.name,
+    subtitleContent = note?.let { noteText -> { IntegrationNoteChip(noteText) } },
     enableCheckbox = true,
     isChecked = integration.isConnected,
     checkboxDescription = if (integration.isConnected) {
@@ -66,6 +79,40 @@ fun IntegrationListItem(
       )
     },
   )
+}
+
+/**
+ * MOB-1611: display-only capsule chip shown under an integration's title
+ * (the Fitbit deprecation notice). Non-interactive. Matches the Me.Health 2.0
+ * Figma — inverse-action-secondary background, error-red exclamation icon +
+ * body4 error text. The text is exposed to TalkBack as ordinary read-only text.
+ */
+@Composable
+private fun IntegrationNoteChip(
+  text: String,
+  modifier: Modifier = Modifier,
+) {
+  Row(
+    modifier =
+      modifier
+        .testTag(TestTags.Integrations.FitbitNote)
+        .clip(CircleShape)
+        .background(colorScheme.inverseActionSecondary)
+        .padding(horizontal = spacing.x2s, vertical = spacing.x4s),
+    horizontalArrangement = Arrangement.spacedBy(spacing.x3s),
+    verticalAlignment = Alignment.CenterVertically,
+  ) {
+    Icon(
+      painter = painterResource(AppIcons.Default.Exclamation),
+      contentDescription = null,
+      tint = colorScheme.textError,
+      modifier = Modifier.size(12.dp),
+    )
+    Text(
+      text = text,
+      style = typography.body4.copy(color = colorScheme.textError),
+    )
+  }
 }
 
 @PreviewTheme

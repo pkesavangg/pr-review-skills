@@ -100,6 +100,13 @@ private fun IntegrationSectionOrNull(
             "${TestTags.Integrations.Row}_${integration.provider.apiValue}",
           ),
           integration = integration,
+          // MOB-1611: display-only Fitbit deprecation notice, shown as a chip under the Fitbit title.
+          note =
+            if (integration.provider == IntegrationProvider.Fitbit) {
+              IntegrationStrings.FitbitDeprecationNotice
+            } else {
+              null
+            },
           onToggle = {
             if (integration.provider == IntegrationProvider.HealthConnect) {
               handleIntent(IntegrationIntent.ToggleHealthConnectIntegration(integration))

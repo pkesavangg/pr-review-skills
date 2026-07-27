@@ -50,6 +50,7 @@ fun BaseListItem(
   title: String,
   modifier: Modifier = Modifier,
   subTitle: String? = null,
+  subtitleContent: @Composable (() -> Unit)? = null,
   leadingContent: @Composable (() -> Unit)? = null,
   trailingContent: @Composable (() -> Unit)? = null,
   enableCheckbox: Boolean = false,
@@ -86,6 +87,7 @@ fun BaseListItem(
     BaseListItemTexts(
       title = title,
       subTitle = subTitle,
+      subtitleContent = subtitleContent,
       modifier = Modifier.weight(1f),
     )
 
@@ -100,10 +102,15 @@ fun BaseListItem(
   }
 }
 
+/**
+ * Title + optional subtitle text + optional subtitle composable slot, stacked in
+ * the row's content column. Extracted from [BaseListItem] to keep it concise.
+ */
 @Composable
 private fun BaseListItemTexts(
   title: String,
   subTitle: String?,
+  subtitleContent: (@Composable () -> Unit)?,
   modifier: Modifier = Modifier,
 ) {
   Column(modifier = modifier) {
@@ -127,6 +134,10 @@ private fun BaseListItemTexts(
         maxLines = 1,
         overflow = TextOverflow.Ellipsis,
       )
+    }
+    if (subtitleContent != null) {
+      Spacer(modifier = Modifier.height(spacing.x4s))
+      subtitleContent()
     }
   }
 }

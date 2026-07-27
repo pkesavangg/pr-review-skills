@@ -323,6 +323,9 @@ object TestTags {
     // Per-provider row. Suffix with the provider (e.g. "integration_row_fitbit") so every row
     // resolves to a unique node. Mirrors the iOS `integrationRow` derivation.
     const val Row = "integration_row"
+
+    // Display-only Fitbit deprecation notice chip rendered under the Fitbit row (MOB-1611).
+    const val FitbitNote = "integration_fitbit_note"
   }
 
   /**

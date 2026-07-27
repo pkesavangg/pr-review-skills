@@ -31,6 +31,9 @@ object IntegrationStrings {
     const val MyFitnessPalProvider = "MyFitnessPal"
     const val HealthConnectProvider = "Health Connect"
 
+    // Fitbit deprecation notice (MOB-1611) — approved copy
+    const val FitbitDeprecationNotice = "Moving to Google Health in Sept 2026"
+
     // Actions
     const val Connect = "Connect"
     const val Remove = "Remove"
