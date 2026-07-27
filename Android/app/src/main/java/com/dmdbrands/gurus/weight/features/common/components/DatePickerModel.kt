@@ -26,73 +26,113 @@ import java.util.TimeZone
 
 private val datePickerFormatter = object : DatePickerFormatter {
   override fun formatDate(dateMillis: Long?, locale: Locale, forContentDescription: Boolean): String? =
-    dateMillis?.let { SimpleDateFormat("EEE, MMM d", locale).format(java.util.Date(utcDateMillisToLocalMillis(it))) }
+    dateMillis?.let { SimpleDateFormat("EEE, MMM d", locale).format(java.util.Date(DatePickerDateConstraints.utcDateMillisToLocalMillis(it))) }
   override fun formatMonthYear(monthMillis: Long?, locale: Locale): String? =
-    monthMillis?.let { SimpleDateFormat("MMMM yyyy", locale).format(java.util.Date(utcDateMillisToLocalMillis(it))) }
+    monthMillis?.let { SimpleDateFormat("MMMM yyyy", locale).format(java.util.Date(DatePickerDateConstraints.utcDateMillisToLocalMillis(it))) }
 }
 
 /**
- * Calculates the year range for the date picker based on min and max values.
- * @param minValue The minimum date value
- * @param maxValue The maximum date value
- * @return A range of years from min to max year
+ * Pure, timezone-aware constraint helpers for the shared date picker.
+ *
+ * These are the single source of truth for the min/max bounds that gate BOTH calendar selection
+ * AND keyboard/manual text entry: Material 3's [DatePicker] validates typed dates through the same
+ * [SelectableDates] predicate and year range, so keeping this logic here (and unit-testing it)
+ * guarantees the constraints apply identically no matter how the user enters the date. (MOB-1578)
  */
-private fun calculateYearRange(minValue: Long?, maxValue: Long?): IntRange {
-  val calendar = Calendar.getInstance()
+internal object DatePickerDateConstraints {
+  /** Default earliest year offered when no minimum date is supplied. */
+  const val DEFAULT_MIN_YEAR = 1922
 
-  // Calculate min year
-  val minYear = if (minValue != null) {
-    calendar.timeInMillis = minValue
-    calendar.get(Calendar.YEAR)
-  } else {
-    1922 // Default minimum year
+  /**
+   * Calculates the year range for the date picker based on min and max values.
+   * @param minValue The minimum date value (local millis) or null for the default floor.
+   * @param maxValue The maximum date value (local millis) or null for the current year.
+   * @param nowMillis Reference "now" used when [maxValue] is null (injectable for tests).
+   * @return A range of years from min to max year.
+   */
+  fun calculateYearRange(
+    minValue: Long?,
+    maxValue: Long?,
+    nowMillis: Long = System.currentTimeMillis(),
+  ): IntRange {
+    val calendar = Calendar.getInstance()
+
+    val minYear = if (minValue != null) {
+      calendar.timeInMillis = minValue
+      calendar.get(Calendar.YEAR)
+    } else {
+      DEFAULT_MIN_YEAR
+    }
+
+    val maxYear = if (maxValue != null) {
+      calendar.timeInMillis = maxValue
+      calendar.get(Calendar.YEAR)
+    } else {
+      calendar.timeInMillis = nowMillis
+      calendar.get(Calendar.YEAR)
+    }
+
+    return minYear..maxYear
   }
 
-  // Calculate max year
-  val maxYear = if (maxValue != null) {
-    calendar.timeInMillis = maxValue
-    calendar.get(Calendar.YEAR)
-  } else {
-    calendar.timeInMillis = System.currentTimeMillis()
-    calendar.get(Calendar.YEAR) // Current year
+  /**
+   * Converts local time millis to UTC date millis (midnight UTC for the same date in local
+   * timezone). Material3 DatePicker expects UTC milliseconds representing dates at midnight UTC.
+   */
+  fun localMillisToUtcDateMillis(localMillis: Long): Long {
+    val localCal = Calendar.getInstance().apply { timeInMillis = localMillis }
+    val year = localCal.get(Calendar.YEAR)
+    val month = localCal.get(Calendar.MONTH)
+    val day = localCal.get(Calendar.DAY_OF_MONTH)
+
+    val utcCal = Calendar.getInstance(TimeZone.getTimeZone("UTC")).apply {
+      set(year, month, day, 0, 0, 0)
+      set(Calendar.MILLISECOND, 0)
+    }
+    return utcCal.timeInMillis
   }
 
-  return minYear..maxYear
-}
+  /**
+   * Converts UTC date millis (midnight UTC) to local date millis (midnight local for the same date).
+   */
+  fun utcDateMillisToLocalMillis(utcMillis: Long): Long {
+    val utcCal = Calendar.getInstance(TimeZone.getTimeZone("UTC")).apply { timeInMillis = utcMillis }
+    val year = utcCal.get(Calendar.YEAR)
+    val month = utcCal.get(Calendar.MONTH)
+    val day = utcCal.get(Calendar.DAY_OF_MONTH)
 
-/**
- * Converts local time millis to UTC date millis (midnight UTC for the same date in local timezone).
- * Material3 DatePicker expects UTC milliseconds representing dates at midnight UTC.
- */
-private fun localMillisToUtcDateMillis(localMillis: Long): Long {
-  val localCal = Calendar.getInstance().apply { timeInMillis = localMillis }
-  val year = localCal.get(Calendar.YEAR)
-  val month = localCal.get(Calendar.MONTH)
-  val day = localCal.get(Calendar.DAY_OF_MONTH)
-
-  // Create UTC calendar at midnight for the same date
-  val utcCal = Calendar.getInstance(TimeZone.getTimeZone("UTC")).apply {
-    set(year, month, day, 0, 0, 0)
-    set(Calendar.MILLISECOND, 0)
+    val localCal = Calendar.getInstance().apply {
+      set(year, month, day, 0, 0, 0)
+      set(Calendar.MILLISECOND, 0)
+    }
+    return localCal.timeInMillis
   }
-  return utcCal.timeInMillis
-}
 
-/**
- * Converts UTC date millis (midnight UTC) to local date millis (midnight local for the same date).
- */
-private fun utcDateMillisToLocalMillis(utcMillis: Long): Long {
-  val utcCal = Calendar.getInstance(TimeZone.getTimeZone("UTC")).apply { timeInMillis = utcMillis }
-  val year = utcCal.get(Calendar.YEAR)
-  val month = utcCal.get(Calendar.MONTH)
-  val day = utcCal.get(Calendar.DAY_OF_MONTH)
+  /**
+   * Whether the given UTC date is within the selectable bounds. Applied by [SelectableDates] to both
+   * calendar taps and typed input. A null minimum is unbounded below; a null maximum defaults to
+   * [defaultMaxUtcMillis] (today), matching the picker's "no future dates" behaviour.
+   */
+  fun isDateSelectable(
+    utcTimeMillis: Long,
+    minDateMillis: Long?,
+    maxDateMillis: Long?,
+    defaultMaxUtcMillis: Long,
+  ): Boolean =
+    (minDateMillis == null || utcTimeMillis >= minDateMillis) &&
+      (utcTimeMillis <= (maxDateMillis ?: defaultMaxUtcMillis))
 
-  // Create local calendar at midnight for the same date
-  val localCal = Calendar.getInstance().apply {
-    set(year, month, day, 0, 0, 0)
-    set(Calendar.MILLISECOND, 0)
-  }
-  return localCal.timeInMillis
+  /**
+   * Whether a confirmed date passes the explicit min/max bounds. Unlike [isDateSelectable] a null
+   * maximum here is treated as unbounded — this is the final OK-time guard.
+   */
+  fun isWithinConfirmBounds(
+    utcTimeMillis: Long,
+    minDateMillis: Long?,
+    maxDateMillis: Long?,
+  ): Boolean =
+    (minDateMillis == null || utcTimeMillis >= minDateMillis) &&
+      (maxDateMillis == null || utcTimeMillis <= maxDateMillis)
 }
 
 // Pre-existing long composable (also carried in the detekt baseline before it gained a parameter).
@@ -106,16 +146,19 @@ fun DatePickerDialogContent(
   minValue: DateTimeValue? = null,
   maxValue: DateTimeValue? = null,
   hasError: Boolean = false,
-  // When false, hides the keyboard/text-input toggle so only the calendar grid can be used.
-  // Used for Date-of-Birth fields, where Material 3's text-input parsing silently normalizes an
-  // impossible leap day (e.g. 29 Feb of a non-leap year) to a valid one instead of rejecting it,
-  // causing silent DOB alteration. Grid-only entry makes impossible dates unselectable. (MOB-868)
+  // Whether to show Material 3's keyboard/text-input toggle so a date can be typed directly in
+  // addition to calendar selection. Defaults to true so every date picker in the app offers manual
+  // entry (MOB-1578). The min/max bounds in [DatePickerDateConstraints] gate typed input through the
+  // same [SelectableDates] predicate, so constraints apply identically for keyboard and calendar.
+  // The parameter is retained so a caller can still force grid-only entry when required.
   showModeToggle: Boolean = true,
 ) {
-  val minDateMillis = minValue.asMillis()?.let { localMillisToUtcDateMillis(it) }
-  val maxDateMillis = maxValue.asMillis()?.let { localMillisToUtcDateMillis(it) }
-  val yearRange = calculateYearRange(minValue.asMillis(), maxValue.asMillis())
-  val initialUtcMillis = localMillisToUtcDateMillis(initialMillis)
+  val minDateMillis = minValue.asMillis()?.let { DatePickerDateConstraints.localMillisToUtcDateMillis(it) }
+  val maxDateMillis = maxValue.asMillis()?.let { DatePickerDateConstraints.localMillisToUtcDateMillis(it) }
+  val yearRange = DatePickerDateConstraints.calculateYearRange(minValue.asMillis(), maxValue.asMillis())
+  val initialUtcMillis = DatePickerDateConstraints.localMillisToUtcDateMillis(initialMillis)
+  val todayUtcMillis =
+    DatePickerDateConstraints.localMillisToUtcDateMillis(Calendar.getInstance().timeInMillis)
 
   val datePickerState =
     rememberDatePickerState(
@@ -124,8 +167,12 @@ fun DatePickerDialogContent(
       selectableDates =
         object : SelectableDates {
           override fun isSelectableDate(utcTimeMillis: Long): Boolean =
-            (minDateMillis == null || utcTimeMillis >= minDateMillis) &&
-              (utcTimeMillis <= (maxDateMillis ?: localMillisToUtcDateMillis(Calendar.getInstance().timeInMillis)))
+            DatePickerDateConstraints.isDateSelectable(
+              utcTimeMillis = utcTimeMillis,
+              minDateMillis = minDateMillis,
+              maxDateMillis = maxDateMillis,
+              defaultMaxUtcMillis = todayUtcMillis,
+            )
 
           override fun isSelectableYear(year: Int): Boolean {
             return year in yearRange
@@ -146,10 +193,8 @@ fun DatePickerDialogContent(
           onClick = {
             datePickerState.selectedDateMillis?.let { utcMillis ->
               // Convert UTC date millis back to local date millis
-              val localMillis = utcDateMillisToLocalMillis(utcMillis)
-              if ((minDateMillis == null || utcMillis >= minDateMillis) &&
-                (maxDateMillis == null || utcMillis <= maxDateMillis)
-              ) {
+              val localMillis = DatePickerDateConstraints.utcDateMillisToLocalMillis(utcMillis)
+              if (DatePickerDateConstraints.isWithinConfirmBounds(utcMillis, minDateMillis, maxDateMillis)) {
                 onOk(localMillis)
               }
             }
@@ -186,6 +231,12 @@ fun DatePickerDialogContent(
   ) {
     val pickerColor = DateTimeInputDefaults.getDatePickerColor()
     CompositionLocalProvider(LocalContentColor provides MeTheme.colorScheme.primaryAction) {
+      // TODO(MOB-1578): M3's keyboard (Input mode) parser uses ResolverStyle.SMART and silently
+      //  normalizes an impossible typed date (e.g. 02/29 of a non-leap year -> 02/28) instead of
+      //  rejecting it. The parse happens inside M3's internal DateInput/CalendarModel, so the app
+      //  only receives the already-clamped millis and cannot surface an "Enter a valid date" error
+      //  here. Fix requires an app-owned strict-parsing entry field (LocalDate.of / ResolverStyle
+      //  .STRICT). Tracked separately; do not remove keyboard entry to work around it.
       DatePicker(
         state = datePickerState,
         colors = pickerColor,
