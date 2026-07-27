@@ -244,12 +244,12 @@ extension BluetoothService {
         for bpmData in bpmEntryList.list {
             handleBpmMeasurement(bpmData)
         }
-        let historical = measurements.dropFirst()
-        for measurement in historical {
-            await persistBpmEntry(measurement)
+        let ordered = BluetoothService.sessionOrderedLatestFirst(measurements)
+        for historical in ordered.dropFirst() {
+            await persistBpmEntry(historical)
         }
-        if let latest = measurements.first {
-            await stagePendingBpmEntry(latest)
+        if let latest = ordered.first {
+            await stagePendingBpmEntry(latest, batchCount: batchCount)
         }
     }
 

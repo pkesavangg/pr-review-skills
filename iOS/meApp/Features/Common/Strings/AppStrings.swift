@@ -344,11 +344,26 @@ struct InputFieldLabels {
 
 // Constants for Alert strings used in the app
 struct AlertStrings {
+    /// Canonical confirm-exit alert shown when the user leaves a screen with unsaved
+    /// changes (MOB-1835 / MOB-1535). The CTA pair is standardised across platforms as
+    /// RETURN (secondary — stay and keep editing) · EXIT (discard and leave); `AlertModifier`
+    /// uppercases the titles when rendering.
+    ///
+    /// Two copy variants exist. Entry forms (Manual Entry + its Notes field) use
+    /// `ManualEntryExitAlert`; every other flow — profile updates, settings, signup,
+    /// login — routes through this struct so the copy can't drift per screen again.
+    struct ConfirmExitAlert {
+        static let title = "Confirm!"
+        static let message = "You have unsaved changes. Are you sure you want to exit?"
+        static let returnButton = "Return"
+        static let exitButton = "Exit"
+    }
+
     struct SignupExitAlert {
-        static let title = "Confirm"
-        static let message = "Are you sure you want to leave?"
-        static let returnButton = "Go back"
-        static let exitButton = "Yes, exit"
+        static let title = ConfirmExitAlert.title
+        static let message = ConfirmExitAlert.message
+        static let returnButton = ConfirmExitAlert.returnButton
+        static let exitButton = ConfirmExitAlert.exitButton
     }
 
     struct ResetPasswordAlert {
@@ -356,11 +371,13 @@ struct AlertStrings {
         static let enterEmailMessage = "Enter your email"
     }
 
+    /// Confirm-exit variant for entry forms (Manual Entry and its Notes field) — see
+    /// `ConfirmExitAlert` for the variant every other flow uses.
     struct ManualEntryExitAlert {
         static let title = "Your entry has not been saved!"
         static let message = "Are you sure you want to exit?"
-        static let exitButton = "Exit"
-        static let returnButton = "Return"
+        static let exitButton = ConfirmExitAlert.exitButton
+        static let returnButton = ConfirmExitAlert.returnButton
     }
 
     struct LogoutAlert {
@@ -385,16 +402,16 @@ struct AlertStrings {
     }
 
     struct EditProfileExitAlert {
-        static let title = "Confirm"
-        static let message = "You have unsaved changes. Are you sure you want to exit?"
-        static let exitButton = "Exit"
-        static let returnButton = "Return"
+        static let title = ConfirmExitAlert.title
+        static let message = ConfirmExitAlert.message
+        static let exitButton = ConfirmExitAlert.exitButton
+        static let returnButton = ConfirmExitAlert.returnButton
     }
     struct ChangePasswordExitAlert {
-        static let title = "Confirm"
-        static let message = "You have unsaved changes. Are you sure you want to exit?"
-        static let exitButton = "Exit"
-        static let returnButton = "Return"
+        static let title = ConfirmExitAlert.title
+        static let message = ConfirmExitAlert.message
+        static let exitButton = ConfirmExitAlert.exitButton
+        static let returnButton = ConfirmExitAlert.returnButton
     }
     struct CsvExportAlert {
         static let title = "Send Weight History"
@@ -404,10 +421,10 @@ struct AlertStrings {
     }
 
     struct WeightLessExitAlert {
-        static let title = "Confirm"
-        static let message = "You have unsaved changes. Are you sure you want to exit?"
-        static let exitButton = "Exit"
-        static let returnButton = "Return"
+        static let title = ConfirmExitAlert.title
+        static let message = ConfirmExitAlert.message
+        static let exitButton = ConfirmExitAlert.exitButton
+        static let returnButton = ConfirmExitAlert.returnButton
     }
 
     struct DeleteScaleAlert {
@@ -432,10 +449,10 @@ struct AlertStrings {
     }
 
     struct GoalExitAlert {
-        static let title = "Are you sure you want to leave?"
-        static let message = "You have unsaved changes. Are you sure you want to exit?"
-        static let exitButton = "Exit"
-        static let returnButton = "Return"
+        static let title = ConfirmExitAlert.title
+        static let message = ConfirmExitAlert.message
+        static let exitButton = ConfirmExitAlert.exitButton
+        static let returnButton = ConfirmExitAlert.returnButton
     }
 
     struct ForgotPasswordAlert {
@@ -455,10 +472,10 @@ struct AlertStrings {
     }
 
     struct LoginExitAlert {
-        static let title = "Confirm"
-        static let message = "Are you sure you want to leave?"
-        static let returnButton = "Go back"
-        static let exitButton = "Yes, exit"
+        static let title = ConfirmExitAlert.title
+        static let message = ConfirmExitAlert.message
+        static let returnButton = ConfirmExitAlert.returnButton
+        static let exitButton = ConfirmExitAlert.exitButton
     }
 
     struct DeleteUserAlert {

@@ -133,10 +133,20 @@ extension BluetoothService {
         return entry
     }
 
+    static func sessionOrderedLatestFirst(_ measurements: [BpmMeasurement]) -> [BpmMeasurement] {
+        measurements.enumerated()
+            .sorted { lhs, rhs in
+                lhs.element.timestamp == rhs.element.timestamp
+                    ? lhs.offset > rhs.offset
+                    : lhs.element.timestamp > rhs.element.timestamp
+            }
+            .map(\.element)
+    }
+
     /// Stages a single live BPM measurement as a pending entry awaiting user confirmation.
     /// Fires `pendingBpmEntryPublisher`; the subscriber must call `confirmPendingBpmEntry()` or
     /// `discardPendingBpmEntry()` (or rely on the toast timeout to auto-confirm).
-    func stagePendingBpmEntry(_ measurement: BpmMeasurement) async {
+    func stagePendingBpmEntry(_ measurement: BpmMeasurement, batchCount: Int = 1) async {
         guard let activeAccount = activeAccount else {
             logger.log(level: .error, tag: tag, message: BluetoothServiceError.noActiveAccount.localizedDescription)
             return
@@ -144,7 +154,7 @@ extension BluetoothService {
 
         let entry = buildBpmEntry(measurement, accountId: activeAccount.accountId)
         pendingBpmEntry = entry
-        pendingBpmEntrySubject.send(EntryNotification(from: entry))
+        pendingBpmEntrySubject.send(EntryNotification(from: entry, batchCount: batchCount))
     }
 
     /// Persists a BPM measurement immediately without showing a toast.

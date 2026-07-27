@@ -85,7 +85,17 @@ final class HistoryStore: ObservableObject {
     /// cache instead of eagerly re-reading the full ~10k dataset — the next History open
     /// reloads fresh. This removes a full-dataset read from every off-screen save on a
     /// large account (MOB-1433 §5c).
-    var isHistoryScreenActive = false
+    var isHistoryScreenActive = false {
+        didSet {
+            guard !oldValue, isHistoryScreenActive, needsDetailRefreshOnActivate else { return }
+            needsDetailRefreshOnActivate = false
+            Task { [weak self] in
+                await self?.refreshRetainedDetail(reason: "historyDidBecomeActive")
+            }
+        }
+    }
+
+    private var needsDetailRefreshOnActivate = false
 
     /// The local `DeviceType.rawValue`s of every currently paired device, mirrored from
     /// `deviceService.scalesPublisher` so the empty state re-renders when a device is
@@ -134,7 +144,7 @@ final class HistoryStore: ObservableObject {
 
     // MARK: - Init ------------------------------------------------------
 
-    // swiftlint:disable:next cyclomatic_complexity function_body_length
+    // swiftlint:disable:next function_body_length
     init() {
         // Seed + track paired devices so the empty state can distinguish "no device"
         // from "device paired, no measurement" and update live as devices are paired.
@@ -166,25 +176,20 @@ final class HistoryStore: ObservableObject {
                     // from the Entry tab — the cache invalidation above is enough; the next
                     // History open reloads fresh. Removes a full-dataset read from every
                     // off-screen save.
-                    guard self.isHistoryScreenActive else { return }
+                    guard self.isHistoryScreenActive else {
+                        // MOB-1842: the months cache alone isn't enough — a retained detail
+                        // screen keeps its loaded rows across a tab switch, so owe it a
+                        // re-read on the next activation.
+                        self.needsDetailRefreshOnActivate = true
+                        return
+                    }
                     // MOB-516: coalesced reload — reruns once if more changes arrive, never
                     // stacking concurrent worker reads (the ~6.6 s stuck loader).
                     self.requestMonthsReload(canShowLoader: false, reason: "entrySaved")
-                    // If we're viewing a month and the saved entry belongs to that month, refresh entries inline
-                    if let selectedMonth = self.selectedMonth {
-                        let monthKey = DateTimeTools.getLocalMonthStringFromUTCDate(entry.entryTimestamp)
-                        if monthKey == selectedMonth.id {
-                            await self.loadEntries(for: selectedMonth, showLoader: false)
-                        }
-                    }
-                    // Refresh BP month detail if viewing one
-                    if let selectedBPMonth = self.selectedBPMonth {
-                        self.selectBPMonth(selectedBPMonth)
-                    }
-                    // Refresh baby day detail if viewing one
-                    if let selectedBabyDay = self.selectedBabyDay {
-                        self.selectBabyDay(selectedBabyDay)
-                    }
+                    // Refresh the retained detail screen; the month re-read is limited to a
+                    // save that actually landed in the month currently on screen.
+                    let monthKey = DateTimeTools.getLocalMonthStringFromUTCDate(entry.entryTimestamp)
+                    await self.refreshRetainedDetail(matchingMonthKey: monthKey, reason: "entrySaved")
                 }
             }
             .store(in: &cancellables)
@@ -197,24 +202,18 @@ final class HistoryStore: ObservableObject {
                     // MOB-1433 §5c: eager months-list reload only when History is on screen
                     // (deletes happen from within History, so this stays correct); otherwise
                     // just invalidate and let the next open reload fresh.
-                    guard self.isHistoryScreenActive else { return }
+                    guard self.isHistoryScreenActive else {
+                        // MOB-1842: see the entrySaved sink — a retained detail screen needs
+                        // a re-read once History is back on screen.
+                        self.needsDetailRefreshOnActivate = true
+                        return
+                    }
                     // MOB-516: coalesced reload (see requestMonthsReload).
                     self.requestMonthsReload(canShowLoader: false, reason: "entryDeleted")
-                    // If we're viewing a month and the deleted entry belongs to that month, refresh entries inline
-                    if let selectedMonth = self.selectedMonth {
-                        let monthKey = DateTimeTools.getLocalMonthStringFromUTCDate(entry.entryTimestamp)
-                        if monthKey == selectedMonth.id {
-                            await self.loadEntries(for: selectedMonth, showLoader: false)
-                        }
-                    }
-                    // Refresh BP month detail if viewing one
-                    if let selectedBPMonth = self.selectedBPMonth {
-                        self.selectBPMonth(selectedBPMonth)
-                    }
-                    // Refresh baby day detail if viewing one
-                    if let selectedBabyDay = self.selectedBabyDay {
-                        self.selectBabyDay(selectedBabyDay)
-                    }
+                    // Refresh the retained detail screen; the month re-read is limited to a
+                    // delete that actually landed in the month currently on screen.
+                    let monthKey = DateTimeTools.getLocalMonthStringFromUTCDate(entry.entryTimestamp)
+                    await self.refreshRetainedDetail(matchingMonthKey: monthKey, reason: "entryDeleted")
                 }
             }
             .store(in: &cancellables)
@@ -281,6 +280,28 @@ final class HistoryStore: ObservableObject {
                 await self.loadMonthsInternal(canShowLoader: canShowLoader, reason: reason)
             }
             self.monthsReloadDriver = nil
+        }
+    }
+
+    /// Re-reads whichever detail screen is currently retained — month entries, BP month, or
+    /// baby day. Every tab is kept alive in the tab bar's ZStack, so these screens survive a
+    /// tab switch with their loaded rows and must be refreshed explicitly (MOB-1842).
+    /// - Parameter matchingMonthKey: limits the month re-read to a change that landed in the
+    ///   month on screen. Pass `nil` to refresh whatever detail is retained.
+    private func refreshRetainedDetail(matchingMonthKey monthKey: String? = nil, reason: String) async {
+        if let selectedMonth, monthKey == nil || monthKey == selectedMonth.id {
+            logger.log(
+                level: .debug,
+                tag: tag,
+                message: "Refreshing retained month detail: monthId=\(selectedMonth.id), reason=\(reason)"
+            )
+            await loadEntries(for: selectedMonth, showLoader: false)
+        }
+        if let selectedBPMonth {
+            selectBPMonth(selectedBPMonth)
+        }
+        if let selectedBabyDay {
+            selectBabyDay(selectedBabyDay)
         }
     }
 
