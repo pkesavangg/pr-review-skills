@@ -10,7 +10,6 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -32,6 +31,37 @@ import com.dmdbrands.gurus.weight.theme.MeAppTheme
 object SwipeDefaults {
     const val POSITIONAL_THRESHOLD = 0.5f
     const val VELOCITY_THRESHOLD = 100f
+
+    /**
+     * Fallback per-item height used to bound the list to [maxVisibleItems] on the very first
+     * layout pass, before an item has been measured. Keeping a sensible estimate here means the
+     * height cap is applied deterministically from frame one, so overflowing lists never expand
+     * and push surrounding content (e.g. landing-screen CTAs) off-screen. Approximates an
+     * AppUser row: sm padding top + ~44dp of two-line content + sm padding bottom.
+     */
+    val ESTIMATED_ITEM_HEIGHT: Dp = 76.dp
+}
+
+/**
+ * Pure calculation of the max height a swipeable list should be constrained to so that at most
+ * [maxVisibleItems] items are visible before scrolling.
+ *
+ * @return the capped height, or `null` when no cap should be applied (list wraps its content).
+ *   A cap is only applied when [maxVisibleItems] is set and [itemCount] exceeds it. Before an item
+ *   is measured ([measuredItemHeight] == 0.dp) the [estimatedItemHeight] is used so the bound is
+ *   in place from the first layout pass; once measured, the exact height refines it.
+ */
+internal fun computeListMaxHeight(
+    maxVisibleItems: Int?,
+    itemCount: Int,
+    measuredItemHeight: Dp,
+    estimatedItemHeight: Dp = SwipeDefaults.ESTIMATED_ITEM_HEIGHT,
+): Dp? {
+    if (maxVisibleItems == null || maxVisibleItems <= 0 || itemCount <= maxVisibleItems) {
+        return null
+    }
+    val perItemHeight = if (measuredItemHeight > 0.dp) measuredItemHeight else estimatedItemHeight
+    return perItemHeight * maxVisibleItems
 }
 
 // --- Scope Interface and Implementation ---
@@ -100,12 +130,19 @@ fun <T> AppSwipeableList(
         }
     }
 
-    val heightModifier = rememberMaxVisibleHeightModifier(
+    // Cap the list to at most maxVisibleItems tile heights whenever the list overflows.
+    // Computed directly on every composition (NOT a keyless remember/derivedStateOf) so it reacts
+    // to the asynchronously-loaded [items] list: a keyless derivedStateOf captured the initial —
+    // empty — items and never updated, so an async-populated list (e.g. the multi-user landing's
+    // accounts) was never capped and overflowed past maxVisibleItems, pushing CTAs off-screen
+    // (MOB-1572). Reading measuredItemHeight (snapshot state) here still recomposes once a tile is
+    // measured so the estimate refines to the exact height. When the list fits, no cap is applied
+    // so it can size naturally and stay centered.
+    val heightModifier = computeListMaxHeight(
         maxVisibleItems = maxVisibleItems,
-        itemCount = { items.size },
-        hasMeasured = { hasMeasured },
-        measuredItemHeight = { measuredItemHeight },
-    )
+        itemCount = items.size,
+        measuredItemHeight = measuredItemHeight,
+    )?.let { Modifier.height(it) } ?: Modifier
 
     LazyColumn(
         state = lazyListState,
@@ -141,32 +178,6 @@ fun <T> AppSwipeableList(
             }
         }
     }
-}
-
-// Derives the height constraint applied when there are more items than
-// maxVisibleItems. State is read through lambdas so the derivedStateOf keeps
-// observing the same snapshot state it did when inlined.
-@Composable
-private fun rememberMaxVisibleHeightModifier(
-    maxVisibleItems: Int?,
-    itemCount: () -> Int,
-    hasMeasured: () -> Boolean,
-    measuredItemHeight: () -> Dp,
-): Modifier {
-    val heightModifier by remember {
-        derivedStateOf {
-            // Only apply height constraint when there are more items than maxVisibleItems
-            // This allows the list to size naturally and be centered when there are fewer items
-            if (maxVisibleItems != null && hasMeasured() && measuredItemHeight() > 0.dp && itemCount() > maxVisibleItems) {
-                // Calculate height based on maxVisibleItems
-                val calculatedHeight = measuredItemHeight() * maxVisibleItems
-                Modifier.height(calculatedHeight)
-            } else {
-                Modifier
-            }
-        }
-    }
-    return heightModifier
 }
 
 // Emits a single item row: builds the per-item scope, renders the swipeable
