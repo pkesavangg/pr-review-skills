@@ -34,7 +34,7 @@ Decide scope first, then bucket: is the doc about **both** apps (→ this root `
 | [guides/ACCOUNT_SWITCHING_FLOW.md](guides/ACCOUNT_SWITCHING_FLOW.md) | Multi-account management and the account-switching flow. |
 | [guides/PRODUCT_TYPES_CURRENT_STATE.md](guides/PRODUCT_TYPES_CURRENT_STATE.md) | Current state of product types across the app. |
 | [guides/CIRCLECI.md](guides/CIRCLECI.md) | CircleCI pipeline: config, per-platform checks, why SwiftLint and the iOS build run separately, and required secrets. |
-| [guides/SDLC_AUDIT_2026-07-22.md](guides/SDLC_AUDIT_2026-07-22.md) | SDLC compliance audit of `develop` (2026-07-22): status ✅ PASS with 1 Medium + 2 Low findings. |
+| [guides/COMPLIANCE_SDLC_WISP.md](guides/COMPLIANCE_SDLC_WISP.md) | Standing compliance record against the Secure SDLC Program and the WISP — 1–5 scores, audit results, the pending register, and the re-runnable verification commands. |
 
 ### rules/
 | Doc | What it covers |
