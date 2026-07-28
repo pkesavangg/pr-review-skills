@@ -44,6 +44,7 @@ Decide scope first, then bucket: is the doc about **both** apps (→ this root `
 ### plans/
 | Doc | What it covers |
 |-----|----------------|
+| [plans/2026-07-28-MOB-1914-cs-triage-skill.md](plans/2026-07-28-MOB-1914-cs-triage-skill.md) | `cs-triage` skill: how #_cstech reports + customer logs are triaged, and what the skill automates. |
 | [plans/2026-07-14-MOB-1008-android-claude-orchestration-agents-skills.md](plans/2026-07-14-MOB-1008-android-claude-orchestration-agents-skills.md) | Android Claude orchestration: agents + skills plan. |
 | [plans/2026-06-25-MOB-1007-ios-claude-skills-audit-refresh.md](plans/2026-06-25-MOB-1007-ios-claude-skills-audit-refresh.md) | iOS Claude skills audit + refresh plan. |
 
