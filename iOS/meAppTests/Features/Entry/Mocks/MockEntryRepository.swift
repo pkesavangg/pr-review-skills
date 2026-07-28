@@ -8,6 +8,7 @@ final class MockEntryRepository: EntryRepositoryProtocol {
     var saveEntryError: Error?
     var updateEntryError: Error?
     var updateEntryServerEntryIdError: Error?
+    var updateEntryBabyIdError: Error?
     var deleteEntryError: Error?
     var deleteAllEntriesError: Error?
     var fetchEntriesAsDTOError: Error?
@@ -21,7 +22,9 @@ final class MockEntryRepository: EntryRepositoryProtocol {
     private(set) var deleteEntryCalls = 0
     private(set) var updateEntrySyncStatusCalls = 0
     private(set) var updateEntryServerEntryIdCalls = 0
+    private(set) var updateEntryBabyIdCalls = 0
     private(set) var lastServerEntryId: String?
+    private(set) var lastAssignedBabyId: String?
     private(set) var fetchEntriesAsDTOCalls = 0
 
     private(set) var lastSavedEntry: Entry?
@@ -59,6 +62,19 @@ final class MockEntryRepository: EntryRepositoryProtocol {
         if let entry = entries.first(where: { $0.id.uuidString == entryId }) {
             entry.serverEntryId = serverEntryId
         }
+    }
+
+    @discardableResult
+    func updateEntryBabyId(entryId: String, babyId: String) async throws -> Bool {
+        updateEntryBabyIdCalls += 1
+        lastAssignedBabyId = babyId
+        if let updateEntryBabyIdError { throw updateEntryBabyIdError }
+        guard let entry = entries.first(where: { $0.id.uuidString == entryId }),
+              let babyEntry = entry.babyEntry else {
+            return false
+        }
+        babyEntry.babyId = babyId
+        return true
     }
 
     func updateEntrySyncStatus(entryId: String, isSynced: Bool, isFailedToSync: Bool, attempts: Int) async throws {

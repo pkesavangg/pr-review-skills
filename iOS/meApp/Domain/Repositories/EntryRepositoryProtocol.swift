@@ -33,6 +33,12 @@ protocol EntryRepositoryProtocol {
     /// Required so subsequent delete operations can include it in the request body.
     func updateEntryServerEntryId(entryId: String, serverEntryId: String) async throws
 
+    /// Re-attributes a baby entry, writing only `babyEntry.babyId`.
+    /// Use this instead of mutating the @Model then calling `updateEntry` (MOB-1849 / MOB-1850).
+    /// - Returns: `false` when no row matches `entryId`, or the row has no `babyEntry`.
+    @discardableResult
+    func updateEntryBabyId(entryId: String, babyId: String) async throws -> Bool
+
     /// Deletes an entry by its unique ID.
     /// - Parameter id: The ID of the entry to delete.
     func deleteEntry(byId id: String) async throws

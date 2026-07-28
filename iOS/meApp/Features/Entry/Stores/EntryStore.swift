@@ -397,13 +397,7 @@ final class EntryStore: ObservableObject {
     }
 
     private func babyWeightUnitFor(_ account: AccountSnapshot?) -> BabyWeightUnit {
-        guard let raw = account?.measurementUnits,
-              let units = MeasurementUnits(rawValue: raw) else { return .lbsOz }
-        switch units {
-        case .metric:            return .kg
-        case .imperialLbDecimal: return .lb
-        case .imperialLbOz:      return .lbsOz
-        }
+        BabyWeightUnit(account?.babyMeasurementUnits ?? .imperialLbOz)
     }
 
     private func setupBmiObservers() {

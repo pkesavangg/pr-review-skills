@@ -9,6 +9,7 @@ class DashboardGoalManager: ObservableObject, DashboardGoalManaging {
     @Injector private var accountService: AccountService
     @Injector private var entryService: EntryService
     @Injector private var logger: LoggerService
+    @Injector private var productTypeStore: ProductTypeStoreProtocol
 
     // MARK: - Published Properties
     @Published var state: GoalState
@@ -21,6 +22,7 @@ class DashboardGoalManager: ObservableObject, DashboardGoalManaging {
         _ = accountService
         _ = entryService
         _ = logger
+        _ = productTypeStore
     }
 
     // MARK: - Goal Data Loading
@@ -285,12 +287,26 @@ class DashboardGoalManager: ObservableObject, DashboardGoalManaging {
     }
 
     // MARK: - Weight Conversion Helpers
+
+    /// The unit the *displayed* values use — the kids' units while a baby is selected, the adult
+    /// unit otherwise. Goal maths stays on the adult unit (`convertStoredWeightToDisplay`); goals
+    /// belong to "My Weight" and are never expressed in the kids' unit.
+    var displayWeightUnit: WeightUnit {
+        guard let account = accountService.activeAccount else { return .lb }
+        if case .baby = productTypeStore.selectedItem {
+            return account.babyWeightUnit
+        }
+        return account.weightUnit
+    }
+
     func convertWeightToDisplay(_ storedWeight: Int) -> Double {
-        return convertStoredWeightToDisplay(storedWeight)
+        return convertWeightToDisplay(Double(storedWeight))
     }
 
     func convertWeightToDisplay(_ storedWeight: Double) -> Double {
-        return convertStoredWeightToDisplay(storedWeight)
+        displayWeightUnit == .kg
+            ? ConversionTools.convertStoredToKg(storedWeight)
+            : ConversionTools.convertStoredToLbs(storedWeight)
     }
 
     func formatWeightForDisplay(_ weight: Double, isWeightlessMode: Bool) -> String {
@@ -353,9 +369,9 @@ class DashboardGoalManager: ObservableObject, DashboardGoalManaging {
 
     // MARK: - Weight Formatting Methods (moved from DashboardStore)
     
-    /// Returns the current weight unit as a string (e.g., "lbs" or "kg")
+    /// Returns the displayed weight unit as a string (e.g., "lb" or "kg")
     func getUnitText() -> String {
-        return accountService.activeAccount?.weightUnit.rawValue ?? "lb"
+        return displayWeightUnit.rawValue
     }
 
     /// Returns the weight display label for the current period

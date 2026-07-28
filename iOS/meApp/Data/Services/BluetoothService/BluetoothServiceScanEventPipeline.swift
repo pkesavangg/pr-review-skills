@@ -293,11 +293,10 @@ extension BluetoothService {
         }
         logger.log(level: .info, tag: tag, message: "Weight readings received from device: count=\(entries.count)")
 
-        // Baby-scale batches: all entries are saved immediately and the most recent fires
-        // newEntryReceivedSubject for the assign/discard card. Mirror saveSingleWeightEntry logic.
-        if let firstEntry = entries.first, firstEntry.entryType == EntryType.baby.rawValue {
-            let historicalEntries = entries.dropFirst()
-            for entry in historicalEntries {
+        if entries.first?.entryType == EntryType.baby.rawValue {
+            let orderedNewestFirst = entries.sorted { $0.entryTimestamp > $1.entryTimestamp }
+            guard let latestEntry = orderedNewestFirst.first else { return }
+            for entry in orderedNewestFirst.dropFirst() {
                 do {
                     try await entryService.saveNewEntry(entry)
                 } catch {
@@ -310,17 +309,17 @@ extension BluetoothService {
                 }
             }
             do {
-                try await entryService.saveNewEntry(firstEntry)
+                try await entryService.saveNewEntry(latestEntry)
             } catch {
                 logger.log(
                     level: .error,
                     tag: tag,
-                    message: "Failed to save baby entry. entryId=\(firstEntry.id.uuidString)",
+                    message: "Failed to save baby entry. entryId=\(latestEntry.id.uuidString)",
                     data: error.localizedDescription
                 )
                 return
             }
-            newEntryReceivedSubject.send(EntryNotification(from: firstEntry))
+            newEntryReceivedSubject.send(EntryNotification(from: latestEntry, batchCount: entries.count))
             return
         }
 

@@ -97,7 +97,9 @@ extension BabyScaleSetupStore {
             birthLengthInches: baby.birthLengthInches,
             birthWeightLbs: baby.birthWeightLbs,
             birthWeightOz: baby.birthWeightOz,
-            preferredWeightUnit: accountService.activeAccount?.weightUnit == .kg ? .kg : .lbsOz
+            // Kids' units, not the adult "My Weight" unit — and honour lb (decimal), which the
+            // old kg-or-lbsOz check dropped.
+            preferredWeightUnit: BabyWeightUnit(accountService.activeAccount?.babyMeasurementUnits ?? .imperialLbOz)
         )
         navigateToStep(.babyProfile)
     }

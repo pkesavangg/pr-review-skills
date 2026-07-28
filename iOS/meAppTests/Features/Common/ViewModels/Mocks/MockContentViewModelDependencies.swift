@@ -264,6 +264,7 @@ final class MockContentViewModelBluetoothService: BluetoothServiceProtocol {
     func cancelWifi(broadcastId: String) async -> Result<Void, BluetoothServiceError> { .failure(.notImplemented) }
     func getConnectedWifiSSID(broadcastId: String) async -> Result<String, BluetoothServiceError> { .failure(.notImplemented) }
     func updateSetting(broadcastId: String, settings: [DeviceSetting]) async -> Result<Void, BluetoothServiceError> { .failure(.notImplemented) }
+    func updateBabyScaleUnit(_ measurementUnits: MeasurementUnits) async -> Result<[String], BluetoothServiceError> { .success([]) }
     func updateFirmware(broadcastId: String, timestamp: UInt32) async -> Result<Void, BluetoothServiceError> { .failure(.notImplemented) }
     func clearData(broadcastId: String, dataType: DeviceClearType) async -> Result<Void, BluetoothServiceError> { .failure(.notImplemented) }
     func updateUserProfileForR4Scales() async -> Result<[String], BluetoothServiceError> { .failure(.notImplemented) }

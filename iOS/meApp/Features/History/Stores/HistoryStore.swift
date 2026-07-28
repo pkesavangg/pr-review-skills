@@ -993,9 +993,7 @@ final class HistoryStore: ObservableObject {
     }
 
     private var currentMeasurementUnits: MeasurementUnits {
-        guard let raw = accountService.activeAccount?.measurementUnits,
-              let units = MeasurementUnits(rawValue: raw) else { return .imperialLbOz }
-        return units
+        accountService.activeAccount?.babyMeasurementUnits ?? .imperialLbOz
     }
 
     /// User tapped a baby day row.

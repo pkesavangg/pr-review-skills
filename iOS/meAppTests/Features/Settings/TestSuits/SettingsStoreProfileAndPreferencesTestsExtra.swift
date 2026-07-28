@@ -179,7 +179,45 @@ extension SettingsStoreTests {
             #expect(accountService.updateBodyCompCalls == 0)
             #expect(accountService.lastUpdatedMeasurementUnits == .metric)
             #expect(bluetooth.updateUserProfileForR4ScalesCalls == 0)
+            // The kids' unit is pushed to the baby scale so its LCD matches the app.
+            #expect(bluetooth.updateBabyScaleUnitCalls == 1)
+            #expect(bluetooth.lastBabyScaleUnit == .metric)
             #expect(notification.toastData?.message == ToastStrings.unitSettingUpdated)
+        }
+
+        @Test("saveUnitSelections does not touch the baby scale when only the adult unit changes")
+        func saveUnitSelectionsAdultOnlyLeavesBabyScaleAlone() async {
+            let notification = TestNotificationHelperService()
+            let account = AccountTestFixtures.makeAccountSnapshot(
+                id: "acct-1",
+                isActiveAccount: true,
+                measurementUnits: "imperialLbOz",
+                weightUnit: .lb
+            )
+            let accountService = MockAccountService()
+            accountService.seedAccounts([account], active: account)
+            accountService.updateBodyCompResult = .success(())
+            let bluetooth = MockBluetoothService()
+            bluetooth.updateUserProfileForR4ScalesResult = .success([])
+            let (store, _, _, _, _) = SettingsStoreTestFixtures.makeSUT(
+                notification: notification,
+                accountService: accountService,
+                bluetoothService: bluetooth,
+                seedDefaultAccount: false
+            )
+            await SettingsStoreTestFixtures.waitUntil { store.activeAccount?.accountId == account.accountId }
+
+            guard let productTypeStore = DependencyContainer.shared.dependencies["ProductTypeStoreProtocol"] as? MockProductTypeStore else {
+                Issue.record("Expected the store's product-type store to be a MockProductTypeStore")
+                return
+            }
+            productTypeStore.availableItems = [.myWeight, .baby(profile: BabyProfile(id: "baby-1", name: "Aria"))]
+
+            store.saveUnitSelections(weightUnit: .kg, measurementUnits: .imperialLbOz)
+            await SettingsStoreTestFixtures.waitUntil { notification.dismissLoaderCalls == 1 }
+
+            #expect(accountService.updateMeasurementUnitsCalls == 0)
+            #expect(bluetooth.updateBabyScaleUnitCalls == 0)
         }
 
         @Test("saveUnitSelections does not persist measurement units for a pending baby placeholder")

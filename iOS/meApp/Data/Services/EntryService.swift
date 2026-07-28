@@ -331,8 +331,8 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
             )
             return
         }
+        try await localRepo.updateEntryBabyId(entryId: entryId.uuidString, babyId: babyId)
         entry.babyEntry?.babyId = babyId
-        try await localRepo.updateEntry(entry)
         logger.log(
             level: .info,
             tag: tag,
@@ -351,8 +351,15 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
             let entries = try await localRepo.fetchEntries(forUserId: accountId, operationType: nil)
             var remapped = 0
             for entry in entries where entry.babyEntry?.babyId == oldId {
+                guard try await localRepo.updateEntryBabyId(entryId: entry.id.uuidString, babyId: newId) else {
+                    logger.log(
+                        level: .error,
+                        tag: tag,
+                        message: "babyId remap failed for entryId=\(entry.id.uuidString): \(oldId) -> \(newId)"
+                    )
+                    continue
+                }
                 entry.babyEntry?.babyId = newId
-                try await localRepo.updateEntry(entry)
                 remapped += 1
             }
             if remapped > 0 {

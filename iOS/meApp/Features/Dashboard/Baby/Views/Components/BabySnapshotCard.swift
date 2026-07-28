@@ -156,7 +156,7 @@ struct BabySnapshotCard: View {
     private func recomputeCache() async {
         let inputSummaries = summaries
         let profile = babyProfile
-        let weightUnit = viewModel.activeAccount?.weightUnit ?? .lb
+        let weightUnit = viewModel.weightUnit
         let measurementUnits = viewModel.measurementUnits
 
         let result = await Task.detached(priority: .utility) {

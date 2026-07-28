@@ -1265,14 +1265,17 @@ class DashboardStore: ObservableObject, DashboardStateProviding {
         return metricsManager.getBodyMetric(for: selectedLabel)
     }
 
-    var currentUnit: WeightUnit { accountService.activeAccount?.weightUnit ?? .lb }
+    /// The unit the dashboard displays in: the kids' units while a baby is selected, the adult
+    /// "My Weight" unit otherwise. The two are independent sections of the Unit Type dialog.
+    var currentUnit: WeightUnit {
+        guard let account = accountService.activeAccount else { return .lb }
+        return isBabySelection ? account.babyWeightUnit : account.weightUnit
+    }
     var currentUnitString: String { currentUnit.rawValue }
-    var currentUnitText: String { accountService.activeAccount?.weightUnit.rawValue ?? "lb" }
+    var currentUnitText: String { currentUnit.rawValue }
     var currentWeightlessMode: Bool { accountService.activeAccount?.isWeightlessOn ?? false }
     var currentMeasurementUnits: MeasurementUnits {
-        guard let raw = accountService.activeAccount?.measurementUnits,
-              let units = MeasurementUnits(rawValue: raw) else { return .imperialLbOz }
-        return units
+        accountService.activeAccount?.babyMeasurementUnits ?? .imperialLbOz
     }
     var unitText: String { goalManager.getUnitText() }
 

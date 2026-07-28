@@ -13,6 +13,15 @@ enum BabyWeightUnit: String, CaseIterable, Identifiable, Hashable {
 
     var id: String { rawValue }
 
+    /// Derived from the account's "My Kids" `measurementUnits` — never the adult `weightUnit`.
+    init(_ measurementUnits: MeasurementUnits) {
+        switch measurementUnits {
+        case .metric:            self = .kg
+        case .imperialLbDecimal: self = .lb
+        case .imperialLbOz:      self = .lbsOz
+        }
+    }
+
     /// User-facing label for the weight-unit selector ("lb", "lb/oz", "kg").
     /// Distinct from `rawValue`, which is the canonical storage/logic value.
     var displayName: String {

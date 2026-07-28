@@ -58,6 +58,26 @@ enum MeasurementUnits: String, Codable, Equatable, CaseIterable {
     case imperialLbDecimal
 }
 
+extension MeasurementUnits {
+    /// The weight unit these measurement units weigh in, for conversions and axis labels.
+    /// Both imperial forms are pounds; only the display formatting differs (`7.7 lb` vs
+    /// `7 lb 12 oz`). For the scale's own LCD setting use `scaleUnitValue`, which keeps them apart.
+    var weightUnit: WeightUnit {
+        self == .metric ? .kg : .lb
+    }
+
+    /// The value the BLE `UNIT` setting expects, as keyed by `GGBluetoothSwiftPackage`'s `unitMap`
+    /// (`kg` / `lb` / `lb_oz`). Unlike `weightUnit` this distinguishes the two imperial forms, so
+    /// the scale LCD shows lb/oz rather than decimal lb.
+    var scaleUnitValue: String {
+        switch self {
+        case .metric:            return "kg"
+        case .imperialLbDecimal: return "lb"
+        case .imperialLbOz:      return "lb_oz"
+        }
+    }
+}
+
 // MARK: - ProductType
 
 /// Product-type identifiers.

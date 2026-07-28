@@ -27,17 +27,16 @@ final class BabySnapshotCardViewModel: ObservableObject {
     }
 
     var unitText: String {
-        activeAccount?.weightUnit.rawValue ?? "lb"
+        weightUnit.rawValue
     }
 
     var measurementUnits: MeasurementUnits {
-        guard let raw = activeAccount?.measurementUnits,
-              let units = MeasurementUnits(rawValue: raw) else { return .imperialLbOz }
-        return units
+        activeAccount?.babyMeasurementUnits ?? .imperialLbOz
     }
 
-    private var weightUnit: WeightUnit {
-        activeAccount?.weightUnit ?? .lb
+    /// Kids' unit — the card shows a baby's weight, so it never follows the adult "My Weight" unit.
+    var weightUnit: WeightUnit {
+        measurementUnits.weightUnit
     }
 
     func convertStoredWeightToDisplay(_ storedWeight: Int) -> Double {

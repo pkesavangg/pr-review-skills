@@ -21,6 +21,8 @@ extension EntryServiceProtocol {
 extension EntryRepositoryProtocol {
     func markEntryAsDeleted(byId id: String) async throws {}
     func updateEntryServerEntryId(entryId: String, serverEntryId: String) async throws {}
+    @discardableResult
+    func updateEntryBabyId(entryId: String, babyId: String) async throws -> Bool { true }
     func fetchUnsyncedEntriesAsSnapshots(forUserId userId: String) async throws -> [(EntrySnapshot, BathScaleOperationDTO)] { [] }
 }
 

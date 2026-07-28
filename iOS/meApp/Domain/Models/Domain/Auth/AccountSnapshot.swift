@@ -68,3 +68,19 @@ struct AccountSnapshot: Equatable, Sendable {
     let refreshToken: String?
     let expiresAt: String?
 }
+
+// MARK: - Baby ("My Kids") units
+
+extension AccountSnapshot {
+    /// The account's "My Kids" units, parsed. Every baby surface — dashboard, history, entry
+    /// forms, the reading-arrival card, the baby scale's own `UNIT` setting — must read this and
+    /// NOT the adult `weightUnit`, which the Unit Type dialog writes as a separate section.
+    var babyMeasurementUnits: MeasurementUnits {
+        measurementUnits.flatMap(MeasurementUnits.init(rawValue:)) ?? .imperialLbOz
+    }
+
+    /// The kids' units expressed as a kg/lb weight unit, for conversions and axis labels.
+    var babyWeightUnit: WeightUnit {
+        babyMeasurementUnits.weightUnit
+    }
+}

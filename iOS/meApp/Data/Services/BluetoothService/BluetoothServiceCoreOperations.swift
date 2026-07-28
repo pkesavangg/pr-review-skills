@@ -344,6 +344,45 @@ extension BluetoothService {
         }
     }
 
+    /// Pushes the kids' unit to every paired baby scale so the scale LCD and the app agree.
+    /// Sends `MeasurementUnits.scaleUnitValue` (kg / lb / lb_oz), so lb-decimal and lb/oz stay distinct
+    /// on the scale rather than both landing on lb.
+    /// Returns the broadcast IDs the unit was pushed to (empty when no baby scale is paired).
+    @discardableResult
+    func updateBabyScaleUnit(_ measurementUnits: MeasurementUnits) async -> Result<[String], BluetoothServiceError> {
+        let babyScales = bluetoothScales.filter { scale in
+            guard let sku = scale.sku else { return false }
+            return DeviceInfoUtils.shared.getDeviceInfo(bySku: sku)?.setupType == .babyScale
+        }
+        guard !babyScales.isEmpty else {
+            logger.log(level: .debug, tag: tag, message: "updateBabyScaleUnit skipped — no paired baby scale")
+            return .success([])
+        }
+
+        let setting = DeviceSetting(key: GGBTSettingType.UNIT.rawValue, value: .string(measurementUnits.scaleUnitValue))
+        var updated: [String] = []
+        for scale in babyScales {
+            guard let broadcastId = scale.broadcastIdString else { continue }
+            switch await updateSetting(broadcastId: broadcastId, settings: [setting]) {
+            case .success:
+                updated.append(broadcastId)
+            case .failure(let error):
+                logger.log(
+                    level: .error,
+                    tag: tag,
+                    message: "Failed to push unit \(measurementUnits.scaleUnitValue) to baby scale \(broadcastId)",
+                    data: error.localizedDescription
+                )
+            }
+        }
+        logger.log(
+            level: .info,
+            tag: tag,
+            message: "Pushed unit \(measurementUnits.scaleUnitValue) to baby scales: \(updated)"
+        )
+        return .success(updated)
+    }
+
     func updateFirmware(broadcastId: String, timestamp: UInt32) async -> Result<Void, BluetoothServiceError> {
         do {
             let ggDevice = mapToGGBTDevice(broadcastId)

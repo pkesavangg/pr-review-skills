@@ -256,13 +256,6 @@ final class MyKidsStore: ObservableObject {
     /// so reading `weightUnit` here left the Edit a Baby form on the previous unit after a
     /// baby unit change (MOB-1471). Also honours `.lb` (decimal) which the old check dropped.
     private var preferredWeightUnit: BabyWeightUnit {
-        switch accountService.activeAccount?.measurementUnits.flatMap(MeasurementUnits.init(rawValue:)) {
-        case .metric:
-            return .kg
-        case .imperialLbDecimal:
-            return .lb
-        case .imperialLbOz, .none:
-            return .lbsOz
-        }
+        BabyWeightUnit(accountService.activeAccount?.babyMeasurementUnits ?? .imperialLbOz)
     }
 }

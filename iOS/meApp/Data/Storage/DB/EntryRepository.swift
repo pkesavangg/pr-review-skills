@@ -246,6 +246,24 @@ final class EntryRepository: EntryRepositoryProtocol {
         }
     }
 
+    /// Sets only `babyEntry.babyId`, leaving the sync scalars alone. `updateEntry` copies
+    /// scalars and never relationships, so mutating the @Model then calling it neither
+    /// persisted the attribution nor left the sync state intact (MOB-1849 / MOB-1850).
+    @discardableResult
+    func updateEntryBabyId(entryId: String, babyId: String) async throws -> Bool {
+        guard let uuid = UUID(uuidString: entryId) else { return false }
+        return try await performTask { ctx in
+            let descriptor = FetchDescriptor<Entry>(predicate: #Predicate { $0.id == uuid })
+            guard let existing = try ctx.fetch(descriptor).first,
+                  let babyEntry = existing.babyEntry else {
+                return false
+            }
+            babyEntry.babyId = babyId
+            try ctx.save()
+            return true
+        }
+    }
+
     /// Stores the server-assigned entryId after a successful create sync.
     func updateEntryServerEntryId(entryId: String, serverEntryId: String) async throws {
         guard let uuid = UUID(uuidString: entryId) else { return }

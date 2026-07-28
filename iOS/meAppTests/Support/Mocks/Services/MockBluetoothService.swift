@@ -14,6 +14,7 @@ final class MockBluetoothService: BluetoothServiceProtocol {
     var disconnectDeviceResult: Result<Void, BluetoothServiceError> = .success(())
     var getConnectedWifiSSIDResult: Result<String, BluetoothServiceError> = .failure(.notImplemented)
     var updateSettingResult: Result<Void, BluetoothServiceError> = .failure(.notImplemented)
+    var updateBabyScaleUnitResult: Result<[String], BluetoothServiceError> = .success([])
     var updateAccountResult: Result<UserCreationResponse, BluetoothServiceError> = .failure(.notImplemented)
     var getDeviceInfoResult: Result<DeviceInfo, BluetoothServiceError> = .failure(.notImplemented)
     var getWifiMacAddressResult: Result<String, BluetoothServiceError> = .failure(.notImplemented)
@@ -41,6 +42,7 @@ final class MockBluetoothService: BluetoothServiceProtocol {
     private(set) var disconnectDeviceCalls = 0
     private(set) var getConnectedWifiSSIDCalls = 0
     private(set) var updateSettingCalls = 0
+    private(set) var updateBabyScaleUnitCalls = 0
     private(set) var updateAccountCalls = 0
     private(set) var getDeviceInfoCalls = 0
     private(set) var getWifiMacAddressCalls = 0
@@ -66,6 +68,7 @@ final class MockBluetoothService: BluetoothServiceProtocol {
     private(set) var lastConnectedWifiSSIDBroadcastId: String?
     private(set) var lastUpdateSettingBroadcastId: String?
     private(set) var lastUpdateSettings: [DeviceSetting] = []
+    private(set) var lastBabyScaleUnit: MeasurementUnits?
     private(set) var lastUpdateAccountBroadcastId: String?
     private(set) var lastDeviceInfoBroadcastId: String?
     private(set) var lastWifiMacBroadcastId: String?
@@ -218,6 +221,11 @@ final class MockBluetoothService: BluetoothServiceProtocol {
         lastUpdateSettingBroadcastId = broadcastId
         lastUpdateSettings = settings
         return updateSettingResult
+    }
+    func updateBabyScaleUnit(_ measurementUnits: MeasurementUnits) async -> Result<[String], BluetoothServiceError> {
+        updateBabyScaleUnitCalls += 1
+        lastBabyScaleUnit = measurementUnits
+        return updateBabyScaleUnitResult
     }
     func updateFirmware(broadcastId: String, timestamp: UInt32) async -> Result<Void, BluetoothServiceError> {
         updateFirmwareCalls += 1

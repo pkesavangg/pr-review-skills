@@ -165,6 +165,11 @@ protocol BluetoothServiceProtocol {
     /// Updates a list of settings on the device.
     /// - Returns: Result<Void, BluetoothServiceError>
     func updateSetting(broadcastId: String, settings: [DeviceSetting]) async -> Result<Void, BluetoothServiceError>
+    /// Pushes the kids' measurement units to every paired baby scale (`UNIT` setting), so a
+    /// "My Kids" unit change is reflected on the scale LCD as well as in the app.
+    /// - Returns: the broadcast IDs the unit was pushed to; empty when no baby scale is paired.
+    @discardableResult
+    func updateBabyScaleUnit(_ measurementUnits: MeasurementUnits) async -> Result<[String], BluetoothServiceError>
     /// Initiates a firmware update on the device.
     /// - Returns: Result<Void, BluetoothServiceError>
     func updateFirmware(broadcastId: String, timestamp: UInt32) async -> Result<Void, BluetoothServiceError>

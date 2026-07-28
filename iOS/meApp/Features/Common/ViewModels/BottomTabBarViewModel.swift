@@ -60,6 +60,8 @@ class BottomTabBarViewModel: ObservableObject {
     @Injector private var integrationService: IntegrationServiceProtocol
     @Injector var babyService: BabyServiceProtocol
 
+    private var lastAssignedBabyId: String?
+
     // MARK: - Permission Disabled Alert Tracking
 
     /// Indicates whether the *Permission Disabled* alert has already been shown in the current app session.
@@ -497,6 +499,7 @@ class BottomTabBarViewModel: ObservableObject {
         pendingBabyAssignmentEntryId = nil
         do {
             try await entryService.assignBabyEntry(entryId: entryId, babyId: babyId)
+            lastAssignedBabyId = babyId
             logger.log(
                 level: .info,
                 tag: tag,
@@ -733,15 +736,21 @@ class BottomTabBarViewModel: ObservableObject {
 
     // MARK: - Baby Reading Arrival Card
 
-    private func babyWeightString(decigrams: Int, source: String?, isMetric: Bool) -> String {
+    /// Formats an incoming baby-scale reading in the kids' units, graduated to match the scale LCD.
+    private func babyWeightString(decigrams: Int, source: String?, units: MeasurementUnits) -> String {
         guard decigrams > 0 else { return "--" }
-        if isMetric {
+        switch units {
+        case .metric:
             let grad = ConversionTools.convertToDisplayWeightBase(
                 decigrams: decigrams, source: source, unit: .kg, isBabyScaleEntry: true
             )
-            let kg = ConversionTools.convertBabyDecigramsToKg(grad)
-            return String(format: "%.3f kg", kg)
-        } else {
+            return String(format: "%.3f kg", ConversionTools.convertBabyDecigramsToKg(grad))
+        case .imperialLbDecimal:
+            let grad = ConversionTools.convertToDisplayWeightBase(
+                decigrams: decigrams, source: source, unit: .lbDecimal, isBabyScaleEntry: true
+            )
+            return String(format: "%.1f lb", ConversionTools.convertBabyDecigramsToLb(grad))
+        case .imperialLbOz:
             let grad = ConversionTools.convertToDisplayWeightBase(
                 decigrams: decigrams, source: source, unit: .lbOz, isBabyScaleEntry: true
             )
@@ -759,11 +768,10 @@ class BottomTabBarViewModel: ObservableObject {
     // swiftlint:disable:next function_body_length
     private func showBabyReadingArrivalCard(notification: EntryNotification) {
         let lang = DashboardStrings.self
-        let isMetric = accountService.activeAccount?.weightUnit == .kg
         let weightString = babyWeightString(
             decigrams: notification.babyWeight ?? 0,
             source: notification.babySource,
-            isMetric: isMetric
+            units: accountService.activeAccount?.babyMeasurementUnits ?? .imperialLbOz
         )
         let relativeTime = DateTimeTools.getArrivalRelativeTime(fromISOString: notification.entryTimestamp)
             ?? DashboardStrings.justNow
@@ -782,13 +790,17 @@ class BottomTabBarViewModel: ObservableObject {
         let babyItems: [AssignBabyModalView.BabyItem] = babyService.currentBabies.map {
             AssignBabyModalView.BabyItem(id: $0.id, name: $0.name, birthday: $0.birthday)
         }
+        let autoAssignBabyId = timeoutAssignTarget(among: babyItems)
 
-        // On timeout without a user decision, discard the reading rather than silently
-        // assigning it to the first baby — an unassigned reading must not land in a baby's
-        // history without the user choosing. Matches the no-profile card's timeout behavior.
+        // MOB-1852: an ignored card must not drop the reading — on timeout it auto-assigns to
+        // the last active baby profile. Only a card with no resolvable profile discards.
         let onDismiss: () -> Void = { [weak self] in
             guard !didUserAct else { return }
-            self?.discardBabyReading(entryId: entryId)
+            guard let autoAssignBabyId else {
+                self?.discardBabyReading(entryId: entryId)
+                return
+            }
+            self?.autoAssignBabyReading(entryId: entryId, babyId: autoAssignBabyId)
         }
 
         let toast: ToastModel
@@ -810,6 +822,7 @@ class BottomTabBarViewModel: ObservableObject {
                                 guard let self else { return }
                                 do {
                                     try await self.entryService.assignBabyEntry(entryId: entryId, babyId: singleBabyId)
+                                    self.lastAssignedBabyId = singleBabyId
                                     self.logger.log(
                                         level: .info,
                                         tag: self.tag,
@@ -930,6 +943,42 @@ class BottomTabBarViewModel: ObservableObject {
         notificationService.showToast(toast)
     }
 
+    /// Where an untouched card commits on timeout (MOB-1852), matching Android MOB-598: the
+    /// last-assigned baby on a multi-baby account when it still exists, the only baby when there
+    /// is one, otherwise nowhere.
+    private func timeoutAssignTarget(among babyItems: [AssignBabyModalView.BabyItem]) -> String? {
+        if babyItems.count > 1,
+           let lastAssignedBabyId,
+           babyItems.contains(where: { $0.id == lastAssignedBabyId }) {
+            return lastAssignedBabyId
+        }
+        return babyItems.count == 1 ? babyItems.first?.id : nil
+    }
+
+    /// Commits an untouched baby reading to the last active profile when the card times out,
+    /// so a captured measurement is never dropped (MOB-1852).
+    private func autoAssignBabyReading(entryId: UUID, babyId: String) {
+        Task { [weak self] in
+            guard let self else { return }
+            do {
+                try await self.entryService.assignBabyEntry(entryId: entryId, babyId: babyId)
+                self.lastAssignedBabyId = babyId
+                self.logger.log(
+                    level: .info,
+                    tag: self.tag,
+                    message: "Baby reading auto-assigned on timeout. babyId=\(babyId), entryId=\(entryId)"
+                )
+            } catch {
+                self.logger.log(
+                    level: .error,
+                    tag: self.tag,
+                    message: "Failed to auto-assign baby reading on timeout. entryId=\(entryId)",
+                    data: error.localizedDescription
+                )
+            }
+        }
+    }
+
     /// Deletes a baby scale reading entry. Used when the user discards a reading, or when
     /// the no-profile card times out without a baby being added (MOB-425).
     private func discardBabyReading(entryId: UUID) {
@@ -969,6 +1018,7 @@ class BottomTabBarViewModel: ObservableObject {
                     guard let self else { return }
                     do {
                         try await self.entryService.assignBabyEntry(entryId: entryId, babyId: selectedBabyId)
+                        self.lastAssignedBabyId = selectedBabyId
                         let babyName = babyItems.first { $0.id == selectedBabyId }?.name ?? ""
                         self.logger.log(
                             level: .info,
