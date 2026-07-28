@@ -38,12 +38,17 @@ protocol EntryServiceProtocol {
     /// - Parameter entryId: The UUID of the entry to delete.
     func deleteEntry(entryId: UUID) async throws
 
-    /// Assigns a saved baby entry to the given baby profile.
-    /// Updates the `babyId` on the existing entry and publishes `entrySaved` so history refreshes.
+    /// Assigns a saved baby entry to the given baby profile, publishing `entrySaved` so history
+    /// refreshes. An unsynced entry is re-attributed in place; one that already synced under a
+    /// different baby is re-created under the new baby and the synced row deleted, so the server
+    /// drops the old attribution instead of keeping the reading under both children (MOB-1850).
     /// - Parameters:
     ///   - entryId: The UUID of the baby entry to assign.
     ///   - babyId: The baby profile ID to assign the entry to.
-    func assignBabyEntry(entryId: UUID, babyId: String) async throws
+    /// - Returns: The id of the entry now holding the reading — a new id when it had to be
+    ///   re-created. Callers that keep acting on the entry (a further reassign) must use it.
+    @discardableResult
+    func assignBabyEntry(entryId: UUID, babyId: String) async throws -> UUID
 
     /// Rewrites the `babyId` foreign key on every baby entry that references `oldId` to `newId`.
     /// Used when an offline-created baby's client id is replaced by its server id on first sync

@@ -821,16 +821,20 @@ class BottomTabBarViewModel: ObservableObject {
                             Task { @MainActor [weak self] in
                                 guard let self else { return }
                                 do {
-                                    try await self.entryService.assignBabyEntry(entryId: entryId, babyId: singleBabyId)
+                                    // Re-attribution can move the reading to a new row, so the
+                                    // card must follow the returned id (MOB-1850).
+                                    let assignedEntryId = try await self.entryService.assignBabyEntry(
+                                        entryId: entryId, babyId: singleBabyId
+                                    )
                                     self.lastAssignedBabyId = singleBabyId
                                     self.logger.log(
                                         level: .info,
                                         tag: self.tag,
-                                        message: "Baby reading saved (single baby). babyId=\(singleBabyId), entryId=\(entryId)"
+                                        message: "Baby reading saved (single baby). babyId=\(singleBabyId), entryId=\(assignedEntryId)"
                                     )
                                     self.showAssignedBabyToast(
                                         babyName: singleBabyName,
-                                        entryId: entryId,
+                                        entryId: assignedEntryId,
                                         weightString: weightString,
                                         weightMessage: message,
                                         babyItems: babyItems
@@ -1017,17 +1021,21 @@ class BottomTabBarViewModel: ObservableObject {
                 Task { @MainActor [weak self] in
                     guard let self else { return }
                     do {
-                        try await self.entryService.assignBabyEntry(entryId: entryId, babyId: selectedBabyId)
+                        // A reassign of an already-synced reading moves it to a new row, so the
+                        // card's own Reassign action must follow the returned id (MOB-1850).
+                        let assignedEntryId = try await self.entryService.assignBabyEntry(
+                            entryId: entryId, babyId: selectedBabyId
+                        )
                         self.lastAssignedBabyId = selectedBabyId
                         let babyName = babyItems.first { $0.id == selectedBabyId }?.name ?? ""
                         self.logger.log(
                             level: .info,
                             tag: self.tag,
-                            message: "Baby reading assigned to babyId=\(selectedBabyId), entryId=\(entryId)"
+                            message: "Baby reading assigned to babyId=\(selectedBabyId), entryId=\(assignedEntryId)"
                         )
                         self.showAssignedBabyToast(
                             babyName: babyName,
-                            entryId: entryId,
+                            entryId: assignedEntryId,
                             weightString: weightString,
                             weightMessage: weightMessage,
                             babyItems: babyItems

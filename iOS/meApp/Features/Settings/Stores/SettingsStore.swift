@@ -1777,6 +1777,10 @@ class SettingsStore: ObservableObject {
                 }
                 if measurementUnitsChanged {
                     try await accountService.updateMeasurementUnits(measurementUnits)
+                    // Keep the baby scale's own LCD unit in step with the app (Baby app parity):
+                    // the scale is the other half of the "kids' unit", so a change here pushes
+                    // kg/lb to every paired baby scale.
+                    _ = await bluetoothService.updateBabyScaleUnit(measurementUnits)
                 }
 
                 // Only a weight-unit change affects the R4 scale profile.

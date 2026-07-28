@@ -106,6 +106,9 @@ final class EntryRepository: EntryRepositoryProtocol {
         let babyEntryBabyId = entry.babyEntry?.babyId
         let babyEntryLength = entry.babyEntry?.length
         let babyEntryWeight = entry.babyEntry?.weight
+        // Carry the scale SKU across the context hop — dropping it relabelled a device
+        // reading as manual entry when it was re-created (MOB-1850, MOB-1172).
+        let babyEntrySource = entry.babyEntry?.source
 
         try await performTask { ctx in
             let newEntry = Entry(
@@ -163,7 +166,8 @@ final class EntryRepository: EntryRepositoryProtocol {
                 newEntry.babyEntry = BabyEntry(
                     babyId: entryBabyId,
                     length: length,
-                    weight: weight
+                    weight: weight,
+                    source: babyEntrySource
                 )
             }
 

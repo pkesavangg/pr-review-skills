@@ -43,9 +43,12 @@ final class MockEntryService: EntryServiceProtocol {
     private(set) var lastLoadedBabyDashboardId: String?
     private(set) var assignBabyEntryCalls = 0
     private(set) var lastAssignedBabyId: String?
+    private(set) var lastAssignedEntryId: UUID?
     private(set) var remapBabyIdCalls = 0
     private(set) var lastRemapBabyIds: (old: String, new: String)?
     var assignBabyEntryError: Error?
+    /// Forces the id `assignBabyEntry` hands back, standing in for a re-created row.
+    var assignBabyEntryResult: UUID?
 
     func syncAllEntriesWithRemote() async { syncAllEntriesWithRemoteCalls += 1 }
     func migrateFromSQLiteIfNeeded() async {}
@@ -80,10 +83,13 @@ final class MockEntryService: EntryServiceProtocol {
         deletedEntryIds.append(entryId)
         if let error = deleteEntryByIdError { throw error }
     }
-    func assignBabyEntry(entryId: UUID, babyId: String) async throws {
+    func assignBabyEntry(entryId: UUID, babyId: String) async throws -> UUID {
         assignBabyEntryCalls += 1
         lastAssignedBabyId = babyId
+        lastAssignedEntryId = entryId
         if let assignBabyEntryError { throw assignBabyEntryError }
+        // Stands in for a reassign that had to re-create the reading on a new row (MOB-1850).
+        return assignBabyEntryResult ?? entryId
     }
     func remapBabyId(from oldId: String, to newId: String) async {
         remapBabyIdCalls += 1

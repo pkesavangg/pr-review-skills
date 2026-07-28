@@ -322,15 +322,28 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
         try await deleteEntry(entry)
     }
 
-    func assignBabyEntry(entryId: UUID, babyId: String) async throws {
+    @discardableResult
+    func assignBabyEntry(entryId: UUID, babyId: String) async throws -> UUID {
         guard let entry = try await localRepo.fetchEntry(byId: entryId.uuidString) else {
             logger.log(
                 level: .error,
                 tag: tag,
                 message: "Baby entry assign failed — not found: entryId=\(entryId.uuidString)"
             )
-            return
+            return entryId
         }
+        let previousBabyId = entry.babyEntry?.babyId ?? ""
+        guard previousBabyId != babyId else { return entryId }
+
+        // A reading that already reached the server under another baby cannot be moved in place:
+        // the unified API has no baby update and a synced row is never re-pushed, so the server
+        // kept the old attribution and the reading showed under BOTH children (MOB-1850). Move it
+        // the way a baby edit does (HistoryStore.updateBabyEntry) — re-create under the new baby,
+        // then delete the synced row so its delete reaches the server.
+        if entry.isSynced, !previousBabyId.isEmpty {
+            return try await moveSyncedBabyEntry(entry, from: previousBabyId, to: babyId)
+        }
+
         try await localRepo.updateEntryBabyId(entryId: entryId.uuidString, babyId: babyId)
         entry.babyEntry?.babyId = babyId
         logger.log(
@@ -340,6 +353,31 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
         )
         let notification = EntryNotification(from: entry)
         entrySaved.send(notification)
+        return entryId
+    }
+
+    /// Reassigns an already-synced reading: creates it under the new baby and deletes the synced
+    /// row, so the push queue carries both a create for the new baby and a delete for the old one
+    /// (MOB-1850). Returns the new entry id — the reading-assigned card must retarget its
+    /// Reassign action at the new row.
+    private func moveSyncedBabyEntry(_ entry: Entry, from previousBabyId: String, to babyId: String) async throws -> UUID {
+        guard let babyEntry = entry.babyEntry else { return entry.id }
+        let newEntryId = try await persistBabyEntry(
+            babyId: babyId,
+            weight: babyEntry.weight,
+            length: babyEntry.length,
+            note: entry.note ?? "",
+            entryTimestamp: entry.entryTimestamp,
+            source: babyEntry.source
+        )
+        try await deleteEntry(entry)
+        logger.log(
+            level: .info,
+            tag: tag,
+            message: "Synced baby entry reassigned: entryId=\(entry.id.uuidString) -> \(newEntryId.uuidString), "
+                + "babyId=\(previousBabyId) -> \(babyId)"
+        )
+        return newEntryId
     }
 
     func remapBabyId(from oldId: String, to newId: String) async {
@@ -2747,6 +2785,26 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
     // MARK: - Baby Entry CRUD
 
     func createBabyEntry(babyId: String, weight: Int, length: Int, note: String, entryTimestamp: String, source: String? = nil) async throws {
+        _ = try await persistBabyEntry(
+            babyId: babyId,
+            weight: weight,
+            length: length,
+            note: note,
+            entryTimestamp: entryTimestamp,
+            source: source
+        )
+    }
+
+    /// Persists a new baby entry and returns its id, so callers that must keep working with the
+    /// row (the MOB-1850 reassign) don't have to look it up again.
+    private func persistBabyEntry( // swiftlint:disable:this function_parameter_count
+        babyId: String,
+        weight: Int,
+        length: Int,
+        note: String,
+        entryTimestamp: String,
+        source: String?
+    ) async throws -> UUID {
         let accountId = try getAccountId()
 
         let entry = Entry(
@@ -2770,6 +2828,7 @@ final class EntryService: EntryServiceProtocol, ObservableObject {
 
             let notification = EntryNotification(from: entry)
             entrySaved.send(notification)
+            return entry.id
         } catch {
             logger.log(
                 level: .error,
