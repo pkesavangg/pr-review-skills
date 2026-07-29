@@ -28,6 +28,8 @@ Claude Code is the primary dev tool. The shared AI-context is committed (see `.g
 
 **Phase 2:** `phase2-context` and `phase2-design-system` skills carry the Me.Health 2.0 multi-product API + design context (see [`/CLAUDE.md`](../CLAUDE.md) → Phase 2).
 
+**Customer-support triage:** [`cs-triage`](../.claude/skills/cs-triage/SKILL.md) turns a #_cstech report plus the customer's emailed diagnostic log into a verdict, a CS reply draft, and a bug-ticket draft. It reads the log to decide iOS vs Android (the reported device has been wrong), and reads app code at the **git ref matching the customer's app version** rather than the working tree — a customer on 5.0.x is not running `develop`. It drafts only: no Slack post, no Jira write. Playbook of confirmed causes: [`reference/known-issues.md`](../.claude/skills/cs-triage/reference/known-issues.md).
+
 ### Claude Code editor hooks (`iOS/.claude/settings.json`)
 
 Run automatically as Claude edits files:
