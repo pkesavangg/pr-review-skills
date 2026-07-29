@@ -126,12 +126,15 @@ struct LoginStoreTests {
         #expect(accountService.lastLoginEmail == "user@example.com")
     }
 
-    @Test("logIn account switching: does not fire onLoginSuccess")
-    func logInAccountSwitchingSkipsSuccessCallback() async {
+    @Test("logIn account switching: fires onLoginSuccess so the app lands on Dashboard")
+    func logInAccountSwitchingFiresSuccessCallback() async {
         let (store, accountService, _, _) = makeLoginStoreSUT()
         accountService.logInResult = .success(())
         store.isFromAccountSwitching = true
 
+        // MOB-1576: login-via-account-switch now mirrors signup completion — when
+        // onLoginSuccess is set it runs (dismiss + switch to Dashboard) instead of the
+        // bare dismissAction that used to leave the user stranded on the Settings tab.
         var didSucceed = false
         store.onLoginSuccess = { didSucceed = true }
         store.loginForm.email.value = "user@example.com"
@@ -140,7 +143,7 @@ struct LoginStoreTests {
         await store.logIn()
 
         #expect(accountService.logInCalls == 1)
-        #expect(didSucceed == false)
+        #expect(didSucceed == true)
     }
 
     @Test("logIn unauthorized: shows invalid credentials toast")
@@ -431,20 +434,23 @@ struct LoginStoreTests {
         #expect(store.loginForm.email.value == "user@example.com")
     }
 
-    @Test("logIn account switching with no callbacks does not trigger login success callback")
-    func logInAccountSwitchingNoCallbacks() async {
+    @Test("logIn account switching prefers onLoginSuccess over the bare dismissal path")
+    func logInAccountSwitchingPrefersSuccessCallback() async {
         let (store, accountService, _, _) = makeLoginStoreSUT()
         accountService.logInResult = .success(())
         store.isFromAccountSwitching = true
         store.loginForm.email.value = "user@example.com"
         store.loginForm.password.value = "secret123"
 
+        // Even when account-switching, a set onLoginSuccess takes precedence over the
+        // `dismissAction` fallback (MOB-1576) — that closure performs the dismiss and the
+        // switch to the Dashboard tab, so the app never lingers on Settings after login.
         var successCalled = false
         store.onLoginSuccess = { successCalled = true }
 
         await store.logIn()
 
-        #expect(successCalled == false)
+        #expect(successCalled == true)
     }
 
     @Test("presentingBrowserURL uses fallback when browserURL is nil")

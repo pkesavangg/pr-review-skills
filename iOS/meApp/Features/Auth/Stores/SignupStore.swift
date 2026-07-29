@@ -60,6 +60,16 @@ final class SignupStore: ObservableObject {
     // Drives the allProfilesReady / signupError terminal screens.
     @Published var deviceStatuses: [(device: SignupDeviceType, status: SignupDeviceStatus)] = []
 
+    // MOB-1576: guards against finalizing a signup onto a pre-existing account. Set true ONLY
+    // once THIS signup has actually created its own account (in performCreateAccount → signUp).
+    // performSaveDevicesAndFinalize refuses to write device/product data unless this is true and
+    // the active account still matches the one this signup created — otherwise a signup that
+    // reached FINISH without creating an account would overwrite the currently logged-in account's
+    // devices and productTypes (observed: an account-switching baby signup writing babyScale +
+    // productTypes=["baby"] onto the existing account).
+    private(set) var didCreateSignupAccount = false
+    private(set) var signupAccountId: String?
+
     // Baby management
     @Published var babies: [SignupBaby] = []
     @Published var isEditingBabyIndex: Int?
@@ -86,6 +96,12 @@ final class SignupStore: ObservableObject {
 
     private let tag = "SignupStore"
     private var isFinalizingSignup = false
+    private var isCreatingAccount = false
+
+    // The in-flight `createAccount()` task. Exposed so callers (and tests) have an awaitable
+    // seam for the otherwise fire-and-forget account creation, instead of waiting on a
+    // wall-clock sleep. Nil before the first createAccount() and after resetForm().
+    private(set) var accountCreationTask: Task<Void, Never>?
 
     init() {
         // Resolve once per store instance to avoid cross-test DI races when
@@ -137,8 +153,12 @@ final class SignupStore: ObservableObject {
             result += [.height, .goal]
         }
 
-        // Password is per-account: only collected on the first device loop
-        if !isSubsequentDevice {
+        // Password creates the account. MOB-1576: gate it on whether this signup has actually
+        // created an account yet — NOT on the device-loop count. Otherwise a subsequent-device
+        // loop (or any nav that reached here without account creation) omits the create-account
+        // step, and FINISH would finalize onto the pre-existing active account. Once the account
+        // exists (didCreateSignupAccount == true), later device loops correctly skip it.
+        if !didCreateSignupAccount {
             result.append(.password)
         }
 
@@ -151,6 +171,27 @@ final class SignupStore: ObservableObject {
 
     private func rebuildSteps() {
         steps = computeSteps()
+    }
+
+    /// MOB-1576 safety net: FINISH was reached without this signup ever creating its own account
+    /// (e.g. the create-account/password step was bypassed). Rather than finalizing device/product
+    /// data onto the pre-existing active account, clear the in-progress gate and route the user
+    /// back to the password step so the account is actually created before finalizing.
+    private func recoverFromFinalizeWithoutAccount() {
+        accountService.markSignupInProgress(false)
+        logger.log(
+            level: .error,
+            tag: tag,
+            message: "Signup finalize reached without a created account "
+                + "(didCreate=\(didCreateSignupAccount), signupAccountId=\(signupAccountId ?? "nil"), "
+                + "activeAccount=\(accountService.activeAccount?.accountId ?? "nil")). "
+                + "Refusing to write onto the existing account; routing back to the password step."
+        )
+        notificationService.dismissLoader()
+        rebuildSteps()
+        if let passwordIndex = steps.firstIndex(of: .password) {
+            currentStepIndex = passwordIndex
+        }
     }
 
     /// True while there are still device types the user has not yet added.
@@ -338,9 +379,14 @@ final class SignupStore: ObservableObject {
     /// Sets isSignupInProgress so ContentViewModel does not navigate to dashboard yet.
     /// On success advances to the profileReady slide.
     func createAccount() {
-        guard !accountService.isSignupInProgress else { return }
-        Task {
+        // Re-entrancy guard is instance-local (not the global isSignupInProgress). The global
+        // flag can be stranded true if a prior signup sheet was torn down without finalizing;
+        // gating on it here would permanently no-op account creation ("stuck on password").
+        guard !isCreatingAccount else { return }
+        isCreatingAccount = true
+        accountCreationTask = Task {
             await performCreateAccount()
+            isCreatingAccount = false
         }
     }
 
@@ -704,15 +750,24 @@ final class SignupStore: ObservableObject {
             return
         }
 
+        // MOB-1576: record that THIS signup created its own account, so finalize can verify it
+        // is operating on the newly created account and never on a pre-existing one.
+        didCreateSignupAccount = true
+        signupAccountId = account.accountId
+
         persistSelectedSignupDeviceType(for: account.accountId)
         notificationService.dismissLoader()
         moveToNextStep()
     }
 
     func performSaveDevicesAndFinalize() async {
-        guard let account = accountService.activeAccount else {
-            accountService.markSignupInProgress(false)
-            handleSignupError(AccountError.noActiveAccount)
+        // MOB-1576: never write signup device/product data onto a pre-existing account. Require
+        // that THIS signup created its own account and that it is still the active one; otherwise
+        // finalizing would overwrite the currently logged-in account's devices/productTypes.
+        guard didCreateSignupAccount,
+              let account = accountService.activeAccount,
+              account.accountId == signupAccountId else {
+            recoverFromFinalizeWithoutAccount()
             return
         }
 
@@ -778,7 +833,11 @@ final class SignupStore: ObservableObject {
 
     /// Retries only devices whose status is `.failure`. Succeeds → allProfilesReady, otherwise stays on error screen.
     private func retryDeviceSaves() async {
-        guard let account = accountService.activeAccount else {
+        // MOB-1576: same safeguard as performSaveDevicesAndFinalize — only ever operate on the
+        // account this signup created, never on a pre-existing active account.
+        guard didCreateSignupAccount,
+              let account = accountService.activeAccount,
+              account.accountId == signupAccountId else {
             handleSignupError(AccountError.noActiveAccount)
             return
         }
@@ -1169,6 +1228,13 @@ final class SignupStore: ObservableObject {
         disabledDeviceTypes = []
         registeredDeviceTypes = []
         deviceStatuses = []
+        didCreateSignupAccount = false
+        signupAccountId = nil
+        isCreatingAccount = false
+        accountCreationTask = nil
+        // A full form reset means signup is no longer in progress; ensure the gate never
+        // strands true across abandoned/cancelled flows.
+        accountService.markSignupInProgress(false)
         babies.removeAll()
         isEditingBabyIndex = nil
         showBabyDatePicker = false

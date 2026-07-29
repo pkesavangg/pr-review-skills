@@ -94,6 +94,12 @@ struct SettingsScreen: View {
 
             .onChange(of: settingsStore.activeAccount?.accountId) { oldAccountId, newAccountId in
                 guard oldAccountId != nil, newAccountId != oldAccountId else { return }
+                // Account-switch signup activates the new account BEFORE the user taps Get Started
+                // on Profile Ready. Popping to root here tears down the signup sheet mid-flow and
+                // strands isSignupInProgress = true (which then silently no-ops the next
+                // createAccount). Same gate ContentViewModel uses: defer until signup finishes —
+                // completion (onSignupSuccess → selectedTab = .dash) drives navigation.
+                guard !settingsStore.accountService.isSignupInProgress else { return }
                 router.navigateToRoot()
             }
         }
