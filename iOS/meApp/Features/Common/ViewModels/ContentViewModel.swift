@@ -102,7 +102,9 @@ final class ContentViewModel: ObservableObject {
                 // the app returning to the foreground — refreshes the published
                 // metadata above but must not re-run init; doing so re-synced the
                 // whole history and stuttered the UI on every foreground.
-                guard previousSignature?.accountId != signature.accountId else { return }
+                guard previousSignature?.accountId != signature.accountId else {
+                    return
+                }
 
                 // Avoid kicking off initialization from the publisher's initial emission
                 // while the view model is still in its startup state. If initialization is
@@ -116,7 +118,9 @@ final class ContentViewModel: ObservableObject {
 
                 // Account was created mid-signup — hold off on dashboard navigation until
                 // the signup flow explicitly clears this flag via finishSignup/completeSignup.
-                guard !self.accountService.isSignupInProgress else { return }
+                guard !self.accountService.isSignupInProgress else {
+                    return
+                }
 
                 self.performAppInitialization()
             }
@@ -125,7 +129,8 @@ final class ContentViewModel: ObservableObject {
         self.accountService.isSignupInProgressPublisher
             .dropFirst()
             .sink { [weak self] inProgress in
-                guard let self, !inProgress, self.isLoggedIn else { return }
+                guard let self else { return }
+                guard !inProgress, self.isLoggedIn else { return }
                 self.performAppInitialization()
             }
             .store(in: &cancellables)

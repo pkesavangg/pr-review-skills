@@ -170,10 +170,14 @@ final class LoginStore: ObservableObject {
                 password: loginForm.password.value
             )
             logger.log(level: .success, tag: logTag, message: "Login flow succeeded. accountSwitching=\(isFromAccountSwitching)")
-            if isFromAccountSwitching {
-                dismissAction?()
-            } else if let onLoginSuccess {
+            // Mirror the signup completion pattern (completeSignup → onSignupSuccess): the success
+            // closure both dismisses the sheet AND switches to the Dashboard tab. The account-switching
+            // branch previously called only `dismissAction?()`, which dismissed the sheet but never set
+            // `selectedTab = .dash`, so login-via-switch left the user on the Settings tab.
+            if let onLoginSuccess {
                 onLoginSuccess()
+            } else if isFromAccountSwitching {
+                dismissAction?()
             }
         } catch {
             logger.log(

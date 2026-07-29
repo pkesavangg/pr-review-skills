@@ -79,6 +79,18 @@ interface IAccountRepository {
   suspend fun updateMeasurementUnits(measurementUnits: MeasurementUnits)
 
   /**
+   * The active account's measurement units if they are locally unsynced, else null.
+   * Used by the reconnect re-push to detect an offline measurement-unit change. (MOB-1002)
+   */
+  suspend fun getUnsyncedMeasurementUnits(): String?
+
+  /**
+   * Persist a measurement-units change locally and mark it unsynced (offline-first) so it is
+   * re-pushed on reconnect. Called when the server PATCH fails. (MOB-1002)
+   */
+  suspend fun markMeasurementUnitsUnsynced(measurementUnits: MeasurementUnits)
+
+  /**
    * Sets the account's product types on the server (spec §2.19) and persists the
    * server-confirmed account state locally.
    */

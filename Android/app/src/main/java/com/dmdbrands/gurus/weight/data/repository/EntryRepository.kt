@@ -17,6 +17,7 @@ import com.dmdbrands.gurus.weight.domain.model.storage.entry.Entry
 import com.dmdbrands.gurus.weight.domain.model.storage.entry.ScaleEntry
 import com.dmdbrands.gurus.weight.domain.repository.IEntryRepository
 import com.dmdbrands.gurus.weight.features.manualEntry.helper.EntryHelper.convertToStored
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 import retrofit2.HttpException
@@ -32,6 +33,10 @@ class EntryRepository @Inject constructor(
   private val entryDao: EntryDao,
   private val entryApi: EntryApi,
 ) : IEntryRepository {
+  private companion object {
+    const val TAG = "EntryRepository"
+  }
+
   /**
    * Inserts a single entry.
    */
@@ -96,7 +101,29 @@ class EntryRepository @Inject constructor(
       }
     }.map { it.convertToStored() }
 
-    entryDao.insert(merged)
+    // Insert each entry in its own transaction (entryDao.insert(entry) is @Transaction) so a
+    // single failing row — e.g. a baby entry whose profile was deleted server-side, tripping the
+    // baby_entry → baby_profile foreign key — is skipped instead of rolling back the whole batch
+    // and silently dropping every entry (MOB-1750).
+    var skipped = 0
+    merged.forEach { entry ->
+      try {
+        entryDao.insert(entry)
+      } catch (e: CancellationException) {
+        throw e
+      } catch (e: Exception) {
+        skipped++
+        AppLog.e(
+          TAG,
+          "Skipped an entry that failed to persist (type=${entry::class.simpleName}, " +
+            "ts=${entry.entry.entryTimestamp}); continuing with the rest",
+          e,
+        )
+      }
+    }
+    if (skipped > 0) {
+      AppLog.w(TAG, "Batch insert: skipped $skipped of ${merged.size} entries; ${merged.size - skipped} saved")
+    }
   }
 
   /**

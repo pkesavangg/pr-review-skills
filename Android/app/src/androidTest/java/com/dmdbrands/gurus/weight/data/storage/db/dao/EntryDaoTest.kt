@@ -100,7 +100,7 @@ class EntryDaoTest : BaseDaoTest() {
     }
 
     // -------------------------------------------------------------------------
-    // insert (List<Entry>)
+    // insert (per-entry loop — batch insert(List<Entry>) was removed, MOB-1750)
     // -------------------------------------------------------------------------
 
     @Test
@@ -112,7 +112,7 @@ class EntryDaoTest : BaseDaoTest() {
                 weight = 180.0 + i,
             )
         }
-        entryDao.insert(entries)
+        entries.forEach { entryDao.insert(it) }
 
         assertThat(entryDao.getEntriesByAccount("acc-1")).hasSize(3)
     }
@@ -853,13 +853,6 @@ class EntryDaoTest : BaseDaoTest() {
     @Test
     fun incrementAttempts_returnsZeroForNonexistentId() = runTest {
         assertThat(entryDao.incrementAttempts(999L)).isEqualTo(0)
-    }
-
-    @Test
-    fun insert_emptyList_noOp() = runTest {
-        insertParentAccount()
-        entryDao.insert(emptyList())
-        assertThat(entryDao.getOperationCount("acc-1")).isEqualTo(0)
     }
 
     @Test

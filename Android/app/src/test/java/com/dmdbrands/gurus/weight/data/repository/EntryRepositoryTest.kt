@@ -88,10 +88,12 @@ class EntryRepositoryTest {
     fun `insert list with all valid entries passes all to dao`() = runTest {
         val entries = listOf(buildScaleEntry(VALID_TIMESTAMP), buildBpmEntry(VALID_TIMESTAMP))
         coEvery { entryDao.getStoredScaleNotes(any()) } returns emptyList()
+        coEvery { entryDao.insert(any<Entry>()) } returns 1L
 
         repository.insert(entries)
 
-        coVerify { entryDao.insert(match<List<Entry>> { it.size == 2 }) }
+        // Each entry is inserted in its own transaction (MOB-1750).
+        coVerify(exactly = 2) { entryDao.insert(any<Entry>()) }
     }
 
     @Test
@@ -99,10 +101,12 @@ class EntryRepositoryTest {
         val valid = buildScaleEntry(VALID_TIMESTAMP)
         val invalid = buildScaleEntry(INVALID_TIMESTAMP)
         coEvery { entryDao.getStoredScaleNotes(any()) } returns emptyList()
+        coEvery { entryDao.insert(any<Entry>()) } returns 1L
 
         repository.insert(listOf(valid, invalid))
 
-        coVerify { entryDao.insert(match<List<Entry>> { it.size == 1 }) }
+        // Only the valid entry reaches the dao.
+        coVerify(exactly = 1) { entryDao.insert(any<Entry>()) }
     }
 
     @Test
@@ -112,7 +116,26 @@ class EntryRepositoryTest {
 
         repository.insert(entries)
 
-        coVerify { entryDao.insert(match<List<Entry>> { it.isEmpty() }) }
+        // Nothing valid to insert.
+        coVerify(exactly = 0) { entryDao.insert(any<Entry>()) }
+    }
+
+    @Test
+    fun `insert list skips a failing entry and continues inserting the rest`() = runTest {
+        val good1 = buildScaleEntry(VALID_TIMESTAMP)
+        val failing = buildBpmEntry(VALID_TIMESTAMP)
+        val good2 = buildScaleEntry(VALID_TIMESTAMP)
+        coEvery { entryDao.getStoredScaleNotes(any()) } returns emptyList()
+        coEvery { entryDao.insert(any<Entry>()) } returns 1L
+        // Simulate the MOB-1750 foreign-key failure on one entry.
+        coEvery { entryDao.insert(match<Entry> { it is BpmEntry }) } throws
+            RuntimeException("FOREIGN KEY constraint failed")
+
+        // Must NOT throw despite the failing entry.
+        repository.insert(listOf(good1, failing, good2))
+
+        // All three were attempted; the two good ones persist, the bad one is skipped — not a rollback.
+        coVerify(exactly = 3) { entryDao.insert(any<Entry>()) }
     }
 
     // ── update(Entry) ──────────────────────────────────────────────────────────
@@ -442,11 +465,12 @@ class EntryRepositoryTest {
         val entry = buildScaleEntry(VALID_TIMESTAMP) // note is null
         coEvery { entryDao.getStoredScaleNotes(ACCOUNT_ID) } returns
             listOf(com.dmdbrands.gurus.weight.data.storage.db.dao.DeviceNoteRow(VALID_TIMESTAMP, "stored note"))
+        coEvery { entryDao.insert(any<Entry>()) } returns 1L
 
         repository.insert(listOf(entry))
 
         coVerify { entryDao.getStoredScaleNotes(ACCOUNT_ID) }
-        coVerify { entryDao.insert(match<List<Entry>> { it.size == 1 }) }
+        coVerify(exactly = 1) { entryDao.insert(any<Entry>()) }
     }
 
     @Test
@@ -454,10 +478,11 @@ class EntryRepositoryTest {
         val entry = buildScaleEntry(VALID_TIMESTAMP)
         coEvery { entryDao.getStoredScaleNotes(ACCOUNT_ID) } returns
             listOf(com.dmdbrands.gurus.weight.data.storage.db.dao.DeviceNoteRow(VALID_TIMESTAMP, "  "))
+        coEvery { entryDao.insert(any<Entry>()) } returns 1L
 
         repository.insert(listOf(entry))
 
-        coVerify { entryDao.insert(match<List<Entry>> { it.size == 1 }) }
+        coVerify(exactly = 1) { entryDao.insert(any<Entry>()) }
     }
 
     // ── insert(single) note preservation ───────────────────────────────────────

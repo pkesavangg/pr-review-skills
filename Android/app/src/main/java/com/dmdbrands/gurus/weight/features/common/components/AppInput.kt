@@ -374,6 +374,14 @@ private fun resolveVisualTransformation(
     }
 
 /**
+ * Whether [value] is within [maxLength]; a null [maxLength] means no limit. Extracted so the
+ * input-cap rule (e.g. the Manual Entry notes 280-char limit, MOB-403) is unit-testable — the
+ * input handler drops any change that exceeds the cap, so typing is blocked at the limit.
+ */
+internal fun isWithinMaxLength(value: String, maxLength: Int?): Boolean =
+    maxLength == null || value.length <= maxLength
+
+/**
  * Builds the TextField's onValueChange handler, applying the maxLength constraint,
  * filtering, and value conversion / form-control notification.
  */
@@ -384,7 +392,7 @@ private fun <T> onInputChangeHandler(
     onValueChange: ((T?) -> Unit)?,
 ): (String) -> Unit = { newValue ->
     // Check maxLength constraint before processing the value change
-    if (maxLength == null || newValue.length <= maxLength) {
+    if (isWithinMaxLength(newValue, maxLength)) {
         if (onValueChange != null) {
             onValueChange(newValue as T?)
         } else {

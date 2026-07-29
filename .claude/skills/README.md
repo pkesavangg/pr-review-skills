@@ -34,6 +34,7 @@ How Claude Code skills are organized in this monorepo, what each one does, and h
 | `log-work` | Log time on the Jira issue |
 | `read-figma` | Extract a Design Summary from a Figma URL in a ticket |
 | `read-jira-images` | Analyze Jira image attachments with vision |
+| **`cs-triage`** | **Triage a #_cstech customer report + its diagnostic log → verdict, CS reply draft, bug-ticket draft (drafts only, never posts or creates)** |
 | **`phase2-context`** | **Phase 2 (Me.Health 2.0) product + unified-API model — auto-triggers on multi-product/2.0 work** |
 
 Plus the two cross-platform "expert" reference skills: `compose-expert-skill` (Android Compose) and `swiftui-expert-skill` (iOS SwiftUI).

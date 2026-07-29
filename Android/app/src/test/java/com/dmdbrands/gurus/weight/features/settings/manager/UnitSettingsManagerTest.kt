@@ -110,11 +110,10 @@ class UnitSettingsManagerTest {
   }
 
   @Test
-  fun `baby change does not persist locally when the measurement-units sync fails`() = runTest(mainDispatcherRule.scheduler) {
-    // The baby unit is synced server-first: updateMeasurementUnits runs BEFORE the
-    // device-local setBabyWeightUnit, and throws when offline / on HTTP failure. When
-    // it throws, the local write must be skipped so the device never gets ahead of the
-    // server (the local/server divergence PR #2109 set out to fix).
+  fun `baby change persists locally and marks unsynced when the measurement-units sync fails`() = runTest(mainDispatcherRule.scheduler) {
+    // Offline-first (MOB-1002): the device-local unit is written first and KEPT even when the
+    // server PATCH fails (offline / HTTP). The change is marked unsynced so OfflineHandlerService
+    // re-pushes it on reconnect — instead of dropping it (the old server-first behaviour, PR #2109).
     coEvery { accountService.updateMeasurementUnits(any()) } throws RuntimeException("sync failed")
     val onConfirm = openDialog(stateWithBaby())
 
@@ -127,12 +126,14 @@ class UnitSettingsManagerTest {
     )
     advanceUntilIdle()
 
-    // Server PATCH was attempted but failed...
+    // Server PATCH was attempted...
     coVerify(exactly = 1) { accountService.updateMeasurementUnits(MeasurementUnits.METRIC) }
-    // ...so the device-local unit must NOT be written.
-    coVerify(exactly = 0) { userDataStore.setBabyWeightUnit(any(), any()) }
-    // User is told via the generic error toast, and the loader is dismissed.
-    verify(exactly = 1) { dialogQueueService.showToast(any()) }
+    // ...it failed, so the device-local unit is still written (kept)...
+    coVerify(exactly = 1) { userDataStore.setBabyWeightUnit(account.id, WeightUnit.KG) }
+    // ...and the change is marked unsynced for the reconnect re-push (KG -> metric).
+    coVerify(exactly = 1) { accountService.markMeasurementUnitsUnsynced(MeasurementUnits.METRIC) }
+    // Offline is not an error for the user: no error toast, loader still dismissed.
+    verify(exactly = 0) { dialogQueueService.showToast(any()) }
     verify(exactly = 1) { dialogQueueService.dismissLoader() }
   }
 
