@@ -151,6 +151,23 @@ For each PR, derive the overall verdict from the six skill outputs:
 | Any skill = WARNING, or Regression Risk = Medium, or Issue Coverage = Partial | **NEEDS CHANGES** |
 | All skills PASS, Regression = Low, Issue Coverage = Complete | **APPROVED** |
 
+### Mapping the verdict to a GitHub review state
+
+The verdict above decides the GitHub review **event**. A clean PR must land as a real approval — not as a comment that merely says "APPROVED" in its text, which leaves the PR showing no approval and blocks nothing from stalling.
+
+| Verdict | GitHub event |
+|---------|--------------|
+| **APPROVED** | `--approve` |
+| **NEEDS CHANGES** / **BLOCKED** | `--comment` |
+
+`--approve` requires **all** of the following. Any doubt → fall back to `--comment`:
+
+- **First-review:** zero findings at every priority — `P0:0 P1:0 P2:0 Nit:0`. A single finding, even a Nit, means `--comment`.
+- **Re-review:** every prior finding closed as `✅ Resolved` or `✅ Accepted` (no `⚠️ Partially`, no `❌ Still open`), every deferral backed by a **verified** ticket, **and** the new-code pass found no new findings at any priority.
+- Findings raised as top-level comments count too — an open description/scope finding is still open even though it has no `file:line` and cannot be resolved as a thread.
+
+**Never** `--request-changes` — GitHub blocks it on self-owned PRs, and escalating to a blocking state is not this skill's call. Say it in the body instead.
+
 ---
 
 ## STEP 6 — Write Consolidated Review File
@@ -250,10 +267,18 @@ Template:
 _Inline comments follow with specific file/line findings. Full report: `{report filepath}`._
 ```
 
-Post via:
+When the verdict is **APPROVED**, drop the **Blockers / concerns** section entirely and open the overview with why it's clean — `**Clean — no findings. Approving.**` on a first review, or `**All {N} prior findings resolved, no new issues. Approving.**` on a re-review.
+
+Post via — pick the event from the Step 5 mapping:
 ```bash
+# APPROVED — clean PR, per the Step 5 conditions
+gh pr review {PR_NUMBER} --approve --body "{short summary from template above}"
+
+# NEEDS CHANGES / BLOCKED — everything else
 gh pr review {PR_NUMBER} --comment --body "{short summary from template above}"
 ```
+
+If `--approve` fails with `Can not approve your own pull request`, the PR is self-owned: re-post the identical body with `--comment` and tell the user the verdict was APPROVED but GitHub blocks self-approval.
 
 ### Phase B — Inline line comments
 
@@ -301,7 +326,7 @@ gh api repos/dmdbrands/meApp/pulls/{PR_NUMBER}/reviews \
 ```
 
 **Important constraints:**
-- `event` must be `"COMMENT"` (never `"REQUEST_CHANGES"` — GitHub blocks that on self-owned PRs)
+- `event` must be `"COMMENT"` — never `"REQUEST_CHANGES"` (GitHub blocks that on self-owned PRs) and never `"APPROVE"` here. Approval is Phase A's call, and an approved PR has no findings to post, so this phase is skipped entirely on that path.
 - Only use `line` values that fall within a diff hunk range (computed in Step B2)
 - `path` must match the file path exactly as shown in `gh pr diff` output (includes `iOS/` prefix)
 - Clean up: `rm -f /tmp/review-payload-{PR_NUMBER}.json`
