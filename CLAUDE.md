@@ -27,12 +27,15 @@ references/
   vendored/               ← MIT snapshots of swiftui-pro + compose-expert — DO NOT hand-edit
   security/               ← cross-platform (iOS + Android): secrets, transport/crypto, logging/exposure
   privacy/                ← App Store / Play Store store-compliance
+  code-standards/         ← language-idiom rules (swift.md / kotlin.md / typescript.md) — run ALONGSIDE every platform pipeline, not instead of one
   ios/                    ← project-tuned iOS rules on top of swiftui-pro (also reused for SDK Swift)
   compose/                ← project-tuned Compose rules on top of compose-expert
   appium/                 ← Appium/WebdriverIO E2E rules (run instead of SwiftUI/Compose)
   sdk/                    ← BLE SDK / library rules (public-API contract, capability protocols, BLE concurrency, wire-protocol fidelity, docs/Confluence sync — run instead of SwiftUI/Compose)
 test-fixtures/            ← sample files to sanity-check rules against
 ```
+
+**`references/code-standards/` is the odd one out — it's a lens, not a track.** Every other directory is selected by platform detection; these three files are keyed by *language* and layer on top of whichever pipeline ran: `swift.md` with iOS-UI **and** SDK-Swift, `kotlin.md` with Android-Compose **and** SDK-Kotlin, `typescript.md` with Appium. They answer "is this expressed with the construct the language provides for it?" — enum vs stringly-typed, exhaustive `switch`/`when`, declared shapes vs repeated inline ones, `val`/`const` vs `var`, naming conventions, magic literals, access control. Keep them framework-agnostic: anything that mentions `View`, `@Composable`, or a WDIO command belongs in the platform directory instead.
 
 ## Architecture invariants — don't break these
 
@@ -75,13 +78,16 @@ Each rule in a `references/*.md` file follows this shape (see [references/appium
 
 Conventions:
 
-- **Each reference file prescribes its own severity, and the orchestrator uses it verbatim** — *except* `vendored/swiftui-pro` and `vendored/compose-expert`, whose findings the orchestrator explicitly **re-classifies** into this taxonomy (see § 4a.1 / § 4a.2 in [review-pr.md](.claude/commands/review-pr.md)). Project-tuned `ios/`, `compose/`, `appium/`, `sdk/`, `security/`, and `privacy/` rules are *not* re-classified — set the right severity in the rule itself.
+- **Each reference file prescribes its own severity, and the orchestrator uses it verbatim** — *except* `vendored/swiftui-pro` and `vendored/compose-expert`, whose findings the orchestrator explicitly **re-classifies** into this taxonomy (see § 4a.1 / § 4a.2 in [review-pr.md](.claude/commands/review-pr.md)). Project-tuned `ios/`, `compose/`, `appium/`, `sdk/`, `code-standards/`, `security/`, and `privacy/` rules are *not* re-classified — set the right severity in the rule itself.
 - Include a concrete **Sniff** so the reviewer knows what to grep for, and a **Fix** with before/after.
 - Add a "if a repo `CLAUDE.md`/`README` documents a different convention, prefer it and skip the rule" escape hatch where a rule is opinionated — the orchestrators already defer to repo-local conventions.
 
 ### Where new checks go
 
 - **Platform-specific code smell** (Swift/Kotlin/TS) → add a rule to the matching `references/<platform>/*.md` file.
+- **Language-idiom / coding-standard concern that holds regardless of framework** — a closed vocabulary passed as a raw `String`, a `switch`/`when` that gives up exhaustiveness, a repeated inline shape that wants a declared type, `var` where `val`/`const` belongs, a magic literal, a naming-convention break, missing access control → `references/code-standards/{swift,kotlin,typescript}.md`. These are a **lens layered on top of** whichever pipeline ran (they don't replace one), so a new rule there must not reference `View`, `@Composable`, or a WDIO command — if it does, it belongs in the platform directory. When a language-idiom rule overlaps a platform rule at the same `file:line` (e.g. `code-standards/swift.md`'s domain-type rule vs `sdk/public-api-contract.md`'s primitive-obsession rule), the **platform/SDK** finding wins and the generic one is dropped — both orchestrators say so explicitly; keep that de-dup note in sync.
+- **Asset / resource reference or naming concern** (an asset addressed by a raw string instead of a typed symbol, an asset name that doesn't resolve, a meaningless or convention-breaking asset name, iOS↔Android name divergence) → `references/ios/asset-references.md` for SwiftUI, `references/compose/asset-references.md` for Compose. These are deliberately **two platform files, not one shared file**, because the mechanism differs: iOS asset literals fail *silently at runtime* (hence `P1`), while Android's `R.` class is already compile-checked so the findings there are the ways code steps around it (`getIdentifier`, hardcoded `assets/` paths). They share one standard — typed symbol, meaningful name, same name on both platforms — so a change to one usually needs the mirror change in the other. The iOS file **supersedes** `vendored/swiftui-pro/references/api.md`'s generated-symbol bullet; keep that de-dup note in sync.
+- **Test naming, `describe`/`it` title shape, or Allure/Zephyr reporting metadata** (invalid `addSeverity` value, test-id drift across the title / `addTestId` / `tms` label, per-test annotation boilerplate) → `references/appium/test-naming-and-metadata.md`. `test-structure-and-assertions.md` keeps only pointers to it, so a rule must live in exactly one of the two.
 - **BLE SDK / library concern** (public-API stability, capability-protocol discipline, BLE concurrency, wire-protocol fidelity, code↔doc↔Confluence sync) → `references/sdk/*.md`. These run *instead of* the SwiftUI/Compose UI pipelines when a BLE SDK is detected (§ 4a.7 / § 4.7), like Appium; SDK Swift also reuses `ios/` concurrency/logging/test rules. The SDK track is Sage-tuned with graceful degradation — cite real anchors (`GGIStub`, the protocol spec, Confluence `1489993739`) as examples but keep the escape hatch so another GG BLE SDK still benefits.
 - **Security or privacy** → `references/security/` or `references/privacy/` (these run on *every* PR regardless of platform).
 - **Cross-cutting PR-hygiene check that needs the live PR** (description quality, traceability, screenshots) → inline in `review-pr.md` § 4a.3, *not* a reference file — that's where the existing Jira-reference, description-mismatch, and screenshot/recording checks live. Add the same check to `review.md`'s skip list if it can't run pre-commit.

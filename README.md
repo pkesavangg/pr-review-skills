@@ -14,7 +14,9 @@ Both commands:
 - Run cross-platform **security** ([references/security/](references/security/)) and **privacy compliance** ([references/privacy/](references/privacy/)) checks — secrets, insecure storage, TLS bypass, weak crypto, PII/PHI in logs, exposure surfaces, App Store / Play Store submission gates.
 - Apply Paul Hudson's [`swiftui-pro`](https://github.com/twostraws/SwiftUI-Agent-Skill) rules (vendored under [references/vendored/swiftui-pro/](references/vendored/swiftui-pro/), MIT licensed) for SwiftUI quality, then add iOS cross-cutting checks (concurrency, logging placement, test flake, and the MOB-1131 accessibility-identifier automation contract) from [references/ios/](references/ios/).
 - Apply aldefy's [`compose-expert`](https://github.com/aldefy/compose-skill) rules (vendored under [references/vendored/compose-expert/](references/vendored/compose-expert/), MIT licensed) for Compose quality, then add project-tuned Compose rules from [references/compose/](references/compose/).
-- For Appium/WebdriverIO E2E code, run the mobile test-automation pipeline from [references/appium/](references/appium/) (locators, waits, gestures, Page Object discipline, test structure, flakiness, TypeScript/async, config & secrets) **instead of** the SwiftUI/Compose pipelines.
+- For Appium/WebdriverIO E2E code, run the mobile test-automation pipeline from [references/appium/](references/appium/) (locators, waits, gestures, Page Object discipline, test structure, **test naming & Allure metadata**, flakiness, TypeScript/async, config & secrets) **instead of** the SwiftUI/Compose pipelines.
+- Enforce the **asset-reference standard** on both UI platforms — an asset is named by a typed symbol, never a raw string. `Image("icon.cirelce")` compiles, links, passes tests and renders *nothing*, so a literal asset name outside the token file is `P1` ([references/ios/asset-references.md](references/ios/asset-references.md)); on Android the equivalents are runtime `getIdentifier` lookups (stripped by R8) and hardcoded `assets/` paths ([references/compose/asset-references.md](references/compose/asset-references.md)). Both also check that asset names are **meaningful, valid, and identical across iOS and Android**.
+- Enforce **coding standards** from [references/code-standards/](references/code-standards/) on every changed Swift / Kotlin / TypeScript file — *is this expressed with the construct the language provides for it?* Stringly-typed values that should be an `enum` / union, non-exhaustive `switch`/`when` closed with a silent default, repeated inline shapes that should be a declared `interface` / `data class`, wrong class kind, `var` where `val`/`const` belongs, magic literals, missing access control, and the language's own naming conventions (Swift API Design Guidelines, Kotlin coding conventions, TypeScript camelCase/PascalCase/UPPER_SNAKE).
 - For a **BLE SDK / library**, run the SDK pipeline from [references/sdk/](references/sdk/) (frozen public-API contract, semantic + stateless capability protocols, per-peripheral BLE concurrency, wire-protocol fidelity to the firmware spec, and code↔doc↔Confluence sync) **instead of** the SwiftUI/Compose pipelines. Security and privacy still run.
 - Check that **maintained docs are updated for a documented change** — when the repo declares a source→doc map (`docs/confluence.md`, a "Keeping docs current" note in `CLAUDE.md`, or `scripts/docs-freshness-check.sh`), flag `P2` if the PR changes mapped code but not its doc; plus a reminder-only nudge to mirror the change to a Confluence hub. Skips repos with no such map. (For BLE SDK repos this map ships inside [references/sdk/docs-and-confluence-sync.md](references/sdk/docs-and-confluence-sync.md), which also verifies the mirrored Confluence page when the Atlassian MCP is available.)
 - Tag findings `P0` / `P1` / `P2` / `Nit`.
@@ -60,23 +62,30 @@ pr-review-skills/
     │   ├── state-management.md
     │   ├── modifier-conventions.md
     │   ├── accessibility.md
-    │   └── api-guidelines.md
+    │   ├── api-guidelines.md
+    │   └── asset-references.md          ← getIdentifier (R8-stripped drawables), hardcoded asset paths, stringResource, res naming + iOS-twin parity
     ├── appium/                  ← WebdriverIO + Appium E2E test-automation rules (run instead of SwiftUI/Compose)
-    │   ├── locators.md                      ← selector tiers, platformLocator, duplicated literals
+    │   ├── locators.md                      ← id-vs-text (P1 when an id exists), selector tiers, platformLocator, duplicated literals
     │   ├── waits-and-synchronization.md     ← pause / bumped-timeout band-aids, TIMEOUTS / WAIT constants
     │   ├── gestures-and-scrolling.md        ← scroll-into-view, deprecated touchAction, fixed-pixel offsets
     │   ├── page-objects.md                  ← POM boundaries: assertions / selectors / data in the right layer
     │   ├── test-structure-and-assertions.md ← test independence, clean state, real assertions
+    │   ├── test-naming-and-metadata.md      ← describe/it title contract, invalid addSeverity, test-id drift, 4-call Allure boilerplate → testMeta()
     │   ├── reliability-and-flakiness.md     ← swallowed catches, .catch(()=>false) feeding an assertion
     │   ├── typescript-and-async.md          ← missing await (P0), floating promises, type safety
     │   ├── config-and-secrets.md            ← committed secrets in test/data, lint-gate recommendation
     │   ├── helpers-and-reuse.md             ← reuse AppHelper / AuthHelper / ElementHelper vs re-rolling
     │   └── mobile-commands-and-context.md   ← native↔WebView context restore, appium* legacy commands
+    ├── code-standards/          ← language-idiom rules — run alongside every platform pipeline
+    │   ├── swift.md                         ← enum vs stringly-typed, domain types vs bare Double, struct/final, API Design Guidelines naming, access control
+    │   ├── kotlin.md                        ← enum class / sealed interface, exhaustive when, data/value class, coding-convention naming, val & visibility
+    │   └── typescript.md                    ← union & enum discipline, interface/type, assertNever, as const, naming, magic numbers
     ├── ios/                     ← project-tuned iOS rules on top of swiftui-pro
     │   ├── concurrency.md               ← Swift Concurrency footguns
     │   ├── logging-hygiene.md           ← log-in-body / log-in-onChange / empty-catch
     │   ├── test-hygiene.md              ← sleep / .shared singletons / framework mixing
-    │   └── accessibility-identifiers.md ← MOB-1131 automation ids: missing / non-unique row / Android-testTag divergence (complements swiftui-pro VoiceOver + .swiftlint.yml gate)
+    │   ├── accessibility-identifiers.md ← MOB-1131 automation ids: missing / non-unique row / Android-testTag divergence (complements swiftui-pro VoiceOver + .swiftlint.yml gate)
+    │   └── asset-references.md          ← Image("literal") = P1 (renders nothing on a typo): asset literals outside Theme/Tokens, non-existent asset names, meaningless names, Android-twin parity
     └── sdk/                     ← BLE SDK / library rules (run instead of SwiftUI/Compose; reuses ios/ concurrency+logging+test rules for SDK Swift)
         ├── public-api-contract.md       ← frozen External/ SemVer surface, domain-typed params, no transport leaks
         ├── capability-protocols.md      ← semantic + stateless capabilities, no fat base class, right granularity
@@ -131,4 +140,4 @@ That's the only command. All rule sets (vendored upstream + project-tuned) flow 
 
 ## Contributing
 
-Tune the rules under [references/](references/) as the team learns what false-positives to suppress — security, privacy, compose, ios, appium, sdk. Open a PR; one approval required.
+Tune the rules under [references/](references/) as the team learns what false-positives to suppress — security, privacy, compose, ios, appium, sdk, code-standards. Open a PR; one approval required.
