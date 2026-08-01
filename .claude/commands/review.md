@@ -132,6 +132,8 @@ Read and apply (use each rule's prescribed severity — don't re-classify):
 - `$REFS_DIR/ios/logging-hygiene.md`
 - `$REFS_DIR/ios/test-hygiene.md`
 - `$REFS_DIR/ios/accessibility-identifiers.md` — MOB-1131 automation-facing `accessibilityIdentifier` contract (stable snake_case id per interactive control, mirrored to the Android `testTag`, via `.appAccessibility(id:)` / `.screenAccessibilityRoot(_:)`). The *automation* concern, distinct from swiftui-pro's *VoiceOver-UX* `accessibility.md`; catches only what a regex can't (no id, many-node id, Android-twin divergence) — not the two cases the repo's `.swiftlint.yml` gate already blocks.
+- `$REFS_DIR/ios/asset-references.md` — asset names must never be raw string literals at a call site. `Image("icon.cirelce")` compiles and renders **nothing**, so this is **P1**: an asset literal outside a `Theme/Tokens/*.swift` file (**P1**), an asset name absent from every `.xcassets` (**P1** — verify with `find … -name "<name>.imageset"`, don't guess), a meaningless/convention-breaking name (**P2**), a token constant whose name disagrees with its asset (**P2**), an iOS/Android name divergence (**P2**). Fix cites `Theme/Tokens/ColorTokens.swift` (the pattern both apps already use for colors) extended to `ImageTokens.swift`, or Xcode 15+ generated symbols. **Supersedes** swiftui-pro's one-line generated-symbol bullet at the same `file:line`.
+- `$REFS_DIR/code-standards/swift.md` — the **language-idiom** lens: stringly-typed value where an `enum` belongs, bare `Double`/`Int` for a domain quantity, `switch` closed with `default:`, `class` where a `struct` fits / missing `final`, Swift API Design Guidelines naming, never-mutated `var`, magic literals, missing access control. Fires on plain Swift, `View` or not.
 
 **De-dup against swiftui-pro:** if swiftui-pro already raised a finding at the same `file:line` with overlapping substance, drop the duplicate.
 
@@ -159,7 +161,8 @@ Read and apply (use each rule's prescribed severity):
 - `$REFS_DIR/compose/state-management.md`
 - `$REFS_DIR/compose/modifier-conventions.md`
 - `$REFS_DIR/compose/accessibility.md`
-- `$REFS_DIR/compose/api-guidelines.md`
+- `$REFS_DIR/compose/asset-references.md` — the Android half of the same asset standard: runtime `getIdentifier(…)` lookup (**P1** — invisible to R8, drawable stripped from a shrunk release build), hardcoded `assets/` path or file-name string (**P1**), hardcoded user-facing string instead of `stringResource` (**P2**, summary-level where the repo hasn't started localizing), hardcoded color/dimension where a theme token exists (**P2**), meaningless/convention-breaking resource name (**P2** — `group_3`, `image1`, missing `ic_`/`bg_`/`illus_` prefix), drawable name diverging from its iOS twin (**P2**).
+- `$REFS_DIR/code-standards/kotlin.md` — the **language-idiom** lens: stringly-typed value where an `enum class` belongs, `when` closed with `else ->`, `sealed interface` not used for a closed set of variants, wrong class kind (`data class` / `value class` / `object`), Kotlin coding-convention naming, `var`-where-`val` and publicly mutable state, magic numbers, missing visibility modifiers, stdlib idioms. Fires on plain Kotlin, `@Composable` or not.
 
 **De-dup against compose-expert** at the same `file:line` with overlapping substance.
 
@@ -167,20 +170,29 @@ Read and apply (use each rule's prescribed severity):
 
 When the scope is **Appium E2E** (§ Step 2), skip the SwiftUI (§ 4.1) and Compose (§ 4.2) pipelines — they target native app source, not test-automation code. Instead, review like a **senior mobile test-automation engineer**: first build a mental model of the project (WebdriverIO + Appium + TypeScript, Page Object Model — base `Page`, `*.page.ts` selector getters switching on `driver.isAndroid`, Mocha specs, Allure/video reporting), then apply both **technical** rules (locators, waits, gestures, async correctness) and **logical** rules (does each test actually verify behavior, is it independent, can it fail).
 
-Read these ten reference files and apply them to the changed `.ts` / config files:
+Read these twelve reference files and apply them to the changed `.ts` / config files:
 
-- `$REFS_DIR/appium/locators.md`
+- `$REFS_DIR/appium/locators.md` — **includes the mandatory id-vs-text check**: an element picked by visible copy (`@text=`, `@name=`, `UiSelector().text(…)`, a `~`-value that is human copy) when the control ships an `accessibilityIdentifier` / `testTag` on that platform is **P1**; the same selector where no id exists yet is **P2**, fixed by anchoring on the best available identity attribute plus a tracked `// TODO(<TICKET>)`. Decide which by *actually checking* for an id (grep the app source, sibling page objects, `selectors.ts`, and the getter's other platform branch) — never assume.
 - `$REFS_DIR/appium/waits-and-synchronization.md`
 - `$REFS_DIR/appium/gestures-and-scrolling.md`
 - `$REFS_DIR/appium/page-objects.md`
 - `$REFS_DIR/appium/test-structure-and-assertions.md`
+- `$REFS_DIR/appium/test-naming-and-metadata.md` — the naming + reporting-metadata contract: invalid `addSeverity` values (only `blocker`/`critical`/`normal`/`minor`/`trivial` are real — `"high"`/`"medium"`/`"low"` silently misfile the test) **P1**; test-case-ID drift between the `it` title, `addTestId`, and `addLabel("tms", …)` **P1**; a new test with no case id **P1**; the repeated four-call Allure boilerplate → one typed `testMeta({ id, feature, severity })` helper **P2**; `it` titles that don't follow `<ID> — <observable behaviour>` **P2**; `describe` titles that don't name the screen/section **P2**; vague spec-local helper function names **P2**.
 - `$REFS_DIR/appium/reliability-and-flakiness.md`
 - `$REFS_DIR/appium/typescript-and-async.md`
 - `$REFS_DIR/appium/config-and-secrets.md`
 - `$REFS_DIR/appium/helpers-and-reuse.md`
 - `$REFS_DIR/appium/mobile-commands-and-context.md` — native↔WebView context restore + `appium*`-prefixed legacy-command currency (official [WebdriverIO Appium API](https://webdriver.io/docs/api/appium)); fires only when those commands appear in the diff.
+- `$REFS_DIR/code-standards/typescript.md` — the **language-idiom** lens on every changed `.ts` file: stringly-typed value where a union/`enum` should constrain it (**P1** — what lets `addSeverity("high")` compile), non-exhaustive `switch` with a silent `default` (use `assertNever`), repeated inline object shapes that should be a declared `interface`/`type`, naming conventions, `let`-that-should-be-`const`, magic numbers, mutable exported objects missing `as const`, wrong container, missing return types.
 
-Each rule states its own severity, a **Sniff** pattern (grep/`rg` over `.ts`), and a **Fix** with before/after — **use the severity each rule prescribes**, do not re-classify. Read whole files from the working tree for context (e.g. confirm a selector getter has no real assertion downstream, or that an action method is actually awaited at the call site) rather than judging from the diff alone.
+Each rule states its own severity, a **Sniff** pattern (grep/`rg` over `.ts`), and a **Fix** with before/after — **use the severity each rule prescribes**, do not re-classify. Read whole files from the working tree for context (e.g. confirm a selector getter has no real assertion downstream, that an action method is actually awaited at the call site, or that a control genuinely has no automation id before downgrading a text selector to P2) rather than judging from the diff alone.
+
+**Coding standards are a first-class part of this review, not an afterthought.** Alongside the runtime-behaviour rules, always answer these four questions about the changed code and report what fails:
+
+1. **Are elements located by id, not by copy?** (`locators.md` — mandatory, see above.)
+2. **Do the names say what things are and do?** `describe` titles name the screen/section; `it` titles read `<ID> — <observable behaviour>` in the file's existing separator style; functions are verb-first, booleans are `is`/`has`, types are `PascalCase`, module constants are `UPPER_SNAKE`.
+3. **Is the language's own construct used?** A closed set of values is a union/`enum`, not a free string; a repeated object shape is a declared `interface`/`type`; an unchanging binding is `const`; a fixed table is `as const`; a `switch` over a union is exhaustive.
+4. **Is repeated boilerplate collapsed?** The clearest recurring case is the per-test Allure block — `addTestId` + `addFeature` + `addSeverity` + `addLabel("tms", …)` repeated above every `it`, with the id typed twice. When the change adds this at scale, recommend the single typed `testMeta({ id, feature, severity })` helper from `test-naming-and-metadata.md` by name, showing the helper and the one-line call site — and offer it in the § Fix loop.
 
 **Review discipline (same as `/review-pr` § 4a.6).** A mature suite has thousands of deliberate `driver.pause` / `.catch(() => false)` / inline `driver.isAndroid ?` uses. Flag band-aid rules (added-pause, bumped-timeout, `.catch`-swallow) only on `+`/modified lines in the current scope, honor each rule's "Do NOT flag" carve-outs (documented settles, loop probes, base-`Page`/`GestureHelper` scrollers, `assertNever`, `void`-prefixed fire-and-forget, single-use inline selectors), and name the real project symbol in the fix (`tapWhenReady`, `AuthHelper.loginAs`, `ElementHelper.swallowNotFound`, `platformLocator`, `TIMEOUTS`/`WAIT`, `selectors.ts`) after confirming it exists in the working tree.
 
@@ -202,7 +214,9 @@ Read these five reference files and apply them to the changed `.swift` / `.kt` /
 
 Each rule states its own severity, a **Sniff** pattern, and a **Fix** — **use the severity each rule prescribes**, do not re-classify. Read whole files from the working tree for context: compare a changed UUID/opcode against the spec doc, confirm a device uses the `BluetoothPeripheralProtocol` seam, and check whether `docs/PUBLIC-API.md` / `CHANGELOG.md` / `docs/api-snapshots/` are in the same change set.
 
-**Also apply the language-level iOS cross-cutting rules to SDK Swift** (not SwiftUI-bound): `$REFS_DIR/ios/concurrency.md`, `$REFS_DIR/ios/logging-hygiene.md`, `$REFS_DIR/ios/test-hygiene.md`. **Skip** `$REFS_DIR/ios/accessibility-identifiers.md` (UI-automation only). The `sdk/*` rules cover Kotlin BLE concerns for both platforms.
+**Also apply the language-level cross-cutting rules to SDK source** (not UI-framework-bound): SDK Swift → `$REFS_DIR/ios/concurrency.md`, `$REFS_DIR/ios/logging-hygiene.md`, `$REFS_DIR/ios/test-hygiene.md`, `$REFS_DIR/code-standards/swift.md`; SDK Kotlin → `$REFS_DIR/code-standards/kotlin.md` (the language-idiom lens is framework-agnostic, so it applies to headless Kotlin even though the rest of `compose/` does not). **Skip** `$REFS_DIR/ios/accessibility-identifiers.md` and `$REFS_DIR/ios/asset-references.md` (UI-only concerns — a headless SDK has no interactive controls and ships no asset catalog). The `sdk/*` rules cover the BLE concerns for both platforms.
+
+**De-dup the language-idiom rules against the SDK rules:** `code-standards/swift.md` → *bare numeric primitive for a domain quantity* and `code-standards/kotlin.md` → *wrong class kind / `value class`* overlap `sdk/public-api-contract.md`'s primitive-obsession rule; the seam rules overlap `sdk/ble-core-and-concurrency.md`'s `BluetoothPeripheralProtocol` rule. When both fire at the same `file:line`, keep the **SDK** finding and drop the generic one.
 
 **Docs sync is owned here** — `sdk/docs-and-confluence-sync.md` supplies the source→doc map, so the generic § 4.3 docs check no-ops for SDK repos. Pre-commit has no PR context and can't read wiki state, so **Confluence is reminder-only** (add its one-line reminder to the report when the docs check fires); the local-doc `P2` still applies.
 

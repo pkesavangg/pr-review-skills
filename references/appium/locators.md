@@ -15,6 +15,8 @@ Locator-strategy preference, strongest → weakest:
 - **iOS** — the app ships `accessibilityIdentifier`s, so tests should target them via `-ios predicate string:name == "login_submit_button"` (tier 1/2). Matching visible copy on iOS when an id exists is a real finding.
 - **Android** — the app is **Jetpack Compose and currently exposes no `testTag`/`resource-id`** on most screens. So tier 1/2 often *isn't available yet*, and anchoring on a stable **identity attribute** (tier 3, e.g. `@password="true"`) — or, when nothing else exists, text (tier 4) — is the pragmatic best, **provided** it's the most stable attribute available and carries a `// TODO(<TICKET>): replace with testTag` note. That's tracked debt, not a defect. The durable fix is a request to the app team for Compose `testTag`s, which would lift most Android selectors up to tier 1.
 
+**The id-vs-text check is mandatory on every changed selector.** It is the most frequently violated rule in this suite, and it splits in two by severity: *an id exists on that platform and the test matched copy anyway* → **P1** (below); *no id exists yet* → **P2**, fixed by anchoring on the best available attribute plus a tracked `// TODO(<TICKET>)`. Decide which by actually checking for an id — don't assume either way.
+
 If a repo `CLAUDE.md` or `README` documents a different convention, prefer it and skip the conflicting rule.
 
 ---
@@ -74,24 +76,50 @@ private get inputUsername() {
 
 ---
 
-## P2 — Text / copy-dependent selector
+## P1 — Element located by visible text when an automation id exists on that platform
 
-Matching on visible text (`@name="LOG IN"`, `@text="Sign up"`) couples the test to product copy and breaks under localization or a wording tweak.
+**This check runs on every changed selector — it is the single most common standards violation in this suite, so never skip it.** Picking an element by the words the user sees couples the test to product copy: a wording tweak, a sentence-case change, a trailing-space fix, or the first localized build turns a green test red for a reason that has nothing to do with the app being broken. When the control *already ships an automation id* on that platform, matching its copy instead is simply the wrong locator — the stable handle was right there.
 
 ```typescript
-const selectorIOS = '//XCUIElementTypeButton[@name="LOG IN"]';   // breaks on copy/locale change
+// login.page.ts — iOS ships accessibilityIdentifier "login_submit_button", but the test matches copy
+private get buttonLogin() {
+  const selectorIOS = '//XCUIElementTypeButton[@name="LOG IN"]';
+  const selectorAndroid = 'android=new UiSelector().text("LOG IN")';
+  return $(driver.isAndroid ? selectorAndroid : selectorIOS);
+}
 ```
 
-**Sniff.** XPath/predicate literals containing `@name=`, `@text=`, `@label=`, `contains(@text,…)`, `UiSelector().text(…)`, or `~` values that are clearly human copy ("Sign Up", "LOG IN") rather than ids.
+**Sniff.** Two steps — both required, in order:
 
-**Fix.** Use an accessibility id that is independent of displayed text. If text matching is unavoidable, pull the expected string from the same localization source the app uses, not a hardcoded literal.
+1. Find copy-matching selectors on `+` lines: `@name="…"`, `@text="…"`, `@label="…"`, `contains(@text,…)`, `contains(@name,…)`, `UiSelector().text(…)` / `.textContains(…)` / `.description(…)`, `-ios predicate string:label == "…"`, or a `~`-prefixed value that is human copy (`~Sign Up`, `~LOG IN`) rather than an id (`~login_submit_button`).
+2. **Check whether an id exists for that control on that platform** before flagging — don't guess. Grep the app source when it's available (`.accessibilityIdentifier` / `.appAccessibility(id:)` in Swift, `Modifier.testTag(` in Compose), grep `test/helpers/selectors.ts` and sibling page objects for an existing `~id` on the same screen, or check whether the *other* platform branch of the same getter already uses one. An id on the iOS branch and copy on the Android branch is the strongest signal.
 
-**Flag vs. accepted — judge per platform, per the reality note above:**
+**Fix.** Target the id: `$('~login_submit_button')`, or `$(platformLocator('~login_submit_button', '~login_submit_button'))` when both platforms expose it. Human copy in a selector is a *value*, not an identifier — if the test genuinely needs to verify the copy, assert on the text of an id-located element instead of locating *by* the text:
 
-- **Flag** text/copy matching **when a stable id was available on that platform** — e.g. iOS ships `login_submit_button` but the getter matches `@name == "LOG IN"` copy anyway; or new text-coupling added on a screen that *does* expose ids.
-- **Do NOT flag** a text (or identity-attribute) selector used **because the target has no id on that platform** — the norm on this project's Android Jetpack Compose screens — **when** it anchors on the most stable option available *and* carries a `// TODO(<TICKET>): ask dev for a testTag` note. That's documented, tracked debt (see `login.page.ts` `errorMessage`, `MOB-1417`), not a fresh defect. The right move is to keep the ticket alive, not to re-flag every occurrence.
+```typescript
+private get buttonLogin() { return $("~login_submit_button"); }
+// …and in the spec, assert the copy separately:
+expect(await LoginPage.buttonLogin.getText()).toEqual("LOG IN");
+```
 
-Either way, when text is the only option, the reviewer's standing recommendation is: **ask the app team to add a Compose `testTag` / SwiftUI `accessibilityIdentifier`** — the one change that converts the largest number of fragile text selectors into stable `~id` ones.
+**Do NOT flag** the case below — that's the P2 rule, one comment not two.
+
+---
+
+## P2 — Text-dependent selector where no id exists yet (must carry a tracked TODO)
+
+Same coupling, different situation: the control genuinely has **no** `testTag` / `accessibilityIdentifier` on that platform, so text is the most stable handle currently available. That's the norm on this project's Android Jetpack Compose screens. It's still debt — it just isn't a defect the test author can fix alone.
+
+**Sniff.** A copy-matching selector (patterns above) on a control that has no id on that platform, **and** no `// TODO(<TICKET>)` note next to it.
+
+**Fix.** Two things, together:
+
+1. Anchor on the most stable attribute actually available — prefer an identity attribute (`@resource-id`, `@content-desc`, `@password="true"`, a class + one distinguishing attribute) over copy; use copy only when nothing else distinguishes the element.
+2. Leave the debt tracked: `// TODO(MOB-1417): replace with a Compose testTag once the app exposes one`.
+
+**Do NOT flag** a text selector that already carries such a note (see `login.page.ts` `errorMessage`, `MOB-1417`) — that's documented, tracked debt, and re-flagging every occurrence buries the real findings. Keep the ticket alive instead.
+
+Either way, when text is the only option, the reviewer's standing recommendation is: **ask the app team to add a Compose `testTag` / SwiftUI `accessibilityIdentifier`** — the one change that converts the largest number of fragile text selectors into stable `~id` ones. On the app side, that contract is enforced by [`../ios/accessibility-identifiers.md`](../ios/accessibility-identifiers.md) (MOB-1131) and [`../compose/accessibility.md`](../compose/accessibility.md).
 
 ---
 

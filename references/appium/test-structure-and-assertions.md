@@ -80,26 +80,28 @@ Large blocks of commented placeholder code (`// const secureArea = …`) merged 
 
 ---
 
-## P2 — Inconsistent / missing Allure & test-id metadata
+## P2 — Inconsistent Allure annotation style across specs
 
-This project tags tests for reporting (`addTestId`, `addFeature`, `addSeverity`, `addLabel`). Mixing conventions (`addFeature("Login")` in one test, `addLabel("feature","Login")` in another) fragments the report.
+Mixing annotation APIs for the same intent (`addFeature("Login")` in one test, `addLabel("feature", "Login")` in another) fragments the Allure report into two trees for one feature.
 
 ```typescript
 addFeature("Login");                 // TC001
 addLabel("feature", "Login");        // TC002 — different API, same intent
 ```
 
-**Sniff.** Divergent Allure annotation styles across changed specs, or new tests missing `addTestId`/severity entirely.
+**Sniff.** Divergent Allure annotation styles across changed specs.
 
-**Fix.** Standardize on one set of annotations per the project's pattern; ensure every test has a stable id and severity.
+**Fix.** Standardize on one set of annotations per the project's pattern.
+
+> The rest of the metadata surface — **invalid `addSeverity` values (P1)**, **test-id drift between the title, `addTestId`, and the `tms` label (P1)**, **a new test with no id at all (P1)**, and the **four-call boilerplate → one `testMeta()` helper (P2)** — lives in [`test-naming-and-metadata.md`](test-naming-and-metadata.md). Post one finding per test, not one from each file.
 
 ---
 
 ## P2 — Vague test name not describing behavior
 
-`it("works")` / `it("test login")` don't say what's verified. Names should read as a behavioral spec.
+`it("works")` / `it("test login")` don't say what's verified. Names should read as a behavioral spec: `it("TC0NN — logs in with valid credentials and lands on the dashboard")` — id + observable behaviour.
 
-**Fix.** `it("TC0NN - logs in with valid credentials and lands on the dashboard")` — id + observable behavior.
+Full naming contract — the `<ID> — <behaviour>` shape, separator consistency, `describe`-title structure, and spec-local helper naming — is in [`test-naming-and-metadata.md`](test-naming-and-metadata.md). Apply it from there; this entry exists so the structural review doesn't miss the case.
 
 ---
 
