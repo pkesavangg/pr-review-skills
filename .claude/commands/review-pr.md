@@ -1,16 +1,25 @@
 ---
-description: Review a PR (SwiftUI / Jetpack Compose / both). Auto-detects platform and first-review vs re-review. Accepts one or more PR URLs/numbers.
-argument-hint: <PR URL or number> [<PR URL or number> ...]
-allowed-tools: Bash(gh pr:*), Bash(gh api:*), Bash(gh repo:*), Bash(gh auth:*), Bash(git:*), Read, Grep, Glob, Skill
+description: Review a PR (SwiftUI / Jetpack Compose / both). Auto-detects platform and first-review vs re-review. Accepts one or more PR URLs/numbers; reviews multiple PRs in parallel.
+argument-hint: <PR URL or number> [<PR URL or number> ...] [--dry-run] [--sequential] [--no-verify] [--no-ledger]
+allowed-tools: Bash(gh pr:*), Bash(gh api:*), Bash(gh repo:*), Bash(gh auth:*), Bash(git:*), Bash(mkdir:*), Bash(date:*), Bash(printf:*), Bash(shasum:*), Bash(grep:*), Bash(base64:*), Read, Edit, Write, Grep, Glob, Skill, Task, Agent
 ---
 
 # Unified PR Review
 
 You are reviewing one or more pull requests. Targets: $ARGUMENTS
 
-For **each** PR in $ARGUMENTS (space-separated), run the pipeline below independently. Process PRs sequentially.
-
 If `gh auth status` fails, stop and tell the user to run `gh auth login`.
+
+**One PR** → run Steps 1–5 inline. **Two or more PRs** → fan out one reviewer agent per PR and run them concurrently (§ Step 0.5). Either way each PR runs the same pipeline independently; a failure on one never affects the others.
+
+Flags (parsed out of `$ARGUMENTS` before treating the rest as PR targets):
+
+| Flag | Effect |
+|---|---|
+| `--dry-run` | Compute everything, post nothing. Findings print as a table. |
+| `--sequential` | Disable the multi-PR fan-out; process PRs one at a time in this session. |
+| `--no-verify` | Skip the independent verification pass (§ 4a.4.5). Faster, noisier. |
+| `--no-ledger` | Skip the run-ledger append (§ Step 5.5). |
 
 ## Step 0 — Resolve reference directory
 
@@ -29,6 +38,59 @@ REFS_DIR="$(cd "$(dirname "$RESOLVED")/../.." && pwd)/references"
 ```
 
 All `$REFS_DIR/...` paths below refer to this resolved directory. If the file at `$REFS_DIR/security/secrets-and-storage.md` doesn't exist, stop and tell the user the install is broken (the symlink probably points at a stale location).
+
+Resolve three more values once here and reuse them everywhere (including in every fan-out agent's prompt):
+
+```bash
+GH_USER="$(gh api user --jq .login)"                       # used by Step 3 + § 4b.1
+RUN_TS="$(date -u +%Y-%m-%dT%H:%M:%SZ)"                    # one timestamp for the whole invocation
+LEDGER="${PR_REVIEW_LEDGER:-$HOME/.claude-review/runs.jsonl}"   # § Step 5.5
+mkdir -p "$(dirname "$LEDGER")"
+```
+
+The ledger lives **outside any project repo** on purpose — its value is aggregating across meApp / SageApp / the SDK, and nothing should land in a reviewed repo's working tree.
+
+---
+
+## Step 0.5 — Multi-PR fan-out (two or more targets)
+
+With a single PR target, or with `--sequential`, skip this step and run Steps 1–5 inline.
+
+With **two or more** targets, review them **in parallel** — one agent per PR. The PRs are independent (different diffs, different comment threads, often different repos), so there is nothing to serialize.
+
+**Spawn** one general-purpose agent per PR, **at most 4 concurrent**. Issue each batch as multiple agent calls in a single message so they actually run at the same time; start the next batch when the previous one returns.
+
+Each agent's prompt must carry everything it needs — a subagent does not inherit this session's resolved variables:
+
+```
+You are reviewing exactly one pull request: <TARGET>.
+
+Read the orchestrator at <resolved path to review-pr.md> and execute Steps 1
+through 5 for this PR only. Skip Step 0 and Step 0.5 — the values are given below.
+Skip Step 5.5; the parent writes the ledger.
+
+  REFS_DIR = <resolved $REFS_DIR>
+  GH_USER  = <resolved $GH_USER>
+  RUN_TS   = <resolved $RUN_TS>
+  FLAGS    = <the flags that were passed, e.g. --dry-run>
+
+PARALLEL-MODE CONSTRAINTS (mandatory — other agents share this working tree):
+  - Run NO git command that writes. No `git fetch`, no `git checkout`, no branch
+    creation. Read-only git only, and prefer no git at all.
+  - Get file context from the PR head, not the working tree:
+    gh api repos/{owner}/{repo}/contents/<path>?ref=<headRefOid> --jq .content | base64 -d
+  - For § 4b.3's new-code diff use the compare API, not `git diff`:
+    gh api repos/{owner}/{repo}/compare/<lastReviewedSha>...<headRefOid>
+  - Post only to YOUR PR. Never touch another PR, and never write the ledger.
+
+Return exactly two things and nothing else:
+  1. The Step 6 status line for this PR.
+  2. A fenced ```json block holding this PR's § Step 5.5 ledger object.
+```
+
+**Why the git ban.** Agents run concurrently against one checkout, and § 4b.3's `git fetch origin pull/N/head` mutates shared refs. Reading from the PR head over the API is also simply more correct — the local worktree is usually on some unrelated branch, so a file read from disk may not be the code under review at all.
+
+When the batch returns: print each agent's status line, then append every returned ledger object per § Step 5.5. If an agent errors or returns nothing, print `PR #<N> — ERROR · <what failed>` and carry on with the rest. Then stop — Step 6's loop is already satisfied.
 
 ---
 
@@ -82,15 +144,32 @@ Inspect the `state` field from Step 1 (gh's `state` is one of `OPEN`, `CLOSED`, 
 
 **Approval status does NOT change behaviour.** If a MEMBER/OWNER has approved but the PR is still open, the review runs and any new findings post inline. Approved-but-not-merged PRs benefit *most* from late-cycle catches — that's exactly the window where a missed bug ships.
 
-Flag overrides (parsed out of `$ARGUMENTS` before treating the rest as PR targets):
+Flags were parsed at the top of this file; anything left in `$ARGUMENTS` after flag-stripping is the list of PR targets. Recap of what each one changes downstream:
 
-- `--dry-run` — compute findings, print as a numbered table to chat, do **not** call `gh api .../comments` / `gh pr review`. Useful for previewing what would post.
-
-Anything left in `$ARGUMENTS` after flag-stripping is the list of PR targets.
+- `--dry-run` — compute findings, print as a numbered table to chat, do **not** call `gh api .../comments` / `gh pr review`. Verification (§ 4a.4.5) and the confidence gate (§ 4a.5) still run, so the preview matches what would actually post.
+- `--no-verify` — skip § 4a.4.5. Every candidate keeps the confidence it was assigned at creation.
+- `--no-ledger` — skip § Step 5.5.
+- `--sequential` — already handled at § Step 0.5.
 
 ---
 
 ## Step 4a — First-review pipeline
+
+### 4a — The shape of a candidate finding
+
+Every candidate produced by any rule file in this step carries **five** fields, not three. Hold them internally as you go; § 4a.4.5 and § 4a.5 both depend on them.
+
+| Field | Source |
+|---|---|
+| `rule` | The reference file + rule that fired, as `<dir>/<file>#<short-slug>` — e.g. `compose/asset-references#getIdentifier`. Needed by the ledger and the dispute threshold. |
+| `priority` | `P0` / `P1` / `P2` / `Nit`, per § Priorities. |
+| `file` + `line` | The anchor. |
+| **`evidence`** | **The observed fact that proves the finding** — the specific thing you looked at and saw. Not the rule's name, not a paraphrase of the rule. "`kettle_hero` has no matching `.imageset` under `Assets.xcassets`" is evidence; "asset literal used" is not. If you cannot state the evidence in one clause, you do not have a finding — you have a suspicion, which is what `low` confidence is for. |
+| **`confidence`** | `high` / `medium` / `low`, per § Confidence. |
+
+**Assign confidence honestly at the moment the finding is created**, while you still remember what you actually checked versus what you assumed. Do not backfill it at posting time — a confidence assigned after the fact is always `high`, which defeats the point.
+
+Several rule files already demand the check that sets it: `ios/asset-references.md` requires verifying an asset exists with `find` rather than guessing; `appium/locators.md` requires actually looking for an automation id before choosing P1 over P2; the SDK rules require comparing a constant against the spec doc. **Did that check happen and succeed → `high`. Was it inconclusive → `medium`. Was it skipped → `low`.**
 
 ### 4a.0 — Security review (always, both platforms)
 
@@ -184,7 +263,7 @@ Use each rule's prescribed severity — do not re-classify the way you do for `c
 
 When the PR is **Appium E2E** (§ Step 2), skip the SwiftUI (4a.1/4a.1.5) and Compose (4a.2/4a.2.5) pipelines — they target native app source, not test-automation code. Instead, review like a **senior mobile test-automation engineer**: first build a mental model of the project (WebdriverIO + Appium + TypeScript, Page Object Model — base `Page`, `*.page.ts` selector getters switching on `driver.isAndroid`, Mocha specs, Allure/video reporting), then apply both **technical** rules (locators, waits, async correctness) and **logical** rules (does each test actually verify behavior, is it independent, can it fail).
 
-Read these twelve reference files and apply them to the changed `.ts` / config files:
+Read these thirteen reference files and apply them to the changed `.ts` / config files:
 
 - `$REFS_DIR/appium/locators.md` — **includes the mandatory id-vs-text check**: an element picked by visible copy (`@text=`, `@name=`, `UiSelector().text(…)`, a `~`-value that is human copy) when the control ships an `accessibilityIdentifier` / `testTag` on that platform is **P1**; the same selector where no id exists yet is **P2**, fixed by anchoring on the best available identity attribute plus a tracked `// TODO(<TICKET>)`. Decide which by *actually checking* for an id (grep the app source, sibling page objects, `selectors.ts`, and the getter's other platform branch) — never assume.
 - `$REFS_DIR/appium/waits-and-synchronization.md`
@@ -196,6 +275,7 @@ Read these twelve reference files and apply them to the changed `.ts` / config f
 - `$REFS_DIR/appium/typescript-and-async.md`
 - `$REFS_DIR/appium/config-and-secrets.md`
 - `$REFS_DIR/appium/helpers-and-reuse.md`
+- `$REFS_DIR/appium/code-organization.md` — the **structure and placement** lens: a `type`/`interface`/`enum` declared inside a `*.spec.ts` **P2**; a module's types split across a second home (or an existing union re-spelled inline) **P2**; new copy-paste duplication the PR itself introduces — a 6+-line block twice, or a literal 3+ times **P2**; a spec-local helper/constant/type that now has a second call site and should move to `test/helpers/` or `test/data/` **P2**; a change that contradicts a standard the repo documents (`docs/TEST-STANDARDS.md`, `docs/TEST-RELIABILITY-STANDARDS.md`, `docs/adr/`, the repo's coding-standards skill) **P2** — evidence must be a doc citation, not a judgment; a comment that restates the next line or narrates the diff **Nit**. **Read the repo's own standards docs before applying any of it** — they outrank these rules, and several conventions they document as deliberate must never be "cleaned up".
 - `$REFS_DIR/appium/mobile-commands-and-context.md` — native↔WebView context restore + `appium*`-prefixed legacy-command currency (from the official [WebdriverIO Appium API](https://webdriver.io/docs/api/appium)); fires only when those commands appear in the diff.
 - `$REFS_DIR/code-standards/typescript.md` — the **language-idiom** lens, applied to every changed `.ts` file: stringly-typed value where a union/`enum` should constrain it (**P1** — this is what lets `addSeverity("high")` compile), non-exhaustive `switch` with a silent `default` (use `assertNever`), repeated inline object shapes that should be a declared `interface`/`type`, naming conventions (verb-first functions, `is`/`has` booleans, `PascalCase` types, `UPPER_SNAKE` module constants), `let`-that-should-be-`const`, magic numbers, mutable exported objects missing `as const`, wrong container (`class` vs `object` vs loose functions), missing return types.
 
@@ -207,6 +287,7 @@ Each rule states its own severity, a **Sniff** pattern (grep/`rg` over `.ts`), a
 2. **Do the names say what things are and do?** `describe` titles name the screen/section; `it` titles read `<ID> — <observable behaviour>` in the file's existing separator style; functions are verb-first, booleans are `is`/`has`, types are `PascalCase`, module constants are `UPPER_SNAKE`.
 3. **Is the language's own construct used?** A closed set of values is a union/`enum`, not a free string; a repeated object shape is a declared `interface`/`type`; an unchanging binding is `const`; a fixed table is `as const`; a `switch` over a union is exhaustive.
 4. **Is repeated boilerplate collapsed?** The clearest recurring case is the per-test Allure block — `addTestId` + `addFeature` + `addSeverity` + `addLabel("tms", …)` repeated above every `it`, with the id typed twice. When a change adds this at scale, recommend the single typed `testMeta({ id, feature, severity })` helper from `test-naming-and-metadata.md` by name, showing the helper and the one-line call site.
+5. **Is each thing declared once, and where this project keeps that kind of thing?** (`code-organization.md` — the placement map.) Types, interfaces and enums never live in a `*.spec.ts`: a data shape goes beside the fixtures it types in `test/data/<screen>.data.ts`, a page-object vocabulary union goes in the page or its `*.types.ts` sibling, a helper's options/result type goes in the helper's own file, and `test/types/*.d.ts` holds ambient declarations only. One module gets **one** types home — an existing union re-spelled inline in a signature, or a second `*.types.ts` for the same module, is the finding. Behaviour and timing that a second file now needs move to `test/helpers/`; data and copy move to `test/data/`. And check **every touched spec** against the repo's own written standards (`docs/TEST-STANDARDS.md`, `docs/TEST-RELIABILITY-STANDARDS.md`, `docs/adr/`, the coding-standards skill) — a documented rule the diff breaks is a finding whose evidence is the citation.
 
 **Review discipline — this matters as much as the rules.** A mature Appium suite contains thousands of `driver.pause`, `.catch(() => false)`, and inline `driver.isAndroid ?` uses that are *deliberate, documented, accepted patterns*. Reviewing like a senior automation engineer means not drowning the author in noise:
 
@@ -295,6 +376,15 @@ Security and privacy live in their own sections (4a.0 and 4a.0.5). The remaining
 
   **Judgment-based — do NOT flag genuinely-related changes.** A shared component/util edit that necessarily touches several screens, a cross-cutting rename that *is* the task, test + code for the same feature, or a small necessary incidental fix carrying a one-line "unrelated but needed because…" note are all legitimately one PR. The signal is *unrelated to the stated task*, **not** *touches many files* — a large but cohesive change is fine. If the PR has no stated scope at all, that's already the missing-description / Jira checks above — don't double-flag. Post **one** scope comment per PR.
 
+- **P1** — **A stabilization PR carries refactor or behaviour changes.** Applies to **test-automation PRs** (Appium/E2E), and it is stricter than the generic scope-creep rule above because a stabilization PR's *only* proof is the run: once an unrelated refactor rides along, a green run no longer attributes to the stabilization, and a regression can't be reverted without also reverting the fix. Decide in four steps:
+
+  1. **Is this a stabilization PR?** Signals, in the title, branch name, or linked Jira summary/description: `stabili[sz]e`, `de-?flake`, `flaky`, `flake`, `intermittent`, `reliability`, `make <suite> green`, `fix failing <spec>`. Also treat a body that describes making an *existing* suite pass reliably as one, even without those words. If none apply, skip this check — the generic P2 scope rule above already covers the PR.
+  2. **Establish what stabilization admits.** In scope: replacing fixed sleeps with condition waits; hardening a selector onto an automation id; correcting a timeout tier; placing a settle or re-query where a real race was measured; fixing test independence (state reset, seeding, hook placement); correcting a platform branch; wrapping a genuine app defect in `expectedRed("MOB-XXXX", …)`; and the helper/data changes those fixes strictly require.
+  3. **Flag what it doesn't admit**, naming each out-of-scope change: a rename or file move no fix required; restructuring a test into Arrange/Act/Assert; extracting helpers, types, or page-object methods for tests this PR is not stabilizing; splitting, merging, or deleting tests; **changing what a test asserts**; reformatting; a dependency bump; new tests adding coverage. The last one deserves its own emphasis — a stabilization PR that also *weakens or rewrites an assertion* is the dangerous case, because that is how a suite goes green without the product being fixed.
+  4. **Post one comment** naming the specific files and what to do with them: `P1 — Stabilization PR mixes in refactor work · This PR is scoped to stabilizing <suite/spec> but also <the out-of-scope change, e.g. "restructures settings-app.spec.ts into Arrange/Act/Assert and renames four page-object methods">. A stabilization run is the only evidence these fixes worked — with a refactor in the same diff, a green run no longer proves it, and neither half can be reverted alone. Land the stabilization first, then the refactor as its own PR (own ticket).`
+
+  **When the PR title itself declares both** (e.g. `MOB-xxxx: stabilise and refactor the <x> test suite`), the check still fires but drops to **P2** — a declared scope doesn't restore attributability, so the recommendation is the same split, phrased as a suggestion. **Do NOT flag** a refactor that *is* the stabilization mechanism — extracting two racing copies of an arrange into one seeded helper, or moving a duplicated wait into the base `Page`, is the fix, not scope creep (say so, and don't comment). Also don't flag a shared helper edit that both flaky specs depend on, or a rename forced by a move the fix required. The mirror case holds too: a PR scoped to a *refactor* must not quietly change assertions or add retries — flag that the same way.
+
 - **P2** — **Missing screenshot / screen recording for a user-facing change.** A PR that changes what the user sees or does should prove it with a screenshot (static UI) or a screen recording (interactive flow), so reviewers and QA can verify the result without checking out and building the branch. Decide in three steps:
 
   1. **Does this PR even need visual evidence?** It does **not** when the diff is *entirely* non-visual. Waive the requirement (and say so in the Step 5 summary with the reason) when every changed file falls into one of:
@@ -339,22 +429,101 @@ When dropping a candidate, log to chat: `Skipped: <priority> <file>:<line> — o
 
 Goal: never post a comment that re-litigates an already-discussed thread. When in doubt, skip.
 
+**Then de-dup exactly, against the run ledger.** The substance check above is fuzzy by design; the ledger gives an exact one. Compute each surviving candidate's hash (§ Step 5.5 defines the recipe) and drop any hash this repo+PR has already posted:
+
+```bash
+grep -F "\"repo\":\"<owner/name>\",\"pr\":<N>" "$LEDGER" 2>/dev/null
+```
+
+Log each drop as `Skipped: <priority> <file>:<line> — already posted on a previous run (<hash>)`. This is what makes a second `/review-pr` on the same PR safe, and what stops the cloud routine from double-posting when it races a manual run. Skip silently if the ledger doesn't exist yet.
+
+### 4a.4.5 — Independent verification (P0 / P1 only)
+
+**Never let the pass that produced a finding be the pass that clears it.** A wrong `P1` costs more than a missed one: a missed bug is a bug, but a wrong blocker teaches the author that this reviewer's comments are optional, and that discount then applies to the next twenty real findings. The failure mode to catch here is the *almost right* one — a finding that is 90% correct but misattributed to the wrong line, the wrong symbol, or a path that can't actually be reached.
+
+Skip this step entirely if `--no-verify` was passed.
+
+For every surviving candidate at **`P0` or `P1`**, spawn a verification agent. Run them concurrently — issue the whole batch as multiple agent calls in a single message.
+
+**The verifier gets deliberately less context than you have.** Give it:
+
+- the file path and a window of the **current** file around the finding (±40 lines, read fresh),
+- the claim as one sentence, and the evidence clause,
+- nothing else.
+
+**Do not** give it the rule file, the rule's name, the Sniff pattern, or your reasoning. The whole value is that it cannot pattern-match its way to agreement — it has to see the problem in the code or fail to.
+
+Prompt shape:
+
+```
+You did not write this code and you did not produce this finding. Do not assume
+the finding is correct — your job is to try to REFUTE it.
+
+Code under review (<path>, lines <a>–<b>):
+<the window>
+
+The claim: <one-sentence issue> — <evidence clause>
+
+Can you see this problem in the code shown? Consider specifically whether the
+claim points at the wrong line or symbol, whether the path it describes is
+actually reachable, and whether surrounding code already handles it.
+
+Answer with exactly one verdict on the first line — CONFIRMED, UNCERTAIN, or
+REFUTED — then one sentence of justification. Answer UNCERTAIN if the code shown
+is insufficient to tell. Do not suggest fixes.
+```
+
+Apply the verdict:
+
+| Verdict | Effect |
+|---|---|
+| **CONFIRMED** | Keep the priority. Set `confidence: high`. |
+| **UNCERTAIN** | Demote one level (`P0`→`P1`, `P1`→`P2`) and set `confidence: medium`. It survives, with less weight. |
+| **REFUTED** | Drop the finding. Log `Refuted: <priority> <file>:<line> — <verifier's sentence>` to chat and record it in the ledger. Never post a refuted finding. |
+
+**Cap the batch at 12 verifications per PR.** If more than 12 candidates qualify, verify all `P0`s first, then `P1`s in rule-severity order. Anything past the cap keeps its original priority, is marked `confidence: medium`, and — per the no-silent-caps rule — the Step 5 summary must say so: `Verification capped at 12; 4 further P1 findings posted unverified.`
+
 ### 4a.5 — Post inline comments
 
-For each surviving finding, post an inline review comment:
+#### The confidence gate — decide *whether* to post before deciding *how*
+
+This reviewer optimises for **findings worth a senior's attention, not for coverage.** Twenty comments on one PR is functionally zero comments; the author skims, discounts the lot, and the two that mattered go down with the rest. Confidence is the mechanism that lets the system defer instead of dump.
+
+Route every surviving candidate through this table:
+
+| Confidence | Meaning | Action |
+|---|---|---|
+| **high** | The rule matched *and* the surrounding code was read and confirms it (or § 4a.4.5 returned CONFIRMED) | **Post inline.** |
+| **medium** | Matched, but the context is ambiguous — the asset couldn't be verified, the helper couldn't be confirmed, the rule is judgment-based, or § 4a.4.5 returned UNCERTAIN | Post inline **only if `P0`/`P1`**. Otherwise roll into the Step 5 summary under *Worth a look*. |
+| **low** | Inferred from the diff alone; nothing was verified | **Never post inline.** One grouped line in the Step 5 summary, or drop it. |
+
+A withheld finding is not a deleted one — it goes in the summary and in the ledger, so nothing disappears silently and the author can always ask for the full list.
+
+#### Posting
+
+For each finding that clears the gate, post an inline review comment:
 
 ```
 gh api repos/{owner}/{repo}/pulls/<PR>/comments \
-  -f body="P1 — <issue> · <one-sentence fix>" \
+  -f body="P1 — <issue> · <evidence> · <one-sentence fix>" \
   -f commit_id=<headRefOid> \
   -f path=<file> \
   -F line=<line> \
   -f side=RIGHT
 ```
 
-For findings without a single line (missing tests, missing Jira reference/link, Jira sprint placement, description mismatch, weak PR description, missing screenshot/recording), use `gh pr comment <PR> -b "P2 — …"`. Prefix every finding with the exact priority string — the format `P0 — ` / `P1 — ` / `P2 — ` / `Nit — ` (priority, space, em-dash, space) is **mandatory** so Step 3 can identify these on future runs.
+The body is now **three** clauses, not two: *what's wrong · what you observed that proves it · how to fix it.* The middle clause is the finding's evidence (§ 4a) — the concrete fact, never a restatement of the rule:
 
-If `--dry-run` was passed, **skip this step entirely**: instead print the findings to chat as a numbered table — `# | priority | file:line | one-line issue` — followed by `(dry-run; nothing posted)`. Wait for the user's reply. Only post if they explicitly say to publish.
+- ✅ `P1 — Asset name never resolves · no kettle_hero.imageset exists under Assets.xcassets, so this renders nothing at runtime · move it to Theme/Tokens/ImageTokens.swift and reference the typed symbol.`
+- ❌ `P1 — Asset literal at a call site · violates the asset-reference standard · use a token.`
+
+The second one tells the author what rule fired. The first tells them what is broken and how you know. Only the first survives a "are you sure?" reply.
+
+Prefix every finding with the exact priority string — `P0 — ` / `P1 — ` / `P2 — ` / `Nit — ` (priority, space, em-dash, space) is **structurally mandatory**, because Step 3 and § 4b.1 find this skill's own prior comments by matching it. Adding the evidence clause does not change the prefix.
+
+For findings without a single line (missing tests, missing Jira reference/link, Jira sprint placement, description mismatch, weak PR description, missing screenshot/recording), use `gh pr comment <PR> -b "P2 — …"` in the same three-clause shape.
+
+If `--dry-run` was passed, **skip the posting calls**: print the findings to chat as a numbered table — `# | priority | confidence | verdict | file:line | one-line issue` — followed by the withheld ones under `Withheld by the confidence gate:` and then `(dry-run; nothing posted)`. Wait for the user's reply. Only post if they explicitly say to publish.
 
 ---
 
@@ -379,6 +548,18 @@ gh api repos/{owner}/{repo}/pulls/<PR>/comments/<original_comment_id>/replies \
   -f body="✅ Resolved — <one sentence>"
 ```
 
+5. **Record the dispute, when the verdict says the rule was wrong.** A finding that closes as `✅ Accepted` because the author gave a **technical justification**, or because an **existing test already covers it**, is not a win — it is this reviewer having fired on something that didn't need firing. That signal is currently computed and then thrown away at the end of every run. Capture it: append one row to `$REFS_DIR/disputes.md`.
+
+   ```
+   | <YYYY-MM-DD> | <rule id> | <owner/repo> | #<PR> | <author login> | <the author's reason, one line> |
+   ```
+
+   **Only these two grounds count as a dispute.** A deferral closed by a filed ticket (`✅ Accepted — tracking in MOB-1234`) means the finding was *right* and is being scheduled — never log it. Neither `⚠️ Partially` nor `❌ Still open` is a dispute either.
+
+   **Do not act on a single dispute.** One author disagreeing once is noise, and a rule amended on one junior's pushback is how a review system quietly unlearns something true. The threshold for even *considering* an amendment is **≥3 rows for the same rule id, spanning at least 2 distinct authors or 2 distinct repos** — see the standing queue at the top of `disputes.md`. Crossing the threshold schedules a human review of the rule; it never changes behaviour automatically.
+
+   This write lands in the **reviewer's own repo** (`pr-review-skills`), never in the repo under review — see § Guardrails. Mention it once in the Step 5 summary: `Logged 1 dispute to references/disputes.md (commit it to share with the team).`
+
 ### 4b.2 — Re-check PR description and Jira link
 
 If the first-round review flagged the PR description (missing / mismatched) or the Jira issue link:
@@ -389,14 +570,17 @@ If the first-round review flagged the PR description (missing / mismatched) or t
 
 ### 4b.3 — Review the NEW code
 
+Get the incremental diff from the **compare API** — it needs no local checkout, works when the working tree is on an unrelated branch, and is safe when several PR agents are running at once:
+
 ```
 LAST_REVIEWED_SHA=<commit_id of the most recent prior priority comment>
 HEAD_SHA=<current headRefOid>
-git fetch origin pull/<PR>/head:pr-<PR>
-git diff $LAST_REVIEWED_SHA..$HEAD_SHA -- <changed files>
+gh api repos/{owner}/{repo}/compare/$LAST_REVIEWED_SHA...$HEAD_SHA --jq '.files[] | {filename, patch}'
 ```
 
-Apply Step 4a's checklists **only to lines that did not exist** at the time of the previous review. Do not re-flag anything already commented on.
+Only when running **sequentially** and the branch is already checked out locally, `git fetch origin pull/<PR>/head:pr-<PR>` + `git diff $LAST_REVIEWED_SHA..$HEAD_SHA` is an acceptable fallback. **Never** in parallel mode (§ Step 0.5) — concurrent agents share one `.git`.
+
+Apply Step 4a's checklists **only to lines that did not exist** at the time of the previous review. Do not re-flag anything already commented on. New findings go through the confidence gate and § 4a.4.5 verification exactly like first-review findings.
 
 ---
 
@@ -408,16 +592,21 @@ Otherwise, post one top-level summary review:
 
 - **Mode:** first-review / re-review
 - **Platforms detected:** iOS / Android / both
-- **De-duplicated against prior reviewers:** `Skipped:N` (count of candidates dropped in Step 4a.4)
-- **First-review counts:** `P0:N P1:N P2:N Nit:N`
+- **De-duplicated against prior reviewers:** `Skipped:N` (candidates dropped in Step 4a.4, including exact ledger-hash matches)
+- **Verification:** `Verified:N Refuted:N Uncertain:N` (§ 4a.4.5) — plus the cap notice if it fired, and `(skipped — --no-verify)` when it did
+- **First-review counts:** `P0:N P1:N P2:N Nit:N` — these are **posted** counts
 - **Re-review counts:** `Resolved:N Accepted:N Partial:N StillOpen:N · New: P0:N P1:N P2:N`
+- **Worth a look (not posted inline):** the findings the confidence gate withheld — one line each, grouped by rule, in the form `<rule> ×N — <file(s)> — <why it wasn't confident enough>`. Omit the section when nothing was withheld. Never let a withheld finding vanish without a line here.
+- **Disputes logged:** the § 4b.1 note, when any row was written.
+
+**Nothing is hidden.** Between the confidence gate, verification, and de-dup, a run can drop a lot of candidates — every one of them is accounted for in these counts or in *Worth a look*.
 
 ### Choosing the GitHub review state
 
 Pick exactly one of `--approve` or `--comment` based on the conditions below. **Never** `--request-changes` — it is reserved for a future rollout phase once the team has validated that findings are consistently actionable; don't escalate to a blocking state on this skill's authority alone.
 
 - **`gh pr review <PR> --approve -b "<summary>"`** — use *only* when the PR is genuinely clean:
-  - **First-review:** approve **only** when there are zero findings of every priority — `P0:0 P1:0 P2:0 Nit:0`. A single finding at any priority (yes, even a Nit) means `--comment` instead.
+  - **First-review:** approve **only** when there are zero findings of every priority — `P0:0 P1:0 P2:0 Nit:0` — **and** the *Worth a look* list is empty. A single finding at any priority (yes, even a Nit) means `--comment` instead, and so does a finding the confidence gate withheld: "not confident enough to comment on" is not the same as "clean", and approving over an unresolved suspicion is exactly the wrong way to spend the gate.
   - **Re-review:** approve **only** when ALL of these hold:
     1. Every prior priority comment resolved to `✅ Resolved` or `✅ Accepted` in Step 4b.1 — no `⚠️ Partially`, no `🎫 Awaiting ticket`, no `❌ Still open`.
     2. Every `✅ Accepted` that closed on a deferral has a **verified** ticket (passed § Ticket verification — format + existence + relevance). An Accepted resting on an unverifiable ticket does **not** qualify for approval; fall back to `--comment`.
@@ -425,18 +614,56 @@ Pick exactly one of `--approve` or `--comment` based on the conditions below. **
   - When approving, the summary body should state why, e.g. `**Clean — no findings. Approving.**` (first-review) or `**All N prior findings resolved/accepted (tickets verified), no new issues. Approving.**` (re-review).
 - **`gh pr review <PR> --comment -b "<summary>"`** — use in every other case. The summary **body** still calls out severity (e.g. lead with `**3 P1 findings — recommend addressing before merge.**`) so the signal is preserved, but the GitHub review state stays non-blocking.
 
+## Step 5.5 — Append to the run ledger
+
+Skip if `--no-ledger`. In parallel mode, **fan-out agents never write this file** — they return their object and the parent appends every row, so two agents can't interleave a half-written line.
+
+One JSON object per PR reviewed, one line, appended to `$LEDGER`:
+
+```bash
+printf '%s\n' '<the single-line JSON object>' >> "$LEDGER"
+```
+
+Shape (rendered multi-line here for readability — write it as one line):
+
+```json
+{"ts":"2026-08-17T09:14:03Z","command":"review-pr","repo":"greatergoods/SageApp","pr":1954,
+ "mode":"first-review","platforms":"Android","track":"compose","rule_files":34,
+ "candidates":18,"dropped_dedup":3,"withheld_confidence":2,"refuted":1,"verified":4,
+ "posted":{"P0":0,"P1":3,"P2":4,"Nit":0},"verdict":"COMMENT","parallel":true,"dry_run":false,
+ "findings":[
+   {"rule":"compose/asset-references#getIdentifier","file":"ui/KettleCard.kt","line":88,
+    "priority":"P1","confidence":"high","verdict":"CONFIRMED","action":"posted","hash":"a91f2c7d4e10"},
+   {"rule":"code-standards/kotlin#magic-number","file":"ui/KettleCard.kt","line":140,
+    "priority":"Nit","confidence":"low","verdict":null,"action":"withheld","hash":"5b3e88c1af92"}]}
+```
+
+`action` is one of `posted` / `withheld` / `refuted` / `deduped`. **Record every candidate, not just the posted ones** — the withheld and refuted rows are the interesting data.
+
+Hash recipe — line-independent on purpose, so a finding that shifts by a few lines still matches itself on the next run:
+
+```bash
+printf '%s' "<owner/repo>|<pr>|<rule id>|<path>|<issue text, lowercased, whitespace collapsed>" \
+  | shasum -a 256 | cut -c1-12
+```
+
+**Why this exists.** With ~40 rule files there is currently no evidence about which ones earn their place. After a few weeks the ledger answers it directly: join `findings[].rule` against what got resolved versus ignored, and a rule that fires constantly and is never acted on is noise you can delete. It also supplies § 4a.4's exact idempotency check. Costs one append per run.
+
+Nothing here is written into the repo under review.
+
 ## Step 6 — Next PR
 
-If $ARGUMENTS has more PRs, restart at Step 1. At the very end, print one status line per PR:
+In parallel mode (§ Step 0.5) every PR is already done — just print the collected status lines. Sequentially, restart at Step 1 if `$ARGUMENTS` has more PRs. At the very end, print one status line per PR:
 
 ```
-PR #123 — iOS · first-review · P0:0 P1:2 P2:4 Nit:1 · COMMENT
-PR #124 — iOS+Android · re-review · Resolved:5 Open:1 · COMMENT
-PR #125 — iOS · first-review · P0:0 P1:0 P2:0 Nit:0 · APPROVE
+PR #123 — iOS · first-review · P0:0 P1:2 P2:4 Nit:1 · V:2 R:1 W:3 · COMMENT
+PR #124 — iOS+Android · re-review · Resolved:5 Open:1 · V:1 R:0 W:0 · COMMENT
+PR #125 — iOS · first-review · P0:0 P1:0 P2:0 Nit:0 · V:0 R:0 W:0 · APPROVE
 PR #126 — Android · re-review · Resolved:6 Accepted:1 Open:0 · New: P0:0 P1:0 · APPROVE
+PR #127 — ERROR · gh api 404 (PR not found in this repo)
 ```
 
-The verdict column is `APPROVE` only when Step 5's approval conditions are met, otherwise `COMMENT`. `REQUEST_CHANGES` is never emitted (rollout-gated).
+`V` = verified, `R` = refuted, `W` = withheld by the confidence gate. The verdict column is `APPROVE` only when Step 5's approval conditions are met, otherwise `COMMENT`. `REQUEST_CHANGES` is never emitted (rollout-gated).
 
 ---
 
@@ -448,6 +675,20 @@ Use these prefixes verbatim — they are the structural marker re-review uses to
 - **`P1` — High.** Correctness bugs, missing error handling at system boundaries, accessibility regressions (missing labels, broken font scaling, hit target too small), missing tests for non-trivial logic, concurrency footguns, performance hazards, missing/contradicting PR description, missing or unlinked Jira issue (required).
 - **`P2` — Medium.** Clarity, duplication, naming, deprecated APIs, hardcoded strings, raw values where a token system exists, missing previews, missing screenshot/recording on a user-facing change, PR scope creep (unrelated / out-of-scope changes bundled together).
 - **`Nit` — Style/preference.** Subjective polish. Never blocking.
+
+## § Confidence
+
+Priority answers *how bad is this if true*. Confidence answers *how sure am I that it's true*. They are independent — a `P0` you inferred from the diff without opening the file is a `P0` at `low` confidence, and it does not get posted on the strength of its severity alone.
+
+- **`high`** — you performed the rule's own verification and it succeeded: the `.imageset` really is absent, the automation id really doesn't exist on that control, the helper really is in `test/helpers/`, the opcode really disagrees with the spec. Or § 4a.4.5 returned CONFIRMED.
+- **`medium`** — the pattern matched but something stayed unresolved: the check was inconclusive, the rule is inherently judgment-based (scope creep, description-vs-diff, "is this test meaningful"), or § 4a.4.5 returned UNCERTAIN.
+- **`low`** — read off the diff alone. Nothing was opened, nothing was grepped, nothing was confirmed.
+
+Three rules that keep the field honest:
+
+1. **Assign it when the finding is created**, not at posting time. Retroactive confidence is always `high`.
+2. **Never raise it to make something postable.** If a `P2` is stuck at `medium`, either do the check that would make it `high`, or let the gate withhold it.
+3. **`low` is a legitimate output, not a failure.** A suspicion you can't substantiate belongs in *Worth a look*, where the author can act on it if they recognise it — not in an inline comment that asserts more certainty than you have.
 
 ## § Re-review verdicts
 
@@ -510,6 +751,9 @@ Always quote the verified ticket ID in the accepting reply so future readers can
 
 ## § Guardrails
 
+- **The only files this command may write are the run ledger (`$LEDGER`, outside every project repo) and `$REFS_DIR/disputes.md` (inside `pr-review-skills`, the reviewer's own repo).** Nothing is ever written into the repo under review — no report, no ledger, no scratch file.
+- **Parallel mode never mutates git.** Fan-out agents share one working tree, so they use `gh api .../contents` and `gh api .../compare` instead of `git fetch` / `git checkout`, and they never write the ledger (the parent does, after collecting).
+- **A refuted finding is never posted**, and a verdict from § 4a.4.5 is never overridden by the pass that produced the finding.
 - Never `git push`, `gh pr merge`, `gh pr close`, `gh pr edit`, or modify labels.
 - `--approve` is allowed **only** under the strict conditions in Step 5 (first-review with zero findings, or re-review fully resolved/accepted with verified tickets and no new findings). When in any doubt, fall back to `--comment`. Never `--request-changes` (rollout-gated per Step 5).
 - Never edit files in the PR branch or amend the author's commits.
