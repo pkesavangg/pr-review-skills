@@ -17,6 +17,7 @@ This file is the **structure and placement** lens for §4a.6 / §4.6. It answers
 | Commented-out **test logic / assertions** shipped | [test-structure-and-assertions.md](test-structure-and-assertions.md) |
 | Whether a type should exist **at all** (repeated inline shape → declare a type) | [../code-standards/typescript.md](../code-standards/typescript.md) |
 | Whether a helper's **name** says what it does | [test-naming-and-metadata.md](test-naming-and-metadata.md) |
+| Anything in meAppTest's feature-sliced **`e2e/`** tree (placement, file roles, naming, shared homes, comments) | [e2e-structure.md](e2e-structure.md) — the placement map below is for the old `test/` tree |
 
 This file covers what those don't: **new** duplication the PR itself introduces with no helper to reuse yet,
 and **where** a declaration belongs once it exists. When `code-standards/typescript.md`'s repeated-inline-shape
