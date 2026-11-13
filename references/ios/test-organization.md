@@ -73,6 +73,22 @@ A coverage gap is closed by adding cases to the existing suite. `LoginStoreExtra
 
 ---
 
+## P2 — Unnecessary test (adds coverage, protects nothing)
+
+A test earns its place when it would fail on a real bug. Tests that only pin what the compiler, the language or a constant already guarantees cost run time and maintenance, and break on harmless changes.
+
+```swift
+@Test func weightUnit_rawValue() { #expect(WeightUnit.kg.rawValue == "kg") }        // restates the enum
+@Test func init_setsName() { #expect(Profile(name: "A").name == "A") }               // memberwise init
+@Test func title() { #expect(GoalStrings.title == "Goal") }                          // restates Strings
+```
+
+**Sniff.** An added test whose only assertion: compares an enum `rawValue`/`case` to its literal; reads back a property just passed to an initialiser; compares a `Strings`/token constant to a literal; checks a synthesised `Codable`/`Equatable`/`Hashable` conformance with no custom logic; or repeats an existing case in the same suite with the same inputs. Also any test added in a PR that only changes copy, colours or spacing.
+
+**Fix.** Delete it. If the type has real logic (custom decoding, a computed property, a mapping table), test that logic instead. Coverage on such code comes from the tests of the code that uses it.
+
+---
+
 ## P2 — Three or more look-alike tests that should be one `@Test(arguments:)`
 
 ```swift

@@ -44,6 +44,14 @@ Reducers are pure `(State, Intent) -> State?` functions. Testing them through a 
 
 ---
 
+## P2 — Unnecessary test (adds coverage, protects nothing)
+
+**Sniff.** An added test whose only assertion: compares an `enum` value or `name` to its literal; reads back a constructor argument from a `data class`; compares a `Strings` object or theme token to a literal; checks generated `equals`/`hashCode`/`copy`/serialisation with no custom logic; or repeats an existing case with the same inputs. Also any test added in a PR that only changes copy, colours or spacing.
+
+**Fix.** Delete it, or test the real logic (a mapper, a reducer branch, custom serialisation) instead.
+
+---
+
 ## P2 — UI copy asserted with a literal
 
 Copy lives in the feature `Strings` object (`LoginStrings.Title`). A literal in a test breaks on every wording change and catches nothing.
